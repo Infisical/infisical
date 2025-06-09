@@ -27,7 +27,8 @@ const PERMISSION_ACTIONS = [
   { action: OrgGatewayPermissionActions.ListGateways, label: "List Gateways" },
   { action: OrgGatewayPermissionActions.CreateGateways, label: "Create Gateways" },
   { action: OrgGatewayPermissionActions.EditGateways, label: "Edit Gateways" },
-  { action: OrgGatewayPermissionActions.DeleteGateways, label: "Delete Gateways" }
+  { action: OrgGatewayPermissionActions.DeleteGateways, label: "Delete Gateways" },
+  { action: OrgGatewayPermissionActions.AttachGateways, label: "Attach Gateways" }
 ] as const;
 
 export const OrgGatewayPermissionRow = ({ isEditable, control, setValue }: Props) => {

@@ -1,4 +1,4 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -56,22 +56,38 @@ export const SshHostGroupsSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Host Groups</p>
-        <ProjectPermissionCan
-          I={ProjectPermissionActions.Create}
-          a={ProjectPermissionSub.SshHostGroups}
-        >
-          {(isAllowed) => (
-            <Button
-              colorSchema="primary"
-              type="button"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handleAddSshHostGroupModal()}
-              isDisabled={!isAllowed}
-            >
-              Add Group
-            </Button>
-          )}
-        </ProjectPermissionCan>
+        <div className="flex justify-end">
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://infisical.com/docs/documentation/platform/ssh/host-groups"
+          >
+            <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+              Documentation{" "}
+              <FontAwesomeIcon
+                icon={faArrowUpRightFromSquare}
+                className="mb-[0.06rem] ml-1 text-xs"
+              />
+            </span>
+          </a>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.SshHostGroups}
+          >
+            {(isAllowed) => (
+              <Button
+                colorSchema="primary"
+                type="button"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handleAddSshHostGroupModal()}
+                isDisabled={!isAllowed}
+                className="ml-4"
+              >
+                Add Group
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </div>
       </div>
       <SshHostGroupsTable handlePopUpOpen={handlePopUpOpen} />
       <SshHostGroupModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

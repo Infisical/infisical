@@ -107,6 +107,7 @@ export type IdentityUniversalAuth = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
+  accessTokenPeriod: number;
 };
 
 export type AddIdentityUniversalAuthDTO = {
@@ -118,6 +119,7 @@ export type AddIdentityUniversalAuthDTO = {
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
+  accessTokenPeriod: number;
   accessTokenTrustedIps: {
     ipAddress: string;
   }[];
@@ -132,6 +134,7 @@ export type UpdateIdentityUniversalAuthDTO = {
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
+  accessTokenPeriod?: number;
   accessTokenTrustedIps?: {
     ipAddress: string;
   }[];
@@ -290,6 +293,48 @@ export type DeleteIdentityAwsAuthDTO = {
   identityId: string;
 };
 
+export type IdentityOciAuth = {
+  identityId: string;
+  type: "iam";
+  tenancyOcid: string;
+  allowedUsernames?: string | null;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  tenancyOcid: string;
+  allowedUsernames?: string | null;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  tenancyOcid?: string;
+  allowedUsernames?: string | null;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityOciAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityAzureAuth = {
   identityId: string;
   tenantId: string;
@@ -334,10 +379,16 @@ export type DeleteIdentityAzureAuthDTO = {
   identityId: string;
 };
 
+export enum IdentityKubernetesAuthTokenReviewMode {
+  Api = "api",
+  Gateway = "gateway"
+}
+
 export type IdentityKubernetesAuth = {
   identityId: string;
   kubernetesHost: string;
   tokenReviewerJwt: string;
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -346,6 +397,7 @@ export type IdentityKubernetesAuth = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
+  gatewayId?: string | null;
 };
 
 export type AddIdentityKubernetesAuthDTO = {
@@ -353,9 +405,11 @@ export type AddIdentityKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost: string;
   tokenReviewerJwt?: string;
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
+  gatewayId?: string | null;
   caCert: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -370,9 +424,11 @@ export type UpdateIdentityKubernetesAuthDTO = {
   identityId: string;
   kubernetesHost?: string;
   tokenReviewerJwt?: string | null;
+  tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces?: string;
   allowedNames?: string;
   allowedAudience?: string;
+  gatewayId?: string | null;
   caCert?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
@@ -418,6 +474,72 @@ export type DeleteIdentityUniversalAuthClientSecretDTO = {
 };
 
 export type IdentityTokenAuth = {
+  identityId: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityLdapAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  url: string;
+  bindDN: string;
+  bindPass: string;
+  searchBase: string;
+  searchFilter: string;
+  ldapCaCertificate?: string;
+  allowedFields?: {
+    key: string;
+    value: string;
+  }[];
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityLdapAuthDTO = {
+  identityId: string;
+  organizationId: string;
+  url?: string;
+  bindDN?: string;
+  bindPass?: string;
+  searchBase?: string;
+  searchFilter?: string;
+  ldapCaCertificate?: string;
+  allowedFields?: {
+    key: string;
+    value: string;
+  }[];
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityLdapAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
+export type IdentityLdapAuth = {
+  url: string;
+  bindDN: string;
+  bindPass: string;
+  searchBase: string;
+  searchFilter: string;
+  ldapCaCertificate?: string;
+  allowedFields?: {
+    key: string;
+    value: string;
+  }[];
+
   identityId: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;

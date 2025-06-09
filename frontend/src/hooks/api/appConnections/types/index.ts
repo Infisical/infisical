@@ -1,4 +1,5 @@
 import { AppConnection } from "../enums";
+import { TOnePassConnection } from "./1password-connection";
 import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
@@ -9,16 +10,20 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
+import { TGitHubRadarConnection } from "./github-radar-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
+import { TMySqlConnection } from "./mysql-connection";
+import { TOCIConnection } from "./oci-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
 
+export * from "./1password-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
@@ -28,10 +33,13 @@ export * from "./camunda-connection";
 export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
+export * from "./github-radar-connection";
 export * from "./hc-vault-connection";
 export * from "./humanitec-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
+export * from "./mysql-connection";
+export * from "./oci-connection";
 export * from "./postgres-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
@@ -41,6 +49,7 @@ export * from "./windmill-connection";
 export type TAppConnection =
   | TAwsConnection
   | TGitHubConnection
+  | TGitHubRadarConnection
   | TGcpConnection
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
@@ -51,12 +60,15 @@ export type TAppConnection =
   | TVercelConnection
   | TPostgresConnection
   | TMsSqlConnection
+  | TMySqlConnection
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
   | THCVaultConnection
   | TLdapConnection
-  | TTeamCityConnection;
+  | TTeamCityConnection
+  | TOCIConnection
+  | TOnePassConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -86,6 +98,7 @@ export type TDeleteAppConnectionDTO = {
 export type TAppConnectionMap = {
   [AppConnection.AWS]: TAwsConnection;
   [AppConnection.GitHub]: TGitHubConnection;
+  [AppConnection.GitHubRadar]: TGitHubRadarConnection;
   [AppConnection.GCP]: TGcpConnection;
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
@@ -96,10 +109,13 @@ export type TAppConnectionMap = {
   [AppConnection.Vercel]: TVercelConnection;
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
+  [AppConnection.MySql]: TMySqlConnection;
   [AppConnection.Camunda]: TCamundaConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;
   [AppConnection.HCVault]: THCVaultConnection;
   [AppConnection.LDAP]: TLdapConnection;
   [AppConnection.TeamCity]: TTeamCityConnection;
+  [AppConnection.OCI]: TOCIConnection;
+  [AppConnection.OnePass]: TOnePassConnection;
 };

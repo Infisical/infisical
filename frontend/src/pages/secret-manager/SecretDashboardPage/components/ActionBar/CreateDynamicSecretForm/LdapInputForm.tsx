@@ -19,6 +19,7 @@ import {
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 enum CredentialType {
   Dynamic = "dynamic",
@@ -78,8 +79,9 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environment: z.object({ name: z.string(), slug: z.string() })
+  name: slugSchema(),
+  environment: z.object({ name: z.string(), slug: z.string() }),
+  usernameTemplate: z.string().nullable().optional()
 });
 
 type TForm = z.infer<typeof formSchema>;
@@ -120,7 +122,8 @@ export const LdapInputForm = ({
         rollbackLdif: "",
         credentialType: CredentialType.Dynamic
       },
-      environment: isSingleEnvironmentMode ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined,
+      usernameTemplate: "{{randomUsername}}"
     }
   });
 
@@ -133,10 +136,13 @@ export const LdapInputForm = ({
     maxTTL,
     provider,
     defaultTTL,
-    environment
+    environment,
+    usernameTemplate
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
+
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     try {
       await createDynamicSecret.mutateAsync({
         provider: { type: DynamicSecretProviders.Ldap, inputs: provider },
@@ -145,6 +151,8 @@ export const LdapInputForm = ({
         path: secretPath,
         defaultTTL,
         projectSlug,
+        usernameTemplate:
+          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate,
         environmentSlug: environment.slug
       });
       onCompleted();
@@ -413,6 +421,25 @@ export const LdapInputForm = ({
                 )}
               </div>
             </div>
+            <Controller
+              control={control}
+              name="usernameTemplate"
+              defaultValue=""
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Username Template"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <Input
+                    {...field}
+                    value={field.value || undefined}
+                    className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                    placeholder="{{randomUsername}}"
+                  />
+                </FormControl>
+              )}
+            />
           </div>
         </div>
       </div>

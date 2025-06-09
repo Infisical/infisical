@@ -12,7 +12,9 @@ export enum SecretSync {
   Vercel = "vercel",
   Windmill = "windmill",
   HCVault = "hashicorp-vault",
-  TeamCity = "teamcity"
+  TeamCity = "teamcity",
+  OCIVault = "oci-vault",
+  OnePass = "1password"
 }
 
 export enum SecretSyncInitialSyncBehavior {
@@ -24,4 +26,9 @@ export enum SecretSyncInitialSyncBehavior {
 export enum SecretSyncImportBehavior {
   PrioritizeSource = "prioritize-source",
   PrioritizeDestination = "prioritize-destination"
+}
+
+export enum SecretSyncPlanType {
+  Enterprise = "enterprise",
+  Regular = "regular"
 }

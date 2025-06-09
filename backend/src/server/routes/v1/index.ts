@@ -10,6 +10,7 @@ import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
+import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
@@ -19,6 +20,8 @@ import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
 import { registerIdentityJwtAuthRouter } from "./identity-jwt-auth-router";
 import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-router";
+import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
+import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
@@ -32,6 +35,7 @@ import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
 import { registerPkiCollectionRouter } from "./pki-collection-router";
+import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
@@ -61,8 +65,10 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityAccessTokenRouter);
       await authRouter.register(registerIdentityAwsAuthRouter);
       await authRouter.register(registerIdentityAzureAuthRouter);
+      await authRouter.register(registerIdentityOciAuthRouter);
       await authRouter.register(registerIdentityOidcAuthRouter);
       await authRouter.register(registerIdentityJwtAuthRouter);
+      await authRouter.register(registerIdentityLdapAuthRouter);
     },
     { prefix: "/auth" }
   );
@@ -99,10 +105,21 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
+      await pkiRouter.register(
+        async (caRouter) => {
+          for await (const [caType, router] of Object.entries(CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
+            await caRouter.register(router, { prefix: `/${caType}` });
+          }
+        },
+        {
+          prefix: "/ca"
+        }
+      );
       await pkiRouter.register(registerCertRouter, { prefix: "/certificates" });
       await pkiRouter.register(registerCertificateTemplateRouter, { prefix: "/certificate-templates" });
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
+      await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
     },
     { prefix: "/pki" }
   );

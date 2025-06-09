@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
+import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TCreateSshLoginMappingsDTO } from "./ssh-host-types";
 
 /**
@@ -15,6 +16,7 @@ export const createSshLoginMappings = async ({
   loginMappings,
   sshHostLoginUserDAL,
   sshHostLoginUserMappingDAL,
+  groupDAL,
   userDAL,
   permissionService,
   projectId,
@@ -35,7 +37,7 @@ export const createSshLoginMappings = async ({
         tx
       );
 
-      if (allowedPrincipals.usernames.length > 0) {
+      if (allowedPrincipals.usernames && allowedPrincipals.usernames.length > 0) {
         const users = await userDAL.find(
           {
             $in: {
@@ -70,6 +72,41 @@ export const createSshLoginMappings = async ({
           users.map((user) => ({
             sshHostLoginUserId: sshHostLoginUser.id,
             userId: user.id
+          })),
+          tx
+        );
+      }
+
+      if (allowedPrincipals.groups && allowedPrincipals.groups.length > 0) {
+        const projectGroups = await groupDAL.findGroupsByProjectId(projectId);
+        const groups = projectGroups.filter((g) => allowedPrincipals.groups?.includes(g.slug));
+
+        if (groups.length !== allowedPrincipals.groups?.length) {
+          throw new BadRequestError({
+            message: `Invalid group slugs: ${allowedPrincipals.groups
+              .filter((g) => !projectGroups.some((pg) => pg.slug === g))
+              .join(", ")}`
+          });
+        }
+
+        for await (const group of groups) {
+          // check that each group has access to the SSH project and have read access to hosts
+          const hasPermission = await permissionService.checkGroupProjectPermission({
+            groupId: group.id,
+            projectId,
+            checkPermissions: [ProjectPermissionSshHostActions.Read, ProjectPermissionSub.SshHosts]
+          });
+          if (!hasPermission) {
+            throw new BadRequestError({
+              message: `Group ${group.slug} does not have access to the SSH project`
+            });
+          }
+        }
+
+        await sshHostLoginUserMappingDAL.insertMany(
+          groups.map((group) => ({
+            sshHostLoginUserId: sshHostLoginUser.id,
+            groupId: group.id
           })),
           tx
         );

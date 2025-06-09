@@ -20,8 +20,8 @@ export const useDeleteGatewayById = () => {
 export const useUpdateGatewayById = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, name, projectIds }: TUpdateGatewayDTO) => {
-      return apiRequest.patch(`/api/v1/gateways/${id}`, { name, projectIds });
+    mutationFn: ({ id, name }: TUpdateGatewayDTO) => {
+      return apiRequest.patch(`/api/v1/gateways/${id}`, { name });
     },
     onSuccess: () => {
       queryClient.invalidateQueries(gatewaysQueryKeys.list());

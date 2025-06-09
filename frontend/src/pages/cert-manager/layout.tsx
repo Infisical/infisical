@@ -31,7 +31,7 @@ export const Route = createFileRoute(
         {
           label: project.name,
           link: linkOptions({
-            to: "/cert-manager/$projectId/overview",
+            to: "/cert-manager/$projectId/subscribers",
             params: { projectId: project.id }
           })
         }

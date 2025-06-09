@@ -137,6 +137,7 @@ const renderOutputForm = (
     provider === DynamicSecretProviders.Cassandra ||
     provider === DynamicSecretProviders.MongoAtlas ||
     provider === DynamicSecretProviders.MongoDB ||
+    provider === DynamicSecretProviders.Vertica ||
     provider === DynamicSecretProviders.SapAse
   ) {
     const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
@@ -314,6 +315,20 @@ const renderOutputForm = (
         <OutputDisplay
           label="Password"
           value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Kubernetes) {
+    const { TOKEN } = data as { TOKEN: string };
+
+    return (
+      <div>
+        <OutputDisplay
+          label="Service Account JWT"
+          value={TOKEN}
           helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
         />
       </div>

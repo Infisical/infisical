@@ -1,5 +1,4 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
-import Redis from "ioredis";
 import PgBoss, { WorkOptions } from "pg-boss";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
@@ -12,8 +11,16 @@ import {
   TScanFullRepoEventPayload,
   TScanPushEventPayload
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import {
+  TQueueSecretScanningDataSourceFullScan,
+  TQueueSecretScanningResourceDiffScan,
+  TQueueSecretScanningSendNotification
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
+import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { logger } from "@app/lib/logger";
+import { QueueWorkerProfile } from "@app/lib/types";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
@@ -25,6 +32,7 @@ import {
   TQueueSecretSyncSyncSecretsByIdDTO,
   TQueueSendSecretSyncActionFailedNotificationsDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
 export enum QueueName {
@@ -35,6 +43,7 @@ export enum QueueName {
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
+  PkiSubscriber = "pki-subscriber",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
@@ -43,13 +52,16 @@ export enum QueueName {
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
   CaCrlRotation = "ca-crl-rotation",
+  CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
   AppConnectionSecretSync = "app-connection-secret-sync",
-  SecretRotationV2 = "secret-rotation-v2"
+  SecretRotationV2 = "secret-rotation-v2",
+  InvalidateCache = "invalidate-cache",
+  SecretScanningV2 = "secret-scanning-v2"
 }
 
 export enum QueueJobs {
@@ -81,7 +93,13 @@ export enum QueueJobs {
   SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
-  SecretRotationV2SendNotification = "secret-rotation-v2-send-notification"
+  SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
+  InvalidateCache = "invalidate-cache",
+  SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
+  SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
+  SecretScanningV2SendNotification = "secret-scanning-v2-notification",
+  CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
+  PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal"
 }
 
 export type TQueueJobTypes = {
@@ -234,14 +252,77 @@ export type TQueueJobTypes = {
         name: QueueJobs.SecretRotationV2SendNotification;
         payload: TSecretRotationSendNotificationJobPayload;
       };
+  [QueueName.InvalidateCache]: {
+    name: QueueJobs.InvalidateCache;
+    payload: {
+      data: {
+        type: CacheType;
+      };
+    };
+  };
+  [QueueName.SecretScanningV2]:
+    | {
+        name: QueueJobs.SecretScanningV2FullScan;
+        payload: TQueueSecretScanningDataSourceFullScan;
+      }
+    | {
+        name: QueueJobs.SecretScanningV2DiffScan;
+        payload: TQueueSecretScanningResourceDiffScan;
+      }
+    | {
+        name: QueueJobs.SecretScanningV2SendNotification;
+        payload: TQueueSecretScanningSendNotification;
+      };
+  [QueueName.CaLifecycle]: {
+    name: QueueJobs.CaOrderCertificateForSubscriber;
+    payload: {
+      subscriberId: string;
+      caType: CaType;
+    };
+  };
+  [QueueName.PkiSubscriber]: {
+    name: QueueJobs.PkiSubscriberDailyAutoRenewal;
+    payload: undefined;
+  };
+};
+
+const SECRET_SCANNING_JOBS = [
+  QueueJobs.SecretScanningV2FullScan,
+  QueueJobs.SecretScanningV2DiffScan,
+  QueueJobs.SecretScanningV2SendNotification,
+  QueueJobs.SecretScan
+];
+
+const NON_STANDARD_JOBS = [...SECRET_SCANNING_JOBS];
+
+const SECRET_SCANNING_QUEUES = [
+  QueueName.SecretScanningV2,
+  QueueName.SecretFullRepoScan,
+  QueueName.SecretPushEventScan
+];
+
+const NON_STANDARD_QUEUES = [...SECRET_SCANNING_QUEUES];
+
+const isQueueEnabled = (name: QueueName) => {
+  const appCfg = getConfig();
+  switch (appCfg.QUEUE_WORKER_PROFILE) {
+    case QueueWorkerProfile.Standard:
+      return !NON_STANDARD_QUEUES.includes(name);
+    case QueueWorkerProfile.SecretScanning:
+      return SECRET_SCANNING_QUEUES.includes(name);
+    case QueueWorkerProfile.All:
+    default:
+      // allow all
+      return true;
+  }
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
 export const queueServiceFactory = (
-  redisUrl: string,
+  redisCfg: TRedisConfigKeys,
   { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
 ) => {
-  const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  const connection = buildRedisFromConfig(redisCfg);
   const queueContainer = {} as Record<
     QueueName,
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
@@ -292,7 +373,7 @@ export const queueServiceFactory = (
     });
 
     const appCfg = getConfig();
-    if (appCfg.QUEUE_WORKERS_ENABLED) {
+    if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
       workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
         ...queueSettings,
         connection
@@ -309,6 +390,30 @@ export const queueServiceFactory = (
   ) => {
     if (queueContainerPg[jobName]) {
       throw new Error(`${jobName} queue is already initialized`);
+    }
+
+    const appCfg = getConfig();
+
+    if (!appCfg.QUEUE_WORKERS_ENABLED) return;
+
+    switch (appCfg.QUEUE_WORKER_PROFILE) {
+      case QueueWorkerProfile.Standard:
+        if (NON_STANDARD_JOBS.includes(jobName)) {
+          // only process standard jobs
+          return;
+        }
+
+        break;
+      case QueueWorkerProfile.SecretScanning:
+        if (!SECRET_SCANNING_JOBS.includes(jobName)) {
+          // only process secret scanning jobs
+          return;
+        }
+
+        break;
+      case QueueWorkerProfile.All:
+      default:
+      // allow all
     }
 
     await pgBoss.createQueue(jobName);
@@ -330,7 +435,7 @@ export const queueServiceFactory = (
     listener: WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>[U]
   ) => {
     const appCfg = getConfig();
-    if (!appCfg.QUEUE_WORKERS_ENABLED) {
+    if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
       return;
     }
 

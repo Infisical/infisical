@@ -111,9 +111,9 @@ export const groupDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
-        void query.andWhereRaw(`CONCAT_WS(' ', "firstName", "lastName", "username") ilike ?`, [`%${search}%`]);
+        void query.andWhereRaw(`CONCAT_WS(' ', "firstName", "lastName", lower("username")) ilike ?`, [`%${search}%`]);
       } else if (username) {
-        void query.andWhere(`${TableName.Users}.username`, "ilike", `%${username}%`);
+        void query.andWhereRaw(`lower("${TableName.Users}"."username") ilike ?`, `%${username}%`);
       }
 
       switch (filter) {
@@ -157,10 +157,23 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findGroupsByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.Groups)
+        .join(TableName.GroupProjectMembership, `${TableName.Groups}.id`, `${TableName.GroupProjectMembership}.groupId`)
+        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .select(selectAllTableCols(TableName.Groups));
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find groups by project id" });
+    }
+  };
+
   return {
     findGroups,
     findByOrgId,
     findAllGroupPossibleMembers,
+    findGroupsByProjectId,
     ...groupOrm
   };
 };

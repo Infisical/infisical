@@ -19,7 +19,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
+import {
+  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionSub,
+  useSubscription
+} from "@app/context";
 import { useGetCaCertTemplates } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -79,7 +83,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
                             Manage Policies
                           </DropdownMenuItem>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
+                            I={ProjectPermissionPkiTemplateActions.Edit}
                             a={ProjectPermissionSub.CertificateTemplates}
                           >
                             {(isAllowed) => (
@@ -105,7 +109,7 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
                             )}
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Delete}
+                            I={ProjectPermissionPkiTemplateActions.Delete}
                             a={ProjectPermissionSub.CertificateTemplates}
                           >
                             {(isAllowed) => (

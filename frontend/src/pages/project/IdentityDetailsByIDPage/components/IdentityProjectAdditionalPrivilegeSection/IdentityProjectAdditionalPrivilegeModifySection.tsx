@@ -1,12 +1,6 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import {
-  faCaretDown,
-  faChevronLeft,
-  faClock,
-  faPlus,
-  faSave
-} from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faChevronLeft, faClock, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
@@ -18,10 +12,6 @@ import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   FormControl,
   FormLabel,
   Input,
@@ -43,11 +33,11 @@ import {
   useUpdateIdentityProjectAdditionalPrivilege
 } from "@app/hooks/api";
 import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/hooks/api/identityProjectAdditionalPrivilege/types";
+import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
 import {
   formRolePermission2API,
-  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
   rolePermission2Form
@@ -194,30 +184,6 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
     }
   }
 
-  const onNewPolicy = (selectedSubject: ProjectPermissionSub) => {
-    const rootPolicyValue = form.getValues(`permissions.${selectedSubject}`);
-    if (rootPolicyValue && isConditionalSubjects(selectedSubject)) {
-      form.setValue(
-        `permissions.${selectedSubject}`,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-        [...rootPolicyValue, {}],
-        { shouldDirty: true, shouldTouch: true }
-      );
-    } else {
-      form.setValue(
-        `permissions.${selectedSubject}`,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error akhilmhdh: this is because of ts collision with both
-        [{}],
-        {
-          shouldDirty: true,
-          shouldTouch: true
-        }
-      );
-    }
-  };
-
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
@@ -249,46 +215,17 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
               <Button
                 variant="outline_bg"
                 type="submit"
-                className={twMerge("h-10 rounded-r-none", isDirty && "bg-primary text-black")}
+                className={twMerge(
+                  "mr-4 h-10 border border-primary",
+                  isDirty && "bg-primary text-black"
+                )}
                 isDisabled={isSubmitting || !isDirty || isDisabled}
                 isLoading={isSubmitting}
                 leftIcon={<FontAwesomeIcon icon={faSave} />}
               >
                 Save
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button
-                    isDisabled={isDisabled}
-                    className="h-10 rounded-l-none"
-                    variant="outline_bg"
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  >
-                    New policy
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="thin-scrollbar max-h-96" align="end">
-                  {Object.keys(PROJECT_PERMISSION_OBJECT)
-                    .sort((a, b) =>
-                      PROJECT_PERMISSION_OBJECT[a as keyof typeof PROJECT_PERMISSION_OBJECT].title
-                        .toLowerCase()
-                        .localeCompare(
-                          PROJECT_PERMISSION_OBJECT[
-                            b as keyof typeof PROJECT_PERMISSION_OBJECT
-                          ].title.toLowerCase()
-                        )
-                    )
-                    .map((permissionSubject) => (
-                      <DropdownMenuItem
-                        key={`permission-create-${permissionSubject}`}
-                        className="py-3"
-                        onClick={() => onNewPolicy(permissionSubject as ProjectPermissionSub)}
-                      >
-                        {PROJECT_PERMISSION_OBJECT[permissionSubject as ProjectPermissionSub].title}
-                      </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <AddPoliciesButton isDisabled={isDisabled} />
             </div>
           </div>
         </div>

@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -19,6 +20,8 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+
+	browser "github.com/pkg/browser"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
@@ -46,97 +49,6 @@ type params struct {
 	keyLength   uint32
 }
 
-func handleUniversalAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
-
-	clientId, err := util.GetCmdFlagOrEnv(cmd, "client-id", util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
-
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	clientSecret, err := util.GetCmdFlagOrEnv(cmd, "client-secret", util.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	return infisicalClient.Auth().UniversalAuthLogin(clientId, clientSecret)
-}
-
-func handleKubernetesAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
-
-	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	serviceAccountTokenPath, err := util.GetCmdFlagOrEnv(cmd, "service-account-token-path", util.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	return infisicalClient.Auth().KubernetesAuthLogin(identityId, serviceAccountTokenPath)
-}
-
-func handleAzureAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
-
-	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	return infisicalClient.Auth().AzureAuthLogin(identityId, "")
-}
-
-func handleGcpIdTokenAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
-
-	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	return infisicalClient.Auth().GcpIdTokenAuthLogin(identityId)
-}
-
-func handleGcpIamAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
-
-	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	serviceAccountKeyFilePath, err := util.GetCmdFlagOrEnv(cmd, "service-account-key-file-path", util.INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	return infisicalClient.Auth().GcpIamAuthLogin(identityId, serviceAccountKeyFilePath)
-}
-
-func handleAwsIamAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
-
-	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	return infisicalClient.Auth().AwsIamAuthLogin(identityId)
-}
-
-func handleOidcAuthLogin(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error) {
-
-	identityId, err := util.GetCmdFlagOrEnv(cmd, "machine-identity-id", util.INFISICAL_MACHINE_IDENTITY_ID_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	jwt, err := util.GetCmdFlagOrEnv(cmd, "oidc-jwt", util.INFISICAL_OIDC_AUTH_JWT_NAME)
-	if err != nil {
-		return infisicalSdk.MachineIdentityCredential{}, err
-	}
-
-	return infisicalClient.Auth().OidcAuthLogin(identityId, jwt)
-}
-
 func formatAuthMethod(authMethod string) string {
 	return strings.ReplaceAll(authMethod, "-", " ")
 }
@@ -151,8 +63,22 @@ var loginCmd = &cobra.Command{
 	Use:                   "login",
 	Short:                 "Login into your Infisical account",
 	DisableFlagsInUseLine: true,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// daniel: oidc-jwt is deprecated in favor of `jwt`. we backfill the `jwt` flag with the value of `oidc-jwt` if it's set.
+		if cmd.Flags().Changed("oidc-jwt") && !cmd.Flags().Changed("jwt") {
+			oidcJWT, err := cmd.Flags().GetString("oidc-jwt")
+			if err != nil {
+				return err
+			}
 
+			err = cmd.Flags().Set("jwt", oidcJWT)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		presetDomain := config.INFISICAL_URL
 
 		clearSelfHostedDomains, err := cmd.Flags().GetBool("clear-domains")
@@ -307,17 +233,20 @@ var loginCmd = &cobra.Command{
 			Telemetry.CaptureEvent("cli-command:login", posthog.NewProperties().Set("infisical-backend", config.INFISICAL_URL).Set("version", util.CLI_VERSION))
 		} else {
 
-			authStrategies := map[util.AuthStrategyType]func(cmd *cobra.Command, infisicalClient infisicalSdk.InfisicalClientInterface) (credential infisicalSdk.MachineIdentityCredential, e error){
-				util.AuthStrategy.UNIVERSAL_AUTH:    handleUniversalAuthLogin,
-				util.AuthStrategy.KUBERNETES_AUTH:   handleKubernetesAuthLogin,
-				util.AuthStrategy.AZURE_AUTH:        handleAzureAuthLogin,
-				util.AuthStrategy.GCP_ID_TOKEN_AUTH: handleGcpIdTokenAuthLogin,
-				util.AuthStrategy.GCP_IAM_AUTH:      handleGcpIamAuthLogin,
-				util.AuthStrategy.AWS_IAM_AUTH:      handleAwsIamAuthLogin,
-				util.AuthStrategy.OIDC_AUTH:         handleOidcAuthLogin,
+			sdkAuthenticator := util.NewSdkAuthenticator(infisicalClient, cmd)
+
+			authStrategies := map[util.AuthStrategyType]func() (credential infisicalSdk.MachineIdentityCredential, e error){
+				util.AuthStrategy.UNIVERSAL_AUTH:    sdkAuthenticator.HandleUniversalAuthLogin,
+				util.AuthStrategy.KUBERNETES_AUTH:   sdkAuthenticator.HandleKubernetesAuthLogin,
+				util.AuthStrategy.AZURE_AUTH:        sdkAuthenticator.HandleAzureAuthLogin,
+				util.AuthStrategy.GCP_ID_TOKEN_AUTH: sdkAuthenticator.HandleGcpIdTokenAuthLogin,
+				util.AuthStrategy.GCP_IAM_AUTH:      sdkAuthenticator.HandleGcpIamAuthLogin,
+				util.AuthStrategy.AWS_IAM_AUTH:      sdkAuthenticator.HandleAwsIamAuthLogin,
+				util.AuthStrategy.OIDC_AUTH:         sdkAuthenticator.HandleOidcAuthLogin,
+				util.AuthStrategy.JWT_AUTH:          sdkAuthenticator.HandleJwtAuthLogin,
 			}
 
-			credential, err := authStrategies[strategy](cmd, infisicalClient)
+			credential, err := authStrategies[strategy]()
 
 			if err != nil {
 				euErrorMessage := ""
@@ -515,14 +444,18 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 	loginCmd.Flags().Bool("clear-domains", false, "clear all self-hosting domains from the config file")
 	loginCmd.Flags().BoolP("interactive", "i", false, "login via the command line")
-	loginCmd.Flags().String("method", "user", "login method [user, universal-auth]")
 	loginCmd.Flags().Bool("plain", false, "only output the token without any formatting")
+	loginCmd.Flags().String("method", "user", "login method [user, universal-auth, kubernetes, azure, gcp-id-token, gcp-iam, aws-iam, oidc-auth]")
 	loginCmd.Flags().String("client-id", "", "client id for universal auth")
 	loginCmd.Flags().String("client-secret", "", "client secret for universal auth")
 	loginCmd.Flags().String("machine-identity-id", "", "machine identity id for kubernetes, azure, gcp-id-token, gcp-iam, and aws-iam auth methods")
 	loginCmd.Flags().String("service-account-token-path", "", "service account token path for kubernetes auth")
 	loginCmd.Flags().String("service-account-key-file-path", "", "service account key file path for GCP IAM auth")
-	loginCmd.Flags().String("oidc-jwt", "", "JWT for OIDC authentication")
+	loginCmd.Flags().String("jwt", "", "jwt for jwt-based auth methods [oidc-auth, jwt-auth]")
+	loginCmd.Flags().String("oidc-jwt", "", "JWT for OIDC authentication. Deprecated, use --jwt instead")
+
+	loginCmd.Flags().MarkDeprecated("oidc-jwt", "use --jwt instead")
+
 }
 
 func DomainOverridePrompt() (bool, error) {
@@ -981,7 +914,17 @@ func browserCliLogin() (models.UserCredentials, error) {
 	callbackPort := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("%s?callback_port=%d", config.INFISICAL_LOGIN_URL, callbackPort)
 
-	fmt.Printf("\n\nTo complete your login, open this address in your browser: %v \n", url)
+	defaultPrintStatement := fmt.Sprintf("\n\nTo complete your login, open this address in your browser: %v \n", url)
+
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		if err := browser.OpenURL(url); err != nil {
+			fmt.Print(defaultPrintStatement)
+		} else {
+			fmt.Printf("\n\nPlease proceed to your browser to complete the login process.\nIf the browser doesn't open automatically, please open this address in your browser: %v \n", url)
+		}
+	} else {
+		fmt.Print(defaultPrintStatement)
+	}
 
 	//flow channels
 	success := make(chan models.UserCredentials)

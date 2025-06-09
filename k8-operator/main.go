@@ -99,9 +99,10 @@ func main() {
 	}
 
 	if err = (&infisicalPushSecretController.InfisicalPushSecretReconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		BaseLogger: ctrl.Log,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		BaseLogger:        ctrl.Log,
+		IsNamespaceScoped: namespace != "",
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfisicalPushSecret")
 		os.Exit(1)

@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import { Octokit } from "@octokit/core";
-import { paginateGraphQL } from "@octokit/plugin-paginate-graphql";
+import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
@@ -18,7 +18,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TGithubOrgSyncDALFactory } from "./github-org-sync-dal";
 import { TCreateGithubOrgSyncDTO, TDeleteGithubOrgSyncDTO, TUpdateGithubOrgSyncDTO } from "./github-org-sync-types";
 
-const OctokitWithPlugin = Octokit.plugin(paginateGraphQL);
+const OctokitWithPlugin = Octokit.plugin(paginateGraphql);
 
 type TGithubOrgSyncServiceFactoryDep = {
   githubOrgSyncDAL: TGithubOrgSyncDALFactory;

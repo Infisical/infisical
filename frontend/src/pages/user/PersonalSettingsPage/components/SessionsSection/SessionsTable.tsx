@@ -61,7 +61,7 @@ export const SessionsTable = () => {
     <>
       <DeleteActionModal
         isOpen={popUp.deleteSession.isOpen}
-        title="Are you sure want to sign out of this session?"
+        title="Are you sure you want to sign out of this session?"
         onChange={(isOpen) => handlePopUpToggle("deleteSession", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>

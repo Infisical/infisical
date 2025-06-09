@@ -27,6 +27,7 @@ import {
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
@@ -56,7 +57,11 @@ const sleep = async () =>
     setTimeout(resolve, 1000);
   });
 
-const getSecretsRecord = async (client: SecretsManagerClient): Promise<TAwsSecretsRecord> => {
+const getSecretsRecord = async (
+  client: SecretsManagerClient,
+  environment: string,
+  keySchema?: string
+): Promise<TAwsSecretsRecord> => {
   const awsSecretsRecord: TAwsSecretsRecord = {};
   let hasNext = true;
   let nextToken: string | undefined;
@@ -71,7 +76,7 @@ const getSecretsRecord = async (client: SecretsManagerClient): Promise<TAwsSecre
 
       if (output.SecretList) {
         output.SecretList.forEach((secretEntry) => {
-          if (secretEntry.Name) {
+          if (secretEntry.Name && matchesSchema(secretEntry.Name, environment, keySchema)) {
             awsSecretsRecord[secretEntry.Name] = secretEntry;
           }
         });
@@ -306,11 +311,11 @@ const processTags = ({
 
 export const AwsSecretsManagerSyncFns = {
   syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, secretMap: TSecretMap) => {
-    const { destinationConfig, syncOptions } = secretSync;
+    const { destinationConfig, syncOptions, environment } = secretSync;
 
     const client = await getSecretsManagerClient(secretSync);
 
-    const awsSecretsRecord = await getSecretsRecord(client);
+    const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
 
     const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
 
@@ -399,6 +404,9 @@ export const AwsSecretsManagerSyncFns = {
       if (syncOptions.disableSecretDeletion) return;
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
+        // eslint-disable-next-line no-continue
+        if (!matchesSchema(secretKey, environment?.slug || "", syncOptions.keySchema)) continue;
+
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
             await deleteSecret(client, secretKey);
@@ -464,14 +472,20 @@ export const AwsSecretsManagerSyncFns = {
   getSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<TSecretMap> => {
     const client = await getSecretsManagerClient(secretSync);
 
-    const awsSecretsRecord = await getSecretsRecord(client);
+    const awsSecretsRecord = await getSecretsRecord(
+      client,
+      secretSync.environment?.slug || "",
+      secretSync.syncOptions.keySchema
+    );
     const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
 
     const { destinationConfig } = secretSync;
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       return Object.fromEntries(
-        Object.keys(awsSecretsRecord).map((key) => [key, { value: awsValuesRecord[key].SecretString ?? "" }])
+        Object.keys(awsSecretsRecord)
+          .filter((key) => Object.hasOwn(awsValuesRecord, key))
+          .map((key) => [key, { value: awsValuesRecord[key]?.SecretString ?? "" }])
       );
     }
 
@@ -497,11 +511,11 @@ export const AwsSecretsManagerSyncFns = {
     }
   },
   removeSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, secretMap: TSecretMap) => {
-    const { destinationConfig } = secretSync;
+    const { destinationConfig, syncOptions, environment } = secretSync;
 
     const client = await getSecretsManagerClient(secretSync);
 
-    const awsSecretsRecord = await getSecretsRecord(client);
+    const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       for await (const secretKey of Object.keys(awsSecretsRecord)) {

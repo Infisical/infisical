@@ -37,6 +37,33 @@ export const useGetUser = () =>
     queryFn: fetchUserDetails
   });
 
+export const fetchUserDuplicateAccounts = async () => {
+  const { data } = await apiRequest.get<{
+    users: Array<
+      User & {
+        isMyAccount: boolean;
+        organizations: { name: string; slug: string }[];
+        devices: {
+          ip: string;
+          userAgent: string;
+        }[];
+      }
+    >;
+  }>("/api/v1/user/duplicate-accounts");
+  return data.users;
+};
+
+export const useGetMyDuplicateAccount = () =>
+  useQuery({
+    queryKey: userKeys.getMyDuplicateAccount,
+    staleTime: 60 * 1000, // 1 min in ms
+    queryFn: fetchUserDuplicateAccounts,
+    select: (users) => ({
+      duplicateAccounts: users.filter((el) => !el.isMyAccount),
+      myAccount: users?.find((el) => el.isMyAccount)
+    })
+  });
+
 export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 

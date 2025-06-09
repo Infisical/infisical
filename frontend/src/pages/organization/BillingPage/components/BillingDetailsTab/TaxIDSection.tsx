@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionBillingActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { TaxIDModal } from "./TaxIDModal";
@@ -18,7 +18,10 @@ export const TaxIDSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-8 flex items-center">
         <h2 className="flex-1 text-xl font-semibold text-white">Tax ID</h2>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
+        <OrgPermissionCan
+          I={OrgPermissionBillingActions.ManageBilling}
+          a={OrgPermissionSubjects.Billing}
+        >
           {(isAllowed) => (
             <Button
               onClick={() => handlePopUpOpen("addTaxID")}

@@ -12,7 +12,9 @@ description: "Learn how to configure Auth0 SAML for Infisical SSO."
 
 <Steps>
    <Step title="Prepare the SAML SSO configuration in Infisical">
-        In Infisical, head to Organization Settings > Security and click **Connect** for SAML under the Connect to an Identity Provider section. Select Auth0, then click **Connect** again.
+       In Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Click **Connect** for **SAML** under the Connect to an Identity Provider section. Select **Auth0**, then click **Connect** again.
+
+       ![SSO connect section](../../../images/sso/connect-saml.png)
 
         Next, note the **Application Callback URL** and **Audience** to use when configuring the Auth0 SAML application.
 
@@ -21,30 +23,30 @@ description: "Learn how to configure Auth0 SAML for Infisical SSO."
    </Step>
    <Step title="Create a SAML application in Auth0">
         2.1. In your Auth0 account, head to Applications and create an application.
-        
+
         ![Auth0 SAML app creation](../../../images/sso/auth0-saml/create-application.png)
-        
+
         Select **Regular Web Application** and press **Create**.
-        
+
         ![Auth0 SAML app creation](../../../images/sso/auth0-saml/create-application-2.png)
-        
+
         2.2. In the Application head to Settings > Application URIs and add the **Application Callback URL** from step 1 into the **Allowed Callback URLs** field.
-        
+
         ![Auth0 SAML allowed callback URLs](../../../images/sso/auth0-saml/auth0-config.png)
-        
+
         2.3. In the Application head to Addons > SAML2 Web App and copy the **Issuer**, **Identity Provider Login URL**, and **Identity Provider Certificate** from the **Usage** tab.
-        
+
         ![Auth0 SAML config](../../../images/sso/auth0-saml/auth0-config-2.png)
-        
+
         2.4. Back in Infisical, set **Issuer**, **Identity Provider Login URL**, and **Certificate** to the corresponding items from step 2.3.
-        
+
         ![Auth0 SAML Infisical config](../../../images/sso/auth0-saml/infisical-config.png)
-        
+
         2.5. Back in Auth0, in the **Settings** tab, set the **Application Callback URL** to the **Application Callback URL** from step 1
         and update the **Settings** field with the JSON under the picture below (replacing `<audience-from-infisical>` with the **Audience** from step 1).
-        
+
         ![Auth0 SAML config](../../../images/sso/auth0-saml/auth0-config-3.png)
-        
+
         ```json
         {
         "audience": "<audience-from-infisical>",
@@ -74,7 +76,7 @@ description: "Learn how to configure Auth0 SAML for Infisical SSO."
         Once you've completed this requirement, you can toggle the **Enforce SAML SSO** button to enforce SAML SSO.
 
         <Info>
-            In case of a lockout, an organization admin can use the admin login portal in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
+            In case of a lockout, an organization admin can use the [Admin Login Portal](https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal) in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
         </Info>
     </Step>
 

@@ -19,7 +19,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
@@ -160,7 +160,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .default("false")
           .transform((value) => value === "true"),
         type: z
-          .enum([ProjectType.SecretManager, ProjectType.KMS, ProjectType.CertificateManager, ProjectType.SSH, "all"])
+          .enum([
+            ProjectType.SecretManager,
+            ProjectType.KMS,
+            ProjectType.CertificateManager,
+            ProjectType.SSH,
+            ProjectType.SecretScanning,
+            "all"
+          ])
           .optional()
       }),
       response: {
@@ -173,7 +180,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspaces = await server.services.project.getProjects({
         includeRoles: req.query.includeRoles,
@@ -263,6 +270,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.DELETE_PROJECT,
+          metadata: workspace
+        }
+      });
+
       return { workspace };
     }
   });
@@ -297,6 +315,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         name: req.body.name
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: req.body
+        }
+      });
+
       return {
         message: "Successfully changed workspace name",
         workspace
@@ -346,7 +375,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
           })
           .optional()
-          .describe(PROJECTS.UPDATE.slug)
+          .describe(PROJECTS.UPDATE.slug),
+        secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing)
       }),
       response: {
         200: z.object({
@@ -366,13 +396,25 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           description: req.body.description,
           autoCapitalization: req.body.autoCapitalization,
           hasDeleteProtection: req.body.hasDeleteProtection,
-          slug: req.body.slug
+          slug: req.body.slug,
+          secretSharing: req.body.secretSharing
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: req.body
+        }
+      });
+
       return {
         workspace
       };
@@ -409,6 +451,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         autoCapitalization: req.body.autoCapitalization
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: req.body
+        }
+      });
+
       return {
         message: "Successfully changed workspace settings",
         workspace
@@ -446,6 +499,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         hasDeleteProtection: req.body.hasDeleteProtection
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: req.body
+        }
+      });
+
       return {
         message: "Successfully changed workspace settings",
         workspace
@@ -484,6 +548,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         workspaceSlug: req.params.workspaceSlug
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: workspace.id,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: req.body
+        }
+      });
+
       return {
         message: "Successfully changed workspace version limit",
         workspace
@@ -511,7 +585,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.updateAuditLogsRetention({
         actorId: req.permission.id,
@@ -520,6 +594,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         workspaceSlug: req.params.workspaceSlug,
         auditLogsRetentionDays: req.body.auditLogsRetentionDays
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: workspace.id,
+        event: {
+          type: EventType.UPDATE_PROJECT,
+          metadata: req.body
+        }
       });
 
       return {
@@ -1006,7 +1090,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/:workspaceId/project-access",
     config: {
-      rateLimit: writeLimit
+      rateLimit: requestAccessLimit
     },
     schema: {
       params: z.object({

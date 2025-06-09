@@ -23,9 +23,9 @@ export const ROUTE_PATHS = Object.freeze({
         "/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback"
       )
     },
-    SecretScanning: setRoute(
-      "/organization/secret-scanning",
-      "/_authenticate/_inject-org-details/_org-layout/organization/secret-scanning"
+    SsoPage: setRoute(
+      "/organization/sso",
+      "/_authenticate/_inject-org-details/_org-layout/organization/sso"
     ),
     SecretSharing: setRoute(
       "/organization/secret-sharing",
@@ -280,12 +280,16 @@ export const ROUTE_PATHS = Object.freeze({
   },
   CertManager: {
     CertAuthDetailsByIDPage: setRoute(
-      "/cert-manager/$projectId/ca/$caId",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
+      "/cert-manager/$projectId/ca/$caName",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caName"
     ),
-    OverviewPage: setRoute(
-      "/cert-manager/$projectId/overview",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/overview"
+    SubscribersPage: setRoute(
+      "/cert-manager/$projectId/subscribers",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers"
+    ),
+    CertificatesPage: setRoute(
+      "/cert-manager/$projectId/certificates",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificates"
     ),
     CertificateAuthoritiesPage: setRoute(
       "/cert-manager/$projectId/certificate-authorities",
@@ -298,6 +302,10 @@ export const ROUTE_PATHS = Object.freeze({
     PkiCollectionDetailsByIDPage: setRoute(
       "/cert-manager/$projectId/pki-collections/$collectionId",
       "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
+    ),
+    PkiSubscriberDetailsByIDPage: setRoute(
+      "/cert-manager/$projectId/subscribers/$subscriberName",
+      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName"
     )
   },
   Ssh: {
@@ -308,6 +316,16 @@ export const ROUTE_PATHS = Object.freeze({
     SshHostGroupDetailsByIDPage: setRoute(
       "/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
       "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId"
+    )
+  },
+  SecretScanning: {
+    DataSourceByIdPage: setRoute(
+      "/secret-scanning/$projectId/data-sources/$type/$dataSourceId",
+      "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/data-sources/$type/$dataSourceId"
+    ),
+    FindingsPage: setRoute(
+      "/secret-scanning/$projectId/findings",
+      "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings"
     )
   },
   Public: {

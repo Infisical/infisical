@@ -4,8 +4,8 @@ import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useOrganization, useOrgPermission } from "@app/context";
 import { useDeleteOrgById } from "@app/hooks/api";
+import { clearSession } from "@app/hooks/api/users/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 export const OrgDeleteSection = () => {
   const navigate = useNavigate();
@@ -13,9 +13,7 @@ export const OrgDeleteSection = () => {
 
   const { membership } = useOrgPermission();
 
-  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "deleteOrg"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["deleteOrg"] as const);
 
   const { mutateAsync, isPending } = useDeleteOrgById();
 
@@ -32,9 +30,8 @@ export const OrgDeleteSection = () => {
         type: "success"
       });
 
-      await navigateUserToOrg(navigate);
-
-      handlePopUpClose("deleteOrg");
+      clearSession();
+      navigate({ to: "/login" });
     } catch (err) {
       console.error(err);
       createNotification({
@@ -62,7 +59,7 @@ export const OrgDeleteSection = () => {
       </div>
       <DeleteActionModal
         isOpen={popUp.deleteOrg.isOpen}
-        title="Are you sure want to delete this organization?"
+        title="Are you sure you want to delete this organization?"
         subTitle={`Permanently remove ${currentOrg?.name} and all of its data. This action is not reversible, so please be careful.`}
         onChange={(isOpen) => handlePopUpToggle("deleteOrg", isOpen)}
         deleteKey="confirm"

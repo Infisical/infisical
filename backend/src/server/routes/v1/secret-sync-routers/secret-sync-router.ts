@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { OCIVaultSyncListItemSchema, OCIVaultSyncSchema } from "@app/ee/services/secret-sync/oci-vault";
 import { ApiDocsTags, SecretSyncs } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { OnePassSyncListItemSchema, OnePassSyncSchema } from "@app/services/secret-sync/1password";
 import {
   AwsParameterStoreSyncListItemSchema,
   AwsParameterStoreSyncSchema
@@ -43,7 +45,9 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   VercelSyncSchema,
   WindmillSyncSchema,
   HCVaultSyncSchema,
-  TeamCitySyncSchema
+  TeamCitySyncSchema,
+  OCIVaultSyncSchema,
+  OnePassSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -60,7 +64,9 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   VercelSyncListItemSchema,
   WindmillSyncListItemSchema,
   HCVaultSyncListItemSchema,
-  TeamCitySyncListItemSchema
+  TeamCitySyncListItemSchema,
+  OCIVaultSyncListItemSchema,
+  OnePassSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

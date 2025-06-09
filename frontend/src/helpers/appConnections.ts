@@ -1,5 +1,6 @@
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
+import { faGithub, IconDefinition } from "@fortawesome/free-brands-svg-icons";
 import {
+  faBullseye,
   faKey,
   faLink,
   faLock,
@@ -19,10 +20,13 @@ import {
   DatabricksConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
+  GitHubRadarConnectionMethod,
   HCVaultConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
   MsSqlConnectionMethod,
+  MySqlConnectionMethod,
+  OnePassConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
@@ -30,13 +34,19 @@ import {
   VercelConnectionMethod,
   WindmillConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
-  { name: string; image: string; size?: number }
+  { name: string; image: string; size?: number; icon?: IconDefinition; enterprise?: boolean }
 > = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
   [AppConnection.GitHub]: { name: "GitHub", image: "GitHub.png" },
+  [AppConnection.GitHubRadar]: {
+    name: "GitHub Radar",
+    image: "GitHub.png",
+    icon: faBullseye
+  },
   [AppConnection.GCP]: {
     name: "GCP",
     image: "Google Cloud Platform.png"
@@ -56,17 +66,21 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Vercel]: { name: "Vercel", image: "Vercel.png" },
   [AppConnection.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
   [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" },
+  [AppConnection.MySql]: { name: "MySQL", image: "MySql.png" },
   [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" },
   [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" },
   [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
   [AppConnection.HCVault]: { name: "Hashicorp Vault", image: "Vault.png", size: 65 },
   [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
-  [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" }
+  [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
+  [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
+  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
   switch (method) {
     case GitHubConnectionMethod.App:
+    case GitHubRadarConnectionMethod.App:
       return { name: "GitHub App", icon: faGithub };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -74,6 +88,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GitHubConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
+    case OCIConnectionMethod.AccessKey:
       return { name: "Access Key", icon: faKey };
     case AwsConnectionMethod.AssumeRole:
       return { name: "Assume Role", icon: faUser };
@@ -86,9 +101,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HumanitecConnectionMethod.ApiToken:
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
+    case OnePassConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
+    case MySqlConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:

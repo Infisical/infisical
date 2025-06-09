@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -18,6 +19,9 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       body: z.object({
         permissions: z.any().array(),
@@ -109,6 +113,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               name: z.string(),
               approvals: z.number(),
               approvers: z.string().array(),
+              bypassers: z.string().array(),
               secretPath: z.string().nullish(),
               envId: z.string(),
               enforcementLevel: z.string(),
@@ -150,7 +155,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         requestId: z.string().trim()
       }),
       body: z.object({
-        status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED])
+        status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
+        bypassReason: z.string().min(10).max(1000).optional()
       }),
       response: {
         200: z.object({
@@ -166,7 +172,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         requestId: req.params.requestId,
-        status: req.body.status
+        status: req.body.status,
+        bypassReason: req.body.bypassReason
       });
 
       return { review };

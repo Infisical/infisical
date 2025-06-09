@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { QueueWorkerProfile } from "@app/lib/types";
+
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
@@ -30,7 +32,19 @@ const envSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((el) => el === "true"),
-    REDIS_URL: zpStr(z.string()),
+    REDIS_URL: zpStr(z.string().optional()),
+    REDIS_SENTINEL_HOSTS: zpStr(
+      z
+        .string()
+        .optional()
+        .describe("Comma-separated list of Sentinel host:port pairs. Eg: 192.168.65.254:26379,192.168.65.254:26380")
+    ),
+    REDIS_SENTINEL_MASTER_NAME: zpStr(
+      z.string().optional().default("mymaster").describe("The name of the Redis master set monitored by Sentinel")
+    ),
+    REDIS_SENTINEL_ENABLE_TLS: zodStrBool.optional().describe("Whether to use TLS/SSL for Redis Sentinel connection"),
+    REDIS_SENTINEL_USERNAME: zpStr(z.string().optional().describe("Authentication username for Redis Sentinel")),
+    REDIS_SENTINEL_PASSWORD: zpStr(z.string().optional().describe("Authentication password for Redis Sentinel")),
     HOST: zpStr(z.string().default("localhost")),
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
@@ -57,6 +71,7 @@ const envSchema = z
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
     QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
+    QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     // smtp options
@@ -69,6 +84,9 @@ const envSchema = z
     SMTP_PASSWORD: zpStr(z.string().optional()),
     SMTP_FROM_ADDRESS: zpStr(z.string().optional()),
     SMTP_FROM_NAME: zpStr(z.string().optional().default("Infisical")),
+    SMTP_CUSTOM_CA_CERT: zpStr(
+      z.string().optional().describe("Base64 encoded custom CA certificate PEM(s) for the SMTP server")
+    ),
     COOKIE_SECRET_SIGN_KEY: z
       .string()
       .min(32)
@@ -195,6 +213,12 @@ const envSchema = z
     GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
+      process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
+    ),
+    DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
+      process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+    ),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
@@ -215,6 +239,14 @@ const envSchema = z
     INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
 
+    // github radar app
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET: zpStr(z.string().optional()),
+
     // gcp app
     INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
 
@@ -230,7 +262,6 @@ const envSchema = z
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
 
     /* CORS ----------------------------------------------------------------------------- */
-
     CORS_ALLOWED_ORIGINS: zpStr(
       z
         .string()
@@ -240,7 +271,6 @@ const envSchema = z
           return JSON.parse(val) as string[];
         })
     ),
-
     CORS_ALLOWED_HEADERS: zpStr(
       z
         .string()
@@ -249,33 +279,51 @@ const envSchema = z
           if (!val) return undefined;
           return JSON.parse(val) as string[];
         })
-    )
+    ),
+
+    /* INTERNAL ----------------------------------------------------------------------------- */
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
   // To ensure that basic encryption is always possible.
   .refine(
     (data) => Boolean(data.ENCRYPTION_KEY) || Boolean(data.ROOT_ENCRYPTION_KEY),
     "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
   )
+  .refine(
+    (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS),
+    "Either REDIS_URL or REDIS_SENTINEL_HOSTS must be defined."
+  )
   .transform((data) => ({
     ...data,
-
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
-    isRedisConfigured: Boolean(data.REDIS_URL),
+    isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS),
     isDevelopmentMode: data.NODE_ENV === "development",
     isRotationDevelopmentMode: data.NODE_ENV === "development" && data.ROTATION_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
-
+    isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
+    REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
+      ?.split(",")
+      .map((el) => {
+        const [host, port] = el.trim().split(":");
+        return { host: host.trim(), port: Number(port.trim()) };
+      }),
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
+    isSecretScanningV2Configured:
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET) &&
+      Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET),
     isHsmConfigured:
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
-
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
   }));
@@ -298,6 +346,17 @@ export const initEnvConfig = (logger?: CustomLogger) => {
 };
 
 export const formatSmtpConfig = () => {
+  const tlsOptions: {
+    rejectUnauthorized: boolean;
+    ca?: string | string[];
+  } = {
+    rejectUnauthorized: envCfg.SMTP_TLS_REJECT_UNAUTHORIZED
+  };
+
+  if (envCfg.SMTP_CUSTOM_CA_CERT) {
+    tlsOptions.ca = Buffer.from(envCfg.SMTP_CUSTOM_CA_CERT, "base64").toString("utf-8");
+  }
+
   return {
     host: envCfg.SMTP_HOST,
     port: envCfg.SMTP_PORT,
@@ -309,8 +368,6 @@ export const formatSmtpConfig = () => {
     from: `"${envCfg.SMTP_FROM_NAME}" <${envCfg.SMTP_FROM_ADDRESS}>`,
     ignoreTLS: envCfg.SMTP_IGNORE_TLS,
     requireTLS: envCfg.SMTP_REQUIRE_TLS,
-    tls: {
-      rejectUnauthorized: envCfg.SMTP_TLS_REJECT_UNAUTHORIZED
-    }
+    tls: tlsOptions
   };
 };

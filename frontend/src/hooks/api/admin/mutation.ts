@@ -8,6 +8,7 @@ import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
   RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
+  TInvalidateCacheDTO,
   TServerConfig,
   TUpdateServerConfigDTO
 } from "./types";
@@ -61,6 +62,41 @@ export const useAdminDeleteUser = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [adminStandaloneKeys.getUsers]
+      });
+      queryClient.invalidateQueries({ queryKey: adminStandaloneKeys.getOrganizations });
+    }
+  });
+};
+
+export const useAdminDeleteOrganizationMembership = () => {
+  const queryClient = useQueryClient();
+  return useMutation<object, object, { organizationId: string; membershipId: string }>({
+    mutationFn: async ({ organizationId, membershipId }) => {
+      await apiRequest.delete(
+        `/api/v1/admin/organization-management/organizations/${organizationId}/memberships/${membershipId}`
+      );
+
+      return {};
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getOrganizations]
+      });
+    }
+  });
+};
+
+export const useAdminDeleteOrganization = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (organizationId: string) => {
+      await apiRequest.delete(
+        `/api/v1/admin/organization-management/organizations/${organizationId}`
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [adminStandaloneKeys.getOrganizations]
       });
     }
   });
@@ -123,6 +159,18 @@ export const useUpdateServerEncryptionStrategy = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getServerEncryptionStrategies() });
+    }
+  });
+};
+
+export const useInvalidateCache = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, object, TInvalidateCacheDTO>({
+    mutationFn: async (dto) => {
+      await apiRequest.post("/api/v1/admin/invalidate-cache", dto);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getInvalidateCache() });
     }
   });
 };

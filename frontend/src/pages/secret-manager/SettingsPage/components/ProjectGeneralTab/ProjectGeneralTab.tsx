@@ -10,6 +10,7 @@ import { DeleteProjectSection } from "../DeleteProjectSection";
 import { EnvironmentSection } from "../EnvironmentSection";
 import { PointInTimeVersionLimitSection } from "../PointInTimeVersionLimitSection";
 import { RebuildSecretIndicesSection } from "../RebuildSecretIndicesSection/RebuildSecretIndicesSection";
+import { SecretSharingSection } from "../SecretSharingSection";
 import { SecretTagsSection } from "../SecretTagsSection";
 
 export const ProjectGeneralTab = () => {
@@ -22,6 +23,7 @@ export const ProjectGeneralTab = () => {
       {isSecretManager && <EnvironmentSection />}
       {isSecretManager && <SecretTagsSection />}
       {isSecretManager && <AutoCapitalizationSection />}
+      {isSecretManager && <SecretSharingSection />}
       {isSecretManager && <PointInTimeVersionLimitSection />}
       <AuditLogsRetentionSection />
       {isSecretManager && <BackfillSecretReferenceSecretion />}

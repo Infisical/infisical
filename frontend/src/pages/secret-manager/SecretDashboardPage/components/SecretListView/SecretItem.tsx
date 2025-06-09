@@ -58,7 +58,7 @@ import {
 } from "./SecretListView.utils";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 
-const hiddenValue = "******";
+export const HIDDEN_SECRET_VALUE = "******";
 
 type Props = {
   secret: SecretV3RawSanitized;
@@ -122,7 +122,7 @@ export const SecretItem = memo(
 
     const getDefaultValue = () => {
       if (secret.secretValueHidden) {
-        return canEditSecretValue ? hiddenValue : "";
+        return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
       }
       return secret.valueOverride || secret.value || "";
     };
@@ -366,10 +366,11 @@ export const SecretItem = memo(
                       isReadOnly={isReadOnly || isRotatedSecret}
                       key="secret-value"
                       isVisible={isVisible && !secretValueHidden}
+                      canEditButNotView={secretValueHidden && !isOverriden}
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
-                      defaultValue={secretValueHidden ? hiddenValue : undefined}
+                      defaultValue={secretValueHidden ? HIDDEN_SECRET_VALUE : undefined}
                       containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
@@ -589,7 +590,7 @@ export const SecretItem = memo(
                     )}
                   </ProjectPermissionCan>
                   <IconButton
-                    isDisabled={secret.secretValueHidden}
+                    isDisabled={secret.secretValueHidden || !currentWorkspace.secretSharing}
                     className="w-0 overflow-hidden p-0 group-hover:w-5"
                     variant="plain"
                     size="md"

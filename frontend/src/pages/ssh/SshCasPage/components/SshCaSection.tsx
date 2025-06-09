@@ -85,7 +85,7 @@ export const SshCaSection = () => {
       <SshCaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteSshCa.isOpen}
-        title="Are you sure want to remove the SSH CA?"
+        title="Are you sure you want to remove the SSH CA?"
         onChange={(isOpen) => handlePopUpToggle("deleteSshCa", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
@@ -94,7 +94,7 @@ export const SshCaSection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.sshCaStatus.isOpen}
-        title={`Are you sure want to ${
+        title={`Are you sure you want to ${
           (popUp?.sshCaStatus?.data as { status: string })?.status === SshCaStatus.ACTIVE
             ? "enable"
             : "disable"

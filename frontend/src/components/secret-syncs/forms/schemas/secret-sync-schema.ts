@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { OnePassSyncDestinationSchema } from "./1password-sync-destination-schema";
 import { AwsParameterStoreSyncDestinationSchema } from "./aws-parameter-store-sync-destination-schema";
 import { AwsSecretsManagerSyncDestinationSchema } from "./aws-secrets-manager-sync-destination-schema";
 import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configuration-sync-destination-schema";
@@ -10,6 +11,7 @@ import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
+import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
@@ -29,7 +31,9 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   VercelSyncDestinationSchema,
   WindmillSyncDestinationSchema,
   HCVaultSyncDestinationSchema,
-  TeamCitySyncDestinationSchema
+  TeamCitySyncDestinationSchema,
+  OCIVaultSyncDestinationSchema,
+  OnePassSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

@@ -3,64 +3,82 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace";
+import { CaType } from "./enums";
 import { caKeys } from "./queries";
 import {
-  TCertificateAuthority,
-  TCreateCaDTO,
+  TCreateCertificateAuthorityDTO,
   TCreateCertificateDTO,
   TCreateCertificateResponse,
-  TDeleteCaDTO,
+  TDeleteCertificateAuthorityDTO,
   TImportCaCertificateDTO,
   TImportCaCertificateResponse,
   TRenewCaDTO,
   TRenewCaResponse,
   TSignIntermediateDTO,
   TSignIntermediateResponse,
-  TUpdateCaDTO
+  TUnifiedCertificateAuthority,
+  TUpdateCertificateAuthorityDTO
 } from "./types";
 
-export const useCreateCa = () => {
+export const useUpdateCa = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateAuthority, object, TCreateCaDTO>({
-    mutationFn: async (body) => {
-      const {
-        data: { ca }
-      } = await apiRequest.post<{ ca: TCertificateAuthority }>("/api/v1/pki/ca/", body);
-      return ca;
+  return useMutation<TUnifiedCertificateAuthority, object, TUpdateCertificateAuthorityDTO>({
+    mutationFn: async ({ caName, ...body }) => {
+      const { data } = await apiRequest.patch<TUnifiedCertificateAuthority>(
+        `/api/v1/pki/ca/${body.type}/${caName}`,
+        body
+      );
+
+      return data;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
+    onSuccess: ({ projectId, type }, { caName }) => {
+      caKeys.getCaByNameAndProjectId(caName, projectId);
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.getCaByNameAndProjectId(caName, projectId)
+      });
     }
   });
 };
 
-export const useUpdateCa = () => {
+export const useCreateCa = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateAuthority, object, TUpdateCaDTO>({
-    mutationFn: async ({ caId, projectSlug, ...body }) => {
-      const {
-        data: { ca }
-      } = await apiRequest.patch<{ ca: TCertificateAuthority }>(`/api/v1/pki/ca/${caId}`, body);
-      return ca;
+  return useMutation<TUnifiedCertificateAuthority, object, TCreateCertificateAuthorityDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TUnifiedCertificateAuthority>(
+        `/api/v1/pki/ca/${body.type}`,
+        body
+      );
+      return data;
     },
-    onSuccess: ({ id }, { projectSlug }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(id) });
+    onSuccess: (_, { type, projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
     }
   });
 };
 
 export const useDeleteCa = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificateAuthority, object, TDeleteCaDTO>({
-    mutationFn: async ({ caId }) => {
-      const {
-        data: { ca }
-      } = await apiRequest.delete<{ ca: TCertificateAuthority }>(`/api/v1/pki/ca/${caId}`);
-      return ca;
+  return useMutation<TUnifiedCertificateAuthority, object, TDeleteCertificateAuthorityDTO>({
+    mutationFn: async ({ caName, type, projectId }) => {
+      const { data } = await apiRequest.delete<TUnifiedCertificateAuthority>(
+        `/api/v1/pki/ca/${type}/${caName}`,
+        {
+          data: {
+            projectId
+          }
+        }
+      );
+      return data;
     },
-    onSuccess: (_, { projectSlug }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
+    onSuccess: (_, { type, projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
     }
   });
 };
@@ -78,7 +96,7 @@ export const useSignIntermediate = () => {
   });
 };
 
-export const useImportCaCertificate = () => {
+export const useImportCaCertificate = (projectId: string) => {
   const queryClient = useQueryClient();
   return useMutation<TImportCaCertificateResponse, object, TImportCaCertificateDTO>({
     mutationFn: async ({ caId, ...body }) => {
@@ -92,6 +110,9 @@ export const useImportCaCertificate = () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceCas({ projectSlug }) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, projectId)
+      });
     }
   });
 };

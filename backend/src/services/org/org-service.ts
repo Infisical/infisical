@@ -183,7 +183,9 @@ export const orgServiceFactory = ({
    * */
   const findAllOrganizationOfUser = async (userId: string) => {
     const orgs = await orgDAL.findAllOrgsByUserId(userId);
-    return orgs;
+
+    // Filter out orgs where the membership object is an invitation
+    return orgs.filter((org) => org.userStatus !== "invited");
   };
   /*
    * Get all workspace members
@@ -355,7 +357,15 @@ export const orgServiceFactory = ({
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
-      userTokenExpiration
+      userTokenExpiration,
+      secretsProductEnabled,
+      pkiProductEnabled,
+      kmsProductEnabled,
+      sshProductEnabled,
+      scannerProductEnabled,
+      shareSecretsProductEnabled,
+      maxSharedSecretLifetime,
+      maxSharedSecretViewLimit
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -457,7 +467,15 @@ export const orgServiceFactory = ({
       selectedMfaMethod,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
-      userTokenExpiration
+      userTokenExpiration,
+      secretsProductEnabled,
+      pkiProductEnabled,
+      kmsProductEnabled,
+      sshProductEnabled,
+      scannerProductEnabled,
+      shareSecretsProductEnabled,
+      maxSharedSecretLifetime,
+      maxSharedSecretViewLimit
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;
@@ -811,20 +829,30 @@ export const orgServiceFactory = ({
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username">[] = [];
 
       for await (const inviteeEmail of inviteeEmails) {
-        let inviteeUser = await userDAL.findUserByUsername(inviteeEmail, tx);
+        const usersByUsername = await userDAL.findUserByUsername(inviteeEmail, tx);
+        let inviteeUser =
+          usersByUsername?.length > 1
+            ? usersByUsername.find((el) => el.username === inviteeEmail)
+            : usersByUsername?.[0];
 
         // if the user doesn't exist we create the user with the email
         if (!inviteeUser) {
-          inviteeUser = await userDAL.create(
-            {
-              isAccepted: false,
-              email: inviteeEmail,
-              username: inviteeEmail,
-              authMethods: [AuthMethod.EMAIL],
-              isGhost: false
-            },
-            tx
-          );
+          // TODO(carlos): will be removed once the function receives usernames instead of emails
+          const usersByEmail = await userDAL.findUserByEmail(inviteeEmail, tx);
+          if (usersByEmail?.length === 1) {
+            [inviteeUser] = usersByEmail;
+          } else {
+            inviteeUser = await userDAL.create(
+              {
+                isAccepted: false,
+                email: inviteeEmail,
+                username: inviteeEmail,
+                authMethods: [AuthMethod.EMAIL],
+                isGhost: false
+              },
+              tx
+            );
+          }
         }
 
         const inviteeUserId = inviteeUser?.id;
@@ -1223,10 +1251,13 @@ export const orgServiceFactory = ({
    * magic link and issue a temporary signup token for user to complete setting up their account
    */
   const verifyUserToOrg = async ({ orgId, email, code }: TVerifyUserToOrgDTO) => {
-    const user = await userDAL.findUserByUsername(email);
+    const usersByUsername = await userDAL.findUserByUsername(email);
+    const user =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
     if (!user) {
       throw new NotFoundError({ message: "User not found" });
     }
+
     const [orgMembership] = await orgDAL.findMembership({
       [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
       status: OrgMembershipStatus.Invited,

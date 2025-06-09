@@ -6,14 +6,21 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretMongoDBSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = () => {
-  return alphaNumericNanoId(32);
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
+  const randomUsername = alphaNumericNanoId(32);
+  if (!usernameTemplate) return randomUsername;
+  return compileUsernameTemplate({
+    usernameTemplate,
+    randomUsername,
+    identity
+  });
 };
 
 export const MongoDBProvider = (): TDynamicProviderFns => {
@@ -53,11 +60,12 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
     return isConnected;
   };
 
-  const create = async (inputs: unknown) => {
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
+    const { inputs, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername();
+    const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
 
     const db = client.db(providerInputs.database);

@@ -54,8 +54,8 @@ COPY --from=build /app .
 
 # Install Infisical CLI
 RUN apt-get install -y curl bash && \
-    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash && \
-    apt-get update && apt-get install -y infisical=0.8.1 git
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
+    apt-get update && apt-get install -y infisical=0.41.2 git
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
   CMD node healthcheck.js

@@ -13,6 +13,8 @@ export enum TableName {
   SshCertificate = "ssh_certificates",
   SshCertificateBody = "ssh_certificate_bodies",
   CertificateAuthority = "certificate_authorities",
+  ExternalCertificateAuthority = "external_certificate_authorities",
+  InternalCertificateAuthority = "internal_certificate_authorities",
   CertificateTemplateEstConfig = "certificate_template_est_configs",
   CertificateAuthorityCert = "certificate_authority_certs",
   CertificateAuthoritySecret = "certificate_authority_secret",
@@ -21,6 +23,7 @@ export enum TableName {
   CertificateBody = "certificate_bodies",
   CertificateSecret = "certificate_secrets",
   CertificateTemplate = "certificate_templates",
+  PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiCollection = "pki_collections",
   PkiCollectionItem = "pki_collection_items",
@@ -78,8 +81,10 @@ export enum TableName {
   IdentityAzureAuth = "identity_azure_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityAwsAuth = "identity_aws_auths",
+  IdentityOciAuth = "identity_oci_auths",
   IdentityOidcAuth = "identity_oidc_auths",
   IdentityJwtAuth = "identity_jwt_auths",
+  IdentityLdapAuth = "identity_ldap_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
@@ -90,10 +95,12 @@ export enum TableName {
   ScimToken = "scim_tokens",
   AccessApprovalPolicy = "access_approval_policies",
   AccessApprovalPolicyApprover = "access_approval_policies_approvers",
+  AccessApprovalPolicyBypasser = "access_approval_policies_bypassers",
   AccessApprovalRequest = "access_approval_requests",
   AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
+  SecretApprovalPolicyBypasser = "secret_approval_policies_bypassers",
   SecretApprovalRequest = "secret_approval_requests",
   SecretApprovalRequestReviewer = "secret_approval_requests_reviewers",
   SecretApprovalRequestSecret = "secret_approval_requests_secrets",
@@ -152,7 +159,12 @@ export enum TableName {
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
   SecretReminderRecipients = "secret_reminder_recipients",
-  GithubOrgSyncConfig = "github_org_sync_configs"
+  GithubOrgSyncConfig = "github_org_sync_configs",
+  SecretScanningDataSource = "secret_scanning_data_sources",
+  SecretScanningResource = "secret_scanning_resources",
+  SecretScanningScan = "secret_scanning_scans",
+  SecretScanningFinding = "secret_scanning_findings",
+  SecretScanningConfig = "secret_scanning_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -185,11 +197,16 @@ export enum OrgMembershipStatus {
 }
 
 export enum ProjectMembershipRole {
+  // general
   Admin = "admin",
   Member = "member",
   Custom = "custom",
   Viewer = "viewer",
-  NoAccess = "no-access"
+  NoAccess = "no-access",
+  // ssh
+  SshHostBootstrapper = "ssh-host-bootstrapper",
+  // kms
+  KmsCryptographicOperator = "cryptographic-operator"
 }
 
 export enum SecretEncryptionAlgo {
@@ -226,15 +243,18 @@ export enum IdentityAuthMethod {
   GCP_AUTH = "gcp-auth",
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
+  OCI_AUTH = "oci-auth",
   OIDC_AUTH = "oidc-auth",
-  JWT_AUTH = "jwt-auth"
+  JWT_AUTH = "jwt-auth",
+  LDAP_AUTH = "ldap-auth"
 }
 
 export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh"
+  SSH = "ssh",
+  SecretScanning = "secret-scanning"
 }
 
 export enum ActionProjectType {
@@ -242,6 +262,7 @@ export enum ActionProjectType {
   CertificateManager = ProjectType.CertificateManager,
   KMS = ProjectType.KMS,
   SSH = ProjectType.SSH,
+  SecretScanning = ProjectType.SecretScanning,
   // project operations that happen on all types
   Any = "any"
 }

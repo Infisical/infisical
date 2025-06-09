@@ -16,6 +16,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const CreateElastiCacheUserSchema = z.object({
   UserId: z.string().trim().min(1),
@@ -132,9 +133,15 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = () => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
-  return `inf-${customAlphabet(charset, 32)()}`; // Username must start with an ascii letter, so we prepend the username with "inf-"
+  const randomUsername = `inf-${customAlphabet(charset, 32)()}`;
+  if (!usernameTemplate) return randomUsername;
+  return compileUsernameTemplate({
+    usernameTemplate,
+    randomUsername,
+    identity
+  });
 };
 
 export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
@@ -168,13 +175,21 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     return true;
   };
 
-  const create = async (inputs: unknown, expireAt: number) => {
+  const create = async (data: {
+    inputs: unknown;
+    expireAt: number;
+    usernameTemplate?: string | null;
+    identity?: {
+      name: string;
+    };
+  }) => {
+    const { inputs, expireAt, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
     if (!(await validateConnection(providerInputs))) {
       throw new BadRequestError({ message: "Failed to establish connection" });
     }
 
-    const leaseUsername = generateUsername();
+    const leaseUsername = generateUsername(usernameTemplate, identity);
     const leasePassword = generatePassword();
     const leaseExpiration = new Date(expireAt).toISOString();
 

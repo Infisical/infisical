@@ -2,8 +2,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { workspaceKeys } from "../workspace";
-import { TCertificate, TDeleteCertDTO, TRevokeCertDTO } from "./types";
+import {
+  TCertificate,
+  TDeleteCertDTO,
+  TImportCertificateDTO,
+  TImportCertificateResponse,
+  TRevokeCertDTO
+} from "./types";
 
 export const useDeleteCert = () => {
   const queryClient = useQueryClient();
@@ -37,6 +44,27 @@ export const useRevokeCert = () => {
         }
       );
       return certificate;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.forWorkspaceCertificates(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
+      });
+    }
+  });
+};
+
+export const useImportCertificate = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TImportCertificateResponse, object, TImportCertificateDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TImportCertificateResponse>(
+        "/api/v1/pki/certificates/import-certificate",
+        body
+      );
+      return data;
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({

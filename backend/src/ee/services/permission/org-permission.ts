@@ -41,7 +41,8 @@ export enum OrgPermissionGatewayActions {
   CreateGateways = "create-gateways",
   ListGateways = "list-gateways",
   EditGateways = "edit-gateways",
-  DeleteGateways = "delete-gateways"
+  DeleteGateways = "delete-gateways",
+  AttachGateways = "attach-gateways"
 }
 
 export enum OrgPermissionIdentityActions {
@@ -64,6 +65,11 @@ export enum OrgPermissionGroupActions {
   GrantPrivileges = "grant-privileges",
   AddMembers = "add-members",
   RemoveMembers = "remove-members"
+}
+
+export enum OrgPermissionBillingActions {
+  Read = "read",
+  ManageBilling = "manage-billing"
 }
 
 export enum OrgPermissionSubjects {
@@ -106,7 +112,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [OrgPermissionActions, OrgPermissionSubjects.Billing]
+  | [OrgPermissionBillingActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
@@ -297,10 +303,8 @@ const buildAdminPermission = () => {
   can(OrgPermissionGroupActions.AddMembers, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.RemoveMembers, OrgPermissionSubjects.Groups);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Billing);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Billing);
+  can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
+  can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
 
   can(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
@@ -337,6 +341,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.EditGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
 
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
@@ -360,7 +365,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
+  can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
@@ -378,6 +383,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
+  can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
 
   return rules;
 };

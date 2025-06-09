@@ -27,19 +27,24 @@ export const pkiCollectionItemDALFactory = (db: TDbClient) => {
         .select(
           "pki_collection_items.*",
           db.raw(
-            `COALESCE("${TableName.CertificateAuthority}"."notBefore", "${TableName.Certificate}"."notBefore") as "notBefore"`
+            `COALESCE("${TableName.InternalCertificateAuthority}"."notBefore", "${TableName.Certificate}"."notBefore") as "notBefore"`
           ),
           db.raw(
-            `COALESCE("${TableName.CertificateAuthority}"."notAfter", "${TableName.Certificate}"."notAfter") as "notAfter"`
+            `COALESCE("${TableName.InternalCertificateAuthority}"."notAfter", "${TableName.Certificate}"."notAfter") as "notAfter"`
           ),
           db.raw(
-            `COALESCE("${TableName.CertificateAuthority}"."friendlyName", "${TableName.Certificate}"."friendlyName") as "friendlyName"`
+            `COALESCE("${TableName.InternalCertificateAuthority}"."friendlyName", "${TableName.Certificate}"."friendlyName") as "friendlyName"`
           )
         )
         .leftJoin(
           TableName.CertificateAuthority,
           `${TableName.PkiCollectionItem}.caId`,
           `${TableName.CertificateAuthority}.id`
+        )
+        .leftJoin(
+          TableName.InternalCertificateAuthority,
+          `${TableName.PkiCollectionItem}.caId`,
+          `${TableName.InternalCertificateAuthority}.caId`
         )
         .leftJoin(TableName.Certificate, `${TableName.PkiCollectionItem}.certId`, `${TableName.Certificate}.id`)
         .where((builder) => {

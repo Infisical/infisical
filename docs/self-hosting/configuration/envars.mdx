@@ -1,5 +1,5 @@
 ---
-title: "Configurations"
+title: "Environment Variables"
 description: "Read how to configure environment variables for self-hosted Infisical."
 ---
 
@@ -32,14 +32,16 @@ Used to configure platform-specific security and operational settings
 <ParamField query="HOST" type="string" default="localhost" optional>
   Specifies the network interface Infisical will bind to when accepting incoming connections.
 
-  By default, Infisical binds to `localhost`, which restricts access to connections from the same machine. 
+  By default, Infisical binds to `localhost`, which restricts access to connections from the same machine.
 
-  To make the application accessible externally (e.g., for self-hosted deployments), set this to `0.0.0.0`, which tells the server to listen on all network interfaces.
+To make the application accessible externally (e.g., for self-hosted deployments), set this to `0.0.0.0`, which tells the server to listen on all network interfaces.
 
-  Example values:
-  - `localhost` (default, same as `127.0.0.1`)
-  - `0.0.0.0` (all interfaces, accessible externally)
-  - `192.168.1.100` (specific interface IP)
+Example values:
+
+- `localhost` (default, same as `127.0.0.1`)
+- `0.0.0.0` (all interfaces, accessible externally)
+- `192.168.1.100` (specific interface IP)
+
 </ParamField>
 
 <ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional>
@@ -86,8 +88,9 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
 ### PostgreSQL
 
 <Info>
-  Please note that the database user you create must be granted all privileges on the Infisical database.
-  This includes the ability to create new schemas, create, update, delete, modify tables and indexes, etc.
+  Please note that the database user you create must be granted all privileges
+  on the Infisical database. This includes the ability to create new schemas,
+  create, update, delete, modify tables and indexes, etc.
 </Info>
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
@@ -95,9 +98,8 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
 </ParamField>
 
 <ParamField query="DB_ROOT_CERT" type="string" default="" optional>
-  Configure the SSL certificate for securing a Postgres connection by first encoding it in base64. 
-  Use the command below to encode your certificate:
-  `echo "<certificate>" | base64`
+  Configure the SSL certificate for securing a Postgres connection by first encoding it in base64.
+  Use the following command to encode your certificate: `echo "<certificate>" | base64`
 </ParamField>
 
 <ParamField query="DB_READ_REPLICAS" type="string" default="" optional>
@@ -111,20 +113,51 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
     </ParamField>
     <ParamField query="DB_ROOT_CERT" type="string" default="" optional>
       Configure the SSL certificate for securing a Postgres replica connection by first encoding it in base64.
-	    Use the command below to encode your certificate:
-      `echo "<certificate>" | base64`
+	    Use the following command to encode your certificate: `echo "<certificate>" | base64`
 
-    		If not provided it will use master SSL certificate.
+      If not provided it will use master SSL certificate.
     </ParamField>
 
   </Expandable>
 </ParamField>
 
 ### Redis
+Redis is used for caching and background tasks. You can use either a standalone Redis instance or a Redis Sentinel setup.
 
-<ParamField query="REDIS_URL" type="string" default="none" required>
-  Redis connection string.
-</ParamField>
+<Tabs>
+  <Tab title="Redis standalone">
+    <ParamField query="REDIS_URL" type="string" default="none" required>
+      Redis connection string.
+    </ParamField>
+  </Tab>
+  <Tab title="Redis Sentinel">
+    <ParamField
+      query="REDIS_SENTINEL_HOSTS"
+      type="string"
+      default="none"
+      required
+    >
+      Comma-separated list of Sentinel host:port pairs. ```
+      192.168.65.254:26379,192.168.65.254:26380 ```
+    </ParamField>
+    <ParamField
+      query="REDIS_SENTINEL_MASTER_NAME"
+      type="string"
+      default="mymaster"
+    >
+      The name of the Redis master set monitored by Sentinel
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_ENABLE_TLS" type="bool" default="false">
+      Whether to use TLS/SSL for Redis Sentinel connection
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_USERNAME" type="string" default="none">
+      Authentication username for Redis Sentinel
+    </ParamField>
+    <ParamField query="REDIS_SENTINEL_PASSWORD" type="string" default="none">
+      Authentication password for Redis Sentinel
+    </ParamField>
+  </Tab>
+</Tabs>
 
 ## Email Service
 
@@ -168,6 +201,16 @@ Without email configuration, Infisical's core functions like sign-up/login and s
 
 <ParamField query="SMTP_TLS_REJECT_UNAUTHORIZED" type="bool" default="true" optional>
   If this is `true`, Infisical will validate the server's SSL/TLS certificate and reject the connection if the certificate is invalid or not trusted. If set to `false`, the client will accept the server's certificate regardless of its validity, which can be useful in development or testing environments but is not recommended for production use.
+</ParamField>
+
+<ParamField query="SMTP_CUSTOM_CA_CERT" type="string" default="none" optional>
+    If your SMTP server uses a certificate signed by a custom Certificate Authority, you should set this variable so that Infisical can trust the custom CA.
+
+    This variable **must be a base64 encoded PEM certificate**. Use the following command to encode your certificate: `echo "<certificate>" | base64`
+
+    Infisical highly encourages the following variables be used alongside this one for maximum security:
+    - `SMTP_REQUIRE_TLS=true`
+    - `SMTP_TLS_REJECT_UNAUTHORIZED=true`
 </ParamField>
 </Accordion>
 
@@ -222,7 +265,7 @@ SMTP_FROM_NAME=Infisical
       This will be used to verify the email you are sending from.
       ![Create SES identity](../../images/self-hosting/configuration/email/ses-create-identity.png)
       <Info>
-        If you AWS SES is under sandbox mode, you will only be able to send emails to verified identies. 
+        If you AWS SES is under sandbox mode, you will only be able to send emails to verified identies.
       </Info>
     </Step>
     <Step title="Create an account and configure AWS SES">
@@ -388,9 +431,9 @@ SMTP_FROM_NAME=Infisical
   </Info>
 </Accordion>
 
-<Accordion title="SMTP2Go"> 
+<Accordion title="SMTP2Go">
 1. Create an account and configure [SMTP2Go](https://www.smtp2go.com/) to send emails.
-2. Turn on SMTP authentication  
+2. Turn on SMTP authentication
 ```
 SMTP_HOST=mail.smtp2go.com
 SMTP_PORT=You can use one of the following ports: 2525, 80, 25, 8025, or 587
@@ -401,7 +444,7 @@ SMTP_FROM_NAME=Infisical
 ```
 {" "}
 
-<Note> 
+<Note>
 Optional (for TLS/SSL):
 
 TLS: Available on the same ports (2525, 80, 25, 8025, or 587)
@@ -508,6 +551,32 @@ You can configure third-party app connections for re-use across Infisical Projec
         The private key for the GitHub App
     </ParamField>
 
+</Accordion>
+
+<Accordion title="GitHub Radar App Connection">
+    <ParamField query="INF_APP_CONNECTION_GITHUB_RADAR_APP_ID" type="string" default="none" optional>
+        The ID of the GitHub Radar App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG" type="string" default="none" optional>
+        The slug of the GitHub Radar App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID" type="string" default="none" optional>
+        The client ID for the GitHub Radar App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET" type="string" default="none" optional>
+        The client secret for the GitHub Radar App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY" type="string" default="none" optional>
+        The private key for the GitHub Radar App
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET" type="string" default="none" optional>
+        The webhook secret configured for payload verification in the GitHub Radar App
+    </ParamField>
 </Accordion>
 
 <Accordion title="GitHub OAuth Connection">
@@ -632,13 +701,27 @@ To help you sync secrets from Infisical to services such as Github and Gitlab, I
     The App ID of your GitHub App.
   </ParamField>
 
-  <ParamField query="SECRET_SCANNING_GIT_APP_SLUG" type="string" default="none" optional>
-    The slug of your GitHub App.
-  </ParamField>
+{" "}
 
-  <ParamField query="SECRET_SCANNING_PRIVATE_KEY" type="string" default="none" optional>
-    A private key for your GitHub App.
-  </ParamField>
+<ParamField
+  query="SECRET_SCANNING_GIT_APP_SLUG"
+  type="string"
+  default="none"
+  optional
+>
+  The slug of your GitHub App.
+</ParamField>
+
+{" "}
+
+<ParamField
+  query="SECRET_SCANNING_PRIVATE_KEY"
+  type="string"
+  default="none"
+  optional
+>
+  A private key for your GitHub App.
+</ParamField>
 
   <ParamField query="SECRET_SCANNING_WEBHOOK_SECRET" type="string" default="none" optional>
     The webhook secret of your GitHub App.

@@ -96,10 +96,15 @@ export const identityAccessTokenServiceFactory = ({
     }
     await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
-    const { accessTokenMaxTTL, createdAt: accessTokenCreatedAt, accessTokenTTL } = identityAccessToken;
+    const {
+      accessTokenMaxTTL,
+      createdAt: accessTokenCreatedAt,
+      accessTokenTTL,
+      accessTokenPeriod
+    } = identityAccessToken;
 
-    // max ttl checks - will it go above max ttl
-    if (Number(accessTokenMaxTTL) > 0) {
+    // Only enforce Max TTL for non-periodic tokens
+    if (Number(accessTokenMaxTTL) > 0 && Number(accessTokenPeriod) === 0) {
       const accessTokenCreated = new Date(accessTokenCreatedAt);
       const ttlInMilliseconds = Number(accessTokenMaxTTL) * 1000;
       const currentDate = new Date();
@@ -125,6 +130,18 @@ export const identityAccessTokenServiceFactory = ({
       accessTokenLastRenewedAt: new Date()
     });
 
+    const ttl = Number(accessTokenTTL);
+    const period = Number(accessTokenPeriod);
+
+    let expiresIn: number | undefined;
+    if (period > 0) {
+      expiresIn = period;
+    } else if (ttl > 0) {
+      expiresIn = ttl;
+    } else {
+      expiresIn = undefined;
+    }
+
     const renewedToken = jwt.sign(
       {
         identityId: decodedToken.identityId,
@@ -133,12 +150,7 @@ export const identityAccessTokenServiceFactory = ({
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
-      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
+      expiresIn !== undefined ? { expiresIn } : undefined
     );
 
     return { accessToken: renewedToken, identityAccessToken: updatedIdentityAccessToken };
@@ -182,11 +194,13 @@ export const identityAccessTokenServiceFactory = ({
       [IdentityAuthMethod.UNIVERSAL_AUTH]: identityAccessToken.trustedIpsUniversalAuth,
       [IdentityAuthMethod.GCP_AUTH]: identityAccessToken.trustedIpsGcpAuth,
       [IdentityAuthMethod.AWS_AUTH]: identityAccessToken.trustedIpsAwsAuth,
+      [IdentityAuthMethod.OCI_AUTH]: identityAccessToken.trustedIpsOciAuth,
       [IdentityAuthMethod.AZURE_AUTH]: identityAccessToken.trustedIpsAzureAuth,
       [IdentityAuthMethod.KUBERNETES_AUTH]: identityAccessToken.trustedIpsKubernetesAuth,
       [IdentityAuthMethod.OIDC_AUTH]: identityAccessToken.trustedIpsOidcAuth,
       [IdentityAuthMethod.TOKEN_AUTH]: identityAccessToken.trustedIpsAccessTokenAuth,
-      [IdentityAuthMethod.JWT_AUTH]: identityAccessToken.trustedIpsAccessJwtAuth
+      [IdentityAuthMethod.JWT_AUTH]: identityAccessToken.trustedIpsAccessJwtAuth,
+      [IdentityAuthMethod.LDAP_AUTH]: identityAccessToken.trustedIpsAccessLdapAuth
     };
 
     const trustedIps = trustedIpsMap[identityAccessToken.authMethod as IdentityAuthMethod];

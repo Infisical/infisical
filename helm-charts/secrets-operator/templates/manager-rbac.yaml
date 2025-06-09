@@ -84,6 +84,18 @@ rules:
 - apiGroups:
   - secrets.infisical.com
   resources:
+  - clustergenerators
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - secrets.infisical.com
+  resources:
   - infisicaldynamicsecrets
   verbs:
   - create

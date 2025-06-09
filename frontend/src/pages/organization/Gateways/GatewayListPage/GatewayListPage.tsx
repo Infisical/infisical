@@ -32,7 +32,6 @@ import {
   Table,
   TableContainer,
   TableSkeleton,
-  Tag,
   TBody,
   Td,
   Th,
@@ -128,7 +127,6 @@ export const GatewayListPage = withPermission(
                       <Tr>
                         <Th className="w-1/3">Name</Th>
                         <Th>Cert Issued At</Th>
-                        <Th>Projects</Th>
                         <Th>Identity</Th>
                         <Th>
                           Health Check
@@ -151,13 +149,6 @@ export const GatewayListPage = withPermission(
                         <Tr key={el.id}>
                           <Td>{el.name}</Td>
                           <Td>{format(new Date(el.issuedAt), "yyyy-MM-dd hh:mm:ss aaa")}</Td>
-                          <Td>
-                            {el.projects.map((projectDetails) => (
-                              <Tag key={projectDetails.id} size="xs">
-                                {projectDetails.name}
-                              </Tag>
-                            ))}
-                          </Td>
                           <Td>{el.identity.name}</Td>
                           <Td>
                             {el.heartbeat
@@ -238,7 +229,7 @@ export const GatewayListPage = withPermission(
                   )}
                   <DeleteActionModal
                     isOpen={popUp.deleteGateway.isOpen}
-                    title={`Are you sure want to delete gateway ${
+                    title={`Are you sure you want to delete gateway ${
                       (popUp?.deleteGateway?.data as { name: string })?.name || ""
                     }?`}
                     onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}

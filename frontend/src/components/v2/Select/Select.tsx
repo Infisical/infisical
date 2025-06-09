@@ -18,6 +18,7 @@ type Props = {
   isDisabled?: boolean;
   icon?: IconProp;
   isMulti?: boolean;
+  iconClassName?: string;
 };
 
 export type SelectProps = Omit<SelectPrimitive.SelectProps, "disabled"> & Props;
@@ -33,6 +34,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       dropdownContainerClassName,
       position,
       containerClassName,
+      iconClassName,
       ...props
     },
     ref
@@ -58,7 +60,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             )}
           >
             <div className="flex items-center space-x-2 overflow-hidden text-ellipsis whitespace-nowrap">
-              {props.icon && <FontAwesomeIcon icon={props.icon} />}
+              {props.icon && <FontAwesomeIcon icon={props.icon} className={iconClassName} />}
               <div className="flex-1 truncate">
                 <SelectPrimitive.Value placeholder={placeholder} />
               </div>
@@ -123,6 +125,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     return (
       <SelectPrimitive.Item
         {...props}
+        disabled={isDisabled}
         className={twMerge(
           "relative mb-0.5 cursor-pointer select-none items-center overflow-hidden truncate rounded-md py-2 pl-10 pr-4 text-sm outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-700/80",
           isSelected && "bg-primary",

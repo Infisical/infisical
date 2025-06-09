@@ -2,6 +2,7 @@ import AWS, { AWSError } from "aws-sdk";
 
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsParameterStoreSyncWithCredentials } from "./aws-parameter-store-sync-types";
@@ -169,7 +170,7 @@ const getParameterStoreTagsRecord = async (
 
         throw new SecretSyncError({
           message:
-            "IAM role has inadequate permissions to manage resource tags. Ensure the following polices are present: ssm:ListTagsForResource, ssm:AddTagsToResource, and ssm:RemoveTagsFromResource",
+            "IAM role has inadequate permissions to manage resource tags. Ensure the following policies are present: ssm:ListTagsForResource, ssm:AddTagsToResource, and ssm:RemoveTagsFromResource",
           shouldRetry: false
         });
       }
@@ -293,7 +294,7 @@ const deleteParametersBatch = async (
 
 export const AwsParameterStoreSyncFns = {
   syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
-    const { destinationConfig, syncOptions } = secretSync;
+    const { destinationConfig, syncOptions, environment } = secretSync;
 
     const ssm = await getSSM(secretSync);
 
@@ -388,6 +389,9 @@ export const AwsParameterStoreSyncFns = {
 
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, parameter] = entry;
+
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, environment?.slug || "", syncOptions.keySchema)) continue;
 
       if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);

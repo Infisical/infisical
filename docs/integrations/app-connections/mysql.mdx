@@ -1,0 +1,129 @@
+---
+title: "MySQL Connection"
+description: "Learn how to configure a MySQL Connection for Infisical."
+---
+
+Infisical supports connecting to MySQL using a database role.
+
+## Configure a MySQL Role for Infisical
+
+<Steps>
+    <Step title="Create a Role">
+        Infisical recommends creating a designated role in your MySQL database for your connection.
+        ```SQL
+        -- create user role
+        CREATE USER 'infisical_role'@'%' IDENTIFIED BY 'my-password';
+        ```
+    </Step>
+    <Step title="Grant Relevant Permissions">
+       Depending on how you intend to use your MySQL connection, you'll need to grant one or more of the following permissions.
+        <Tip>
+            To learn more about MySQL's permission system, please visit their [documentation](https://dev.mysql.com/doc/refman/8.4/en/grant.html).
+        </Tip>
+        <Tabs>
+            <Tab title="Secret Rotation">
+                For Secret Rotations, your Infisical user will require the ability to alter other users' passwords:
+                ```SQL
+                -- enable permissions to alter login credentials
+                GRANT CREATE USER ON *.* TO 'infisical_role'@'%';
+
+                -- Apply changes
+                FLUSH PRIVILEGES;
+                ```
+            </Tab>
+        </Tabs>
+    </Step>
+    <Step title="Get Connection Details">
+        You'll need the following information to create your MySQL connection:
+        - `host` - The hostname or IP address of your MySQL server
+        - `port` - The port number your MySQL server is listening on (default: 3306)
+        - `database` - The name of the specific database you want to connect to
+        - `username` - The role name of the login created in the steps above
+        - `password` - The role password of the login created in the steps above
+        - `sslCertificate` (optional) - The SSL certificate required for connection (if configured)
+
+        <Note>
+            If you are self-hosting Infisical and intend to connect to an internal/private IP address, be sure to set the `ALLOW_INTERNAL_IP_CONNECTIONS` environment variable to `true`.
+        </Note>
+    </Step>
+</Steps>
+
+## Create Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to the App Connections tab on the Organization Settings page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+
+        2. Select the **MySQL Connection** option.
+        ![Select MySQL Connection](/images/app-connections/mysql/select-mysql-connection.png)
+
+        3. Select the **Username & Password** method option and provide the details obtained from the previous section and press **Connect to MySQL**.
+
+        <Note>
+            Optionally, if you'd like Infisical to manage the credentials of this connection, you can enable the Platform Managed Credentials option.
+            If enabled, Infisical will update the password of the connection on creation to prevent external access to this database role.
+        </Note>
+
+        ![Create MySQL Connection](/images/app-connections/mysql/create-username-and-password-method.png)
+
+        4. Your **MySQL Connection** is now available for use.
+        ![Assume Role MySQL Connection](/images/app-connections/mysql/username-and-password-connection.png)
+    </Tab>
+    <Tab title="API">
+        To create a MySQL Connection, make an API request to the [Create MySQL Connection](/api-reference/endpoints/app-connections/mysql/create) API endpoint.
+
+        <Note>
+            Optionally, if you'd like Infisical to manage the credentials of this connection, you can set the `isPlatformManagedCredentials` option to `true`.
+            If enabled, Infisical will update the password of the connection on creation to prevent external access to this database role.
+        </Note>
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/app-connections/mysql \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-mysql-connection",
+            "method": "username-and-password",
+            "isPlatformManagedCredentials": true,
+            "credentials": {
+                "host": "123.4.5.6",
+                "port": 3306,
+                "database": "default",
+                "username": "infisical_role",
+                "password": "my-password",
+                "sslEnabled": true,
+                "sslRejectUnauthorized": true
+            },
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "appConnection": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-mysql-connection",
+                "version": 1,
+                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "app": "mysql",
+                "method": "username-and-password",
+                "isPlatformManagedCredentials": true,
+                "credentials": {
+                    "host": "123.4.5.6",
+                    "port": 3306,
+                    "database": "default",
+                    "username": "infisical_role",
+                    "sslEnabled": true,
+                    "sslRejectUnauthorized": true
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

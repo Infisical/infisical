@@ -7,6 +7,7 @@ import { AzureEntraIDProvider } from "./azure-entra-id";
 import { CassandraProvider } from "./cassandra";
 import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
+import { KubernetesProvider } from "./kubernetes";
 import { LdapProvider } from "./ldap";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
@@ -17,9 +18,10 @@ import { SapAseProvider } from "./sap-ase";
 import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
 import { TotpProvider } from "./totp";
+import { VerticaProvider } from "./vertica";
 
 type TBuildDynamicSecretProviderDTO = {
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTls">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 export const buildDynamicSecretProviders = ({
@@ -40,5 +42,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Snowflake]: SnowflakeProvider(),
   [DynamicSecretProviders.Totp]: TotpProvider(),
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
+  [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService }),
+  [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService }),
   [DynamicSecretProviders.GcpIam]: GcpIamProvider()
 });

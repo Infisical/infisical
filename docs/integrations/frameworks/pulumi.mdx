@@ -1,0 +1,14 @@
+---
+title: "Pulumi"
+description: "Using Infisical with Pulumi via the Terraform Bridge"
+---
+
+Infisical can be integrated with Pulumi by leveraging Pulumi’s [Terraform Bridge](https://www.pulumi.com/blog/any-terraform-provider/), 
+which allows Terraform providers to be used seamlessly within Pulumi projects. This enables infrastructure and platform teams to manage Infisical secrets and resources 
+using Pulumi’s familiar programming languages (including TypeScript, Python, Go, and C#), without any change to existing workflows.
+
+The Terraform Bridge wraps the [Infisical Terraform provider](/integrations/frameworks/terraform) and exposes its resources (such as `infisical_secret`, `infisical_project`, and `infisical_service_token`) 
+in a Pulumi-compatible interface. This makes it easy to integrate secret management directly into Pulumi-based IaC pipelines, ensuring secrets stay in sync with 
+the rest of your cloud infrastructure. Authentication is handled through the same methods as Terraform: using environment variables such as `INFISICAL_TOKEN` and `INFISICAL_SITE_URL`.
+
+By bridging the Infisical provider, teams using Pulumi can adopt secure, centralized secrets management without compromising on their toolchain or language preferences.

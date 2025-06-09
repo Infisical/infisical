@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
 import {
-  OrgPermissionActions,
+  OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription
@@ -112,7 +112,10 @@ export const PreviewSection = () => {
                   Get unlimited members, projects, RBAC, smart alerts, and so much more.
                 </p>
               </div>
-              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Billing}>
+              <OrgPermissionCan
+                I={OrgPermissionBillingActions.ManageBilling}
+                a={OrgPermissionSubjects.Billing}
+              >
                 {(isAllowed) => (
                   <Button
                     onClick={() => handleUpgradeBtnClick()}
@@ -156,7 +159,10 @@ export const PreviewSection = () => {
               }`}
             </p>
             {isInfisicalCloud() && (
-              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
+              <OrgPermissionCan
+                I={OrgPermissionBillingActions.ManageBilling}
+                a={OrgPermissionSubjects.Billing}
+              >
                 {(isAllowed) => (
                   <button
                     type="button"

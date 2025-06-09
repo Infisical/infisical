@@ -4,33 +4,36 @@ sidebarTitle: "Networking"
 description: "Network configuration details for Infisical Cloud"
 ---
 
-## Overview
-
 When integrating your infrastructure with Infisical Cloud, you may need to configure network access controls. This page provides the IP addresses that Infisical uses to communicate with your services.
 
-## Egress IP Addresses
+## Infisical IP Addresses
 
-Infisical Cloud operates from two regions: US and EU. If your infrastructure has strict network policies, you may need to allow traffic from Infisical by adding the following IP addresses to your ingress rules. These are the egress IPs Infisical uses when making outbound requests to your services.
+Infisical Cloud operates from multiple regions. If your infrastructure has strict network policies, you may need to allow traffic from Infisical by adding the following IP addresses to your ingress rules. These are the IP addresses that Infisical uses when making outbound requests to your services.
 
-### US Region
+<Tabs>
+  <Tab title="US Region">
+    ```
+    3.213.63.16
+    54.164.68.7
+    ```
+  </Tab>
+  
+  <Tab title="EU Region">
+    ```
+    3.77.89.19
+    3.125.209.189
+    ```
+  </Tab>
+  
+  <Tab title="Dedicated Cloud">
+    For dedicated Infisical deployments, please contact your account manager for the specific IP addresses used in your dedicated environment.
+  </Tab>
+</Tabs>
 
-To allow connections from Infisical US, add these IP addresses to your ingress rules:
+<Warning>
+These IP addresses are static and managed by Infisical. Any changes will be communicated with 60-day advance notice.
+</Warning>
 
-- `3.213.63.16`
-- `54.164.68.7`
+## What These IP Addresses Are Used For
 
-### EU Region
-
-To allow connections from Infisical EU, add these IP addresses to your ingress rules:
-
-- `3.77.89.19`
-- `3.125.209.189`
-
-## Common Use Cases
-
-You may need to allow Infisical’s egress IPs if your services require inbound connections for:
-
-- Secret rotation - When Infisical needs to send requests to your systems to automatically rotate credentials
-- Dynamic secrets - When Infisical generates and manages temporary credentials for your cloud services
-- Secret integrations - When syncing secrets with third-party services like Azure Key Vault
-- Native authentication with machine identities - When using methods like Kubernetes authentication
+These IP addresses represent the source IPs you'll see when Infisical Cloud makes connections to your infrastructure. All outbound traffic from Infisical Cloud originates from these IP addresses, ensuring predictable source IP addresses for your firewall rules.

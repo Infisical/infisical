@@ -1,0 +1,55 @@
+---
+title: "General OIDC Group Membership Mapping"
+sidebarTitle: "Group Membership Mapping"
+description: "Learn how to sync OIDC group members to matching groups in Infisical."
+---
+
+You can have Infisical automatically sync group
+memberships between your OIDC provider and Infisical by configuring a `groups` claim on your provider tokens.
+When a user logs in via OIDC, they will be added to Infisical groups that are present in their OIDC `groups` claim,
+and removed from any Infisical groups not present in the claim.
+
+<Info>
+    When enabled, manual
+    management of Infisical group memberships will be disabled.
+</Info>
+
+<Warning>
+    Group membership changes in your OIDC provider only sync with Infisical when a
+    user logs in via OIDC. For example, if you remove a user from a group in your OIDC provider,
+    this change will not be reflected in Infisical until their next OIDC login.
+    To ensure this behavior, Infisical recommends enabling Enforce OIDC SSO in the OIDC settings.
+</Warning>
+
+
+<Steps>
+    <Step title="Configure a groups claim in your OIDC provider">
+       To enable OIDC Group Membership Mapping, you must configure a `groups` claim in your OIDC provider.
+
+        Add a `groups` property with a list of the user's OIDC group names to your token.
+
+        Example of expected token payload:
+        ```json
+        {
+            // "email": "john@provider.com",
+            // "given_name": "John",
+            // ...other claims
+            "groups": ["Billing Group", "Sales Group"]
+        }
+        ```
+
+        <Note>
+            Setup varies between OIDC providers. Please refer to your OIDC provider's documentation for more information.
+        </Note>
+    </Step>
+    <Step title="Setup groups in Infisical and enable OIDC Group Membership Mapping">
+        2.1. In Infisical, create any groups you would like to sync users to. Make sure the name of the Infisical group is an exact match of the OIDC group name.
+        ![OIDC general infisical group](/images/sso/keycloak-oidc/group-membership-mapping/create-infisical-group.png)
+
+        2.2. Next, enable **OIDC Group Membership Mapping** on the **Single Sign-On (SSO)** page under the **General** tab.
+        ![OIDC general enable group membership mapping](/images/sso/keycloak-oidc/group-membership-mapping/enable-group-membership-mapping.png)
+
+        2.3. The next time a user logs in they will be synced to their matching OIDC groups.
+        ![OIDC general synced users](/images/sso/keycloak-oidc/group-membership-mapping/synced-users.png)
+    </Step>
+</Steps>

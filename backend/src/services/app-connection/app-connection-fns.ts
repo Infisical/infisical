@@ -1,14 +1,25 @@
 import { TAppConnections } from "@app/db/schemas/app-connections";
+import {
+  getOCIConnectionListItem,
+  OCIConnectionMethod,
+  validateOCIConnectionCredentials
+} from "@app/ee/services/app-connections/oci";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { generateHash } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
-import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { AppConnection } from "./app-connection-enums";
+import {
+  getOnePassConnectionListItem,
+  OnePassConnectionMethod,
+  validateOnePassConnectionCredentials
+} from "./1password";
+import { AppConnection, AppConnectionPlanType } from "./app-connection-enums";
 import { TAppConnectionServiceFactoryDep } from "./app-connection-service";
 import {
   TAppConnection,
@@ -42,6 +53,11 @@ import {
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
 import {
+  getGitHubRadarConnectionListItem,
+  GitHubRadarConnectionMethod,
+  validateGitHubRadarConnectionCredentials
+} from "./github-radar";
+import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
   validateHCVaultConnectionCredentials
@@ -53,6 +69,8 @@ import {
 } from "./humanitec";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
+import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
+import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
   getTeamCityConnectionListItem,
@@ -76,6 +94,7 @@ export const listAppConnectionOptions = () => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
+    getGitHubRadarConnectionListItem(),
     getGcpConnectionListItem(),
     getAzureKeyVaultConnectionListItem(),
     getAzureAppConfigurationConnectionListItem(),
@@ -85,13 +104,16 @@ export const listAppConnectionOptions = () => {
     getVercelConnectionListItem(),
     getPostgresConnectionListItem(),
     getMsSqlConnectionListItem(),
+    getMySqlConnectionListItem(),
     getCamundaConnectionListItem(),
     getAzureClientSecretsConnectionListItem(),
     getWindmillConnectionListItem(),
     getAuth0ConnectionListItem(),
     getHCVaultConnectionListItem(),
     getLdapConnectionListItem(),
-    getTeamCityConnectionListItem()
+    getTeamCityConnectionListItem(),
+    getOCIConnectionListItem(),
+    getOnePassConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -144,6 +166,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitHub]: validateGitHubConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureAppConfiguration]:
@@ -153,6 +176,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.MySql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Camunda]: validateCamundaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Vercel]: validateVercelConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TerraformCloud]: validateTerraformCloudConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -160,7 +184,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Windmill]: validateWindmillConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HCVault]: validateHCVaultConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LDAP]: validateLdapConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -169,6 +195,7 @@ export const validateAppConnectionCredentials = async (
 export const getAppConnectionMethodName = (method: TAppConnection["method"]) => {
   switch (method) {
     case GitHubConnectionMethod.App:
+    case GitHubRadarConnectionMethod.App:
       return "GitHub App";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -176,6 +203,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:
+    case OCIConnectionMethod.AccessKey:
       return "Access Key";
     case AwsConnectionMethod.AssumeRole:
       return "Assume Role";
@@ -188,9 +216,11 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case HumanitecConnectionMethod.ApiToken:
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
+    case OnePassConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
+    case MySqlConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
@@ -236,12 +266,14 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AWS]: platformManagedCredentialsNotSupported,
   [AppConnection.Databricks]: platformManagedCredentialsNotSupported,
   [AppConnection.GitHub]: platformManagedCredentialsNotSupported,
+  [AppConnection.GitHubRadar]: platformManagedCredentialsNotSupported,
   [AppConnection.GCP]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureKeyVault]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
+  [AppConnection.MySql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.TerraformCloud]: platformManagedCredentialsNotSupported,
   [AppConnection.Camunda]: platformManagedCredentialsNotSupported,
   [AppConnection.Vercel]: platformManagedCredentialsNotSupported,
@@ -250,5 +282,22 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Auth0]: platformManagedCredentialsNotSupported,
   [AppConnection.HCVault]: platformManagedCredentialsNotSupported,
   [AppConnection.LDAP]: platformManagedCredentialsNotSupported, // we could support this in the future
-  [AppConnection.TeamCity]: platformManagedCredentialsNotSupported
+  [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
+  [AppConnection.OCI]: platformManagedCredentialsNotSupported,
+  [AppConnection.OnePass]: platformManagedCredentialsNotSupported
+};
+
+export const enterpriseAppCheck = async (
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  appConnection: AppConnection,
+  orgId: string,
+  errorMessage: string
+) => {
+  if (APP_CONNECTION_PLAN_MAP[appConnection] === AppConnectionPlanType.Enterprise) {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.enterpriseAppConnections)
+      throw new BadRequestError({
+        message: errorMessage
+      });
+  }
 };

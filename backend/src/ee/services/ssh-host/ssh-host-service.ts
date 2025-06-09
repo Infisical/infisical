@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
@@ -19,6 +20,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import {
   convertActorToPrincipals,
   createSshCert,
@@ -39,12 +41,14 @@ import {
 
 type TSshHostServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
+  groupDAL: Pick<TGroupDALFactory, "findGroupsByProjectId">;
   projectDAL: Pick<TProjectDALFactory, "find">;
   projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "findOne">;
   sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "findOne">;
   sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "findOne">;
   sshCertificateDAL: Pick<TSshCertificateDALFactory, "create" | "transaction">;
   sshCertificateBodyDAL: Pick<TSshCertificateBodyDALFactory, "create">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg">;
   sshHostDAL: Pick<
     TSshHostDALFactory,
     | "transaction"
@@ -58,7 +62,10 @@ type TSshHostServiceFactoryDep = {
   >;
   sshHostLoginUserDAL: TSshHostLoginUserDALFactory;
   sshHostLoginUserMappingDAL: TSshHostLoginUserMappingDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getUserProjectPermission" | "checkGroupProjectPermission"
+  >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -66,6 +73,8 @@ export type TSshHostServiceFactory = ReturnType<typeof sshHostServiceFactory>;
 
 export const sshHostServiceFactory = ({
   userDAL,
+  userGroupMembershipDAL,
+  groupDAL,
   projectDAL,
   projectSshConfigDAL,
   sshCertificateAuthorityDAL,
@@ -208,6 +217,7 @@ export const sshHostServiceFactory = ({
         loginMappings,
         sshHostLoginUserDAL,
         sshHostLoginUserMappingDAL,
+        groupDAL,
         userDAL,
         permissionService,
         projectId,
@@ -278,6 +288,7 @@ export const sshHostServiceFactory = ({
             loginMappings,
             sshHostLoginUserDAL,
             sshHostLoginUserMappingDAL,
+            groupDAL,
             userDAL,
             permissionService,
             projectId: host.projectId,
@@ -324,7 +335,7 @@ export const sshHostServiceFactory = ({
     return host;
   };
 
-  const getSshHost = async ({ sshHostId, actorId, actorAuthMethod, actor, actorOrgId }: TGetSshHostDTO) => {
+  const getSshHostById = async ({ sshHostId, actorId, actorAuthMethod, actor, actorOrgId }: TGetSshHostDTO) => {
     const host = await sshHostDAL.findSshHostByIdWithLoginMappings(sshHostId);
     if (!host) {
       throw new NotFoundError({
@@ -387,10 +398,14 @@ export const sshHostServiceFactory = ({
       userDAL
     });
 
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId);
+    const userGroupSlugs = userGroups.map((g) => g.groupSlug);
+
     const mapping = host.loginMappings.find(
       (m) =>
         m.loginUser === loginUser &&
-        m.allowedPrincipals.usernames.some((allowed) => internalPrincipals.includes(allowed))
+        (m.allowedPrincipals.usernames?.some((allowed) => internalPrincipals.includes(allowed)) ||
+          m.allowedPrincipals.groups?.some((allowed) => userGroupSlugs.includes(allowed)))
     );
 
     if (!mapping) {
@@ -616,7 +631,7 @@ export const sshHostServiceFactory = ({
     createSshHost,
     updateSshHost,
     deleteSshHost,
-    getSshHost,
+    getSshHostById,
     issueSshHostUserCert,
     issueSshHostHostCert,
     getSshHostUserCaPk,

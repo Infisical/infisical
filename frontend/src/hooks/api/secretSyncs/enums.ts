@@ -12,7 +12,9 @@ export enum SecretSync {
   Vercel = "vercel",
   Windmill = "windmill",
   HCVault = "hashicorp-vault",
-  TeamCity = "teamcity"
+  TeamCity = "teamcity",
+  OCIVault = "oci-vault",
+  OnePass = "1password"
 }
 
 export enum SecretSyncStatus {

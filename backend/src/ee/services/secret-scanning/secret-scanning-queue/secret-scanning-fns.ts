@@ -65,9 +65,9 @@ export function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Pr
   });
 }
 
-export function runInfisicalScan(inputPath: string, outputPath: string): Promise<void> {
+export function runInfisicalScan(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `cat "${inputPath}" | infisical scan --exit-code=77 --pipe -r "${outputPath}"`;
+    const command = `cat "${inputPath}" | infisical scan --exit-code=77 --pipe -r "${outputPath}" ${configPath ? `-c "${configPath}"` : ""}`;
     exec(command, (error) => {
       if (error && error.code !== 77) {
         reject(error);
@@ -138,14 +138,14 @@ export async function scanFullRepoContentAndGetFindings(
   }
 }
 
-export async function scanContentAndGetFindings(textContent: string): Promise<SecretMatch[]> {
+export async function scanContentAndGetFindings(textContent: string, configPath?: string): Promise<SecretMatch[]> {
   const tempFolder = await createTempFolder();
   const filePath = join(tempFolder, "content.txt");
   const findingsPath = join(tempFolder, "findings.json");
 
   try {
     await writeTextToFile(filePath, textContent);
-    await runInfisicalScan(filePath, findingsPath);
+    await runInfisicalScan(filePath, findingsPath, configPath);
     const findingsData = await readFindingsFile(findingsPath);
     return JSON.parse(findingsData) as SecretMatch[];
   } finally {

@@ -28,7 +28,15 @@ export const OrganizationsSchema = z.object({
   privilegeUpgradeInitiatedByUsername: z.string().nullable().optional(),
   privilegeUpgradeInitiatedAt: z.date().nullable().optional(),
   bypassOrgAuthEnabled: z.boolean().default(false),
-  userTokenExpiration: z.string().nullable().optional()
+  userTokenExpiration: z.string().nullable().optional(),
+  secretsProductEnabled: z.boolean().default(true).nullable().optional(),
+  pkiProductEnabled: z.boolean().default(true).nullable().optional(),
+  kmsProductEnabled: z.boolean().default(true).nullable().optional(),
+  sshProductEnabled: z.boolean().default(true).nullable().optional(),
+  scannerProductEnabled: z.boolean().default(true).nullable().optional(),
+  shareSecretsProductEnabled: z.boolean().default(true).nullable().optional(),
+  maxSharedSecretLifetime: z.number().default(2592000).nullable().optional(),
+  maxSharedSecretViewLimit: z.number().nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

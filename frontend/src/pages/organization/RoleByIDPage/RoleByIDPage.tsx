@@ -19,6 +19,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
@@ -36,7 +37,8 @@ export const Page = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
-    "deleteOrgRole"
+    "deleteOrgRole",
+    "duplicateRole"
   ] as const);
 
   const onDeleteOrgRoleSubmit = async () => {
@@ -106,6 +108,21 @@ export const Page = () => {
                       </DropdownMenuItem>
                     )}
                   </OrgPermissionCan>
+                  <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
+                    {(isAllowed) => (
+                      <DropdownMenuItem
+                        className={twMerge(
+                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                        )}
+                        onClick={() => {
+                          handlePopUpOpen("duplicateRole");
+                        }}
+                        disabled={!isAllowed}
+                      >
+                        Duplicate Role
+                      </DropdownMenuItem>
+                    )}
+                  </OrgPermissionCan>
                   <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Role}>
                     {(isAllowed) => (
                       <DropdownMenuItem
@@ -138,10 +155,15 @@ export const Page = () => {
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteOrgRole.isOpen}
-        title={`Are you sure want to delete the organization role ${data?.name ?? ""}?`}
+        title={`Are you sure you want to delete the organization role ${data?.name ?? ""}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() => onDeleteOrgRoleSubmit()}
+      />
+      <DuplicateOrgRoleModal
+        isOpen={popUp.duplicateRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
+        roleId={data?.id}
       />
     </div>
   );

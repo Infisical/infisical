@@ -884,6 +884,12 @@ func (tm *AgentManager) MonitorSecretChanges(secretTemplate Template, templateId
 
 					if err != nil {
 						log.Error().Msgf("unable to process template because %v", err)
+
+						// case: if exit-after-auth is true, it should exit the agent once an error on secret fetching occurs with the appropriate exit code (1)
+						// previous behavior would exit after 25 sec with status code 0, even if this step errors
+						if tm.exitAfterAuth {
+							os.Exit(1)
+						}
 					} else {
 						if (existingEtag != currentEtag) || firstRun {
 

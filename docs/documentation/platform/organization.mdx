@@ -20,6 +20,7 @@ The **Settings** page lets you manage information about your organization includ
 - **Slug**: The slug of your organization.
 - **Default Organization Member Role**: The role assigned to users when joining your organization unless otherwise specified.
 - **Incident Contacts**: Emails that should be alerted if anything abnormal is detected within the organization.
+- **Enabled Products**: Products which are enabled for your organization. This setting strictly affects the sidebar UI; disabling a product does not disable its API or routes.
 
 ![organization settings general](../../images/platform/organization/organization-settings-general.png)
 
@@ -43,7 +44,7 @@ In the **Organization Roles** tab, you can edit current or create new custom rol
 
 <Info>
   Note that Role-Based Access Management (RBAC) is partly a paid feature.
-  
+
   Infisical provides immutable roles like `admin`, `member`, etc.
   at the organization and project level for free.
 

@@ -95,6 +95,24 @@ export enum ProjectPermissionSshHostActions {
   IssueHostCert = "issue-host-cert"
 }
 
+export enum ProjectPermissionPkiSubscriberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert",
+  ListCerts = "list-certs"
+}
+
+export enum ProjectPermissionPkiTemplateActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert",
+  ListCerts = "list-certs"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -102,6 +120,26 @@ export enum ProjectPermissionSecretRotationActions {
   Edit = "edit",
   Delete = "delete",
   RotateSecrets = "rotate-secrets"
+}
+
+export enum ProjectPermissionSecretScanningDataSourceActions {
+  Read = "read-data-sources",
+  Create = "create-data-sources",
+  Edit = "edit-data-sources",
+  Delete = "delete-data-sources",
+  TriggerScans = "trigger-data-source-scans",
+  ReadScans = "read-data-source-scans",
+  ReadResources = "read-data-source-resources"
+}
+
+export enum ProjectPermissionSecretScanningFindingActions {
+  Read = "read-findings",
+  Update = "update-findings"
+}
+
+export enum ProjectPermissionSecretScanningConfigActions {
+  Read = "read-configs",
+  Update = "update-configs"
 }
 
 export enum PermissionConditionOperators {
@@ -186,10 +224,14 @@ export enum ProjectPermissionSub {
   SshHostGroups = "ssh-host-groups",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
+  PkiSubscribers = "pki-subscribers",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
-  Kmip = "kmip"
+  Kmip = "kmip",
+  SecretScanningDataSources = "secret-scanning-data-sources",
+  SecretScanningFindings = "secret-scanning-findings",
+  SecretScanningConfigs = "secret-scanning-configs"
 }
 
 export type SecretSubjectFields = {
@@ -218,6 +260,19 @@ export type SecretImportSubjectFields = {
 export type SecretRotationSubjectFields = {
   environment: string;
   secretPath: string;
+};
+
+export type SshHostSubjectFields = {
+  hostname: string;
+};
+
+export type PkiSubscriberSubjectFields = {
+  name: string;
+};
+
+export type PkiTemplateSubjectFields = {
+  name: string;
+  // (dangtony98): consider adding [commonName] as a subject field in the future
 };
 
 export type ProjectPermissionSet =
@@ -277,12 +332,31 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateAuthorities]
   | [ProjectPermissionCertificateActions, ProjectPermissionSub.Certificates]
-  | [ProjectPermissionActions, ProjectPermissionSub.CertificateTemplates]
+  | [
+      ProjectPermissionPkiTemplateActions,
+      (
+        | ProjectPermissionSub.CertificateTemplates
+        | (ForcedSubject<ProjectPermissionSub.CertificateTemplates> & PkiTemplateSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
-  | [ProjectPermissionSshHostActions, ProjectPermissionSub.SshHosts]
+  | [
+      ProjectPermissionSshHostActions,
+      (
+        | ProjectPermissionSub.SshHosts
+        | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionPkiSubscriberActions,
+      (
+        | ProjectPermissionSub.PkiSubscribers
+        | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
@@ -292,6 +366,12 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
-  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip];
+  | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
+  | [
+      ProjectPermissionSecretScanningDataSourceActions,
+      ProjectPermissionSub.SecretScanningDataSources
+    ]
+  | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

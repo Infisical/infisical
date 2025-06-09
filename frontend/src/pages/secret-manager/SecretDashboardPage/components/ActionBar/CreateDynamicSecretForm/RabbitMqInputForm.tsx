@@ -19,6 +19,7 @@ import {
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
   provider: z.object({
@@ -59,8 +60,9 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
-  environment: z.object({ name: z.string(), slug: z.string() })
+  name: slugSchema(),
+  environment: z.object({ name: z.string(), slug: z.string() }),
+  usernameTemplate: z.string().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -102,7 +104,8 @@ export const RabbitMqInputForm = ({
         },
         tags: []
       },
-      environment: isSingleEnvironmentMode ? environments[0] : undefined
+      environment: isSingleEnvironmentMode ? environments[0] : undefined,
+      usernameTemplate: "{{randomUsername}}"
     }
   });
 
@@ -113,10 +116,13 @@ export const RabbitMqInputForm = ({
     maxTTL,
     provider,
     defaultTTL,
-    environment
+    environment,
+    usernameTemplate
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
+
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     try {
       await createDynamicSecret.mutateAsync({
         provider: { type: DynamicSecretProviders.RabbitMq, inputs: provider },
@@ -125,7 +131,9 @@ export const RabbitMqInputForm = ({
         path: secretPath,
         defaultTTL,
         projectSlug,
-        environmentSlug: environment.slug
+        environmentSlug: environment.slug,
+        usernameTemplate:
+          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
       });
       onCompleted();
     } catch {
@@ -424,6 +432,25 @@ export const RabbitMqInputForm = ({
                   )}
                 />
               </div>
+              <Controller
+                control={control}
+                name="usernameTemplate"
+                defaultValue=""
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Username Template"
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                  >
+                    <Input
+                      {...field}
+                      value={field.value || undefined}
+                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                      placeholder="{{randomUsername}}"
+                    />
+                  </FormControl>
+                )}
+              />
               {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}

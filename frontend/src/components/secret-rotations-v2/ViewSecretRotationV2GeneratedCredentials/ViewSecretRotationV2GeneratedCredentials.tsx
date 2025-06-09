@@ -62,6 +62,7 @@ const Content = ({ secretRotation }: ContentProps) => {
   let Component: ReactNode;
   switch (generatedCredentialsResponse.type) {
     case SecretRotation.PostgresCredentials:
+    case SecretRotation.MySqlCredentials:
     case SecretRotation.MsSqlCredentials:
       Component = (
         <ViewSqlCredentialsRotationGeneratedCredentials

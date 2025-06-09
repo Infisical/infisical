@@ -6,12 +6,39 @@ import { ApiDocsTags, DYNAMIC_SECRETS } from "@app/lib/api-docs";
 import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
+import { isValidHandleBarTemplate } from "@app/lib/template/validate-handlebars";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+
+const validateUsernameTemplateCharacters = characterValidator([
+  CharacterType.AlphaNumeric,
+  CharacterType.Underscore,
+  CharacterType.Hyphen,
+  CharacterType.OpenBrace,
+  CharacterType.CloseBrace,
+  CharacterType.CloseBracket,
+  CharacterType.OpenBracket,
+  CharacterType.Fullstop,
+  CharacterType.SingleQuote,
+  CharacterType.Spaces,
+  CharacterType.Pipe
+]);
+
+const userTemplateSchema = z
+  .string()
+  .trim()
+  .max(255)
+  .refine((el) => validateUsernameTemplateCharacters(el))
+  .refine((el) =>
+    isValidHandleBarTemplate(el, {
+      allowedExpressions: (val) => ["randomUsername", "unixTimestamp", "identity.name"].includes(val)
+    })
+  );
 
 export const registerDynamicSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -52,7 +79,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         path: z.string().describe(DYNAMIC_SECRETS.CREATE.path).trim().default("/").transform(removeTrailingSlash),
         environmentSlug: z.string().describe(DYNAMIC_SECRETS.CREATE.environmentSlug).min(1),
         name: slugSchema({ min: 1, max: 64, field: "Name" }).describe(DYNAMIC_SECRETS.CREATE.name),
-        metadata: ResourceMetadataSchema.optional()
+        metadata: ResourceMetadataSchema.optional(),
+        usernameTemplate: userTemplateSchema.optional()
       }),
       response: {
         200: z.object({
@@ -70,39 +98,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         ...req.body
       });
       return { dynamicSecret: dynamicSecretCfg };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/entra-id/users",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      body: z.object({
-        tenantId: z.string().min(1).describe("The tenant ID of the Azure Entra ID"),
-        applicationId: z.string().min(1).describe("The application ID of the Azure Entra ID App Registration"),
-        clientSecret: z.string().min(1).describe("The client secret of the Azure Entra ID App Registration")
-      }),
-      response: {
-        200: z
-          .object({
-            name: z.string().min(1).describe("The name of the user"),
-            id: z.string().min(1).describe("The ID of the user"),
-            email: z.string().min(1).describe("The email of the user")
-          })
-          .array()
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const data = await server.services.dynamicSecret.fetchAzureEntraIdUsers({
-        tenantId: req.body.tenantId,
-        applicationId: req.body.applicationId,
-        clientSecret: req.body.clientSecret
-      });
-      return data;
     }
   });
 
@@ -150,7 +145,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
             })
             .nullable(),
           newName: z.string().describe(DYNAMIC_SECRETS.UPDATE.newName).optional(),
-          metadata: ResourceMetadataSchema.optional()
+          metadata: ResourceMetadataSchema.optional(),
+          usernameTemplate: userTemplateSchema.nullable().optional()
         })
       }),
       response: {
@@ -326,6 +322,39 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         ...req.query
       });
       return { leases };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/entra-id/users",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        tenantId: z.string().min(1).describe("The tenant ID of the Azure Entra ID"),
+        applicationId: z.string().min(1).describe("The application ID of the Azure Entra ID App Registration"),
+        clientSecret: z.string().min(1).describe("The client secret of the Azure Entra ID App Registration")
+      }),
+      response: {
+        200: z
+          .object({
+            name: z.string().min(1).describe("The name of the user"),
+            id: z.string().min(1).describe("The ID of the user"),
+            email: z.string().min(1).describe("The email of the user")
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const data = await server.services.dynamicSecret.fetchAzureEntraIdUsers({
+        tenantId: req.body.tenantId,
+        applicationId: req.body.applicationId,
+        clientSecret: req.body.clientSecret
+      });
+      return data;
     }
   });
 };

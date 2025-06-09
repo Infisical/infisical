@@ -37,6 +37,7 @@ import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-ap
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { TSecretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
+import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { TSshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
 import { TSshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
@@ -53,6 +54,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
@@ -66,6 +68,9 @@ import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-a
 import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
 import { TIdentityJwtAuthServiceFactory } from "@app/services/identity-jwt-auth/identity-jwt-auth-service";
 import { TIdentityKubernetesAuthServiceFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-service";
+import { TIdentityLdapAuthServiceFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-service";
+import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { TIdentityOciAuthServiceFactory } from "@app/services/identity-oci-auth/identity-oci-auth-service";
 import { TIdentityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
@@ -78,6 +83,8 @@ import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
+import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
+import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
@@ -106,10 +113,15 @@ import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integ
 declare module "@fastify/request-context" {
   interface RequestContextData {
     reqId: string;
+    orgId?: string;
     identityAuthInfo?: {
       identityId: string;
       oidc?: {
         claims: Record<string, string>;
+      };
+      kubernetes?: {
+        namespace: string;
+        name: string;
       };
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
@@ -146,6 +158,13 @@ declare module "fastify" {
       providerAuthToken: string;
       externalProviderAccessToken?: string;
     };
+    passportMachineIdentity: {
+      identityId: string;
+      user: {
+        uid: string;
+        mail?: string;
+      };
+    };
     kmipUser: {
       projectId: string;
       clientId: string;
@@ -153,7 +172,9 @@ declare module "fastify" {
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
-    ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>>;
+    ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
+      allowedFields?: TAllowedFields[];
+    };
   }
 
   interface FastifyInstance {
@@ -197,8 +218,10 @@ declare module "fastify" {
       identityGcpAuth: TIdentityGcpAuthServiceFactory;
       identityAwsAuth: TIdentityAwsAuthServiceFactory;
       identityAzureAuth: TIdentityAzureAuthServiceFactory;
+      identityOciAuth: TIdentityOciAuthServiceFactory;
       identityOidcAuth: TIdentityOidcAuthServiceFactory;
       identityJwtAuth: TIdentityJwtAuthServiceFactory;
+      identityLdapAuth: TIdentityLdapAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
@@ -220,6 +243,7 @@ declare module "fastify" {
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
+      pkiSubscriber: TPkiSubscriberServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
@@ -252,6 +276,9 @@ declare module "fastify" {
       microsoftTeams: TMicrosoftTeamsServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
+      secretScanningV2: TSecretScanningV2ServiceFactory;
+      internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
+      pkiTemplate: TPkiTemplatesServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

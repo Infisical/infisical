@@ -124,7 +124,7 @@ const Page = () => {
       <SshHostGroupModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteSshHostGroup.isOpen}
-        title={`Are you sure want to remove the SSH group: ${
+        title={`Are you sure you want to remove the SSH group: ${
           (popUp?.deleteSshHostGroup?.data as { name: string })?.name || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSshHostGroup", isOpen)}

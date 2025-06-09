@@ -1,15 +1,20 @@
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { v4 as uuidv4 } from "uuid";
+
+import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import {
+  cryptographicOperatorPermissions,
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
-  projectViewerPermission
-} from "@app/ee/services/permission/project-permission";
+  projectViewerPermission,
+  sshHostBootstrapPermissions
+} from "@app/ee/services/permission/default-roles";
+import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
-export const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMembershipRole) => {
+export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetPredefinedRolesDTO) => {
   return [
     {
-      id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // dummy userid
+      id: uuidv4(),
       projectId,
       name: "Admin",
       slug: ProjectMembershipRole.Admin,
@@ -19,7 +24,7 @@ export const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMember
       updatedAt: new Date()
     },
     {
-      id: "b11b49a9-09a9-4443-916a-4246f9ff2c70", // dummy user for zod validation in response
+      id: uuidv4(),
       projectId,
       name: "Developer",
       slug: ProjectMembershipRole.Member,
@@ -29,7 +34,29 @@ export const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMember
       updatedAt: new Date()
     },
     {
-      id: "b11b49a9-09a9-4443-916a-4246f9ff2c71", // dummy user for zod validation in response
+      id: uuidv4(),
+      projectId,
+      name: "SSH Host Bootstrapper",
+      slug: ProjectMembershipRole.SshHostBootstrapper,
+      permissions: sshHostBootstrapPermissions,
+      description: "Create and issue SSH Hosts in a project",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      type: ProjectType.SSH
+    },
+    {
+      id: uuidv4(),
+      projectId,
+      name: "Cryptographic Operator",
+      slug: ProjectMembershipRole.KmsCryptographicOperator,
+      permissions: cryptographicOperatorPermissions,
+      description: "Perform cryptographic operations, such as encryption and signing, in a project",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      type: ProjectType.KMS
+    },
+    {
+      id: uuidv4(),
       projectId,
       name: "Viewer",
       slug: ProjectMembershipRole.Viewer,
@@ -39,7 +66,7 @@ export const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMember
       updatedAt: new Date()
     },
     {
-      id: "b11b49a9-09a9-4443-916a-4246f9ff2c72", // dummy user for zod validation in response
+      id: uuidv4(),
       projectId,
       name: "No Access",
       slug: ProjectMembershipRole.NoAccess,
@@ -48,5 +75,5 @@ export const getPredefinedRoles = (projectId: string, roleFilter?: ProjectMember
       createdAt: new Date(),
       updatedAt: new Date()
     }
-  ].filter(({ slug }) => !roleFilter || roleFilter.includes(slug));
+  ].filter(({ slug, type }) => (type ? type === projectType : true) && (!roleFilter || roleFilter === slug));
 };

@@ -6,6 +6,9 @@ import {
   TAccessApprovalPoliciesApprovers,
   TAccessApprovalPoliciesApproversInsert,
   TAccessApprovalPoliciesApproversUpdate,
+  TAccessApprovalPoliciesBypassers,
+  TAccessApprovalPoliciesBypassersInsert,
+  TAccessApprovalPoliciesBypassersUpdate,
   TAccessApprovalPoliciesInsert,
   TAccessApprovalPoliciesUpdate,
   TAccessApprovalRequests,
@@ -68,6 +71,9 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TExternalCertificateAuthorities,
+  TExternalCertificateAuthoritiesInsert,
+  TExternalCertificateAuthoritiesUpdate,
   TExternalGroupOrgRoleMappings,
   TExternalGroupOrgRoleMappingsInsert,
   TExternalGroupOrgRoleMappingsUpdate,
@@ -119,6 +125,9 @@ import {
   TIdentityMetadata,
   TIdentityMetadataInsert,
   TIdentityMetadataUpdate,
+  TIdentityOciAuths,
+  TIdentityOciAuthsInsert,
+  TIdentityOciAuthsUpdate,
   TIdentityOidcAuths,
   TIdentityOidcAuthsInsert,
   TIdentityOidcAuthsUpdate,
@@ -152,6 +161,9 @@ import {
   TIntegrations,
   TIntegrationsInsert,
   TIntegrationsUpdate,
+  TInternalCertificateAuthorities,
+  TInternalCertificateAuthoritiesInsert,
+  TInternalCertificateAuthoritiesUpdate,
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
@@ -209,6 +221,9 @@ import {
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiSubscribers,
+  TPkiSubscribersInsert,
+  TPkiSubscribersUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -264,6 +279,9 @@ import {
   TSecretApprovalPoliciesApprovers,
   TSecretApprovalPoliciesApproversInsert,
   TSecretApprovalPoliciesApproversUpdate,
+  TSecretApprovalPoliciesBypassers,
+  TSecretApprovalPoliciesBypassersInsert,
+  TSecretApprovalPoliciesBypassersUpdate,
   TSecretApprovalPoliciesInsert,
   TSecretApprovalPoliciesUpdate,
   TSecretApprovalRequests,
@@ -318,9 +336,24 @@ import {
   TSecretRotationV2SecretMappingsInsert,
   TSecretRotationV2SecretMappingsUpdate,
   TSecrets,
+  TSecretScanningConfigs,
+  TSecretScanningConfigsInsert,
+  TSecretScanningConfigsUpdate,
+  TSecretScanningDataSources,
+  TSecretScanningDataSourcesInsert,
+  TSecretScanningDataSourcesUpdate,
+  TSecretScanningFindings,
+  TSecretScanningFindingsInsert,
+  TSecretScanningFindingsUpdate,
   TSecretScanningGitRisks,
   TSecretScanningGitRisksInsert,
   TSecretScanningGitRisksUpdate,
+  TSecretScanningResources,
+  TSecretScanningResourcesInsert,
+  TSecretScanningResourcesUpdate,
+  TSecretScanningScans,
+  TSecretScanningScansInsert,
+  TSecretScanningScansUpdate,
   TSecretSharing,
   TSecretSharingInsert,
   TSecretSharingUpdate,
@@ -433,6 +466,11 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
+  TIdentityLdapAuths,
+  TIdentityLdapAuthsInsert,
+  TIdentityLdapAuthsUpdate
+} from "@app/db/schemas/identity-ldap-auths";
+import {
   TMicrosoftTeamsIntegrations,
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
@@ -527,6 +565,16 @@ declare module "knex/types/tables" {
       TCertificateAuthorityCrlInsert,
       TCertificateAuthorityCrlUpdate
     >;
+    [TableName.InternalCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TInternalCertificateAuthorities,
+      TInternalCertificateAuthoritiesInsert,
+      TInternalCertificateAuthoritiesUpdate
+    >;
+    [TableName.ExternalCertificateAuthority]: KnexOriginal.CompositeTableType<
+      TExternalCertificateAuthorities,
+      TExternalCertificateAuthoritiesInsert,
+      TExternalCertificateAuthoritiesUpdate
+    >;
     [TableName.Certificate]: KnexOriginal.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
     [TableName.CertificateTemplate]: KnexOriginal.CompositeTableType<
       TCertificateTemplates,
@@ -558,6 +606,11 @@ declare module "knex/types/tables" {
       TPkiCollectionItems,
       TPkiCollectionItemsInsert,
       TPkiCollectionItemsUpdate
+    >;
+    [TableName.PkiSubscriber]: KnexOriginal.CompositeTableType<
+      TPkiSubscribers,
+      TPkiSubscribersInsert,
+      TPkiSubscribersUpdate
     >;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,
@@ -725,6 +778,11 @@ declare module "knex/types/tables" {
       TIdentityAzureAuthsInsert,
       TIdentityAzureAuthsUpdate
     >;
+    [TableName.IdentityOciAuth]: KnexOriginal.CompositeTableType<
+      TIdentityOciAuths,
+      TIdentityOciAuthsInsert,
+      TIdentityOciAuthsUpdate
+    >;
     [TableName.IdentityOidcAuth]: KnexOriginal.CompositeTableType<
       TIdentityOidcAuths,
       TIdentityOidcAuthsInsert,
@@ -734,6 +792,11 @@ declare module "knex/types/tables" {
       TIdentityJwtAuths,
       TIdentityJwtAuthsInsert,
       TIdentityJwtAuthsUpdate
+    >;
+    [TableName.IdentityLdapAuth]: KnexOriginal.CompositeTableType<
+      TIdentityLdapAuths,
+      TIdentityLdapAuthsInsert,
+      TIdentityLdapAuthsUpdate
     >;
     [TableName.IdentityUaClientSecret]: KnexOriginal.CompositeTableType<
       TIdentityUaClientSecrets,
@@ -778,6 +841,12 @@ declare module "knex/types/tables" {
       TAccessApprovalPoliciesApproversUpdate
     >;
 
+    [TableName.AccessApprovalPolicyBypasser]: KnexOriginal.CompositeTableType<
+      TAccessApprovalPoliciesBypassers,
+      TAccessApprovalPoliciesBypassersInsert,
+      TAccessApprovalPoliciesBypassersUpdate
+    >;
+
     [TableName.AccessApprovalRequest]: KnexOriginal.CompositeTableType<
       TAccessApprovalRequests,
       TAccessApprovalRequestsInsert,
@@ -800,6 +869,11 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesApprovers,
       TSecretApprovalPoliciesApproversInsert,
       TSecretApprovalPoliciesApproversUpdate
+    >;
+    [TableName.SecretApprovalPolicyBypasser]: KnexOriginal.CompositeTableType<
+      TSecretApprovalPoliciesBypassers,
+      TSecretApprovalPoliciesBypassersInsert,
+      TSecretApprovalPoliciesBypassersUpdate
     >;
     [TableName.SecretApprovalRequest]: KnexOriginal.CompositeTableType<
       TSecretApprovalRequests,
@@ -1047,6 +1121,31 @@ declare module "knex/types/tables" {
       TGithubOrgSyncConfigs,
       TGithubOrgSyncConfigsInsert,
       TGithubOrgSyncConfigsUpdate
+    >;
+    [TableName.SecretScanningDataSource]: KnexOriginal.CompositeTableType<
+      TSecretScanningDataSources,
+      TSecretScanningDataSourcesInsert,
+      TSecretScanningDataSourcesUpdate
+    >;
+    [TableName.SecretScanningResource]: KnexOriginal.CompositeTableType<
+      TSecretScanningResources,
+      TSecretScanningResourcesInsert,
+      TSecretScanningResourcesUpdate
+    >;
+    [TableName.SecretScanningScan]: KnexOriginal.CompositeTableType<
+      TSecretScanningScans,
+      TSecretScanningScansInsert,
+      TSecretScanningScansUpdate
+    >;
+    [TableName.SecretScanningFinding]: KnexOriginal.CompositeTableType<
+      TSecretScanningFindings,
+      TSecretScanningFindingsInsert,
+      TSecretScanningFindingsUpdate
+    >;
+    [TableName.SecretScanningConfig]: KnexOriginal.CompositeTableType<
+      TSecretScanningConfigs,
+      TSecretScanningConfigsInsert,
+      TSecretScanningConfigsUpdate
     >;
   }
 }

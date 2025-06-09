@@ -14,6 +14,26 @@ export type TCertificateTemplate = {
   extendedKeyUsages: CertExtendedKeyUsage[];
 };
 
+export type TCertificateTemplateV2 = {
+  id: string;
+  caId: string;
+  caName: string;
+  projectId: string;
+  pkiCollectionId?: string;
+  name: string;
+  commonName: string;
+  subjectAlternativeName: string;
+  ttl: string;
+  keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
+  updatedAt: string;
+  createdAt: string;
+  ca: {
+    name: string;
+    id: string;
+  };
+};
+
 export type TCreateCertificateTemplateDTO = {
   caId: string;
   pkiCollectionId?: string;
@@ -44,6 +64,34 @@ export type TDeleteCertificateTemplateDTO = {
   projectId: string;
 };
 
+export type TCreateCertificateTemplateV2DTO = {
+  caName: string;
+  name: string;
+  commonName: string;
+  subjectAlternativeName: string;
+  ttl: string;
+  projectId: string;
+  keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
+};
+
+export type TUpdateCertificateTemplateV2DTO = {
+  templateName: string;
+  caName?: string;
+  name?: string;
+  commonName?: string;
+  subjectAlternativeName?: string;
+  ttl?: string;
+  projectId: string;
+  keyUsages?: CertKeyUsage[];
+  extendedKeyUsages?: CertExtendedKeyUsage[];
+};
+
+export type TDeleteCertificateTemplateV2DTO = {
+  templateName: string;
+  projectId: string;
+};
+
 export type TCreateEstConfigDTO = {
   certificateTemplateId: string;
   caChain?: string;
@@ -66,4 +114,10 @@ export type TEstConfig = {
   caChain: string;
   isEnabled: boolean;
   disableBootstrapCertValidation: boolean;
+};
+
+export type TListCertificateTemplatesDTO = {
+  limit?: number;
+  offset?: number;
+  projectId: string;
 };

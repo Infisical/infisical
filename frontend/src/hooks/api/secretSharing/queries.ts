@@ -77,7 +77,11 @@ export const useGetActiveSharedSecretById = ({
   password?: string;
 }) => {
   return useQuery({
-    queryKey: secretSharingKeys.getSecretById({ id: sharedSecretId, hashedHex, password }),
+    queryKey: secretSharingKeys.getSecretById({
+      id: sharedSecretId,
+      hashedHex,
+      password
+    }),
     queryFn: async () => {
       const { data } = await apiRequest.post<TViewSharedSecretResponse>(
         `/api/v1/secret-sharing/shared/public/${sharedSecretId}`,

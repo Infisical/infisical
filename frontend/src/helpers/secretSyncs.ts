@@ -4,6 +4,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
@@ -47,6 +48,14 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.TeamCity]: {
     name: "TeamCity",
     image: "TeamCity.png"
+  },
+  [SecretSync.OCIVault]: {
+    name: "OCI Vault",
+    image: "Oracle.png"
+  },
+  [SecretSync.OnePass]: {
+    name: "1Password",
+    image: "1Password.png"
   }
 };
 
@@ -64,7 +73,9 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Vercel]: AppConnection.Vercel,
   [SecretSync.Windmill]: AppConnection.Windmill,
   [SecretSync.HCVault]: AppConnection.HCVault,
-  [SecretSync.TeamCity]: AppConnection.TeamCity
+  [SecretSync.TeamCity]: AppConnection.TeamCity,
+  [SecretSync.OCIVault]: AppConnection.OCI,
+  [SecretSync.OnePass]: AppConnection.OnePass
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
@@ -112,5 +123,16 @@ export const HUMANITEC_SYNC_SCOPES: Record<
     name: "Environment",
     description:
       "Infisical will sync secrets as environment level shared values to the specified Humanitec application environment."
+  }
+};
+
+export const GCP_SYNC_SCOPES: Record<GcpSyncScope, { name: string; description: string }> = {
+  [GcpSyncScope.Global]: {
+    name: "Global",
+    description: "Secrets will be synced globally; being available in all project regions."
+  },
+  [GcpSyncScope.Region]: {
+    name: "Region",
+    description: "Secrets will be synced to the specified region."
   }
 };

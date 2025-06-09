@@ -18,5 +18,13 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   privilegeUpgradeInitiatedByUsername: true,
   privilegeUpgradeInitiatedAt: true,
   bypassOrgAuthEnabled: true,
-  userTokenExpiration: true
+  userTokenExpiration: true,
+  secretsProductEnabled: true,
+  pkiProductEnabled: true,
+  kmsProductEnabled: true,
+  sshProductEnabled: true,
+  scannerProductEnabled: true,
+  shareSecretsProductEnabled: true,
+  maxSharedSecretLifetime: true,
+  maxSharedSecretViewLimit: true
 });

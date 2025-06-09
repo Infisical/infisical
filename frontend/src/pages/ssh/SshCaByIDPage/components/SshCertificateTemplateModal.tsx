@@ -61,7 +61,7 @@ const schema = z
     allowCustomKeyIds: z.boolean().optional().default(false)
   })
   .refine((data) => ms(data.maxTTL) >= ms(data.ttl), {
-    message: "Max TLL must be greater than or equal to TTL",
+    message: "Max TTL must be greater than or equal to TTL",
     path: ["maxTTL"]
   });
 

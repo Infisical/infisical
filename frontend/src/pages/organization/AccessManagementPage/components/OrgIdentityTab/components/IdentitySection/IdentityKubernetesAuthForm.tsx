@@ -3,35 +3,52 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   FormControl,
   IconButton,
   Input,
+  Select,
+  SelectItem,
   Tab,
   TabList,
   TabPanel,
   Tabs,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import {
+  gatewaysQueryKeys,
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
 } from "@app/hooks/api";
-import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
+import {
+  IdentityKubernetesAuthTokenReviewMode,
+  IdentityTrustedIp
+} from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
 
 const schema = z
   .object({
+    tokenReviewMode: z
+      .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
+      .default(IdentityKubernetesAuthTokenReviewMode.Api),
     kubernetesHost: z.string().min(1),
     tokenReviewerJwt: z.string().optional(),
+    gatewayId: z.string().optional().nullable(),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
@@ -51,7 +68,15 @@ const schema = z
       )
       .min(1)
   })
-  .required();
+  .superRefine((data, ctx) => {
+    if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+      ctx.addIssue({
+        path: ["gatewayId"],
+        code: z.ZodIssueCode.custom,
+        message: "When token review mode is set to Gateway, a gateway must be selected"
+      });
+    }
+  });
 
 export type FormData = z.infer<typeof schema>;
 
@@ -79,6 +104,8 @@ export const IdentityKubernetesAuthForm = ({
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
 
+  const { data: gateways, isPending: isGatewayLoading } = useQuery(gatewaysQueryKeys.list());
+
   const { data } = useGetIdentityKubernetesAuth(identityId ?? "", {
     enabled: isUpdate
   });
@@ -87,15 +114,19 @@ export const IdentityKubernetesAuthForm = ({
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
 
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
       kubernetesHost: "",
       tokenReviewerJwt: "",
       allowedNames: "",
       allowedNamespaces: "",
+      gatewayId: "",
       allowedAudience: "",
       caCert: "",
       accessTokenTTL: "2592000",
@@ -114,12 +145,14 @@ export const IdentityKubernetesAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
+        tokenReviewMode: data.tokenReviewMode,
         kubernetesHost: data.kubernetesHost,
         tokenReviewerJwt: data.tokenReviewerJwt,
         allowedNames: data.allowedNames,
         allowedNamespaces: data.allowedNamespaces,
         allowedAudience: data.allowedAudience,
         caCert: data.caCert,
+        gatewayId: data.gatewayId || null,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
@@ -133,6 +166,7 @@ export const IdentityKubernetesAuthForm = ({
       });
     } else {
       reset({
+        tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
         kubernetesHost: "",
         tokenReviewerJwt: "",
         allowedNames: "",
@@ -157,6 +191,8 @@ export const IdentityKubernetesAuthForm = ({
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
+    gatewayId,
+    tokenReviewMode,
     accessTokenTrustedIps
   }: FormData) => {
     try {
@@ -172,6 +208,8 @@ export const IdentityKubernetesAuthForm = ({
           allowedAudience,
           caCert,
           identityId,
+          gatewayId: gatewayId || null,
+          tokenReviewMode,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -186,7 +224,9 @@ export const IdentityKubernetesAuthForm = ({
           allowedNames: allowedNames || "",
           allowedNamespaces: allowedNamespaces || "",
           allowedAudience: allowedAudience || "",
+          gatewayId: gatewayId || null,
           caCert: caCert || "",
+          tokenReviewMode,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -210,6 +250,8 @@ export const IdentityKubernetesAuthForm = ({
     }
   };
 
+  const tokenReviewMode = watch("tokenReviewMode");
+
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
@@ -217,6 +259,8 @@ export const IdentityKubernetesAuthForm = ({
           [
             "kubernetesHost",
             "tokenReviewerJwt",
+            "tokenReviewMode",
+            "gatewayId",
             "accessTokenTTL",
             "accessTokenMaxTTL",
             "accessTokenNumUsesLimit",
@@ -250,21 +294,113 @@ export const IdentityKubernetesAuthForm = ({
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="tokenReviewerJwt"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                tooltipClassName="max-w-md"
-                label="Token Reviewer JWT"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding."
+
+          <div className="flex w-full items-center gap-2">
+            <div className="w-full flex-1">
+              <OrgPermissionCan
+                I={OrgGatewayPermissionActions.AttachGateways}
+                a={OrgPermissionSubjects.Gateway}
               >
-                <Input {...field} placeholder="" type="password" />
-              </FormControl>
-            )}
-          />
+                {(isAllowed) => (
+                  <Controller
+                    control={control}
+                    name="gatewayId"
+                    defaultValue=""
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        label="Gateway"
+                        isOptional
+                      >
+                        <Tooltip
+                          isDisabled={isAllowed}
+                          content="Restricted access. You don't have permission to attach gateways to resources."
+                        >
+                          <div>
+                            <Select
+                              isDisabled={!isAllowed}
+                              value={value as string}
+                              onValueChange={(v) => {
+                                if (v !== "") {
+                                  onChange(v);
+                                }
+
+                                if (v === null) {
+                                  setValue(
+                                    "tokenReviewMode",
+                                    IdentityKubernetesAuthTokenReviewMode.Api,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true
+                                    }
+                                  );
+                                }
+                              }}
+                              className="w-full border border-mineshaft-500"
+                              dropdownContainerClassName="max-w-none"
+                              isLoading={isGatewayLoading}
+                              placeholder="Default: Internet Gateway"
+                              position="popper"
+                            >
+                              <SelectItem
+                                value={null as unknown as string}
+                                onClick={() => {
+                                  onChange(null);
+                                }}
+                              >
+                                Internet Gateway
+                              </SelectItem>
+                              {gateways?.map((el) => (
+                                <SelectItem value={el.id} key={el.id}>
+                                  {el.name}
+                                </SelectItem>
+                              ))}
+                            </Select>
+                          </div>
+                        </Tooltip>
+                      </FormControl>
+                    )}
+                  />
+                )}
+              </OrgPermissionCan>
+            </div>
+
+            <Controller
+              control={control}
+              name="tokenReviewMode"
+              render={({ field }) => (
+                <FormControl
+                  tooltipClassName="max-w-md"
+                  tooltipText="The method of which tokens are reviewed. If you select Gateway as Reviewer, the selected gateway will be used to review tokens with. If this option is enabled, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding."
+                  label="Review Mode"
+                >
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectItem value="gateway">Gateway as Reviewer</SelectItem>
+                    <SelectItem value="api">Manual Token Reviewer JWT (API)</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+          </div>
+
+          {tokenReviewMode === "api" && (
+            <Controller
+              control={control}
+              name="tokenReviewerJwt"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  tooltipClassName="max-w-md"
+                  label="Token Reviewer JWT"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  tooltipText="Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding."
+                >
+                  <Input {...field} placeholder="" type="password" />
+                </FormControl>
+              )}
+            />
+          )}
           <Controller
             control={control}
             defaultValue=""
@@ -280,6 +416,7 @@ export const IdentityKubernetesAuthForm = ({
               </FormControl>
             )}
           />
+
           <Controller
             control={control}
             name="allowedNames"

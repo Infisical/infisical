@@ -6,7 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { CaStatus, useDeleteCa, useUpdateCa } from "@app/hooks/api";
+import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaCertModal } from "./CaCertModal";
@@ -28,11 +28,11 @@ export const CaSection = () => {
     "upgradePlan"
   ] as const);
 
-  const onRemoveCaSubmit = async (caId: string) => {
+  const onRemoveCaSubmit = async (caName: string) => {
     try {
       if (!currentWorkspace?.slug) return;
 
-      await deleteCa({ caId, projectSlug: currentWorkspace.slug });
+      await deleteCa({ caName, projectId: currentWorkspace.id, type: CaType.INTERNAL });
 
       createNotification({
         text: "Successfully deleted CA",
@@ -48,11 +48,11 @@ export const CaSection = () => {
     }
   };
 
-  const onUpdateCaStatus = async ({ caId, status }: { caId: string; status: CaStatus }) => {
+  const onUpdateCaStatus = async ({ caName, status }: { caName: string; status: CaStatus }) => {
     try {
       if (!currentWorkspace?.slug) return;
 
-      await updateCa({ caId, projectSlug: currentWorkspace.slug, status });
+      await updateCa({ caName, projectId: currentWorkspace.id, type: CaType.INTERNAL, status });
 
       createNotification({
         text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
@@ -72,7 +72,7 @@ export const CaSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Certificate Authorities</p>
+        <p className="text-xl font-semibold text-mineshaft-100">Internal Certificate Authorities</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.CertificateAuthorities}
@@ -96,17 +96,19 @@ export const CaSection = () => {
       <CaTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}
-        title={`Are you sure want to remove the CA ${
+        title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
         } from the project?`}
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"
-        onDeleteApproved={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
+        onDeleteApproved={() =>
+          onRemoveCaSubmit((popUp?.deleteCa?.data as { caName: string })?.caName)
+        }
       />
       <DeleteActionModal
         isOpen={popUp.caStatus.isOpen}
-        title={`Are you sure want to ${
+        title={`Are you sure you want to ${
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "enable"
             : "disable"
@@ -119,7 +121,7 @@ export const CaSection = () => {
         onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })
+          onUpdateCaStatus(popUp?.caStatus?.data as { caName: string; status: CaStatus })
         }
       />
       <UpgradePlanModal

@@ -57,7 +57,9 @@ export const registerServeUI = async (
           reply.callNotFound();
           return;
         }
-        return reply.sendFile("index.html");
+        // reference: https://github.com/fastify/fastify-static?tab=readme-ov-file#managing-cache-control-headers
+        // to avoid ui bundle skew on new deployment
+        return reply.sendFile("index.html", { maxAge: 0, immutable: false });
       }
     });
   }

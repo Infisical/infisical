@@ -87,7 +87,7 @@ export const GroupsSection = () => {
       <GroupTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure want to remove the group ${
+        title={`Are you sure you want to remove the group ${
           (popUp?.deleteGroup?.data as { name: string })?.name || ""
         } from the project?`}
         onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}

@@ -16,7 +16,13 @@ export enum SqlProviders {
   MySQL = "mysql2",
   Oracle = "oracledb",
   MsSQL = "mssql",
-  SapAse = "sap-ase"
+  SapAse = "sap-ase",
+  Vertica = "vertica"
+}
+
+export enum AwsIamAuthType {
+  AssumeRole = "assume-role",
+  AccessKey = "access-key"
 }
 
 export enum ElasticSearchAuthTypes {
@@ -27,6 +33,21 @@ export enum ElasticSearchAuthTypes {
 export enum LdapCredentialType {
   Dynamic = "dynamic",
   Static = "static"
+}
+
+export enum KubernetesCredentialType {
+  Static = "static",
+  Dynamic = "dynamic"
+}
+
+export enum KubernetesRoleType {
+  ClusterRole = "cluster-role",
+  Role = "role"
+}
+
+export enum KubernetesAuthMethod {
+  Gateway = "gateway",
+  Api = "api"
 }
 
 export enum TotpConfigType {
@@ -137,7 +158,7 @@ export const DynamicSecretSqlDBSchema = z.object({
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
-  projectGatewayId: z.string().nullable().optional()
+  gatewayId: z.string().nullable().optional()
 });
 
 export const DynamicSecretCassandraSchema = z.object({
@@ -163,16 +184,38 @@ export const DynamicSecretSapAseSchema = z.object({
   revocationStatement: z.string().trim()
 });
 
-export const DynamicSecretAwsIamSchema = z.object({
-  accessKey: z.string().trim().min(1),
-  secretAccessKey: z.string().trim().min(1),
-  region: z.string().trim().min(1),
-  awsPath: z.string().trim().optional(),
-  permissionBoundaryPolicyArn: z.string().trim().optional(),
-  policyDocument: z.string().trim().optional(),
-  userGroups: z.string().trim().optional(),
-  policyArns: z.string().trim().optional()
-});
+export const DynamicSecretAwsIamSchema = z.preprocess(
+  (val) => {
+    if (typeof val === "object" && val !== null && !Object.hasOwn(val, "method")) {
+      // eslint-disable-next-line no-param-reassign
+      (val as { method: string }).method = AwsIamAuthType.AccessKey;
+    }
+    return val;
+  },
+  z.discriminatedUnion("method", [
+    z.object({
+      method: z.literal(AwsIamAuthType.AccessKey),
+      accessKey: z.string().trim().min(1),
+      secretAccessKey: z.string().trim().min(1),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional()
+    }),
+    z.object({
+      method: z.literal(AwsIamAuthType.AssumeRole),
+      roleArn: z.string().trim().min(1, "Role ARN required"),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional()
+    })
+  ])
+);
 
 export const DynamicSecretMongoAtlasSchema = z.object({
   adminPublicKey: z.string().trim().min(1).describe("Admin user public api key"),
@@ -277,6 +320,84 @@ export const LdapSchema = z.union([
   })
 ]);
 
+export const DynamicSecretKubernetesSchema = z
+  .discriminatedUnion("credentialType", [
+    z.object({
+      url: z.string().url().trim().min(1),
+      clusterToken: z.string().trim().optional(),
+      ca: z.string().optional(),
+      sslEnabled: z.boolean().default(false),
+      credentialType: z.literal(KubernetesCredentialType.Static),
+      serviceAccountName: z.string().trim().min(1),
+      namespace: z.string().trim().min(1),
+      gatewayId: z.string().optional(),
+      audiences: z.array(z.string().trim().min(1)),
+      authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
+    }),
+    z.object({
+      url: z.string().url().trim().min(1),
+      clusterToken: z.string().trim().optional(),
+      ca: z.string().optional(),
+      sslEnabled: z.boolean().default(false),
+      credentialType: z.literal(KubernetesCredentialType.Dynamic),
+      namespace: z.string().trim().min(1),
+      gatewayId: z.string().optional(),
+      audiences: z.array(z.string().trim().min(1)),
+      roleType: z.nativeEnum(KubernetesRoleType),
+      role: z.string().trim().min(1),
+      authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
+    })
+  ])
+  .superRefine((data, ctx) => {
+    if (data.authMethod === KubernetesAuthMethod.Gateway && !data.gatewayId) {
+      ctx.addIssue({
+        path: ["gatewayId"],
+        code: z.ZodIssueCode.custom,
+        message: "When auth method is set to Gateway, a gateway must be selected"
+      });
+    }
+    if ((data.authMethod === KubernetesAuthMethod.Api || !data.authMethod) && !data.clusterToken) {
+      ctx.addIssue({
+        path: ["clusterToken"],
+        code: z.ZodIssueCode.custom,
+        message: "When auth method is set to Manual Token, a cluster token must be provided"
+      });
+    }
+  });
+
+export const DynamicSecretVerticaSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  database: z.string().trim(),
+  gatewayId: z.string().nullable().optional(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements")
+});
+
 export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
   z.object({
     configType: z.literal(TotpConfigType.URL),
@@ -325,6 +446,8 @@ export enum DynamicSecretProviders {
   Snowflake = "snowflake",
   Totp = "totp",
   SapAse = "sap-ase",
+  Kubernetes = "kubernetes",
+  Vertica = "vertica",
   GcpIam = "gcp-iam"
 }
 
@@ -344,13 +467,28 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.GcpIam), inputs: DynamicSecretGcpIamSchema })
 ]);
 
 export type TDynamicProviderFns = {
-  create: (inputs: unknown, expireAt: number) => Promise<{ entityId: string; data: unknown }>;
-  validateConnection: (inputs: unknown) => Promise<boolean>;
-  validateProviderInputs: (inputs: object) => Promise<unknown>;
-  revoke: (inputs: unknown, entityId: string) => Promise<{ entityId: string }>;
-  renew: (inputs: unknown, entityId: string, expireAt: number) => Promise<{ entityId: string }>;
+  create: (arg: {
+    inputs: unknown;
+    expireAt: number;
+    usernameTemplate?: string | null;
+    identity?: {
+      name: string;
+    };
+    metadata: { projectId: string };
+  }) => Promise<{ entityId: string; data: unknown }>;
+  validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
+  validateProviderInputs: (inputs: object, metadata: { projectId: string }) => Promise<unknown>;
+  revoke: (inputs: unknown, entityId: string, metadata: { projectId: string }) => Promise<{ entityId: string }>;
+  renew: (
+    inputs: unknown,
+    entityId: string,
+    expireAt: number,
+    metadata: { projectId: string }
+  ) => Promise<{ entityId: string }>;
 };

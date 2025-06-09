@@ -6,9 +6,9 @@ import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Tag, Td, Tooltip, Tr } from "@app/components/v2";
+import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 export enum TabSections {
@@ -24,15 +24,6 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeIdentityFromProject"]>,
     data?: object
   ) => void;
-};
-
-const formatRoleName = (role: string, customRoleName?: string) => {
-  if (role === ProjectMembershipRole.Custom) return customRoleName;
-  if (role === ProjectMembershipRole.Admin) return "Admin";
-  if (role === ProjectMembershipRole.Member) return "Developer";
-  if (role === ProjectMembershipRole.Viewer) return "Viewer";
-  if (role === ProjectMembershipRole.NoAccess) return "No Access";
-  return role;
 };
 
 export const IdentityProjectRow = ({
@@ -80,7 +71,7 @@ export const IdentityProjectRow = ({
       <Td>
         <Tag size="xs">{project.type}</Tag>
       </Td>
-      <Td>{`${formatRoleName(roles[0].role, roles[0].customRoleName)}${
+      <Td>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</Td>
       <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>

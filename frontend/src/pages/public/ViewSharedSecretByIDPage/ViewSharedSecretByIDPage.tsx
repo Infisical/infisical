@@ -57,15 +57,16 @@ export const ViewSharedSecretByIDPage = () => {
   const isUnauthorized =
     ((error as AxiosError)?.response?.data as { statusCode: number })?.statusCode === 401;
 
-  const isForbidden =
-    ((error as AxiosError)?.response?.data as { statusCode: number })?.statusCode === 403;
-
   const isInvalidCredential =
     ((error as AxiosError)?.response?.data as { message: string })?.message ===
     "Invalid credentials";
 
+  const isEmailUnauthorized =
+    ((error as AxiosError)?.response?.data as { message: string })?.message ===
+    "Email not authorized to view secret";
+
   useEffect(() => {
-    if (isUnauthorized && !isInvalidCredential) {
+    if (isUnauthorized && !isInvalidCredential && !isEmailUnauthorized) {
       // persist current URL in session storage so that we can come back to this after successful login
       sessionStorage.setItem(
         SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
@@ -83,12 +84,14 @@ export const ViewSharedSecretByIDPage = () => {
       navigate({
         to: "/login"
       });
+
+      return;
     }
 
-    if (isForbidden) {
+    if (error) {
       createNotification({
         type: "error",
-        text: "You do not have access to this shared secret."
+        text: ((error as AxiosError)?.response?.data as { message: string })?.message
       });
     }
   }, [error]);
@@ -195,7 +198,7 @@ export const ViewSharedSecretByIDPage = () => {
               Infisical
             </a>
             <br />
-            156 2nd st, 3rd Floor, San Francisco, California, 94105, United States. 🇺🇸
+            235 2nd st, San Francisco, California, 94105, United States. 🇺🇸
           </p>
         </div>
       </div>

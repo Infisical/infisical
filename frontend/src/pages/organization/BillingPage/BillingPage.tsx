@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionBillingActions, OrgPermissionSubjects } from "@app/context";
 
 import { BillingTabGroup } from "./components";
 
@@ -24,7 +24,7 @@ export const BillingPage = () => {
           </div>
           <OrgPermissionCan
             passThrough={false}
-            I={OrgPermissionActions.Read}
+            I={OrgPermissionBillingActions.Read}
             a={OrgPermissionSubjects.Billing}
           >
             <BillingTabGroup />

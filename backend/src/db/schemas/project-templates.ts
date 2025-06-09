@@ -12,10 +12,11 @@ export const ProjectTemplatesSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   roles: z.unknown(),
-  environments: z.unknown(),
+  environments: z.unknown().nullable().optional(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  type: z.string().default("secret-manager")
 });
 
 export type TProjectTemplates = z.infer<typeof ProjectTemplatesSchema>;

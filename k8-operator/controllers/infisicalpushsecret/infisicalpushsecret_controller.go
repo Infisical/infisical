@@ -30,9 +30,9 @@ import (
 // InfisicalSecretReconciler reconciles a InfisicalSecret object
 type InfisicalPushSecretReconciler struct {
 	client.Client
-
-	BaseLogger logr.Logger
-	Scheme     *runtime.Scheme
+	IsNamespaceScoped bool
+	BaseLogger        logr.Logger
+	Scheme            *runtime.Scheme
 }
 
 var infisicalPushSecretResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
@@ -51,7 +51,7 @@ func (r *InfisicalPushSecretReconciler) GetLogger(req ctrl.Request) logr.Logger 
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list
 //+kubebuilder:rbac:groups="authentication.k8s.io",resources=tokenreviews,verbs=create
 //+kubebuilder:rbac:groups="",resources=serviceaccounts/token,verbs=create
-
+//+kubebuilder:rbac:groups=secrets.infisical.com,resources=clustergenerators,verbs=get;list;watch;create;update;patch;delete
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
@@ -108,23 +108,30 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	if infisicalPushSecretCRD.Spec.ResyncInterval != "" {
+	if infisicalPushSecretCRD.Spec.Push.Secret == nil && infisicalPushSecretCRD.Spec.Push.Generators == nil {
+		logger.Info("No secret or generators found, skipping reconciliation. Please define ")
+		return ctrl.Result{}, nil
+	}
 
-		duration, err := util.ConvertIntervalToDuration(infisicalPushSecretCRD.Spec.ResyncInterval)
+	duration, err := util.ConvertIntervalToDuration(infisicalPushSecretCRD.Spec.ResyncInterval)
 
-		if err != nil {
+	if err != nil {
+		// if resyncInterval is nil, we don't want to reconcile automatically
+		if infisicalPushSecretCRD.Spec.ResyncInterval != nil {
 			logger.Error(err, fmt.Sprintf("unable to convert resync interval to duration. Will requeue after [requeueTime=%v]", requeueTime))
 			return ctrl.Result{
 				RequeueAfter: requeueTime,
 			}, nil
+		} else {
+			logger.Error(err, "unable to convert resync interval to duration")
+			return ctrl.Result{}, err
 		}
+	}
 
-		requeueTime = duration
+	requeueTime = duration
 
+	if requeueTime != 0 {
 		logger.Info(fmt.Sprintf("Manual re-sync interval set. Interval: %v", requeueTime))
-
-	} else {
-		logger.Info(fmt.Sprintf("Re-sync interval set. Interval: %v", requeueTime))
 	}
 
 	// Check if the resource is already marked for deletion
@@ -137,10 +144,15 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	// Get modified/default config
 	infisicalConfig, err := controllerhelpers.GetInfisicalConfigMap(ctx, r.Client)
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("unable to fetch infisical-config. Will requeue after [requeueTime=%v]", requeueTime))
-		return ctrl.Result{
-			RequeueAfter: requeueTime,
-		}, nil
+		if requeueTime != 0 {
+			logger.Error(err, fmt.Sprintf("unable to fetch infisical-config. Will requeue after [requeueTime=%v]", requeueTime))
+			return ctrl.Result{
+				RequeueAfter: requeueTime,
+			}, nil
+		} else {
+			logger.Error(err, "unable to fetch infisical-config")
+			return ctrl.Result{}, err
+		}
 	}
 
 	if infisicalPushSecretCRD.Spec.HostAPI == "" {
@@ -152,10 +164,15 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	if infisicalPushSecretCRD.Spec.TLS.CaRef.SecretName != "" {
 		api.API_CA_CERTIFICATE, err = r.getInfisicalCaCertificateFromKubeSecret(ctx, infisicalPushSecretCRD)
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("unable to fetch CA certificate. Will requeue after [requeueTime=%v]", requeueTime))
-			return ctrl.Result{
-				RequeueAfter: requeueTime,
-			}, nil
+			if requeueTime != 0 {
+				logger.Error(err, fmt.Sprintf("unable to fetch CA certificate. Will requeue after [requeueTime=%v]", requeueTime))
+				return ctrl.Result{
+					RequeueAfter: requeueTime,
+				}, nil
+			} else {
+				logger.Error(err, "unable to fetch CA certificate")
+				return ctrl.Result{}, err
+			}
 		}
 
 		logger.Info("Using custom CA certificate...")
@@ -167,17 +184,27 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	r.SetReconcileStatusCondition(ctx, &infisicalPushSecretCRD, err)
 
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("unable to reconcile Infisical Push Secret. Will requeue after [requeueTime=%v]", requeueTime))
-		return ctrl.Result{
-			RequeueAfter: requeueTime,
-		}, nil
+		if requeueTime != 0 {
+			logger.Error(err, fmt.Sprintf("unable to reconcile Infisical Push Secret. Will requeue after [requeueTime=%v]", requeueTime))
+			return ctrl.Result{
+				RequeueAfter: requeueTime,
+			}, nil
+		} else {
+			logger.Error(err, "unable to reconcile Infisical Push Secret")
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Sync again after the specified time
-	logger.Info(fmt.Sprintf("Operator will requeue after [%v]", requeueTime))
-	return ctrl.Result{
-		RequeueAfter: requeueTime,
-	}, nil
+	if requeueTime != 0 {
+		logger.Info(fmt.Sprintf("Operator will requeue after [%v]", requeueTime))
+		return ctrl.Result{
+			RequeueAfter: requeueTime,
+		}, nil
+	} else {
+		logger.Info("Operator will reconcile on next spec change")
+		return ctrl.Result{}, nil
+	}
 }
 
 func (r *InfisicalPushSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -222,33 +249,81 @@ func (r *InfisicalPushSecretReconciler) SetupWithManager(mgr ctrl.Manager) error
 		},
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	controllerManager := ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalPushSecret{}, builder.WithPredicates(
 			specChangeOrDelete,
 		)).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
-			handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
-				ctx := context.Background()
-				pushSecrets := &secretsv1alpha1.InfisicalPushSecretList{}
-				if err := r.List(ctx, pushSecrets); err != nil {
-					return []reconcile.Request{}
-				}
+			handler.EnqueueRequestsFromMapFunc(r.findPushSecretsForSecret),
+		)
 
-				requests := []reconcile.Request{}
-				for _, pushSecret := range pushSecrets.Items {
-					if pushSecret.Spec.Push.Secret.SecretName == o.GetName() &&
-						pushSecret.Spec.Push.Secret.SecretNamespace == o.GetNamespace() {
-						requests = append(requests, reconcile.Request{
-							NamespacedName: types.NamespacedName{
-								Name:      pushSecret.GetName(),
-								Namespace: pushSecret.GetNamespace(),
-							},
-						})
-					}
+	if !r.IsNamespaceScoped {
+		r.BaseLogger.Info("Watching ClusterGenerators for non-namespace scoped operator")
+		controllerManager.Watches(
+			&source.Kind{Type: &secretsv1alpha1.ClusterGenerator{}},
+			handler.EnqueueRequestsFromMapFunc(r.findPushSecretsForClusterGenerator),
+		)
+	} else {
+		r.BaseLogger.Info("Not watching ClusterGenerators for namespace scoped operator")
+	}
+
+	return controllerManager.Complete(r)
+}
+
+func (r *InfisicalPushSecretReconciler) findPushSecretsForClusterGenerator(o client.Object) []reconcile.Request {
+	ctx := context.Background()
+	pushSecrets := &secretsv1alpha1.InfisicalPushSecretList{}
+	if err := r.List(ctx, pushSecrets); err != nil {
+		return []reconcile.Request{}
+	}
+
+	clusterGenerator, ok := o.(*secretsv1alpha1.ClusterGenerator)
+	if !ok {
+		return []reconcile.Request{}
+	}
+
+	requests := []reconcile.Request{}
+
+	for _, pushSecret := range pushSecrets.Items {
+		if pushSecret.Spec.Push.Generators != nil {
+			for _, generator := range pushSecret.Spec.Push.Generators {
+				if generator.GeneratorRef.Name == clusterGenerator.GetName() {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      pushSecret.GetName(),
+							Namespace: pushSecret.GetNamespace(),
+						},
+					})
+					break
 				}
-				return requests
-			}),
-		).
-		Complete(r)
+			}
+		}
+	}
+	return requests
+}
+
+func (r *InfisicalPushSecretReconciler) findPushSecretsForSecret(o client.Object) []reconcile.Request {
+	ctx := context.Background()
+	pushSecrets := &secretsv1alpha1.InfisicalPushSecretList{}
+	if err := r.List(ctx, pushSecrets); err != nil {
+		return []reconcile.Request{}
+	}
+
+	requests := []reconcile.Request{}
+	for _, pushSecret := range pushSecrets.Items {
+		if pushSecret.Spec.Push.Secret != nil &&
+			pushSecret.Spec.Push.Secret.SecretName == o.GetName() &&
+			pushSecret.Spec.Push.Secret.SecretNamespace == o.GetNamespace() {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      pushSecret.GetName(),
+					Namespace: pushSecret.GetNamespace(),
+				},
+			})
+		}
+
+	}
+
+	return requests
 }

@@ -1,4 +1,4 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -13,6 +13,7 @@ import { useDeleteCert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CertificateCertModal } from "./CertificateCertModal";
+import { CertificateImportModal } from "./CertificateImportModal";
 import { CertificateModal } from "./CertificateModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
@@ -23,6 +24,7 @@ export const CertificatesSection = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "certificate",
+    "certificateImport",
     "certificateCert",
     "deleteCertificate",
     "revokeCertificate"
@@ -58,25 +60,36 @@ export const CertificatesSection = () => {
           a={ProjectPermissionSub.Certificates}
         >
           {(isAllowed) => (
-            <Button
-              colorSchema="primary"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("certificate")}
-              isDisabled={!isAllowed}
-            >
-              Issue
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline_bg"
+                leftIcon={<FontAwesomeIcon icon={faArrowRight} />}
+                onClick={() => handlePopUpOpen("certificateImport")}
+                isDisabled={!isAllowed}
+              >
+                Import
+              </Button>
+              <Button
+                colorSchema="primary"
+                type="submit"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handlePopUpOpen("certificate")}
+                isDisabled={!isAllowed}
+              >
+                Issue
+              </Button>
+            </div>
           )}
         </ProjectPermissionCan>
       </div>
       <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
       <CertificateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCertificate.isOpen}
-        title={`Are you sure want to remove the certificate ${
+        title={`Are you sure you want to remove the certificate ${
           (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
         } from the project?`}
         onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}

@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { AnyZodObject, z } from "zod";
 
 import { SecretSyncsSchema } from "@app/db/schemas/secret-syncs";
@@ -24,6 +25,34 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
       ? z.nativeEnum(SecretSyncInitialSyncBehavior)
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
     ).describe(SecretSyncs.SYNC_OPTIONS(destination).initialSyncBehavior),
+    keySchema: z
+      .string()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true;
+
+          const allowedOptionalPlaceholders = ["{{environment}}"];
+
+          const allowedPlaceholdersRegexPart = ["{{secretKey}}", ...allowedOptionalPlaceholders]
+            .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
+            .join("|");
+
+          const allowedContentRegex = new RE2(`^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`);
+          const contentIsValid = allowedContentRegex.test(val);
+
+          // Check if {{secretKey}} is present
+          const secretKeyRegex = new RE2(/\{\{secretKey\}\}/);
+          const secretKeyIsPresent = secretKeyRegex.test(val);
+
+          return contentIsValid && secretKeyIsPresent;
+        },
+        {
+          message:
+            "Key schema must include exactly one {{secretKey}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+        }
+      )
+      .describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema),
     disableSecretDeletion: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
   });
 

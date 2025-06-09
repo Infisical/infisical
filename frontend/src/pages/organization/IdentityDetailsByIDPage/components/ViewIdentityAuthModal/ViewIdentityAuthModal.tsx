@@ -11,6 +11,8 @@ import {
   useDeleteIdentityGcpAuth,
   useDeleteIdentityJwtAuth,
   useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityLdapAuth,
+  useDeleteIdentityOciAuth,
   useDeleteIdentityOidcAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth
@@ -22,6 +24,8 @@ import { ViewIdentityAzureAuthContent } from "./ViewIdentityAzureAuthContent";
 import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
 import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
+import { ViewIdentityLdapAuthContent } from "./ViewIdentityLdapAuthContent";
+import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";
 import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthContent";
@@ -59,8 +63,10 @@ export const Content = ({
   const { mutateAsync: revokeGcpAuth } = useDeleteIdentityGcpAuth();
   const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
+  const { mutateAsync: revokeOciAuth } = useDeleteIdentityOciAuth();
   const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
   const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
+  const { mutateAsync: revokeLdapAuth } = useDeleteIdentityLdapAuth();
 
   let Component: (props: ViewAuthMethodProps) => JSX.Element;
   let revokeMethod: (revokeOptions: TRevokeOptions) => Promise<any>;
@@ -92,6 +98,10 @@ export const Content = ({
       revokeMethod = revokeAzureAuth;
       Component = ViewIdentityAzureAuthContent;
       break;
+    case IdentityAuthMethod.OCI_AUTH:
+      revokeMethod = revokeOciAuth;
+      Component = ViewIdentityOciAuthContent;
+      break;
     case IdentityAuthMethod.OIDC_AUTH:
       revokeMethod = revokeOidcAuth;
       Component = ViewIdentityOidcAuthContent;
@@ -99,6 +109,10 @@ export const Content = ({
     case IdentityAuthMethod.JWT_AUTH:
       revokeMethod = revokeJwtAuth;
       Component = ViewIdentityJwtAuthContent;
+      break;
+    case IdentityAuthMethod.LDAP_AUTH:
+      revokeMethod = revokeLdapAuth;
+      Component = ViewIdentityLdapAuthContent;
       break;
     default:
       throw new Error(`Unhandled Auth Method: ${authMethod}`);
@@ -137,7 +151,7 @@ export const Content = ({
       />
       <DeleteActionModal
         isOpen={popUp?.revokeAuthMethod?.isOpen}
-        title={`Are you sure want to remove ${identityAuthToNameMap[authMethod]} on this identity?`}
+        title={`Are you sure you want to remove ${identityAuthToNameMap[authMethod]} on this identity?`}
         onChange={(isOpen) => handlePopUpToggle("revokeAuthMethod", isOpen)}
         deleteKey="confirm"
         buttonText="Remove"

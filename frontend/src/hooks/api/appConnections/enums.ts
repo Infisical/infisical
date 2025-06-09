@@ -1,6 +1,7 @@
 export enum AppConnection {
   AWS = "aws",
   GitHub = "github",
+  GitHubRadar = "github-radar",
   GCP = "gcp",
   AzureKeyVault = "azure-key-vault",
   AzureAppConfiguration = "azure-app-configuration",
@@ -11,10 +12,13 @@ export enum AppConnection {
   Vercel = "vercel",
   Postgres = "postgres",
   MsSql = "mssql",
+  MySql = "mysql",
   Camunda = "camunda",
   Windmill = "windmill",
   Auth0 = "auth0",
   HCVault = "hashicorp-vault",
   LDAP = "ldap",
-  TeamCity = "teamcity"
+  TeamCity = "teamcity",
+  OCI = "oci",
+  OnePass = "1password"
 }

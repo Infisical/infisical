@@ -6,6 +6,7 @@ import {
   Request,
   Response
 } from "botbuilder";
+import { CronJob } from "cron";
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -86,8 +87,17 @@ export const microsoftTeamsServiceFactory = ({
 }: TMicrosoftTeamsServiceFactoryDep) => {
   let teamsBot: TeamsBot | null = null;
   let adapter: CloudAdapter | null = null;
+  let lastKnownUpdatedAt = new Date();
 
-  const initializeTeamsBot = async ({ botAppId, botAppPassword }: { botAppId: string; botAppPassword: string }) => {
+  const initializeTeamsBot = async ({
+    botAppId,
+    botAppPassword,
+    lastUpdatedAt
+  }: {
+    botAppId: string;
+    botAppPassword: string;
+    lastUpdatedAt?: Date;
+  }) => {
     logger.info("Initializing Microsoft Teams bot");
     teamsBot = new TeamsBot({
       botAppId,
@@ -106,6 +116,57 @@ export const microsoftTeamsServiceFactory = ({
         })
       )
     );
+
+    if (lastUpdatedAt) {
+      lastKnownUpdatedAt = lastUpdatedAt;
+    }
+  };
+
+  const $syncMicrosoftTeamsIntegrationConfiguration = async () => {
+    try {
+      const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+      if (!serverCfg) {
+        throw new BadRequestError({
+          message: "Failed to get server configuration."
+        });
+      }
+
+      if (lastKnownUpdatedAt.getTime() === serverCfg.updatedAt.getTime()) {
+        logger.info("No changes to Microsoft Teams integration configuration, skipping sync");
+        return;
+      }
+
+      lastKnownUpdatedAt = serverCfg.updatedAt;
+
+      if (
+        serverCfg.encryptedMicrosoftTeamsAppId &&
+        serverCfg.encryptedMicrosoftTeamsClientSecret &&
+        serverCfg.encryptedMicrosoftTeamsBotId
+      ) {
+        const decryptWithRoot = kmsService.decryptWithRootKey();
+        const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
+        const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
+
+        await initializeTeamsBot({
+          botAppId: decryptedAppId.toString(),
+          botAppPassword: decryptedAppPassword.toString()
+        });
+      }
+    } catch (err) {
+      logger.error(err, "Error syncing Microsoft Teams integration configuration");
+    }
+  };
+
+  const initializeBackgroundSync = async () => {
+    logger.info("Setting up background sync process for Microsoft Teams workflow integration configuration");
+    // initial sync upon startup
+    await $syncMicrosoftTeamsIntegrationConfiguration();
+
+    // sync rate limits configuration every 5 minutes
+    const job = new CronJob("*/5 * * * *", $syncMicrosoftTeamsIntegrationConfiguration);
+    job.start();
+
+    return job;
   };
 
   const start = async () => {
@@ -703,6 +764,7 @@ export const microsoftTeamsServiceFactory = ({
     getTeams,
     handleMessageEndpoint,
     start,
+    initializeBackgroundSync,
     sendNotification,
     checkInstallationStatus,
     getClientId

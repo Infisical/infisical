@@ -16,8 +16,11 @@ export const workspaceKeys = {
     type ? ["workspaces", { type }] : (["workspaces"] as const),
   getWorkspaceAuditLogs: (workspaceId: string) =>
     [{ workspaceId }, "workspace-audit-logs"] as const,
-  getWorkspaceUsers: (workspaceId: string, includeGroupMembers?: boolean, roles?: string[]) =>
-    [{ workspaceId, includeGroupMembers, roles }, "workspace-users"] as const,
+  getWorkspaceUsers: (
+    workspaceId: string,
+    includeGroupMembers: boolean = false,
+    roles: string[] = []
+  ) => [{ workspaceId, includeGroupMembers, roles }, "workspace-users"] as const,
   getWorkspaceUserDetails: (workspaceId: string, membershipId: string) =>
     [{ workspaceId, membershipId }, "workspace-user-details"] as const,
   getWorkspaceIdentityMemberships: (workspaceId: string) =>
@@ -33,6 +36,8 @@ export const workspaceKeys = {
   searchWorkspace: (dto: TSearchProjectsDTO) => ["search-projects", dto] as const,
   getWorkspaceGroupMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-groups"] as const,
+  getWorkspaceGroupMembershipDetails: (workspaceId: string, groupId: string) =>
+    [{ workspaceId, groupId }, "workspace-group-membership-details"] as const,
   getWorkspaceCas: ({ projectSlug }: { projectSlug: string }) =>
     [{ projectSlug }, "workspace-cas"] as const,
   specificWorkspaceCas: ({ projectSlug, status }: { projectSlug: string; status?: CaStatus }) =>
@@ -51,6 +56,8 @@ export const workspaceKeys = {
   }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
   getWorkspacePkiAlerts: (workspaceId: string) =>
     [{ workspaceId }, "workspace-pki-alerts"] as const,
+  getWorkspacePkiSubscribers: (projectId: string) =>
+    [{ projectId }, "workspace-pki-subscribers"] as const,
   getWorkspacePkiCollections: (workspaceId: string) =>
     [{ workspaceId }, "workspace-pki-collections"] as const,
   getWorkspaceCertificateTemplates: (workspaceId: string) =>

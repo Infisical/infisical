@@ -72,7 +72,7 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
     OrgPermissionSubjects.ProjectTemplates
   );
 
-  const { data: projectTemplates = [] } = useListProjectTemplates({
+  const { data: projectTemplates = [] } = useListProjectTemplates(projectType, {
     enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates)
   });
 

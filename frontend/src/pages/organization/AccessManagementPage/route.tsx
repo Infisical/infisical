@@ -30,7 +30,7 @@ export const Route = createFileRoute(
         link: linkOptions({ to: "/" })
       },
       {
-        label: "access control"
+        label: "Access Control"
       }
     ]
   })

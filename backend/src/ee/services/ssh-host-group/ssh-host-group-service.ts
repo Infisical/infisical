@@ -12,6 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TGroupDALFactory } from "../group/group-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { createSshLoginMappings } from "../ssh-host/ssh-host-fns";
 import {
@@ -43,8 +44,12 @@ type TSshHostGroupServiceFactoryDep = {
   sshHostLoginUserDAL: Pick<TSshHostLoginUserDALFactory, "create" | "transaction" | "delete">;
   sshHostLoginUserMappingDAL: Pick<TSshHostLoginUserMappingDALFactory, "insertMany">;
   userDAL: Pick<TUserDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getUserProjectPermission" | "checkGroupProjectPermission"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  groupDAL: Pick<TGroupDALFactory, "findGroupsByProjectId">;
 };
 
 export type TSshHostGroupServiceFactory = ReturnType<typeof sshHostGroupServiceFactory>;
@@ -58,7 +63,8 @@ export const sshHostGroupServiceFactory = ({
   sshHostLoginUserMappingDAL,
   userDAL,
   permissionService,
-  licenseService
+  licenseService,
+  groupDAL
 }: TSshHostGroupServiceFactoryDep) => {
   const createSshHostGroup = async ({
     projectId,
@@ -127,6 +133,7 @@ export const sshHostGroupServiceFactory = ({
         loginMappings,
         sshHostLoginUserDAL,
         sshHostLoginUserMappingDAL,
+        groupDAL,
         userDAL,
         permissionService,
         projectId,
@@ -179,13 +186,42 @@ export const sshHostGroupServiceFactory = ({
       });
 
     const updatedSshHostGroup = await sshHostGroupDAL.transaction(async (tx) => {
-      await sshHostGroupDAL.updateById(
-        sshHostGroupId,
-        {
-          name
-        },
-        tx
-      );
+      if (name && name !== sshHostGroup.name) {
+        // (dangtony98): room to optimize check to ensure that
+        // the SSH host group name is unique across the whole org
+        const project = await projectDAL.findById(sshHostGroup.projectId, tx);
+        if (!project) throw new NotFoundError({ message: `Project with ID '${sshHostGroup.projectId}' not found` });
+        const projects = await projectDAL.find(
+          {
+            orgId: project.orgId
+          },
+          { tx }
+        );
+
+        const existingSshHostGroup = await sshHostGroupDAL.find(
+          {
+            name,
+            $in: {
+              projectId: projects.map((p) => p.id)
+            }
+          },
+          { tx }
+        );
+
+        if (existingSshHostGroup.length) {
+          throw new BadRequestError({
+            message: `SSH host group with name '${name}' already exists in the organization`
+          });
+        }
+        await sshHostGroupDAL.updateById(
+          sshHostGroupId,
+          {
+            name
+          },
+          tx
+        );
+      }
+
       if (loginMappings) {
         await sshHostLoginUserDAL.delete({ sshHostGroupId: sshHostGroup.id }, tx);
         if (loginMappings.length) {
@@ -194,6 +230,7 @@ export const sshHostGroupServiceFactory = ({
             loginMappings,
             sshHostLoginUserDAL,
             sshHostLoginUserMappingDAL,
+            groupDAL,
             userDAL,
             permissionService,
             projectId: sshHostGroup.projectId,

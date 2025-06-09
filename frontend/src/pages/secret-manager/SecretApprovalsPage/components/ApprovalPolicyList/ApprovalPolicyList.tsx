@@ -29,13 +29,13 @@ import {
   Tr
 } from "@app/components/v2";
 import {
-  ProjectPermissionActions,
   ProjectPermissionSub,
   TProjectPermission,
   useProjectPermission,
   useSubscription,
   useWorkspace
 } from "@app/context";
+import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteAccessApprovalPolicy,

@@ -29,9 +29,28 @@ type InfisicalPushSecretSecretSource struct {
 	Template *SecretTemplate `json:"template,omitempty"`
 }
 
-type SecretPush struct {
+type GeneratorRef struct {
+	// Specify the Kind of the generator resource
+	// +kubebuilder:validation:Enum=Password;UUID
 	// +kubebuilder:validation:Required
-	Secret InfisicalPushSecretSecretSource `json:"secret"`
+	Kind GeneratorKind `json:"kind"`
+
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+}
+
+type SecretPushGenerator struct {
+	// +kubebuilder:validation:Required
+	DestinationSecretName string `json:"destinationSecretName"`
+	// +kubebuilder:validation:Required
+	GeneratorRef GeneratorRef `json:"generatorRef"`
+}
+
+type SecretPush struct {
+	// +kubebuilder:validation:Optional
+	Secret *InfisicalPushSecretSecretSource `json:"secret,omitempty"`
+	// +kubebuilder:validation:Optional
+	Generators []SecretPushGenerator `json:"generators,omitempty"`
 }
 
 // InfisicalPushSecretSpec defines the desired state of InfisicalPushSecret
@@ -52,7 +71,8 @@ type InfisicalPushSecretSpec struct {
 	// +kubebuilder:validation:Required
 	Push SecretPush `json:"push"`
 
-	ResyncInterval string `json:"resyncInterval"`
+	// +kubebuilder:validation:Optional
+	ResyncInterval *string `json:"resyncInterval,omitempty"`
 
 	// Infisical host to pull secrets from
 	// +kubebuilder:validation:Optional

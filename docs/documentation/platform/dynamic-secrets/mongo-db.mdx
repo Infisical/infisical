@@ -66,6 +66,29 @@ Create a user with the required permission in your MongoDB instance. This user w
 	<ParamField path="CA(SSL)" type="string">
 		A CA may be required if your DB requires it for incoming connections.
 	</ParamField>
+<ParamField path="Username Template" type="string" default="{{randomUsername}}">
+    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+    Allowed template variables are
+    - `{{randomUsername}}`: Random username string
+    - `{{unixTimestamp}}`: Current Unix timestamp
+    - `{{identity.name}}`: Name of the identity that is generating the secret
+    - `{{random N}}`: Random string of N characters
+
+    Allowed template functions are
+    - `truncate`: Truncates a string to a specified length
+    - `replace`: Replaces a substring with another value
+
+    Examples:
+    ```
+    {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
+    {{unixTimestamp}}                               // 17490641580
+    {{identity.name}}                               // testuser
+    {{random-5}}                                    // x9k2m
+    {{truncate identity.name 4}}                    // test
+    {{replace identity.name 'user' 'replace'}}      // testreplace
+    ```
+	</ParamField>
 
 	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-mongodb.png)
 	</Step>
@@ -103,7 +126,7 @@ Create a user with the required permission in your MongoDB instance. This user w
 
 ## Audit or Revoke Leases
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
-This will allow you to see the expiration time of the lease or delete a lease before its set time to live.
+This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 

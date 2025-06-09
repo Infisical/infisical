@@ -73,7 +73,7 @@ export const registerSshHostRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const host = await server.services.sshHost.getSshHost({
+      const host = await server.services.sshHost.getSshHostById({
         sshHostId: req.params.sshHostId,
         actor: req.permission.type,
         actorId: req.permission.id,

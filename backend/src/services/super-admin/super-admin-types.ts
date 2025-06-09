@@ -35,6 +35,12 @@ export type TAdminGetIdentitiesDTO = {
   searchTerm: string;
 };
 
+export type TGetOrganizationsDTO = {
+  offset: number;
+  limit: number;
+  searchTerm: string;
+};
+
 export enum LoginMethod {
   EMAIL = "email",
   GOOGLE = "google",
@@ -43,4 +49,9 @@ export enum LoginMethod {
   SAML = "saml",
   LDAP = "ldap",
   OIDC = "oidc"
+}
+
+export enum CacheType {
+  ALL = "all",
+  SECRETS = "secrets"
 }

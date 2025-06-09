@@ -2,7 +2,7 @@ import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { ActionProjectType, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ProjectType, TableName, TProjects } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -34,7 +34,7 @@ type TProjectRoleServiceFactoryDep = {
   projectRoleDAL: TProjectRoleDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findProjectById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
   identityProjectMembershipRoleDAL: TIdentityProjectMembershipRoleDALFactory;
   projectUserMembershipRoleDAL: TProjectUserMembershipRoleDALFactory;
@@ -98,30 +98,37 @@ export const projectRoleServiceFactory = ({
     roleSlug,
     filter
   }: TGetRoleDetailsDTO) => {
-    let projectId = "";
+    let project: TProjects;
     if (filter.type === ProjectRoleServiceIdentifierType.SLUG) {
-      const project = await projectDAL.findProjectBySlug(filter.projectSlug, actorOrgId);
-      if (!project) throw new NotFoundError({ message: "Project not found" });
-      projectId = project.id;
+      project = await projectDAL.findProjectBySlug(filter.projectSlug, actorOrgId);
     } else {
-      projectId = filter.projectId;
+      project = await projectDAL.findProjectById(filter.projectId);
     }
+
+    if (!project) throw new NotFoundError({ message: "Project not found" });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId,
+      projectId: project.id,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     if (roleSlug !== "custom" && Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
-      const predefinedRole = getPredefinedRoles(projectId, roleSlug as ProjectMembershipRole)[0];
+      const [predefinedRole] = getPredefinedRoles({
+        projectId: project.id,
+        projectType: project.type as ProjectType,
+        roleFilter: roleSlug as ProjectMembershipRole
+      });
+
+      if (!predefinedRole) throw new NotFoundError({ message: `Default role with slug '${roleSlug}' not found` });
+
       return { ...predefinedRole, permissions: UnpackedPermissionSchema.array().parse(predefinedRole.permissions) };
     }
 
-    const customRole = await projectRoleDAL.findOne({ slug: roleSlug, projectId });
+    const customRole = await projectRoleDAL.findOne({ slug: roleSlug, projectId: project.id });
     if (!customRole) throw new NotFoundError({ message: `Project role with slug '${roleSlug}' not found` });
     return { ...customRole, permissions: unpackPermissions(customRole.permissions) };
   };
@@ -194,29 +201,32 @@ export const projectRoleServiceFactory = ({
   };
 
   const listRoles = async ({ actorOrgId, actorAuthMethod, actorId, actor, filter }: TListRolesDTO) => {
-    let projectId = "";
+    let project: TProjects;
     if (filter.type === ProjectRoleServiceIdentifierType.SLUG) {
-      const project = await projectDAL.findProjectBySlug(filter.projectSlug, actorOrgId);
-      if (!project) throw new BadRequestError({ message: "Project not found" });
-      projectId = project.id;
+      project = await projectDAL.findProjectBySlug(filter.projectSlug, actorOrgId);
     } else {
-      projectId = filter.projectId;
+      project = await projectDAL.findProjectById(filter.projectId);
     }
+
+    if (!project) throw new BadRequestError({ message: "Project not found" });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId,
+      projectId: project.id,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
     const customRoles = await projectRoleDAL.find(
-      { projectId },
+      { projectId: project.id },
       { sort: [[`${TableName.ProjectRoles}.slug` as "slug", "asc"]] }
     );
-    const roles = [...getPredefinedRoles(projectId), ...(customRoles || [])];
+    const roles = [
+      ...getPredefinedRoles({ projectId: project.id, projectType: project.type as ProjectType }),
+      ...(customRoles || [])
+    ];
 
     return roles;
   };

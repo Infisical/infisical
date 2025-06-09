@@ -237,7 +237,7 @@ export const CloudIntegrationSection = ({
       )}
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
-        title={`Are you sure want to revoke access ${
+        title={`Are you sure you want to revoke access ${
           (popUp?.deleteConfirmation.data as TRevokeIntegrationPopUp)?.provider || " "
         }?`}
         subTitle="This will remove all the secret integration of this provider!!!"

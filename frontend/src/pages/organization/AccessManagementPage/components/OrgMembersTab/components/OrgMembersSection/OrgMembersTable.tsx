@@ -1,8 +1,11 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faCheckCircle,
+  faChevronRight,
   faEllipsis,
+  faFilter,
   faMagnifyingGlass,
   faSearch,
   faUsers
@@ -19,7 +22,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownSubMenu,
+  DropdownSubMenuContent,
+  DropdownSubMenuTrigger,
   EmptyState,
   IconButton,
   Input,
@@ -42,6 +49,11 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
   useFetchServerStatus,
@@ -69,6 +81,10 @@ enum OrgMembersOrderBy {
   Name = "firstName",
   Email = "email"
 }
+
+type Filter = {
+  roles: string[];
+};
 
 export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Props) => {
   const navigate = useNavigate();
@@ -170,19 +186,38 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
     setOrderBy,
     setOrderDirection,
     toggleOrderDirection
-  } = usePagination<OrgMembersOrderBy>(OrgMembersOrderBy.Name, { initPerPage: 20 });
+  } = usePagination<OrgMembersOrderBy>(OrgMembersOrderBy.Name, {
+    initPerPage: getUserTablePreference("orgMembersTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("orgMembersTable", PreferenceKey.PerPage, newPerPage);
+  };
+
+  const [filter, setFilter] = useState<Filter>({
+    roles: []
+  });
 
   const filteredUsers = useMemo(
     () =>
       members
-        ?.filter(
-          ({ user: u, inviteEmail }) =>
+        ?.filter(({ user: u, inviteEmail, role, roleId }) => {
+          if (
+            filter.roles.length &&
+            !filter.roles.includes(role === "custom" ? findRoleFromId(roleId)!.slug : role)
+          ) {
+            return false;
+          }
+
+          return (
             u?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
             u?.lastName?.toLowerCase().includes(search.toLowerCase()) ||
             u?.username?.toLowerCase().includes(search.toLowerCase()) ||
             u?.email?.toLowerCase().includes(search.toLowerCase()) ||
             inviteEmail?.toLowerCase().includes(search.toLowerCase())
-        )
+          );
+        })
         .sort((a, b) => {
           const [memberOne, memberTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
 
@@ -205,7 +240,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
 
           return valueOne.toLowerCase().localeCompare(valueTwo.toLowerCase());
         }),
-    [members, search, orderDirection, orderBy]
+    [members, search, orderDirection, orderBy, filter]
   );
 
   const handleSort = (column: OrgMembersOrderBy) => {
@@ -224,14 +259,81 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
     setPage
   });
 
+  const handleRoleToggle = useCallback(
+    (roleSlug: string) =>
+      setFilter((state) => {
+        const currentRoles = state.roles || [];
+
+        if (currentRoles.includes(roleSlug)) {
+          return { ...state, roles: currentRoles.filter((role) => role !== roleSlug) };
+        }
+        return { ...state, roles: [...currentRoles, roleSlug] };
+      }),
+    []
+  );
+
+  const isTableFiltered = Boolean(filter.roles.length);
+
   return (
     <div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
-      />
+      <div className="flex gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              ariaLabel="Filter Users"
+              variant="plain"
+              size="sm"
+              className={twMerge(
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                isTableFiltered && "border-primary/50 text-primary"
+              )}
+            >
+              <FontAwesomeIcon icon={faFilter} />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="p-0">
+            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
+            <DropdownSubMenu>
+              <DropdownSubMenuTrigger
+                iconPos="right"
+                icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
+              >
+                Roles
+              </DropdownSubMenuTrigger>
+              <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                  Apply Roles to Filter Users
+                </DropdownMenuLabel>
+                {roles?.map(({ id, slug, name }) => (
+                  <DropdownMenuItem
+                    onClick={(evt) => {
+                      evt.preventDefault();
+                      handleRoleToggle(slug);
+                    }}
+                    key={id}
+                    icon={filter.roles.includes(slug) && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center">
+                      <div
+                        className="mr-2 h-2 w-2 rounded-full"
+                        style={{ background: "#bec2c8" }}
+                      />
+                      {name}
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownSubMenuContent>
+            </DropdownSubMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search members..."
+        />
+      </div>
       <TableContainer className="mt-4">
         <Table>
           <THead>
@@ -513,7 +615,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isMembersLoading && !filteredUsers?.length && (

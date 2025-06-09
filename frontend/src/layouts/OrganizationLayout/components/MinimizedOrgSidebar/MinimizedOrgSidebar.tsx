@@ -4,6 +4,7 @@ import {
   faArrowUpRightFromSquare,
   faBook,
   faCheck,
+  faCheckCircle,
   faCog,
   faDoorClosed,
   faEnvelope,
@@ -118,6 +119,9 @@ export const MinimizedOrgSidebar = () => {
     [
       linkOptions({ to: "/organization/access-management" }).to,
       linkOptions({ to: "/organization/app-connections" }).to,
+      linkOptions({ to: "/organization/billing" }).to,
+      linkOptions({ to: "/organization/sso" }).to,
+      linkOptions({ to: "/organization/gateways" }).to,
       linkOptions({ to: "/organization/settings" }).to,
       linkOptions({ to: "/organization/audit-logs" }).to
     ] as string[]
@@ -264,71 +268,99 @@ export const MinimizedOrgSidebar = () => {
               </DropdownMenu>
             </div>
             <div className="space-y-1">
-              <Link to="/organization/secret-manager/overview">
-                {({ isActive }) => (
-                  <MenuIconButton
-                    isSelected={
-                      isActive ||
-                      window.location.pathname.startsWith(`/${ProjectType.SecretManager}`)
-                    }
-                    icon="sliding-carousel"
-                  >
-                    Secrets
-                  </MenuIconButton>
-                )}
-              </Link>
-              <Link to="/organization/cert-manager/overview">
-                {({ isActive }) => (
-                  <MenuIconButton
-                    isSelected={
-                      isActive ||
-                      window.location.pathname.startsWith(`/${ProjectType.CertificateManager}`)
-                    }
-                    icon="note"
-                  >
-                    PKI
-                  </MenuIconButton>
-                )}
-              </Link>
-              <Link to="/organization/kms/overview">
-                {({ isActive }) => (
-                  <MenuIconButton
-                    isSelected={
-                      isActive || window.location.pathname.startsWith(`/${ProjectType.KMS}`)
-                    }
-                    icon="unlock"
-                  >
-                    KMS
-                  </MenuIconButton>
-                )}
-              </Link>
-              <Link to="/organization/ssh/overview">
-                {({ isActive }) => (
-                  <MenuIconButton
-                    isSelected={
-                      isActive || window.location.pathname.startsWith(`/${ProjectType.SSH}`)
-                    }
-                    icon="verified"
-                  >
-                    SSH
-                  </MenuIconButton>
-                )}
-              </Link>
-              <div className="w-full bg-mineshaft-500" style={{ height: "1px" }} />
-              <Link to="/organization/secret-scanning">
-                {({ isActive }) => (
-                  <MenuIconButton isSelected={isActive} icon="secret-scan">
-                    Scanner
-                  </MenuIconButton>
-                )}
-              </Link>
-              <Link to="/organization/secret-sharing">
-                {({ isActive }) => (
-                  <MenuIconButton isSelected={isActive} icon="lock-closed">
-                    Share
-                  </MenuIconButton>
-                )}
-              </Link>
+              {currentOrg.secretsProductEnabled && (
+                <Link to="/organization/secret-manager/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(
+                          `/organization/${ProjectType.SecretManager}`
+                        )
+                      }
+                      icon="sliding-carousel"
+                    >
+                      Secrets
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {currentOrg.pkiProductEnabled && (
+                <Link to="/organization/cert-manager/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(
+                          `/organization/${ProjectType.CertificateManager}`
+                        )
+                      }
+                      icon="note"
+                    >
+                      PKI
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {currentOrg.kmsProductEnabled && (
+                <Link to="/organization/kms/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(`/organization/${ProjectType.KMS}`)
+                      }
+                      icon="unlock"
+                    >
+                      KMS
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {currentOrg.sshProductEnabled && (
+                <Link to="/organization/ssh/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(`/organization/${ProjectType.SSH}`)
+                      }
+                      icon="verified"
+                    >
+                      SSH
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {currentOrg.scannerProductEnabled && (
+                <Link to="/organization/secret-scanning/overview">
+                  {({ isActive }) => (
+                    <MenuIconButton
+                      isSelected={
+                        isActive ||
+                        window.location.pathname.startsWith(
+                          `/organization/${ProjectType.SecretScanning}`
+                        )
+                      }
+                      icon="secret-scan"
+                    >
+                      Scanner
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
+              {(currentOrg.scannerProductEnabled || currentOrg.shareSecretsProductEnabled) && (
+                <div className="w-full bg-mineshaft-500" style={{ height: "1px" }} />
+              )}
+              {currentOrg.shareSecretsProductEnabled && (
+                <Link to="/organization/secret-sharing">
+                  {({ isActive }) => (
+                    <MenuIconButton isSelected={isActive} icon="lock-closed">
+                      Share
+                    </MenuIconButton>
+                  )}
+                </Link>
+              )}
               <div className="my-1 w-full bg-mineshaft-500" style={{ height: "1px" }} />
               <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
                 <DropdownMenuTrigger
@@ -379,6 +411,13 @@ export const MinimizedOrgSidebar = () => {
                   <Link to="/organization/audit-logs">
                     <DropdownMenuItem icon={<FontAwesomeIcon className="w-3" icon={faBook} />}>
                       Audit Logs
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link to="/organization/sso">
+                    <DropdownMenuItem
+                      icon={<FontAwesomeIcon className="w-3" icon={faCheckCircle} />}
+                    >
+                      SSO Settings
                     </DropdownMenuItem>
                   </Link>
                   <Link to="/organization/settings">

@@ -145,7 +145,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
 
           const { isUserCompleted, providerAuthToken } = await server.services.saml.samlLogin({
             externalId: profile.nameID,
-            email,
+            email: email.toLowerCase(),
             firstName,
             lastName: lastName as string,
             relayState: (req.body as { RelayState?: string }).RelayState,
@@ -166,6 +166,9 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/redirect/saml2/organizations/:orgSlug",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         orgSlug: z.string().trim()
@@ -192,6 +195,9 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/redirect/saml2/:samlConfigId",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         samlConfigId: z.string().trim()
@@ -218,6 +224,9 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/saml2/:samlConfigId",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     schema: {
       params: z.object({
         samlConfigId: z.string().trim()

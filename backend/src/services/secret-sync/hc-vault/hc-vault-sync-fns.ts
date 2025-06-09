@@ -11,6 +11,7 @@ import {
   TPostHCVaultVariable
 } from "@app/services/secret-sync/hc-vault/hc-vault-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 const listHCVaultVariables = async ({ instanceUrl, namespace, mount, accessToken, path }: THCVaultListVariables) => {
@@ -67,8 +68,9 @@ export const HCVaultSyncFns = {
   syncSecrets: async (secretSync: THCVaultSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
+      environment,
       destinationConfig: { mount, path },
-      syncOptions: { disableSecretDeletion }
+      syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
 
     const { namespace } = connection.credentials;
@@ -95,6 +97,9 @@ export const HCVaultSyncFns = {
     if (disableSecretDeletion) return;
 
     for await (const [key] of Object.entries(variables)) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
+
       if (!(key in secretMap)) {
         delete variables[key];
         tainted = true;

@@ -1,0 +1,121 @@
+---
+title: "GitHub Radar Connection"
+description: "Learn how to configure a GitHub Radar Connection for Infisical."
+---
+
+Infisical supports GitHub App installation for creating a GitHub Radar Connection.
+
+<Note>
+    GitHub Radar Connections are specifically configured for [Secret Scanning](/documentation/platform/secret-scanning/overview) and require specific permissions and webhook configuration.
+
+    Check out our [GitHub Connection](/integrations/app-connections/github) for secret management features such as [Secret Syncs](/integrations/secret-syncs/overview).
+</Note>
+
+<Accordion title="Self-Hosted Instance">
+    Using a GitHub Radar Connection with app authentication on a self-hosted instance of Infisical requires configuring an application on GitHub
+    and registering your instance with it.
+
+    <Steps>
+        <Step title="Create an application on GitHub">
+            Navigate to the GitHub App Settings [here](https://github.com/settings/apps). Click **New GitHub App**.
+
+            <Note>
+                If you have a GitHub organization, you can create an application under it
+                in your organization Settings > Developer settings > GitHub Apps > New GitHub App.
+            </Note>
+
+            ![create github radar app](/images/app-connections/github-radar/self-hosted-github-radar-step-1.png)
+
+            Configure the following fields:
+
+            1. **Name** - give your app a name
+            2. **Homepage URL** - your self-hosted domain (i.e. `https://your-domain.com`)
+            3. **Callback URL** - the callback URL for your domain (i.e. `https://your-domain.com/organization/app-connections/github-radar/oauth/callback`)
+            4. **User Authorization** - enable request user authorization on app installation
+
+            ![github radar app details](/images/app-connections/github-radar/self-hosted-github-radar-step-2.png)
+
+            Enable and configure the Webhook fields:
+
+            - **Webhook URL** - the webhook URL for your domain (i.e. `https://your-domain.com/secret-scanning/webhooks/github`)
+            - **Webhook Secret** - a strong, generated secret to verify webhook payloads
+            - **SSL Verification** - enable SSL verification
+
+            ![github radar app webhook](/images/app-connections/github-radar/self-hosted-github-radar-step-3.png)
+
+            Set the following repository permissions:
+            - **Contents**: `Read-only`
+            - **Metadata**: `Read-only`
+
+            ![github radar app permissions 1](/images/app-connections/github-radar/self-hosted-github-radar-step-4.png)
+            ![github radar app permissions 2](/images/app-connections/github-radar/self-hosted-github-radar-step-5.png)
+
+            Subscribe to the following events:
+            - **Push**
+
+            ![github radar app events](/images/app-connections/github-radar/self-hosted-github-radar-step-6.png)
+
+            Create the Github application.
+            ![github radar app complete](/images/app-connections/github-radar/self-hosted-github-radar-step-7.png)
+        </Step>
+        <Step title="Add your application credentials to Infisical">
+            Generate a new **Client Secret** for your GitHub application.
+            ![github radar app client secret](/images/app-connections/github-radar/self-hosted-github-radar-step-8.png)
+
+            Generate a new **Private Key** for your Github application.
+
+            <Info>You will need to copy the contents of the .pem file downloaded</Info>
+
+            ![github radar app private key](/images/app-connections/github-radar/self-hosted-github-radar-step-9.png)
+
+            Obtain the following credentials:
+
+            1. **Slug** - the slug of your application found in the URL
+            2. **App ID** - the ID of your application
+            3. **Client ID** - the client ID of your application
+            4. **Client Secret** - the client secret generated above
+            5. **Private Key** - the contents of the private key .pem file generated above
+            6. **Webhook Secret** - the secret generated in the previous step when configuring the webhook
+
+            ![github radar app credentials](/images/app-connections/github-radar/self-hosted-github-radar-step-10.png)
+
+            Back in your Infisical instance, add the six new environment variables for the credentials of your GitHub Radar application:
+
+            - `INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID`: The **Client ID** of your GitHub application.
+            - `INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET`: The **Client Secret** of your GitHub application.
+            - `INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG`: The **Slug** of your GitHub application. This is the one found in the URL.
+            - `INF_APP_CONNECTION_GITHUB_RADAR_APP_ID`: The **App ID** of your GitHub application.
+            - `INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY`: The **Private Key** of your GitHub application.
+            - `INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET`: The **Webhook Secret** of your GitHub application.
+
+            Once added, restart your Infisical instance and use the GitHub integration via app authentication.
+        </Step>
+    </Steps>
+</Accordion>
+
+## Setup GitHub Radar Connection in Infisical
+
+<Steps>
+    <Step title="Navigate to App Connections">
+        Navigate to the **App Connections** tab on the **Organization Settings** page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+    </Step>
+    <Step title="Add Connection">
+        Select the **GitHub Radar Connection** option from the connection options modal.
+        ![Select GitHub Radar Connection](/images/app-connections/github-radar/select-github-radar-connection.png)
+    </Step>
+    <Step title="Authorize Connection">
+        Select the **GitHub App** method and click **Connect to GitHub**.
+        ![Connect via GitHub App](/images/app-connections/github-radar/create-github-radar-app-method.png)
+    </Step>
+    <Step title="Install GitHub App">
+        You will then be redirected to the GitHub App installation page.
+
+        Install and authorize the GitHub application. This will redirect you back to Infisical's App Connections page.
+        ![Install GitHub App](/images/app-connections/github-radar/github-radar-authorize.png)
+    </Step>
+    <Step title="Connection Created">
+        Your **GitHub Radar Connection** is now available for use.
+        ![GitHub Radar Connection](/images/app-connections/github-radar/github-radar-app-created.png)
+    </Step>
+</Steps>

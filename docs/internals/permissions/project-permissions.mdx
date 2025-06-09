@@ -178,12 +178,14 @@ Supports conditions and permission inversion
 
 #### Subject: `secret-approval`
 
-| Action   | Description                         |
-| -------- | ----------------------------------- |
-| `read`   | View approval policies and requests |
-| `create` | Create new approval policies        |
-| `edit`   | Modify approval policies            |
-| `delete` | Remove approval policies            |
+| Action                | Description                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `read`                | View approval policies and requests                                                 |
+| `create`              | Create new approval policies                                                        |
+| `edit`                | Modify approval policies                                                            |
+| `delete`              | Remove approval policies                                                            |
+| `allow-change-bypass` | Allow request creators to merge changes without approval in break-glass situations  |
+| `allow-access-bypass` | Allow request creators to access secrets without approval in break-glass situations |
 
 #### Subject: `secret-rotation`
 
@@ -314,3 +316,32 @@ Supports conditions and permission inversion
 | `create` | Create new SSH certificate templates |
 | `edit`   | Modify SSH template configurations   |
 | `delete` | Remove SSH certificate templates     |
+
+### Secret Scanning
+
+#### Subject: `secret-scanning-data-sources`
+
+| Action   | Description                                          |
+| -------- | ---------------------------------------------------- |
+| `read-data-sources`          | View Data Sources                |
+| `create-data-sources`        | Create new Data Sources          |
+| `edit-data-sources`          | Modify Data Sources              |
+| `delete-data-sources`        | Remove Data Sources              |
+| `read-data-source-resources` | View Data Source Resources       |
+| `read-data-source-scans`     | View Data Source Scans           |
+| `trigger-data-source-scans`  | Trigger Data Source Secret Scans |
+
+#### Subject: `secret-scanning-findings`
+
+| Action   | Description                       |
+| -------- | --------------------------------- |
+| `read-findings`     | View Secret Scanning Findings   |
+| `update-findings`   | Update Secret Scanning Findings |
+
+
+#### Subject: `secret-scanning-configs`
+
+| Action           | Description                                      |
+| ---------------- | ------------------------------------------------ |
+| `read-configs`   | View Secret Scanning Project Configuration       |
+| `update-configs` | Update Secret Scanning Project Configuration     |

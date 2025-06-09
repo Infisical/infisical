@@ -88,7 +88,7 @@ export const SshHostGroupHostsSection = ({ sshHostGroupId }: Props) => {
       <AddHostGroupMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeHostFromSshHostGroup.isOpen}
-        title={`Are you sure want to remove ${
+        title={`Are you sure you want to remove ${
           (popUp?.removeHostFromSshHostGroup?.data as { hostname: string; alias?: string })
             ?.alias ||
           (popUp?.removeHostFromSshHostGroup?.data as { hostname: string; alias?: string })

@@ -5,14 +5,16 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
 
 <Info>
    Azure SAML SSO is a paid feature.
-   
+
    If you're using Infisical Cloud, then it is available under the **Pro Tier**. If you're self-hosting Infisical,
    then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
 <Steps>
    <Step title="Prepare the SAML SSO configuration in Infisical">
-      In Infisical, head to Organization Settings > Security and click **Connect** for SAML under the Connect to an Identity Provider section. Select Azure / Entra, then click **Connect** again.
+      In Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Click **Connect** for **SAML** under the Connect to an Identity Provider section. Select **Azure / Entra**, then click **Connect** again.
+
+      ![SSO connect section](../../../images/sso/connect-saml.png)
 
       Next, copy the **Reply URL (Assertion Consumer Service URL)** and **Identifier (Entity ID)** to use when configuring the Azure SAML application.
 
@@ -24,7 +26,7 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
       ![Azure SAML enterprise applications](../../../images/sso/azure/enterprise-applications.png)
 
       ![Azure SAML new application](../../../images/sso/azure/new-application.png)
-      
+
       On the next screen, press the **+ Create your own application** button.
       Give the application a unique name like Infisical; choose the "Integrate any other application you don't find in the gallery (Non-gallery)"
       option and hit the **Create** button.
@@ -87,9 +89,9 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
    </Step>
    <Step title="Assign users in Azure to the application">
       Back in Azure, navigate to the **Users and groups** tab and select **+ Add user/group** to assign access to the login with SSO application on a user or group-level.
-      
+
       ![Azure SAML assignment](../../../images/sso/azure/assignment.png)
-   </Step>   
+   </Step>
    <Step title="Enable SAML SSO in Infisical">
       Enabling SAML SSO allows members in your organization to log into Infisical via Azure.
 
@@ -107,7 +109,7 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
          prior to enforcing SAML SSO to prevent any unintended issues.
       </Warning>
       <Info>
-         In case of a lockout, an organization admin can use the admin login portal in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
+         In case of a lockout, an organization admin can use the [Admin Login Portal](https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal) in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
       </Info>
    </Step>
 </Steps>

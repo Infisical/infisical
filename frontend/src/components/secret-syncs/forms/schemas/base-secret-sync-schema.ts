@@ -8,18 +8,34 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
 ) => {
   const baseSyncOptionsSchema = z.object({
     initialSyncBehavior: z.nativeEnum(SecretSyncInitialSyncBehavior),
-    disableSecretDeletion: z.boolean().optional().default(false)
-    // scott: removed temporarily for evaluation of template formatting
-    // prependPrefix: z
-    //   .string()
-    //   .trim()
-    //   .transform((str) => str.toUpperCase())
-    //   .optional(),
-    // appendSuffix: z
-    //   .string()
-    //   .trim()
-    //   .transform((str) => str.toUpperCase())
-    //   .optional()
+    disableSecretDeletion: z.boolean().optional().default(false),
+    keySchema: z
+      .string()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true;
+
+          const allowedOptionalPlaceholders = ["{{environment}}"];
+
+          const allowedPlaceholdersRegexPart = ["{{secretKey}}", ...allowedOptionalPlaceholders]
+            .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
+            .join("|");
+
+          const allowedContentRegex = new RegExp(
+            `^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`
+          );
+          const contentIsValid = allowedContentRegex.test(val);
+
+          const secretKeyCount = (val.match(/\{\{secretKey\}\}/g) || []).length;
+
+          return contentIsValid && secretKeyCount === 1;
+        },
+        {
+          message:
+            "Key schema must include exactly one {{secretKey}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+        }
+      )
   });
 
   const syncOptionsSchema = additionalSyncOptions

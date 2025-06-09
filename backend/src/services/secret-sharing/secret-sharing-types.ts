@@ -22,6 +22,7 @@ export type TSharedSecretPermission = {
   accessType?: SecretSharingAccessType;
   name?: string;
   password?: string;
+  emails?: string[];
 };
 
 export type TCreatePublicSharedSecretDTO = {
@@ -36,6 +37,7 @@ export type TGetActiveSharedSecretByIdDTO = {
   sharedSecretId: string;
   hashedHex?: string;
   orgId?: string;
+  actorId?: string;
   password?: string;
 };
 

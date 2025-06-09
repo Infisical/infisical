@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { OrgMembershipRole, ProjectMembershipRole, UsersSchema } from "@app/db/schemas";
-import { inviteUserRateLimit } from "@app/server/config/rateLimiter";
+import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -11,12 +11,17 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/signup",
     config: {
-      rateLimit: inviteUserRateLimit
+      rateLimit: smtpRateLimit()
     },
     method: "POST",
     schema: {
       body: z.object({
-        inviteeEmails: z.array(z.string().trim().email()),
+        inviteeEmails: z
+          .string()
+          .trim()
+          .email()
+          .array()
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
         organizationId: z.string().trim(),
         projects: z
           .object({
@@ -76,7 +81,10 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/signup-resend",
     config: {
-      rateLimit: inviteUserRateLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) =>
+          (req.body as { membershipId?: string })?.membershipId?.trim().substring(0, 100) ?? req.realIp
+      })
     },
     method: "POST",
     schema: {
@@ -115,7 +123,11 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        email: z.string().trim().email(),
+        email: z
+          .string()
+          .trim()
+          .email()
+          .refine((val) => val === val.toLowerCase(), "Email must be lowercase"),
         organizationId: z.string().trim(),
         code: z.string().trim()
       }),

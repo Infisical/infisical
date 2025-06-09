@@ -9,7 +9,6 @@ The Infisical RabbitMQ dynamic secret allows you to generate RabbitMQ credential
 
 1. Ensure that the `management` plugin is enabled on your RabbitMQ instance. This is required for the dynamic secret to work.
 
-
 ## Set up Dynamic Secrets with RabbitMQ
 
 <Steps>
@@ -19,63 +18,90 @@ The Infisical RabbitMQ dynamic secret allows you to generate RabbitMQ credential
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
-  <Step title="Select 'RabbitMQ'">
-	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-rabbit-mq.png)
+  <Step title="Select RabbitMQ">
+	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-rabbit-mq-modal.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
 	<ParamField path="Secret Name" type="string" required>
 		Name by which you want the secret to be referenced
 	</ParamField>
 
-	<ParamField path="Default TTL" type="string" required>
-		Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
-	</ParamField>
+    <ParamField path="Default TTL" type="string" required>
+    	Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+    </ParamField>
 
-	<ParamField path="Max TTL" type="string" required>
-		Maximum time-to-live for a generated secret.
-	</ParamField>
+    <ParamField path="Max TTL" type="string" required>
+    	Maximum time-to-live for a generated secret.
+    </ParamField>
 
-	<ParamField path="Host" type="string" required>
+    <ParamField path="Host" type="string" required>
     Your RabbitMQ host. This must be in HTTP format. _(Example: http://your-cluster-ip)_
-	</ParamField>
+    </ParamField>
 
-	<ParamField path="Port" type="string" required>
-  The port that the RabbitMQ management plugin is listening on. This is `15672` by default.
-	</ParamField>
+    <ParamField path="Port" type="string" required>
 
-  <ParamField path="Virtual host name" type="string" required>
-    The name of the virtual host that the user will be assigned to. This defaults to `/`.
-  </ParamField>
+The port that the RabbitMQ management plugin is listening on. This is `15672` by default.
+</ParamField>
+
+<ParamField path="Virtual host name" type="string" required>
+  The name of the virtual host that the user will be assigned to. This defaults
+  to `/`.
+</ParamField>
 
 <ParamField path="Virtual host permissions (Read/Write/Configure)" type="string" required>
     The permissions that the user will have on the virtual host. This defaults to `.*`.
 
     The three permission fields all take a regular expression _(regex)_, that should match resource names for which the user is granted read / write / configuration permissions
+
   </ParamField>
 
+<ParamField path="Username" type="string" required>
+  The username of the user that will be used to provision new dynamic secret
+  leases.
+</ParamField>
 
-  <ParamField path="Username" type="string" required>
-    The username of the user that will be used to provision new dynamic secret leases.
+<ParamField path="Password" type="string" required>
+  The password of the user that will be used to provision new dynamic secret
+  leases.
+</ParamField>
+
+<ParamField path="Username Template" type="string" default="{{randomUsername}}">
+    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+    Allowed template variables are
+    - `{{randomUsername}}`: Random username string
+    - `{{unixTimestamp}}`: Current Unix timestamp
+    - `{{identity.name}}`: Name of the identity that is generating the secret
+    - `{{random N}}`: Random string of N characters
+
+    Allowed template functions are
+    - `truncate`: Truncates a string to a specified length
+    - `replace`: Replaces a substring with another value
+
+    Examples:
+    ```
+    {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
+    {{unixTimestamp}}                               // 17490641580
+    {{identity.name}}                               // testuser
+    {{random-5}}                                    // x9k2m
+    {{truncate identity.name 4}}                    // test
+    {{replace identity.name 'user' 'replace'}}      // testreplace
+    ```
 	</ParamField>
 
-  <ParamField path="Password" type="string" required>
-    The password of the user that will be used to provision new dynamic secret leases.
-  </ParamField>
+<ParamField path="CA(SSL)" type="string">
+   	A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
+</ParamField>
 
-	<ParamField path="CA(SSL)" type="string">
-		A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
-	</ParamField>
-
-  	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-rabbit-mq.png)
-
+![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-rabbit-mq.png)
 
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret created in the dashboard.
 
-	<Note>
-		If this step fails, you may have to add the CA certificate.
-	</Note>
+    <Note>
+    	If this step fails, you may have to add the CA certificate.
+    </Note>
 
   </Step>
   <Step title="Generate dynamic secrets">
@@ -83,34 +109,38 @@ The Infisical RabbitMQ dynamic secret allows you to generate RabbitMQ credential
 	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate-redis.png)
+    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty-redis.png)
 
-	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+    When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate  how long the credentials are valid for.
 
-	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+    ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
-	<Tip>
-		Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret.
-	</Tip>
+    <Tip>
+    	Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret.
+    </Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
+    Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
 
-	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
+    ![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
+
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
+
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
-This will allow you to see the expiration time of the lease or delete a lease before its set time to live.
+This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew Leases
+
 To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
+  secret
 </Warning>

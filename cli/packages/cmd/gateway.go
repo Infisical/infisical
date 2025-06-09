@@ -7,15 +7,76 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"sync/atomic"
 	"syscall"
 	"time"
 
+	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/gateway"
 	"github.com/Infisical/infisical-merge/packages/util"
+	infisicalSdk "github.com/infisical/go-sdk"
+	"github.com/pkg/errors"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
+
+func getInfisicalSdkInstance(cmd *cobra.Command) (infisicalSdk.InfisicalClientInterface, context.CancelFunc, error) {
+
+	ctx, cancel := context.WithCancel(cmd.Context())
+	infisicalClient := infisicalSdk.NewInfisicalClient(ctx, infisicalSdk.Config{
+		SiteUrl:   config.INFISICAL_URL,
+		UserAgent: api.USER_AGENT,
+	})
+
+	token, err := util.GetInfisicalToken(cmd)
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+
+	// if the --token param is set, we use it directly for authentication
+	if token != nil {
+		infisicalClient.Auth().SetAccessToken(token.Token)
+		return infisicalClient, cancel, nil
+	}
+
+	// if the --token param is not set, we use the auth-method flag to determine the authentication method, and perform the appropriate login flow based on that
+	authMethod, err := util.GetCmdFlagOrEnv(cmd, "auth-method", []string{util.INFISICAL_AUTH_METHOD_NAME})
+
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+
+	authMethodValid, strategy := util.IsAuthMethodValid(authMethod, false)
+	if !authMethodValid {
+		util.PrintErrorMessageAndExit(fmt.Sprintf("Invalid login method: %s", authMethod))
+	}
+
+	sdkAuthenticator := util.NewSdkAuthenticator(infisicalClient, cmd)
+
+	authStrategies := map[util.AuthStrategyType]func() (credential infisicalSdk.MachineIdentityCredential, e error){
+		util.AuthStrategy.UNIVERSAL_AUTH:    sdkAuthenticator.HandleUniversalAuthLogin,
+		util.AuthStrategy.KUBERNETES_AUTH:   sdkAuthenticator.HandleKubernetesAuthLogin,
+		util.AuthStrategy.AZURE_AUTH:        sdkAuthenticator.HandleAzureAuthLogin,
+		util.AuthStrategy.GCP_ID_TOKEN_AUTH: sdkAuthenticator.HandleGcpIdTokenAuthLogin,
+		util.AuthStrategy.GCP_IAM_AUTH:      sdkAuthenticator.HandleGcpIamAuthLogin,
+		util.AuthStrategy.AWS_IAM_AUTH:      sdkAuthenticator.HandleAwsIamAuthLogin,
+		util.AuthStrategy.OIDC_AUTH:         sdkAuthenticator.HandleOidcAuthLogin,
+		util.AuthStrategy.JWT_AUTH:          sdkAuthenticator.HandleJwtAuthLogin,
+	}
+
+	_, err = authStrategies[strategy]()
+
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+
+	return infisicalClient, cancel, nil
+}
 
 var gatewayCmd = &cobra.Command{
 	Use:   "gateway",
@@ -26,13 +87,18 @@ var gatewayCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		token, err := util.GetInfisicalToken(cmd)
-		if err != nil {
-			util.HandleError(err, "Unable to parse token flag")
-		}
 
-		if token == nil {
-			util.HandleError(fmt.Errorf("Token not found"))
+		infisicalClient, cancelSdk, err := getInfisicalSdkInstance(cmd)
+		if err != nil {
+			util.HandleError(err, "unable to get infisical client")
+		}
+		defer cancelSdk()
+
+		var accessToken atomic.Value
+		accessToken.Store(infisicalClient.Auth().GetAccessToken())
+
+		if accessToken.Load().(string) == "" {
+			util.HandleError(errors.New("no access token found"))
 		}
 
 		Telemetry.CaptureEvent("cli-command:gateway", posthog.NewProperties().Set("version", util.CLI_VERSION))
@@ -41,18 +107,47 @@ var gatewayCmd = &cobra.Command{
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sigStopCh := make(chan bool, 1)
 
-		ctx, cancel := context.WithCancel(cmd.Context())
-		defer cancel()
+		ctx, cancelCmd := context.WithCancel(cmd.Context())
+		defer cancelCmd()
 
 		go func() {
 			<-sigCh
 			close(sigStopCh)
-			cancel()
+			cancelCmd()
+			cancelSdk()
 
 			// If we get a second signal, force exit
 			<-sigCh
 			log.Warn().Msgf("Force exit triggered")
 			os.Exit(1)
+		}()
+
+		var gatewayInstance *gateway.Gateway
+
+		// Token refresh goroutine - runs every 10 seconds
+		go func() {
+			tokenRefreshTicker := time.NewTicker(10 * time.Second)
+			defer tokenRefreshTicker.Stop()
+
+			for {
+				select {
+				case <-tokenRefreshTicker.C:
+					if ctx.Err() != nil {
+						return
+					}
+
+					newToken := infisicalClient.Auth().GetAccessToken()
+					if newToken != "" && newToken != accessToken.Load().(string) {
+						accessToken.Store(newToken)
+						if gatewayInstance != nil {
+							gatewayInstance.UpdateIdentityAccessToken(newToken)
+						}
+					}
+
+				case <-ctx.Done():
+					return
+				}
+			}
 		}()
 
 		// Main gateway retry loop with proper context handling
@@ -64,7 +159,7 @@ var gatewayCmd = &cobra.Command{
 				log.Info().Msg("Shutting down gateway")
 				return
 			}
-			gatewayInstance, err := gateway.NewGateway(token.Token)
+			gatewayInstance, err := gateway.NewGateway(accessToken.Load().(string))
 			if err != nil {
 				util.HandleError(err)
 			}
@@ -126,7 +221,7 @@ var gatewayInstallCmd = &cobra.Command{
 		}
 
 		if token == nil {
-			util.HandleError(fmt.Errorf("Token not found"))
+			util.HandleError(errors.New("Token not found"))
 		}
 
 		domain, err := cmd.Flags().GetString("domain")
@@ -183,7 +278,7 @@ var gatewayRelayCmd = &cobra.Command{
 		}
 
 		if relayConfigFilePath == "" {
-			util.HandleError(fmt.Errorf("Missing config file"))
+			util.HandleError(errors.New("Missing config file"))
 		}
 
 		gatewayRelay, err := gateway.NewGatewayRelay(relayConfigFilePath)
@@ -198,7 +293,19 @@ var gatewayRelayCmd = &cobra.Command{
 }
 
 func init() {
-	gatewayCmd.Flags().String("token", "", "Connect with Infisical using machine identity access token")
+	gatewayCmd.Flags().String("token", "", "connect with Infisical using machine identity access token. if not provided, you must set the auth-method flag")
+
+	gatewayCmd.Flags().String("auth-method", "", "login method [universal-auth, kubernetes, azure, gcp-id-token, gcp-iam, aws-iam, oidc-auth]. if not provided, you must set the token flag")
+
+	gatewayCmd.Flags().String("client-id", "", "client id for universal auth")
+	gatewayCmd.Flags().String("client-secret", "", "client secret for universal auth")
+
+	gatewayCmd.Flags().String("machine-identity-id", "", "machine identity id for kubernetes, azure, gcp-id-token, gcp-iam, and aws-iam auth methods")
+	gatewayCmd.Flags().String("service-account-token-path", "", "service account token path for kubernetes auth")
+	gatewayCmd.Flags().String("service-account-key-file-path", "", "service account key file path for GCP IAM auth")
+
+	gatewayCmd.Flags().String("jwt", "", "JWT for jwt-based auth methods [oidc-auth, jwt-auth]")
+
 	gatewayInstallCmd.Flags().String("token", "", "Connect with Infisical using machine identity access token")
 	gatewayInstallCmd.Flags().String("domain", "", "Domain of your self-hosted Infisical instance")
 

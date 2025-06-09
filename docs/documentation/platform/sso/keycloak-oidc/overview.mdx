@@ -66,8 +66,8 @@ description: "Learn how to configure Keycloak OIDC for Infisical SSO."
 
     </Step>
     <Step title="Finish configuring OIDC in Infisical">
-        3.1. Back in Infisical, in the Organization settings > Security > OIDC, click Connect.
-        ![OIDC keycloak manage org Infisical](/images/sso/keycloak-oidc/manage-org-oidc.png)
+        3.1. Back in Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Click **Connect** for **OIDC**.
+        ![OIDC SSO Connect](../../../../images/sso/connect-oidc.png)
 
         3.2. For configuration type, select Discovery URL. Then, set the appropriate values for **Discovery Document URL**, **JWT Signature Algorithm**, **Client ID**, and **Client Secret**.
         ![OIDC keycloak paste values into Infisical](/images/sso/keycloak-oidc/create-oidc.png)
@@ -97,7 +97,7 @@ description: "Learn how to configure Keycloak OIDC for Infisical SSO."
             prior to enforcing OIDC SSO to prevent any unintended issues.
         </Warning>
         <Info>
-            In case of a lockout, an organization admin can use the admin login portal in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
+            In case of a lockout, an organization admin can use the [Admin Login Portal](https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal) in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
         </Info>
     </Step>
 </Steps>

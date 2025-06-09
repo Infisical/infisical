@@ -1,9 +1,14 @@
 import { z } from "zod";
 
+import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/ee/services/app-connections/oci";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import {
+  OnePassConnectionListItemSchema,
+  SanitizedOnePassConnectionSchema
+} from "@app/services/app-connection/1password";
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
 import {
@@ -29,6 +34,10 @@ import {
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
+  GitHubRadarConnectionListItemSchema,
+  SanitizedGitHubRadarConnectionSchema
+} from "@app/services/app-connection/github-radar";
+import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
@@ -38,6 +47,7 @@ import {
 } from "@app/services/app-connection/humanitec";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
+import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -61,6 +71,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAwsConnectionSchema.options,
   ...SanitizedGitHubConnectionSchema.options,
+  ...SanitizedGitHubRadarConnectionSchema.options,
   ...SanitizedGcpConnectionSchema.options,
   ...SanitizedAzureKeyVaultConnectionSchema.options,
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
@@ -70,18 +81,22 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVercelConnectionSchema.options,
   ...SanitizedPostgresConnectionSchema.options,
   ...SanitizedMsSqlConnectionSchema.options,
+  ...SanitizedMySqlConnectionSchema.options,
   ...SanitizedCamundaConnectionSchema.options,
   ...SanitizedAuth0ConnectionSchema.options,
   ...SanitizedHCVaultConnectionSchema.options,
   ...SanitizedAzureClientSecretsConnectionSchema.options,
   ...SanitizedWindmillConnectionSchema.options,
   ...SanitizedLdapConnectionSchema.options,
-  ...SanitizedTeamCityConnectionSchema.options
+  ...SanitizedTeamCityConnectionSchema.options,
+  ...SanitizedOCIConnectionSchema.options,
+  ...SanitizedOnePassConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AwsConnectionListItemSchema,
   GitHubConnectionListItemSchema,
+  GitHubRadarConnectionListItemSchema,
   GcpConnectionListItemSchema,
   AzureKeyVaultConnectionListItemSchema,
   AzureAppConfigurationConnectionListItemSchema,
@@ -91,13 +106,16 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   VercelConnectionListItemSchema,
   PostgresConnectionListItemSchema,
   MsSqlConnectionListItemSchema,
+  MySqlConnectionListItemSchema,
   CamundaConnectionListItemSchema,
   Auth0ConnectionListItemSchema,
   HCVaultConnectionListItemSchema,
   AzureClientSecretsConnectionListItemSchema,
   WindmillConnectionListItemSchema,
   LdapConnectionListItemSchema,
-  TeamCityConnectionListItemSchema
+  TeamCityConnectionListItemSchema,
+  OCIConnectionListItemSchema,
+  OnePassConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

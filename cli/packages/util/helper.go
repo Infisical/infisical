@@ -96,6 +96,11 @@ func GetInfisicalToken(cmd *cobra.Command) (token *models.TokenDetails, err erro
 			infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
 			source = fmt.Sprintf("%s environment variable", INFISICAL_TOKEN_NAME)
 		}
+
+		if infisicalToken == "" { // if its still empty, check for the `TOKEN` environment variable (for gateway helm)
+			infisicalToken = os.Getenv(INFISICAL_GATEWAY_TOKEN_NAME_LEGACY)
+			source = fmt.Sprintf("%s environment variable", INFISICAL_GATEWAY_TOKEN_NAME_LEGACY)
+		}
 	}
 
 	if infisicalToken == "" { // If it's empty, we return nothing at all.
@@ -174,7 +179,7 @@ func RequireLogin() {
 	configFile, _ := GetConfigFile()
 
 	if configFile.LoggedInUserEmail == "" {
-		PrintErrorMessageAndExit("You must be logged in to run this command. To login, run [infisical login]")
+		EstablishUserLoginSession()
 	}
 }
 
@@ -292,13 +297,18 @@ func GetEnvVarOrFileContent(envName string, filePath string) (string, error) {
 	return fileContent, nil
 }
 
-func GetCmdFlagOrEnv(cmd *cobra.Command, flag, envName string) (string, error) {
+func GetCmdFlagOrEnv(cmd *cobra.Command, flag string, envNames []string) (string, error) {
 	value, flagsErr := cmd.Flags().GetString(flag)
 	if flagsErr != nil {
 		return "", flagsErr
 	}
 	if value == "" {
-		value = os.Getenv(envName)
+		for _, env := range envNames {
+			value = strings.TrimSpace(os.Getenv(env))
+			if value != "" {
+				break
+			}
+		}
 	}
 	if value == "" {
 		return "", fmt.Errorf("please provide %s flag", flag)

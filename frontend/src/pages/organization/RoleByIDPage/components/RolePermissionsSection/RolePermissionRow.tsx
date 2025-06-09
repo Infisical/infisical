@@ -38,13 +38,6 @@ const MEMBERS_PERMISSIONS = [
   { action: "delete", label: "Remove members" }
 ] as const;
 
-const BILLING_PERMISSIONS = [
-  { action: "read", label: "View bills" },
-  { action: "create", label: "Add payment methods" },
-  { action: "edit", label: "Edit payments" },
-  { action: "delete", label: "Remove payments" }
-] as const;
-
 const PROJECT_TEMPLATES_PERMISSIONS = [
   { action: "read", label: "View & Apply" },
   { action: "create", label: "Create" },
@@ -52,18 +45,16 @@ const PROJECT_TEMPLATES_PERMISSIONS = [
   { action: "delete", label: "Remove" }
 ] as const;
 
-const getPermissionList = (option: string) => {
-  switch (option) {
-    case "secret-scanning":
-      return SECRET_SCANNING_PERMISSIONS;
-    case "billing":
-      return BILLING_PERMISSIONS;
-    case "incident-contact":
-      return INCIDENT_CONTACTS_PERMISSIONS;
+const getPermissionList = (formName: Props["formName"]) => {
+  switch (formName) {
     case "member":
       return MEMBERS_PERMISSIONS;
     case OrgPermissionSubjects.ProjectTemplates:
       return PROJECT_TEMPLATES_PERMISSIONS;
+    case "secret-scanning":
+      return SECRET_SCANNING_PERMISSIONS;
+    case "incident-contact":
+      return INCIDENT_CONTACTS_PERMISSIONS;
     default:
       return PERMISSIONS;
   }
@@ -74,7 +65,7 @@ type Props = {
   title: string;
   formName: keyof Omit<
     Exclude<TFormSchema["permissions"], undefined>,
-    "workspace" | "organization-admin-console" | "kmip" | "gateway" | "secret-share"
+    "workspace" | "organization-admin-console" | "kmip" | "gateway" | "secret-share" | "billing"
   >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;

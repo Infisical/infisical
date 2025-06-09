@@ -10,6 +10,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, FormLabel, IconButton, Input, SecretInput } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
   inputs: z.object({
@@ -50,7 +51,8 @@ const formSchema = z.object({
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     }),
-  newName: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase")
+  newName: slugSchema().optional(),
+  usernameTemplate: z.string().trim().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -80,6 +82,7 @@ export const EditDynamicSecretRabbitMqForm = ({
       defaultTTL: dynamicSecret.defaultTTL,
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
+      usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
       }
@@ -88,9 +91,17 @@ export const EditDynamicSecretRabbitMqForm = ({
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
-  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
+  const handleUpdateDynamicSecret = async ({
+    inputs,
+    maxTTL,
+    defaultTTL,
+    newName,
+    usernameTemplate
+  }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
+
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     try {
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
@@ -101,7 +112,8 @@ export const EditDynamicSecretRabbitMqForm = ({
           maxTTL: maxTTL || undefined,
           defaultTTL,
           inputs,
-          newName: newName === dynamicSecret.name ? undefined : newName
+          newName: newName === dynamicSecret.name ? undefined : newName,
+          usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
         }
       });
       onClose();
@@ -400,6 +412,26 @@ export const EditDynamicSecretRabbitMqForm = ({
                       <SecretInput
                         {...field}
                         containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                      />
+                    </FormControl>
+                  )}
+                />
+              </div>
+              <div>
+                <Controller
+                  control={control}
+                  name="usernameTemplate"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Username Template"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input
+                        {...field}
+                        value={field.value || undefined}
+                        className="border-mineshaft-600 bg-mineshaft-900 text-sm"
                       />
                     </FormControl>
                   )}

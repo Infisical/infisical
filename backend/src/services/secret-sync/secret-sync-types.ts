@@ -1,6 +1,12 @@
 import { Job } from "bullmq";
 
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
+import {
+  TOCIVaultSync,
+  TOCIVaultSyncInput,
+  TOCIVaultSyncListItem,
+  TOCIVaultSyncWithCredentials
+} from "@app/ee/services/secret-sync/oci-vault";
 import { QueueJobs } from "@app/queue";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import {
@@ -36,6 +42,12 @@ import {
   TWindmillSyncWithCredentials
 } from "@app/services/secret-sync/windmill";
 
+import {
+  TOnePassSync,
+  TOnePassSyncInput,
+  TOnePassSyncListItem,
+  TOnePassSyncWithCredentials
+} from "./1password/1password-sync-types";
 import {
   TAwsParameterStoreSync,
   TAwsParameterStoreSyncInput,
@@ -95,7 +107,9 @@ export type TSecretSync =
   | TVercelSync
   | TWindmillSync
   | THCVaultSync
-  | TTeamCitySync;
+  | TTeamCitySync
+  | TOCIVaultSync
+  | TOnePassSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -111,7 +125,9 @@ export type TSecretSyncWithCredentials =
   | TVercelSyncWithCredentials
   | TWindmillSyncWithCredentials
   | THCVaultSyncWithCredentials
-  | TTeamCitySyncWithCredentials;
+  | TTeamCitySyncWithCredentials
+  | TOCIVaultSyncWithCredentials
+  | TOnePassSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -127,7 +143,9 @@ export type TSecretSyncInput =
   | TVercelSyncInput
   | TWindmillSyncInput
   | THCVaultSyncInput
-  | TTeamCitySyncInput;
+  | TTeamCitySyncInput
+  | TOCIVaultSyncInput
+  | TOnePassSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -143,7 +161,9 @@ export type TSecretSyncListItem =
   | TVercelSyncListItem
   | TWindmillSyncListItem
   | THCVaultSyncListItem
-  | TTeamCitySyncListItem;
+  | TTeamCitySyncListItem
+  | TOCIVaultSyncListItem
+  | TOnePassSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

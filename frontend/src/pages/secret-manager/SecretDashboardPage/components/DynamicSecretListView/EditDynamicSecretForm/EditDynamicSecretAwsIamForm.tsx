@@ -5,13 +5,15 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, TextArea } from "@app/components/v2";
+import { Button, FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
-import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { DynamicSecretAwsIamAuth, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
-  inputs: z
-    .object({
+  inputs: z.discriminatedUnion("method", [
+    z.object({
+      method: z.literal(DynamicSecretAwsIamAuth.AccessKey),
       accessKey: z.string().trim().min(1),
       secretAccessKey: z.string().trim().min(1),
       region: z.string().trim().min(1),
@@ -20,8 +22,18 @@ const formSchema = z.object({
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional()
+    }),
+    z.object({
+      method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
+      roleArn: z.string().trim().min(1),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional()
     })
-    .partial(),
+  ]),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
     if (valMs < 60 * 1000)
@@ -43,10 +55,8 @@ const formSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
     })
     .nullable(),
-  newName: z
-    .string()
-    .refine((val) => val.toLowerCase() === val, "Must be lowercase")
-    .optional()
+  newName: slugSchema().optional(),
+  usernameTemplate: z.string().trim().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -67,6 +77,7 @@ export const EditDynamicSecretAwsIamForm = ({
 }: Props) => {
   const {
     control,
+    watch,
     formState: { isSubmitting },
     handleSubmit
   } = useForm<TForm>({
@@ -75,17 +86,26 @@ export const EditDynamicSecretAwsIamForm = ({
       defaultTTL: dynamicSecret.defaultTTL,
       maxTTL: dynamicSecret.maxTTL,
       newName: dynamicSecret.name,
+      usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
       }
     }
   });
+  const isAccessKeyMethod = watch("inputs.method") === DynamicSecretAwsIamAuth.AccessKey;
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
-  const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
+  const handleUpdateDynamicSecret = async ({
+    inputs,
+    maxTTL,
+    defaultTTL,
+    newName,
+    usernameTemplate
+  }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     try {
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
@@ -96,7 +116,8 @@ export const EditDynamicSecretAwsIamForm = ({
           maxTTL: maxTTL || undefined,
           defaultTTL,
           inputs,
-          newName: newName === dynamicSecret.name ? undefined : newName
+          newName: newName === dynamicSecret.name ? undefined : newName,
+          usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
         }
       });
       onClose();
@@ -165,38 +186,82 @@ export const EditDynamicSecretAwsIamForm = ({
         <div>
           <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
           <div className="flex flex-col">
-            <div className="flex items-center space-x-2">
-              <Controller
-                control={control}
-                name="inputs.accessKey"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="AWS Access Key"
-                    className="flex-grow"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
+            <Controller
+              name="inputs.method"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Method"
+                >
+                  <Select
+                    value={value}
+                    onValueChange={(val) => onChange(val)}
+                    className="w-full border border-mineshaft-500"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
                   >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="inputs.secretAccessKey"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="AWS Secret Key"
-                    className="flex-grow"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} type="password" />
-                  </FormControl>
-                )}
-              />
-            </div>
+                    <SelectItem value={DynamicSecretAwsIamAuth.AssumeRole}>
+                      Assume Role (Recommended)
+                    </SelectItem>
+                    <SelectItem value={DynamicSecretAwsIamAuth.AccessKey}>Access Key</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+            {isAccessKeyMethod ? (
+              <div className="flex items-center space-x-2">
+                <Controller
+                  control={control}
+                  name="inputs.accessKey"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="AWS Access Key"
+                      className="flex-grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="inputs.secretAccessKey"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="AWS Secret Key"
+                      className="flex-grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} type="password" />
+                    </FormControl>
+                  )}
+                />
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Controller
+                  control={control}
+                  name="inputs.roleArn"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Assume Role ARN"
+                      className="flex-grow"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input {...field} />
+                    </FormControl>
+                  )}
+                />
+              </div>
+            )}
             <div className="flex items-center space-x-2">
               <Controller
                 control={control}
@@ -292,6 +357,24 @@ export const EditDynamicSecretAwsIamForm = ({
                     {...field}
                     reSize="none"
                     rows={3}
+                    className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="usernameTemplate"
+              defaultValue=""
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Username Template"
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                >
+                  <Input
+                    {...field}
+                    value={field.value || undefined}
                     className="border-mineshaft-600 bg-mineshaft-900 text-sm"
                   />
                 </FormControl>

@@ -88,7 +88,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         sharedSecretId: req.params.id,
         hashedHex: req.body.hashedHex,
         password: req.body.password,
-        orgId: req.permission?.orgId
+        orgId: req.permission?.orgId,
+        actorId: req.permission?.id
       });
 
       if (sharedSecret.secret?.orgId) {
@@ -151,7 +152,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         secretValue: z.string(),
         expiresAt: z.string(),
         expiresAfterViews: z.number().min(1).optional(),
-        accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization)
+        accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization),
+        emails: z
+          .string()
+          .email()
+          .array()
+          .max(100)
+          .optional()
+          .transform((val) => (val ? [...new Set(val)] : undefined))
       }),
       response: {
         200: z.object({

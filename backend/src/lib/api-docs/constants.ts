@@ -3,8 +3,16 @@ import {
   SECRET_ROTATION_CONNECTION_MAP,
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  AUTO_SYNC_DESCRIPTION_HELPER,
+  SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
+  SECRET_SCANNING_DATA_SOURCE_NAME_MAP
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
@@ -14,10 +22,12 @@ export enum ApiDocsTags {
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
   AwsAuth = "AWS Auth",
+  OciAuth = "OCI Auth",
   AzureAuth = "Azure Auth",
   KubernetesAuth = "Kubernetes Auth",
   JwtAuth = "JWT Auth",
   OidcAuth = "OIDC Auth",
+  LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
   Projects = "Projects",
@@ -45,6 +55,7 @@ export enum ApiDocsTags {
   PkiCertificateTemplates = "PKI Certificate Templates",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
+  PkiSubscribers = "PKI Subscribers",
   SshCertificates = "SSH Certificates",
   SshCertificateAuthorities = "SSH Certificate Authorities",
   SshCertificateTemplates = "SSH Certificate Templates",
@@ -52,7 +63,8 @@ export enum ApiDocsTags {
   SshHostGroups = "SSH Host Groups",
   KmsKeys = "KMS Keys",
   KmsEncryption = "KMS Encryption",
-  KmsSigning = "KMS Signing"
+  KmsSigning = "KMS Signing",
+  SecretScanning = "Secret Scanning"
 }
 
 export const GROUPS = {
@@ -77,6 +89,7 @@ export const GROUPS = {
     limit: "The number of users to return.",
     username: "The username to search for.",
     search: "The text string that user email or name will be filtered by.",
+    projectId: "The ID of the project the group belongs to.",
     filterUsers:
       "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
@@ -142,7 +155,9 @@ export const UNIVERSAL_AUTH = {
     accessTokenMaxTTL:
       "The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.",
     accessTokenNumUsesLimit:
-      "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses."
+      "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
+    accessTokenPeriod:
+      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the auth method for."
@@ -156,7 +171,8 @@ export const UNIVERSAL_AUTH = {
     accessTokenTrustedIps: "The new list of IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
-    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenPeriod: "The new period for an access token in seconds."
   },
   CREATE_CLIENT_SECRET: {
     identityId: "The ID of the identity to create a client secret for.",
@@ -181,6 +197,49 @@ export const UNIVERSAL_AUTH = {
   },
   REVOKE_ACCESS_TOKEN: {
     accessToken: "The access token to revoke."
+  }
+} as const;
+
+export const LDAP_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    username: "The username of the LDAP user to login.",
+    password: "The password of the LDAP user to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    url: "The URL of the LDAP server.",
+    allowedFields:
+      "The comma-separated array of key/value pairs of required fields that the LDAP entry must have in order to authenticate.",
+    searchBase: "The base DN to search for the LDAP user.",
+    searchFilter: "The filter to use to search for the LDAP user.",
+    bindDN: "The DN of the user to bind to the LDAP server.",
+    bindPass: "The password of the user to bind to the LDAP server.",
+    ldapCaCertificate: "The PEM-encoded CA certificate for the LDAP server.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the configuration for.",
+    url: "The new URL of the LDAP server.",
+    allowedFields: "The comma-separated list of allowed fields to return from the LDAP user.",
+    searchBase: "The new base DN to search for the LDAP user.",
+    searchFilter: "The new filter to use to search for the LDAP user.",
+    bindDN: "The new DN of the user to bind to the LDAP server.",
+    bindPass: "The new password of the user to bind to the LDAP server.",
+    ldapCaCertificate: "The new PEM-encoded CA certificate for the LDAP server.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the configuration for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the configuration for."
   }
 } as const;
 
@@ -215,6 +274,40 @@ export const AWS_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     stsEndpoint: "The new endpoint URL for the AWS STS API.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
+export const OCI_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    userOcid: "The OCID of the user attempting login.",
+    headers: "The headers of the signed request."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    tenancyOcid: "The OCID of your tenancy.",
+    allowedUsernames:
+      "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    tenancyOcid: "The OCID of your tenancy.",
+    allowedUsernames:
+      "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
   },
@@ -308,11 +401,14 @@ export const KUBERNETES_AUTH = {
     caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
+    tokenReviewMode:
+      "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
     allowedAudience:
       "The optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -324,11 +420,14 @@ export const KUBERNETES_AUTH = {
     caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
+    tokenReviewMode:
+      "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The new comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
     allowedAudience:
       "The new optional audience claim that the service account JWT token must have to authenticate with Infisical.",
+    gatewayId: "The ID of the gateway to use when performing kubernetes API requests.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an acccess token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an acccess token in seconds.",
@@ -526,7 +625,8 @@ export const PROJECTS = {
     projectDescription: "An optional description label for the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project.",
     slug: "An optional slug for the project. (must be unique within the organization)",
-    hasDeleteProtection: "Enable or disable delete protection for the project."
+    hasDeleteProtection: "Enable or disable delete protection for the project.",
+    secretSharing: "Enable or disable secret sharing for the project."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -595,6 +695,9 @@ export const PROJECTS = {
     commonName: "The common name of the certificate to filter by.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
     limit: "The number of certificates to return."
+  },
+  LIST_PKI_SUBSCRIBERS: {
+    projectId: "The ID of the project to list PKI subscribers for."
   }
 } as const;
 
@@ -1434,7 +1537,7 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project.",
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project.",
     userSshCaId:
       "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
     hostSshCaId:
@@ -1449,7 +1552,7 @@ export const SSH_HOSTS = {
     loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
     allowedPrincipals: "A list of allowed principals that can log in as the login user.",
     loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
+      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project."
   },
   DELETE: {
     sshHostId: "The ID of the SSH host to delete."
@@ -1621,6 +1724,19 @@ export const CERTIFICATES = {
     certificateChain: "The certificate chain of the certificate.",
     serialNumberRes: "The serial number of the certificate.",
     privateKey: "The private key of the certificate."
+  },
+  IMPORT: {
+    projectSlug: "Slug of the project to import the certificate into.",
+    certificatePem: "The PEM-encoded leaf certificate.",
+    privateKeyPem: "The PEM-encoded private key corresponding to the certificate.",
+    chainPem: "The PEM-encoded chain of intermediate certificates.",
+    friendlyName: "A friendly name for the certificate.",
+    pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+
+    certificate: "The issued certificate.",
+    certificateChain: "The certificate chain of the issued certificate.",
+    privateKey: "The private key of the issued certificate.",
+    serialNumber: "The serial number of the issued certificate."
   }
 };
 
@@ -1684,6 +1800,79 @@ export const ALERTS = {
   },
   DELETE: {
     alertId: "The ID of the alert to delete."
+  }
+};
+
+export const PKI_SUBSCRIBERS = {
+  GET: {
+    subscriberName: "The name of the PKI subscriber to get.",
+    projectId: "The ID of the project to get the PKI subscriber for."
+  },
+  GET_LATEST_CERT_BUNDLE: {
+    subscriberName: "The name of the PKI subscriber to get the active certificate bundle for.",
+    projectId: "The ID of the project to get the active certificate bundle for.",
+    certificate: "The active certificate for the subscriber.",
+    certificateChain: "The certificate chain of the active certificate for the subscriber.",
+    privateKey: "The private key of the active certificate for the subscriber.",
+    serialNumber: "The serial number of the active certificate for the subscriber."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the PKI subscriber in.",
+    caId: "The ID of the CA that will issue certificates for the PKI subscriber.",
+    name: "The name of the PKI subscriber.",
+    commonName: "The common name (CN) to be used on certificates issued for this subscriber.",
+    status: "The status of the PKI subscriber. This can be one of active or disabled.",
+    ttl: "The time to live for the certificates issued for this subscriber such as 1m, 1h, 1d, 1y, ...",
+    subjectAlternativeNames:
+      "A list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
+    keyUsages: "The key usage extension to be used on certificates issued for this subscriber.",
+    extendedKeyUsages: "The extended key usage extension to be used on certificates issued for this subscriber.",
+    enableAutoRenewal: "Whether or not to enable auto renewal for the PKI subscriber.",
+    autoRenewalPeriodInDays: "The period in days to auto renew the PKI subscriber's certificates."
+  },
+  UPDATE: {
+    projectId: "The ID of the project to update the PKI subscriber in.",
+    subscriberName: "The name of the PKI subscriber to update.",
+    caId: "The ID of the CA that will issue certificates for the PKI subscriber to update to.",
+    name: "The name of the PKI subscriber to update to.",
+    commonName: "The common name (CN) to be used on certificates issued for this subscriber to update to.",
+    status: "The status of the PKI subscriber to update to. This can be one of active or disabled.",
+    ttl: "The time to live for the certificates issued for this subscriber such as 1m, 1h, 1d, 1y, ...",
+    subjectAlternativeNames:
+      "A comma-delimited list of Subject Alternative Names (SANs) to be used on certificates issued for this subscriber; these can be host names or email addresses.",
+    keyUsages: "The key usage extension to be used on certificates issued for this subscriber to update to.",
+    extendedKeyUsages:
+      "The extended key usage extension to be used on certificates issued for this subscriber to update to.",
+    enableAutoRenewal: "Whether or not to enable auto renewal for the PKI subscriber.",
+    autoRenewalPeriodInDays: "The period in days to auto renew the PKI subscriber's certificates."
+  },
+  DELETE: {
+    subscriberName: "The name of the PKI subscriber to delete.",
+    projectId: "The ID of the project of the PKI subscriber to delete."
+  },
+  ISSUE_CERT: {
+    subscriberName: "The name of the PKI subscriber to issue the certificate for.",
+    projectId: "The ID of the project of the PKI subscriber to issue the certificate for.",
+    certificate: "The issued certificate.",
+    issuingCaCertificate: "The certificate of the issuing CA.",
+    certificateChain: "The certificate chain of the issued certificate.",
+    privateKey: "The private key of the issued certificate.",
+    serialNumber: "The serial number of the issued certificate."
+  },
+  SIGN_CERT: {
+    subscriberName: "The name of the PKI subscriber to sign the certificate for.",
+    projectId: "The ID of the project of the PKI subscriber to sign the certificate for.",
+    csr: "The CSR to be used to sign the certificate.",
+    certificate: "The signed certificate.",
+    issuingCaCertificate: "The certificate of the issuing CA.",
+    certificateChain: "The certificate chain of the signed certificate.",
+    serialNumber: "The serial number of the signed certificate."
+  },
+  LIST_CERTS: {
+    subscriberName: "The name of the PKI subscriber to list the certificates for.",
+    projectId: "The ID of the project of the PKI subscriber to list the certificates for.",
+    offset: "The offset to start from.",
+    limit: "The number of certificates to return."
   }
 };
 
@@ -1822,8 +2011,12 @@ export const KMS = {
 };
 
 export const ProjectTemplates = {
+  LIST: {
+    type: "The type of project template to list."
+  },
   CREATE: {
     name: "The name of the project template to be created. Must be slug-friendly.",
+    type: "The type of project template to be created.",
     description: "An optional description of the project template.",
     roles: "The roles to be created when the template is applied to a project.",
     environments: "The environments to be created when the template is applied to a project."
@@ -1837,6 +2030,47 @@ export const ProjectTemplates = {
   },
   DELETE: {
     templateId: "The ID of the project template to be deleted."
+  }
+};
+
+export const CertificateAuthorities = {
+  CREATE: (type: CaType) => ({
+    name: `The name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to create. Must be slug-friendly.`,
+    projectId: `The ID of the project to create the Certificate Authority in.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
+    status: `The status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+  }),
+  UPDATE: (type: CaType) => ({
+    caId: `The ID of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to update.`,
+    projectId: `The ID of the project to update the Certificate Authority in.`,
+    name: `The updated name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority. Must be slug-friendly.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
+    status: `The updated status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+  }),
+  CONFIGURATIONS: {
+    ACME: {
+      dnsAppConnectionId: `The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.`,
+      directoryUrl: `The directory URL for the ACME Certificate Authority.`,
+      accountEmail: `The email address for the ACME Certificate Authority.`,
+      provider: `The DNS provider for the ACME Certificate Authority.`,
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`
+    },
+    INTERNAL: {
+      type: "The type of CA to create.",
+      friendlyName: "A friendly name for the CA.",
+      organization: "The organization (O) for the CA.",
+      ou: "The organization unit (OU) for the CA.",
+      country: "The country name (C) for the CA.",
+      province: "The state of province name for the CA.",
+      locality: "The locality name for the CA.",
+      commonName: "The common name (CN) for the CA.",
+      notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+      notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+      maxPathLength:
+        "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
+      keyAlgorithm:
+        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA."
+    }
   }
 };
 
@@ -1912,7 +2146,7 @@ export const AppConnections = {
     LDAP: {
       provider: "The type of LDAP provider. Determines provider-specific behaviors.",
       url: "The LDAP/LDAPS URL to connect to (e.g., 'ldap://domain-or-ip:389' or 'ldaps://domain-or-ip:636').",
-      dn: "The Distinguished Name (DN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
+      dn: "The Distinguished Name (DN) or User Principal Name (UPN) of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com').",
       password: "The password to bind with for authentication.",
       sslRejectUnauthorized:
         "Whether or not to reject unauthorized SSL certificates (true/false) when using ldaps://. Set to false only in test environments.",
@@ -1926,6 +2160,17 @@ export const AppConnections = {
     AZURE_CLIENT_SECRETS: {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
+    },
+    OCI: {
+      userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
+      tenancyOcid: "The OCID (Oracle Cloud Identifier) of the tenancy in Oracle Cloud Infrastructure.",
+      region: "The region identifier in Oracle Cloud Infrastructure where the vault is located.",
+      fingerprint: "The fingerprint of the public key uploaded to the user's API keys.",
+      privateKey: "The private key content in PEM format used to sign API requests."
+    },
+    ONEPASS: {
+      instanceUrl: "The URL of the 1Password Connect Server instance to authenticate with.",
+      apiToken: "The API token used to access the 1Password Connect Server."
     }
   }
 };
@@ -1989,6 +2234,7 @@ export const SecretSyncs = {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
+      keySchema: `Specify the format to use for structuring secret keys in the ${destinationName} destination.`,
       disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`
     };
   },
@@ -2031,7 +2277,8 @@ export const SecretSyncs = {
     },
     GCP: {
       scope: "The Google project scope that secrets should be synced to.",
-      projectId: "The ID of the Google project secrets should be synced to."
+      projectId: "The ID of the Google project secrets should be synced to.",
+      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").'
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."
@@ -2073,6 +2320,14 @@ export const SecretSyncs = {
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",
       buildConfig: "The TeamCity build configuration to sync secrets to."
+    },
+    OCI_VAULT: {
+      compartmentOcid: "The OCID (Oracle Cloud Identifier) of the compartment where the vault is located.",
+      vaultOcid: "The OCID (Oracle Cloud Identifier) of the vault to sync secrets to.",
+      keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
+    },
+    ONEPASS: {
+      vaultId: "The ID of the 1Password vault to sync secrets to."
     }
   }
 };
@@ -2144,7 +2399,10 @@ export const SecretRotations = {
       clientId: "The client ID of the Azure Application to rotate the client secret for."
     },
     LDAP_PASSWORD: {
-      dn: "The Distinguished Name (DN) of the principal to rotate the password for."
+      dn: "The Distinguished Name (DN) or User Principal Name (UPN) of the principal to rotate the password for.",
+      rotationMethod:
+        'Whether the rotation should be performed by the LDAP "connection-principal" or the "target-principal" (defaults to \'connection-principal\').',
+      password: 'The password of the provided principal if "parameters.rotationMethod" is set to "target-principal".'
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {
@@ -2178,12 +2436,90 @@ export const SecretRotations = {
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     },
     LDAP_PASSWORD: {
-      dn: "The name of the secret that the Distinguished Name (DN) of the principal will be mapped to.",
+      dn: "The name of the secret that the Distinguished Name (DN) or User Principal Name (UPN) of the principal will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },
     AWS_IAM_USER_SECRET: {
       accessKeyId: "The name of the secret that the access key ID will be mapped to.",
       secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
     }
+  }
+};
+
+export const SecretScanningDataSources = {
+  LIST: (type?: SecretScanningDataSource) => ({
+    projectId: `The ID of the project to list ${type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"} Data Sources from.`
+  }),
+  GET_BY_ID: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
+  }),
+  GET_BY_NAME: (type: SecretScanningDataSource) => ({
+    sourceName: `The name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`,
+    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in.`
+  }),
+  CREATE: (type: SecretScanningDataSource) => {
+    const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+    const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
+    return {
+      name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
+      description: `An optional description for the ${sourceType} Data Source.`,
+      projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
+      connectionId: `The ID of the ${
+        APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
+      } Connection to use for this Data Source.`,
+      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      config: `The configuration parameters to use for this Data Source.`
+    };
+  },
+  UPDATE: (type: SecretScanningDataSource) => {
+    const typeName = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+    const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
+
+    return {
+      dataSourceId: `The ID of the ${typeName} Data Source to be updated.`,
+      name: `The updated name of the ${typeName} Data Source. Must be slug-friendly.`,
+      description: `The updated description of the ${typeName} Data Source.`,
+      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      config: `The updated configuration parameters to use for this Data Source.`
+    };
+  },
+  DELETE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to be deleted.`
+  }),
+  SCAN: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to trigger a scan for.`,
+    resourceId: `The ID of the individual Data Source resource to trigger a scan for.`
+  }),
+  LIST_RESOURCES: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list resources from.`
+  }),
+  LIST_SCANS: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list scans for.`
+  }),
+  CONFIG: {
+    GITHUB: {
+      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+    }
+  }
+};
+
+export const SecretScanningFindings = {
+  LIST: {
+    projectId: `The ID of the project to list Secret Scanning Findings from.`
+  },
+  UPDATE: {
+    findingId: "The ID of the Secret Scanning Finding to update.",
+    status: "The updated status of the specified Secret Scanning Finding.",
+    remarks: "Remarks pertaining to the status of this finding."
+  }
+};
+
+export const SecretScanningConfigs = {
+  GET_BY_PROJECT_ID: {
+    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for.`
+  },
+  UPDATE: {
+    projectId: "The ID of the project to update the Secret Scanning Configuration for.",
+    content: "The contents of the Secret Scanning Configuration file."
   }
 };

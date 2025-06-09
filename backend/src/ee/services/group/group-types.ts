@@ -42,6 +42,10 @@ export type TListGroupUsersDTO = {
   filter?: EFilterReturnedUsers;
 } & TGenericPermission;
 
+export type TListProjectGroupUsersDTO = TListGroupUsersDTO & {
+  projectId: string;
+};
+
 export type TAddUserToGroupDTO = {
   id: string;
   username: string;

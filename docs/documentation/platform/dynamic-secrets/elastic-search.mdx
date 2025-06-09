@@ -7,13 +7,14 @@ The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch 
 
 ## Prerequisites
 
-
-
 1. Create a role with at least `manage_security` and `monitor` permissions.
 2. Assign the newly created role to your API key or user that you'll use later in the dynamic secret configuration.
 
 <Note>
-  For testing purposes, you can also use a highly privileged role like `superuser`, that will have full control over the cluster. This is not recommended in production environments following the principle of least privilege.
+  For testing purposes, you can also use a highly privileged role like
+  `superuser`, that will have full control over the cluster. This is not
+  recommended in production environments following the principle of least
+  privilege.
 </Note>
 
 ## Set up Dynamic Secrets with Elasticsearch
@@ -33,60 +34,92 @@ The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch 
 		Name by which you want the secret to be referenced
 	</ParamField>
 
-	<ParamField path="Default TTL" type="string" required>
-		Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
-	</ParamField>
+    <ParamField path="Default TTL" type="string" required>
+    	Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+    </ParamField>
 
-	<ParamField path="Max TTL" type="string" required>
-		Maximum time-to-live for a generated secret.
-	</ParamField>
+    <ParamField path="Max TTL" type="string" required>
+    	Maximum time-to-live for a generated secret.
+    </ParamField>
 
-	<ParamField path="Host" type="string" required>
+    <ParamField path="Host" type="string" required>
     Your Elasticsearch host. This is the endpoint that your instance runs on. _(Example: https://your-cluster-ip)_
-	</ParamField>
+    </ParamField>
 
-	<ParamField path="Port" type="string" required>
-  The port that your Elasticsearch instance is running on. _(Example: 9200)_
-	</ParamField>
+    <ParamField path="Port" type="string" required>
 
-  <ParamField path="Roles" type="string[]" required>
-    The roles that the new user that is created when a lease is provisioned will be assigned to. This is a required field. This defaults to `superuser`, which is highly privileged. It is recommended to create a new role with the least privileges required for the lease.
-  </ParamField>
+The port that your Elasticsearch instance is running on. _(Example: 9200)_
+</ParamField>
 
-	<ParamField path="Authentication Method" type="API Key | Username/Password" required>
+<ParamField path="Roles" type="string[]" required>
+  The roles that the new user that is created when a lease is provisioned will
+  be assigned to. This is a required field. This defaults to `superuser`, which
+  is highly privileged. It is recommended to create a new role with the least
+  privileges required for the lease.
+</ParamField>
+
+    <ParamField path="Authentication Method" type="API Key | Username/Password" required>
     Select the authentication method you want to use to connect to your Elasticsearch instance.
+    </ParamField>
+
+<ParamField path="Username" type="string" required>
+  The username of the user that will be used to provision new dynamic secret
+  leases. Only required if you selected the `Username/Password` authentication
+  method.
+</ParamField>
+
+<ParamField path="Password" type="string" required>
+  The password of the user that will be used to provision new dynamic secret
+  leases. Only required if you selected the `Username/Password` authentication
+  method.
+</ParamField>
+
+<ParamField path="API Key ID" required>
+  The ID of the API key that will be used to provision new dynamic secret
+  leases. Only required if you selected the `API Key` authentication method.
+</ParamField>
+
+<ParamField path="API Key" required>
+  The API key that will be used to provision new dynamic secret leases. Only
+  required if you selected the `API Key` authentication method.
+</ParamField>
+
+    <ParamField path="CA(SSL)" type="string">
+    	A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
+    </ParamField>
+<ParamField path="Username Template" type="string" default="{{randomUsername}}">
+    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+    Allowed template variables are
+    - `{{randomUsername}}`: Random username string
+    - `{{unixTimestamp}}`: Current Unix timestamp
+    - `{{identity.name}}`: Name of the identity that is generating the secret
+    - `{{random N}}`: Random string of N characters
+
+    Allowed template functions are
+    - `truncate`: Truncates a string to a specified length
+    - `replace`: Replaces a substring with another value
+
+    Examples:
+    ```
+    {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
+    {{unixTimestamp}}                               // 17490641580
+    {{identity.name}}                               // testuser
+    {{random-5}}                                    // x9k2m
+    {{truncate identity.name 4}}                    // test
+    {{replace identity.name 'user' 'replace'}}      // testreplace
+    ```
 	</ParamField>
 
-  <ParamField path="Username" type="string" required>
-    The username of the user that will be used to provision new dynamic secret leases. Only required if you selected the `Username/Password` authentication method.
-	</ParamField>
-
-  <ParamField path="Password" type="string" required>
-    The password of the user that will be used to provision new dynamic secret leases. Only required if you selected the `Username/Password` authentication method.
-  </ParamField>
-
-  <ParamField path="API Key ID" required>
-    The ID of the API key that will be used to provision new dynamic secret leases. Only required if you selected the `API Key` authentication method.
-  </ParamField>
-
-  <ParamField path="API Key" required>
-    The API key that will be used to provision new dynamic secret leases. Only required if you selected the `API Key` authentication method.
-  </ParamField>
-
-	<ParamField path="CA(SSL)" type="string">
-		A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
-	</ParamField>
-
-  	![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-elastic-search.png)
-
+![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-elastic-search.png)
 
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret created in the dashboard.
 
-	<Note>
-		If this step fails, you may have to add the CA certificate.
-	</Note>
+    <Note>
+    	If this step fails, you may have to add the CA certificate.
+    </Note>
 
   </Step>
   <Step title="Generate dynamic secrets">
@@ -94,34 +127,38 @@ The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch 
 	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate-redis.png)
+    ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty-redis.png)
 
-	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+    When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate  how long the credentials are valid for.
 
-	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+    ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
 
-	<Tip>
-		Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret.
-	</Tip>
+    <Tip>
+    	Ensure that the TTL for the lease fall within the maximum TTL defined when configuring the dynamic secret.
+    </Tip>
 
 
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
+    Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
 
-	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
+    ![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
+
   </Step>
 </Steps>
 
 ## Audit or Revoke Leases
+
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
-This will allow you to see the expiration time of the lease or delete a lease before its set time to live.
+This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew Leases
+
 To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
+  secret
 </Warning>

@@ -7,7 +7,7 @@ description: "Learn how to create a Private CA hierarchy with Infisical."
 ## Concept
 
 The first step to creating your Internal PKI is to create a Private Certificate Authority (CA) hierarchy that is a structure of entities
-used to issue digital certificates for services, applications, and devices.
+used to issue digital certificates for your [subscribers](/documentation/platform/pki/subscribers).
 
 <div align="center">
 
@@ -24,7 +24,7 @@ graph TD
 
 A typical workflow for setting up a Private CA hierarchy consists of the following steps:
 
-1. Configuring an Infisical root CA with details like name, validity period, and path length — This step is optional if you wish to use an external root CA.
+1. Configuring an Infisical root CA with details like name, validity period, and path length — This step is optional if you wish to use an external root CA with Infisical only serving the intermediate CAs.
 2. Configuring and chaining intermediate CA(s) with details like name, validity period, path length, and imported certificate to your Root CA.
 3. Managing the CA lifecycle events such as CA succession.
 
@@ -99,7 +99,7 @@ consisting of an (optional) root CA and an intermediate CA.
         ![pki cas](/images/platform/pki/ca/cas.png)
 
         Great! You've successfully created a Private CA hierarchy with a root CA and an intermediate CA.
-        Now check out the [Certificates](/documentation/platform/pki/certificates) page to learn more about how to issue X.509 certificates using the intermediate CA.
+        Now check out the [Subscribers](/documentation/platform/pki/subscribers) page to learn more about how to issue X.509 certificates using the intermediate CA.
 
         2.3b. If you have an external root CA, select **External CA** for the **Parent CA Type** field.
 
@@ -110,7 +110,7 @@ consisting of an (optional) root CA and an intermediate CA.
         Finally, press **Install** to import the certificate and certificate chain as part of the installation step for the intermediate CA
 
         Great! You've successfully created a Private CA hierarchy with an intermediate CA chained to an external root CA.
-        Now check out the [Certificates](/documentation/platform/pki/certificates) page to learn more about how to issue X.509 certificates using the intermediate CA.
+        Now check out the [Subscribers](/documentation/platform/pki/subscribers) page to learn more about how to issue X.509 certificates using the intermediate CA.
 
 </Step>
 </Steps>
@@ -255,7 +255,7 @@ consisting of an (optional) root CA and an intermediate CA.
     }
     ```
 
-    Great! You’ve successfully created a Private CA hierarchy with a root CA and an intermediate CA. Now check out the Certificates page to learn more about how to issue X.509 certificates using the intermediate CA.
+    Great! You’ve successfully created a Private CA hierarchy with a root CA and an intermediate CA. Now check out the [Subscribers](/documentation/platform/pki/subscribers) page to learn more about how to issue X.509 certificates using the intermediate CA.
 
   </Step>
 </Steps>

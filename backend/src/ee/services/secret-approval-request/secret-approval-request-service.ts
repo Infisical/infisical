@@ -497,7 +497,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { policy, folderId, projectId } = secretApprovalRequest;
+    const { policy, folderId, projectId, bypassers } = secretApprovalRequest;
     if (policy.deletedAt) {
       throw new BadRequestError({
         message: "The policy associated with this secret approval request has been deleted."
@@ -530,8 +530,9 @@ export const secretApprovalRequestServiceFactory = ({
         approverId ? reviewers[approverId] === ApprovalStatus.APPROVED : false
       ).length;
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
+    const canBypass = !bypassers.length || bypassers.some((bypasser) => bypasser.userId === actorId);
 
-    if (!hasMinApproval && !isSoftEnforcement)
+    if (!hasMinApproval && !(isSoftEnforcement && canBypass))
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 
     const { botKey, shouldUseSecretV2Bridge, project } = await projectBotService.getBotKey(projectId);

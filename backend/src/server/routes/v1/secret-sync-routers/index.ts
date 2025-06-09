@@ -1,5 +1,7 @@
+import { registerOCIVaultSyncRouter } from "@app/ee/routes/v1/secret-sync-routers/oci-vault-sync-router";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
+import { registerOnePassSyncRouter } from "./1password-sync-router";
 import { registerAwsParameterStoreSyncRouter } from "./aws-parameter-store-sync-router";
 import { registerAwsSecretsManagerSyncRouter } from "./aws-secrets-manager-sync-router";
 import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configuration-sync-router";
@@ -31,5 +33,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Vercel]: registerVercelSyncRouter,
   [SecretSync.Windmill]: registerWindmillSyncRouter,
   [SecretSync.HCVault]: registerHCVaultSyncRouter,
-  [SecretSync.TeamCity]: registerTeamCitySyncRouter
+  [SecretSync.TeamCity]: registerTeamCitySyncRouter,
+  [SecretSync.OCIVault]: registerOCIVaultSyncRouter,
+  [SecretSync.OnePass]: registerOnePassSyncRouter
 };

@@ -1,5 +1,5 @@
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionBillingActions, OrgPermissionSubjects } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { withPermission } from "@app/hoc";
 
@@ -47,5 +47,5 @@ export const BillingTabGroup = withPermission(
       </Tabs>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Billing }
+  { action: OrgPermissionBillingActions.Read, subject: OrgPermissionSubjects.Billing }
 );

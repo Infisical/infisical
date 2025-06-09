@@ -11,7 +11,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
@@ -21,17 +21,22 @@ import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { RootKeyEncryptionStrategy } from "../kms/kms-types";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
+import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
+import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
+  CacheType,
   LoginMethod,
   TAdminBootstrapInstanceDTO,
   TAdminGetIdentitiesDTO,
   TAdminGetUsersDTO,
-  TAdminSignUpDTO
+  TAdminSignUpDTO,
+  TGetOrganizationsDTO
 } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
@@ -39,6 +44,8 @@ type TSuperAdminServiceFactoryDep = {
   identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
+  orgDAL: TOrgDALFactory;
+  orgMembershipDAL: TOrgMembershipDALFactory;
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
@@ -46,9 +53,10 @@ type TSuperAdminServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
+  invalidateCacheQueue: TInvalidateCacheQueueFactory;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -64,12 +72,14 @@ export let getServerCfg: () => Promise<
 
 const ADMIN_CONFIG_KEY = "infisical-admin-cfg";
 const ADMIN_CONFIG_KEY_EXP = 60; // 60s
-const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
+export const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
 
 export const superAdminServiceFactory = ({
   serverCfgDAL,
   userDAL,
   identityDAL,
+  orgDAL,
+  orgMembershipDAL,
   userAliasDAL,
   authService,
   orgService,
@@ -80,7 +90,8 @@ export const superAdminServiceFactory = ({
   identityAccessTokenDAL,
   identityTokenAuthDAL,
   identityOrgMembershipDAL,
-  microsoftTeamsService
+  microsoftTeamsService,
+  invalidateCacheQueue
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -242,7 +253,8 @@ export const superAdminServiceFactory = ({
 
       await microsoftTeamsService.initializeTeamsBot({
         botAppId: decryptedAppId.toString(),
-        botAppPassword: decryptedAppPassword.toString()
+        botAppPassword: decryptedAppPassword.toString(),
+        lastUpdatedAt: updatedServerCfg.updatedAt
       });
     }
 
@@ -252,8 +264,8 @@ export const superAdminServiceFactory = ({
   const adminSignUp = async ({
     lastName,
     firstName,
-    salt,
     email,
+    salt,
     password,
     verifier,
     publicKey,
@@ -267,7 +279,8 @@ export const superAdminServiceFactory = ({
     userAgent
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
-    const existingUser = await userDAL.findOne({ email });
+    const sanitizedEmail = email.trim().toLowerCase();
+    const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
     const privateKey = await getUserPrivateKey(password, {
@@ -287,8 +300,8 @@ export const superAdminServiceFactory = ({
         {
           firstName,
           lastName,
-          username: email,
-          email,
+          username: sanitizedEmail,
+          email: sanitizedEmail,
           superAdmin: true,
           isGhost: false,
           isAccepted: true,
@@ -343,12 +356,13 @@ export const superAdminServiceFactory = ({
 
   const bootstrapInstance = async ({ email, password, organizationName }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
+    const sanitizedEmail = email.trim().toLowerCase();
     const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
     if (serverCfg?.initialized) {
       throw new BadRequestError({ message: "Instance has already been set up" });
     }
 
-    const existingUser = await userDAL.findOne({ email });
+    const existingUser = await userDAL.findOne({ email: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });
 
     const userInfo = await userDAL.transaction(async (tx) => {
@@ -356,8 +370,8 @@ export const superAdminServiceFactory = ({
         {
           firstName: "Admin",
           lastName: "User",
-          username: email,
-          email,
+          username: sanitizedEmail,
+          email: sanitizedEmail,
           superAdmin: true,
           isGhost: false,
           isAccepted: true,
@@ -367,7 +381,7 @@ export const superAdminServiceFactory = ({
         tx
       );
       const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(password);
-      const encKeys = await generateUserSrpKeys(email, password);
+      const encKeys = await generateUserSrpKeys(sanitizedEmail, password);
 
       const userEnc = await userDAL.createUserEncryption(
         {
@@ -514,6 +528,47 @@ export const superAdminServiceFactory = ({
     return updatedUser;
   };
 
+  const getOrganizations = async ({ offset, limit, searchTerm }: TGetOrganizationsDTO) => {
+    const organizations = await orgDAL.findOrganizationsByFilter({
+      offset,
+      searchTerm,
+      sortBy: "name",
+      limit
+    });
+    return organizations;
+  };
+
+  const deleteOrganization = async (organizationId: string) => {
+    const organization = await orgDAL.deleteById(organizationId);
+    return organization;
+  };
+
+  const deleteOrganizationMembership = async (
+    organizationId: string,
+    membershipId: string,
+    actorId: string,
+    actorType: ActorType
+  ) => {
+    if (actorType === ActorType.USER) {
+      const orgMembership = await orgMembershipDAL.findById(membershipId);
+      if (!orgMembership) {
+        throw new NotFoundError({ name: "Organization Membership", message: "Organization membership not found" });
+      }
+
+      if (orgMembership.userId === actorId) {
+        throw new BadRequestError({
+          message: "You cannot remove yourself from the organization from the instance management panel."
+        });
+      }
+    }
+
+    const [organizationMembership] = await orgMembershipDAL.delete({
+      orgId: organizationId,
+      id: membershipId
+    });
+    return organizationMembership;
+  };
+
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
     const identities = await identityDAL.getIdentitiesByFilter({
       limit,
@@ -631,6 +686,16 @@ export const superAdminServiceFactory = ({
     await kmsService.updateEncryptionStrategy(strategy);
   };
 
+  const invalidateCache = async (type: CacheType) => {
+    await invalidateCacheQueue.startInvalidate({
+      data: { type }
+    });
+  };
+
+  const checkIfInvalidatingCache = async () => {
+    return (await keyStore.getItem("invalidating-cache")) !== null;
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
@@ -644,6 +709,11 @@ export const superAdminServiceFactory = ({
     getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
     deleteIdentitySuperAdminAccess,
-    deleteUserSuperAdminAccess
+    deleteUserSuperAdminAccess,
+    invalidateCache,
+    checkIfInvalidatingCache,
+    getOrganizations,
+    deleteOrganization,
+    deleteOrganizationMembership
   };
 };

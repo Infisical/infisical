@@ -66,7 +66,7 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
       </div>
       <DeleteActionModal
         isOpen={popUp.removeIdentityFromProject.isOpen}
-        title={`Are you sure want to remove ${
+        title={`Are you sure you want to remove ${
           (popUp?.removeIdentityFromProject?.data as { identityName: string })?.identityName || ""
         } from ${
           (popUp?.removeIdentityFromProject?.data as { projectName: string })?.projectName || ""

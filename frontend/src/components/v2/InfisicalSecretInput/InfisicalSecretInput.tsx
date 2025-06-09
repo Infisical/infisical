@@ -51,6 +51,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
   isVisible?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
+  canEditButNotView?: boolean;
   secretPath?: string;
   environment?: string;
   containerClassName?: string;
@@ -70,6 +71,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       containerClassName,
       secretPath: propSecretPath,
       environment: propEnvironment,
+      canEditButNotView,
       ...props
     },
     ref
@@ -273,6 +275,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <Popover.Trigger asChild>
           <SecretInput
             {...props}
+            canEditButNotView={canEditButNotView}
             ref={handleRef}
             onKeyDown={handleKeyDown}
             value={value}

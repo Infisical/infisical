@@ -1,16 +1,23 @@
 import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
-import { IdentitiesSchema, OrganizationsSchema, SuperAdminSchema, UsersSchema } from "@app/db/schemas";
+import {
+  IdentitiesSchema,
+  OrganizationsSchema,
+  OrgMembershipsSchema,
+  SuperAdminSchema,
+  UsersSchema
+} from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { LoginMethod } from "@app/services/super-admin/super-admin-types";
+import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
@@ -156,6 +163,129 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       return {
         users
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/organization-management/organizations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        searchTerm: z.string().default(""),
+        offset: z.coerce.number().default(0),
+        limit: z.coerce.number().max(100).default(20)
+      }),
+      response: {
+        200: z.object({
+          organizations: OrganizationsSchema.extend({
+            members: z
+              .object({
+                user: z.object({
+                  id: z.string(),
+                  email: z.string().nullish(),
+                  username: z.string(),
+                  firstName: z.string().nullish(),
+                  lastName: z.string().nullish()
+                }),
+                membershipId: z.string(),
+                role: z.string(),
+                roleId: z.string().nullish()
+              })
+              .array(),
+            projects: z
+              .object({
+                name: z.string(),
+                id: z.string(),
+                slug: z.string(),
+                createdAt: z.date()
+              })
+              .array()
+          }).array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizations = await server.services.superAdmin.getOrganizations({
+        ...req.query
+      });
+
+      return {
+        organizations
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/organization-management/organizations/:organizationId/memberships/:membershipId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string(),
+        membershipId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organizationMembership: OrgMembershipsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizationMembership = await server.services.superAdmin.deleteOrganizationMembership(
+        req.params.organizationId,
+        req.params.membershipId,
+        req.permission.id,
+        req.permission.type
+      );
+
+      return {
+        organizationMembership
+      };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/organization-management/organizations/:organizationId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organization: OrganizationsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organization = await server.services.superAdmin.deleteOrganization(req.params.organizationId);
+
+      return {
+        organization
       };
     }
   });
@@ -545,6 +675,71 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         user: user.user,
         organization,
         identity: machineIdentity
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/invalidate-cache",
+    config: {
+      rateLimit: invalidateCacheLimit
+    },
+    schema: {
+      body: z.object({
+        type: z.nativeEnum(CacheType)
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      await server.services.superAdmin.invalidateCache(req.body.type);
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.InvalidateCache,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          ...req.auditLogInfo
+        }
+      });
+
+      return {
+        message: "Cache invalidation job started"
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/invalidating-cache-status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          invalidating: z.boolean()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const invalidating = await server.services.superAdmin.checkIfInvalidatingCache();
+
+      return {
+        invalidating
       };
     }
   });

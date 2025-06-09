@@ -22,6 +22,7 @@ import {
   useCreateSshHostGroup,
   useGetSshHostGroupById,
   useGetWorkspaceUsers,
+  useListWorkspaceGroups,
   useListWorkspaceSshHostGroups,
   useUpdateSshHostGroup
 } from "@app/hooks/api";
@@ -38,7 +39,14 @@ const schema = z
     loginMappings: z
       .object({
         loginUser: z.string().trim().min(1),
-        allowedPrincipals: z.array(z.string().trim()).default([])
+        allowedPrincipals: z
+          .array(
+            z.object({
+              type: z.enum(["user", "group"]),
+              value: z.string().trim().min(1)
+            })
+          )
+          .default([])
       })
       .array()
       .default([])
@@ -49,9 +57,10 @@ export type FormData = z.infer<typeof schema>;
 
 export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
-  const { data: sshHostGroups } = useListWorkspaceSshHostGroups(currentWorkspace.id);
+  const projectId = currentWorkspace.id;
+  const { data: sshHostGroups } = useListWorkspaceSshHostGroups(projectId);
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
+  const { data: groups = [] } = useListWorkspaceGroups(projectId);
   const [expandedMappings, setExpandedMappings] = useState<Record<number, boolean>>({});
 
   const { data: sshHostGroup } = useGetSshHostGroupById(
@@ -87,7 +96,16 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
         name: sshHostGroup.name,
         loginMappings: sshHostGroup.loginMappings.map(({ loginUser, allowedPrincipals }) => ({
           loginUser,
-          allowedPrincipals: allowedPrincipals.usernames
+          allowedPrincipals: [
+            ...(allowedPrincipals.usernames || []).map((username) => ({
+              type: "user" as const,
+              value: username
+            })),
+            ...(allowedPrincipals.groups || []).map((group) => ({
+              type: "group" as const,
+              value: group
+            }))
+          ]
         }))
       });
 
@@ -118,27 +136,35 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
         return;
       }
 
+      const transformedLoginMappings = loginMappings.map(({ loginUser, allowedPrincipals }) => {
+        const usernames = allowedPrincipals
+          .filter((p) => p.type === "user" && p.value)
+          .map((p) => p.value);
+
+        const groupNames = allowedPrincipals
+          .filter((p) => p.type === "group" && p.value)
+          .map((p) => p.value);
+
+        return {
+          loginUser,
+          allowedPrincipals: {
+            usernames,
+            groups: groupNames
+          }
+        };
+      });
+
       if (sshHostGroup) {
         await updateMutateAsync({
           sshHostGroupId: sshHostGroup.id,
           name,
-          loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
-            loginUser,
-            allowedPrincipals: {
-              usernames: allowedPrincipals
-            }
-          }))
+          loginMappings: transformedLoginMappings
         });
       } else {
         await createMutateAsync({
           projectId,
           name,
-          loginMappings: loginMappings.map(({ loginUser, allowedPrincipals }) => ({
-            loginUser,
-            allowedPrincipals: {
-              usernames: allowedPrincipals
-            }
-          }))
+          loginMappings: transformedLoginMappings
         });
       }
 
@@ -163,6 +189,15 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...prev,
       [index]: !prev[index]
     }));
+  };
+
+  const isPrincipalDuplicate = (
+    mappingIndex: number,
+    principalType: string,
+    principalValue: string
+  ) => {
+    const principals = getValues(`loginMappings.${mappingIndex}.allowedPrincipals`) || [];
+    return principals.some((p) => p.type === principalType && p.value === principalValue);
   };
 
   return (
@@ -203,7 +238,10 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
               variant="outline_bg"
               onClick={() => {
                 const newIndex = loginMappingsFormFields.fields.length;
-                loginMappingsFormFields.append({ loginUser: "", allowedPrincipals: [""] });
+                loginMappingsFormFields.append({
+                  loginUser: "",
+                  allowedPrincipals: [{ type: "user", value: "" }]
+                });
                 setExpandedMappings((prev) => ({
                   ...prev,
                   [newIndex]: true
@@ -299,7 +337,10 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                           variant="outline_bg"
                           onClick={() => {
                             const current = getValues(`loginMappings.${i}.allowedPrincipals`) ?? [];
-                            setValue(`loginMappings.${i}.allowedPrincipals`, [...current, ""]);
+                            setValue(`loginMappings.${i}.allowedPrincipals`, [
+                              ...current,
+                              { type: "user", value: "" }
+                            ]);
                           }}
                         >
                           Add Principal
@@ -310,40 +351,69 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                         name={`loginMappings.${i}.allowedPrincipals`}
                         render={({ field: { value = [], onChange }, fieldState: { error } }) => (
                           <div className="flex flex-col space-y-2">
-                            {(value.length === 0 ? [""] : value).map(
-                              (principal: string, principalIndex: number) => (
-                                <div
-                                  key={`${metadataFieldId}-principal-${principal}`}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <div className="flex-1">
-                                    <Select
-                                      value={principal}
-                                      onValueChange={(newValue) => {
-                                        if (value.includes(newValue)) {
-                                          createNotification({
-                                            text: "This principal is already added",
-                                            type: "error"
-                                          });
-                                          return;
-                                        }
-                                        const newPrincipals = [...value];
-                                        newPrincipals[principalIndex] = newValue;
-                                        onChange(newPrincipals);
-                                      }}
-                                      placeholder="Select a member"
-                                      className="w-full"
-                                    >
-                                      {members.map((member) => (
-                                        <SelectItem
-                                          key={member.user.id}
-                                          value={member.user.username}
-                                        >
-                                          {member.user.username}
-                                        </SelectItem>
-                                      ))}
-                                    </Select>
-                                  </div>
+                            {value.map((principal, principalIndex) => (
+                              <div
+                                key={`principal-${i + 1}-${principalIndex + 1}-${principal.type}`}
+                                className="flex items-center space-x-2"
+                              >
+                                <div className="mr-2">
+                                  <Select
+                                    className="w-24"
+                                    value={principal.type}
+                                    onValueChange={(newType) => {
+                                      const newPrincipals = [...value];
+                                      newPrincipals[principalIndex] = {
+                                        type: newType as "user" | "group",
+                                        value: ""
+                                      };
+                                      onChange(newPrincipals);
+                                    }}
+                                  >
+                                    <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="group">Group</SelectItem>
+                                  </Select>
+                                </div>
+                                <div className="flex-1">
+                                  <Select
+                                    value={principal.value}
+                                    onValueChange={(newValue) => {
+                                      if (isPrincipalDuplicate(i, principal.type, newValue)) {
+                                        createNotification({
+                                          text: `This ${principal.type} is already added`,
+                                          type: "error"
+                                        });
+                                        return;
+                                      }
+                                      const newPrincipals = [...value];
+                                      newPrincipals[principalIndex] = {
+                                        type: principal.type as "user" | "group",
+                                        value: newValue
+                                      };
+                                      onChange(newPrincipals);
+                                    }}
+                                    placeholder={`Select a ${principal.type}`}
+                                    className="w-full"
+                                  >
+                                    {principal.type === "user"
+                                      ? members.map((member) => (
+                                          <SelectItem
+                                            key={member.user.id}
+                                            value={member.user.username}
+                                          >
+                                            {member.user.username}
+                                          </SelectItem>
+                                        ))
+                                      : groups.map((group) => (
+                                          <SelectItem
+                                            key={group.group.slug}
+                                            value={group.group.slug}
+                                          >
+                                            {group.group.slug}
+                                          </SelectItem>
+                                        ))}
+                                  </Select>
+                                </div>
+                                <div className="flex w-10 justify-center">
                                   <IconButton
                                     size="sm"
                                     ariaLabel="delete principal"
@@ -353,14 +423,14 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                                       const newPrincipals = value.filter(
                                         (_, idx) => idx !== principalIndex
                                       );
-                                      onChange(newPrincipals);
+                                      onChange(newPrincipals.length ? newPrincipals : []);
                                     }}
                                   >
                                     <FontAwesomeIcon icon={faTrash} />
                                   </IconButton>
                                 </div>
-                              )
-                            )}
+                              </div>
+                            ))}
                             {error && <span className="text-sm text-red-500">{error.message}</span>}
                           </div>
                         )}

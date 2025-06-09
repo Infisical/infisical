@@ -97,7 +97,7 @@ export const registerSshCertificateTemplateRouter = async (server: FastifyZodPro
           allowCustomKeyIds: z.boolean().describe(SSH_CERTIFICATE_TEMPLATES.CREATE.allowCustomKeyIds)
         })
         .refine((data) => ms(data.maxTTL) >= ms(data.ttl), {
-          message: "Max TLL must be greater than or equal to TTL",
+          message: "Max TTL must be greater than or equal to TTL",
           path: ["maxTTL"]
         }),
       response: {

@@ -1,10 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { TProjectTemplates } from "@app/db/schemas";
+import { ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import { getDefaultProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import {
   TCreateProjectTemplateDTO,
@@ -32,11 +33,13 @@ const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTempla
   ...rest,
   environments: environments as TProjectTemplateEnvironment[],
   roles: [
-    ...getPredefinedRoles("project-template").map(({ name, slug, permissions }) => ({
-      name,
-      slug,
-      permissions: permissions as TUnpackedPermission[]
-    })),
+    ...getPredefinedRoles({ projectId: "project-template", projectType: rest.type as ProjectType }).map(
+      ({ name, slug, permissions }) => ({
+        name,
+        slug,
+        permissions: permissions as TUnpackedPermission[]
+      })
+    ),
     ...(roles as TProjectTemplateRole[]).map((role) => ({
       ...role,
       permissions: unpackPermissions(role.permissions)
@@ -49,7 +52,7 @@ export const projectTemplateServiceFactory = ({
   permissionService,
   projectTemplateDAL
 }: TProjectTemplatesServiceFactoryDep) => {
-  const listProjectTemplatesByOrg = async (actor: OrgServiceActor) => {
+  const listProjectTemplatesByOrg = async (actor: OrgServiceActor, type?: ProjectType) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
@@ -68,11 +71,14 @@ export const projectTemplateServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
     const projectTemplates = await projectTemplateDAL.find({
-      orgId: actor.orgId
+      orgId: actor.orgId,
+      ...(type ? { type } : {})
     });
 
     return [
-      getDefaultProjectTemplate(actor.orgId),
+      ...(type
+        ? [getDefaultProjectTemplate(actor.orgId, type)]
+        : Object.values(ProjectType).map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
       ...projectTemplates.map((template) => $unpackProjectTemplate(template))
     ];
   };
@@ -134,7 +140,7 @@ export const projectTemplateServiceFactory = ({
   };
 
   const createProjectTemplate = async (
-    { roles, environments, ...params }: TCreateProjectTemplateDTO,
+    { roles, environments, type, ...params }: TCreateProjectTemplateDTO,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -154,6 +160,17 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
 
+    if (environments && type !== ProjectType.SecretManager) {
+      throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
+    }
+
+    if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
+      throw new BadRequestError({
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        message: `Failed to create project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+      });
+    }
+
     const isConflictingName = Boolean(
       await projectTemplateDAL.findOne({
         name: params.name,
@@ -169,8 +186,10 @@ export const projectTemplateServiceFactory = ({
     const projectTemplate = await projectTemplateDAL.create({
       ...params,
       roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
-      environments: JSON.stringify(environments),
-      orgId: actor.orgId
+      environments:
+        type === ProjectType.SecretManager ? JSON.stringify(environments ?? ProjectTemplateDefaultEnvironments) : null,
+      orgId: actor.orgId,
+      type
     });
 
     return $unpackProjectTemplate(projectTemplate);
@@ -201,6 +220,19 @@ export const projectTemplateServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
+
+    if (projectTemplate.type !== ProjectType.SecretManager && environments)
+      throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
+
+    if (projectTemplate.type === ProjectType.SecretManager && environments === null)
+      throw new BadRequestError({ message: "Environments cannot be removed for SecretManager project templates" });
+
+    if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
+      throw new BadRequestError({
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        message: `Failed to update project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+      });
+    }
 
     if (params.name && projectTemplate.name !== params.name) {
       const isConflictingName = Boolean(

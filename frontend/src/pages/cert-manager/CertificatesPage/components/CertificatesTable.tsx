@@ -71,7 +71,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
       <Table>
         <THead>
           <Tr>
-            <Th>Friendly Name</Th>
+            <Th>Common Name</Th>
             <Th>Status</Th>
             <Th>Not Before</Th>
             <Th>Not After</Th>
@@ -85,7 +85,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
               const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
               return (
                 <Tr className="h-10" key={`certificate-${certificate.id}`}>
-                  <Td>{certificate.friendlyName}</Td>
+                  <Td>{certificate.commonName}</Td>
                   <Td>
                     {certificate.status === CertStatus.REVOKED ? (
                       <Badge variant="danger">Revoked</Badge>

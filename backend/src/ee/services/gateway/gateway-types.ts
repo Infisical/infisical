@@ -20,7 +20,6 @@ export type TGetGatewayByIdDTO = {
 export type TUpdateGatewayByIdDTO = {
   id: string;
   name?: string;
-  projectIds?: string[];
   orgPermission: OrgServiceActor;
 };
 

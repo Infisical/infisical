@@ -2,10 +2,17 @@ import { ForbiddenError } from "@casl/ability";
 import axios, { AxiosError } from "axios";
 import https from "https";
 import jwt from "jsonwebtoken";
+import RE2 from "re2";
 
 import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -13,7 +20,9 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
@@ -25,6 +34,7 @@ import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/su
 import { TIdentityKubernetesAuthDALFactory } from "./identity-kubernetes-auth-dal";
 import { extractK8sUsername } from "./identity-kubernetes-auth-fns";
 import {
+  IdentityKubernetesAuthTokenReviewMode,
   TAttachKubernetesAuthDTO,
   TCreateTokenReviewResponse,
   TGetKubernetesAuthDTO,
@@ -43,6 +53,8 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayService: TGatewayServiceFactory;
+  gatewayDAL: Pick<TGatewayDALFactory, "find">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -53,8 +65,56 @@ export const identityKubernetesAuthServiceFactory = ({
   identityAccessTokenDAL,
   permissionService,
   licenseService,
+  gatewayService,
+  gatewayDAL,
   kmsService
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
+  const $gatewayProxyWrapper = async <T>(
+    inputs: {
+      gatewayId: string;
+      targetHost: string;
+      targetPort: number;
+      caCert?: string;
+      reviewTokenThroughGateway: boolean;
+    },
+    gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
+  ): Promise<T> => {
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
+    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
+
+    const callbackResult = await withGatewayProxy(
+      async (port, httpsAgent) => {
+        const res = await gatewayCallback(
+          inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
+          port,
+          httpsAgent
+        );
+        return res;
+      },
+      {
+        protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
+        targetHost: inputs.targetHost,
+        targetPort: inputs.targetPort,
+        relayHost,
+        relayPort: Number(relayPort),
+        identityId: relayDetails.identityId,
+        orgId: relayDetails.orgId,
+        tlsOptions: {
+          ca: relayDetails.certChain,
+          cert: relayDetails.certificate,
+          key: relayDetails.privateKey.toString()
+        },
+        // we always pass this, because its needed for both tcp and http protocol
+        httpsAgent: new https.Agent({
+          ca: inputs.caCert,
+          rejectUnauthorized: Boolean(inputs.caCert)
+        })
+      }
+    );
+
+    return callbackResult;
+  };
+
   const login = async ({ identityId, jwt: serviceAccountJwt }: TLoginKubernetesAuthDTO) => {
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
     if (!identityKubernetesAuth) {
@@ -82,56 +142,206 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert = decryptor({ cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate }).toString();
     }
 
-    let tokenReviewerJwt = "";
-    if (identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt) {
-      tokenReviewerJwt = decryptor({
-        cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
-      }).toString();
-    } else {
-      // if no token reviewer is provided means the incoming token has to act as reviewer
-      tokenReviewerJwt = serviceAccountJwt;
-    }
+    const tokenReviewCallbackRaw = async (host: string = identityKubernetesAuth.kubernetesHost, port?: number) => {
+      logger.info({ host, port }, "tokenReviewCallbackRaw: Processing kubernetes token review using raw API");
+      let tokenReviewerJwt = "";
+      if (identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt) {
+        tokenReviewerJwt = decryptor({
+          cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+        }).toString();
+      } else {
+        // if no token reviewer is provided means the incoming token has to act as reviewer
+        tokenReviewerJwt = serviceAccountJwt;
+      }
 
-    const { data } = await axios
-      .post<TCreateTokenReviewResponse>(
-        `${identityKubernetesAuth.kubernetesHost}/apis/authentication.k8s.io/v1/tokenreviews`,
-        {
-          apiVersion: "authentication.k8s.io/v1",
-          kind: "TokenReview",
-          spec: {
-            token: serviceAccountJwt,
-            ...(identityKubernetesAuth.allowedAudience ? { audiences: [identityKubernetesAuth.allowedAudience] } : {})
-          }
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${tokenReviewerJwt}`
+      let servername = identityKubernetesAuth.kubernetesHost;
+      if (servername.startsWith("https://") || servername.startsWith("http://")) {
+        servername = new RE2("^https?:\\/\\/").replace(servername, "");
+      }
+
+      // get the last colon index, if it has a port, remove it, including the colon
+      const lastColonIndex = servername.lastIndexOf(":");
+      if (lastColonIndex !== -1) {
+        servername = servername.substring(0, lastColonIndex);
+      }
+
+      const baseUrl = port ? `${host}:${port}` : host;
+
+      const res = await axios
+        .post<TCreateTokenReviewResponse>(
+          `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
+          {
+            apiVersion: "authentication.k8s.io/v1",
+            kind: "TokenReview",
+            spec: {
+              token: serviceAccountJwt,
+              ...(identityKubernetesAuth.allowedAudience ? { audiences: [identityKubernetesAuth.allowedAudience] } : {})
+            }
           },
-          signal: AbortSignal.timeout(10000),
-          timeout: 10000,
-          // if ca cert, rejectUnauthorized: true
-          httpsAgent: new https.Agent({
-            ca: caCert,
-            rejectUnauthorized: !!caCert
-          })
-        }
-      )
-      .catch((err) => {
-        if (err instanceof AxiosError) {
-          if (err.response) {
-            const { message } = err?.response?.data as unknown as { message?: string };
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tokenReviewerJwt}`
+            },
+            signal: AbortSignal.timeout(10000),
+            timeout: 10000,
+            httpsAgent: new https.Agent({
+              ca: caCert,
+              rejectUnauthorized: Boolean(caCert),
+              servername
+            })
+          }
+        )
+        .catch((err) => {
+          if (err instanceof AxiosError) {
+            if (err.response) {
+              const { message } = err?.response?.data as unknown as { message?: string };
 
-            if (message) {
-              throw new UnauthorizedError({
-                message,
-                name: "KubernetesTokenReviewRequestError"
-              });
+              if (message) {
+                throw new UnauthorizedError({
+                  message,
+                  name: "KubernetesTokenReviewRequestError"
+                });
+              }
             }
           }
-        }
-        throw err;
+          throw err;
+        });
+
+      return res.data;
+    };
+
+    const tokenReviewCallbackThroughGateway = async (
+      host: string = identityKubernetesAuth.kubernetesHost,
+      port?: number,
+      httpsAgent?: https.Agent
+    ) => {
+      logger.info(
+        {
+          host,
+          port
+        },
+        "tokenReviewCallbackThroughGateway: Processing kubernetes token review using gateway"
+      );
+
+      const baseUrl = port ? `${host}:${port}` : host;
+
+      const res = await axios
+        .post<TCreateTokenReviewResponse>(
+          `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
+          {
+            apiVersion: "authentication.k8s.io/v1",
+            kind: "TokenReview",
+            spec: {
+              token: serviceAccountJwt,
+              ...(identityKubernetesAuth.allowedAudience ? { audiences: [identityKubernetesAuth.allowedAudience] } : {})
+            }
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken
+            },
+            signal: AbortSignal.timeout(10000),
+            timeout: 10000,
+            ...(httpsAgent ? { httpsAgent } : {})
+          }
+        )
+        .catch((err) => {
+          if (err instanceof AxiosError) {
+            if (err.response) {
+              let { message } = err?.response?.data as unknown as { message?: string };
+
+              if (!message && typeof err.response.data === "string") {
+                message = err.response.data;
+              }
+
+              if (message) {
+                throw new UnauthorizedError({
+                  message,
+                  name: "KubernetesTokenReviewRequestError"
+                });
+              }
+            }
+          }
+          throw err;
+        });
+
+      return res.data;
+    };
+
+    let data: TCreateTokenReviewResponse | undefined;
+
+    if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
+      const { kubernetesHost } = identityKubernetesAuth;
+
+      let urlString = kubernetesHost;
+      if (!kubernetesHost.startsWith("http://") && !kubernetesHost.startsWith("https://")) {
+        urlString = `https://${kubernetesHost}`;
+      }
+
+      const url = new URL(urlString);
+      let { port: k8sPort } = url;
+      const { protocol, hostname: k8sHost } = url;
+
+      const cleanedProtocol = new RE2(/[^a-zA-Z0-9]/g).replace(protocol, "").toLowerCase();
+
+      if (!["https", "http"].includes(cleanedProtocol)) {
+        throw new BadRequestError({
+          message: "Invalid Kubernetes host URL, must start with http:// or https://"
+        });
+      }
+
+      if (!k8sPort) {
+        k8sPort = cleanedProtocol === "https" ? "443" : "80";
+      }
+
+      if (!identityKubernetesAuth.gatewayId) {
+        throw new BadRequestError({
+          message: "Gateway ID is required when token review mode is set to Gateway"
+        });
+      }
+
+      data = await $gatewayProxyWrapper(
+        {
+          gatewayId: identityKubernetesAuth.gatewayId,
+          targetHost: `${cleanedProtocol}://${k8sHost}`, // note(daniel): must include the protocol (https|http)
+          targetPort: k8sPort ? Number(k8sPort) : 443,
+          caCert,
+          reviewTokenThroughGateway: true
+        },
+        tokenReviewCallbackThroughGateway
+      );
+    } else if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api) {
+      let { kubernetesHost } = identityKubernetesAuth;
+      if (kubernetesHost.startsWith("https://") || kubernetesHost.startsWith("http://")) {
+        kubernetesHost = new RE2("^https?:\\/\\/").replace(kubernetesHost, "");
+      }
+
+      const [k8sHost, k8sPort] = kubernetesHost.split(":");
+
+      data = identityKubernetesAuth.gatewayId
+        ? await $gatewayProxyWrapper(
+            {
+              gatewayId: identityKubernetesAuth.gatewayId,
+              targetHost: k8sHost,
+              targetPort: k8sPort ? Number(k8sPort) : 443,
+              reviewTokenThroughGateway: false
+            },
+            tokenReviewCallbackRaw
+          )
+        : await tokenReviewCallbackRaw();
+    } else {
+      throw new BadRequestError({
+        message: `Invalid token review mode: ${identityKubernetesAuth.tokenReviewMode}`
       });
+    }
+
+    if (!data) {
+      throw new BadRequestError({
+        message: "Failed to review token"
+      });
+    }
 
     if ("error" in data.status)
       throw new UnauthorizedError({ message: data.status.error, name: "KubernetesTokenReviewError" });
@@ -206,7 +416,13 @@ export const identityKubernetesAuthServiceFactory = ({
       {
         identityId: identityKubernetesAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+        identityAuth: {
+          kubernetes: {
+            namespace: targetNamespace,
+            name: targetName
+          }
+        }
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
@@ -222,9 +438,11 @@ export const identityKubernetesAuthServiceFactory = ({
 
   const attachKubernetesAuth = async ({
     identityId,
+    gatewayId,
     kubernetesHost,
     caCert,
     tokenReviewerJwt,
+    tokenReviewMode,
     allowedNamespaces,
     allowedNames,
     allowedAudience,
@@ -280,6 +498,27 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (gatewayId) {
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
+      if (!gateway) {
+        throw new NotFoundError({
+          message: `Gateway with ID ${gatewayId} not found`
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.orgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.orgId
@@ -290,12 +529,14 @@ export const identityKubernetesAuthServiceFactory = ({
         {
           identityId: identityMembershipOrg.identityId,
           kubernetesHost,
+          tokenReviewMode,
           allowedNamespaces,
           allowedNames,
           allowedAudience,
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
+          gatewayId,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
@@ -315,9 +556,11 @@ export const identityKubernetesAuthServiceFactory = ({
     kubernetesHost,
     caCert,
     tokenReviewerJwt,
+    tokenReviewMode,
     allowedNamespaces,
     allowedNames,
     allowedAudience,
+    gatewayId,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -373,11 +616,34 @@ export const identityKubernetesAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    if (gatewayId) {
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
+      if (!gateway) {
+        throw new NotFoundError({
+          message: `Gateway with ID ${gatewayId} not found`
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.orgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
     const updateQuery: TIdentityKubernetesAuthsUpdate = {
       kubernetesHost,
+      tokenReviewMode,
       allowedNamespaces,
       allowedNames,
       allowedAudience,
+      gatewayId,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,

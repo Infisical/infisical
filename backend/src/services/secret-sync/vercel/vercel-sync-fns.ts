@@ -2,6 +2,7 @@
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { VercelEnvironmentType } from "./vercel-sync-enums";
@@ -290,6 +291,10 @@ export const VercelSyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const vercelSecret of vercelSecrets) {
+      if (!matchesSchema(vercelSecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
+        // eslint-disable-next-line no-continue
+        continue;
+
       if (!secretMap[vercelSecret.key]) {
         await deleteSecret(secretSync, vercelSecret);
       }

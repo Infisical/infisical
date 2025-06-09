@@ -49,13 +49,13 @@ func startKmipServer(cmd *cobra.Command, args []string) {
 	var identityClientSecret string
 
 	if strategy == util.AuthStrategy.UNIVERSAL_AUTH {
-		identityClientId, err = util.GetCmdFlagOrEnv(cmd, "identity-client-id", util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME)
+		identityClientId, err = util.GetCmdFlagOrEnv(cmd, "identity-client-id", []string{util.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID_NAME})
 
 		if err != nil {
 			util.HandleError(err, "Unable to parse identity client ID")
 		}
 
-		identityClientSecret, err = util.GetCmdFlagOrEnv(cmd, "identity-client-secret", util.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME)
+		identityClientSecret, err = util.GetCmdFlagOrEnv(cmd, "identity-client-secret", []string{util.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET_NAME})
 		if err != nil {
 			util.HandleError(err, "Unable to parse identity client secret")
 		}

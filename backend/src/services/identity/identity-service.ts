@@ -106,18 +106,29 @@ export const identityServiceFactory = ({
         },
         tx
       );
+
+      let insertedMetadata: Array<{
+        id: string;
+        key: string;
+        value: string;
+      }> = [];
+
       if (metadata && metadata.length) {
-        await identityMetadataDAL.insertMany(
-          metadata.map(({ key, value }) => ({
-            identityId: newIdentity.id,
-            orgId,
-            key,
-            value
-          })),
-          tx
-        );
+        const rowsToInsert = metadata.map(({ key, value }) => ({
+          identityId: newIdentity.id,
+          orgId,
+          key,
+          value
+        }));
+
+        insertedMetadata = await identityMetadataDAL.insertMany(rowsToInsert, tx);
       }
-      return { ...newIdentity, authMethods: [] };
+
+      return {
+        ...newIdentity,
+        authMethods: [],
+        metadata: insertedMetadata
+      };
     });
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
 
@@ -189,21 +200,31 @@ export const identityServiceFactory = ({
           tx
         );
       }
+      let insertedMetadata: Array<{
+        id: string;
+        key: string;
+        value: string;
+      }> = [];
+
       if (metadata) {
         await identityMetadataDAL.delete({ orgId: identityOrgMembership.orgId, identityId: id }, tx);
+
         if (metadata.length) {
-          await identityMetadataDAL.insertMany(
-            metadata.map(({ key, value }) => ({
-              identityId: newIdentity.id,
-              orgId: identityOrgMembership.orgId,
-              key,
-              value
-            })),
-            tx
-          );
+          const rowsToInsert = metadata.map(({ key, value }) => ({
+            identityId: newIdentity.id,
+            orgId: identityOrgMembership.orgId,
+            key,
+            value
+          }));
+
+          insertedMetadata = await identityMetadataDAL.insertMany(rowsToInsert, tx);
         }
       }
-      return newIdentity;
+
+      return {
+        ...newIdentity,
+        metadata: insertedMetadata
+      };
     });
 
     return { ...identity, orgId: identityOrgMembership.orgId };
@@ -224,6 +245,7 @@ export const identityServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+
     return identity;
   };
 

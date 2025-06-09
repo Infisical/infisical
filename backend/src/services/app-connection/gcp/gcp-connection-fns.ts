@@ -11,8 +11,10 @@ import { AppConnection } from "../app-connection-enums";
 import { GcpConnectionMethod } from "./gcp-connection-enums";
 import {
   GCPApp,
+  GCPGetProjectLocationsRes,
   GCPGetProjectsRes,
   GCPGetServiceRes,
+  GCPLocation,
   TGcpConnection,
   TGcpConnectionConfig
 } from "./gcp-connection-types";
@@ -143,6 +145,45 @@ export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection)
   }
 
   return projects;
+};
+
+export const getGcpSecretManagerProjectLocations = async (projectId: string, appConnection: TGcpConnection) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection);
+
+  let gcpLocations: GCPLocation[] = [];
+
+  const pageSize = 100;
+  let pageToken: string | undefined;
+  let hasMorePages = true;
+
+  while (hasMorePages) {
+    const params = new URLSearchParams({
+      pageSize: String(pageSize),
+      ...(pageToken ? { pageToken } : {})
+    });
+
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await request.get<GCPGetProjectLocationsRes>(
+      `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/locations`,
+      {
+        params,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+
+    gcpLocations = gcpLocations.concat(data.locations);
+
+    if (!data.nextPageToken) {
+      hasMorePages = false;
+    }
+
+    pageToken = data.nextPageToken;
+  }
+
+  return gcpLocations.sort((a, b) => a.displayName.localeCompare(b.displayName));
 };
 
 export const validateGcpConnectionCredentials = async (appConnection: TGcpConnectionConfig) => {

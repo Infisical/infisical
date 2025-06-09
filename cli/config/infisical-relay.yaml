@@ -1,8 +1,0 @@
-public_ip: 127.0.0.1
-auth_secret: changeThisOnProduction
-realm: infisical.org
-# set port 5349 for tls
-# port: 5349
-# tls_private_key_path: /full-path
-# tls_ca_path:  /full-path
-# tls_cert_path: /full-path

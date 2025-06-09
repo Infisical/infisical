@@ -95,7 +95,6 @@ export const SecretDetailSidebar = ({
   handleSecretShare
 }: Props) => {
   const {
-    register,
     control,
     watch,
     handleSubmit,
@@ -104,7 +103,8 @@ export const SecretDetailSidebar = ({
     formState: { isDirty, isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    values: secret
+    values: secret,
+    disabled: !secret
   });
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
@@ -398,11 +398,19 @@ export const SecretDetailSidebar = ({
                                   autoFocus={false}
                                 />
                                 <Tooltip
-                                  content="You don't have permission to view the secret value."
-                                  isDisabled={!secret?.secretValueHidden}
+                                  content={
+                                    !currentWorkspace.secretSharing
+                                      ? "This project does not allow secret sharing."
+                                      : "You don't have permission to view the secret value."
+                                  }
+                                  isDisabled={
+                                    !secret?.secretValueHidden && currentWorkspace.secretSharing
+                                  }
                                 >
                                   <Button
-                                    isDisabled={secret?.secretValueHidden}
+                                    isDisabled={
+                                      secret?.secretValueHidden || !currentWorkspace.secretSharing
+                                    }
                                     className="px-2 py-[0.43rem] font-normal"
                                     variant="outline_bg"
                                     leftIcon={<FontAwesomeIcon icon={faShare} />}
@@ -705,14 +713,25 @@ export const SecretDetailSidebar = ({
                   </FormControl>
                 </div>
               </div>
-              <FormControl label="Comments & Notes">
-                <TextArea
-                  className="border border-mineshaft-600 bg-bunker-800 text-sm"
-                  {...register("comment")}
-                  readOnly={isReadOnly}
-                  rows={5}
-                />
-              </FormControl>
+              <Controller
+                control={control}
+                name="comment"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Comments & Notes"
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    className="mb-0"
+                  >
+                    <TextArea
+                      className="border border-mineshaft-600 bg-bunker-800 text-sm"
+                      readOnly={isReadOnly}
+                      rows={5}
+                      {...field}
+                    />
+                  </FormControl>
+                )}
+              />
               <FormControl>
                 {secretReminderRepeatDays && secretReminderRepeatDays > 0 ? (
                   <div className="flex items-center justify-between px-2">
@@ -913,7 +932,9 @@ export const SecretDetailSidebar = ({
                                 variant="outline_bg"
                                 size="sm"
                                 className="h-8 w-8 rounded-md"
-                                onClick={() => setValue("value", secretValue)}
+                                onClick={() =>
+                                  setValue("value", secretValue, { shouldDirty: true })
+                                }
                               >
                                 <FontAwesomeIcon icon={faArrowRotateRight} />
                               </IconButton>

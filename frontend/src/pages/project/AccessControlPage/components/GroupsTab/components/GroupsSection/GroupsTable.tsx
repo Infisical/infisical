@@ -8,6 +8,7 @@ import {
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -27,6 +28,11 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListWorkspaceGroups } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -50,6 +56,7 @@ enum GroupsOrderBy {
 
 export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate();
 
   const {
     search,
@@ -62,7 +69,14 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
     orderDirection,
     orderBy,
     toggleOrderDirection
-  } = usePagination(GroupsOrderBy.Name, { initPerPage: 20 });
+  } = usePagination(GroupsOrderBy.Name, {
+    initPerPage: getUserTablePreference("projectGroupsTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("projectGroupsTable", PreferenceKey.PerPage, newPerPage);
+  };
 
   const { data: groupMemberships = [], isPending } = useListWorkspaceGroups(
     currentWorkspace?.id || ""
@@ -131,7 +145,32 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                 .slice(offset, perPage * page)
                 .map(({ group: { id, name }, roles, createdAt }) => {
                   return (
-                    <Tr className="group h-10" key={`st-v3-${id}`}>
+                    <Tr
+                      className="group h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                      key={`st-v3-${id}`}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(evt) => {
+                        if (evt.key === "Enter") {
+                          navigate({
+                            to: `/${currentWorkspace.type}/$projectId/groups/$groupId` as const,
+                            params: {
+                              projectId: currentWorkspace.id,
+                              groupId: id
+                            }
+                          });
+                        }
+                      }}
+                      onClick={() =>
+                        navigate({
+                          to: `/${currentWorkspace.type}/$projectId/groups/$groupId` as const,
+                          params: {
+                            projectId: currentWorkspace.id,
+                            groupId: id
+                          }
+                        })
+                      }
+                    >
                       <Td>{name}</Td>
                       <Td>
                         <ProjectPermissionCan
@@ -153,7 +192,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                               <Tooltip content="Remove">
                                 <IconButton
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handlePopUpOpen("deleteGroup", {
                                       id,
                                       name
@@ -183,7 +223,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!isPending && !filteredGroupMemberships?.length && (

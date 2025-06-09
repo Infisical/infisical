@@ -112,10 +112,19 @@
           "pages": [
             "documentation/platform/pki/overview",
             "documentation/platform/pki/private-ca",
+            "documentation/platform/pki/external-ca",
+            "documentation/platform/pki/subscribers",
             "documentation/platform/pki/certificates",
-            "documentation/platform/pki/pki-issuer",
+            "documentation/platform/pki/acme-ca",
             "documentation/platform/pki/est",
-            "documentation/platform/pki/alerting"
+            "documentation/platform/pki/alerting",
+            {
+              "group": "Integrations",
+              "pages": [
+                "documentation/platform/pki/pki-issuer",
+                "documentation/platform/pki/integration-guides/gloo-mesh"
+              ]
+            }
           ]
         },
         {
@@ -190,6 +199,7 @@
             "documentation/platform/secret-rotation/azure-client-secret",
             "documentation/platform/secret-rotation/ldap-password",
             "documentation/platform/secret-rotation/mssql-credentials",
+            "documentation/platform/secret-rotation/mysql-credentials",
             "documentation/platform/secret-rotation/postgres-credentials"
           ]
         },
@@ -215,14 +225,17 @@
             "documentation/platform/dynamic-secrets/sap-ase",
             "documentation/platform/dynamic-secrets/sap-hana",
             "documentation/platform/dynamic-secrets/snowflake",
-            "documentation/platform/dynamic-secrets/totp"
+            "documentation/platform/dynamic-secrets/totp",
+            "documentation/platform/dynamic-secrets/kubernetes",
+            "documentation/platform/dynamic-secrets/vertica"
           ]
         },
         {
           "group": "Gateway",
           "pages": [
             "documentation/platform/gateways/overview",
-            "documentation/platform/gateways/gateway-security"
+            "documentation/platform/gateways/gateway-security",
+            "documentation/platform/gateways/networking"
           ]
         },
         "documentation/platform/project-templates",
@@ -242,74 +255,113 @@
           ]
         },
         "documentation/platform/secret-sharing",
-        "documentation/platform/secret-scanning"
+        {
+          "group": "Secret Scanning",
+          "pages": [
+            "documentation/platform/secret-scanning/overview",
+            "documentation/platform/secret-scanning/github"
+          ]
+        }
       ]
     },
     {
       "group": "Authentication Methods",
       "pages": [
-        "documentation/platform/auth-methods/email-password",
-        "documentation/platform/token",
-        "documentation/platform/identities/token-auth",
-        "documentation/platform/identities/universal-auth",
-        "documentation/platform/identities/kubernetes-auth",
-        "documentation/platform/identities/gcp-auth",
-        "documentation/platform/identities/azure-auth",
-        "documentation/platform/identities/aws-auth",
-        "documentation/platform/identities/jwt-auth",
         {
-          "group": "OIDC Auth",
+          "group": "User Authentication",
           "pages": [
-            "documentation/platform/identities/oidc-auth/general",
-            "documentation/platform/identities/oidc-auth/github",
-            "documentation/platform/identities/oidc-auth/circleci",
-            "documentation/platform/identities/oidc-auth/gitlab",
-            "documentation/platform/identities/oidc-auth/terraform-cloud"
-          ]
-        },
-        "documentation/platform/mfa",
-        {
-          "group": "SSO",
-          "pages": [
-            "documentation/platform/sso/overview",
-            "documentation/platform/sso/google",
-            "documentation/platform/sso/github",
-            "documentation/platform/sso/gitlab",
-            "documentation/platform/sso/okta",
-            "documentation/platform/sso/azure",
-            "documentation/platform/sso/jumpcloud",
-            "documentation/platform/sso/keycloak-saml",
-            "documentation/platform/sso/google-saml",
-            "documentation/platform/sso/auth0-saml",
+            "documentation/platform/auth-methods/email-password",
             {
-              "group": "Keycloak OIDC",
+              "group": "SSO",
               "pages": [
-                "documentation/platform/sso/keycloak-oidc/overview",
-                "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
+                "documentation/platform/sso/overview",
+                "documentation/platform/sso/google",
+                "documentation/platform/sso/github",
+                "documentation/platform/sso/gitlab",
+                "documentation/platform/sso/okta",
+                "documentation/platform/sso/azure",
+                "documentation/platform/sso/jumpcloud",
+                "documentation/platform/sso/keycloak-saml",
+                "documentation/platform/sso/google-saml",
+                "documentation/platform/sso/auth0-saml",
+                {
+                  "group": "OIDC",
+                  "pages": [
+                    {
+                      "group": "Keycloak OIDC",
+                      "pages": [
+                        "documentation/platform/sso/keycloak-oidc/overview",
+                        "documentation/platform/sso/keycloak-oidc/group-membership-mapping"
+                      ]
+                    },
+                    "documentation/platform/sso/auth0-oidc",
+                    {
+                      "group": "General OIDC",
+                      "pages": [
+                        "documentation/platform/sso/general-oidc/overview",
+                        "documentation/platform/sso/general-oidc/group-membership-mapping"
+                      ]
+                    }
+                  ]
+                }
               ]
             },
-            "documentation/platform/sso/auth0-oidc",
-            "documentation/platform/sso/general-oidc"
+            {
+              "group": "LDAP",
+              "pages": [
+                "documentation/platform/ldap/overview",
+                "documentation/platform/ldap/jumpcloud",
+                "documentation/platform/ldap/general"
+              ]
+            },
+            {
+              "group": "SCIM",
+              "pages": [
+                "documentation/platform/scim/overview",
+                "documentation/platform/scim/okta",
+                "documentation/platform/scim/azure",
+                "documentation/platform/scim/jumpcloud",
+                "documentation/platform/scim/group-mappings"
+              ]
+            }
           ]
         },
+
         {
-          "group": "LDAP",
+          "group": "Machine Identities",
           "pages": [
-            "documentation/platform/ldap/overview",
-            "documentation/platform/ldap/jumpcloud",
-            "documentation/platform/ldap/general"
+            "documentation/platform/identities/aws-auth",
+            "documentation/platform/identities/azure-auth",
+            "documentation/platform/identities/gcp-auth",
+            "documentation/platform/identities/jwt-auth",
+            "documentation/platform/identities/kubernetes-auth",
+            "documentation/platform/identities/oci-auth",
+            "documentation/platform/identities/token-auth",
+            "documentation/platform/identities/universal-auth",
+            {
+              "group": "OIDC Auth",
+              "pages": [
+                "documentation/platform/identities/oidc-auth/general",
+                "documentation/platform/identities/oidc-auth/azure",
+                "documentation/platform/identities/oidc-auth/github",
+                "documentation/platform/identities/oidc-auth/circleci",
+                "documentation/platform/identities/oidc-auth/gitlab",
+                "documentation/platform/identities/oidc-auth/terraform-cloud",
+                "documentation/platform/identities/oidc-auth/spire"
+              ]
+            },
+
+            {
+              "group": "LDAP Auth",
+              "pages": [
+                "documentation/platform/identities/ldap-auth/general",
+                "documentation/platform/identities/ldap-auth/jumpcloud"
+              ]
+            }
           ]
         },
-        {
-          "group": "SCIM",
-          "pages": [
-            "documentation/platform/scim/overview",
-            "documentation/platform/scim/okta",
-            "documentation/platform/scim/azure",
-            "documentation/platform/scim/jumpcloud",
-            "documentation/platform/scim/group-mappings"
-          ]
-        },
+        "documentation/platform/token",
+        "documentation/platform/mfa",
         "documentation/platform/github-org-sync"
       ]
     },
@@ -330,7 +382,8 @@
           "group": "Linux Package",
           "pages": [
             "self-hosting/deployment-options/native/linux-package/installation",
-            "self-hosting/deployment-options/native/linux-package/commands-configuration"
+            "self-hosting/deployment-options/native/linux-package/commands-configuration",
+            "self-hosting/deployment-options/linux-upgrade"
           ]
         },
         "self-hosting/guides/upgrading-infisical",
@@ -409,6 +462,7 @@
                 "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
               ]
             },
+            "integrations/platforms/kubernetes-injector",
             "integrations/platforms/kubernetes-csi",
             "integrations/platforms/docker-swarm-with-agent",
             "integrations/platforms/ecs-with-agent"
@@ -425,6 +479,7 @@
           ]
         },
         "integrations/frameworks/terraform",
+        "integrations/frameworks/pulumi",
         "integrations/platforms/ansible",
         "integrations/platforms/apache-airflow"
       ]
@@ -436,6 +491,7 @@
         {
           "group": "Connections",
           "pages": [
+            "integrations/app-connections/1password",
             "integrations/app-connections/auth0",
             "integrations/app-connections/aws",
             "integrations/app-connections/azure-app-configuration",
@@ -445,10 +501,13 @@
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
+            "integrations/app-connections/github-radar",
             "integrations/app-connections/hashicorp-vault",
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
+            "integrations/app-connections/mysql",
+            "integrations/app-connections/oci",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
@@ -465,6 +524,7 @@
         {
           "group": "Syncs",
           "pages": [
+            "integrations/secret-syncs/1password",
             "integrations/secret-syncs/aws-parameter-store",
             "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/azure-app-configuration",
@@ -475,6 +535,7 @@
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/hashicorp-vault",
             "integrations/secret-syncs/humanitec",
+            "integrations/secret-syncs/oci-vault",
             "integrations/secret-syncs/teamcity",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
@@ -677,6 +738,16 @@
           ]
         },
         {
+          "group": "OCI Auth",
+          "pages": [
+            "api-reference/endpoints/oci-auth/login",
+            "api-reference/endpoints/oci-auth/attach",
+            "api-reference/endpoints/oci-auth/retrieve",
+            "api-reference/endpoints/oci-auth/update",
+            "api-reference/endpoints/oci-auth/revoke"
+          ]
+        },
+        {
           "group": "Azure Auth",
           "pages": [
             "api-reference/endpoints/azure-auth/login",
@@ -714,6 +785,16 @@
             "api-reference/endpoints/jwt-auth/retrieve",
             "api-reference/endpoints/jwt-auth/update",
             "api-reference/endpoints/jwt-auth/revoke"
+          ]
+        },
+        {
+          "group": "LDAP Auth",
+          "pages": [
+            "api-reference/endpoints/ldap-auth/login",
+            "api-reference/endpoints/ldap-auth/attach",
+            "api-reference/endpoints/ldap-auth/retrieve",
+            "api-reference/endpoints/ldap-auth/update",
+            "api-reference/endpoints/ldap-auth/revoke"
           ]
         },
         {
@@ -939,6 +1020,19 @@
               ]
             },
             {
+              "group": "MySQL Credentials",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/mysql-credentials/create",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/delete",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-id",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-name",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/list",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/mysql-credentials/update"
+              ]
+            },
+            {
               "group": "PostgreSQL Credentials",
               "pages": [
                 "api-reference/endpoints/secret-rotations/postgres-credentials/create",
@@ -949,6 +1043,47 @@
                 "api-reference/endpoints/secret-rotations/postgres-credentials/list",
                 "api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets",
                 "api-reference/endpoints/secret-rotations/postgres-credentials/update"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Secret Scanning",
+          "pages": [
+            {
+              "group":  "Data Sources",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/data-sources/list",
+                "api-reference/endpoints/secret-scanning/data-sources/options",
+                {
+                  "group": "GitHub",
+                  "pages": [
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/get-by-id",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/get-by-name",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list-resources",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/list-scans",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/create",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/update",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/delete",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/scan",
+                    "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
+                  ]
+                }
+              ]
+            },
+            {
+              "group":  "Findings",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/findings/list",
+                "api-reference/endpoints/secret-scanning/findings/update"
+              ]
+            },
+            {
+              "group":  "Configuration",
+              "pages":  [
+                "api-reference/endpoints/secret-scanning/config/get-by-project-id",
+                "api-reference/endpoints/secret-scanning/config/update"
               ]
             }
           ]
@@ -985,6 +1120,18 @@
           "pages": [
             "api-reference/endpoints/app-connections/list",
             "api-reference/endpoints/app-connections/options",
+            {
+              "group": "1Password",
+              "pages": [
+                "api-reference/endpoints/app-connections/1password/list",
+                "api-reference/endpoints/app-connections/1password/available",
+                "api-reference/endpoints/app-connections/1password/get-by-id",
+                "api-reference/endpoints/app-connections/1password/get-by-name",
+                "api-reference/endpoints/app-connections/1password/create",
+                "api-reference/endpoints/app-connections/1password/update",
+                "api-reference/endpoints/app-connections/1password/delete"
+              ]
+            },
             {
               "group": "Auth0",
               "pages": [
@@ -1094,6 +1241,18 @@
               ]
             },
             {
+              "group": "GitHub Radar",
+              "pages": [
+                "api-reference/endpoints/app-connections/github-radar/list",
+                "api-reference/endpoints/app-connections/github-radar/available",
+                "api-reference/endpoints/app-connections/github-radar/get-by-id",
+                "api-reference/endpoints/app-connections/github-radar/get-by-name",
+                "api-reference/endpoints/app-connections/github-radar/create",
+                "api-reference/endpoints/app-connections/github-radar/update",
+                "api-reference/endpoints/app-connections/github-radar/delete"
+              ]
+            },
+            {
               "group": "Hashicorp Vault",
               "pages": [
                 "api-reference/endpoints/app-connections/hashicorp-vault/list",
@@ -1139,6 +1298,30 @@
                 "api-reference/endpoints/app-connections/mssql/create",
                 "api-reference/endpoints/app-connections/mssql/update",
                 "api-reference/endpoints/app-connections/mssql/delete"
+              ]
+            },
+            {
+              "group": "MySQL",
+              "pages": [
+                "api-reference/endpoints/app-connections/mysql/list",
+                "api-reference/endpoints/app-connections/mysql/available",
+                "api-reference/endpoints/app-connections/mysql/get-by-id",
+                "api-reference/endpoints/app-connections/mysql/get-by-name",
+                "api-reference/endpoints/app-connections/mysql/create",
+                "api-reference/endpoints/app-connections/mysql/update",
+                "api-reference/endpoints/app-connections/mysql/delete"
+              ]
+            },
+            {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/app-connections/oci/list",
+                "api-reference/endpoints/app-connections/oci/available",
+                "api-reference/endpoints/app-connections/oci/get-by-id",
+                "api-reference/endpoints/app-connections/oci/get-by-name",
+                "api-reference/endpoints/app-connections/oci/create",
+                "api-reference/endpoints/app-connections/oci/update",
+                "api-reference/endpoints/app-connections/oci/delete"
               ]
             },
             {
@@ -1208,6 +1391,20 @@
           "pages": [
             "api-reference/endpoints/secret-syncs/list",
             "api-reference/endpoints/secret-syncs/options",
+            {
+              "group": "1Password",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/1password/list",
+                "api-reference/endpoints/secret-syncs/1password/get-by-id",
+                "api-reference/endpoints/secret-syncs/1password/get-by-name",
+                "api-reference/endpoints/secret-syncs/1password/create",
+                "api-reference/endpoints/secret-syncs/1password/update",
+                "api-reference/endpoints/secret-syncs/1password/delete",
+                "api-reference/endpoints/secret-syncs/1password/sync-secrets",
+                "api-reference/endpoints/secret-syncs/1password/import-secrets",
+                "api-reference/endpoints/secret-syncs/1password/remove-secrets"
+              ]
+            },
             {
               "group": "AWS Parameter Store",
               "pages": [
@@ -1345,6 +1542,20 @@
               ]
             },
             {
+              "group": "OCI",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/oci-vault/list",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-id",
+                "api-reference/endpoints/secret-syncs/oci-vault/get-by-name",
+                "api-reference/endpoints/secret-syncs/oci-vault/create",
+                "api-reference/endpoints/secret-syncs/oci-vault/update",
+                "api-reference/endpoints/secret-syncs/oci-vault/delete",
+                "api-reference/endpoints/secret-syncs/oci-vault/sync-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/import-secrets",
+                "api-reference/endpoints/secret-syncs/oci-vault/remove-secrets"
+              ]
+            },
+            {
               "group": "TeamCity",
               "pages": [
                 "api-reference/endpoints/secret-syncs/teamcity/list",
@@ -1429,8 +1640,42 @@
       "group": "Infisical PKI",
       "pages": [
         {
+          "group": "Subscribers",
+          "pages": [
+            "api-reference/endpoints/pki/subscribers/list-certs",
+            "api-reference/endpoints/pki/subscribers/create",
+            "api-reference/endpoints/pki/subscribers/read",
+            "api-reference/endpoints/pki/subscribers/update",
+            "api-reference/endpoints/pki/subscribers/delete",
+            "api-reference/endpoints/pki/subscribers/issue-cert",
+            "api-reference/endpoints/pki/subscribers/sign-cert",
+            "api-reference/endpoints/pki/subscribers/order-cert",
+            "api-reference/endpoints/pki/subscribers/get-latest-cert-bundle"
+          ]
+        },
+        {
           "group": "Certificate Authorities",
           "pages": [
+            {
+              "group": "ACME",
+              "pages": [
+                "api-reference/endpoints/certificate-authorities/acme/list",
+                "api-reference/endpoints/certificate-authorities/acme/create",
+                "api-reference/endpoints/certificate-authorities/acme/read",
+                "api-reference/endpoints/certificate-authorities/acme/update",
+                "api-reference/endpoints/certificate-authorities/acme/delete"
+              ]
+            },
+            {
+              "group": "Internal",
+              "pages": [
+                "api-reference/endpoints/certificate-authorities/internal/list",
+                "api-reference/endpoints/certificate-authorities/internal/create",
+                "api-reference/endpoints/certificate-authorities/internal/read",
+                "api-reference/endpoints/certificate-authorities/internal/update",
+                "api-reference/endpoints/certificate-authorities/internal/delete"
+              ]
+            },
             "api-reference/endpoints/certificate-authorities/list",
             "api-reference/endpoints/certificate-authorities/create",
             "api-reference/endpoints/certificate-authorities/read",
@@ -1455,6 +1700,8 @@
             "api-reference/endpoints/certificates/revoke",
             "api-reference/endpoints/certificates/delete",
             "api-reference/endpoints/certificates/cert-body",
+            "api-reference/endpoints/certificates/bundle",
+            "api-reference/endpoints/certificates/private-key",
             "api-reference/endpoints/certificates/issue-certificate",
             "api-reference/endpoints/certificates/sign-certificate"
           ]
@@ -1600,7 +1847,6 @@
         },
         "internals/components",
         "internals/security",
-        "internals/bug-bounty",
         "internals/service-tokens"
       ]
     },

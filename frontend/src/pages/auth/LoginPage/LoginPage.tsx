@@ -10,7 +10,7 @@ import { useNavigateToSelectOrganization } from "./Login.utils";
 
 export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   const { t } = useTranslation();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<number | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
@@ -36,6 +36,8 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
 
     if (isLoggedIn()) {
       handleRedirects();
+    } else {
+      setStep(0);
     }
   }, []);
 

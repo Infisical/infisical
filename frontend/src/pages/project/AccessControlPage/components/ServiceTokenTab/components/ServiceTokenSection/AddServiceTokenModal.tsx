@@ -11,10 +11,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  decryptAssymmetric,
-  encryptSymmetric
-} from "@app/components/utilities/cryptography/crypto";
-import {
   Button,
   Checkbox,
   FormControl,
@@ -28,7 +24,7 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { useCreateServiceToken, useGetUserWsKey } from "@app/hooks/api";
+import { useCreateServiceToken } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const apiTokenExpiry = [
@@ -97,7 +93,6 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [newToken, setToken] = useState("");
   const [isTokenCopied, setIsTokenCopied] = useToggle(false);
 
-  const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?.id ?? "");
   const createServiceToken = useCreateServiceToken();
   const hasServiceToken = Boolean(newToken);
 
@@ -118,26 +113,13 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ name, scopes, expiresIn, permissions }: FormData) => {
     try {
       if (!currentWorkspace?.id) return;
-      if (!latestFileKey) return;
-
-      const key = decryptAssymmetric({
-        ciphertext: latestFileKey.encryptedKey,
-        nonce: latestFileKey.nonce,
-        publicKey: latestFileKey.sender.publicKey,
-        privateKey: localStorage.getItem("PRIVATE_KEY") as string
-      });
 
       const randomBytes = crypto.randomBytes(16).toString("hex");
 
-      const { ciphertext, iv, tag } = encryptSymmetric({
-        plaintext: key,
-        key: randomBytes
-      });
-
       const { serviceToken } = await createServiceToken.mutateAsync({
-        encryptedKey: ciphertext,
-        iv,
-        tag,
+        encryptedKey: "",
+        iv: "",
+        tag: "",
         scopes,
         expiresIn: Number(expiresIn),
         name,
