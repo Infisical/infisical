@@ -11,19 +11,19 @@ import { BaseSqlUsernameAndPasswordConnectionSchema } from "@app/services/app-co
 
 import { OracleDBConnectionMethod } from "./oracledb-connection-enums";
 
-export const OracleDBConnectionAccessTokenCredentialsSchema = BaseSqlUsernameAndPasswordConnectionSchema;
+export const OracleDBConnectionCredentialsSchema = BaseSqlUsernameAndPasswordConnectionSchema;
 
 const BaseOracleDBConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.OracleDB) });
 
 export const OracleDBConnectionSchema = BaseOracleDBConnectionSchema.extend({
   method: z.literal(OracleDBConnectionMethod.UsernameAndPassword),
-  credentials: OracleDBConnectionAccessTokenCredentialsSchema
+  credentials: OracleDBConnectionCredentialsSchema
 });
 
 export const SanitizedOracleDBConnectionSchema = z.discriminatedUnion("method", [
   BaseOracleDBConnectionSchema.extend({
     method: z.literal(OracleDBConnectionMethod.UsernameAndPassword),
-    credentials: OracleDBConnectionAccessTokenCredentialsSchema.pick({
+    credentials: OracleDBConnectionCredentialsSchema.pick({
       host: true,
       database: true,
       port: true,
@@ -40,9 +40,7 @@ export const ValidateOracleDBConnectionCredentialsSchema = z.discriminatedUnion(
     method: z
       .literal(OracleDBConnectionMethod.UsernameAndPassword)
       .describe(AppConnections.CREATE(AppConnection.OracleDB).method),
-    credentials: OracleDBConnectionAccessTokenCredentialsSchema.describe(
-      AppConnections.CREATE(AppConnection.OracleDB).credentials
-    )
+    credentials: OracleDBConnectionCredentialsSchema.describe(AppConnections.CREATE(AppConnection.OracleDB).credentials)
   })
 ]);
 
@@ -52,7 +50,7 @@ export const CreateOracleDBConnectionSchema = ValidateOracleDBConnectionCredenti
 
 export const UpdateOracleDBConnectionSchema = z
   .object({
-    credentials: OracleDBConnectionAccessTokenCredentialsSchema.optional().describe(
+    credentials: OracleDBConnectionCredentialsSchema.optional().describe(
       AppConnections.UPDATE(AppConnection.OracleDB).credentials
     )
   })
