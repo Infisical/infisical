@@ -427,7 +427,7 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
 ]);
 
 export const DynamicSecretGcpIamSchema = z.object({
-  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
+  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128)
 });
 
 export enum DynamicSecretProviders {

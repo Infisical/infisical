@@ -27,8 +27,8 @@ import {
 } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { isLoggedIn } from "@app/hooks/api/reactQuery";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();

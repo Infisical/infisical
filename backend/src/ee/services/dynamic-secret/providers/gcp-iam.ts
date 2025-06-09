@@ -69,7 +69,9 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
     return true;
   };
 
-  const create = async (inputs: unknown, expireAt: number) => {
+  const create = async (data: { inputs: unknown; expireAt: number }) => {
+    const { inputs, expireAt } = data;
+
     const providerInputs = await validateProviderInputs(inputs);
 
     const now = Math.floor(Date.now() / 1000);
@@ -88,7 +90,7 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
     // To renew a token it must be re-created
-    const data = await create(inputs, expireAt);
+    const data = await create({ inputs, expireAt });
 
     return { ...data, entityId };
   };
