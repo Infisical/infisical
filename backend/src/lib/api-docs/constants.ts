@@ -89,6 +89,7 @@ export const GROUPS = {
     limit: "The number of users to return.",
     username: "The username to search for.",
     search: "The text string that user email or name will be filtered by.",
+    projectId: "The ID of the project the group belongs to.",
     filterUsers:
       "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
@@ -2276,7 +2277,8 @@ export const SecretSyncs = {
     },
     GCP: {
       scope: "The Google project scope that secrets should be synced to.",
-      projectId: "The ID of the Google project secrets should be synced to."
+      projectId: "The ID of the Google project secrets should be synced to.",
+      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").'
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."

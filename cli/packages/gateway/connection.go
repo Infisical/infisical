@@ -26,9 +26,13 @@ func handleConnection(ctx context.Context, quicConn quic.Connection) {
 	log.Info().Msgf("New connection from: %s", quicConn.RemoteAddr().String())
 	// Use WaitGroup to track all streams
 	var wg sync.WaitGroup
+
+	contextWithTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	for {
 		// Accept the first stream, which we'll use for commands
-		stream, err := quicConn.AcceptStream(ctx)
+		stream, err := quicConn.AcceptStream(contextWithTimeout)
 		if err != nil {
 			log.Printf("Failed to accept QUIC stream: %v", err)
 			break
@@ -52,7 +56,12 @@ func handleStream(stream quic.Stream, quicConn quic.Connection) {
 
 	// Use buffered reader for better handling of fragmented data
 	reader := bufio.NewReader(stream)
-	defer stream.Close()
+	defer func() {
+		log.Info().Msgf("Closing stream %d", streamID)
+		if stream != nil {
+			stream.Close()
+		}
+	}()
 
 	for {
 		msg, err := reader.ReadBytes('\n')
@@ -166,7 +175,6 @@ func handleHTTPProxy(stream quic.Stream, reader *bufio.Reader, targetURL string,
 			}
 		}
 
-		// set certificate verification based on what the gateway client sent
 		if verifyParam != "" {
 			tlsConfig.InsecureSkipVerify = verifyParam == "false"
 			log.Info().Msgf("TLS verification set to: %s", verifyParam)
@@ -175,82 +183,94 @@ func handleHTTPProxy(stream quic.Stream, reader *bufio.Reader, targetURL string,
 		transport.TLSClientConfig = tlsConfig
 	}
 
-	// read and parse the http request from the stream
-	req, err := http.ReadRequest(reader)
-	if err != nil {
-		return fmt.Errorf("failed to read HTTP request: %v", err)
-	}
-
-	actionHeader := req.Header.Get("x-infisical-action")
-	if actionHeader != "" {
-
-		if actionHeader == "inject-k8s-sa-auth-token" {
-			token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
-
-			if err != nil {
-				stream.Write([]byte(buildHttpInternalServerError("failed to read k8s sa auth token")))
-				return fmt.Errorf("failed to read k8s sa auth token: %v", err)
-			}
-
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", string(token)))
-			log.Info().Msgf("Injected gateway k8s SA auth token in request to %s", targetURL)
-		}
-
-		req.Header.Del("x-infisical-action")
-	}
-
-	var targetFullURL string
-	if strings.HasPrefix(targetURL, "http://") || strings.HasPrefix(targetURL, "https://") {
-		baseURL := strings.TrimSuffix(targetURL, "/")
-		targetFullURL = baseURL + req.URL.Path
-		if req.URL.RawQuery != "" {
-			targetFullURL += "?" + req.URL.RawQuery
-		}
-	} else {
-		baseURL := strings.TrimSuffix("http://"+targetURL, "/")
-		targetFullURL = baseURL + req.URL.Path
-		if req.URL.RawQuery != "" {
-			targetFullURL += "?" + req.URL.RawQuery
-		}
-	}
-
-	// create the request to the target
-	proxyReq, err := http.NewRequest(req.Method, targetFullURL, req.Body)
-	proxyReq.Header = req.Header.Clone()
-	if err != nil {
-		return fmt.Errorf("failed to create proxy request: %v", err)
-	}
-
-	log.Info().Msgf("Proxying %s %s to %s", req.Method, req.URL.Path, targetFullURL)
-
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   30 * time.Second,
 	}
 
-	// make the request to the target
-	resp, err := client.Do(proxyReq)
-	if err != nil {
-		stream.Write([]byte(buildHttpInternalServerError(fmt.Sprintf("failed to reach target due to networking error: %s", err.Error()))))
-		return fmt.Errorf("failed to reach target due to networking error: %v", err)
+	// Loop to handle multiple HTTP requests on the same stream
+	for {
+		req, err := http.ReadRequest(reader)
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				log.Info().Msg("Client closed HTTP connection")
+				return nil
+			}
+			return fmt.Errorf("failed to read HTTP request: %v", err)
+		}
+		log.Info().Msgf("Received HTTP request: %s", req.URL.Path)
+
+		actionHeader := req.Header.Get("x-infisical-action")
+		if actionHeader != "" {
+			if actionHeader == "inject-k8s-sa-auth-token" {
+				token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+				if err != nil {
+					stream.Write([]byte(buildHttpInternalServerError("failed to read k8s sa auth token")))
+					continue // Continue to next request instead of returning
+				}
+				req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", string(token)))
+				log.Info().Msgf("Injected gateway k8s SA auth token in request to %s", targetURL)
+			}
+			req.Header.Del("x-infisical-action")
+		}
+
+		// Build full target URL
+		var targetFullURL string
+		if strings.HasPrefix(targetURL, "http://") || strings.HasPrefix(targetURL, "https://") {
+			baseURL := strings.TrimSuffix(targetURL, "/")
+			targetFullURL = baseURL + req.URL.Path
+			if req.URL.RawQuery != "" {
+				targetFullURL += "?" + req.URL.RawQuery
+			}
+		} else {
+			baseURL := strings.TrimSuffix("http://"+targetURL, "/")
+			targetFullURL = baseURL + req.URL.Path
+			if req.URL.RawQuery != "" {
+				targetFullURL += "?" + req.URL.RawQuery
+			}
+		}
+
+		// create the request to the target
+		proxyReq, err := http.NewRequest(req.Method, targetFullURL, req.Body)
+		if err != nil {
+			log.Error().Msgf("Failed to create proxy request: %v", err)
+			stream.Write([]byte(buildHttpInternalServerError("failed to create proxy request")))
+			continue // Continue to next request
+		}
+		proxyReq.Header = req.Header.Clone()
+
+		log.Info().Msgf("Proxying %s %s to %s", req.Method, req.URL.Path, targetFullURL)
+
+		resp, err := client.Do(proxyReq)
+		if err != nil {
+			log.Error().Msgf("Failed to reach target: %v", err)
+			stream.Write([]byte(buildHttpInternalServerError(fmt.Sprintf("failed to reach target due to networking error: %s", err.Error()))))
+			continue // Continue to next request
+		}
+
+		// Write the entire response (status line, headers, body) to the stream
+		// http.Response.Write handles this for "Connection: close" correctly.
+		// For other connection tokens, manual removal might be needed if they cause issues with QUIC.
+		// For a simple proxy, this is generally sufficient.
+		resp.Header.Del("Connection") // Good practice for proxies
+
+		log.Info().Msgf("Writing response to stream: %s", resp.Status)
+
+		if err := resp.Write(stream); err != nil {
+			log.Error().Err(err).Msg("Failed to write response to stream")
+			resp.Body.Close()
+			return fmt.Errorf("failed to write response to stream: %w", err)
+		}
+
+		resp.Body.Close()
+
+		// Check if client wants to close connection
+		if req.Header.Get("Connection") == "close" {
+			log.Info().Msg("Client requested connection close")
+			return nil
+		}
 	}
-	defer resp.Body.Close()
-
-	// Write the entire response (status line, headers, body) to the stream
-	// http.Response.Write handles this for "Connection: close" correctly.
-	// For other connection tokens, manual removal might be needed if they cause issues with QUIC.
-	// For a simple proxy, this is generally sufficient.
-	resp.Header.Del("Connection") // Good practice for proxies
-
-	log.Info().Msgf("Writing response to stream: %s", resp.Status)
-	if err := resp.Write(stream); err != nil {
-		// If writing the response fails, the connection to the client might be broken.
-		// Logging the error is important. The original error will be returned.
-		log.Error().Err(err).Msg("Failed to write response to stream")
-		return fmt.Errorf("failed to write response to stream: %w", err)
-	}
-
-	return nil
 }
 
 func buildHttpInternalServerError(message string) string {

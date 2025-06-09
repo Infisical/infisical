@@ -38,6 +38,22 @@ export type GCPGetProjectsRes = {
   nextPageToken?: string;
 };
 
+export type GCPLocation = {
+  name: string;
+  locationId: string;
+  displayName: string;
+};
+
+export type GCPGetProjectLocationsRes = {
+  locations: GCPLocation[];
+  nextPageToken?: string;
+};
+
+export type TGetGCPProjectLocationsDTO = {
+  projectId: string;
+  connectionId: string;
+};
+
 export type GCPGetServiceRes = {
   name: string;
   parent: string;

@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding, TGroups } from "@app/db/schemas";
+import { TListProjectGroupUsersDTO } from "@app/ee/services/group/group-types";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -42,7 +43,7 @@ type TGroupProjectServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany" | "transaction">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   projectBotDAL: TProjectBotDALFactory;
-  groupDAL: Pick<TGroupDALFactory, "findOne">;
+  groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
 };
 
@@ -471,11 +472,54 @@ export const groupProjectServiceFactory = ({
     return groupMembership;
   };
 
+  const listProjectGroupUsers = async ({
+    id,
+    projectId,
+    offset,
+    limit,
+    username,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search,
+    filter
+  }: TListProjectGroupUsersDTO) => {
+    const project = await projectDAL.findById(projectId);
+
+    if (!project) {
+      throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+
+    const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
+      orgId: project.orgId,
+      groupId: id,
+      offset,
+      limit,
+      username,
+      search,
+      filter
+    });
+
+    return { users: members, totalCount };
+  };
+
   return {
     addGroupToProject,
     updateGroupInProject,
     removeGroupFromProject,
     listGroupsInProject,
-    getGroupInProject
+    getGroupInProject,
+    listProjectGroupUsers
   };
 };

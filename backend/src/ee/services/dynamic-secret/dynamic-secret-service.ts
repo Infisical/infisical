@@ -116,7 +116,7 @@ export const dynamicSecretServiceFactory = ({
       throw new BadRequestError({ message: "Provided dynamic secret already exist under the folder" });
 
     const selectedProvider = dynamicSecretProviders[provider.type];
-    const inputs = await selectedProvider.validateProviderInputs(provider.inputs);
+    const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
 
     let selectedGatewayId: string | null = null;
     if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
@@ -146,7 +146,7 @@ export const dynamicSecretServiceFactory = ({
       selectedGatewayId = gateway.id;
     }
 
-    const isConnected = await selectedProvider.validateConnection(provider.inputs);
+    const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -272,7 +272,7 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
-    const updatedInput = await selectedProvider.validateProviderInputs(newInput);
+    const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
 
     let selectedGatewayId: string | null = null;
     if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
@@ -301,7 +301,7 @@ export const dynamicSecretServiceFactory = ({
       selectedGatewayId = gateway.id;
     }
 
-    const isConnected = await selectedProvider.validateConnection(newInput);
+    const isConnected = await selectedProvider.validateConnection(newInput, { projectId });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const updatedDynamicCfg = await dynamicSecretDAL.transaction(async (tx) => {
@@ -472,7 +472,9 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-    const providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput)) as object;
+    const providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput, {
+      projectId
+    })) as object;
 
     return { ...dynamicSecretCfg, inputs: providerInputs };
   };

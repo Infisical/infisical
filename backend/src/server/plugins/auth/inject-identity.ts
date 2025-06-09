@@ -155,6 +155,12 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
             oidc: token?.identityAuth?.oidc
           });
         }
+        if (token?.identityAuth?.kubernetes) {
+          requestContext.set("identityAuthInfo", {
+            identityId: identity.identityId,
+            kubernetes: token?.identityAuth?.kubernetes
+          });
+        }
         break;
       }
       case AuthMode.SERVICE_TOKEN: {

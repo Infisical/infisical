@@ -1,5 +1,5 @@
 ---
-title: "Machine identities"  
+title: "Machine identities"
 description: "Learn how to set metadata and leverage authentication attributes for machine identities."
 ---
 
@@ -25,7 +25,7 @@ Machine identities can have metadata set manually, just like users. In addition,
 
 #### Accessing Attributes From Machine Identity Login
 
-When machine identities authenticate, they may receive additional payloads/attributes from the service provider. 
+When machine identities authenticate, they may receive additional payloads/attributes from the service provider.
 For methods like OIDC, these come as claims in the token and can be made available in your policies.
 
 <Tabs>
@@ -50,17 +50,29 @@ For methods like OIDC, these come as claims in the token and can be made availab
     ```
 
     You might map:
-    
-    - **department:** to `user.department`  
+
+    - **department:** to `user.department`
     - **role:** to `user.role`
 
     Once configured, these attributes become available in your policies using the following format:
-    
+
     ```
     {{ identity.auth.oidc.claims.<permission claim name> }}
     ```
 
     <img src="/images/platform/access-controls/abac-policy-oidc-format.png" />
+
+  </Tab>
+  <Tab title="Kubernetes Login Attributes">
+				For identities authenticated using Kubernetes, the service account's namespace and name are available in their policy and can be accessed as follows:
+
+    ```
+    {{ identity.auth.kubernetes.namespace }}
+    {{ identity.auth.kubernetes.name }}
+    ```
+
+    <img src="/images/platform/access-controls/abac-policy-k8s-format.png" />
+
   </Tab>
   <Tab title="Other Authentication Method Attributes">
     At the moment we only support OIDC claims. Payloads on other authentication methods are not yet accessible.
