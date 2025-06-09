@@ -59,7 +59,6 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
-import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
@@ -95,7 +94,6 @@ type TSecretSyncQueueFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -138,7 +136,6 @@ export const secretSyncQueueFactory = ({
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
   resourceMetadataDAL,
-  folderCommitService,
   licenseService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
@@ -170,8 +167,7 @@ export const secretSyncQueueFactory = ({
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
-    resourceMetadataDAL,
-    folderCommitService
+    resourceMetadataDAL
   });
 
   const $updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -187,8 +183,7 @@ export const secretSyncQueueFactory = ({
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
-    resourceMetadataDAL,
-    folderCommitService
+    resourceMetadataDAL
   });
 
   const $getInfisicalSecrets = async (
@@ -378,7 +373,7 @@ export const secretSyncQueueFactory = ({
 
       if (Object.hasOwn(secretMap, key)) {
         // Only update secrets if the source value is not empty
-        if (value && value !== secretMap[key].value) {
+        if (value) {
           secretsToUpdate.push(secret);
           if (importBehavior === SecretSyncImportBehavior.PrioritizeDestination) importedSecretMap[key] = secretData;
         }

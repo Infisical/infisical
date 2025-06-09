@@ -376,8 +376,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           })
           .optional()
           .describe(PROJECTS.UPDATE.slug),
-        secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing),
-        showSnapshotsLegacy: z.boolean().optional().describe(PROJECTS.UPDATE.showSnapshotsLegacy)
+        secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing)
       }),
       response: {
         200: z.object({
@@ -398,8 +397,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           autoCapitalization: req.body.autoCapitalization,
           hasDeleteProtection: req.body.hasDeleteProtection,
           slug: req.body.slug,
-          secretSharing: req.body.secretSharing,
-          showSnapshotsLegacy: req.body.showSnapshotsLegacy
+          secretSharing: req.body.secretSharing
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,

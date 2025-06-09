@@ -9,7 +9,6 @@ import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { commitKeys } from "@app/hooks/api/folderCommits/queries";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
@@ -266,12 +265,6 @@ export const SecretListView = ({
           queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
         });
         queryClient.invalidateQueries({
-          queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
-        });
-        queryClient.invalidateQueries({
-          queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
-        });
-        queryClient.invalidateQueries({
           queryKey: secretApprovalRequestKeys.count({ workspaceId })
         });
         if (!isReminderEvent) {
@@ -321,12 +314,6 @@ export const SecretListView = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.count({ workspaceId })

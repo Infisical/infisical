@@ -8,7 +8,6 @@ import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import { CommitType, TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -52,8 +51,8 @@ type TSecretSnapshotServiceFactoryDep = {
   snapshotSecretV2BridgeDAL: TSnapshotSecretV2DALFactory;
   snapshotFolderDAL: TSnapshotFolderDALFactory;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionByFolderId">;
-  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionByFolderId" | "findOne">;
-  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestVersionByFolderId" | "insertMany" | "findOne">;
+  secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionByFolderId">;
+  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestVersionByFolderId" | "insertMany">;
   secretDAL: Pick<TSecretDALFactory, "delete" | "insertMany">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "delete" | "insertMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret" | "saveTagsToSecretV2">;
@@ -64,7 +63,6 @@ type TSecretSnapshotServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "isValidLicense">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
 export type TSecretSnapshotServiceFactory = ReturnType<typeof secretSnapshotServiceFactory>;
@@ -86,8 +84,7 @@ export const secretSnapshotServiceFactory = ({
   snapshotSecretV2BridgeDAL,
   secretVersionV2TagBridgeDAL,
   kmsService,
-  projectBotService,
-  folderCommitService
+  projectBotService
 }: TSecretSnapshotServiceFactoryDep) => {
   const projectSecretSnapshotCount = async ({
     environment,
@@ -406,18 +403,6 @@ export const secretSnapshotServiceFactory = ({
           .filter((el) => el.isRotatedSecret)
           .map((el) => el.secretId);
 
-        const deletedSecretsChanges = new Map(); // secretId -> version info
-        const deletedFoldersChanges = new Map(); // folderId -> version info
-        const addedSecretsChanges = new Map(); // secretId -> version info
-        const addedFoldersChanges = new Map(); // folderId -> version info
-        const commitChanges: {
-          type: string;
-          secretVersionId?: string;
-          folderVersionId?: string;
-          isUpdate?: boolean;
-          folderId?: string;
-        }[] = [];
-
         // this will remove all secrets in current folder except rotated secrets which we ignore
         const deletedTopLevelSecs = await secretV2BridgeDAL.delete(
           {
@@ -439,35 +424,7 @@ export const secretSnapshotServiceFactory = ({
           },
           tx
         );
-
-        await Promise.all(
-          deletedTopLevelSecs.map(async (sec) => {
-            const version = await secretVersionV2BridgeDAL.findOne({ secretId: sec.id, version: sec.version }, tx);
-            deletedSecretsChanges.set(sec.id, {
-              id: sec.id,
-              version: sec.version,
-              // Store the version ID if available from the snapshot
-              versionId: version?.id
-            });
-          })
-        );
-
         const deletedTopLevelSecsGroupById = groupBy(deletedTopLevelSecs, (item) => item.id);
-
-        const deletedFoldersData = await folderDAL.delete({ parentId: snapshot.folderId, isReserved: false }, tx);
-
-        await Promise.all(
-          deletedFoldersData.map(async (folder) => {
-            const version = await folderVersionDAL.findOne({ folderId: folder.id, version: folder.version }, tx);
-            deletedFoldersChanges.set(folder.id, {
-              id: folder.id,
-              version: folder.version,
-              // Store the version ID if available
-              versionId: version?.id
-            });
-          })
-        );
-
         // this will remove all secrets and folders on child
         // due to sql foreign key and link list connection removing the folders removes everything below too
         const deletedFolders = await folderDAL.delete({ parentId: snapshot.folderId, isReserved: false }, tx);
@@ -532,21 +489,14 @@ export const secretSnapshotServiceFactory = ({
         });
         await secretTagDAL.saveTagsToSecretV2(secretTagsToBeInsert, tx);
         const folderVersions = await folderVersionDAL.insertMany(
-          folders.map(({ version, name, id, envId, description }) => ({
+          folders.map(({ version, name, id, envId }) => ({
             name,
             version,
             folderId: id,
-            envId,
-            description
+            envId
           })),
           tx
         );
-
-        // Track added folders
-        folderVersions.forEach((fv) => {
-          addedFoldersChanges.set(fv.folderId, fv);
-        });
-
         const userActorId = actor === ActorType.USER ? actorId : undefined;
         const identityActorId = actor !== ActorType.USER ? actorId : undefined;
         const actorType = actor || ActorType.PLATFORM;
@@ -561,11 +511,6 @@ export const secretSnapshotServiceFactory = ({
           })),
           tx
         );
-
-        secretVersions.forEach((sv) => {
-          addedSecretsChanges.set(sv.secretId, sv);
-        });
-
         await secretVersionV2TagBridgeDAL.insertMany(
           secretVersions.flatMap(({ secretId, id }) =>
             secretVerTagToBeInsert?.[secretId]?.length
@@ -577,70 +522,6 @@ export const secretSnapshotServiceFactory = ({
           ),
           tx
         );
-
-        // Compute commit changes
-        // Handle secrets
-        deletedSecretsChanges.forEach((deletedInfo, secretId) => {
-          const addedSecret = addedSecretsChanges.get(secretId);
-          if (addedSecret) {
-            // Secret was deleted and re-added - this is an update only if versions are different
-            if (deletedInfo.versionId !== addedSecret.id) {
-              commitChanges.push({
-                type: CommitType.ADD, // In the commit system, updates are tracked as "add" with isUpdate=true
-                secretVersionId: addedSecret.id,
-                isUpdate: true
-              });
-            }
-            // Remove from addedSecrets since we've handled it
-            addedSecretsChanges.delete(secretId);
-          } else if (deletedInfo.versionId) {
-            // Secret was only deleted
-            commitChanges.push({
-              type: CommitType.DELETE,
-              secretVersionId: deletedInfo.versionId
-            });
-          }
-        });
-        // Add remaining new secrets (not updates)
-        addedSecretsChanges.forEach((addedSecret) => {
-          commitChanges.push({
-            type: CommitType.ADD,
-            secretVersionId: addedSecret.id
-          });
-        });
-
-        // Handle folders
-        deletedFoldersChanges.forEach((deletedInfo, folderId) => {
-          const addedFolder = addedFoldersChanges.get(folderId);
-          if (addedFolder) {
-            // Folder was deleted and re-added - this is an update only if versions are different
-            if (deletedInfo.versionId !== addedFolder.id) {
-              commitChanges.push({
-                type: CommitType.ADD,
-                folderVersionId: addedFolder.id,
-                isUpdate: true
-              });
-            }
-            // Remove from addedFolders since we've handled it
-            addedFoldersChanges.delete(folderId);
-          } else if (deletedInfo.versionId) {
-            // Folder was only deleted
-            commitChanges.push({
-              type: CommitType.DELETE,
-              folderVersionId: deletedInfo.versionId,
-              folderId: deletedInfo.id
-            });
-          }
-        });
-
-        // Add remaining new folders (not updates)
-        addedFoldersChanges.forEach((addedFolder) => {
-          commitChanges.push({
-            type: CommitType.ADD,
-            folderVersionId: addedFolder.id
-          });
-        });
-
         const newSnapshot = await snapshotDAL.create(
           {
             folderId: snapshot.folderId,
@@ -669,22 +550,6 @@ export const secretSnapshotServiceFactory = ({
             })),
           tx
         );
-        if (commitChanges.length > 0) {
-          await folderCommitService.createCommit(
-            {
-              actor: {
-                type: actorType,
-                metadata: {
-                  id: userActorId || identityActorId
-                }
-              },
-              message: "Rollback to snapshot",
-              folderId: snapshot.folderId,
-              changes: commitChanges
-            },
-            tx
-          );
-        }
 
         return { ...newSnapshot, snapshotSecrets, snapshotFolders };
       });
@@ -744,12 +609,11 @@ export const secretSnapshotServiceFactory = ({
       });
       await secretTagDAL.saveTagsToSecret(secretTagsToBeInsert, tx);
       const folderVersions = await folderVersionDAL.insertMany(
-        folders.map(({ version, name, id, envId, description }) => ({
+        folders.map(({ version, name, id, envId }) => ({
           name,
           version,
           folderId: id,
-          envId,
-          description
+          envId
         })),
         tx
       );
