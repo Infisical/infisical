@@ -107,14 +107,9 @@ export const userServiceFactory = ({
     });
 
     await userDAL.updateById(user.id, {
-      isEmailVerified: true
+      isEmailVerified: true,
+      username: usersByusername.length === 1 && user.email ? user.email.toLowerCase() : undefined
     });
-
-    if (usersByusername.length === 1 && user) {
-      await userDAL.updateById(user.id, {
-        username: user.email.toLowerCase()
-      });
-    }
   };
 
   const updateUserMfa = async ({ userId, isMfaEnabled, selectedMfaMethod }: TUpdateUserMfaDTO) => {
