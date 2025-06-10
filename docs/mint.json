@@ -926,6 +926,12 @@
         {
           "group": "Dynamic Secrets",
           "pages": [
+            {
+              "group": "Kubernetes",
+              "pages": [
+                "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
+              ]
+            },
             "api-reference/endpoints/dynamic-secrets/create",
             "api-reference/endpoints/dynamic-secrets/update",
             "api-reference/endpoints/dynamic-secrets/delete",
