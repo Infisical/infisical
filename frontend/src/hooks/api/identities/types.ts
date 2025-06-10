@@ -403,7 +403,7 @@ export type IdentityKubernetesAuth = {
 export type AddIdentityKubernetesAuthDTO = {
   organizationId: string;
   identityId: string;
-  kubernetesHost: string;
+  kubernetesHost: string | null;
   tokenReviewerJwt?: string;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
@@ -422,7 +422,7 @@ export type AddIdentityKubernetesAuthDTO = {
 export type UpdateIdentityKubernetesAuthDTO = {
   organizationId: string;
   identityId: string;
-  kubernetesHost?: string;
+  kubernetesHost?: string | null;
   tokenReviewerJwt?: string | null;
   tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces?: string;

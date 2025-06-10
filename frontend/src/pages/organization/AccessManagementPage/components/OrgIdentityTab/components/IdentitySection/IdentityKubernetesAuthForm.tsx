@@ -46,13 +46,13 @@ const schema = z
     tokenReviewMode: z
       .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
       .default(IdentityKubernetesAuthTokenReviewMode.Api),
-    kubernetesHost: z.string().min(1),
+    kubernetesHost: z.string().optional().nullable(),
     tokenReviewerJwt: z.string().optional(),
     gatewayId: z.string().optional().nullable(),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
-    caCert: z.string(),
+    caCert: z.string().optional(),
     accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
       message: "Access Token TTL cannot be greater than 315360000"
     }),
@@ -69,6 +69,17 @@ const schema = z
       .min(1)
   })
   .superRefine((data, ctx) => {
+    if (
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !data.kubernetesHost?.length
+    ) {
+      ctx.addIssue({
+        path: ["kubernetesHost"],
+        code: z.ZodIssueCode.custom,
+        message: "When token review mode is set to API, a Kubernetes host must be provided"
+      });
+    }
+
     if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
       ctx.addIssue({
         path: ["gatewayId"],
@@ -201,7 +212,13 @@ export const IdentityKubernetesAuthForm = ({
       if (data) {
         await updateMutateAsync({
           organizationId: orgId,
-          kubernetesHost,
+          ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+            ? {
+                kubernetesHost: kubernetesHost || ""
+              }
+            : {
+                kubernetesHost: null
+              }),
           tokenReviewerJwt: tokenReviewerJwt || null,
           allowedNames,
           allowedNamespaces,
@@ -219,7 +236,13 @@ export const IdentityKubernetesAuthForm = ({
         await addMutateAsync({
           organizationId: orgId,
           identityId,
-          kubernetesHost: kubernetesHost || "",
+          ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+            ? {
+                kubernetesHost: kubernetesHost || ""
+              }
+            : {
+                kubernetesHost: null
+              }),
           tokenReviewerJwt: tokenReviewerJwt || undefined,
           allowedNames: allowedNames || "",
           allowedNamespaces: allowedNamespaces || "",
@@ -278,23 +301,6 @@ export const IdentityKubernetesAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="kubernetesHost"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Kubernetes Host / Base Kubernetes API URL "
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
-                isRequired
-              >
-                <Input {...field} placeholder="https://my-example-k8s-api-host.com" type="text" />
-              </FormControl>
-            )}
-          />
-
           <div className="flex w-full items-center gap-2">
             <div className="w-full flex-1">
               <OrgPermissionCan
@@ -383,8 +389,31 @@ export const IdentityKubernetesAuthForm = ({
               )}
             />
           </div>
+          {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="kubernetesHost"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Kubernetes Host / Base Kubernetes API URL "
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
+                  isRequired
+                >
+                  <Input
+                    {...field}
+                    placeholder="https://my-example-k8s-api-host.com"
+                    type="text"
+                    value={field.value || ""}
+                  />
+                </FormControl>
+              )}
+            />
+          )}
 
-          {tokenReviewMode === "api" && (
+          {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
             <Controller
               control={control}
               name="tokenReviewerJwt"
@@ -493,20 +522,22 @@ export const IdentityKubernetesAuthForm = ({
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="caCert"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="CA Certificate"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
-              >
-                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-              </FormControl>
-            )}
-          />
+          {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
+            <Controller
+              control={control}
+              name="caCert"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="CA Certificate"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
+                >
+                  <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+                </FormControl>
+              )}
+            />
+          )}
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>
               <Controller

@@ -1,6 +1,13 @@
+## 0.0.41 (June 10, 2025)
+* Added new gateway action for fully off-loading CA certificate, cluster URL, and token management to the gateway.
+* Structural improvements
+
+## 0.0.4 (June 7th, 2025)
+* Improvements to HTTP proxy error handling.
+
 ## 0.0.3 (June 6, 2025)
 
-* Minor fix for handling malformed URLs for HTTP forwarding
+* Minor fix for handling malformed URLs for HTTP forwarding.
 
 ## 0.0.2 (June 6, 2025)
 
@@ -9,4 +16,4 @@
 
 ## 0.0.1 (May 1, 2025)
 
-* Initial helm release
+* Initial helm release.

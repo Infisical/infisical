@@ -116,7 +116,9 @@ func handleStream(stream quic.Stream, quicConn quic.Connection) {
 
 			targetURL := string(argParts[0])
 
-			if !isValidURL(targetURL) {
+			// ? note(daniel): special case: if the target URL is "/:0", we don't validate it.
+			// ? the reason for this is because we want to be able to send requests to the gateway without knowing the actual target URL, and instead let the gateway construct the target URL.
+			if targetURL != "/:0" && !isValidURL(targetURL) {
 				log.Error().Msgf("Invalid target URL: %s", targetURL)
 				return
 			}
@@ -183,11 +185,6 @@ func handleHTTPProxy(stream quic.Stream, reader *bufio.Reader, targetURL string,
 		transport.TLSClientConfig = tlsConfig
 	}
 
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   30 * time.Second,
-	}
-
 	// Loop to handle multiple HTTP requests on the same stream
 	for {
 		req, err := http.ReadRequest(reader)
@@ -201,18 +198,56 @@ func handleHTTPProxy(stream quic.Stream, reader *bufio.Reader, targetURL string,
 		}
 		log.Info().Msgf("Received HTTP request: %s", req.URL.Path)
 
-		actionHeader := req.Header.Get("x-infisical-action")
+		actionHeader := HttpProxyAction(req.Header.Get(INFISICAL_HTTP_PROXY_ACTION_HEADER))
 		if actionHeader != "" {
-			if actionHeader == "inject-k8s-sa-auth-token" {
-				token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+			if actionHeader == HttpProxyActionInjectGatewayK8sServiceAccountToken {
+				token, err := os.ReadFile(KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH)
 				if err != nil {
 					stream.Write([]byte(buildHttpInternalServerError("failed to read k8s sa auth token")))
 					continue // Continue to next request instead of returning
 				}
 				req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", string(token)))
 				log.Info().Msgf("Injected gateway k8s SA auth token in request to %s", targetURL)
+			} else if actionHeader == HttpProxyActionUseGatewayK8sServiceAccount {
+
+				// set the ca cert to the pod's k8s service account ca cert:
+				caCert, err := os.ReadFile(KUBERNETES_SERVICE_ACCOUNT_CA_CERT_PATH)
+				if err != nil {
+					stream.Write([]byte(buildHttpInternalServerError("failed to read k8s sa ca cert")))
+					continue
+				}
+
+				caCertPool := x509.NewCertPool()
+				appendSuccess := caCertPool.AppendCertsFromPEM(caCert)
+
+				if !appendSuccess {
+					stream.Write([]byte(buildHttpInternalServerError("failed to parse k8s sa ca cert")))
+					continue
+				}
+
+				transport.TLSClientConfig = &tls.Config{
+					RootCAs: caCertPool,
+				}
+
+				// set authorization header to the pod's k8s service account token:
+				token, err := os.ReadFile(KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH)
+				if err != nil {
+					stream.Write([]byte(buildHttpInternalServerError("failed to read k8s sa auth token")))
+					continue
+				}
+				req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", string(token)))
+
+				// update the target URL to point to the kubernetes API server:
+				kubernetesServiceHost := os.Getenv(KUBERNETES_SERVICE_HOST_ENV_NAME)
+				kubernetesServicePort := os.Getenv(KUBERNETES_SERVICE_PORT_HTTPS_ENV_NAME)
+
+				fullBaseUrl := fmt.Sprintf("https://%s:%s", kubernetesServiceHost, kubernetesServicePort)
+				targetURL = fullBaseUrl
+
+				log.Info().Msgf("Redirected request to Kubernetes API server: %s", targetURL)
 			}
-			req.Header.Del("x-infisical-action")
+
+			req.Header.Del(INFISICAL_HTTP_PROXY_ACTION_HEADER)
 		}
 
 		// Build full target URL
@@ -241,6 +276,11 @@ func handleHTTPProxy(stream quic.Stream, reader *bufio.Reader, targetURL string,
 		proxyReq.Header = req.Header.Clone()
 
 		log.Info().Msgf("Proxying %s %s to %s", req.Method, req.URL.Path, targetFullURL)
+
+		client := &http.Client{
+			Transport: transport,
+			Timeout:   30 * time.Second,
+		}
 
 		resp, err := client.Do(proxyReq)
 		if err != nil {

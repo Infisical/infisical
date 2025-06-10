@@ -12,7 +12,7 @@ export enum IdentityKubernetesAuthTokenReviewMode {
 
 export type TAttachKubernetesAuthDTO = {
   identityId: string;
-  kubernetesHost: string;
+  kubernetesHost: string | null;
   caCert: string;
   tokenReviewerJwt?: string;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
@@ -29,7 +29,7 @@ export type TAttachKubernetesAuthDTO = {
 
 export type TUpdateKubernetesAuthDTO = {
   identityId: string;
-  kubernetesHost?: string;
+  kubernetesHost?: string | null;
   caCert?: string;
   tokenReviewerJwt?: string | null;
   tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
