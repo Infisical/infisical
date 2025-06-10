@@ -149,8 +149,8 @@ const setupProxyServer = async ({
   protocol = GatewayProxyProtocol.Tcp,
   httpsAgent
 }: {
-  targetHost: string;
-  targetPort: number;
+  targetHost?: string;
+  targetPort?: number;
   relayPort: number;
   relayHost: string;
   tlsOptions: TGatewayTlsOptions;
@@ -183,27 +183,44 @@ const setupProxyServer = async ({
         let command: string;
 
         if (protocol === GatewayProxyProtocol.Http) {
-          const targetUrl = `${targetHost}:${targetPort}`; // note(daniel): targetHost MUST include the scheme (https|http)
-          command = `FORWARD-HTTP ${targetUrl}`;
-          logger.debug(`Using HTTP proxy mode: ${command.trim()}`);
+          if (!targetHost && !targetPort) {
+            command = `FORWARD-HTTP`;
+            logger.debug(`Using HTTP proxy mode, no target URL provided [command=${command.trim()}]`);
+          } else {
+            if (!targetHost || targetPort === undefined) {
+              throw new BadRequestError({
+                message: `Target host and port are required for HTTP proxy mode with custom target`
+              });
+            }
 
-          // extract ca certificate from httpsAgent if present
-          if (httpsAgent && targetHost.startsWith("https://")) {
-            const agentOptions = httpsAgent.options;
-            if (agentOptions && agentOptions.ca) {
-              const caCert = Array.isArray(agentOptions.ca) ? agentOptions.ca.join("\n") : agentOptions.ca;
-              const caB64 = Buffer.from(caCert as string).toString("base64");
-              command += ` ca=${caB64}`;
+            const targetUrl = `${targetHost}:${targetPort}`; // note(daniel): targetHost MUST include the scheme (https|http)
+            command = `FORWARD-HTTP ${targetUrl}`;
+            logger.debug(`Using HTTP proxy mode, custom target URL provided [command=${command.trim()}]`);
 
-              const rejectUnauthorized = agentOptions.rejectUnauthorized !== false;
-              command += ` verify=${rejectUnauthorized}`;
+            // extract ca certificate from httpsAgent if present
+            if (httpsAgent && targetHost.startsWith("https://")) {
+              const agentOptions = httpsAgent.options;
+              if (agentOptions && agentOptions.ca) {
+                const caCert = Array.isArray(agentOptions.ca) ? agentOptions.ca.join("\n") : agentOptions.ca;
+                const caB64 = Buffer.from(caCert as string).toString("base64");
+                command += ` ca=${caB64}`;
 
-              logger.debug(`Using HTTP proxy mode [command=${command.trim()}]`);
+                const rejectUnauthorized = agentOptions.rejectUnauthorized !== false;
+                command += ` verify=${rejectUnauthorized}`;
+
+                logger.debug(`Using HTTP proxy mode, custom target URL provided [command=${command.trim()}]`);
+              }
             }
           }
 
           command += "\n";
         } else if (protocol === GatewayProxyProtocol.Tcp) {
+          if (!targetHost || !targetPort) {
+            throw new BadRequestError({
+              message: `Target host and port are required for TCP proxy mode`
+            });
+          }
+
           // For TCP mode, send FORWARD-TCP with host:port
           command = `FORWARD-TCP ${targetHost}:${targetPort}\n`;
           logger.debug(`Using TCP proxy mode: ${command.trim()}`);

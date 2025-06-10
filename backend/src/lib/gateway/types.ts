@@ -15,8 +15,8 @@ export enum GatewayHttpProxyActions {
 }
 
 export interface IGatewayProxyOptions {
-  targetHost: string;
-  targetPort: number;
+  targetHost?: string;
+  targetPort?: number;
   relayHost: string;
   relayPort: number;
   tlsOptions: TGatewayTlsOptions;

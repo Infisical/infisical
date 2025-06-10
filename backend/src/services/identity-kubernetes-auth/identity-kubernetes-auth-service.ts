@@ -72,8 +72,8 @@ export const identityKubernetesAuthServiceFactory = ({
   const $gatewayProxyWrapper = async <T>(
     inputs: {
       gatewayId: string;
-      targetHost: string;
-      targetPort: number;
+      targetHost?: string;
+      targetPort?: number;
       caCert?: string;
       reviewTokenThroughGateway: boolean;
     },
@@ -286,8 +286,6 @@ export const identityKubernetesAuthServiceFactory = ({
       data = await $gatewayProxyWrapper(
         {
           gatewayId: identityKubernetesAuth.gatewayId,
-          targetHost: `/`, // note(daniel): the targetURL will be constructed as `/:0`, which the gateway will handle as a special case, by replacing the /:0, with the internal kubernetes base URL (only when the action header is set to `GatewayHttpProxyActions.UseGatewayK8sServiceAccount`)
-          targetPort: 0,
           reviewTokenThroughGateway: true
         },
         tokenReviewCallbackThroughGateway
