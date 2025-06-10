@@ -542,8 +542,7 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             secretTagDAL,
             resourceMetadataDAL,
-            folderCommitService,
-            skipCommit: true
+            folderCommitService
           });
 
           await secretRotationV2DAL.insertSecretMappings(
@@ -680,8 +679,7 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             secretTagDAL,
             resourceMetadataDAL,
-            folderCommitService,
-            skipCommit: true
+            folderCommitService
           });
 
           secretsMappingUpdated = true;
@@ -799,7 +797,6 @@ export const secretRotationV2ServiceFactory = ({
             projectId,
             folderId,
             actorId: actor.id, // not actually used since rotated secrets are shared
-            skipCommit: true,
             folderCommitService,
             secretVersionDAL: secretVersionV2BridgeDAL,
             tx
@@ -947,8 +944,7 @@ export const secretRotationV2ServiceFactory = ({
               secretVersionTagDAL: secretVersionTagV2BridgeDAL,
               secretTagDAL,
               resourceMetadataDAL,
-              folderCommitService,
-              skipCommit: true
+              folderCommitService
             });
 
             const currentTime = new Date();
