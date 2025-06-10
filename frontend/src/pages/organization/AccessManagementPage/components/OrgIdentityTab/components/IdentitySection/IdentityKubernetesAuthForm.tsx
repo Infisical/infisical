@@ -128,7 +128,7 @@ export const IdentityKubernetesAuthForm = ({
     watch,
     setValue,
 
-    formState: { isSubmitting, errors }
+    formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
