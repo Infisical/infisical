@@ -104,11 +104,15 @@ export const identityKubernetesAuthServiceFactory = ({
           cert: relayDetails.certificate,
           key: relayDetails.privateKey.toString()
         },
-        // we always pass this, because its needed for both tcp and http protocol
-        httpsAgent: new https.Agent({
-          ca: inputs.caCert,
-          rejectUnauthorized: Boolean(inputs.caCert)
-        })
+        // only needed for TCP protocol, because the gateway as reviewer will use the pod's CA cert for auth directly
+        ...(!inputs.reviewTokenThroughGateway
+          ? {
+              httpsAgent: new https.Agent({
+                ca: inputs.caCert,
+                rejectUnauthorized: Boolean(inputs.caCert)
+              })
+            }
+          : {})
       }
     );
 
@@ -142,8 +146,15 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert = decryptor({ cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate }).toString();
     }
 
-    const tokenReviewCallbackRaw = async (host: string = identityKubernetesAuth.kubernetesHost, port?: number) => {
+    const tokenReviewCallbackRaw = async (host = identityKubernetesAuth.kubernetesHost, port?: number) => {
       logger.info({ host, port }, "tokenReviewCallbackRaw: Processing kubernetes token review using raw API");
+
+      if (!host || !identityKubernetesAuth.kubernetesHost) {
+        throw new BadRequestError({
+          message: "Kubernetes host is required when token review mode is set to API"
+        });
+      }
+
       let tokenReviewerJwt = "";
       if (identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt) {
         tokenReviewerJwt = decryptor({
@@ -211,11 +222,7 @@ export const identityKubernetesAuthServiceFactory = ({
       return res.data;
     };
 
-    const tokenReviewCallbackThroughGateway = async (
-      host: string = identityKubernetesAuth.kubernetesHost,
-      port?: number,
-      httpsAgent?: https.Agent
-    ) => {
+    const tokenReviewCallbackThroughGateway = async (host: string, port?: number) => {
       logger.info(
         {
           host,
@@ -224,11 +231,9 @@ export const identityKubernetesAuthServiceFactory = ({
         "tokenReviewCallbackThroughGateway: Processing kubernetes token review using gateway"
       );
 
-      const baseUrl = port ? `${host}:${port}` : host;
-
       const res = await axios
         .post<TCreateTokenReviewResponse>(
-          `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
+          `${host}:${port}/apis/authentication.k8s.io/v1/tokenreviews`,
           {
             apiVersion: "authentication.k8s.io/v1",
             kind: "TokenReview",
@@ -240,11 +245,10 @@ export const identityKubernetesAuthServiceFactory = ({
           {
             headers: {
               "Content-Type": "application/json",
-              "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken
+              "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount
             },
             signal: AbortSignal.timeout(10000),
-            timeout: 10000,
-            ...(httpsAgent ? { httpsAgent } : {})
+            timeout: 10000
           }
         )
         .catch((err) => {
@@ -273,29 +277,6 @@ export const identityKubernetesAuthServiceFactory = ({
     let data: TCreateTokenReviewResponse | undefined;
 
     if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
-      const { kubernetesHost } = identityKubernetesAuth;
-
-      let urlString = kubernetesHost;
-      if (!kubernetesHost.startsWith("http://") && !kubernetesHost.startsWith("https://")) {
-        urlString = `https://${kubernetesHost}`;
-      }
-
-      const url = new URL(urlString);
-      let { port: k8sPort } = url;
-      const { protocol, hostname: k8sHost } = url;
-
-      const cleanedProtocol = new RE2(/[^a-zA-Z0-9]/g).replace(protocol, "").toLowerCase();
-
-      if (!["https", "http"].includes(cleanedProtocol)) {
-        throw new BadRequestError({
-          message: "Invalid Kubernetes host URL, must start with http:// or https://"
-        });
-      }
-
-      if (!k8sPort) {
-        k8sPort = cleanedProtocol === "https" ? "443" : "80";
-      }
-
       if (!identityKubernetesAuth.gatewayId) {
         throw new BadRequestError({
           message: "Gateway ID is required when token review mode is set to Gateway"
@@ -305,14 +286,19 @@ export const identityKubernetesAuthServiceFactory = ({
       data = await $gatewayProxyWrapper(
         {
           gatewayId: identityKubernetesAuth.gatewayId,
-          targetHost: `${cleanedProtocol}://${k8sHost}`, // note(daniel): must include the protocol (https|http)
-          targetPort: k8sPort ? Number(k8sPort) : 443,
-          caCert,
+          targetHost: `/`, // note(daniel): the targetURL will be constructed as `/:0`, which the gateway will handle as a special case, by replacing the /:0, with the internal kubernetes base URL (only when the action header is set to `GatewayHttpProxyActions.UseGatewayK8sServiceAccount`)
+          targetPort: 0,
           reviewTokenThroughGateway: true
         },
         tokenReviewCallbackThroughGateway
       );
     } else if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api) {
+      if (!identityKubernetesAuth.kubernetesHost) {
+        throw new BadRequestError({
+          message: "Kubernetes host is required when token review mode is set to API"
+        });
+      }
+
       let { kubernetesHost } = identityKubernetesAuth;
       if (kubernetesHost.startsWith("https://") || kubernetesHost.startsWith("http://")) {
         kubernetesHost = new RE2("^https?:\\/\\/").replace(kubernetesHost, "");
