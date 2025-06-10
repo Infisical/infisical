@@ -58,9 +58,10 @@ export const registerServeUI = async (
           return;
         }
 
-        // This should help avoid caching any chunks (temp)
-        reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
-        reply.header("Pragma", "no-cache");
+        // This should help avoid caching any chunks (temp fix)
+        void reply.header("Cache-Control", "no-cache, no-store, must-revalidate, private, max-age=0");
+        void reply.header("Pragma", "no-cache");
+        void reply.header("Expires", "0");
         return reply.sendFile("index.html");
       }
     });
