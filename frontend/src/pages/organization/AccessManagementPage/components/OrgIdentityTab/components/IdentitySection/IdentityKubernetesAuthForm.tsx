@@ -46,7 +46,7 @@ const schema = z
     tokenReviewMode: z
       .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
       .default(IdentityKubernetesAuthTokenReviewMode.Api),
-    kubernetesHost: z.string().min(1).optional().nullable(),
+    kubernetesHost: z.string().optional().nullable(),
     tokenReviewerJwt: z.string().optional(),
     gatewayId: z.string().optional().nullable(),
     allowedNames: z.string(),
@@ -71,7 +71,7 @@ const schema = z
   .superRefine((data, ctx) => {
     if (
       data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      !data.kubernetesHost
+      !data.kubernetesHost?.length
     ) {
       ctx.addIssue({
         path: ["kubernetesHost"],
@@ -128,7 +128,7 @@ export const IdentityKubernetesAuthForm = ({
     watch,
     setValue,
 
-    formState: { isSubmitting }
+    formState: { isSubmitting, errors }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
