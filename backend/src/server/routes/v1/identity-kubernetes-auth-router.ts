@@ -108,17 +108,21 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .string()
             .trim()
             .min(1)
+            .nullable()
             .describe(KUBERNETES_AUTH.ATTACH.kubernetesHost)
             .refine(
-              (val) =>
-                characterValidator([
+              (val) => {
+                if (val === null) return true;
+
+                return characterValidator([
                   CharacterType.Alphabets,
                   CharacterType.Numbers,
                   CharacterType.Colon,
                   CharacterType.Period,
                   CharacterType.ForwardSlash,
                   CharacterType.Hyphen
-                ])(val),
+                ])(val);
+              },
               {
                 message:
                   "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
@@ -164,6 +168,13 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .describe(KUBERNETES_AUTH.ATTACH.accessTokenNumUsesLimit)
         })
         .superRefine((data, ctx) => {
+          if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && !data.kubernetesHost) {
+            ctx.addIssue({
+              path: ["kubernetesHost"],
+              code: z.ZodIssueCode.custom,
+              message: "When token review mode is set to API, a Kubernetes host must be provided"
+            });
+          }
           if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
             ctx.addIssue({
               path: ["gatewayId"],
@@ -171,6 +182,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               message: "When token review mode is set to Gateway, a gateway must be selected"
             });
           }
+
           if (data.accessTokenTTL > data.accessTokenMaxTTL) {
             ctx.addIssue({
               path: ["accessTokenTTL"],
@@ -203,7 +215,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           type: EventType.ADD_IDENTITY_KUBERNETES_AUTH,
           metadata: {
             identityId: identityKubernetesAuth.identityId,
-            kubernetesHost: identityKubernetesAuth.kubernetesHost,
+            kubernetesHost: identityKubernetesAuth.kubernetesHost ?? "",
             allowedNamespaces: identityKubernetesAuth.allowedNamespaces,
             allowedNames: identityKubernetesAuth.allowedNames,
             accessTokenTTL: identityKubernetesAuth.accessTokenTTL,
@@ -243,6 +255,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .string()
             .trim()
             .min(1)
+            .nullable()
             .optional()
             .describe(KUBERNETES_AUTH.UPDATE.kubernetesHost)
             .refine(
@@ -345,7 +358,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH,
           metadata: {
             identityId: identityKubernetesAuth.identityId,
-            kubernetesHost: identityKubernetesAuth.kubernetesHost,
+            kubernetesHost: identityKubernetesAuth.kubernetesHost ?? "",
             allowedNamespaces: identityKubernetesAuth.allowedNamespaces,
             allowedNames: identityKubernetesAuth.allowedNames,
             accessTokenTTL: identityKubernetesAuth.accessTokenTTL,
