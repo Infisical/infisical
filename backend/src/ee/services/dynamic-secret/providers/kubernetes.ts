@@ -20,6 +20,9 @@ import {
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
+// This value is just a placeholder. When using gateway auth method, the url is irrelevant.
+const GATEWAY_AUTH_DEFAULT_URL = "https://kubernetes.default.svc.cluster.local";
+
 type TKubernetesProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
@@ -37,7 +40,7 @@ const generateUsername = (usernameTemplate?: string | null) => {
 export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretKubernetesSchema.parseAsync(inputs);
-    if (!providerInputs.gatewayId) {
+    if (!providerInputs.gatewayId && providerInputs.url) {
       await blockLocalAndPrivateIpAddresses(providerInputs.url);
     }
 
@@ -272,7 +275,9 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       );
     };
 
-    const url = new URL(providerInputs.url);
+    const rawUrl =
+      providerInputs.authMethod === KubernetesAuthMethod.Gateway ? GATEWAY_AUTH_DEFAULT_URL : providerInputs.url || "";
+    const url = new URL(rawUrl);
     const k8sGatewayHost = url.hostname;
     const k8sPort = url.port ? Number(url.port) : 443;
     const k8sHost = `${url.protocol}//${url.hostname}`;
@@ -488,7 +493,9 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       return { ...res.data, serviceAccountName: providerInputs.serviceAccountName };
     };
 
-    const url = new URL(providerInputs.url);
+    const rawUrl =
+      providerInputs.authMethod === KubernetesAuthMethod.Gateway ? GATEWAY_AUTH_DEFAULT_URL : providerInputs.url || "";
+    const url = new URL(rawUrl);
     const k8sHost = `${url.protocol}//${url.hostname}`;
     const k8sGatewayHost = url.hostname;
     const k8sPort = url.port ? Number(url.port) : 443;
@@ -611,7 +618,12 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     };
 
     if (providerInputs.credentialType === KubernetesCredentialType.Dynamic) {
-      const url = new URL(providerInputs.url);
+      const rawUrl =
+        providerInputs.authMethod === KubernetesAuthMethod.Gateway
+          ? GATEWAY_AUTH_DEFAULT_URL
+          : providerInputs.url || "";
+
+      const url = new URL(rawUrl);
       const k8sGatewayHost = url.hostname;
       const k8sPort = url.port ? Number(url.port) : 443;
       const k8sHost = `${url.protocol}//${url.hostname}`;

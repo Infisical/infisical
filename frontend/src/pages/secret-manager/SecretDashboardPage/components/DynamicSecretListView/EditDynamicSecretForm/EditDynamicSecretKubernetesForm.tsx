@@ -59,7 +59,7 @@ const formSchema = z
   .object({
     inputs: z.discriminatedUnion("credentialType", [
       z.object({
-        url: z.string().url().trim().min(1),
+        url: z.string().trim().optional(),
         clusterToken: z.string().trim().optional(),
         ca: z.string().optional(),
         sslEnabled: z.boolean().default(false),
@@ -78,7 +78,7 @@ const formSchema = z
         authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
       }),
       z.object({
-        url: z.string().url().trim().min(1),
+        url: z.string().trim().optional(),
         clusterToken: z.string().trim().optional(),
         ca: z.string().optional(),
         sslEnabled: z.boolean().default(false),
@@ -127,12 +127,21 @@ const formSchema = z
         message: "When auth method is set to Gateway, a gateway must be selected"
       });
     }
-    if (data.inputs.authMethod === AuthMethod.Api && !data.inputs.clusterToken) {
-      ctx.addIssue({
-        path: ["inputs.clusterToken"],
-        code: z.ZodIssueCode.custom,
-        message: "When auth method is set to Token, a cluster token must be provided"
-      });
+    if (data.inputs.authMethod === AuthMethod.Api) {
+      if (!data.inputs.clusterToken) {
+        ctx.addIssue({
+          path: ["inputs.clusterToken"],
+          code: z.ZodIssueCode.custom,
+          message: "When auth method is set to Token, a cluster token must be provided"
+        });
+      }
+      if (!data.inputs.url) {
+        ctx.addIssue({
+          path: ["inputs.url"],
+          code: z.ZodIssueCode.custom,
+          message: "When auth method is set to Token, a cluster URL must be provided"
+        });
+      }
     }
   });
 
@@ -344,70 +353,6 @@ export const EditDynamicSecretKubernetesForm = ({
                   </div>
                   <Controller
                     control={control}
-                    name="inputs.url"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Cluster URL"
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                      >
-                        <Input {...field} />
-                      </FormControl>
-                    )}
-                  />
-
-                  <div className="mb-2 flex items-center">
-                    <span className="mr-3 flex items-center text-sm text-mineshaft-400">
-                      Enable SSL
-                      <Tooltip
-                        className="ml-1 max-w-md"
-                        content={
-                          <span>
-                            If enabled, you can optionally provide a custom CA certificate. Leave
-                            blank to use the system/public CA.
-                          </span>
-                        }
-                      >
-                        <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                      </Tooltip>
-                    </span>
-                    <Controller
-                      name="inputs.sslEnabled"
-                      control={control}
-                      render={({ field: { value, onChange } }) => (
-                        <Switch
-                          className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                          id="ssl-enabled"
-                          thumbClassName="bg-mineshaft-800"
-                          isChecked={value}
-                          onCheckedChange={onChange}
-                          aria-label="Enable SSL"
-                        />
-                      )}
-                    />
-                  </div>
-
-                  <Controller
-                    control={control}
-                    name="inputs.ca"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="CA"
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className={sslEnabled ? "" : "opacity-50"}
-                      >
-                        <TextArea
-                          {...field}
-                          placeholder="-----BEGIN CERTIFICATE----- ..."
-                          isDisabled={!sslEnabled}
-                        />
-                      </FormControl>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
                     name="inputs.authMethod"
                     defaultValue={AuthMethod.Api}
                     render={({ field, fieldState: { error } }) => (
@@ -430,6 +375,73 @@ export const EditDynamicSecretKubernetesForm = ({
                       </FormControl>
                     )}
                   />
+                  {authMethod === AuthMethod.Api && (
+                    <>
+                      <Controller
+                        control={control}
+                        name="inputs.url"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Cluster URL"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                          >
+                            <Input {...field} />
+                          </FormControl>
+                        )}
+                      />
+
+                      <div className="mb-2 flex items-center">
+                        <span className="mr-3 flex items-center text-sm text-mineshaft-400">
+                          Enable SSL
+                          <Tooltip
+                            className="ml-1 max-w-md"
+                            content={
+                              <span>
+                                If enabled, you can optionally provide a custom CA certificate.
+                                Leave blank to use the system/public CA.
+                              </span>
+                            }
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                          </Tooltip>
+                        </span>
+                        <Controller
+                          name="inputs.sslEnabled"
+                          control={control}
+                          render={({ field: { value, onChange } }) => (
+                            <Switch
+                              className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                              id="ssl-enabled"
+                              thumbClassName="bg-mineshaft-800"
+                              isChecked={value}
+                              onCheckedChange={onChange}
+                              aria-label="Enable SSL"
+                            />
+                          )}
+                        />
+                      </div>
+
+                      <Controller
+                        control={control}
+                        name="inputs.ca"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="CA"
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                            className={sslEnabled ? "" : "opacity-50"}
+                          >
+                            <TextArea
+                              {...field}
+                              placeholder="-----BEGIN CERTIFICATE----- ..."
+                              isDisabled={!sslEnabled}
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    </>
+                  )}
                   {authMethod === AuthMethod.Api && (
                     <Controller
                       control={control}

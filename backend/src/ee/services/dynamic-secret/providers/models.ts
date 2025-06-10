@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
@@ -325,7 +326,12 @@ export const LdapSchema = z.union([
 export const DynamicSecretKubernetesSchema = z
   .discriminatedUnion("credentialType", [
     z.object({
-      url: z.string().url().trim().min(1),
+      url: z
+        .string()
+        .optional()
+        .refine((val: string | undefined) => !val || new RE2(/^https?:\/\/.+/).test(val), {
+          message: "Invalid URL. Must start with http:// or https:// (e.g. https://example.com)"
+        }),
       clusterToken: z.string().trim().optional(),
       ca: z.string().optional(),
       sslEnabled: z.boolean().default(false),
@@ -341,7 +347,13 @@ export const DynamicSecretKubernetesSchema = z
       authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
     }),
     z.object({
-      url: z.string().url().trim().min(1),
+      url: z
+        .string()
+        .url()
+        .optional()
+        .refine((val: string | undefined) => !val || new RE2(/^https?:\/\/.+/).test(val), {
+          message: "Invalid URL. Must start with http:// or https:// (e.g. https://example.com)"
+        }),
       clusterToken: z.string().trim().optional(),
       ca: z.string().optional(),
       sslEnabled: z.boolean().default(false),
@@ -369,12 +381,21 @@ export const DynamicSecretKubernetesSchema = z
         message: "When auth method is set to Gateway, a gateway must be selected"
       });
     }
-    if ((data.authMethod === KubernetesAuthMethod.Api || !data.authMethod) && !data.clusterToken) {
-      ctx.addIssue({
-        path: ["clusterToken"],
-        code: z.ZodIssueCode.custom,
-        message: "When auth method is set to Manual Token, a cluster token must be provided"
-      });
+    if (data.authMethod === KubernetesAuthMethod.Api || !data.authMethod) {
+      if (!data.clusterToken) {
+        ctx.addIssue({
+          path: ["clusterToken"],
+          code: z.ZodIssueCode.custom,
+          message: "When auth method is set to Token, a cluster token must be provided"
+        });
+      }
+      if (!data.url) {
+        ctx.addIssue({
+          path: ["url"],
+          code: z.ZodIssueCode.custom,
+          message: "When auth method is set to Token, a cluster URL must be provided"
+        });
+      }
     }
   });
 
