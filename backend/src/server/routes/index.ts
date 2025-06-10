@@ -60,6 +60,7 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
@@ -154,6 +155,14 @@ import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-gr
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
+import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
+import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
+import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
+import { folderCommitQueueServiceFactory } from "@app/services/folder-commit/folder-commit-queue";
+import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
+import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
+import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectMembershipRoleDALFactory } from "@app/services/group-project/group-project-membership-role-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
@@ -583,6 +592,41 @@ export const registerRoutes = async (
     projectRoleDAL,
     permissionService
   });
+
+  const folderCommitChangesDAL = folderCommitChangesDALFactory(db);
+  const folderCheckpointDAL = folderCheckpointDALFactory(db);
+  const folderCheckpointResourcesDAL = folderCheckpointResourcesDALFactory(db);
+  const folderTreeCheckpointDAL = folderTreeCheckpointDALFactory(db);
+  const folderCommitDAL = folderCommitDALFactory(db);
+  const folderTreeCheckpointResourcesDAL = folderTreeCheckpointResourcesDALFactory(db);
+  const folderCommitQueueService = folderCommitQueueServiceFactory({
+    queueService,
+    folderTreeCheckpointDAL,
+    keyStore,
+    folderTreeCheckpointResourcesDAL,
+    folderCommitDAL,
+    folderDAL
+  });
+  const folderCommitService = folderCommitServiceFactory({
+    folderCommitDAL,
+    folderCommitChangesDAL,
+    folderCheckpointDAL,
+    folderTreeCheckpointDAL,
+    userDAL,
+    identityDAL,
+    folderDAL,
+    folderVersionDAL,
+    secretVersionV2BridgeDAL,
+    projectDAL,
+    folderCheckpointResourcesDAL,
+    secretV2BridgeDAL,
+    folderTreeCheckpointResourcesDAL,
+    folderCommitQueueService,
+    permissionService,
+    kmsService,
+    secretTagDAL,
+    resourceMetadataDAL
+  });
   const scimService = scimServiceFactory({
     licenseService,
     scimDAL,
@@ -987,6 +1031,7 @@ export const registerRoutes = async (
     projectMembershipDAL,
     projectBotDAL,
     secretDAL,
+    folderCommitService,
     secretBlindIndexDAL,
     secretVersionDAL,
     secretTagDAL,
@@ -1034,6 +1079,7 @@ export const registerRoutes = async (
     secretReminderRecipientsDAL,
     orgService,
     resourceMetadataDAL,
+    folderCommitService,
     secretSyncQueue
   });
 
@@ -1110,6 +1156,7 @@ export const registerRoutes = async (
     snapshotDAL,
     snapshotFolderDAL,
     snapshotSecretDAL,
+    folderCommitService,
     secretVersionDAL,
     folderVersionDAL,
     secretTagDAL,
@@ -1136,7 +1183,8 @@ export const registerRoutes = async (
     folderVersionDAL,
     projectEnvDAL,
     snapshotService,
-    projectDAL
+    projectDAL,
+    folderCommitService
   });
 
   const secretImportService = secretImportServiceFactory({
@@ -1161,6 +1209,7 @@ export const registerRoutes = async (
   const secretV2BridgeService = secretV2BridgeServiceFactory({
     folderDAL,
     secretVersionDAL: secretVersionV2BridgeDAL,
+    folderCommitService,
     secretQueueService,
     secretDAL: secretV2BridgeDAL,
     permissionService,
@@ -1204,7 +1253,8 @@ export const registerRoutes = async (
     projectSlackConfigDAL,
     resourceMetadataDAL,
     projectMicrosoftTeamsConfigDAL,
-    microsoftTeamsService
+    microsoftTeamsService,
+    folderCommitService
   });
 
   const secretService = secretServiceFactory({
@@ -1291,7 +1341,8 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL,
     secretVersionV2BridgeDAL,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    folderCommitService
   });
 
   const secretRotationQueue = secretRotationQueueFactory({
@@ -1303,6 +1354,7 @@ export const registerRoutes = async (
     projectBotService,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
+    folderCommitService,
     kmsService
   });
 
@@ -1454,6 +1506,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const pitService = pitServiceFactory({
+    folderCommitService,
+    secretService,
+    folderService,
+    permissionService,
+    folderDAL,
+    projectEnvDAL
+  });
+
   const identityOidcAuthService = identityOidcAuthServiceFactory({
     identityOidcAuthDAL,
     identityOrgMembershipDAL,
@@ -1597,7 +1658,9 @@ export const registerRoutes = async (
     secretDAL: secretV2BridgeDAL,
     queueService,
     secretV2BridgeService,
-    resourceMetadataDAL
+    resourceMetadataDAL,
+    folderCommitService,
+    folderVersionDAL
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -1707,6 +1770,7 @@ export const registerRoutes = async (
     auditLogService,
     secretV2BridgeDAL,
     secretTagDAL,
+    folderCommitService,
     secretVersionTagV2BridgeDAL,
     secretVersionV2BridgeDAL,
     keyStore,
@@ -1895,6 +1959,7 @@ export const registerRoutes = async (
     certificateTemplate: certificateTemplateService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
+    pit: pitService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
     pkiSubscriber: pkiSubscriberService,
@@ -1929,6 +1994,7 @@ export const registerRoutes = async (
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
     githubOrgSync: githubOrgSyncConfigService,
+    folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service
   });
 
