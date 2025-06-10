@@ -57,12 +57,11 @@ export const registerServeUI = async (
           reply.callNotFound();
           return;
         }
-        
+
         // This should help avoid caching any chunks (temp)
-        reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-        reply.header('Pragma', 'no-cache');
+        reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
+        reply.header("Pragma", "no-cache");
         return reply.sendFile("index.html");
-        
       }
     });
   }
