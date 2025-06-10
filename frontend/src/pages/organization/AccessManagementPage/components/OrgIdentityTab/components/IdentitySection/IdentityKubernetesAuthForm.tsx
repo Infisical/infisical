@@ -301,30 +301,6 @@ export const IdentityKubernetesAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
-            <Controller
-              control={control}
-              defaultValue="2592000"
-              name="kubernetesHost"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Kubernetes Host / Base Kubernetes API URL "
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
-                  isRequired
-                >
-                  <Input
-                    {...field}
-                    placeholder="https://my-example-k8s-api-host.com"
-                    type="text"
-                    value={field.value || ""}
-                  />
-                </FormControl>
-              )}
-            />
-          )}
-
           <div className="flex w-full items-center gap-2">
             <div className="w-full flex-1">
               <OrgPermissionCan
@@ -413,6 +389,29 @@ export const IdentityKubernetesAuthForm = ({
               )}
             />
           </div>
+          {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="kubernetesHost"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Kubernetes Host / Base Kubernetes API URL "
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
+                  isRequired
+                >
+                  <Input
+                    {...field}
+                    placeholder="https://my-example-k8s-api-host.com"
+                    type="text"
+                    value={field.value || ""}
+                  />
+                </FormControl>
+              )}
+            />
+          )}
 
           {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
             <Controller
