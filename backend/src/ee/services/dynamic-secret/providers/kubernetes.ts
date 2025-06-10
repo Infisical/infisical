@@ -125,12 +125,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               headers: {
                 "Content-Type": "application/json",
                 ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-                  ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                  ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                   : { Authorization: `Bearer ${providerInputs.clusterToken}` })
               },
+              ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+                ? {
+                    httpsAgent
+                  }
+                : {}),
               signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-              timeout: EXTERNAL_REQUEST_TIMEOUT,
-              httpsAgent
+              timeout: EXTERNAL_REQUEST_TIMEOUT
             }
           );
 
@@ -166,12 +170,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               headers: {
                 "Content-Type": "application/json",
                 ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-                  ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                  ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                   : { Authorization: `Bearer ${providerInputs.clusterToken}` })
               },
+              ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+                ? {
+                    httpsAgent
+                  }
+                : {}),
               signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-              timeout: EXTERNAL_REQUEST_TIMEOUT,
-              httpsAgent
+              timeout: EXTERNAL_REQUEST_TIMEOUT
             }
           );
 
@@ -188,12 +196,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               headers: {
                 "Content-Type": "application/json",
                 ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-                  ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                  ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                   : { Authorization: `Bearer ${providerInputs.clusterToken}` })
               },
+              ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+                ? {
+                    httpsAgent
+                  }
+                : {}),
               signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-              timeout: EXTERNAL_REQUEST_TIMEOUT,
-              httpsAgent
+              timeout: EXTERNAL_REQUEST_TIMEOUT
             }
           );
 
@@ -205,12 +217,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
                 headers: {
                   "Content-Type": "application/json",
                   ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-                    ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                    ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                     : { Authorization: `Bearer ${providerInputs.clusterToken}` })
                 },
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+                  ? {
+                      httpsAgent
+                    }
+                  : {}),
                 signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-                timeout: EXTERNAL_REQUEST_TIMEOUT,
-                httpsAgent
+                timeout: EXTERNAL_REQUEST_TIMEOUT
               }
             );
           } else {
@@ -218,12 +234,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               headers: {
                 "Content-Type": "application/json",
                 ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-                  ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                  ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                   : { Authorization: `Bearer ${providerInputs.clusterToken}` })
               },
+              ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+                ? {
+                    httpsAgent
+                  }
+                : {}),
               signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-              timeout: EXTERNAL_REQUEST_TIMEOUT,
-              httpsAgent
+              timeout: EXTERNAL_REQUEST_TIMEOUT
             });
           }
 
@@ -231,12 +251,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
             headers: {
               "Content-Type": "application/json",
               ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-                ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                 : { Authorization: `Bearer ${providerInputs.clusterToken}` })
             },
+            ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+              ? {
+                  httpsAgent
+                }
+              : {}),
             signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-            timeout: EXTERNAL_REQUEST_TIMEOUT,
-            httpsAgent
+            timeout: EXTERNAL_REQUEST_TIMEOUT
           });
         } catch (error) {
           const cleanupInfo = `You may need to manually clean up the following resources in namespace "${namespace}": Service Account - ${serviceAccountName}, ${providerInputs.roleType === KubernetesRoleType.Role ? "Role" : "Cluster Role"} Binding - ${roleBindingName}.`;
@@ -265,12 +289,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           headers: {
             "Content-Type": "application/json",
             ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+              ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
+          ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+            ? {
+                httpsAgent
+              }
+            : {}),
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
+          timeout: EXTERNAL_REQUEST_TIMEOUT
         }
       );
     };
@@ -381,12 +409,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           headers: {
             "Content-Type": "application/json",
             ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+              ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
+          ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+            ? {
+                httpsAgent
+              }
+            : {}),
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
+          timeout: EXTERNAL_REQUEST_TIMEOUT
         }
       );
 
@@ -422,12 +454,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           headers: {
             "Content-Type": "application/json",
             ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+              ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
+          ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+            ? {
+                httpsAgent
+              }
+            : {}),
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
+          timeout: EXTERNAL_REQUEST_TIMEOUT
         }
       );
 
@@ -444,12 +480,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           headers: {
             "Content-Type": "application/json",
             ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+              ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
+          ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+            ? {
+                httpsAgent
+              }
+            : {}),
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
+          timeout: EXTERNAL_REQUEST_TIMEOUT
         }
       );
 
@@ -481,12 +521,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           headers: {
             "Content-Type": "application/json",
             ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+              ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
+          ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+            ? {
+                httpsAgent
+              }
+            : {}),
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
+          timeout: EXTERNAL_REQUEST_TIMEOUT
         }
       );
 
@@ -581,12 +625,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
             headers: {
               "Content-Type": "application/json",
               ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-                ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                 : { Authorization: `Bearer ${providerInputs.clusterToken}` })
             },
+            ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+              ? {
+                  httpsAgent
+                }
+              : {}),
             signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-            timeout: EXTERNAL_REQUEST_TIMEOUT,
-            httpsAgent
+            timeout: EXTERNAL_REQUEST_TIMEOUT
           }
         );
       } else {
@@ -594,12 +642,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           headers: {
             "Content-Type": "application/json",
             ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+              ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
+          ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+            ? {
+                httpsAgent
+              }
+            : {}),
           signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
+          timeout: EXTERNAL_REQUEST_TIMEOUT
         });
       }
 
@@ -608,12 +660,16 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
         headers: {
           "Content-Type": "application/json",
           ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-            ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+            ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
             : { Authorization: `Bearer ${providerInputs.clusterToken}` })
         },
+        ...(providerInputs.authMethod === KubernetesAuthMethod.Api
+          ? {
+              httpsAgent
+            }
+          : {}),
         signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-        timeout: EXTERNAL_REQUEST_TIMEOUT,
-        httpsAgent
+        timeout: EXTERNAL_REQUEST_TIMEOUT
       });
     };
 
