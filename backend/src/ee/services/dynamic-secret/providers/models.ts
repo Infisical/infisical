@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
+
 export type PasswordRequirements = {
   length: number;
   required: {
@@ -329,7 +331,11 @@ export const DynamicSecretKubernetesSchema = z
       sslEnabled: z.boolean().default(false),
       credentialType: z.literal(KubernetesCredentialType.Static),
       serviceAccountName: z.string().trim().min(1),
-      namespace: z.string().trim().min(1),
+      namespace: z
+        .string()
+        .trim()
+        .min(1)
+        .refine((val) => !val.includes(","), "Namespace must be a single value, not a comma-separated list"),
       gatewayId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
@@ -340,7 +346,14 @@ export const DynamicSecretKubernetesSchema = z
       ca: z.string().optional(),
       sslEnabled: z.boolean().default(false),
       credentialType: z.literal(KubernetesCredentialType.Dynamic),
-      namespace: z.string().trim().min(1),
+      namespace: z
+        .string()
+        .trim()
+        .min(1)
+        .refine((val) => {
+          const namespaces = val.split(",").map((ns) => ns.trim());
+          return namespaces.length > 0 && namespaces.every((ns) => ns.length > 0);
+        }, "Must be a valid comma-separated list of namespace values"),
       gatewayId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       roleType: z.nativeEnum(KubernetesRoleType),
@@ -475,10 +488,16 @@ export type TDynamicProviderFns = {
       name: string;
     };
     metadata: { projectId: string };
+    config?: TDynamicSecretLeaseConfig;
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
   validateProviderInputs: (inputs: object, metadata: { projectId: string }) => Promise<unknown>;
-  revoke: (inputs: unknown, entityId: string, metadata: { projectId: string }) => Promise<{ entityId: string }>;
+  revoke: (
+    inputs: unknown,
+    entityId: string,
+    metadata: { projectId: string },
+    config?: TDynamicSecretLeaseConfig
+  ) => Promise<{ entityId: string }>;
   renew: (
     inputs: unknown,
     entityId: string,

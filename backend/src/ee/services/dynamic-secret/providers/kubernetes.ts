@@ -1,13 +1,14 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import handlebars from "handlebars";
 import https from "https";
 
-import { InternalServerError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKubernetesTokenRequest } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
+import { TDynamicSecretKubernetesLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import {
   DynamicSecretKubernetesSchema,
@@ -103,96 +104,127 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       const serviceAccountName = generateUsername();
       const roleBindingName = `${serviceAccountName}-role-binding`;
 
-      // 1. Create a test service account
-      await axios.post(
-        `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts`,
-        {
-          metadata: {
-            name: serviceAccountName,
-            namespace: providerInputs.namespace
-          }
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
-              : { Authorization: `Bearer ${providerInputs.clusterToken}` })
-          },
-          signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
-        }
-      );
+      const namespaces = providerInputs.namespace.split(",").map((namespace) => namespace.trim());
 
-      // 2. Create a test role binding
-      const roleBindingUrl =
-        providerInputs.roleType === KubernetesRoleType.ClusterRole
-          ? `${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings`
-          : `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${providerInputs.namespace}/rolebindings`;
-
-      const roleBindingMetadata = {
-        name: roleBindingName,
-        ...(providerInputs.roleType !== KubernetesRoleType.ClusterRole && { namespace: providerInputs.namespace })
-      };
-
-      await axios.post(
-        roleBindingUrl,
-        {
-          metadata: roleBindingMetadata,
-          roleRef: {
-            kind: providerInputs.roleType === KubernetesRoleType.ClusterRole ? "ClusterRole" : "Role",
-            name: providerInputs.role,
-            apiGroup: "rbac.authorization.k8s.io"
-          },
-          subjects: [
+      // Test each namespace sequentially instead of in parallel to simplify cleanup
+      for await (const namespace of namespaces) {
+        try {
+          // 1. Create a test service account
+          await axios.post(
+            `${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts`,
             {
-              kind: "ServiceAccount",
-              name: serviceAccountName,
-              namespace: providerInputs.namespace
+              metadata: {
+                name: serviceAccountName,
+                namespace
+              }
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                  ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                  : { Authorization: `Bearer ${providerInputs.clusterToken}` })
+              },
+              signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+              timeout: EXTERNAL_REQUEST_TIMEOUT,
+              httpsAgent
             }
-          ]
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
-              : { Authorization: `Bearer ${providerInputs.clusterToken}` })
-          },
-          signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
-        }
-      );
+          );
 
-      // 3. Request a token for the test service account
-      await axios.post(
-        `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts/${serviceAccountName}/token`,
-        {
-          spec: {
-            expirationSeconds: 600, // 10 minutes
-            ...(providerInputs.audiences?.length ? { audiences: providerInputs.audiences } : {})
+          // 2. Create a test role binding
+          const roleBindingUrl =
+            providerInputs.roleType === KubernetesRoleType.ClusterRole
+              ? `${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings`
+              : `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${namespace}/rolebindings`;
+
+          const roleBindingMetadata = {
+            name: roleBindingName,
+            ...(providerInputs.roleType !== KubernetesRoleType.ClusterRole && { namespace })
+          };
+
+          await axios.post(
+            roleBindingUrl,
+            {
+              metadata: roleBindingMetadata,
+              roleRef: {
+                kind: providerInputs.roleType === KubernetesRoleType.ClusterRole ? "ClusterRole" : "Role",
+                name: providerInputs.role,
+                apiGroup: "rbac.authorization.k8s.io"
+              },
+              subjects: [
+                {
+                  kind: "ServiceAccount",
+                  name: serviceAccountName,
+                  namespace
+                }
+              ]
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                  ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                  : { Authorization: `Bearer ${providerInputs.clusterToken}` })
+              },
+              signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+              timeout: EXTERNAL_REQUEST_TIMEOUT,
+              httpsAgent
+            }
+          );
+
+          // 3. Request a token for the test service account
+          await axios.post(
+            `${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${serviceAccountName}/token`,
+            {
+              spec: {
+                expirationSeconds: 600, // 10 minutes
+                ...(providerInputs.audiences?.length ? { audiences: providerInputs.audiences } : {})
+              }
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                  ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                  : { Authorization: `Bearer ${providerInputs.clusterToken}` })
+              },
+              signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+              timeout: EXTERNAL_REQUEST_TIMEOUT,
+              httpsAgent
+            }
+          );
+
+          // 4. Cleanup: delete role binding and service account
+          if (providerInputs.roleType === KubernetesRoleType.Role) {
+            await axios.delete(
+              `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${namespace}/rolebindings/${roleBindingName}`,
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                    ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                    : { Authorization: `Bearer ${providerInputs.clusterToken}` })
+                },
+                signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+                timeout: EXTERNAL_REQUEST_TIMEOUT,
+                httpsAgent
+              }
+            );
+          } else {
+            await axios.delete(`${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${roleBindingName}`, {
+              headers: {
+                "Content-Type": "application/json",
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                  ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
+                  : { Authorization: `Bearer ${providerInputs.clusterToken}` })
+              },
+              signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+              timeout: EXTERNAL_REQUEST_TIMEOUT,
+              httpsAgent
+            });
           }
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
-              : { Authorization: `Bearer ${providerInputs.clusterToken}` })
-          },
-          signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
-        }
-      );
 
-      // 4. Cleanup: delete role binding and service account
-      if (providerInputs.roleType === KubernetesRoleType.Role) {
-        await axios.delete(
-          `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${providerInputs.namespace}/rolebindings/${roleBindingName}`,
-          {
+          await axios.delete(`${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${serviceAccountName}`, {
             headers: {
               "Content-Type": "application/json",
               ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
@@ -202,36 +234,19 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
             signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
             timeout: EXTERNAL_REQUEST_TIMEOUT,
             httpsAgent
+          });
+        } catch (error) {
+          const cleanupInfo = `You may need to manually clean up the following resources in namespace "${namespace}": Service Account - ${serviceAccountName}, ${providerInputs.roleType === KubernetesRoleType.Role ? "Role" : "Cluster Role"} Binding - ${roleBindingName}.`;
+          let mainErrorMessage = "Unknown error";
+          if (error instanceof AxiosError) {
+            mainErrorMessage = (error.response?.data as { message: string })?.message;
+          } else if (error instanceof Error) {
+            mainErrorMessage = error.message;
           }
-        );
-      } else {
-        await axios.delete(`${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${roleBindingName}`, {
-          headers: {
-            "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
-              : { Authorization: `Bearer ${providerInputs.clusterToken}` })
-          },
-          signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
-        });
-      }
 
-      await axios.delete(
-        `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts/${serviceAccountName}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
-              ? { "x-infisical-action": GatewayHttpProxyActions.InjectGatewayK8sServiceAccountToken }
-              : { Authorization: `Bearer ${providerInputs.clusterToken}` })
-          },
-          signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-          timeout: EXTERNAL_REQUEST_TIMEOUT,
-          httpsAgent
+          throw new Error(`${mainErrorMessage}. ${cleanupInfo}`);
         }
-      );
+      }
     };
 
     const serviceAccountStaticCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
@@ -315,11 +330,13 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
   const create = async ({
     inputs,
     expireAt,
-    usernameTemplate
+    usernameTemplate,
+    config
   }: {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
+    config?: TDynamicSecretKubernetesLeaseConfig;
   }) => {
     const providerInputs = await validateProviderInputs(inputs);
 
@@ -331,14 +348,28 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       const baseUrl = port ? `${host}:${port}` : host;
       const serviceAccountName = generateUsername(usernameTemplate);
       const roleBindingName = `${serviceAccountName}-role-binding`;
+      const allowedNamespaces = providerInputs.namespace.split(",").map((namespace) => namespace.trim());
+
+      if (config?.namespace && !allowedNamespaces?.includes(config?.namespace)) {
+        throw new BadRequestError({
+          message: `Namespace ${config?.namespace} is not allowed. Allowed namespaces: ${allowedNamespaces?.join(", ")}`
+        });
+      }
+
+      const namespace = config?.namespace || allowedNamespaces[0];
+      if (!namespace) {
+        throw new BadRequestError({
+          message: "No namespace provided"
+        });
+      }
 
       // 1. Create the service account
       await axios.post(
-        `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts`,
+        `${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts`,
         {
           metadata: {
             name: serviceAccountName,
-            namespace: providerInputs.namespace
+            namespace
           }
         },
         {
@@ -358,11 +389,11 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       const roleBindingUrl =
         providerInputs.roleType === KubernetesRoleType.ClusterRole
           ? `${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings`
-          : `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${providerInputs.namespace}/rolebindings`;
+          : `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${namespace}/rolebindings`;
 
       const roleBindingMetadata = {
         name: roleBindingName,
-        ...(providerInputs.roleType !== KubernetesRoleType.ClusterRole && { namespace: providerInputs.namespace })
+        ...(providerInputs.roleType !== KubernetesRoleType.ClusterRole && { namespace })
       };
 
       await axios.post(
@@ -378,7 +409,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
             {
               kind: "ServiceAccount",
               name: serviceAccountName,
-              namespace: providerInputs.namespace
+              namespace
             }
           ]
         },
@@ -397,7 +428,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
 
       // 3. Request a token for the service account
       const res = await axios.post<TKubernetesTokenRequest>(
-        `${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts/${serviceAccountName}/token`,
+        `${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${serviceAccountName}/token`,
         {
           spec: {
             expirationSeconds: Math.floor((expireAt - Date.now()) / 1000),
@@ -423,6 +454,12 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     const tokenRequestStaticCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Static) {
         throw new Error("invalid callback");
+      }
+
+      if (config?.namespace && config.namespace !== providerInputs.namespace) {
+        throw new BadRequestError({
+          message: `Namespace ${config?.namespace} is not allowed. Allowed namespace: ${providerInputs.namespace}.`
+        });
       }
 
       const baseUrl = port ? `${host}:${port}` : host;
@@ -511,7 +548,13 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     }
   };
 
-  const revoke = async (inputs: unknown, entityId: string) => {
+  const revoke = async (
+    inputs: unknown,
+    entityId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _metadata: { projectId: string },
+    config?: TDynamicSecretKubernetesLeaseConfig
+  ) => {
     const providerInputs = await validateProviderInputs(inputs);
 
     const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
@@ -522,9 +565,11 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       const baseUrl = port ? `${host}:${port}` : host;
       const roleBindingName = `${entityId}-role-binding`;
 
+      const namespace = config?.namespace ?? providerInputs.namespace.split(",")[0].trim();
+
       if (providerInputs.roleType === KubernetesRoleType.Role) {
         await axios.delete(
-          `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${providerInputs.namespace}/rolebindings/${roleBindingName}`,
+          `${baseUrl}/apis/rbac.authorization.k8s.io/v1/namespaces/${namespace}/rolebindings/${roleBindingName}`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -552,7 +597,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       }
 
       // Delete the service account
-      await axios.delete(`${baseUrl}/api/v1/namespaces/${providerInputs.namespace}/serviceaccounts/${entityId}`, {
+      await axios.delete(`${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${entityId}`, {
         headers: {
           "Content-Type": "application/json",
           ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway

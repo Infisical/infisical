@@ -65,7 +65,14 @@ const formSchema = z
         sslEnabled: z.boolean().default(false),
         credentialType: z.literal(KubernetesDynamicSecretCredentialType.Static),
         serviceAccountName: z.string().trim().min(1),
-        namespace: z.string().trim().min(1),
+        namespace: z
+          .string()
+          .trim()
+          .min(1)
+          .refine(
+            (val) => !val.includes(","),
+            "Namespace must be a single value, not a comma-separated list"
+          ),
         gatewayId: z.string().optional(),
         audiences: z.array(z.string().trim().min(1)),
         authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
@@ -76,7 +83,14 @@ const formSchema = z
         ca: z.string().optional(),
         sslEnabled: z.boolean().default(false),
         credentialType: z.literal(KubernetesDynamicSecretCredentialType.Dynamic),
-        namespace: z.string().trim().min(1),
+        namespace: z
+          .string()
+          .trim()
+          .min(1)
+          .refine((val) => {
+            const namespaces = val.split(",").map((ns) => ns.trim());
+            return namespaces.length > 0 && namespaces.every((ns) => ns.length > 0);
+          }, "Must be a valid comma-separated list of namespace values"),
         gatewayId: z.string().optional(),
         audiences: z.array(z.string().trim().min(1)),
         roleType: z.nativeEnum(RoleType),
@@ -502,7 +516,11 @@ export const EditDynamicSecretKubernetesForm = ({
                         name="inputs.namespace"
                         render={({ field, fieldState: { error } }) => (
                           <FormControl
-                            label="Namespace"
+                            label={
+                              credentialType === KubernetesDynamicSecretCredentialType.Static
+                                ? "Namespace"
+                                : "Allowed Namespace(s)"
+                            }
                             isError={Boolean(error?.message)}
                             errorText={error?.message}
                           >

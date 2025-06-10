@@ -1113,6 +1113,14 @@ export const DYNAMIC_SECRET_LEASES = {
     leaseId: "The ID of the dynamic secret lease.",
     isForced:
       "A boolean flag to delete the the dynamic secret from Infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+  },
+  KUBERNETES: {
+    CREATE: {
+      config: {
+        namespace:
+          "The Kubernetes namespace to create the lease in. If not specified, the first namespace defined in the configuration will be used."
+      }
+    }
   }
 } as const;
 export const SECRET_TAGS = {

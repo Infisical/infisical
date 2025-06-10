@@ -29,6 +29,7 @@ import {
   TCreateDynamicSecretLeaseDTO,
   TDeleteDynamicSecretLeaseDTO,
   TDetailsDynamicSecretLeaseDTO,
+  TDynamicSecretLeaseConfig,
   TListDynamicSecretLeasesDTO,
   TRenewDynamicSecretLeaseDTO
 } from "./dynamic-secret-lease-types";
@@ -77,7 +78,8 @@ export const dynamicSecretLeaseServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    ttl
+    ttl,
+    config
   }: TCreateDynamicSecretLeaseDTO) => {
     const appCfg = getConfig();
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
@@ -163,7 +165,8 @@ export const dynamicSecretLeaseServiceFactory = ({
         expireAt: expireAt.getTime(),
         usernameTemplate: dynamicSecretCfg.usernameTemplate,
         identity,
-        metadata: { projectId }
+        metadata: { projectId },
+        config
       });
     } catch (error: unknown) {
       if (error && typeof error === "object" && error !== null && "sqlMessage" in error) {
@@ -177,8 +180,10 @@ export const dynamicSecretLeaseServiceFactory = ({
       expireAt,
       version: 1,
       dynamicSecretId: dynamicSecretCfg.id,
-      externalEntityId: entityId
+      externalEntityId: entityId,
+      config
     });
+
     await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, Number(expireAt) - Number(new Date()));
     return { lease: dynamicSecretLease, dynamicSecret: dynamicSecretCfg, data };
   };
@@ -342,7 +347,12 @@ export const dynamicSecretLeaseServiceFactory = ({
     ) as object;
 
     const revokeResponse = await selectedProvider
-      .revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId, { projectId })
+      .revoke(
+        decryptedStoredInput,
+        dynamicSecretLease.externalEntityId,
+        { projectId },
+        dynamicSecretLease.config as TDynamicSecretLeaseConfig
+      )
       .catch(async (err) => {
         // only propogate this error if forced is false
         if (!isForced) return { error: err as Error };
