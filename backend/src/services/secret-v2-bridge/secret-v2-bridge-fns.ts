@@ -76,6 +76,7 @@ export const fnSecretBulkInsert = async ({
   secretVersionTagDAL,
   folderCommitService,
   actor,
+  skipCommit,
   tx
 }: TFnSecretBulkInsert) => {
   const sanitizedInputSecrets = inputSecrets.map(
@@ -141,7 +142,7 @@ export const fnSecretBulkInsert = async ({
       secretVersionId: sv.id
     }));
 
-  if (commitChanges.length > 0) {
+  if (commitChanges.length > 0 && !skipCommit) {
     await folderCommitService.createCommit(
       {
         actor: {
@@ -216,7 +217,8 @@ export const fnSecretBulkUpdate = async ({
   secretTagDAL,
   secretVersionTagDAL,
   resourceMetadataDAL,
-  actor
+  actor,
+  skipCommit
 }: TFnSecretBulkUpdate) => {
   const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
   const identityActorId = actor && actor?.type === ActorType.IDENTITY ? actor?.actorId : undefined;
@@ -366,7 +368,7 @@ export const fnSecretBulkUpdate = async ({
       isUpdate: true,
       secretVersionId: sv.id
     }));
-  if (commitChanges.length > 0) {
+  if (commitChanges.length > 0 && !skipCommit) {
     await folderCommitService.createCommit(
       {
         actor: {
@@ -395,7 +397,8 @@ export const fnSecretBulkDelete = async ({
   secretDAL,
   secretQueueService,
   folderCommitService,
-  secretVersionDAL
+  secretVersionDAL,
+  skipCommit
 }: TFnSecretBulkDelete) => {
   const deletedSecrets = await secretDAL.deleteMany(
     inputSecrets.map(({ type, secretKey }) => ({
@@ -427,7 +430,7 @@ export const fnSecretBulkDelete = async ({
       type: CommitType.DELETE,
       secretVersionId: secretVersions[id].id
     }));
-  if (commitChanges.length > 0) {
+  if (commitChanges.length > 0 && !skipCommit) {
     await folderCommitService.createCommit(
       {
         actor: {

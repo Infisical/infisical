@@ -139,6 +139,7 @@ export const secretRotationV2ServiceFactory = ({
   resourceMetadataDAL,
   permissionService,
   appConnectionService,
+  folderCommitService,
   projectBotService,
   licenseService,
   kmsService,
@@ -147,7 +148,6 @@ export const secretRotationV2ServiceFactory = ({
   snapshotService,
   keyStore,
   queueService,
-  folderCommitService,
   appConnectionDAL
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
@@ -541,12 +541,9 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionDAL: secretVersionV2BridgeDAL,
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             secretTagDAL,
-            folderCommitService,
             resourceMetadataDAL,
-            actor: {
-              type: actor.type,
-              actorId: actor.id
-            }
+            folderCommitService,
+            skipCommit: true
           });
 
           await secretRotationV2DAL.insertSecretMappings(
@@ -682,12 +679,9 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionDAL: secretVersionV2BridgeDAL,
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             secretTagDAL,
-            folderCommitService,
             resourceMetadataDAL,
-            actor: {
-              type: actor.type,
-              actorId: actor.id
-            }
+            folderCommitService,
+            skipCommit: true
           });
 
           secretsMappingUpdated = true;
@@ -805,7 +799,7 @@ export const secretRotationV2ServiceFactory = ({
             projectId,
             folderId,
             actorId: actor.id, // not actually used since rotated secrets are shared
-            actorType: actor.type,
+            skipCommit: true,
             folderCommitService,
             secretVersionDAL: secretVersionV2BridgeDAL,
             tx
@@ -951,12 +945,10 @@ export const secretRotationV2ServiceFactory = ({
               secretDAL: secretV2BridgeDAL,
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretVersionTagDAL: secretVersionTagV2BridgeDAL,
-              folderCommitService,
-              actor: {
-                type: ActorType.PLATFORM
-              },
               secretTagDAL,
-              resourceMetadataDAL
+              resourceMetadataDAL,
+              folderCommitService,
+              skipCommit: true
             });
 
             const currentTime = new Date();

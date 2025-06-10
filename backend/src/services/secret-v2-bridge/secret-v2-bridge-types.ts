@@ -184,6 +184,7 @@ export type TFnSecretBulkInsert = {
     type: string;
     actorId?: string;
   };
+  skipCommit?: boolean;
 };
 
 type TRequireReferenceIfValue =
@@ -214,6 +215,7 @@ export type TFnSecretBulkUpdate = {
     actorId?: string;
   };
   tx?: Knex;
+  skipCommit?: boolean;
 };
 
 export type TFnSecretBulkDelete = {
@@ -229,6 +231,7 @@ export type TFnSecretBulkDelete = {
   };
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
+  skipCommit?: boolean;
 };
 
 export type THandleReminderDTO = {

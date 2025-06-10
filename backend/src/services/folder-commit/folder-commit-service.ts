@@ -804,8 +804,9 @@ export const folderCommitServiceFactory = ({
       );
     };
 
-    const arraysEqual = (a1: unknown[], a2: unknown[]) =>
-      a1.length === a2.length && a1.every((obj1) => a2.some((obj2) => objectsEqual(obj1, obj2)));
+    const arraysEqual = (a1: unknown[], a2: unknown[]) => {
+      return a1.length === a2.length && a1.every((obj1) => a2.some((obj2) => objectsEqual(obj1, obj2)));
+    };
 
     const version1Reshaped = {
       ...version1,
@@ -815,7 +816,7 @@ export const folderCommitServiceFactory = ({
       encryptedComment: version1.encryptedComment
         ? secretManagerDecryptor({ cipherTextBlob: version1.encryptedComment }).toString()
         : "",
-      metadata: version1.metadata as { key: string; value: string }[],
+      metadata: Array.isArray(version1.metadata) ? (version1.metadata as { key: string; value: string }[]) : [],
       tags: version1.tags.map((tag) => tag.id)
     };
     const version2Reshaped = {
@@ -826,7 +827,7 @@ export const folderCommitServiceFactory = ({
       encryptedComment: version2.encryptedComment
         ? secretManagerDecryptor({ cipherTextBlob: version2.encryptedComment }).toString()
         : "",
-      metadata: version2.metadata as { key: string; value: string }[],
+      metadata: Array.isArray(version2.metadata) ? (version2.metadata as { key: string; value: string }[]) : [],
       tags: version2.tags.map((tag) => tag.id)
     };
     return (
