@@ -31,12 +31,12 @@ export const registerKubernetesDynamicSecretLeaseRouter = async (server: Fastify
             if (!val) return;
             const valMs = ms(val);
             if (valMs < 60 * 1000)
-              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be greater than 1min" });
             if (valMs > daysToMillisecond(1))
               ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
           }),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRET_LEASES.CREATE.path),
-        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.path),
+        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.environmentSlug),
         config: z
           .object({
             namespace: z.string().min(1).optional().describe(DYNAMIC_SECRET_LEASES.KUBERNETES.CREATE.config.namespace)
