@@ -1,8 +1,8 @@
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { getGcpSecretManagerProjects } from "./gcp-connection-fns";
-import { TGcpConnection } from "./gcp-connection-types";
+import { getGcpSecretManagerProjectLocations, getGcpSecretManagerProjects } from "./gcp-connection-fns";
+import { TGcpConnection, TGetGCPProjectLocationsDTO } from "./gcp-connection-types";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
@@ -23,7 +23,23 @@ export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     }
   };
 
+  const listSecretManagerProjectLocations = async (
+    { connectionId, projectId }: TGetGCPProjectLocationsDTO,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
+
+    try {
+      const locations = await getGcpSecretManagerProjectLocations(projectId, appConnection);
+
+      return locations;
+    } catch (error) {
+      return [];
+    }
+  };
+
   return {
-    listSecretManagerProjects
+    listSecretManagerProjects,
+    listSecretManagerProjectLocations
   };
 };

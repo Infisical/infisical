@@ -8,6 +8,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick({
@@ -18,6 +19,7 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   accessTokenTrustedIps: true,
   createdAt: true,
   updatedAt: true,
+  tokenReviewMode: true,
   identityId: true,
   kubernetesHost: true,
   allowedNamespaces: true,
@@ -106,17 +108,21 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .string()
             .trim()
             .min(1)
+            .nullable()
             .describe(KUBERNETES_AUTH.ATTACH.kubernetesHost)
             .refine(
-              (val) =>
-                characterValidator([
+              (val) => {
+                if (val === null) return true;
+
+                return characterValidator([
                   CharacterType.Alphabets,
                   CharacterType.Numbers,
                   CharacterType.Colon,
                   CharacterType.Period,
                   CharacterType.ForwardSlash,
                   CharacterType.Hyphen
-                ])(val),
+                ])(val);
+              },
               {
                 message:
                   "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
@@ -124,6 +130,10 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             ),
           caCert: z.string().trim().default("").describe(KUBERNETES_AUTH.ATTACH.caCert),
           tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
+          tokenReviewMode: z
+            .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
+            .default(IdentityKubernetesAuthTokenReviewMode.Api)
+            .describe(KUBERNETES_AUTH.ATTACH.tokenReviewMode),
           allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
           allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
           allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
@@ -157,10 +167,30 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .default(0)
             .describe(KUBERNETES_AUTH.ATTACH.accessTokenNumUsesLimit)
         })
-        .refine(
-          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
-          "Access Token TTL cannot be greater than Access Token Max TTL."
-        ),
+        .superRefine((data, ctx) => {
+          if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && !data.kubernetesHost) {
+            ctx.addIssue({
+              path: ["kubernetesHost"],
+              code: z.ZodIssueCode.custom,
+              message: "When token review mode is set to API, a Kubernetes host must be provided"
+            });
+          }
+          if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+            ctx.addIssue({
+              path: ["gatewayId"],
+              code: z.ZodIssueCode.custom,
+              message: "When token review mode is set to Gateway, a gateway must be selected"
+            });
+          }
+
+          if (data.accessTokenTTL > data.accessTokenMaxTTL) {
+            ctx.addIssue({
+              path: ["accessTokenTTL"],
+              code: z.ZodIssueCode.custom,
+              message: "Access Token TTL cannot be greater than Access Token Max TTL."
+            });
+          }
+        }),
       response: {
         200: z.object({
           identityKubernetesAuth: IdentityKubernetesAuthResponseSchema
@@ -185,7 +215,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           type: EventType.ADD_IDENTITY_KUBERNETES_AUTH,
           metadata: {
             identityId: identityKubernetesAuth.identityId,
-            kubernetesHost: identityKubernetesAuth.kubernetesHost,
+            kubernetesHost: identityKubernetesAuth.kubernetesHost ?? "",
             allowedNamespaces: identityKubernetesAuth.allowedNamespaces,
             allowedNames: identityKubernetesAuth.allowedNames,
             accessTokenTTL: identityKubernetesAuth.accessTokenTTL,
@@ -225,6 +255,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .string()
             .trim()
             .min(1)
+            .nullable()
             .optional()
             .describe(KUBERNETES_AUTH.UPDATE.kubernetesHost)
             .refine(
@@ -247,6 +278,10 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             ),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
           tokenReviewerJwt: z.string().trim().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
+          tokenReviewMode: z
+            .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
+            .optional()
+            .describe(KUBERNETES_AUTH.UPDATE.tokenReviewMode),
           allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
           allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
           allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
@@ -280,10 +315,26 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .optional()
             .describe(KUBERNETES_AUTH.UPDATE.accessTokenMaxTTL)
         })
-        .refine(
-          (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
-          "Access Token TTL cannot be greater than Access Token Max TTL."
-        ),
+        .superRefine((data, ctx) => {
+          if (
+            data.tokenReviewMode &&
+            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+            !data.gatewayId
+          ) {
+            ctx.addIssue({
+              path: ["gatewayId"],
+              code: z.ZodIssueCode.custom,
+              message: "When token review mode is set to Gateway, a gateway must be selected"
+            });
+          }
+          if (data.accessTokenMaxTTL && data.accessTokenTTL ? data.accessTokenTTL > data.accessTokenMaxTTL : false) {
+            ctx.addIssue({
+              path: ["accessTokenTTL"],
+              code: z.ZodIssueCode.custom,
+              message: "Access Token TTL cannot be greater than Access Token Max TTL."
+            });
+          }
+        }),
       response: {
         200: z.object({
           identityKubernetesAuth: IdentityKubernetesAuthResponseSchema
@@ -307,7 +358,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH,
           metadata: {
             identityId: identityKubernetesAuth.identityId,
-            kubernetesHost: identityKubernetesAuth.kubernetesHost,
+            kubernetesHost: identityKubernetesAuth.kubernetesHost ?? "",
             allowedNamespaces: identityKubernetesAuth.allowedNamespaces,
             allowedNames: identityKubernetesAuth.allowedNames,
             accessTokenTTL: identityKubernetesAuth.accessTokenTTL,

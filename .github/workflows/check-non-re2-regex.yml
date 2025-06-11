@@ -1,0 +1,53 @@
+name: Detect Non-RE2 Regex
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check-non-re2-regex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get diff of backend/*
+        run: |
+          git diff --unified=0 "origin/${{ github.base_ref }}"...HEAD -- backend/ > diff.txt
+
+      - name: Scan backend diff for non-RE2 regex
+        run: |
+          # Extract only added lines (excluding file headers)
+          grep '^+' diff.txt | grep -v '^+++' | sed 's/^\+//' > added_lines.txt
+
+          if [ ! -s added_lines.txt ]; then
+            echo "✅ No added lines in backend/ to check for regex usage."
+            exit 0
+          fi
+
+          regex_usage_pattern='(^|[^A-Za-z0-9_"'"'"'`\.\/\\])(\/(?:\\.|[^\/\n\\])+\/[gimsuyv]*(?=\s*[\.\(;,)\]}:]|$)|new RegExp\()'
+
+          # Find all added lines that contain regex patterns
+          if grep -E "$regex_usage_pattern" added_lines.txt > potential_violations.txt 2>/dev/null; then
+            # Filter out lines that contain 'new RE2' (allowing for whitespace variations)
+            if grep -v -E 'new\s+RE2\s*\(' potential_violations.txt > actual_violations.txt 2>/dev/null && [ -s actual_violations.txt ]; then
+              echo "🚨 ERROR: Found forbidden regex pattern in added/modified backend code."
+              echo ""
+              echo "The following lines use raw regex literals (/.../) or new RegExp(...):"
+              echo "Please replace with 'new RE2(...)' for RE2 compatibility."
+              echo ""
+              echo "Offending lines:"
+              cat actual_violations.txt
+              exit 1
+            else
+              echo "✅ All identified regex usages are correctly using 'new RE2(...)'."
+            fi
+          else
+            echo "✅ No regex patterns found in added/modified backend lines."
+          fi
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          rm -f diff.txt added_lines.txt potential_violations.txt actual_violations.txt

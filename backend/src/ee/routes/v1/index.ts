@@ -6,6 +6,7 @@ import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
+import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { registerGatewayRouter } from "./gateway-router";
@@ -18,6 +19,7 @@ import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
+import { registerPITRouter } from "./pit-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
@@ -53,6 +55,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/workspace" }
   );
   await server.register(registerSnapshotRouter, { prefix: "/secret-snapshot" });
+  await server.register(registerPITRouter, { prefix: "/pit" });
   await server.register(registerSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
   await server.register(registerSecretApprovalRequestRouter, {
     prefix: "/secret-approval-requests"
@@ -69,6 +72,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (dynamicSecretRouter) => {
       await dynamicSecretRouter.register(registerDynamicSecretRouter);
       await dynamicSecretRouter.register(registerDynamicSecretLeaseRouter, { prefix: "/leases" });
+      await dynamicSecretRouter.register(registerKubernetesDynamicSecretLeaseRouter, { prefix: "/leases/kubernetes" });
     },
     { prefix: "/dynamic-secrets" }
   );

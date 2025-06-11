@@ -5,6 +5,7 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
 import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -72,6 +73,8 @@ export const AccessManagementPage = () => {
     }
   ];
 
+  const hasNoAccess = tabSections.every((tab) => tab.isHidden);
+
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
@@ -126,6 +129,7 @@ export const AccessManagementPage = () => {
             ))}
         </Tabs>
       </div>
+      {hasNoAccess && <OrgPermissionGuardBanner />}
     </div>
   );
 };

@@ -11,7 +11,7 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   return {
     errorResponseBuilder: (_, context) => {
       throw new RateLimitError({
-        message: `Rate limit exceeded. Please try again in ${context.after}`
+        message: `Rate limit exceeded. Please try again in ${Math.ceil(context.ttl / 1000)} seconds`
       });
     },
     timeWindow: 60 * 1000,
@@ -113,3 +113,12 @@ export const requestAccessLimit: RateLimitOptions = {
   max: 10,
   keyGenerator: (req) => req.realIp
 };
+
+export const smtpRateLimit = ({
+  keyGenerator = (req) => req.realIp
+}: Pick<RateLimitOptions, "keyGenerator"> = {}): RateLimitOptions => ({
+  timeWindow: 40 * 1000,
+  hook: "preValidation",
+  max: 2,
+  keyGenerator
+});

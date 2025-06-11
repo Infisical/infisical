@@ -102,9 +102,55 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   };
 
   /**
+   * Checks if a credential with the given keyId exists.
+   */
+  const credentialExists = async (keyId: string): Promise<boolean> => {
+    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
+    const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/passwordCredentials`;
+
+    try {
+      const { data } = await request.get<{ value: Array<{ keyId: string }> }>(endpoint, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      return data.value?.some((credential) => credential.keyId === keyId) || false;
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        let message;
+        if (
+          error.response?.data &&
+          typeof error.response.data === "object" &&
+          "error" in error.response.data &&
+          typeof (error.response.data as AzureErrorResponse).error.message === "string"
+        ) {
+          message = (error.response.data as AzureErrorResponse).error.message;
+        }
+        throw new BadRequestError({
+          message: `Failed to check credential existence for app ${objectId}: ${
+            message || error.message || "Unknown error"
+          }`
+        });
+      }
+      throw new BadRequestError({
+        message: "Unable to validate connection: verify credentials"
+      });
+    }
+  };
+
+  /**
    * Revokes a client secret from the Azure app using its keyId.
+   * First checks if the credential exists before attempting revocation.
    */
   const revokeCredential = async (keyId: string) => {
+    // Check if credential exists before attempting revocation
+    const exists = await credentialExists(keyId);
+    if (!exists) {
+      return; // Credential doesn't exist, nothing to revoke
+    }
+
     const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/removePassword`;
 

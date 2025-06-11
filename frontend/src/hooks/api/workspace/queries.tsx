@@ -282,7 +282,8 @@ export const useUpdateProject = () => {
       newProjectName,
       newProjectDescription,
       newSlug,
-      secretSharing
+      secretSharing,
+      showSnapshotsLegacy
     }) => {
       const { data } = await apiRequest.patch<{ workspace: Workspace }>(
         `/api/v1/workspace/${projectID}`,
@@ -290,7 +291,8 @@ export const useUpdateProject = () => {
           name: newProjectName,
           description: newProjectDescription,
           slug: newSlug,
-          secretSharing
+          secretSharing,
+          showSnapshotsLegacy
         }
       );
       return data.workspace;
@@ -687,6 +689,21 @@ export const useGetWorkspaceIdentityMembershipDetails = (projectId: string, iden
         `/api/v2/workspace/${projectId}/identity-memberships/${identityId}`
       );
       return identityMembership;
+    }
+  });
+};
+
+export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId: string) => {
+  return useQuery({
+    enabled: Boolean(projectId && groupId),
+    queryKey: workspaceKeys.getWorkspaceGroupMembershipDetails(projectId, groupId),
+    queryFn: async () => {
+      const {
+        data: { groupMembership }
+      } = await apiRequest.get<{ groupMembership: TGroupMembership }>(
+        `/api/v2/workspace/${projectId}/groups/${groupId}`
+      );
+      return groupMembership;
     }
   });
 };

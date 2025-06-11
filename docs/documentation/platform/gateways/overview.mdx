@@ -32,7 +32,7 @@ For detailed installation instructions, refer to the Infisical [CLI Installation
 To function, the Gateway must authenticate with Infisical. This requires a machine identity configured with the appropriate permissions to create and manage a Gateway.
 Once authenticated, the Gateway establishes a secure connection with Infisical to allow your private resources to be reachable.
 
-### Deployment process
+### Get started
 
 <Steps>
   <Step title="Create a Gateway Identity">
@@ -89,18 +89,208 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
         helm repo update
         ```
 
-        ### Create a Kubernetes Secret with the gateway token
+        ### Create a Kubernetes Secret containing gateway environment variables
 
-        Create a new Kubernetes secret containing the gateway token as the `TOKEN` key. You can optionally also set the `INFISICAL_API_URL` key to your Infisical instance URL. By default, `INFISICAL_API_URL` is set to `https://app.infisical.com`.
+        The gateway supports all identity authentication methods through the use of environment variables.
+        The environment variables must be set in the `infisical-gateway-environment` Kubernetes secret.
 
 
-        ```bash
-        kubectl create secret generic infisical-gateway-environment --from-literal=TOKEN=<your-machine-identity-access-token>
-        ```
-      
-        <Note>
-          The secret name is `infisical-gateway-environment` by default. The `TOKEN` key is required, and the `INFISICAL_API_URL` key is optional.
-        </Note>
+        #### Supported authentication methods
+
+        <AccordionGroup>
+          <Accordion title="Universal Auth">
+            The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
+
+            <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                <ParamField query="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" type="string" required>
+                  Your machine identity client ID.
+                </ParamField>
+                <ParamField query="INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" type="string" required>
+                  Your machine identity client secret.
+                </ParamField>
+                <ParamField query="INFISICAL_AUTH_METHOD" type="string" required>
+                  The authentication method to use. Must be `universal-auth` when using Universal Auth.
+                </ParamField>
+              </Expandable>
+            </ParamField>
+
+              ```bash
+                kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=universal-auth --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+              ```
+
+          </Accordion>
+          <Accordion title="Native Kubernetes">
+            The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
+
+              <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                  <ParamField query="INFISICAL_MACHINE_IDENTITY_ID" type="string" required>
+                  Your machine identity ID.
+                  </ParamField>
+                  <ParamField query="INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH" type="string" optional>
+                    Path to the Kubernetes service account token to use. Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+                  </ParamField>
+                  <ParamField query="INFISICAL_AUTH_METHOD" type="string" required>
+                    The authentication method to use. Must be `kubernetes` when using Native Kubernetes.
+                  </ParamField>
+              </Expandable>
+            </ParamField>
+
+
+              ```bash
+                kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=kubernetes --from-literal=INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>
+              ```
+
+          </Accordion>
+          <Accordion title="Native Azure">
+            The Native Azure method is used to authenticate with Infisical when running in an Azure environment.
+
+            <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                  <ParamField query="INFISICAL_MACHINE_IDENTITY_ID" type="string" required>
+                    Your machine identity ID.
+                  </ParamField>
+                  <ParamField query="INFISICAL_AUTH_METHOD" type="string" required>
+                    The authentication method to use. Must be `azure` when using Native Azure.
+                  </ParamField>
+              </Expandable>
+            </ParamField>
+
+            ```bash
+              kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=azure --from-literal=INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>
+            ```
+          </Accordion>
+          <Accordion title="Native GCP ID Token">
+            The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
+
+            <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                  <ParamField query="INFISICAL_MACHINE_IDENTITY_ID" type="string" required>
+                    Your machine identity ID.
+                  </ParamField>
+                  <ParamField query="INFISICAL_AUTH_METHOD" type="string" required>
+                    The authentication method to use. Must be `gcp-id-token` when using Native GCP ID Token.
+                  </ParamField>
+              </Expandable>
+            </ParamField>
+
+            ```bash
+              kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=gcp-id-token --from-literal=INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>
+            ```
+
+          </Accordion>
+          <Accordion title="GCP IAM">
+            The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
+
+            <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                  <ParamField query="INFISICAL_MACHINE_IDENTITY_ID" type="string" required>
+                  Your machine identity ID.
+                  </ParamField>
+                  <ParamField query="INFISICAL_GCP_SERVICE_ACCOUNT_KEY_FILE_PATH" type="string" required>
+                    Path to your GCP service account key file _(Must be in JSON format!)_
+                  </ParamField>
+                  <ParamField query="INFISICAL_AUTH_METHOD" type="string" required>
+                    The authentication method to use. Must be `gcp-iam` when using GCP IAM.
+                  </ParamField>
+              </Expandable>
+            </ParamField>
+
+              ```bash
+                kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=gcp-iam --from-literal=INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id> --from-literal=INFISICAL_GCP_SERVICE_ACCOUNT_KEY_FILE_PATH=<service-account-key-file-path>
+              ```
+
+
+          </Accordion>
+          <Accordion title="Native AWS IAM">
+            The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
+
+            <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                  <ParamField query="INFISICAL_MACHINE_IDENTITY_ID" type="string" required>
+                    Your machine identity ID.
+                  </ParamField>
+                  <ParamField query="INFISICAL_AUTH_METHOD" type="string" required>
+                    The authentication method to use. Must be `aws-iam` when using Native AWS IAM.
+                  </ParamField>
+              </Expandable>
+            </ParamField>
+
+              ```bash
+                kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=aws-iam --from-literal=INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>
+              ```
+
+          </Accordion>
+          <Accordion title="OIDC Auth">
+            The OIDC Auth method is used to authenticate with Infisical via identity tokens with OIDC.
+
+            <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                  <ParamField query="INFISICAL_MACHINE_IDENTITY_ID" type="string" required>
+                    Your machine identity ID.
+                  </ParamField>
+                  <ParamField query="INFISICAL_JWT" type="string" required>
+                    The OIDC JWT from the identity provider.
+                  </ParamField>
+                  <ParamField query="INFISICAL_AUTH_METHOD" type="string" required>
+                    The authentication method to use. Must be `oidc-auth` when using OIDC Auth.
+                  </ParamField>
+              </Expandable>
+            </ParamField>
+
+            ```bash
+              kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=oidc-auth --from-literal=INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id> --from-literal=INFISICAL_JWT=<oidc-jwt>
+            ```
+          </Accordion>
+
+          <Accordion title="JWT Auth">
+            The JWT Auth method is used to authenticate with Infisical via a JWT token.
+
+            <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                  <ParamField query="INFISICAL_JWT" type="string" required>
+                    The JWT token to use for authentication.
+                  </ParamField>
+                  <ParamField query="INFISICAL_MACHINE_IDENTITY_ID" type="string" required>
+                    Your machine identity ID.
+                  </ParamField>
+                  <ParamField query="INFISICAL_AUTH_METHOD" type="string" required>
+                    The authentication method to use. Must be `jwt-auth` when using JWT Auth.
+                  </ParamField>
+              </Expandable>
+            </ParamField>
+
+              ```bash
+                kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=jwt-auth --from-literal=INFISICAL_JWT=<jwt> --from-literal=INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>
+              ```
+          </Accordion>
+          <Accordion title="Token Auth">
+            You can use the `INFISICAL_TOKEN` environment variable to authenticate with Infisical with a raw machine identity access token.
+
+            <ParamField query="Environment Variables">
+              <Expandable title="properties">
+                  <ParamField query="INFISICAL_TOKEN" type="string" required>
+                    The machine identity access token to use for authentication.
+                  </ParamField>
+              </Expandable>
+            </ParamField>
+
+            ```bash
+              kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_TOKEN=<token>
+            ```
+          </Accordion>
+        </AccordionGroup>
+
+
+        #### Other environment variables
+
+        <AccordionGroup>
+          <Accordion title="INFISICAL_API_URL">
+            The API URL to use for the gateway. By default, `INFISICAL_API_URL` is set to `https://app.infisical.com`.
+          </Accordion>
+        </AccordionGroup>
+
 
         ### Install the Infisical Gateway Helm Chart
         ```bash
@@ -128,7 +318,7 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
 
       </Tab>
 
-      <Tab title="Development (direct)">
+      <Tab title="Local Installation (testing)">
         For development or testing, you can run the Gateway directly. Log in with your machine identity and start the Gateway in one command:
         ```bash
         infisical gateway --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain)

@@ -1,8 +1,17 @@
-import { faUserMinus } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisV, faUserMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Td,
+  Tooltip,
+  Tr
+} from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
 import { TGroupUser } from "@app/hooks/api/groups/types";
@@ -38,30 +47,47 @@ export const GroupMembershipRow = ({
           <p>{new Date(joinedGroupAt).toLocaleDateString()}</p>
         </Tooltip>
       </Td>
-      <Td className="justify-end">
-        <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-          {(isAllowed) => {
-            return (
-              <Tooltip
-                content={
-                  isOidcManageGroupMembershipsEnabled
-                    ? "OIDC Group Membership Mapping Enabled. Remove user from this group in your OIDC provider."
-                    : "Remove user from group"
-                }
+      <Td>
+        <Tooltip className="max-w-sm text-center" content="Options">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                ariaLabel="Options"
+                colorSchema="secondary"
+                className="w-6"
+                variant="plain"
               >
-                <IconButton
-                  isDisabled={!isAllowed || isOidcManageGroupMembershipsEnabled}
-                  ariaLabel="Remove user from group"
-                  onClick={() => handlePopUpOpen("removeMemberFromGroup", { username })}
-                  variant="plain"
-                  colorSchema="danger"
-                >
-                  <FontAwesomeIcon icon={faUserMinus} />
-                </IconButton>
-              </Tooltip>
-            );
-          }}
-        </OrgPermissionCan>
+                <FontAwesomeIcon icon={faEllipsisV} />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent sideOffset={2} align="end">
+              <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
+                {(isAllowed) => {
+                  return (
+                    <Tooltip
+                      content={
+                        isOidcManageGroupMembershipsEnabled
+                          ? "OIDC Group Membership Mapping Enabled. Remove user from this group in your OIDC provider."
+                          : undefined
+                      }
+                      position="left"
+                    >
+                      <div>
+                        <DropdownMenuItem
+                          icon={<FontAwesomeIcon icon={faUserMinus} />}
+                          onClick={() => handlePopUpOpen("removeMemberFromGroup", { username })}
+                          isDisabled={!isAllowed || isOidcManageGroupMembershipsEnabled}
+                        >
+                          Remove User From Group
+                        </DropdownMenuItem>
+                      </div>
+                    </Tooltip>
+                  );
+                }}
+              </OrgPermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </Tooltip>
       </Td>
     </Tr>
   );

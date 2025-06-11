@@ -7,7 +7,8 @@ import { SelectOrganizationPage } from "./SelectOrgPage";
 export const SelectOrganizationPageQueryParams = z.object({
   org_id: z.string().optional().catch(""),
   callback_port: z.coerce.number().optional().catch(undefined),
-  is_admin_login: z.boolean().optional().catch(false)
+  is_admin_login: z.boolean().optional().catch(false),
+  force: z.boolean().optional()
 });
 
 export const Route = createFileRoute("/_restrict-login-signup/login/select-organization")({

@@ -9,19 +9,20 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSapAseSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = `inf_${alphaNumericNanoId(25)}`; // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    identity
   });
 };
 
@@ -87,11 +88,11 @@ export const SapAseProvider = (): TDynamicProviderFns => {
     return true;
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null }) => {
-    const { inputs, usernameTemplate } = data;
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
+    const { inputs, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
 
-    const username = generateUsername(usernameTemplate);
+    const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
 
     const client = await $getClient(providerInputs);

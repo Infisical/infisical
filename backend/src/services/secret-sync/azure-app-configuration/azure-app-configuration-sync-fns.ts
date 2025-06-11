@@ -141,7 +141,7 @@ export const azureAppConfigurationSyncFactory = ({
 
     for await (const key of Object.keys(azureAppConfigSecrets)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
       const azureSecret = azureAppConfigSecrets[key];
       if (

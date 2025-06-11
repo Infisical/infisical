@@ -1,6 +1,6 @@
 image:
   pullPolicy: IfNotPresent
-  tag: "0.41.1"
+  tag: "0.41.84"
 
 secret:
   # The secret that contains the environment variables to be used by the gateway, such as INFISICAL_API_URL and TOKEN

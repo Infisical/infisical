@@ -233,7 +233,8 @@
           "group": "Gateway",
           "pages": [
             "documentation/platform/gateways/overview",
-            "documentation/platform/gateways/gateway-security"
+            "documentation/platform/gateways/gateway-security",
+            "documentation/platform/gateways/networking"
           ]
         },
         "documentation/platform/project-templates",
@@ -340,10 +341,12 @@
               "group": "OIDC Auth",
               "pages": [
                 "documentation/platform/identities/oidc-auth/general",
+                "documentation/platform/identities/oidc-auth/azure",
                 "documentation/platform/identities/oidc-auth/github",
                 "documentation/platform/identities/oidc-auth/circleci",
                 "documentation/platform/identities/oidc-auth/gitlab",
-                "documentation/platform/identities/oidc-auth/terraform-cloud"
+                "documentation/platform/identities/oidc-auth/terraform-cloud",
+                "documentation/platform/identities/oidc-auth/spire"
               ]
             },
 
@@ -825,8 +828,7 @@
             "api-reference/endpoints/workspaces/delete-workspace",
             "api-reference/endpoints/workspaces/get-workspace",
             "api-reference/endpoints/workspaces/update-workspace",
-            "api-reference/endpoints/workspaces/secret-snapshots",
-            "api-reference/endpoints/workspaces/rollback-snapshot"
+            "api-reference/endpoints/workspaces/secret-snapshots"
           ]
         },
         {
@@ -926,6 +928,12 @@
         {
           "group": "Dynamic Secrets",
           "pages": [
+            {
+              "group": "Kubernetes",
+              "pages": [
+                "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
+              ]
+            },
             "api-reference/endpoints/dynamic-secrets/create",
             "api-reference/endpoints/dynamic-secrets/update",
             "api-reference/endpoints/dynamic-secrets/delete",
@@ -1871,7 +1879,6 @@
         },
         "internals/components",
         "internals/security",
-        "internals/bug-bounty",
         "internals/service-tokens"
       ]
     },

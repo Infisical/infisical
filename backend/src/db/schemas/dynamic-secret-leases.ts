@@ -16,7 +16,8 @@ export const DynamicSecretLeasesSchema = z.object({
   statusDetails: z.string().nullable().optional(),
   dynamicSecretId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  config: z.unknown().nullable().optional()
 });
 
 export type TDynamicSecretLeases = z.infer<typeof DynamicSecretLeasesSchema>;

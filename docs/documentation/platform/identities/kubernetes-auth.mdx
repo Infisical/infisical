@@ -52,10 +52,11 @@ Infisical is able to authenticate and interact with the TokenReview API by using
 
 In the following steps, we explore how to create and use identities for your applications in Kubernetes to access the Infisical API using the Kubernetes Auth authentication method.
 
+
+
 <Steps>
     <Step title="Obtaining the token reviewer JWT for Infisical">
-				<Tabs>
-					<Tab title="Option 1: Reviewer JWT Token">
+      <Accordion title="Option 1: Reviewer JWT Token">
 
         <Note>
         **When to use this option**: Choose this approach when you want centralized authentication management. Only one service account needs special permissions, and your application service accounts remain unchanged.
@@ -126,41 +127,91 @@ In the following steps, we explore how to create and use identities for your app
         ```
 
         Keep this JWT token handy as you will need it for the **Token Reviewer JWT** field when configuring the Kubernetes Auth authentication method for the identity in step 2.
+      </Accordion>
 
-</Tab>
-<Tab title="Option 2: Client JWT as Reviewer JWT Token">
+      <Accordion title="Option 2: Client JWT as Reviewer JWT Token">
+        <Note>
+        **When to use this option**: Choose this approach to eliminate long-lived tokens. This option simplifies Infisical configuration but requires each application service account to have elevated permissions.
+        </Note>
 
-    <Note>
-    **When to use this option**: Choose this approach to eliminate long-lived tokens. This option simplifies Infisical configuration but requires each application service account to have elevated permissions.
-    </Note>
+        The self-validation method eliminates the need for a separate long-lived reviewer JWT by using the same token for both authentication and validation. Instead of creating a dedicated reviewer service account, you'll grant the necessary permissions to each application service account.
 
-    The self-validation method eliminates the need for a separate long-lived reviewer JWT by using the same token for both authentication and validation. Instead of creating a dedicated reviewer service account, you'll grant the necessary permissions to each application service account.
+        For each service account that needs to authenticate with Infisical, add the `system:auth-delegator` role:
 
-    For each service account that needs to authenticate with Infisical, add the `system:auth-delegator` role:
+        ```yaml client-role-binding.yaml
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: infisical-client-binding-[your-app-name]
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: system:auth-delegator
+        subjects:
+          - kind: ServiceAccount
+            name: [your-app-service-account]
+            namespace: [your-app-namespace]
+        ```
 
-    ```yaml client-role-binding.yaml
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRoleBinding
-    metadata:
-      name: infisical-client-binding-[your-app-name]
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: ClusterRole
-      name: system:auth-delegator
-    subjects:
-      - kind: ServiceAccount
-        name: [your-app-service-account]
-        namespace: [your-app-namespace]
-    ```
+        ```
+        kubectl apply -f client-role-binding.yaml
+        ```
 
-    ```
-    kubectl apply -f client-role-binding.yaml
-    ```
+        When configuring Kubernetes Auth in Infisical, leave the **Token Reviewer JWT** field empty. Infisical will use the client's own token for validation.
+      </Accordion>
+      <Accordion title="Option 3: Use Gateway as Reviewer">
+        <Note>
+        **When to use this option**: Choose this approach when you have a gateway deployed in your Kubernetes Cluster and wish to eliminate long-lived tokens. This approach simplifies Infisical Kubernetes Auth configuration, and only one service account will need to have the elevated `system:auth-delegator` ClusterRole binding.
+        </Note>
 
-    When configuring Kubernetes Auth in Infisical, leave the **Token Reviewer JWT** field empty. Infisical will use the client's own token for validation.
-</Tab>
-</Tabs>
-</Step>
+        <Info>
+          **Note:** Gateway is a paid feature. - **Infisical Cloud users:** Gateway is
+          available under the **Enterprise Tier**. - **Self-Hosted Infisical:** Please
+          contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an
+          enterprise license.
+        </Info>
+
+        <Steps>
+          <Step title="Deploying a gateway">
+            To deploy a gateway in your Kubernetes cluster, follow our [Gateway deployment guide using helm](/documentation/platform/gateways/overview).
+          </Step>
+
+          <Step title="Grant the gateway the system:auth-delegator ClusterRole binding">
+            To grant the gateway the `system:auth-delegator` ClusterRole binding, you can use the following command:
+
+            ```yaml gateway-role-binding.yaml
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: infisical-token-reviewer-role-binding
+              namespace: default # Replace with your namespace if not default
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: system:auth-delegator
+            subjects:
+              - kind: ServiceAccount
+                name: infisical-gateway # The name of the gateway service account
+                namespace: default # Replace with your namespace if not default
+            ```
+
+            ```bash
+            kubectl apply -f gateway-role-binding.yaml
+            ```
+
+            <Tip>
+              The gateway service account name is `infisical-gateway` by default if deployed using Helm.
+            </Tip>
+          </Step>
+
+          <Step title="Configure the Kubernetes Auth authentication method for the identity">
+            To configure your Kubernetes Auth method to use the gateway as the token reviewer, set the `Review Method` to "Gateway as Reviewer", and select the gateway you want to use as the token reviewer.
+
+            ![identities organization create kubernetes auth method](/images/platform/identities/identities-kubernetes-auth-gateway-as-reviewer.png)
+          </Step>
+        </Steps>
+      </Accordion>
+    </Step>
 
   <Step title="Creating an identity">
     To create an identity, head to your Organization Settings > Access Control > Identities and press **Create identity**.
