@@ -49,6 +49,11 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	projectSlug, err := cmd.Flags().GetString("project-slug")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	secretsPath, err := cmd.Flags().GetString("path")
 	if err != nil {
 		util.HandleError(err, "Unable to parse path flag")
@@ -60,10 +65,10 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to get resty client with custom headers")
 	}
 
-	if projectId == "" {
+	if projectId == "" && projectSlug == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
-			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project, pass in project slug with --project-slug flag, or pass in project id with --projectId flag")
 		}
 		projectId = workspaceFile.WorkspaceId
 	}
@@ -100,13 +105,16 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
-	projectDetails, err := api.CallGetProjectById(httpClient, projectId)
-	if err != nil {
-		util.HandleError(err, "To fetch project details")
+	if projectSlug == "" {
+		projectDetails, err := api.CallGetProjectById(httpClient, projectId)
+		if err != nil {
+			util.HandleError(err, "To fetch project details")
+		}
+		projectSlug = projectDetails.Slug
 	}
 
 	dynamicSecretRootCredentials, err := infisicalClient.DynamicSecrets().List(infisicalSdk.ListDynamicSecretsRootCredentialsOptions{
-		ProjectSlug:     projectDetails.Slug,
+		ProjectSlug:     projectSlug,
 		SecretPath:      secretsPath,
 		EnvironmentSlug: environmentName,
 	})
@@ -156,6 +164,11 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	projectSlug, err := cmd.Flags().GetString("project-slug")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	ttl, err := cmd.Flags().GetString("ttl")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
@@ -177,10 +190,10 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to get resty client with custom headers")
 	}
 
-	if projectId == "" {
+	if projectId == "" && projectSlug == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
-			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project, pass in project id with --projectId flag, or pass in project slug with --project-slug flag")
 		}
 		projectId = workspaceFile.WorkspaceId
 	}
@@ -216,14 +229,17 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
-	projectDetails, err := api.CallGetProjectById(httpClient, projectId)
-	if err != nil {
-		util.HandleError(err, "To fetch project details")
+	if projectSlug == "" {
+		projectDetails, err := api.CallGetProjectById(httpClient, projectId)
+		if err != nil {
+			util.HandleError(err, "To fetch project details")
+		}
+		projectSlug = projectDetails.Slug
 	}
 
 	dynamicSecretRootCredential, err := infisicalClient.DynamicSecrets().GetByName(infisicalSdk.GetDynamicSecretRootCredentialByNameOptions{
 		DynamicSecretName: dynamicSecretRootCredentialName,
-		ProjectSlug:       projectDetails.Slug,
+		ProjectSlug:       projectSlug,
 		SecretPath:        secretsPath,
 		EnvironmentSlug:   environmentName,
 	})
@@ -233,7 +249,7 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	}
 
 	// for Kubernetes dynamic secrets only
-	kubernetesNamespace, err := cmd.Flags().GetString("kubernetesNamespace")
+	kubernetesNamespace, err := cmd.Flags().GetString("kubernetes-namespace")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
 	}
@@ -245,7 +261,7 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 
 	leaseCredentials, _, leaseDetails, err := infisicalClient.DynamicSecrets().Leases().Create(infisicalSdk.CreateDynamicSecretLeaseOptions{
 		DynamicSecretName: dynamicSecretRootCredential.Name,
-		ProjectSlug:       projectDetails.Slug,
+		ProjectSlug:       projectSlug,
 		TTL:               ttl,
 		SecretPath:        secretsPath,
 		EnvironmentSlug:   environmentName,
@@ -304,6 +320,11 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	projectSlug, err := cmd.Flags().GetString("project-slug")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	ttl, err := cmd.Flags().GetString("ttl")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
@@ -320,10 +341,10 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to get resty client with custom headers")
 	}
 
-	if projectId == "" {
+	if projectId == "" && projectSlug == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
-			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project, pass in project slug with --project-slug flag, or pass in project id with --projectId flag")
 		}
 		projectId = workspaceFile.WorkspaceId
 	}
@@ -360,9 +381,12 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
-	projectDetails, err := api.CallGetProjectById(httpClient, projectId)
-	if err != nil {
-		util.HandleError(err, "To fetch project details")
+	if projectSlug == "" {
+		projectDetails, err := api.CallGetProjectById(httpClient, projectId)
+		if err != nil {
+			util.HandleError(err, "To fetch project details")
+		}
+		projectSlug = projectDetails.Slug
 	}
 
 	if err != nil {
@@ -370,7 +394,7 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	}
 
 	leaseDetails, err := infisicalClient.DynamicSecrets().Leases().RenewById(infisicalSdk.RenewDynamicSecretLeaseOptions{
-		ProjectSlug:     projectDetails.Slug,
+		ProjectSlug:     projectSlug,
 		TTL:             ttl,
 		SecretPath:      secretsPath,
 		EnvironmentSlug: environmentName,
@@ -416,6 +440,11 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	projectSlug, err := cmd.Flags().GetString("project-slug")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	secretsPath, err := cmd.Flags().GetString("path")
 	if err != nil {
 		util.HandleError(err, "Unable to parse path flag")
@@ -427,10 +456,10 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to get resty client with custom headers")
 	}
 
-	if projectId == "" {
+	if projectId == "" && projectSlug == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
-			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project, pass in project slug with --project-slug flag, or pass in project id with --projectId flag")
 		}
 		projectId = workspaceFile.WorkspaceId
 	}
@@ -467,9 +496,12 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
-	projectDetails, err := api.CallGetProjectById(httpClient, projectId)
-	if err != nil {
-		util.HandleError(err, "To fetch project details")
+	if projectSlug == "" {
+		projectDetails, err := api.CallGetProjectById(httpClient, projectId)
+		if err != nil {
+			util.HandleError(err, "To fetch project details")
+		}
+		projectSlug = projectDetails.Slug
 	}
 
 	if err != nil {
@@ -477,11 +509,12 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	}
 
 	leaseDetails, err := infisicalClient.DynamicSecrets().Leases().DeleteById(infisicalSdk.DeleteDynamicSecretLeaseOptions{
-		ProjectSlug:     projectDetails.Slug,
+		ProjectSlug:     projectSlug,
 		SecretPath:      secretsPath,
 		EnvironmentSlug: environmentName,
 		LeaseId:         dynamicSecretLeaseId,
 	})
+
 	if err != nil {
 		util.HandleError(err, "To revoke  dynamic secret lease")
 	}
@@ -522,6 +555,11 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
+	projectSlug, err := cmd.Flags().GetString("project-slug")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	secretsPath, err := cmd.Flags().GetString("path")
 	if err != nil {
 		util.HandleError(err, "Unable to parse path flag")
@@ -533,10 +571,10 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to get resty client with custom headers")
 	}
 
-	if projectId == "" {
+	if projectId == "" && projectSlug == "" {
 		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
-			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project or pass in project id with --projectId flag")
+			util.PrintErrorMessageAndExit("Please either run infisical init to connect to a project, pass in project slug with --project-slug flag, or pass in project id with --projectId flag")
 		}
 		projectId = workspaceFile.WorkspaceId
 	}
@@ -572,14 +610,17 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 	})
 	infisicalClient.Auth().SetAccessToken(infisicalToken)
 
-	projectDetails, err := api.CallGetProjectById(httpClient, projectId)
-	if err != nil {
-		util.HandleError(err, "To fetch project details")
+	if projectSlug == "" {
+		projectDetails, err := api.CallGetProjectById(httpClient, projectId)
+		if err != nil {
+			util.HandleError(err, "To fetch project details")
+		}
+		projectSlug = projectDetails.Slug
 	}
 
 	dynamicSecretLeases, err := infisicalClient.DynamicSecrets().Leases().List(infisicalSdk.ListDynamicSecretLeasesOptions{
 		DynamicSecretName: dynamicSecretRootCredentialName,
-		ProjectSlug:       projectDetails.Slug,
+		ProjectSlug:       projectSlug,
 		SecretPath:        secretsPath,
 		EnvironmentSlug:   environmentName,
 	})
@@ -596,34 +637,39 @@ func init() {
 	dynamicSecretLeaseCreateCmd.Flags().StringP("path", "p", "/", "The path from where dynamic secret should be leased from")
 	dynamicSecretLeaseCreateCmd.Flags().String("token", "", "Create dynamic secret leases using machine identity access token")
 	dynamicSecretLeaseCreateCmd.Flags().String("projectId", "", "Manually set the projectId to fetch leased from when using machine identity based auth")
+	dynamicSecretLeaseCreateCmd.Flags().String("project-slug", "", "Manually set the project-slug to create lease in")
 	dynamicSecretLeaseCreateCmd.Flags().String("ttl", "", "The lease lifetime TTL. If not provided the default TTL of dynamic secret will be used.")
 	dynamicSecretLeaseCreateCmd.Flags().Bool("plain", false, "Print leased credentials without formatting, one per line")
 
 	// Kubernetes specific flags
-	dynamicSecretLeaseCreateCmd.Flags().String("kubernetesNamespace", "", "The namespace to create the lease in. Only used for Kubernetes dynamic secrets.")
+	dynamicSecretLeaseCreateCmd.Flags().String("kubernetes-namespace", "", "The namespace to create the lease in. Only used for Kubernetes dynamic secrets.")
 
 	dynamicSecretLeaseCmd.AddCommand(dynamicSecretLeaseCreateCmd)
 
 	dynamicSecretLeaseListCmd.Flags().StringP("path", "p", "/", "The path from where dynamic secret should be leased from")
 	dynamicSecretLeaseListCmd.Flags().String("token", "", "Fetch dynamic secret leases machine identity access token")
 	dynamicSecretLeaseListCmd.Flags().String("projectId", "", "Manually set the projectId to fetch leased from when using machine identity based auth")
+	dynamicSecretLeaseListCmd.Flags().String("project-slug", "", "Manually set the project-slug to list leases from")
 	dynamicSecretLeaseCmd.AddCommand(dynamicSecretLeaseListCmd)
 
 	dynamicSecretLeaseRenewCmd.Flags().StringP("path", "p", "/", "The path from where dynamic secret should be leased from")
 	dynamicSecretLeaseRenewCmd.Flags().String("token", "", "Renew dynamic secrets machine identity access token")
 	dynamicSecretLeaseRenewCmd.Flags().String("projectId", "", "Manually set the projectId to fetch leased from when using machine identity based auth")
+	dynamicSecretLeaseRenewCmd.Flags().String("project-slug", "", "Manually set the project-slug to renew lease in")
 	dynamicSecretLeaseRenewCmd.Flags().String("ttl", "", "The lease lifetime TTL. If not provided the default TTL of dynamic secret will be used.")
 	dynamicSecretLeaseCmd.AddCommand(dynamicSecretLeaseRenewCmd)
 
 	dynamicSecretLeaseRevokeCmd.Flags().StringP("path", "p", "/", "The path from where dynamic secret should be leased from")
 	dynamicSecretLeaseRevokeCmd.Flags().String("token", "", "Delete dynamic secrets using machine identity access token")
 	dynamicSecretLeaseRevokeCmd.Flags().String("projectId", "", "Manually set the projectId to fetch leased from when using machine identity based auth")
+	dynamicSecretLeaseRevokeCmd.Flags().String("project-slug", "", "Manually set the project-slug to revoke lease from")
 	dynamicSecretLeaseCmd.AddCommand(dynamicSecretLeaseRevokeCmd)
 
 	dynamicSecretCmd.AddCommand(dynamicSecretLeaseCmd)
 
 	dynamicSecretCmd.Flags().String("token", "", "Fetch secrets using service token or machine identity access token")
 	dynamicSecretCmd.Flags().String("projectId", "", "Manually set the projectId to fetch dynamic-secret when using machine identity based auth")
+	dynamicSecretCmd.Flags().String("project-slug", "", "Manually set the project-slug to fetch dynamic-secret from")
 	dynamicSecretCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	dynamicSecretCmd.Flags().String("path", "/", "get dynamic secret within a folder path")
 	rootCmd.AddCommand(dynamicSecretCmd)
