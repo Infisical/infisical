@@ -211,7 +211,13 @@ export const KubernetesInputForm = ({
     try {
       const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
       await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.Kubernetes, inputs: provider },
+        provider: {
+          type: DynamicSecretProviders.Kubernetes,
+          inputs: {
+            ...provider,
+            url: provider.url || undefined
+          }
+        },
         maxTTL: rest.maxTTL,
         name: rest.name,
         path: secretPath,

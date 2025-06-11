@@ -201,7 +201,10 @@ export const EditDynamicSecretKubernetesForm = ({
         projectSlug,
         environmentSlug: environment,
         data: {
-          inputs: formData.inputs,
+          inputs: {
+            ...formData.inputs,
+            url: formData.inputs.url || undefined
+          },
           newName: formData.newName === dynamicSecret.name ? undefined : formData.newName,
           defaultTTL: formData.defaultTTL,
           maxTTL: formData.maxTTL,

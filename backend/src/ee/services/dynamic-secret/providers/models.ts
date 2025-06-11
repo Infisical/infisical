@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+
 import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 
 export type PasswordRequirements = {
@@ -341,7 +343,11 @@ export const DynamicSecretKubernetesSchema = z
         .string()
         .trim()
         .min(1)
-        .refine((val) => !val.includes(","), "Namespace must be a single value, not a comma-separated list"),
+        .refine((val) => !val.includes(","), "Namespace must be a single value, not a comma-separated list")
+        .refine(
+          (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val),
+          "Invalid namespace format"
+        ),
       gatewayId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
@@ -364,7 +370,11 @@ export const DynamicSecretKubernetesSchema = z
         .min(1)
         .refine((val) => {
           const namespaces = val.split(",").map((ns) => ns.trim());
-          return namespaces.length > 0 && namespaces.every((ns) => ns.length > 0);
+          return (
+            namespaces.length > 0 &&
+            namespaces.every((ns) => ns.length > 0) &&
+            namespaces.every((ns) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(ns))
+          );
         }, "Must be a valid comma-separated list of namespace values"),
       gatewayId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
