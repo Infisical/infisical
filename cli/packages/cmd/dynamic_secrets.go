@@ -232,13 +232,26 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "To fetch dynamic secret root credentials details")
 	}
 
+	// for Kubernetes dynamic secrets only
+	kubernetesNamespace, err := cmd.Flags().GetString("kubernetesNamespace")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	config := map[string]any{}
+	if kubernetesNamespace != "" {
+		config["namespace"] = kubernetesNamespace
+	}
+
 	leaseCredentials, _, leaseDetails, err := infisicalClient.DynamicSecrets().Leases().Create(infisicalSdk.CreateDynamicSecretLeaseOptions{
 		DynamicSecretName: dynamicSecretRootCredential.Name,
 		ProjectSlug:       projectDetails.Slug,
 		TTL:               ttl,
 		SecretPath:        secretsPath,
 		EnvironmentSlug:   environmentName,
+		Config:            config,
 	})
+
 	if err != nil {
 		util.HandleError(err, "To lease dynamic secret")
 	}
@@ -585,6 +598,10 @@ func init() {
 	dynamicSecretLeaseCreateCmd.Flags().String("projectId", "", "Manually set the projectId to fetch leased from when using machine identity based auth")
 	dynamicSecretLeaseCreateCmd.Flags().String("ttl", "", "The lease lifetime TTL. If not provided the default TTL of dynamic secret will be used.")
 	dynamicSecretLeaseCreateCmd.Flags().Bool("plain", false, "Print leased credentials without formatting, one per line")
+
+	// Kubernetes specific flags
+	dynamicSecretLeaseCreateCmd.Flags().String("kubernetesNamespace", "", "The namespace to create the lease in. Only used for Kubernetes dynamic secrets.")
+
 	dynamicSecretLeaseCmd.AddCommand(dynamicSecretLeaseCreateCmd)
 
 	dynamicSecretLeaseListCmd.Flags().StringP("path", "p", "/", "The path from where dynamic secret should be leased from")

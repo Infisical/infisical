@@ -1,4 +1,9 @@
+import RE2 from "re2";
 import { z } from "zod";
+
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+
+import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 
 export type PasswordRequirements = {
   length: number;
@@ -323,24 +328,54 @@ export const LdapSchema = z.union([
 export const DynamicSecretKubernetesSchema = z
   .discriminatedUnion("credentialType", [
     z.object({
-      url: z.string().url().trim().min(1),
+      url: z
+        .string()
+        .optional()
+        .refine((val: string | undefined) => !val || new RE2(/^https?:\/\/.+/).test(val), {
+          message: "Invalid URL. Must start with http:// or https:// (e.g. https://example.com)"
+        }),
       clusterToken: z.string().trim().optional(),
       ca: z.string().optional(),
       sslEnabled: z.boolean().default(false),
       credentialType: z.literal(KubernetesCredentialType.Static),
       serviceAccountName: z.string().trim().min(1),
-      namespace: z.string().trim().min(1),
+      namespace: z
+        .string()
+        .trim()
+        .min(1)
+        .refine((val) => !val.includes(","), "Namespace must be a single value, not a comma-separated list")
+        .refine(
+          (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val),
+          "Invalid namespace format"
+        ),
       gatewayId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
     }),
     z.object({
-      url: z.string().url().trim().min(1),
+      url: z
+        .string()
+        .url()
+        .optional()
+        .refine((val: string | undefined) => !val || new RE2(/^https?:\/\/.+/).test(val), {
+          message: "Invalid URL. Must start with http:// or https:// (e.g. https://example.com)"
+        }),
       clusterToken: z.string().trim().optional(),
       ca: z.string().optional(),
       sslEnabled: z.boolean().default(false),
       credentialType: z.literal(KubernetesCredentialType.Dynamic),
-      namespace: z.string().trim().min(1),
+      namespace: z
+        .string()
+        .trim()
+        .min(1)
+        .refine((val) => {
+          const namespaces = val.split(",").map((ns) => ns.trim());
+          return (
+            namespaces.length > 0 &&
+            namespaces.every((ns) => ns.length > 0) &&
+            namespaces.every((ns) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(ns))
+          );
+        }, "Must be a valid comma-separated list of namespace values"),
       gatewayId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       roleType: z.nativeEnum(KubernetesRoleType),
@@ -356,12 +391,21 @@ export const DynamicSecretKubernetesSchema = z
         message: "When auth method is set to Gateway, a gateway must be selected"
       });
     }
-    if ((data.authMethod === KubernetesAuthMethod.Api || !data.authMethod) && !data.clusterToken) {
-      ctx.addIssue({
-        path: ["clusterToken"],
-        code: z.ZodIssueCode.custom,
-        message: "When auth method is set to Manual Token, a cluster token must be provided"
-      });
+    if (data.authMethod === KubernetesAuthMethod.Api || !data.authMethod) {
+      if (!data.clusterToken) {
+        ctx.addIssue({
+          path: ["clusterToken"],
+          code: z.ZodIssueCode.custom,
+          message: "When auth method is set to Token, a cluster token must be provided"
+        });
+      }
+      if (!data.url) {
+        ctx.addIssue({
+          path: ["url"],
+          code: z.ZodIssueCode.custom,
+          message: "When auth method is set to Token, a cluster URL must be provided"
+        });
+      }
     }
   });
 
@@ -475,10 +519,16 @@ export type TDynamicProviderFns = {
       name: string;
     };
     metadata: { projectId: string };
+    config?: TDynamicSecretLeaseConfig;
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
   validateProviderInputs: (inputs: object, metadata: { projectId: string }) => Promise<unknown>;
-  revoke: (inputs: unknown, entityId: string, metadata: { projectId: string }) => Promise<{ entityId: string }>;
+  revoke: (
+    inputs: unknown,
+    entityId: string,
+    metadata: { projectId: string },
+    config?: TDynamicSecretLeaseConfig
+  ) => Promise<{ entityId: string }>;
   renew: (
     inputs: unknown,
     entityId: string,
