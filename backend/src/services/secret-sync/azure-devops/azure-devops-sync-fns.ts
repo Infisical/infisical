@@ -2,7 +2,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AzureDevOpsConnectionMethod } from "@app/services/app-connection/azure-devops/azure-devops-enums";
-import { getAzureDevopsConnectionAccessToken } from "@app/services/app-connection/azure-devops/azure-devops-fns";
+import { getAzureDevopsConnection } from "@app/services/app-connection/azure-devops/azure-devops-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -44,7 +44,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
       });
     }
 
-    const accessToken = await getAzureDevopsConnectionAccessToken(
+    const accessToken = await getAzureDevopsConnection(
       secretSync.connectionId,
       appConnectionDAL,
       kmsService
@@ -115,7 +115,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
 
     if (!groupId) {
       // Create new variable group - API endpoint is organization-level
-      const url = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/_apis/distributedtask/variablegroups?api-version=7.1`;
+      const url = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(orgName)}/_apis/distributedtask/variablegroups?api-version=7.1`;
 
       await request.post(
         url,
@@ -143,7 +143,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
         }
       );
     } else {
-      const url = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/_apis/distributedtask/variablegroups/${groupId}?api-version=7.1`;
+      const url = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(orgName)}/_apis/distributedtask/variablegroups/${groupId}?api-version=7.1`;
 
       await request.put(
         url,
@@ -186,7 +186,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
 
     if (groupId) {
       // Delete the variable group entirely using the DELETE API
-      const deleteUrl = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/_apis/distributedtask/variablegroups/${groupId}?projectIds=${secretSync.destinationConfig.devopsProjectId}&api-version=7.1`;
+      const deleteUrl = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(orgName)}/_apis/distributedtask/variablegroups/${groupId}?projectIds=${secretSync.destinationConfig.devopsProjectId}&api-version=7.1`;
 
       await request.delete(deleteUrl, {
         headers: {

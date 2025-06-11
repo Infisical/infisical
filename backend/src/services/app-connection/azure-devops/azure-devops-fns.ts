@@ -30,13 +30,13 @@ export const getAzureDevopsConnectionListItem = () => {
     app: AppConnection.AzureDevOps as const,
     methods: Object.values(AzureDevOpsConnectionMethod) as [
       AzureDevOpsConnectionMethod.OAuth,
-      AzureDevOpsConnectionMethod.ApiToken
+      AzureDevOpsConnectionMethod.AccessToken
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_ID
   };
 };
 
-export const getAzureDevopsConnectionAccessToken = async (
+export const getAzureDevopsConnection = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
@@ -104,12 +104,12 @@ export const getAzureDevopsConnectionAccessToken = async (
 
       return data.access_token;
 
-    case AzureDevOpsConnectionMethod.ApiToken:
-      if (!("apiKey" in credentials)) {
+    case AzureDevOpsConnectionMethod.AccessToken:
+      if (!("accessToken" in credentials)) {
         throw new BadRequestError({ message: "Invalid API token credentials" });
       }
       // For API token, return the basic auth token directly
-      return credentials.apiKey as string;
+      return credentials.accessToken;
 
     default:
       throw new BadRequestError({ message: `Unsupported connection method` });
@@ -188,17 +188,17 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
         expiresAt: Date.now() + tokenResp.data.expires_in * 1000
       };
 
-    case AzureDevOpsConnectionMethod.ApiToken:
-      const apiTokenCredentials = inputCredentials as { apiKey: string; orgName?: string };
+    case AzureDevOpsConnectionMethod.AccessToken:
+      const apiTokenCredentials = inputCredentials as { accessToken: string; orgName?: string };
 
       try {
         if (apiTokenCredentials.orgName) {
           // Validate against specific organization
           const response = await request.get(
-            `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${apiTokenCredentials.orgName}/_apis/projects?api-version=7.2-preview.2&$top=1`,
+            `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(apiTokenCredentials.orgName)}/_apis/projects?api-version=7.2-preview.2&$top=1`,
             {
               headers: {
-                Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.apiKey}`).toString("base64")}`
+                Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.accessToken}`).toString("base64")}`
               }
             }
           );
@@ -210,7 +210,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
           }
 
           return {
-            apiKey: apiTokenCredentials.apiKey,
+            accessToken: apiTokenCredentials.accessToken,
             orgName: apiTokenCredentials.orgName
           };
         }
@@ -219,7 +219,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
           `https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1`,
           {
             headers: {
-              Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.apiKey}`).toString("base64")}`
+              Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.accessToken}`).toString("base64")}`
             }
           }
         );
@@ -230,7 +230,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
             value: Array<{ accountId: string; accountName: string; accountUri: string }>;
           }>(`https://app.vssps.visualstudio.com/_apis/accounts?api-version=7.1`, {
             headers: {
-              Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.apiKey}`).toString("base64")}`
+              Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.accessToken}`).toString("base64")}`
             }
           });
           organizations = orgsResponse.data.value || [];
@@ -239,7 +239,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
         }
 
         return {
-          apiKey: apiTokenCredentials.apiKey,
+          accessToken: apiTokenCredentials.accessToken,
           userDisplayName: profileResponse.data.displayName,
           organizations: organizations.map((org) => ({
             accountId: org.accountId,

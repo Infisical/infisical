@@ -50,7 +50,7 @@ type OAuthCredentials = Extract<
 >["credentials"];
 type ApiTokenCredentials = Extract<
   TAzureDevOpsConnection,
-  { method: AzureDevOpsConnectionMethod.ApiToken }
+  { method: AzureDevOpsConnectionMethod.AccessToken }
 >["credentials"];
 
 type AzureDevOpsFormData = BaseFormData &

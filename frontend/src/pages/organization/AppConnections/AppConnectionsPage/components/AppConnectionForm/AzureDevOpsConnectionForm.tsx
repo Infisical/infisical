@@ -42,9 +42,9 @@ const oauthSchema = baseSchema.extend({
 });
 
 const apiTokenSchema = baseSchema.extend({
-  method: z.literal(AzureDevOpsConnectionMethod.ApiToken),
+  method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
   credentials: z.object({
-    apiKey: z.string().trim().min(1, "API Key is required"),
+    accessToken: z.string().trim().min(1, "Access Token is required"),
     orgName: z.string().trim().min(1, "Organization name is required")
   })
 });
@@ -81,13 +81,13 @@ const getDefaultValues = (appConnection?: TAzureDevOpsConnection): Partial<FormD
         };
       }
       break;
-    case AzureDevOpsConnectionMethod.ApiToken:
-      if ("apiKey" in credentials && "orgName" in credentials) {
+    case AzureDevOpsConnectionMethod.AccessToken:
+      if ("accessToken" in credentials && "orgName" in credentials) {
         return {
           ...base,
-          method: AzureDevOpsConnectionMethod.ApiToken,
+          method: AzureDevOpsConnectionMethod.AccessToken,
           credentials: {
-            apiKey: credentials.apiKey,
+            accessToken: credentials.accessToken,
             orgName: credentials.orgName
           }
         };
@@ -139,7 +139,7 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
         );
         break;
 
-      case AzureDevOpsConnectionMethod.ApiToken:
+      case AzureDevOpsConnectionMethod.AccessToken:
         onSubmit(formData);
         break;
 
@@ -231,16 +231,16 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
         )}
 
         {/* API Token-specific fields */}
-        {selectedMethod === AzureDevOpsConnectionMethod.ApiToken && (
+        {selectedMethod === AzureDevOpsConnectionMethod.AccessToken && (
           <>
             <Controller
-              name="credentials.apiKey"
+              name="credentials.accessToken"
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   tooltipText="Personal Access Token from Azure DevOps."
                   isError={Boolean(error?.message)}
-                  label="API Key"
+                  label="Access Token"
                   errorText={error?.message}
                 >
                   <Input

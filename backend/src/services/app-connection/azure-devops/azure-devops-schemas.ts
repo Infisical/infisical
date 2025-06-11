@@ -29,12 +29,12 @@ export const AzureDevOpsConnectionOAuthOutputCredentialsSchema = z.object({
 });
 
 export const AzureDevOpsConnectionApiTokenInputCredentialsSchema = z.object({
-  apiKey: z.string().trim().min(1, "API Key required"),
+  accessToken: z.string().trim().min(1, "Access Token required"),
   orgName: z.string().trim().min(1, "Organization name required")
 });
 
 export const AzureDevOpsConnectionApiTokenOutputCredentialsSchema = z.object({
-  apiKey: z.string(),
+  accessToken: z.string(),
   orgName: z.string()
 });
 
@@ -49,7 +49,7 @@ export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUni
   }),
   z.object({
     method: z
-      .literal(AzureDevOpsConnectionMethod.ApiToken)
+      .literal(AzureDevOpsConnectionMethod.AccessToken)
       .describe(AppConnections.CREATE(AppConnection.AzureDevOps).method),
     credentials: AzureDevOpsConnectionApiTokenInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureDevOps).credentials
@@ -82,7 +82,7 @@ export const AzureDevOpsConnectionSchema = z.intersection(
       credentials: AzureDevOpsConnectionOAuthOutputCredentialsSchema
     }),
     z.object({
-      method: z.literal(AzureDevOpsConnectionMethod.ApiToken),
+      method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
       credentials: AzureDevOpsConnectionApiTokenOutputCredentialsSchema
     })
   ])
@@ -97,7 +97,7 @@ export const SanitizedAzureDevOpsConnectionSchema = z.discriminatedUnion("method
     })
   }),
   BaseAzureDevOpsConnectionSchema.extend({
-    method: z.literal(AzureDevOpsConnectionMethod.ApiToken),
+    method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
     credentials: AzureDevOpsConnectionApiTokenOutputCredentialsSchema.pick({
       orgName: true
     })

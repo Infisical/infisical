@@ -11,7 +11,7 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
-import { getAzureDevopsConnectionAccessToken } from "./azure-devops-fns";
+import { getAzureDevopsConnection } from "./azure-devops-fns";
 import { TAzureDevOpsConnection } from "./azure-devops-types";
 
 type TGetAppConnectionFunc = (
@@ -45,7 +45,7 @@ const getAuthHeaders = (appConnection: TAzureDevOpsConnection, accessToken: stri
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
       };
-    case AzureDevOpsConnectionMethod.ApiToken:
+    case AzureDevOpsConnectionMethod.AccessToken:
       // For API token, create Basic auth header
       const basicAuthToken = Buffer.from(`user:${accessToken}`).toString("base64");
       return {
@@ -62,7 +62,7 @@ const listAzureDevOpsProjects = async (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ): Promise<TAzureDevOpsProject[]> => {
-  const accessToken = await getAzureDevopsConnectionAccessToken(appConnection.id, appConnectionDAL, kmsService);
+  const accessToken = await getAzureDevopsConnection(appConnection.id, appConnectionDAL, kmsService);
 
   // Both OAuth and API Token methods use organization name from credentials
   const credentials = appConnection.credentials as { orgName: string };

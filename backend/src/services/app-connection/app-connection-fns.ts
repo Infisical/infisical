@@ -225,7 +225,6 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
-    case AzureDevOpsConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -234,6 +233,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
+    case AzureDevOpsConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
