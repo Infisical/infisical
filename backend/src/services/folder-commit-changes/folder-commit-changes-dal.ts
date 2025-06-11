@@ -120,7 +120,7 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
 
       return docs.map((doc) => {
         // Determine if this is a secret or folder change based on populated fields
-        if (doc.secretKey && doc.secretVersion && doc.secretId) {
+        if (doc.secretKey && doc.secretVersion !== null && doc.secretId) {
           return {
             ...doc,
             resourceType: "secret",
@@ -168,7 +168,7 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
         );
 
       return docs
-        .filter((doc) => doc.secretKey && doc.secretVersion && doc.secretId)
+        .filter((doc) => doc.secretKey && doc.secretVersion !== null && doc.secretId)
         .map(
           (doc): SecretCommitChange => ({
             ...doc,
@@ -209,7 +209,7 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
         );
 
       return docs
-        .filter((doc) => doc.folderName && doc.folderVersion && doc.folderChangeId)
+        .filter((doc) => doc.folderName && doc.folderVersion !== null && doc.folderChangeId)
         .map(
           (doc): FolderCommitChange => ({
             ...doc,

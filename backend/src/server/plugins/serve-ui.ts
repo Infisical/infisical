@@ -57,9 +57,12 @@ export const registerServeUI = async (
           reply.callNotFound();
           return;
         }
-        // reference: https://github.com/fastify/fastify-static?tab=readme-ov-file#managing-cache-control-headers
-        // to avoid ui bundle skew on new deployment
-        return reply.sendFile("index.html", { maxAge: 0, immutable: false });
+
+        // This should help avoid caching any chunks (temp fix)
+        void reply.header("Cache-Control", "no-cache, no-store, must-revalidate, private, max-age=0");
+        void reply.header("Pragma", "no-cache");
+        void reply.header("Expires", "0");
+        return reply.sendFile("index.html");
       }
     });
   }
