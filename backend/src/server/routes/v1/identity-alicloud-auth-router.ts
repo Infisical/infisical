@@ -41,7 +41,10 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
         SignatureMethod: z.enum(["HMAC-SHA1"]).describe(ALICLOUD_AUTH.LOGIN.SignatureMethod),
         Timestamp: z
           .string()
-          .refine((val) => new RE2("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$").test(val), {
+          .datetime({
+            message: "Timestamp must be in YYYY-MM-DDTHH:mm:ssZ format"
+          })
+          .refine((val) => val.endsWith("Z"), {
             message: "Timestamp must be in YYYY-MM-DDTHH:mm:ssZ format"
           })
           .describe(ALICLOUD_AUTH.LOGIN.Timestamp),

@@ -148,7 +148,7 @@ const params: { [key: string]: string } = {
   Version: "2015-04-01",
   AccessKeyId: ALICLOUD_ACCESS_KEY_ID,
   SignatureMethod: "HMAC-SHA1",
-  Timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+  Timestamp: new Date().toISOString(),
   SignatureVersion: "1.0",
   SignatureNonce: crypto.randomBytes(16).toString("hex"),
 };

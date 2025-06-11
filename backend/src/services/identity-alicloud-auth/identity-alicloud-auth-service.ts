@@ -64,16 +64,16 @@ export const identityAliCloudAuthServiceFactory = ({
       identityId: identityAliCloudAuth.identityId
     });
 
-    const queryString = Object.keys(params)
-      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent((params as Record<string, string>)[key])}`)
-      .join("&");
+    const requestUrl = new URL("https://sts.aliyuncs.com");
 
-    const { data } = await request
-      .get<TAliCloudGetUserResponse>(`https://sts.aliyuncs.com/?${queryString}`)
-      .catch((err: AxiosError) => {
-        logger.error(err.response, "AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud");
-        throw err;
-      });
+    for (const key of Object.keys(params)) {
+      requestUrl.searchParams.set(key, (params as Record<string, string>)[key]);
+    }
+
+    const { data } = await request.get<TAliCloudGetUserResponse>(requestUrl.toString()).catch((err: AxiosError) => {
+      logger.error(err.response, "AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud");
+      throw err;
+    });
 
     if (identityAliCloudAuth.allowedArns) {
       // In the future we could do partial checks for role ARNs
