@@ -5,13 +5,13 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import {
+  AddIdentityAliCloudAuthDTO,
   AddIdentityAwsAuthDTO,
   AddIdentityAzureAuthDTO,
   AddIdentityGcpAuthDTO,
   AddIdentityJwtAuthDTO,
   AddIdentityKubernetesAuthDTO,
   AddIdentityLdapAuthDTO,
-  AddIdentityAliCloudAuthDTO,
   AddIdentityOciAuthDTO,
   AddIdentityOidcAuthDTO,
   AddIdentityTokenAuthDTO,
@@ -22,6 +22,7 @@ import {
   CreateIdentityUniversalAuthClientSecretRes,
   CreateTokenIdentityTokenAuthDTO,
   CreateTokenIdentityTokenAuthRes,
+  DeleteIdentityAliCloudAuthDTO,
   DeleteIdentityAwsAuthDTO,
   DeleteIdentityAzureAuthDTO,
   DeleteIdentityDTO,
@@ -29,7 +30,6 @@ import {
   DeleteIdentityJwtAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
   DeleteIdentityLdapAuthDTO,
-  DeleteIdentityALiCloudAuthDTO,
   DeleteIdentityOciAuthDTO,
   DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
@@ -37,19 +37,20 @@ import {
   DeleteIdentityUniversalAuthDTO,
   Identity,
   IdentityAccessToken,
+  IdentityAliCloudAuth,
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
   IdentityJwtAuth,
   IdentityKubernetesAuth,
   IdentityLdapAuth,
-  IdentityAliCloudAuth,
   IdentityOciAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
   RevokeTokenDTO,
   RevokeTokenRes,
+  UpdateIdentityAliCloudAuthDTO,
   UpdateIdentityAwsAuthDTO,
   UpdateIdentityAzureAuthDTO,
   UpdateIdentityDTO,
@@ -57,7 +58,6 @@ import {
   UpdateIdentityJwtAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
   UpdateIdentityLdapAuthDTO,
-  UpdateIdentityAliCloudAuthDTO,
   UpdateIdentityOciAuthDTO,
   UpdateIdentityOidcAuthDTO,
   UpdateIdentityTokenAuthDTO,
@@ -635,7 +635,7 @@ export const useUpdateIdentityAliCloudAuth = () => {
 
 export const useDeleteIdentityAliCloudAuth = () => {
   const queryClient = useQueryClient();
-  return useMutation<IdentityAliCloudAuth, object, DeleteIdentityOciAuthDTO>({
+  return useMutation<IdentityAliCloudAuth, object, DeleteIdentityAliCloudAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
         data: { identityAliCloudAuth }

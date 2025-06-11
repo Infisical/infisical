@@ -6,6 +6,7 @@ import { TReactQueryOptions } from "@app/types/reactQuery";
 import {
   ClientSecretData,
   IdentityAccessToken,
+  IdentityAliCloudAuth,
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
@@ -14,7 +15,6 @@ import {
   IdentityLdapAuth,
   IdentityMembership,
   IdentityMembershipOrg,
-  IdentityAliCloudAuth,
   IdentityOciAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,

@@ -20,13 +20,13 @@ import {
 } from "@app/hooks/api";
 
 import { ViewAuthMethodProps } from "./types";
+import { ViewIdentityAliCloudAuthContent } from "./ViewIdentityAliCloudAuthContent";
 import { ViewIdentityAwsAuthContent } from "./ViewIdentityAwsAuthContent";
 import { ViewIdentityAzureAuthContent } from "./ViewIdentityAzureAuthContent";
 import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
 import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
 import { ViewIdentityLdapAuthContent } from "./ViewIdentityLdapAuthContent";
-import { ViewIdentityAliCloudAuthContent } from "./ViewIdentityAliCloudAuthContent";
 import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";

@@ -8,13 +8,13 @@ import { Badge, FormControl, Select, SelectItem, Tooltip } from "@app/components
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { IdentityAliCloudAuthForm } from "./IdentityAliCloudAuthForm";
 import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
 import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityJwtAuthForm } from "./IdentityJwtAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
 import { IdentityLdapAuthForm } from "./IdentityLdapAuthForm";
-import { IdentityAliCloudAuthForm } from "./IdentityAliCloudAuthForm";
 import { IdentityOciAuthForm } from "./IdentityOciAuthForm";
 import { IdentityOidcAuthForm } from "./IdentityOidcAuthForm";
 import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";

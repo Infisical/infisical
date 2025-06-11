@@ -60,7 +60,7 @@ In order to sign requests, you must have an Alibaba Cloud user with credentials 
             ![User Info](/images/platform/identities/alicloud/user-info.png)
         </Step>
         <Step title="Click User Row">
-            After a user has been created, click on it's row to see user information.
+            After a user has been created, click on its row to see user information.
 
             ![User Info](/images/platform/identities/alicloud/user-row.png)
         </Step>
@@ -173,7 +173,7 @@ const res = await fetch(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      identityId: "83f1f7b9-a1f2-4688-aecb-dec94da01c75",
+      identityId: "...", // Replace with your identity ID
       Signature: signature,
       ...params,
     }),
