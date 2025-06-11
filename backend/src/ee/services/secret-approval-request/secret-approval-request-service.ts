@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { ForbiddenError, subject } from "@casl/ability";
 
 import {
@@ -246,7 +247,7 @@ export const secretApprovalRequestServiceFactory = ({
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
     const { policy } = secretApprovalRequest;
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { hasRole, permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -261,6 +262,12 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
+
+    const hasSecretReadAccess = permission.can(
+      ProjectPermissionSecretActions.DescribeAndReadValue,
+      ProjectPermissionSub.Secrets
+    );
+    const hiddenSecretValue = "******";
 
     let secrets;
     if (shouldUseSecretV2Bridge) {
@@ -278,9 +285,9 @@ export const secretApprovalRequestServiceFactory = ({
         version: el.version,
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
-        secretValue:
-          // eslint-disable-next-line no-nested-ternary
-          el.secret && el.secret.isRotatedSecret
+        secretValue: !hasSecretReadAccess
+          ? hiddenSecretValue
+          : el.secret && el.secret.isRotatedSecret
             ? undefined
             : el.encryptedValue
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
@@ -293,9 +300,11 @@ export const secretApprovalRequestServiceFactory = ({
               secretKey: el.secret.key,
               id: el.secret.id,
               version: el.secret.version,
-              secretValue: el.secret.encryptedValue
-                ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
-                : "",
+              secretValue: !hasSecretReadAccess
+                ? hiddenSecretValue
+                : el.secret.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
+                  : "",
               secretComment: el.secret.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedComment }).toString()
                 : ""
@@ -306,9 +315,11 @@ export const secretApprovalRequestServiceFactory = ({
               secretKey: el.secretVersion.key,
               id: el.secretVersion.id,
               version: el.secretVersion.version,
-              secretValue: el.secretVersion.encryptedValue
-                ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
-                : "",
+              secretValue: !hasSecretReadAccess
+                ? hiddenSecretValue
+                : el.secretVersion.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
+                  : "",
               secretComment: el.secretVersion.encryptedComment
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
                 : "",
