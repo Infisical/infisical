@@ -343,8 +343,8 @@ export const ReviewAccessRequestModal = ({
                           <div>
                             <div className="mb-1 text-sm text-bunker-300">Reviewers</div>
                             <div className="thin-scrollbar flex max-h-64 flex-col gap-1 overflow-y-auto rounded">
-                              {approver.reviewers.map((el) => (
-                                <div className="flex items-center gap-2 bg-mineshaft-700 p-1 text-sm">
+                              {approver.reviewers.map((el, idx) => (
+                                <div key={`reviewer-${idx}`} className="flex items-center gap-2 bg-mineshaft-700 p-1 text-sm">
                                   <div className="flex-grow">{el.username}</div>
                                   <Tooltip
                                     content={`Status: ${el?.status || ApprovalStatus.PENDING}`}
