@@ -397,7 +397,6 @@ export const AccessPolicyForm = ({
     <Modal isOpen={isOpen} onOpenChange={onToggle}>
       <ModalContent
         className="max-w-3xl"
-        bodyClassName="overflow-visible"
         ref={modalContainer}
         title={isEditMode ? `Edit ${policyName}` : "Create Policy"}
       >
