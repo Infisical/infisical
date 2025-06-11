@@ -576,7 +576,7 @@ func (tm *AgentManager) FetchUniversalAuthAccessToken() (credential infisicalSdk
 	}
 
 	tm.cachedUniversalAuthClientSecret = clientSecret
-	if tm.removeUniversalAuthClientSecretOnRead {
+	if universalAuthConfig.RemoveClientSecretOnRead {
 		defer os.Remove(universalAuthConfig.ClientSecretPath)
 	}
 
@@ -718,7 +718,7 @@ func (tm *AgentManager) FetchNewAccessToken() error {
 }
 
 // Refreshes the existing access token
-func (tm *AgentManager) RefreshAccessToken() error {
+func (tm *AgentManager) RefreshAccessToken(accessToken string) error {
 	httpClient, err := util.GetRestyClientWithCustomHeaders()
 	if err != nil {
 		return err
@@ -728,7 +728,6 @@ func (tm *AgentManager) RefreshAccessToken() error {
 		SetRetryMaxWaitTime(20 * time.Second).
 		SetRetryWaitTime(5 * time.Second)
 
-	accessToken := tm.GetToken()
 	response, err := api.CallMachineIdentityRefreshAccessToken(httpClient, api.UniversalAuthRefreshRequest{AccessToken: accessToken})
 	if err != nil {
 		return err
@@ -752,18 +751,37 @@ func (tm *AgentManager) ManageTokenLifecycle() {
 			accessTokenRefreshedTime = tm.accessTokenFetchedTime
 		}
 
-		nextAccessTokenExpiresInTime := accessTokenRefreshedTime.Add(tm.accessTokenTTL - (5 * time.Second))
+		// Calculate next expiry time at 2/3 of the TTL
+		nextAccessTokenExpiresInTime := accessTokenRefreshedTime.Add(tm.accessTokenTTL * 2 / 3)
 
 		if tm.accessTokenFetchedTime.IsZero() && tm.accessTokenRefreshedTime.IsZero() {
-			// case: init login to get access token
-			log.Info().Msg("attempting to authenticate...")
-			err := tm.FetchNewAccessToken()
-			if err != nil {
-				log.Error().Msgf("unable to authenticate because %v. Will retry in 30 seconds", err)
+			// try to fetch token from sink files first
+			// if token is found, refresh the token right away and continue from there
+			isSavedTokenValid := false
+			token := tm.FetchTokenFromFiles()
+			if token != "" {
+				log.Info().Msg("found existing token in file, attempting to refresh...")
+				err := tm.RefreshAccessToken(token)
+				isSavedTokenValid = err == nil
+				if isSavedTokenValid {
+					log.Info().Msg("token refreshed successfully from saved file")
+					tm.accessTokenFetchedTime = time.Now()
+				} else {
+					log.Error().Msg("unable to refresh token from saved file")
+				}
+			}
 
-				// wait a bit before trying again
-				time.Sleep((30 * time.Second))
-				continue
+			if !isSavedTokenValid {
+				// case: init login to get access token
+				log.Info().Msg("attempting to authenticate...")
+				err := tm.FetchNewAccessToken()
+				if err != nil {
+					log.Error().Msgf("unable to authenticate because %v. Will retry in 30 seconds", err)
+
+					// wait a bit before trying again
+					time.Sleep((30 * time.Second))
+					continue
+				}
 			}
 		} else if time.Now().After(accessTokenMaxTTLExpiresInTime) {
 			// case: token has reached max ttl and we should re-authenticate entirely (cannot refresh)
@@ -779,7 +797,7 @@ func (tm *AgentManager) ManageTokenLifecycle() {
 		} else {
 			// case: token ttl has expired, but the token is still within max ttl, so we can refresh
 			log.Info().Msgf("attempting to refresh existing token...")
-			err := tm.RefreshAccessToken()
+			err := tm.RefreshAccessToken(tm.GetToken())
 			if err != nil {
 				log.Error().Msgf("unable to refresh token because %v. Will retry in 30 seconds", err)
 
@@ -800,15 +818,18 @@ func (tm *AgentManager) ManageTokenLifecycle() {
 			accessTokenRefreshedTime = tm.accessTokenRefreshedTime
 		}
 
-		nextAccessTokenExpiresInTime = accessTokenRefreshedTime.Add(tm.accessTokenTTL - (5 * time.Second))
+		// Recalculate next expiry time at 2/3 of the TTL
+		nextAccessTokenExpiresInTime = accessTokenRefreshedTime.Add(tm.accessTokenTTL * 2 / 3)
 		accessTokenMaxTTLExpiresInTime = tm.accessTokenFetchedTime.Add(tm.accessTokenMaxTTL - (5 * time.Second))
 
 		if nextAccessTokenExpiresInTime.After(accessTokenMaxTTLExpiresInTime) {
-			// case: Refreshed so close that the next refresh would occur beyond max ttl (this is because currently, token renew tries to add +access-token-ttl amount of time)
-			// example: access token ttl is 11 sec and max ttl is 30 sec. So it will start with 11 seconds, then 22 seconds but the next time you call refresh it would try to extend it to 33 but max ttl only allows 30, so the token will be valid until 30 before we need to reauth
-			time.Sleep(tm.accessTokenTTL - nextAccessTokenExpiresInTime.Sub(accessTokenMaxTTLExpiresInTime))
+			// case: Refreshed so close that the next refresh would occur beyond max ttl
+			// Sleep until we're at 2/3 of the remaining time to max TTL
+			remainingTime := accessTokenMaxTTLExpiresInTime.Sub(time.Now())
+			time.Sleep(remainingTime * 2 / 3)
 		} else {
-			time.Sleep(tm.accessTokenTTL - (5 * time.Second))
+			// Sleep until we're at 2/3 of the TTL
+			time.Sleep(tm.accessTokenTTL * 2 / 3)
 		}
 	}
 }
@@ -828,6 +849,24 @@ func (tm *AgentManager) WriteTokenToFiles() {
 			log.Error().Msg("unsupported sink type. Only 'file' type is supported")
 		}
 	}
+}
+
+func (tm *AgentManager) FetchTokenFromFiles() string {
+	for _, sinkFile := range tm.filePaths {
+		if sinkFile.Type == "file" {
+			tokenBytes, err := ioutil.ReadFile(sinkFile.Config.Path)
+			if err != nil {
+				log.Debug().Msgf("unable to read token from file '%s' because %v", sinkFile.Config.Path, err)
+				continue
+			}
+
+			token := string(tokenBytes)
+			if token != "" {
+				return token
+			}
+		}
+	}
+	return ""
 }
 
 func (tm *AgentManager) WriteTemplateToFile(bytes *bytes.Buffer, template *Template) {
