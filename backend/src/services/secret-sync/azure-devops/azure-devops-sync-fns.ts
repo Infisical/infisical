@@ -44,11 +44,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
       });
     }
 
-    const accessToken = await getAzureDevopsConnection(
-      secretSync.connectionId,
-      appConnectionDAL,
-      kmsService
-    );
+    const accessToken = await getAzureDevopsConnection(secretSync.connectionId, appConnectionDAL, kmsService);
 
     return { accessToken, orgName, isOAuth };
   };
