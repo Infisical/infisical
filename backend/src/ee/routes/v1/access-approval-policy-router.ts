@@ -37,7 +37,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           ])
           .array()
           .max(100, "Cannot have more than 100 approvers")
-          .min(1, { message: "At least one approver should be provided" }),
+          .min(1, { message: "At least one approver should be provided" })
+          .refine(
+            (el) => el.every((i) => Object.hasOwn(i, "id") || Object.hasOwn(i, "username")),
+            "Must provide either username or id"
+          ),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -187,7 +191,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           ])
           .array()
           .min(1, { message: "At least one approver should be provided" })
-          .max(100, "Cannot have more than 100 approvers"),
+          .max(100, "Cannot have more than 100 approvers")
+          .refine(
+            (el) => el.every((i) => Object.hasOwn(i, "id") || Object.hasOwn(i, "username")),
+            "Must provide either username or id"
+          ),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),

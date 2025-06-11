@@ -132,7 +132,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
       approverUserIds = approverUserIds.concat(
         userApproverNames.map((el) => ({
-          id: approverUsersInDBGroupByUsername[el.username]?.[0].username,
+          id: approverUsersInDBGroupByUsername[el.username]?.[0].id,
           sequence: el.sequence
         }))
       );
@@ -427,7 +427,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
           approverUserIds = approverUserIds.concat(
             userApproverNames.map((el) => ({
-              id: approverUsersInDBGroupByUsername[el.username]?.[0].username,
+              id: approverUsersInDBGroupByUsername[el.username]?.[0].id,
               sequence: el.sequence
             }))
           );

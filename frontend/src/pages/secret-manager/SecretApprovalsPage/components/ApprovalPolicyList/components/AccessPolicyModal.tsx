@@ -158,7 +158,7 @@ export const AccessPolicyForm = ({
             ?.sort((a, b) => (a?.sequence || 0) - (b?.sequence || 0))
             .reduce(
               (acc, curr) => {
-                if (acc.length > 1 && acc[acc.length - 1].sequence === curr.sequence) {
+                if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
                   acc[acc.length - 1][curr.type]?.push(curr);
                   return acc;
                 }

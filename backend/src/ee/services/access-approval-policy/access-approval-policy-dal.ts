@@ -50,7 +50,6 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
       .select(tx.ref("approverGroupId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
       .select(tx.ref("approvalsRequired").withSchema(TableName.AccessApprovalPolicyApprover))
-      .select(tx.ref("approverGroupId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("bypasserUserId").withSchema(TableName.AccessApprovalPolicyBypasser))
       .select(tx.ref("bypasserGroupId").withSchema(TableName.AccessApprovalPolicyBypasser))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))

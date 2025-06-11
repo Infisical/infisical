@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
   );
   if (!hasStepColumn || !hasApprovalRequiredColumn) {
     await knex.schema.alterTable(TableName.AccessApprovalPolicyApprover, (t) => {
-      if (!hasStepColumn) t.integer("sequence").defaultTo(0);
+      if (!hasStepColumn) t.integer("sequence").defaultTo(1);
       if (!hasApprovalRequiredColumn) t.integer("approvalsRequired").nullable();
     });
   }
