@@ -6,6 +6,7 @@ import { usePopUp } from "@app/hooks";
 import {
   IdentityAuthMethod,
   identityAuthToNameMap,
+  useDeleteIdentityAliCloudAuth,
   useDeleteIdentityAwsAuth,
   useDeleteIdentityAzureAuth,
   useDeleteIdentityGcpAuth,
@@ -25,6 +26,7 @@ import { ViewIdentityGcpAuthContent } from "./ViewIdentityGcpAuthContent";
 import { ViewIdentityJwtAuthContent } from "./ViewIdentityJwtAuthContent";
 import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthContent";
 import { ViewIdentityLdapAuthContent } from "./ViewIdentityLdapAuthContent";
+import { ViewIdentityAliCloudAuthContent } from "./ViewIdentityAliCloudAuthContent";
 import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";
@@ -63,6 +65,7 @@ export const Content = ({
   const { mutateAsync: revokeGcpAuth } = useDeleteIdentityGcpAuth();
   const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
+  const { mutateAsync: revokeAliCloudAuth } = useDeleteIdentityAliCloudAuth();
   const { mutateAsync: revokeOciAuth } = useDeleteIdentityOciAuth();
   const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
   const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
@@ -101,6 +104,10 @@ export const Content = ({
     case IdentityAuthMethod.OCI_AUTH:
       revokeMethod = revokeOciAuth;
       Component = ViewIdentityOciAuthContent;
+      break;
+    case IdentityAuthMethod.ALICLOUD_AUTH:
+      revokeMethod = revokeAliCloudAuth;
+      Component = ViewIdentityAliCloudAuthContent;
       break;
     case IdentityAuthMethod.OIDC_AUTH:
       revokeMethod = revokeOidcAuth;

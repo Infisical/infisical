@@ -193,6 +193,7 @@ export const identityAccessTokenServiceFactory = ({
     const trustedIpsMap: Record<IdentityAuthMethod, unknown> = {
       [IdentityAuthMethod.UNIVERSAL_AUTH]: identityAccessToken.trustedIpsUniversalAuth,
       [IdentityAuthMethod.GCP_AUTH]: identityAccessToken.trustedIpsGcpAuth,
+      [IdentityAuthMethod.ALICLOUD_AUTH]: identityAccessToken.trustedIpsAliCloudAuth,
       [IdentityAuthMethod.AWS_AUTH]: identityAccessToken.trustedIpsAwsAuth,
       [IdentityAuthMethod.OCI_AUTH]: identityAccessToken.trustedIpsOciAuth,
       [IdentityAuthMethod.AZURE_AUTH]: identityAccessToken.trustedIpsAzureAuth,

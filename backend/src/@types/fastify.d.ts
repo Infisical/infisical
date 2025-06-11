@@ -65,6 +65,7 @@ import { TGroupProjectServiceFactory } from "@app/services/group-project/group-p
 import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { TIdentityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
 import { TIdentityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-auth/identity-azure-auth-service";
 import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
@@ -218,6 +219,7 @@ declare module "fastify" {
       identityUa: TIdentityUaServiceFactory;
       identityKubernetesAuth: TIdentityKubernetesAuthServiceFactory;
       identityGcpAuth: TIdentityGcpAuthServiceFactory;
+      identityAliCloudAuth: TIdentityAliCloudAuthServiceFactory;
       identityAwsAuth: TIdentityAwsAuthServiceFactory;
       identityAzureAuth: TIdentityAzureAuthServiceFactory;
       identityOciAuth: TIdentityOciAuthServiceFactory;

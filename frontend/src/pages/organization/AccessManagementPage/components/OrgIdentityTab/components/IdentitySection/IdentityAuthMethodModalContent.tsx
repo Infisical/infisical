@@ -14,6 +14,7 @@ import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
 import { IdentityJwtAuthForm } from "./IdentityJwtAuthForm";
 import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
 import { IdentityLdapAuthForm } from "./IdentityLdapAuthForm";
+import { IdentityAliCloudAuthForm } from "./IdentityAliCloudAuthForm";
 import { IdentityOciAuthForm } from "./IdentityOciAuthForm";
 import { IdentityOidcAuthForm } from "./IdentityOidcAuthForm";
 import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
@@ -45,6 +46,7 @@ const identityAuthMethods = [
   { label: "Universal Auth", value: IdentityAuthMethod.UNIVERSAL_AUTH },
   { label: "Kubernetes Auth", value: IdentityAuthMethod.KUBERNETES_AUTH },
   { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
+  { label: "Alibaba Cloud Auth", value: IdentityAuthMethod.ALICLOUD_AUTH },
   { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH },
   { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH },
   { label: "OCI Auth", value: IdentityAuthMethod.OCI_AUTH },
@@ -165,6 +167,16 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.KUBERNETES_AUTH]: {
       render: () => (
         <IdentityKubernetesAuthForm
+          identityId={identityAuthMethodData.identityId}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+      )
+    },
+
+    [IdentityAuthMethod.ALICLOUD_AUTH]: {
+      render: () => (
+        <IdentityAliCloudAuthForm
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}

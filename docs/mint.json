@@ -329,6 +329,7 @@
         {
           "group": "Machine Identities",
           "pages": [
+            "documentation/platform/identities/alicloud-auth",
             "documentation/platform/identities/aws-auth",
             "documentation/platform/identities/azure-auth",
             "documentation/platform/identities/gcp-auth",
@@ -727,6 +728,16 @@
           ]
         },
         {
+          "group": "Alibaba Cloud Auth",
+          "pages": [
+            "api-reference/endpoints/alicloud-auth/login",
+            "api-reference/endpoints/alicloud-auth/attach",
+            "api-reference/endpoints/alicloud-auth/retrieve",
+            "api-reference/endpoints/alicloud-auth/update",
+            "api-reference/endpoints/alicloud-auth/revoke"
+          ]
+        },
+        {
           "group": "AWS Auth",
           "pages": [
             "api-reference/endpoints/aws-auth/login",
@@ -1049,8 +1060,8 @@
           "group": "Secret Scanning",
           "pages": [
             {
-              "group":  "Data Sources",
-              "pages":  [
+              "group": "Data Sources",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/data-sources/list",
                 "api-reference/endpoints/secret-scanning/data-sources/options",
                 {
@@ -1071,15 +1082,15 @@
               ]
             },
             {
-              "group":  "Findings",
-              "pages":  [
+              "group": "Findings",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/findings/list",
                 "api-reference/endpoints/secret-scanning/findings/update"
               ]
             },
             {
-              "group":  "Configuration",
-              "pages":  [
+              "group": "Configuration",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/config/get-by-project-id",
                 "api-reference/endpoints/secret-scanning/config/update"
               ]

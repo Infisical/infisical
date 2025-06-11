@@ -293,6 +293,45 @@ export type DeleteIdentityAwsAuthDTO = {
   identityId: string;
 };
 
+export type IdentityAliCloudAuth = {
+  identityId: string;
+  type: "iam";
+  allowedArns: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityAliCloudAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  allowedArns: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityAliCloudAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  allowedArns: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityAliCloudAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityOciAuth = {
   identityId: string;
   type: "iam";

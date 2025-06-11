@@ -11,6 +11,7 @@ import {
   AddIdentityJwtAuthDTO,
   AddIdentityKubernetesAuthDTO,
   AddIdentityLdapAuthDTO,
+  AddIdentityAliCloudAuthDTO,
   AddIdentityOciAuthDTO,
   AddIdentityOidcAuthDTO,
   AddIdentityTokenAuthDTO,
@@ -28,6 +29,7 @@ import {
   DeleteIdentityJwtAuthDTO,
   DeleteIdentityKubernetesAuthDTO,
   DeleteIdentityLdapAuthDTO,
+  DeleteIdentityALiCloudAuthDTO,
   DeleteIdentityOciAuthDTO,
   DeleteIdentityOidcAuthDTO,
   DeleteIdentityTokenAuthDTO,
@@ -41,6 +43,7 @@ import {
   IdentityJwtAuth,
   IdentityKubernetesAuth,
   IdentityLdapAuth,
+  IdentityAliCloudAuth,
   IdentityOciAuth,
   IdentityOidcAuth,
   IdentityTokenAuth,
@@ -54,6 +57,7 @@ import {
   UpdateIdentityJwtAuthDTO,
   UpdateIdentityKubernetesAuthDTO,
   UpdateIdentityLdapAuthDTO,
+  UpdateIdentityAliCloudAuthDTO,
   UpdateIdentityOciAuthDTO,
   UpdateIdentityOidcAuthDTO,
   UpdateIdentityTokenAuthDTO,
@@ -549,6 +553,103 @@ export const useDeleteIdentityOciAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+    }
+  });
+};
+
+export const useAddIdentityAliCloudAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAliCloudAuth, object, AddIdentityAliCloudAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedArns,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityAliCloudAuth }
+      } = await apiRequest.post<{ identityAliCloudAuth: IdentityAliCloudAuth }>(
+        `/api/v1/auth/alicloud-auth/identities/${identityId}`,
+        {
+          allowedArns,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityAliCloudAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useUpdateIdentityAliCloudAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAliCloudAuth, object, UpdateIdentityAliCloudAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedArns,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityAliCloudAuth }
+      } = await apiRequest.patch<{ identityAliCloudAuth: IdentityAliCloudAuth }>(
+        `/api/v1/auth/alicloud-auth/identities/${identityId}`,
+        {
+          allowedArns,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityAliCloudAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useDeleteIdentityAliCloudAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAliCloudAuth, object, DeleteIdentityOciAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identityAliCloudAuth }
+      } = await apiRequest.delete(`/api/v1/auth/alicloud-auth/identities/${identityId}`);
+      return identityAliCloudAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+      });
     }
   });
 };

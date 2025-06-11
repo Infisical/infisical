@@ -21,6 +21,7 @@ export enum ApiDocsTags {
   TokenAuth = "Token Auth",
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
+  AliCloudAuth = "Alibaba Cloud Auth",
   AwsAuth = "AWS Auth",
   OciAuth = "OCI Auth",
   AzureAuth = "Azure Auth",
@@ -240,6 +241,43 @@ export const LDAP_AUTH = {
   },
   REVOKE: {
     identityId: "The ID of the identity to revoke the configuration for."
+  }
+} as const;
+
+export const ALICLOUD_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    Action: "The Alibaba Cloud API action. For STS GetCallerIdentity, this should be 'GetCallerIdentity'.",
+    Format: "The response format. For STS GetCallerIdentity, this should be 'JSON'.",
+    Version: "The API version. This should be in 'YYYY-MM-DD' format (e.g., '2015-04-01').",
+    AccessKeyId: "The AccessKey ID of the RAM user or STS token.",
+    SignatureMethod: "The signature algorithm. For STS GetCallerIdentity, this should be 'HMAC-SHA1'.",
+    Timestamp: "The timestamp of the request in UTC, formatted as 'YYYY-MM-DDTHH:mm:ssZ'.",
+    SignatureVersion: "The signature version. For STS GetCallerIdentity, this should be '1.0'.",
+    SignatureNonce: "A unique random string to prevent replay attacks.",
+    Signature: "The signature string calculated based on the request parameters and AccessKey Secret."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    allowedArns: "The comma-separated list of trusted ARNs that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    allowedArns: "The comma-separated list of trusted ARNs that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
   }
 } as const;
 
