@@ -4,6 +4,7 @@ import msFn from "ms";
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { EnforcementLevel } from "@app/lib/types";
@@ -358,7 +359,6 @@ export const accessApprovalRequestServiceFactory = ({
     const cannotBypassUnderSoftEnforcement = !(isSoftEnforcement && canBypass);
 
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
-
     // If user is (not an approver OR cant self approve) AND can't bypass policy
     if ((!isApprover || (!policy.allowedSelfApprovals && isSelfApproval)) && cannotBypassUnderSoftEnforcement) {
       throw new BadRequestError({
@@ -382,6 +382,41 @@ export const accessApprovalRequestServiceFactory = ({
     const existingReviews = await accessApprovalRequestReviewerDAL.find({ requestId: accessApprovalRequest.id });
     if (existingReviews.some((review) => review.status === ApprovalStatus.REJECTED)) {
       throw new BadRequestError({ message: "The request has already been rejected by another reviewer" });
+    }
+    const reviewsGroupById = groupBy(
+      existingReviews.filter((review) => review.status === ApprovalStatus.APPROVED),
+      (i) => i.reviewerUserId
+    );
+
+    const approvedSequences = policy.approvers.reduce(
+      (acc, curr) => {
+        const hasApproved = reviewsGroupById?.[curr.userId as string]?.[0];
+        if (acc?.[acc.length - 1]?.step === curr.sequence) {
+          if (hasApproved) {
+            acc[acc.length - 1].approvals += 1;
+          }
+          return acc;
+        }
+
+        acc.push({
+          step: curr.sequence || 1,
+          approvals: hasApproved ? 1 : 0,
+          requiredApprovals: curr.approvalsRequired || 1
+        });
+        return acc;
+      },
+      [] as { step: number; approvals: number; requiredApprovals: number }[]
+    );
+    const presentSequence = approvedSequences.find((el) => el.approvals < el.requiredApprovals) || {
+      step: 1,
+      approvals: 0,
+      requiredApprovals: 1
+    };
+    if (presentSequence) {
+      const isApproverOfTheSequence = policy.approvers.find(
+        (el) => el.sequence === presentSequence.step && el.userId === actorId
+      );
+      if (!isApproverOfTheSequence) throw new BadRequestError({ message: "You are not reviewer in this step" });
     }
 
     const reviewStatus = await accessApprovalRequestReviewerDAL.transaction(async (tx) => {
@@ -426,11 +461,14 @@ export const accessApprovalRequestServiceFactory = ({
         );
       }
 
-      const otherReviews = existingReviews.filter((er) => er.reviewerUserId !== actorId);
-      const allUniqueReviews = [...otherReviews, reviewForThisActorProcessing];
+      if (status === ApprovalStatus.REJECTED) {
+        await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { status: ApprovalStatus.REJECTED }, tx);
+        return reviewForThisActorProcessing;
+      }
 
-      const approvedReviews = allUniqueReviews.filter((r) => r.status === ApprovalStatus.APPROVED);
-      const meetsStandardApprovalThreshold = approvedReviews.length >= policy.approvals;
+      const meetsStandardApprovalThreshold =
+        (presentSequence?.approvals || 0) + 1 >= presentSequence.requiredApprovals &&
+        approvedSequences.at(-1)?.step === presentSequence?.step;
 
       if (
         reviewForThisActorProcessing.status === ApprovalStatus.APPROVED &&

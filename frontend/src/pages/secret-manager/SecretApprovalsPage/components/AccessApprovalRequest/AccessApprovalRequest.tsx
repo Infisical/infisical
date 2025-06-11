@@ -87,6 +87,7 @@ export const AccessApprovalRequest = ({
         isRequestedByCurrentUser: boolean;
         isSelfApproveAllowed: boolean;
         isApprover: boolean;
+        isDisabled?: boolean;
       })
     | null
   >(null);
@@ -147,16 +148,17 @@ export const AccessApprovalRequest = ({
   const generateRequestDetails = useCallback(
     (request: TAccessApprovalRequest) => {
       const isReviewedByUser =
-        request.reviewers.findIndex(({ member }) => member === user.id) !== -1;
+        request.reviewers.findIndex(({ userId }) => userId === user.id) !== -1;
       const isRejectedByAnyone = request.reviewers.some(
         ({ status }) => status === ApprovalStatus.REJECTED
       );
-      const isApprover = request.policy.approvers.indexOf(user.id || "") !== -1;
+      const isApprover =
+        request.policy.approvers.findIndex((el) => el.userId === user.id || "") !== -1;
       const isAccepted = request.isApproved;
       const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
       const isRequestedByCurrentUser = request.requestedByUserId === user.id;
       const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
-      const userReviewStatus = request.reviewers.find(({ member }) => member === user.id)?.status;
+      const userReviewStatus = request.reviewers.find(({ userId }) => userId === user.id)?.status;
       const canBypass =
         !request.policy.bypassers.length || request.policy.bypassers.includes(user.id);
 
@@ -205,21 +207,6 @@ export const AccessApprovalRequest = ({
   const handleSelectRequest = useCallback(
     (request: TAccessApprovalRequest) => {
       const details = generateRequestDetails(request);
-
-      // Whether the request has already been approved / rejected / reviewed
-      const isInactive =
-        details.isAccepted || details.isReviewedByUser || details.isRejectedByAnyone;
-
-      // Whether the current user can bypass policy
-      const canBypass =
-        details.isSoftEnforcement && details.isRequestedByCurrentUser && details.canBypass;
-
-      // Whether the current user can approve
-      const canApprove =
-        details.isApprover && (!details.isRequestedByCurrentUser || details.isSelfApproveAllowed);
-
-      if (isInactive || (!canApprove && !canBypass)) return;
-
       if (membersGroupById?.[request.requestedByUserId].user || details.isRequestedByCurrentUser) {
         setSelectedRequest({
           ...request,
@@ -381,9 +368,6 @@ export const AccessApprovalRequest = ({
 
                 return (
                   <div
-                    aria-disabled={
-                      details.isReviewedByUser || details.isRejectedByAnyone || details.isAccepted
-                    }
                     key={request.id}
                     className="flex w-full cursor-pointer px-8 py-4 hover:bg-mineshaft-700 aria-disabled:opacity-80"
                     role="button"
@@ -450,9 +434,11 @@ export const AccessApprovalRequest = ({
       {!!selectedRequest && (
         <ReviewAccessRequestModal
           selectedEnvSlug={envFilter}
+          policies={policies || []}
           selectedRequester={requestedByFilter}
           projectSlug={projectSlug}
           request={selectedRequest}
+          members={members || []}
           isOpen={popUp.reviewRequest.isOpen}
           onOpenChange={() => {
             handlePopUpClose("reviewRequest");

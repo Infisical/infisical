@@ -33,6 +33,8 @@ export enum BypasserType {
 export type Approver = {
   id: string;
   type: ApproverType;
+  sequence?: number;
+  approvals?: number;
 };
 
 export type Bypasser = {
@@ -78,7 +80,13 @@ export type TAccessApprovalRequest = {
     id: string;
     name: string;
     approvals: number;
-    approvers: string[];
+    approvers: {
+      userId: string;
+      sequence?: number;
+      approvalsRequired?: number;
+      username: string;
+      email: string;
+    }[];
     bypassers: string[];
     secretPath?: string | null;
     envId: string;
@@ -88,7 +96,7 @@ export type TAccessApprovalRequest = {
   };
 
   reviewers: {
-    member: string;
+    userId: string;
     status: string;
   }[];
 
@@ -163,6 +171,7 @@ export type TCreateAccessPolicyDTO = {
   secretPath?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -177,6 +186,7 @@ export type TUpdateAccessPolicyDTO = {
   allowedSelfApprovals: boolean;
   // for invalidating list
   projectSlug: string;
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
 };
 
 export type TDeleteSecretPolicyDTO = {

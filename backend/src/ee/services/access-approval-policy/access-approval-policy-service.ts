@@ -4,6 +4,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -30,7 +31,6 @@ import {
   TListAccessApprovalPoliciesDTO,
   TUpdateAccessApprovalPolicy
 } from "./access-approval-policy-types";
-import { groupBy } from "@app/lib/fn";
 
 type TAccessApprovalPolicyServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
@@ -44,7 +44,7 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find">;
   additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
-  accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update">;
+  accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
 };
 
@@ -176,6 +176,7 @@ export const accessApprovalPolicyServiceFactory = ({
       }
     }
 
+    const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const accessApproval = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await accessApprovalPolicyDAL.create(
         {
@@ -195,7 +196,9 @@ export const accessApprovalPolicyServiceFactory = ({
             approverUserId: el.id,
             policyId: doc.id,
             sequence: el.sequence,
-            approvalsRequired: el.sequence ? approvalsRequired?.[el.sequence]?.numberOfApprovals : approvals
+            approvalsRequired: el.sequence
+              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
+              : approvals
           })),
           tx
         );
@@ -207,7 +210,9 @@ export const accessApprovalPolicyServiceFactory = ({
             approverGroupId: el.id,
             policyId: doc.id,
             sequence: el.sequence,
-            approvalsRequired: el.sequence ? approvalsRequired?.[el.sequence]?.numberOfApprovals : approvals
+            approvalsRequired: el.sequence
+              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
+              : approvals
           })),
           tx
         );
@@ -284,7 +289,6 @@ export const accessApprovalPolicyServiceFactory = ({
       id: string;
       sequence?: number;
     }[];
-
     const userApproverNames = approvers.filter(
       (approver) => approver.type === ApproverType.User && approver.username
     ) as { username: string; sequence?: number }[];
@@ -385,6 +389,7 @@ export const accessApprovalPolicyServiceFactory = ({
       }
     }
 
+    const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await accessApprovalPolicyDAL.updateById(
         accessApprovalPolicy.id,
@@ -427,13 +432,14 @@ export const accessApprovalPolicyServiceFactory = ({
             }))
           );
         }
-
         await accessApprovalPolicyApproverDAL.insertMany(
           approverUserIds.map((el) => ({
             approverUserId: el.id,
             policyId: doc.id,
             sequence: el.sequence,
-            approvalsRequired: el.sequence ? approvalsRequired?.[el.sequence]?.numberOfApprovals : approvals
+            approvalsRequired: el.sequence
+              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
+              : approvals
           })),
           tx
         );
@@ -445,7 +451,9 @@ export const accessApprovalPolicyServiceFactory = ({
             approverGroupId: el.id,
             policyId: doc.id,
             sequence: el.sequence,
-            approvalsRequired: el.sequence ? approvalsRequired?.[el.sequence]?.numberOfApprovals : approvals
+            approvalsRequired: el.sequence
+              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
+              : approvals
           })),
           tx
         );

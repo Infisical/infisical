@@ -188,9 +188,6 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
               <Th>Name</Th>
               <Th>Environment</Th>
               <Th>Secret Path</Th>
-              <Th className="w-[18%]">Eligible Approvers</Th>
-              <Th className="w-[18%]">Eligible Group Approvers</Th>
-              <Th>Approval Required</Th>
               <Th>
                 <DropdownMenu>
                   <DropdownMenuTrigger>

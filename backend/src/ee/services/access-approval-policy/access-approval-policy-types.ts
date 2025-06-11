@@ -39,7 +39,7 @@ export type TCreateAccessApprovalPolicy = {
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
-  approvalsRequired?: Record<number, { numberOfApprovals: number }>;
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -57,7 +57,7 @@ export type TUpdateAccessApprovalPolicy = {
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals: boolean;
-  approvalsRequired?: Record<number, { numberOfApprovals: number }>;
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
