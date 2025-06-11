@@ -5,8 +5,8 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface OrganizationInvitationTemplateProps extends Omit<BaseEmailWrapperProps, "preview" | "title"> {
   metadata?: string;
-  inviterFirstName: string;
-  inviterUsername: string;
+  inviterFirstName?: string;
+  inviterUsername?: string;
   organizationName: string;
   email: string;
   organizationId: string;
@@ -38,11 +38,19 @@ export const OrganizationInvitationTemplate = ({
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border text-center border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
-          <strong>{inviterFirstName}</strong> (
-          <Link href={`mailto:${inviterUsername}`} className="text-slate-700 no-underline">
-            {inviterUsername}
-          </Link>
-          ) has invited you to collaborate on <strong>{organizationName}</strong>.
+          {inviterFirstName && inviterUsername ? (
+            <>
+              <strong>{inviterFirstName}</strong> (
+              <Link href={`mailto:${inviterUsername}`} className="text-slate-700 no-underline">
+                {inviterUsername}
+              </Link>
+              ) has invited you to collaborate on <strong>{organizationName}</strong>.
+            </>
+          ) : (
+            <>
+              You have been invited to collaborate on <strong>{organizationName}</strong>.
+            </>
+          )}
         </Text>
       </Section>
       <Section className="text-center mt-[28px]">
