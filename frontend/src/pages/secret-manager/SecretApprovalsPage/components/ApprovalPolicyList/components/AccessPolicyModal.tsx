@@ -131,9 +131,8 @@ export const AccessPolicyForm = ({
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    // @ts-expect-error due to collision of approver type
     values: editValues
-      ? {
+      ? ({
           ...editValues,
           environment: editValues.environment,
           userApprovers:
@@ -177,7 +176,7 @@ export const AccessPolicyForm = ({
               },
               [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
             )
-        }
+        } as TFormSchema)
       : undefined,
     defaultValues: {
       sequenceApprovers: [{ approvals: 1 }]
