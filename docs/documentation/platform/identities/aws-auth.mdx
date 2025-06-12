@@ -173,11 +173,10 @@ access the Infisical API using the AWS Auth authentication method.
                         console.error(err);
                     }
                 };
-                ````
+                ```
+
             </Accordion>
-            <Accordion
-                title="Sample code for inside an EC2 instance"
-            >
+            <Accordion title="Sample code for inside an EC2 instance">
                 The following query construction is an example of how you can authenticate with Infisical from inside a EC2 instance.
 
                 The shown example uses Node.js but you can use other language you wish.
@@ -243,11 +242,9 @@ access the Infisical API using the AWS Auth authentication method.
                 }
 
                 main();
-                ````
+                ```
             </Accordion>
-            <Accordion
-                title="Sample code for general query construction"
-            >
+            <Accordion title="Sample code for general query construction">
                 The following query construction provides a generic example of how you can construct a signed `GetCallerIdentity` query and obtain the required payload components.
 
                 The shown example uses Node.js but you can use any language you wish.
@@ -274,7 +271,7 @@ access the Infisical API using the AWS Auth authentication method.
 
                 const signer = new AWS.Signers.V4(request, "sts");
                 signer.addAuthorization(AWS.config.credentials, new Date());
-                ````
+                ```
 
                 #### Sample request
 
@@ -303,6 +300,96 @@ access the Infisical API using the AWS Auth authentication method.
                 ```
 
                 Next, you can use the access token to access the [Infisical API](/api-reference/overview/introduction)
+            </Accordion>
+
+            <Accordion title="Sample code for inside an EKS pod">
+              The following query construction is an example of how you can authenticate with Infisical from inside an EKS pod.
+
+              The shown example uses Node.js Typescript but you can use any language you wish.
+
+              ```javascript
+              import axios from "axios";
+              import { Sha256 } from "@aws-crypto/sha256-js";
+              import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
+              import { HttpRequest } from "@aws-sdk/protocol-http";
+              import { SignatureV4 } from "@aws-sdk/signature-v4";
+
+              const main = async () => {
+                try {
+                  const tokenRes = await axios.put<string>("http://169.254.169.254/latest/api/token", undefined, {
+                    headers: {
+                      "X-aws-ec2-metadata-token-ttl-seconds": "21600"
+                    }
+                  });
+
+                  const {
+                    data: { region }
+                  } = await axios.get<{ region: string }>("http://169.254.169.254/latest/dynamic/instance-identity/document", {
+                    headers: {
+                      "X-aws-ec2-metadata-token": tokenRes.data,
+                      Accept: "application/json"
+                    }
+                  });
+
+                  const credentials = await fromNodeProviderChain()();
+
+                  if (!credentials.accessKeyId || !credentials.secretAccessKey) {
+                    throw new Error("Credentials not found");
+                  }
+
+                  const iamRequestURL = `https://sts.${region}.amazonaws.com/`;
+                  const iamRequestBody = "Action=GetCallerIdentity&Version=2011-06-15";
+                  const iamRequestHeaders = {
+                    "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+                    Host: `sts.${region}.amazonaws.com`
+                  };
+
+                  const request = new HttpRequest({
+                    protocol: "https:",
+                    hostname: `sts.${region}.amazonaws.com`,
+                    path: "/",
+                    method: "POST",
+                    headers: {
+                      ...iamRequestHeaders,
+                      "Content-Length": String(Buffer.byteLength(iamRequestBody))
+                    },
+                    body: iamRequestBody
+                  });
+
+                  const signer = new SignatureV4({
+                    credentials,
+                    region,
+                    service: "sts",
+                    sha256: Sha256
+                  });
+
+                  const signedRequest = await signer.sign(request);
+
+                  const headers: Record<string, string> = {};
+                  Object.entries(signedRequest.headers).forEach(([key, value]) => {
+                    if (typeof value === "string") headers[key] = value;
+                  });
+
+                  const iamRequest = {
+                    iamHttpRequestMethod: "POST",
+                    iamRequestUrl: iamRequestURL,
+                    iamRequestBody: iamRequestBody,
+                    iamRequestHeaders: headers
+                  };
+
+                  const {
+                    data: { accessToken }
+                  } = await axios.post<{ accessToken: string }>("https://app.infisical.com/api/v1/auth/aws-auth/login", {
+                    ...iamRequest,
+                    identityId: "<replace-with-your-identity-id>"
+                  });
+
+                  console.log(`Infisical Access Token: ${accessToken}`);
+                } catch (e) {
+                  console.error("Failed to do AWS auth", e);
+                }
+              };
+              ```
             </Accordion>
         </AccordionGroup>
 

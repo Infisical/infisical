@@ -94,7 +94,9 @@ export const identityAwsAuthServiceFactory = ({
 
     const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
     const body: string = Buffer.from(iamRequestBody, "base64").toString();
-    const region = headers.Authorization ? awsRegionFromHeader(headers.Authorization) : null;
+
+    const authHeader = headers.Authorization || headers.authorization;
+    const region = authHeader ? awsRegionFromHeader(authHeader) : null;
 
     if (!isValidAwsRegion(region)) {
       throw new BadRequestError({ message: "Invalid AWS region" });
