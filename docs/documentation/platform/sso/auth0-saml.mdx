@@ -62,6 +62,10 @@ description: "Learn how to configure Auth0 SAML for Infisical SSO."
         ```
 
         Click **Save**.
+
+        <Tip>
+		Make sure the `firstName` claim is mapped to a valid field of your Auth0 users. If your users don't have a `"given_name"` field available, you can replace it with `"name"` or another field that exists in your user profile on the left side of the mapping.
+	</Tip>
     </Step>
     <Step title="Enable SAML SSO in Infisical">
         Enabling SAML SSO allows members in your organization to log into Infisical via Auth0.
