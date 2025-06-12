@@ -203,7 +203,8 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.UPDATE.status),
           remarks: z.string().nullish().describe(SecretScanningFindings.UPDATE.remarks)
         })
-        .array(),
+        .array()
+        .max(500),
       response: {
         200: z.object({ findings: SecretScanningFindingSchema.array() })
       }
