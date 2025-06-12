@@ -12,6 +12,8 @@ import { useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import {
+  Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -43,6 +45,11 @@ import {
 
 import { SecretScanningFindingRow } from "./SecretScanningFindingRow";
 import { SecretScanningUpdateFindingModal } from "./SecretScanningUpdateFindingModal";
+import { ProjectPermissionCan } from "@app/components/permissions";
+import {
+  ProjectPermissionSecretScanningFindingActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 enum FindingsOrderBy {
   ResourceName = "resource-name",
@@ -84,6 +91,8 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
     dataSourceTypes: [],
     status: initStatus ? [initStatus] : []
   });
+
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
   const {
     search,
@@ -276,6 +285,20 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
         <Table>
           <THead>
             <Tr>
+              <Th className="">
+                <Checkbox
+                  id="checkbox-select-all"
+                  isChecked={selectedRows.length === filteredFindings.length}
+                  onCheckedChange={() =>
+                    setSelectedRows((sr) =>
+                      sr.length === filteredFindings.length ? [] : filteredFindings.map((f) => f.id)
+                    )
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                />
+              </Th>
               <Th className="min-w-[10rem]">Platform</Th>
               <Th className="w-1/4">
                 <div className="flex items-center">
@@ -335,9 +358,15 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
           <TBody>
             {filteredFindings.slice(offset, perPage * page).map((finding) => (
               <SecretScanningFindingRow
+                isSelected={selectedRows.includes(finding.id)}
+                onToggleSelect={(v) =>
+                  v
+                    ? setSelectedRows((sr) => [...sr, finding.id])
+                    : setSelectedRows((sr) => sr.filter((r) => r !== finding.id))
+                }
                 key={finding.id}
                 finding={finding}
-                onUpdate={() => handlePopUpOpen("updateFinding", finding)}
+                onUpdate={() => handlePopUpOpen("updateFinding", [finding])}
               />
             ))}
           </TBody>
@@ -365,8 +394,37 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
       <SecretScanningUpdateFindingModal
         isOpen={popUp.updateFinding.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("updateFinding", isOpen)}
-        finding={popUp.updateFinding.data}
+        findings={popUp.updateFinding.data}
       />
+      {selectedRows.length > 0 && (
+        <div className="mt-4 flex items-center justify-between rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-2 pl-4">
+          <span>
+            {selectedRows.length} finding{selectedRows.length === 1 ? "" : "s"} selected
+          </span>
+
+          <div className="flex gap-2">
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningFindingActions.Update}
+              a={ProjectPermissionSub.SecretScanningFindings}
+            >
+              {(isAllowed) => (
+                <Button
+                  onClick={() =>
+                    handlePopUpOpen(
+                      "updateFinding",
+                      findings.filter((f) => selectedRows.includes(f.id))
+                    )
+                  }
+                  colorSchema="secondary"
+                  isDisabled={!isAllowed}
+                >
+                  Update Status
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -9,6 +9,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,11 +35,18 @@ import {
 } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
+  isSelected: boolean;
+  onToggleSelect: (e: boolean) => void;
   finding: TSecretScanningFinding;
   onUpdate: (finding: TSecretScanningFinding) => void;
 };
 
-export const SecretScanningFindingRow = ({ finding, onUpdate }: Props) => {
+export const SecretScanningFindingRow = ({
+  isSelected,
+  onToggleSelect,
+  finding,
+  onUpdate
+}: Props) => {
   const {
     resourceName,
     id,
@@ -84,6 +92,16 @@ export const SecretScanningFindingRow = ({ finding, onUpdate }: Props) => {
         )}
         key={`resource-${id}`}
       >
+        <Td className="pr-0">
+          <Checkbox
+            id={`checkbox-${id}`}
+            isChecked={isSelected}
+            onCheckedChange={() => onToggleSelect(!isSelected)}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          />
+        </Td>
         <Td className="!min-w-[4rem] max-w-0">
           <div className="flex w-full items-center">
             <img
