@@ -194,7 +194,7 @@
   "section": {
     "api-key": {
       "api-keys": "Service Tokens",
-      "api-keys-description": "Every service token is specific to you, a certain project and a certain environment within this project.",
+      "api-keys-description": "Every service token is scoped to a given project's resources within the environment and path it has been granted access to.",
       "add-new": "Add New Token",
       "add-dialog": {
         "title": "Add an API Key",
@@ -248,7 +248,7 @@
     },
     "token": {
       "service-tokens": "Service Tokens",
-      "service-tokens-description": "Every service token is specific to you, a certain project and a certain environment within this project.",
+      "service-tokens-description": "Every service token is scoped to a given project's resources within the environment and path it has been granted access to.",
       "add-new": "Add New Token",
       "add-dialog": {
         "title": "Add a service token for {{target}}",
