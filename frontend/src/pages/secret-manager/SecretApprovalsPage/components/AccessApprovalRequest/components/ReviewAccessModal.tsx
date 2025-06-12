@@ -180,7 +180,7 @@ export const ReviewAccessRequestModal = ({
     const projectGroupsGroupById = groupBy(groupMemberships, (i) => i.group.id);
     const approversBySequence = policy?.approvers?.reduce(
       (acc, curr) => {
-        if (acc.length > 1 && acc[acc.length - 1].sequence === curr.sequence) {
+        if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
           acc[acc.length - 1][curr.type]?.push(curr);
           return acc;
         }
