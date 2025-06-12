@@ -350,6 +350,24 @@ const renderOutputForm = (
     );
   }
 
+  if (provider === DynamicSecretProviders.GcpIam) {
+    const { TOKEN, SERVICE_ACCOUNT_EMAIL } = data as {
+      SERVICE_ACCOUNT_EMAIL: string;
+      TOKEN: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Service Account Email" value={SERVICE_ACCOUNT_EMAIL} />
+        <OutputDisplay
+          label="Token"
+          value={TOKEN}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 

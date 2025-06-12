@@ -34,7 +34,8 @@ export enum DynamicSecretProviders {
   Totp = "totp",
   SapAse = "sap-ase",
   Kubernetes = "kubernetes",
-  Vertica = "vertica"
+  Vertica = "vertica",
+  GcpIam = "gcp-iam"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -325,6 +326,12 @@ export type TDynamicSecretProvider =
         password: string;
         creationStatement: string;
         revocationStatement: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.GcpIam;
+      inputs: {
+        serviceAccountEmail: string;
       };
     };
 

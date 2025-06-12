@@ -264,7 +264,10 @@ export const dynamicSecretLeaseServiceFactory = ({
     const expireAt = new Date(dynamicSecretLease.expireAt.getTime() + ms(selectedTTL));
     if (maxTTL) {
       const maxExpiryDate = new Date(dynamicSecretLease.createdAt.getTime() + ms(maxTTL));
-      if (expireAt > maxExpiryDate) throw new BadRequestError({ message: "TTL cannot be larger than max ttl" });
+      if (expireAt > maxExpiryDate)
+        throw new BadRequestError({
+          message: "The requested renewal would exceed the maximum allowed lease duration. Please choose a shorter TTL"
+        });
     }
 
     const { entityId } = await selectedProvider.renew(

@@ -470,6 +470,10 @@ export const DynamicSecretTotpSchema = z.discriminatedUnion("configType", [
   })
 ]);
 
+export const DynamicSecretGcpIamSchema = z.object({
+  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128)
+});
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -487,7 +491,8 @@ export enum DynamicSecretProviders {
   Totp = "totp",
   SapAse = "sap-ase",
   Kubernetes = "kubernetes",
-  Vertica = "vertica"
+  Vertica = "vertica",
+  GcpIam = "gcp-iam"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -507,7 +512,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.GcpIam), inputs: DynamicSecretGcpIamSchema })
 ]);
 
 export type TDynamicProviderFns = {
