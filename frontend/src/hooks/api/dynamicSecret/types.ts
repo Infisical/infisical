@@ -290,7 +290,7 @@ export type TDynamicSecretProvider =
       type: DynamicSecretProviders.Kubernetes;
       inputs:
         | {
-            url: string;
+            url?: string;
             clusterToken?: string;
             ca?: string;
             serviceAccountName: string;
@@ -302,7 +302,7 @@ export type TDynamicSecretProvider =
             authMethod: string;
           }
         | {
-            url: string;
+            url?: string;
             clusterToken?: string;
             ca?: string;
             credentialType: KubernetesDynamicSecretCredentialType.Dynamic;

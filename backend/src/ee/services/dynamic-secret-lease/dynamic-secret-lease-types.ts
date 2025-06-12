@@ -10,6 +10,7 @@ export type TCreateDynamicSecretLeaseDTO = {
   environmentSlug: string;
   ttl?: string;
   projectSlug: string;
+  config?: TDynamicSecretLeaseConfig;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDetailsDynamicSecretLeaseDTO = {
@@ -41,3 +42,9 @@ export type TRenewDynamicSecretLeaseDTO = {
   ttl?: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TDynamicSecretKubernetesLeaseConfig = {
+  namespace?: string;
+};
+
+export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig;

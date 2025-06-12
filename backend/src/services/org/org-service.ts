@@ -1211,8 +1211,8 @@ export const orgServiceFactory = ({
           subjectLine: "Infisical organization invitation",
           recipients: [el.email],
           substitutions: {
-            inviterFirstName: invitingUser.firstName,
-            inviterUsername: invitingUser.email,
+            inviterFirstName: invitingUser?.firstName,
+            inviterUsername: invitingUser?.email,
             organizationName: org?.name,
             email: el.email,
             organizationId: org?.id.toString(),

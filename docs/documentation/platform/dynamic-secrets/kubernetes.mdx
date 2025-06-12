@@ -162,6 +162,12 @@ This feature is ideal for scenarios where you need to:
               tokens for the target service account.
             </Note>
 
+            <Note>
+              When using Gateway authentication, the Gateway will access the Kubernetes API server
+              using its internal cluster URL (typically https://kubernetes.default.svc) and TLS configuration.
+              You don't need to specify these values separately in the dynamic secret configuration.
+            </Note>
+
             1. Deploy the Infisical Gateway in your cluster
             2. Set up RBAC permissions for the Gateway's service account:
             ```yaml rbac.yaml
@@ -206,12 +212,23 @@ This feature is ideal for scenarios where you need to:
         - Automatically clean up service accounts after token expiration
         - Assign different roles to different users or applications
         - Maintain strict control over service account permissions
+        - Support multiple namespaces with a single dynamic secret configuration
 
         ### Prerequisites
 
         - A Kubernetes cluster with a service account
         - Cluster access token with permissions to create service accounts and manage RBAC
         - (Optional) [Gateway](/documentation/platform/gateways/overview) for private cluster access
+
+        ### Namespace Support
+
+        When configuring a dynamic secret, you can specify multiple allowed namespaces as a comma-separated list. During lease creation, you can then specify which namespace to use from this allowed list. This provides flexibility while maintaining security by:
+
+        - Allowing a single dynamic secret configuration to support multiple namespaces
+        - Restricting service account creation to only the specified allowed namespaces
+        - Enabling fine-grained control over which namespaces can be used for each lease
+
+        For example, if you configure a dynamic secret with allowed namespaces "default,kube-system,monitoring", you can create leases that use any of these namespaces while preventing access to other namespaces in your cluster.
 
         ### Authentication Setup
 
@@ -318,6 +335,12 @@ This feature is ideal for scenarios where you need to:
               manage service accounts, their tokens, and RBAC resources.
             </Note>
 
+            <Note>
+              When using Gateway authentication, the Gateway will access the Kubernetes API server
+              using its internal cluster URL (typically https://kubernetes.default.svc) and TLS configuration.
+              You don't need to specify these values separately in the dynamic secret configuration.
+            </Note>
+
             1. Deploy the Infisical Gateway in your cluster
             2. Set up RBAC permissions for the Gateway's service account:
             ```yaml rbac.yaml
@@ -401,13 +424,13 @@ This feature is ideal for scenarios where you need to:
       Select a gateway for private cluster access. If not specified, the Internet Gateway will be used.
     </ParamField>
     <ParamField path="Cluster URL" type="string" required>
-      Kubernetes API server URL (e.g., https://kubernetes.default.svc)
+      Kubernetes API server URL (e.g., https://kubernetes.default.svc). Not required when using Gateway authentication as the Gateway will use its internal cluster URL.
     </ParamField>
     <ParamField path="Enable SSL" type="boolean">
-      Whether to enable SSL verification for the Kubernetes API server connection.
+      Whether to enable SSL verification for the Kubernetes API server connection. Not required when using Gateway authentication as the Gateway will use its internal TLS configuration.
     </ParamField>
     <ParamField path="CA" type="string">
-      Custom CA certificate for the Kubernetes API server. Leave blank to use the system/public CA.
+      Custom CA certificate for the Kubernetes API server. Leave blank to use the system/public CA. Not required when using Gateway authentication as the Gateway will use its internal TLS configuration.
     </ParamField>
     <ParamField path="Auth Method" type="string" required>
       Choose between Token (API) or Gateway authentication. If using Gateway, the Gateway must be deployed in your Kubernetes cluster.
@@ -418,18 +441,30 @@ This feature is ideal for scenarios where you need to:
     <ParamField path="Credential Type" type="string" required>
       Choose between Static (predefined service account) or Dynamic (temporary service accounts with role assignments)
     </ParamField>
-    <ParamField path="Service Account Name" type="string" required>
-      Name of the service account to generate tokens for (required for Static credentials)
-    </ParamField>
-    <ParamField path="Namespace" type="string" required>
-      Kubernetes namespace where the service account exists or will be created
-    </ParamField>
-    <ParamField path="Role Type" type="string" required>
-      Type of role to assign (ClusterRole or Role) (required for Dynamic credentials)
-    </ParamField>
-    <ParamField path="Role" type="string" required>
-      Name of the role to assign to the temporary service account (required for Dynamic credentials)
-    </ParamField>
+
+    <Tabs>
+      <Tab title="Static Credentials Parameters">
+        <ParamField path="Service Account Name" type="string" required>
+          Name of the service account to generate tokens for
+        </ParamField>
+        <ParamField path="Namespace" type="string" required>
+          Kubernetes namespace where the service account exists
+        </ParamField>
+      </Tab>
+
+      <Tab title="Dynamic Credentials Parameters">
+        <ParamField path="Allowed Namespaces" type="string" required>
+          Kubernetes namespace(s) where the service accounts will be created. You can specify multiple namespaces as a comma-separated list (e.g., "default,kube-system"). During lease creation, you can specify which namespace to use from this allowed list.
+        </ParamField>
+        <ParamField path="Role Type" type="string" required>
+          Type of role to assign (ClusterRole or Role)
+        </ParamField>
+        <ParamField path="Role" type="string" required>
+          Name of the role to assign to the temporary service account
+        </ParamField>
+      </Tab>
+    </Tabs>
+
     <ParamField path="Audiences" type="array">
       Optional list of audiences to include in the generated token
     </ParamField>

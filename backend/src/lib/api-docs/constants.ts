@@ -626,7 +626,8 @@ export const PROJECTS = {
     autoCapitalization: "Disable or enable auto-capitalization for the project.",
     slug: "An optional slug for the project. (must be unique within the organization)",
     hasDeleteProtection: "Enable or disable delete protection for the project.",
-    secretSharing: "Enable or disable secret sharing for the project."
+    secretSharing: "Enable or disable secret sharing for the project.",
+    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -1112,6 +1113,14 @@ export const DYNAMIC_SECRET_LEASES = {
     leaseId: "The ID of the dynamic secret lease.",
     isForced:
       "A boolean flag to delete the the dynamic secret from Infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+  },
+  KUBERNETES: {
+    CREATE: {
+      config: {
+        namespace:
+          "The Kubernetes namespace to create the lease in. If not specified, the first namespace defined in the configuration will be used."
+      }
+    }
   }
 } as const;
 export const SECRET_TAGS = {

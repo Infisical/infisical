@@ -1,3 +1,5 @@
+import { DynamicSecretProviders } from "../dynamicSecret/types";
+
 export enum DynamicSecretLeaseStatus {
   FailedDeletion = "Failed to delete"
 }
@@ -13,12 +15,20 @@ export type TDynamicSecretLease = {
   updatedAt: string;
 };
 
+export type TDynamicSecretKubernetesLeaseConfig = {
+  namespace?: string;
+};
+
+export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig;
+
 export type TCreateDynamicSecretLeaseDTO = {
   dynamicSecretName: string;
   projectSlug: string;
   ttl?: string;
   path: string;
   environmentSlug: string;
+  config?: TDynamicSecretLeaseConfig;
+  provider: DynamicSecretProviders;
 };
 
 export type TRenewDynamicSecretLeaseDTO = {

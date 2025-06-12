@@ -450,6 +450,8 @@
     {
       "group": "Infrastructure Integrations",
       "pages": [
+        "integrations/platforms/ansible",
+        "integrations/platforms/apache-airflow",
         {
           "group": "Container orchestrators",
           "pages": [
@@ -468,7 +470,6 @@
             "integrations/platforms/ecs-with-agent"
           ]
         },
-        "integrations/platforms/infisical-agent",
         {
           "group": "Docker",
           "pages": [
@@ -478,10 +479,10 @@
             "integrations/platforms/docker-compose"
           ]
         },
-        "integrations/frameworks/terraform",
+        "integrations/platforms/infisical-agent",
+        "integrations/frameworks/packer",
         "integrations/frameworks/pulumi",
-        "integrations/platforms/ansible",
-        "integrations/platforms/apache-airflow"
+        "integrations/frameworks/terraform"
       ]
     },
     {
@@ -828,8 +829,7 @@
             "api-reference/endpoints/workspaces/delete-workspace",
             "api-reference/endpoints/workspaces/get-workspace",
             "api-reference/endpoints/workspaces/update-workspace",
-            "api-reference/endpoints/workspaces/secret-snapshots",
-            "api-reference/endpoints/workspaces/rollback-snapshot"
+            "api-reference/endpoints/workspaces/secret-snapshots"
           ]
         },
         {
@@ -929,6 +929,12 @@
         {
           "group": "Dynamic Secrets",
           "pages": [
+            {
+              "group": "Kubernetes",
+              "pages": [
+                "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
+              ]
+            },
             "api-reference/endpoints/dynamic-secrets/create",
             "api-reference/endpoints/dynamic-secrets/update",
             "api-reference/endpoints/dynamic-secrets/delete",

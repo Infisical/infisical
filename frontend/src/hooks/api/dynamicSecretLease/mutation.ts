@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { DynamicSecretProviders } from "../dynamicSecret/types";
 import { dynamicSecretLeaseKeys } from "./queries";
 import {
   TCreateDynamicSecretLeaseDTO,
@@ -19,6 +20,14 @@ export const useCreateDynamicSecretLease = () => {
     TCreateDynamicSecretLeaseDTO
   >({
     mutationFn: async (dto) => {
+      if (dto.provider === DynamicSecretProviders.Kubernetes) {
+        const { data } = await apiRequest.post<{ lease: TDynamicSecretLease; data: unknown }>(
+          "/api/v1/dynamic-secrets/leases/kubernetes",
+          dto
+        );
+        return data;
+      }
+
       const { data } = await apiRequest.post<{ lease: TDynamicSecretLease; data: unknown }>(
         "/api/v1/dynamic-secrets/leases",
         dto
