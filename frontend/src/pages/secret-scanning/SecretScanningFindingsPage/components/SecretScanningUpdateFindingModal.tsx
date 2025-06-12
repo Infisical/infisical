@@ -17,6 +17,7 @@ import { SECRET_SCANNING_FINDING_STATUS_ICON_MAP } from "@app/helpers/secretScan
 import {
   SecretScanningFindingStatus,
   TSecretScanningFinding,
+  useUpdateMultipleSecretScanningFinding,
   useUpdateSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2";
 
@@ -40,6 +41,7 @@ type ContentProps = {
 
 const Content = ({ findings, onComplete }: ContentProps) => {
   const updateFinding = useUpdateSecretScanningFinding();
+  const updateMultipleFindings = useUpdateMultipleSecretScanningFinding();
 
   const single = findings.length === 1;
 
@@ -52,17 +54,25 @@ const Content = ({ findings, onComplete }: ContentProps) => {
   });
 
   const onSubmit = async (data: FormType) => {
+    if (!data.status) return;
+
     try {
-      for await (const finding of findings) {
-        // If a status wasn't set, don't update
-        if (data.status) {
-          await updateFinding.mutateAsync({
+      if (findings.length > 1) {
+        await updateMultipleFindings.mutateAsync(
+          findings.map((f) => ({
             ...data,
-            status: data.status,
-            findingId: finding.id,
-            projectId: finding.projectId
-          });
-        }
+            status: data.status!,
+            findingId: f.id,
+            projectId: f.projectId
+          }))
+        );
+      } else {
+        await updateFinding.mutateAsync({
+          ...data,
+          status: data.status,
+          findingId: findings[0].id,
+          projectId: findings[0].projectId
+        });
       }
 
       createNotification({
