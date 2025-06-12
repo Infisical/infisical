@@ -168,6 +168,13 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
     setPage
   });
 
+  const currentPageData = useMemo(
+    () => filteredFindings.slice(offset, perPage * page),
+    [filteredFindings, offset, perPage, page]
+  );
+
+  const currentPageDataIds = useMemo(() => currentPageData.map((f) => f.id), [currentPageData]);
+
   const handleSort = (column: FindingsOrderBy) => {
     if (column === orderBy) {
       toggleOrderDirection();
@@ -288,12 +295,29 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
               <Th className="">
                 <Checkbox
                   id="checkbox-select-all"
-                  isChecked={selectedRows.length === filteredFindings.length}
-                  onCheckedChange={() =>
-                    setSelectedRows((sr) =>
-                      sr.length === filteredFindings.length ? [] : filteredFindings.map((f) => f.id)
-                    )
+                  isChecked={
+                    currentPageDataIds.length > 0 &&
+                    currentPageDataIds.every((id) => selectedRows.includes(id))
                   }
+                  onCheckedChange={() => {
+                    const allCurrentlySelectedOnPage =
+                      currentPageDataIds.length > 0 &&
+                      currentPageDataIds.every((id) => selectedRows.includes(id));
+
+                    if (allCurrentlySelectedOnPage) {
+                      // Deselect all on current page
+                      setSelectedRows((prev) =>
+                        prev.filter((rowId) => !currentPageDataIds.includes(rowId))
+                      );
+                    } else {
+                      // Select all on current page
+                      setSelectedRows((prev) => {
+                        const newSelectedRows = new Set(prev);
+                        currentPageDataIds.forEach((id) => newSelectedRows.add(id));
+                        return Array.from(newSelectedRows);
+                      });
+                    }
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
@@ -356,7 +380,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {filteredFindings.slice(offset, perPage * page).map((finding) => (
+            {currentPageData.map((finding) => (
               <SecretScanningFindingRow
                 isSelected={selectedRows.includes(finding.id)}
                 onToggleSelect={(v) =>

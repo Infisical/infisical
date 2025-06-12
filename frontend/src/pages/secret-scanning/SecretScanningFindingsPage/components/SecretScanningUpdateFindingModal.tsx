@@ -144,8 +144,11 @@ export const SecretScanningUpdateFindingModal = ({ findings, isOpen, onOpenChang
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Update Finding" subTitle="Update the status or leave remarks">
-        <Content findings={findings || []} onComplete={() => onOpenChange(false)} />
+      <ModalContent
+        title={`Update Finding${findings.length === 1 ? "" : "s"}`}
+        subTitle="Update the status or leave remarks"
+      >
+        <Content findings={findings} onComplete={() => onOpenChange(false)} />
       </ModalContent>
     </Modal>
   );
