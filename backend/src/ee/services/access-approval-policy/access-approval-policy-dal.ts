@@ -101,8 +101,12 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
           }
         ]
       });
+      if (!formattedDoc?.[0]) return;
 
-      return formattedDoc?.[0];
+      return {
+        ...formattedDoc?.[0],
+        approvers: formattedDoc?.[0]?.approvers.sort((a, b) => (a.sequence || 1) - (b.sequence || 1))
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindById" });
     }
@@ -173,7 +177,10 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return formattedDocs;
+      return formattedDocs.map((el) => ({
+        ...el,
+        approvers: el?.approvers.sort((a, b) => (a.sequence || 1) - (b.sequence || 1))
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find" });
     }
