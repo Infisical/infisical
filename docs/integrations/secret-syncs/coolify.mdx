@@ -1,0 +1,144 @@
+---
+title: "Coolify Sync"
+description: "Learn how to configure a Coolify Sync for Infisical."
+---
+
+**Prerequisites:**
+
+    - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
+    - Create a [Coolify Connection](/integrations/app-connections/coolify)
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        2. Select the **Coolify** option.
+        ![Select Coolify](/images/secret-syncs/coolify/select-coolify-option.png)
+
+        3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
+        ![Configure Source](/images/secret-syncs/coolify/coolify-source.png)
+
+            - **Environment**: The project environment to retrieve secrets from.
+            - **Secret Path**: The folder path to retrieve secrets from.
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        ![Configure Destination](/images/secret-syncs/coolify/coolify-destination.png)
+
+            - **Coolify Connection**: The Coolify Connection to authenticate with.
+            - **Coolify Project**: The project where the environment & application is created in.
+            - **Coolify Environment**: The project environment the application is created in.
+            - **Coolify Application**: The application to deploy secrets to.
+
+        After configuring these parameters, click the **Next** button to continue to the Sync Options step.
+
+        5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+        ![Configure Options](/images/secret-syncs/coolify/coolify-options.png)
+
+            - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+                - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Coolify when keys conflict.
+                - **Import Secrets (Prioritize Coolify)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Coolify over Infisical when keys conflict.
+            - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name.
+            <Note>
+                We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+            </Note>
+            - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+            - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+
+        6. Configure the **Details** of your Coolify Sync, then click **Next**.
+        ![Configure Details](/images/secret-syncs/coolify/coolify-details.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        7. Review your Coolify Sync configuration, then click **Create Sync**.
+        ![Confirm Configuration](/images/secret-syncs/coolify/coolify-review.png)
+
+        8. If enabled, your Coolify Sync will begin syncing your secrets to the destination endpoint.
+        ![Sync Secrets](/images/secret-syncs/coolify/coolify-created.png)
+
+    </Tab>
+    <Tab title="API">
+        To create an **Coolify Sync**, make an API request to the [Create Coolify Sync](/api-reference/endpoints/secret-syncs/coolify/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/secret-syncs/coolify \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-coolify-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "dev",
+            "secretPath": "/my-secrets",
+            "isEnabled": true,
+            "syncOptions": {
+                "initialSyncBehavior": "overwrite-destination"
+            },
+            "destinationConfig": {
+                "appId": "kssooos0cww88w0kgkws0kc8"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-coolify-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "coolify",
+                    "name": "my-coolify-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "coolify",
+                "destinationConfig": {
+                    "appId": "kssooos0cww88w0kgkws0kc8"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

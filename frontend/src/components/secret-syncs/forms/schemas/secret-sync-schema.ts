@@ -6,6 +6,7 @@ import { AwsSecretsManagerSyncDestinationSchema } from "./aws-secrets-manager-sy
 import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configuration-sync-destination-schema";
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
+import { CoolifySyncDestinationSchema } from "./coolify-sync-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
@@ -33,7 +34,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   HCVaultSyncDestinationSchema,
   TeamCitySyncDestinationSchema,
   OCIVaultSyncDestinationSchema,
-  OnePassSyncDestinationSchema
+  OnePassSyncDestinationSchema,
+  CoolifySyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

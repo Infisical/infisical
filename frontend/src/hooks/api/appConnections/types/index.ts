@@ -7,6 +7,7 @@ import { TAzureAppConfigurationConnection } from "./azure-app-configuration-conn
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TCamundaConnection } from "./camunda-connection";
+import { TCoolifyConnection } from "./coolify-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
@@ -30,6 +31,7 @@ export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-key-vault-connection";
 export * from "./camunda-connection";
+export * from "./coolify-connection";
 export * from "./databricks-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
@@ -68,7 +70,8 @@ export type TAppConnection =
   | TLdapConnection
   | TTeamCityConnection
   | TOCIConnection
-  | TOnePassConnection;
+  | TOnePassConnection
+  | TCoolifyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -118,4 +121,5 @@ export type TAppConnectionMap = {
   [AppConnection.TeamCity]: TTeamCityConnection;
   [AppConnection.OCI]: TOCIConnection;
   [AppConnection.OnePass]: TOnePassConnection;
+  [AppConnection.Coolify]: TCoolifyConnection;
 };

@@ -325,7 +325,6 @@
             }
           ]
         },
-
         {
           "group": "Machine Identities",
           "pages": [
@@ -349,7 +348,6 @@
                 "documentation/platform/identities/oidc-auth/spire"
               ]
             },
-
             {
               "group": "LDAP Auth",
               "pages": [
@@ -498,6 +496,7 @@
             "integrations/app-connections/azure-client-secrets",
             "integrations/app-connections/azure-key-vault",
             "integrations/app-connections/camunda",
+            "integrations/app-connections/coolify",
             "integrations/app-connections/databricks",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
@@ -530,6 +529,7 @@
             "integrations/secret-syncs/azure-app-configuration",
             "integrations/secret-syncs/azure-key-vault",
             "integrations/secret-syncs/camunda",
+            "integrations/secret-syncs/coolify",
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
@@ -1210,6 +1210,19 @@
               ]
             },
             {
+              "group": "Coolify",
+              "pages": [
+                "api-reference/endpoints/app-connections/coolify/list",
+                "api-reference/endpoints/app-connections/coolify/available",
+                "api-reference/endpoints/app-connections/coolify/get-by-id",
+                "api-reference/endpoints/app-connections/coolify/get-by-name",
+                "api-reference/endpoints/app-connections/coolify/get-applications",
+                "api-reference/endpoints/app-connections/coolify/create",
+                "api-reference/endpoints/app-connections/coolify/update",
+                "api-reference/endpoints/app-connections/coolify/delete"
+              ]
+            },
+            {
               "group": "Databricks",
               "pages": [
                 "api-reference/endpoints/app-connections/databricks/list",
@@ -1477,6 +1490,20 @@
                 "api-reference/endpoints/secret-syncs/camunda/delete",
                 "api-reference/endpoints/secret-syncs/camunda/sync-secrets",
                 "api-reference/endpoints/secret-syncs/camunda/remove-secrets"
+              ]
+            },
+            {
+              "group": "Coolify",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/coolify/list",
+                "api-reference/endpoints/secret-syncs/coolify/get-by-id",
+                "api-reference/endpoints/secret-syncs/coolify/get-by-name",
+                "api-reference/endpoints/secret-syncs/coolify/create",
+                "api-reference/endpoints/secret-syncs/coolify/update",
+                "api-reference/endpoints/secret-syncs/coolify/delete",
+                "api-reference/endpoints/secret-syncs/coolify/sync-secrets",
+                "api-reference/endpoints/secret-syncs/coolify/import-secrets",
+                "api-reference/endpoints/secret-syncs/coolify/remove-secrets"
               ]
             },
             {
