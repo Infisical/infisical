@@ -9,10 +9,6 @@ import { Button, FormControl, Input } from "@app/components/v2";
 import { useRenewDynamicSecretLease } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
-type TForm = {
-  ttl: string;
-};
-
 type Props = {
   onClose: () => void;
   leaseId: string;
@@ -50,6 +46,8 @@ export const RenewDynamicSecretLease = ({
         });
     })
   });
+
+  type TForm = z.infer<typeof formSchema>;
 
   const {
     control,
