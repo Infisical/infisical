@@ -334,7 +334,7 @@ access the Infisical API using the AWS Auth authentication method.
                   const credentials = await fromNodeProviderChain()();
 
                   if (!credentials.accessKeyId || !credentials.secretAccessKey) {
-                    throw new InfisicalSDKError("Credentials not found");
+                    throw new Error("Credentials not found");
                   }
 
                   const iamRequestURL = `https://sts.${region}.amazonaws.com/`;
@@ -379,7 +379,7 @@ access the Infisical API using the AWS Auth authentication method.
 
                   const {
                     data: { accessToken }
-                  } = await axios.post<{ accessToken: string }>("https://app.infisical.com/v1/auth/aws-auth/login", {
+                  } = await axios.post<{ accessToken: string }>("https://app.infisical.com/api/v1/auth/aws-auth/login", {
                     ...iamRequest,
                     identityId: "<replace-with-your-identity-id>"
                   });
