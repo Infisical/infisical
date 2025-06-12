@@ -161,7 +161,7 @@ export const SnapshotView = ({
       </div>
       <NoticeBannerV2 title="Snapshots are being deprecated" className="my-2">
         <p className="my-1 text-sm text-mineshaft-300">
-          Snapshots are being deprecated in favor of{" "}
+          Snapshots will be replaced by{" "}
           <a
             target="_blank"
             href="https://infisical.com/docs/documentation/platform/pit-recovery"
@@ -169,8 +169,8 @@ export const SnapshotView = ({
             className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
           >
             Commits
-          </a>
-          . This feature will be officially removed in November 2025.
+          </a>{" "}
+          to track history going forward. This feature will be officially removed in November 2025.
         </p>
       </NoticeBannerV2>
       <div className="mt-4 flex items-center space-x-2">
