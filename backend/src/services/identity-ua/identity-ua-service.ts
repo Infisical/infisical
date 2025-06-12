@@ -122,9 +122,9 @@ export const identityUaServiceFactory = ({
           }
         : {
             accessTokenTTL: identityUa.accessTokenPeriod,
-            // Setting Max TTL to 2 × period ensures that clients can always renew their token
-            // at least once, and matches client logic that checks if renewing would exceed Max TTL.
-            accessTokenMaxTTL: 2 * identityUa.accessTokenPeriod
+            // We set a very large Max TTL for periodic tokens to ensure that clients (even outdated ones) can always renew their token
+            // without them having to update their SDKs, CLIs, etc. This workaround sets it to 30 years to emulate "forever"
+            accessTokenMaxTTL: 1000000000
           };
 
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {

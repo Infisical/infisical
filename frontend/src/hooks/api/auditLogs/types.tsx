@@ -427,6 +427,16 @@ interface DeleteWebhookEvent {
   };
 }
 
+export interface WebhookTriggeredEvent {
+  type: EventType.WEBHOOK_TRIGGERED;
+  metadata: {
+    webhookId: string;
+    status: string;
+    type: string;
+    payload: { [k: string]: string | null };
+  };
+}
+
 interface GetSecretImportsEvent {
   type: EventType.GET_SECRET_IMPORTS;
   metadata: {
@@ -891,6 +901,7 @@ export type Event =
   | CreateWebhookEvent
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
+  | WebhookTriggeredEvent
   | GetSecretImportsEvent
   | CreateSecretImportEvent
   | UpdateSecretImportEvent

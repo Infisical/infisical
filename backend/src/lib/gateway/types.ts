@@ -10,12 +10,13 @@ export enum GatewayProxyProtocol {
 }
 
 export enum GatewayHttpProxyActions {
-  InjectGatewayK8sServiceAccountToken = "inject-k8s-sa-auth-token"
+  InjectGatewayK8sServiceAccountToken = "inject-k8s-sa-auth-token",
+  UseGatewayK8sServiceAccount = "use-k8s-sa"
 }
 
 export interface IGatewayProxyOptions {
-  targetHost: string;
-  targetPort: number;
+  targetHost?: string;
+  targetPort?: number;
   relayHost: string;
   relayPort: number;
   tlsOptions: TGatewayTlsOptions;

@@ -8,6 +8,7 @@ import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
+import { CommitType } from "../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
@@ -73,6 +74,7 @@ export const fnSecretBulkInsert = async ({
   resourceMetadataDAL,
   secretTagDAL,
   secretVersionTagDAL,
+  folderCommitService,
   actor,
   tx
 }: TFnSecretBulkInsert) => {
@@ -126,10 +128,35 @@ export const fnSecretBulkInsert = async ({
       userActorId,
       identityActorId,
       actorType,
+      metadata: el.metadata ? JSON.stringify(el.metadata) : [],
       secretId: newSecretGroupedByKeyName[el.key][0].id
     })),
     tx
   );
+
+  const commitChanges = secretVersions
+    .filter(({ type }) => type === SecretType.Shared)
+    .map((sv) => ({
+      type: CommitType.ADD,
+      secretVersionId: sv.id
+    }));
+
+  if (commitChanges.length > 0) {
+    await folderCommitService.createCommit(
+      {
+        actor: {
+          type: actorType || ActorType.PLATFORM,
+          metadata: {
+            id: actor?.actorId
+          }
+        },
+        message: "Secret Created",
+        folderId,
+        changes: commitChanges
+      },
+      tx
+    );
+  }
 
   await secretDAL.upsertSecretReferences(
     inputSecrets.map(({ references = [], key }) => ({
@@ -185,6 +212,7 @@ export const fnSecretBulkUpdate = async ({
   orgId,
   secretDAL,
   secretVersionDAL,
+  folderCommitService,
   secretTagDAL,
   secretVersionTagDAL,
   resourceMetadataDAL,
@@ -246,7 +274,7 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         version,
-        metadata,
+        metadata: metadata ? JSON.stringify(metadata) : [],
         reminderNote,
         encryptedValue,
         reminderRepeatDays,
@@ -259,6 +287,7 @@ export const fnSecretBulkUpdate = async ({
     ),
     tx
   );
+
   await secretDAL.upsertSecretReferences(
     inputSecrets
       .filter(({ data: { references } }) => Boolean(references))
@@ -329,6 +358,31 @@ export const fnSecretBulkUpdate = async ({
     },
     { tx }
   );
+
+  const commitChanges = secretVersions
+    .filter(({ type }) => type === SecretType.Shared)
+    .map((sv) => ({
+      type: CommitType.ADD,
+      isUpdate: true,
+      secretVersionId: sv.id
+    }));
+  if (commitChanges.length > 0) {
+    await folderCommitService.createCommit(
+      {
+        actor: {
+          type: actorType || ActorType.PLATFORM,
+          metadata: {
+            id: actor?.actorId
+          }
+        },
+        message: "Secret Updated",
+        folderId,
+        changes: commitChanges
+      },
+      tx
+    );
+  }
+
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
 };
 
@@ -337,8 +391,11 @@ export const fnSecretBulkDelete = async ({
   inputSecrets,
   tx,
   actorId,
+  actorType,
   secretDAL,
-  secretQueueService
+  secretQueueService,
+  folderCommitService,
+  secretVersionDAL
 }: TFnSecretBulkDelete) => {
   const deletedSecrets = await secretDAL.deleteMany(
     inputSecrets.map(({ type, secretKey }) => ({
@@ -357,6 +414,35 @@ export const fnSecretBulkDelete = async ({
         secretQueueService.removeSecretReminder({ secretId: id, repeatDays: reminderRepeatDays as number }, tx)
       )
   );
+
+  const secretVersions = await secretVersionDAL.findLatestVersionMany(
+    folderId,
+    deletedSecrets.map(({ id }) => id),
+    tx
+  );
+
+  const commitChanges = deletedSecrets
+    .filter(({ type }) => type === SecretType.Shared)
+    .map(({ id }) => ({
+      type: CommitType.DELETE,
+      secretVersionId: secretVersions[id].id
+    }));
+  if (commitChanges.length > 0) {
+    await folderCommitService.createCommit(
+      {
+        actor: {
+          type: actorType || ActorType.PLATFORM,
+          metadata: {
+            id: actorId
+          }
+        },
+        message: "Secret Deleted",
+        folderId,
+        changes: commitChanges
+      },
+      tx
+    );
+  }
 
   return deletedSecrets;
 };

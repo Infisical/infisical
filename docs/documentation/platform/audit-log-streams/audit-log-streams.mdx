@@ -5,12 +5,12 @@ description: "Learn how to stream Infisical Audit Logs to external logging provi
 
 <Info>
     Audit log streams is a paid feature.
-   
+
     If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
     then you should contact team@infisical.com to purchase an enterprise license to use it.
 </Info>
 
-Infisical Audit Log Streaming enables you to transmit your organization's Audit Logs to external logging providers for monitoring and analysis. 
+Infisical Audit Log Streaming enables you to transmit your organization's Audit Logs to external logging providers for monitoring and analysis.
 
 The logs are formatted in JSON, requiring your logging provider to support JSON-based log parsing.
 
@@ -118,7 +118,7 @@ Each log entry sent to the external logging provider will follow the same struct
 
 ### Audit Logs Structure
 <ParamField path="id" type="string" required>
-  The unique identifier for the log entry. 
+  The unique identifier for the log entry.
 </ParamField>
 
 <ParamField path="actor" type="platform | user | service | identity | scimClient | unknownUser" required>
@@ -168,7 +168,7 @@ Each log entry sent to the external logging provider will follow the same struct
   <Note>
     If the `actor` field is set to `platform`, `scimClient`, or `unknownUser`, the `actorMetadata` field will be an empty object.
   </Note>
-    
+
 </ParamField>
 
 <ParamField path="ipAddress" type="string" required>
@@ -178,7 +178,7 @@ Each log entry sent to the external logging provider will follow the same struct
 <ParamField path="eventType" type="string" required>
   The type of event that occurred. Below you can see a list of possible event types. More event types will be added in the future as we expand our audit logs further.
 
-  `get-secrets`, `delete-secrets`, `get-secret`, `create-secret`, `update-secret`, `delete-secret`, `get-workspace-key`, `authorize-integration`, `update-integration-auth`, `unauthorize-integration`, `create-integration`, `delete-integration`, `add-trusted-ip`, `update-trusted-ip`, `delete-trusted-ip`, `create-service-token`, `delete-service-token`, `create-identity`, `update-identity`, `delete-identity`, `login-identity-universal-auth`, `add-identity-universal-auth`, `update-identity-universal-auth`, `get-identity-universal-auth`, `create-identity-universal-auth-client-secret`, `revoke-identity-universal-auth-client-secret`, `get-identity-universal-auth-client-secret`, `create-environment`, `update-environment`, `delete-environment`, `add-workspace-member`, `remove-workspace-member`, `create-folder`, `update-folder`, `delete-folder`, `create-webhook`, `update-webhook-status`, `delete-webhook`, `get-secret-imports`, `create-secret-import`, `update-secret-import`, `delete-secret-import`, `update-user-workspace-role`, `update-user-workspace-denied-permissions`, `create-certificate-authority`, `get-certificate-authority`, `update-certificate-authority`, `delete-certificate-authority`, `get-certificate-authority-csr`, `get-certificate-authority-cert`, `sign-intermediate`, `import-certificate-authority-cert`, `get-certificate-authority-crl`, `issue-cert`, `get-cert`, `delete-cert`, `revoke-cert`, `get-cert-body`, `create-pki-alert`, `get-pki-alert`, `update-pki-alert`, `delete-pki-alert`, `create-pki-collection`, `get-pki-collection`, `update-pki-collection`, `delete-pki-collection`, `get-pki-collection-items`, `add-pki-collection-item`, `delete-pki-collection-item`, `org-admin-accessed-project`, `create-certificate-template`, `update-certificate-template`, `delete-certificate-template`, `get-certificate-template`, `create-certificate-template-est-config`, `update-certificate-template-est-config`, `get-certificate-template-est-config`, `update-project-slack-config`, `get-project-slack-config`, `integration-synced`, `create-shared-secret`, `delete-shared-secret`, `read-shared-secret`.
+  `get-secrets`, `delete-secrets`, `get-secret`, `create-secret`, `update-secret`, `delete-secret`, `get-workspace-key`, `authorize-integration`, `update-integration-auth`, `unauthorize-integration`, `create-integration`, `delete-integration`, `add-trusted-ip`, `update-trusted-ip`, `delete-trusted-ip`, `create-service-token`, `delete-service-token`, `create-identity`, `update-identity`, `delete-identity`, `login-identity-universal-auth`, `add-identity-universal-auth`, `update-identity-universal-auth`, `get-identity-universal-auth`, `create-identity-universal-auth-client-secret`, `revoke-identity-universal-auth-client-secret`, `get-identity-universal-auth-client-secret`, `create-environment`, `update-environment`, `delete-environment`, `add-workspace-member`, `remove-workspace-member`, `create-folder`, `update-folder`, `delete-folder`, `create-webhook`, `update-webhook-status`, `delete-webhook`, `webhook-triggered`, `get-secret-imports`, `create-secret-import`, `update-secret-import`, `delete-secret-import`, `update-user-workspace-role`, `update-user-workspace-denied-permissions`, `create-certificate-authority`, `get-certificate-authority`, `update-certificate-authority`, `delete-certificate-authority`, `get-certificate-authority-csr`, `get-certificate-authority-cert`, `sign-intermediate`, `import-certificate-authority-cert`, `get-certificate-authority-crl`, `issue-cert`, `get-cert`, `delete-cert`, `revoke-cert`, `get-cert-body`, `create-pki-alert`, `get-pki-alert`, `update-pki-alert`, `delete-pki-alert`, `create-pki-collection`, `get-pki-collection`, `update-pki-collection`, `delete-pki-collection`, `get-pki-collection-items`, `add-pki-collection-item`, `delete-pki-collection-item`, `org-admin-accessed-project`, `create-certificate-template`, `update-certificate-template`, `delete-certificate-template`, `get-certificate-template`, `create-certificate-template-est-config`, `update-certificate-template-est-config`, `get-certificate-template-est-config`, `update-project-slack-config`, `get-project-slack-config`, `integration-synced`, `create-shared-secret`, `delete-shared-secret`, `read-shared-secret`.
 </ParamField>
 
 <ParamField path="eventMetadata" type="object" required>

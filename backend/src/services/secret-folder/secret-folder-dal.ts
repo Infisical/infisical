@@ -488,6 +488,75 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findFoldersByRootAndIds = async ({ rootId, folderIds }: { rootId: string; folderIds: string[] }, tx?: Knex) => {
+    try {
+      // First, get all descendant folders of rootId
+      const descendants = await (tx || db.replicaNode())
+        .withRecursive("descendants", (qb) =>
+          qb
+            .select(
+              selectAllTableCols(TableName.SecretFolder),
+              db.raw("0 as depth"),
+              db.raw(`'/' as path`),
+              db.ref(`${TableName.Environment}.slug`).as("environment")
+            )
+            .from(TableName.SecretFolder)
+            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+            .where(`${TableName.SecretFolder}.id`, rootId)
+            .union((un) => {
+              void un
+                .select(
+                  selectAllTableCols(TableName.SecretFolder),
+                  db.raw("descendants.depth + 1 as depth"),
+                  db.raw(
+                    `CONCAT(
+                      CASE WHEN descendants.path = '/' THEN '' ELSE descendants.path END,
+                      CASE WHEN ${TableName.SecretFolder}."parentId" is NULL THEN '' ELSE CONCAT('/', secret_folders.name) END
+                    )`
+                  ),
+                  db.ref("descendants.environment")
+                )
+                .from(TableName.SecretFolder)
+                .where(`${TableName.SecretFolder}.isReserved`, false)
+                .join("descendants", `${TableName.SecretFolder}.parentId`, "descendants.id");
+            })
+        )
+        .select<(TSecretFolders & { path: string; depth: number; environment: string })[]>("*")
+        .from("descendants")
+        .whereIn(`id`, folderIds)
+        .orderBy("depth")
+        .orderBy(`name`);
+
+      return descendants;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindFoldersByRootAndIds" });
+    }
+  };
+
+  const findByParentId = async (parentId: string, tx?: Knex) => {
+    try {
+      const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
+        .where({ parentId })
+        .andWhere({ isReserved: false })
+        .select(selectAllTableCols(TableName.SecretFolder));
+      return folders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findByParentId" });
+    }
+  };
+
+  const findByEnvId = async (envId: string, tx?: Knex) => {
+    try {
+      const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
+        .where({ envId })
+        .andWhere({ isReserved: false })
+        .select(selectAllTableCols(TableName.SecretFolder));
+      return folders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findByEnvId" });
+    }
+  };
+
   return {
     ...secretFolderOrm,
     update,
@@ -499,6 +568,9 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findClosestFolder,
     findByProjectId,
     findByMultiEnv,
-    findByEnvsDeep
+    findByEnvsDeep,
+    findByParentId,
+    findByEnvId,
+    findFoldersByRootAndIds
   };
 };

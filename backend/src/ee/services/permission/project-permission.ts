@@ -17,6 +17,11 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionCommitsActions {
+  Read = "read",
+  PerformRollback = "perform-rollback"
+}
+
 export enum ProjectPermissionCertificateActions {
   Read = "read",
   Create = "create",
@@ -172,6 +177,7 @@ export enum ProjectPermissionSub {
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
+  Commits = "commits",
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
@@ -325,6 +331,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Kms]
+  | [ProjectPermissionCommitsActions, ProjectPermissionSub.Commits]
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
   | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
@@ -673,6 +680,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.Kmip).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionKmipActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Commits).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCommitsActions).describe(
       "Describe what action an entity can take."
     )
   }),

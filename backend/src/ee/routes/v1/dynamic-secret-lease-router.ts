@@ -36,7 +36,8 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
               ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
           }),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRET_LEASES.CREATE.path),
-        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.path)
+        environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.environmentSlug),
+        config: z.any().optional()
       }),
       response: {
         200: z.object({
