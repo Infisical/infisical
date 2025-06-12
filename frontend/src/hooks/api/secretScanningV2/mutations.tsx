@@ -115,6 +115,7 @@ export const useTriggerSecretScanningDataSource = () => {
   });
 };
 
+// If possible, use useUpdateMultipleSecretScanningFinding instead.
 export const useUpdateSecretScanningFinding = () => {
   const queryClient = useQueryClient();
   return useMutation({

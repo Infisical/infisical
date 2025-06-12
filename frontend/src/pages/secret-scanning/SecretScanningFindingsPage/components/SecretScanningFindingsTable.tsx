@@ -418,6 +418,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
       <SecretScanningUpdateFindingModal
         isOpen={popUp.updateFinding.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("updateFinding", isOpen)}
+        onComplete={() => setSelectedRows([])}
         findings={popUp.updateFinding.data}
       />
       {selectedRows.length > 0 && (

@@ -17,14 +17,14 @@ import { SECRET_SCANNING_FINDING_STATUS_ICON_MAP } from "@app/helpers/secretScan
 import {
   SecretScanningFindingStatus,
   TSecretScanningFinding,
-  useUpdateMultipleSecretScanningFinding,
-  useUpdateSecretScanningFinding
+  useUpdateMultipleSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
   findings?: TSecretScanningFinding[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onComplete?: () => void;
 };
 
 const FormSchema = z.object({
@@ -40,7 +40,6 @@ type ContentProps = {
 };
 
 const Content = ({ findings, onComplete }: ContentProps) => {
-  const updateFinding = useUpdateSecretScanningFinding();
   const updateMultipleFindings = useUpdateMultipleSecretScanningFinding();
 
   const single = findings.length === 1;
@@ -67,12 +66,14 @@ const Content = ({ findings, onComplete }: ContentProps) => {
           }))
         );
       } else {
-        await updateFinding.mutateAsync({
-          ...data,
-          status: data.status,
-          findingId: findings[0].id,
-          projectId: findings[0].projectId
-        });
+        await updateMultipleFindings.mutateAsync([
+          {
+            ...data,
+            status: data.status,
+            findingId: findings[0].id,
+            projectId: findings[0].projectId
+          }
+        ]);
       }
 
       createNotification({
@@ -135,8 +136,8 @@ const Content = ({ findings, onComplete }: ContentProps) => {
       <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
         <Button
           type="submit"
-          isLoading={updateFinding.isPending}
-          isDisabled={updateFinding.isPending}
+          isLoading={updateMultipleFindings.isPending}
+          isDisabled={updateMultipleFindings.isPending}
           colorSchema="secondary"
         >
           Update Status
@@ -149,7 +150,12 @@ const Content = ({ findings, onComplete }: ContentProps) => {
   );
 };
 
-export const SecretScanningUpdateFindingModal = ({ findings, isOpen, onOpenChange }: Props) => {
+export const SecretScanningUpdateFindingModal = ({
+  findings,
+  isOpen,
+  onOpenChange,
+  onComplete
+}: Props) => {
   if (!findings?.length) return null;
 
   return (
@@ -158,7 +164,13 @@ export const SecretScanningUpdateFindingModal = ({ findings, isOpen, onOpenChang
         title={`Update Finding${findings.length === 1 ? "" : "s"}`}
         subTitle="Update the status or leave remarks"
       >
-        <Content findings={findings} onComplete={() => onOpenChange(false)} />
+        <Content
+          findings={findings}
+          onComplete={() => {
+            onOpenChange(false);
+            if (onComplete) onComplete();
+          }}
+        />
       </ModalContent>
     </Modal>
   );
