@@ -5,6 +5,10 @@ description: "Learn how to dynamically generate GCP service account tokens."
 
 The Infisical GCP IAM dynamic secret allows you to generate GCP service account tokens on demand based on service account permissions.
 
+<Warning>
+    GCP service account access tokens cannot be revoked. As such, revoking or regenerating a token does not invalidate the old one; it remains active until it expires.
+</Warning>
+
 <Note>
     You must enable the [IAM API](https://console.cloud.google.com/apis/library/iam.googleapis.com) and [IAM Credentials API](https://console.cloud.google.com/apis/library/iamcredentials.googleapis.com) in your GCP console as a prerequisite
 </Note>
