@@ -541,7 +541,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           req.status === ApprovalStatus.PENDING
       );
 
-      // an approval is finalized if there are any rejections, a privilege ID is set or the number of approvals is equal to the number of approvals required
+      // an approval is finalized if there are any rejections, a privilege ID is set or the number of approvals is equal to the number of approvals required.
       const finalizedApprovals = formattedRequests.filter(
         (req) =>
           req.privilegeId ||
