@@ -290,6 +290,8 @@ export const accessApprovalPolicyServiceFactory = ({
     ) as { username: string; sequence?: number }[];
 
     const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
+    if (!accessApprovalPolicy) throw new BadRequestError({ message: "Approval policy not found" });
+
     const currentApprovals = approvals || accessApprovalPolicy.approvals;
     if (
       groupApprovers?.length === 0 &&
