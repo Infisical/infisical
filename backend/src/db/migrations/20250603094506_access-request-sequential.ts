@@ -16,15 +16,17 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // set rejected status for all access request that was rejected and still has status pending
-  await knex(TableName.AccessApprovalRequest)
+  const subquery = knex(TableName.AccessApprovalRequest)
     .leftJoin(
       TableName.AccessApprovalRequestReviewer,
-      `${TableName.AccessApprovalRequest}.id`,
-      `${TableName.AccessApprovalRequestReviewer}.requestId`
+      `${TableName.AccessApprovalRequestReviewer}.requestId`,
+      `${TableName.AccessApprovalRequest}.id`
     )
     .where(`${TableName.AccessApprovalRequest}.status` as "status", "pending")
     .where(`${TableName.AccessApprovalRequestReviewer}.status` as "status", "rejected")
-    .update(`${TableName.AccessApprovalRequest}.status` as "status", "rejected");
+    .select(`${TableName.AccessApprovalRequest}.id`);
+
+  await knex(TableName.AccessApprovalRequest).where("id", "in", subquery).update("status", "rejected");
 }
 
 export async function down(knex: Knex): Promise<void> {
