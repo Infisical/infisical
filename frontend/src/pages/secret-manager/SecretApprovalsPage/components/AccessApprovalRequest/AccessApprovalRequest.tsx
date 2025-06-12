@@ -398,11 +398,9 @@ export const AccessApprovalRequest = ({
                             )}
                           </div>
                           <div>
-                            {details.isApprover && (
-                              <Badge variant={details.displayData.type}>
-                                {details.displayData.label}
-                              </Badge>
-                            )}
+                            <Badge variant={details.displayData.type}>
+                              {details.displayData.label}
+                            </Badge>
                           </div>
                         </div>
                       </div>

@@ -173,8 +173,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
                 permissions: doc.privilegePermissions
               }
             : null,
-
-          isApproved: !!doc.policyDeletedAt || !!doc.privilegeId || doc.status !== ApprovalStatus.PENDING
+          isApproved: doc.status === ApprovalStatus.APPROVED
         }),
         childrenMapper: [
           {
@@ -556,5 +555,27 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...accessApprovalRequestOrm, findById, findRequestsWithPrivilegeByPolicyIds, getCount };
+  const resetReviewByPolicyId = async (policyId: string, tx?: Knex) => {
+    try {
+      await (tx || db)(TableName.AccessApprovalRequestReviewer)
+        .leftJoin(
+          TableName.AccessApprovalRequest,
+          `${TableName.AccessApprovalRequest}.id`,
+          `${TableName.AccessApprovalRequestReviewer}.requestId`
+        )
+        .where(`${TableName.AccessApprovalRequest}.status` as "status", ApprovalStatus.PENDING)
+        .where(`${TableName.AccessApprovalRequest}.policyId` as "policyId", policyId)
+        .del();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ResetReviewByPolicyId" });
+    }
+  };
+
+  return {
+    ...accessApprovalRequestOrm,
+    findById,
+    findRequestsWithPrivilegeByPolicyIds,
+    getCount,
+    resetReviewByPolicyId
+  };
 };

@@ -42,7 +42,7 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   groupDAL: TGroupDALFactory;
   userDAL: Pick<TUserDALFactory, "find">;
-  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find">;
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find" | "resetReviewByPolicyId">;
   additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
@@ -480,6 +480,8 @@ export const accessApprovalPolicyServiceFactory = ({
           tx
         );
       }
+
+      await accessApprovalRequestDAL.resetReviewByPolicyId(doc.id, tx);
 
       return doc;
     });

@@ -380,9 +380,10 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const existingReviews = await accessApprovalRequestReviewerDAL.find({ requestId: accessApprovalRequest.id });
-    if (existingReviews.some((review) => review.status === ApprovalStatus.REJECTED)) {
-      throw new BadRequestError({ message: "The request has already been rejected by another reviewer" });
+    if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
+      throw new BadRequestError({ message: "The request has been closed" });
     }
+
     const reviewsGroupById = groupBy(
       existingReviews.filter((review) => review.status === ApprovalStatus.APPROVED),
       (i) => i.reviewerUserId

@@ -212,14 +212,39 @@ export const ReviewAccessRequestModal = ({
         (approverChain?.approvals || 1);
 
       const hasRejected = reviewers.filter((el) => el.status === ApprovalStatus.REJECTED).length;
-
       return { ...approverChain, reviewers, hasApproved, hasRejected };
     });
-    return { approvers, membersGroupById, projectGroupsGroupById };
+    const currentSequenceApprover = approvers?.find((el) => !el.hasApproved);
+    const currentSequence = currentSequenceApprover?.sequence || 1;
+    const isMyReviewInThisSequence = currentSequenceApprover?.reviewers.find(
+      (i) => i.userId === user.id
+    );
+
+    return {
+      approvers,
+      membersGroupById,
+      projectGroupsGroupById,
+      currentSequence,
+      isMyReviewInThisSequence
+    };
   }, [request, policies]);
 
-  const hasRejected = request.reviewers.find((el) => el.status === ApprovalStatus.REJECTED);
+  const hasRejected = request.status === ApprovalStatus.REJECTED;
+  const hasApproved = request.status === ApprovalStatus.APPROVED;
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
+
+  const shouldBlockRequestActions =
+    hasRejected ||
+    hasApproved ||
+    isReviewedByMe ||
+    (!approverSequence?.isMyReviewInThisSequence && !canBypass);
+
+  const renderCompletedMessages = () => {
+    if (hasRejected) return "This request has been rejected.";
+    if (hasApproved) return "This request has been approved.";
+    if (isReviewedByMe) return "You have reviewed this request.";
+    return "You are not the reviewer in this step.";
+  };
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -270,22 +295,27 @@ export const ReviewAccessRequestModal = ({
             {approverSequence?.approvers?.map((approver, index) => (
               <div
                 key={`approval-list-${index + 1}`}
-                className="relative mb-2 flex rounded border border-mineshaft-500 bg-mineshaft-700 p-4"
+                className={twMerge(
+                  "relative mb-2 flex items-center rounded border border-mineshaft-500 bg-mineshaft-700 p-4",
+                  approverSequence?.currentSequence !== approver.sequence &&
+                    !hasApproved &&
+                    "text-mineshaft-400"
+                )}
               >
                 <div>
                   <div
                     className={twMerge(
-                      "mr-8 flex h-8 w-8 items-center justify-center border border-bunker-300 bg-bunker-800 text-white",
+                      "mr-8 flex h-8 w-8 items-center justify-center text-3xl font-medium",
                       approver.hasApproved && "border-green-400 text-green-400",
                       approver.hasRejected && "border-red-500 text-red-500"
                     )}
                   >
-                    <div className="text-lg">{index + 1}</div>
+                    {index + 1}
                   </div>
                   {index !== (approverSequence?.approvers?.length || 0) - 1 && (
                     <div
                       className={twMerge(
-                        "absolute bottom-0 left-8 h-6 border-r border-gray-400",
+                        "absolute bottom-0 left-8 h-5 border-r-2 border-gray-400",
                         approver.hasApproved && "border-green-400",
                         approver.hasRejected && "border-red-500"
                       )}
@@ -294,7 +324,7 @@ export const ReviewAccessRequestModal = ({
                   {index !== 0 && (
                     <div
                       className={twMerge(
-                        "absolute left-8 top-0 h-4 border-r border-gray-400",
+                        "absolute left-8 top-0 h-5 border-r-2 border-gray-400",
                         approver.hasApproved && "border-green-400",
                         approver.hasRejected && "border-red-500"
                       )}
@@ -331,20 +361,17 @@ export const ReviewAccessRequestModal = ({
                     <div className="ml-16">
                       <Popover>
                         <PopoverTrigger>
-                          <FontAwesomeIcon
-                            icon={faUsers}
-                            className={twMerge(
-                              approver.hasApproved && "border-green-400 text-green-400",
-                              approver.hasRejected && "border-red-500 text-red-500"
-                            )}
-                          />
+                          <FontAwesomeIcon icon={faUsers} />
                         </PopoverTrigger>
                         <PopoverContent hideCloseBtn className="pt-3">
                           <div>
                             <div className="mb-1 text-sm text-bunker-300">Reviewers</div>
                             <div className="thin-scrollbar flex max-h-64 flex-col gap-1 overflow-y-auto rounded">
                               {approver.reviewers.map((el, idx) => (
-                                <div key={`reviewer-${idx}`} className="flex items-center gap-2 bg-mineshaft-700 p-1 text-sm">
+                                <div
+                                  key={`reviewer-${idx + 1}`}
+                                  className="flex items-center gap-2 bg-mineshaft-700 p-1 text-sm"
+                                >
                                   <div className="flex-grow">{el.username}</div>
                                   <Tooltip
                                     content={`Status: ${el?.status || ApprovalStatus.PENDING}`}
@@ -363,16 +390,22 @@ export const ReviewAccessRequestModal = ({
               </div>
             ))}
           </div>
-          {hasRejected || isReviewedByMe ? (
+          {approverSequence.isMyReviewInThisSequence &&
+            request.status === ApprovalStatus.PENDING && (
+              <div className="mb-4 rounded-r border-l-2 border-l-primary-400 bg-mineshaft-300/5 px-4 py-2.5 text-sm">
+                Awaiting review from you.
+              </div>
+            )}
+          {shouldBlockRequestActions ? (
             <div
               className={twMerge(
                 "mb-4 rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm",
-                isReviewedByMe && "border-l-green-400"
+                isReviewedByMe && "border-l-green-400",
+                !approverSequence.isMyReviewInThisSequence && "border-l-primary-400",
+                hasRejected && "border-l-red-500"
               )}
             >
-              {isReviewedByMe
-                ? "You have reviewed this request."
-                : "This request has been rejected."}
+              {renderCompletedMessages()}
             </div>
           ) : (
             <>
