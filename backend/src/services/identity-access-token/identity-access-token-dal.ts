@@ -28,6 +28,11 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           `${TableName.IdentityUniversalAuth}.id`
         )
         .leftJoin(TableName.IdentityGcpAuth, `${TableName.Identity}.id`, `${TableName.IdentityGcpAuth}.identityId`)
+        .leftJoin(
+          TableName.IdentityAliCloudAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityAliCloudAuth}.identityId`
+        )
         .leftJoin(TableName.IdentityAwsAuth, `${TableName.Identity}.id`, `${TableName.IdentityAwsAuth}.identityId`)
         .leftJoin(TableName.IdentityAzureAuth, `${TableName.Identity}.id`, `${TableName.IdentityAzureAuth}.identityId`)
         .leftJoin(TableName.IdentityLdapAuth, `${TableName.Identity}.id`, `${TableName.IdentityLdapAuth}.identityId`)
@@ -44,6 +49,10 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         .select(
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityGcpAuth).as("accessTokenTrustedIpsGcp"),
+          db
+            .ref("accessTokenTrustedIps")
+            .withSchema(TableName.IdentityAliCloudAuth)
+            .as("accessTokenTrustedIpsAliCloud"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAwsAuth).as("accessTokenTrustedIpsAws"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAzureAuth).as("accessTokenTrustedIpsAzure"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityKubernetesAuth).as("accessTokenTrustedIpsK8s"),
@@ -62,6 +71,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         ...doc,
         trustedIpsUniversalAuth: doc.accessTokenTrustedIpsUa,
         trustedIpsGcpAuth: doc.accessTokenTrustedIpsGcp,
+        trustedIpsAliCloudAuth: doc.accessTokenTrustedIpsAliCloud,
         trustedIpsAwsAuth: doc.accessTokenTrustedIpsAws,
         trustedIpsAzureAuth: doc.accessTokenTrustedIpsAzure,
         trustedIpsKubernetesAuth: doc.accessTokenTrustedIpsK8s,

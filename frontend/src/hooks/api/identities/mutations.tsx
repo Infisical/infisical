@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import {
+  AddIdentityAliCloudAuthDTO,
   AddIdentityAwsAuthDTO,
   AddIdentityAzureAuthDTO,
   AddIdentityGcpAuthDTO,
@@ -21,6 +22,7 @@ import {
   CreateIdentityUniversalAuthClientSecretRes,
   CreateTokenIdentityTokenAuthDTO,
   CreateTokenIdentityTokenAuthRes,
+  DeleteIdentityAliCloudAuthDTO,
   DeleteIdentityAwsAuthDTO,
   DeleteIdentityAzureAuthDTO,
   DeleteIdentityDTO,
@@ -35,6 +37,7 @@ import {
   DeleteIdentityUniversalAuthDTO,
   Identity,
   IdentityAccessToken,
+  IdentityAliCloudAuth,
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
@@ -47,6 +50,7 @@ import {
   IdentityUniversalAuth,
   RevokeTokenDTO,
   RevokeTokenRes,
+  UpdateIdentityAliCloudAuthDTO,
   UpdateIdentityAwsAuthDTO,
   UpdateIdentityAzureAuthDTO,
   UpdateIdentityDTO,
@@ -549,6 +553,103 @@ export const useDeleteIdentityOciAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+    }
+  });
+};
+
+export const useAddIdentityAliCloudAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAliCloudAuth, object, AddIdentityAliCloudAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedArns,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityAliCloudAuth }
+      } = await apiRequest.post<{ identityAliCloudAuth: IdentityAliCloudAuth }>(
+        `/api/v1/auth/alicloud-auth/identities/${identityId}`,
+        {
+          allowedArns,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityAliCloudAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useUpdateIdentityAliCloudAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAliCloudAuth, object, UpdateIdentityAliCloudAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedArns,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityAliCloudAuth }
+      } = await apiRequest.patch<{ identityAliCloudAuth: IdentityAliCloudAuth }>(
+        `/api/v1/auth/alicloud-auth/identities/${identityId}`,
+        {
+          allowedArns,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityAliCloudAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useDeleteIdentityAliCloudAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityAliCloudAuth, object, DeleteIdentityAliCloudAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identityAliCloudAuth }
+      } = await apiRequest.delete(`/api/v1/auth/alicloud-auth/identities/${identityId}`);
+      return identityAliCloudAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+      });
     }
   });
 };

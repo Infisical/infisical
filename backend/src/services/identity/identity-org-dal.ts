@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   TableName,
+  TIdentityAlicloudAuths,
   TIdentityAwsAuths,
   TIdentityAzureAuths,
   TIdentityGcpAuths,
@@ -53,6 +54,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityOrgMembership}.identityId`,
           `${TableName.IdentityGcpAuth}.identityId`
         )
+        .leftJoin<TIdentityAlicloudAuths>(
+          TableName.IdentityAliCloudAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityAliCloudAuth}.identityId`
+        )
         .leftJoin<TIdentityAwsAuths>(
           TableName.IdentityAwsAuth,
           `${TableName.IdentityOrgMembership}.identityId`,
@@ -99,6 +105,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
           db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
@@ -183,6 +190,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           "paginatedIdentity.identityId",
           `${TableName.IdentityGcpAuth}.identityId`
         )
+        .leftJoin<TIdentityAlicloudAuths>(
+          TableName.IdentityAliCloudAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityAliCloudAuth}.identityId`
+        )
         .leftJoin<TIdentityAwsAuths>(
           TableName.IdentityAwsAuth,
           "paginatedIdentity.identityId",
@@ -236,6 +248,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
           db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
@@ -278,6 +291,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           id,
           orgId,
           uaId,
+          alicloudId,
           awsId,
           gcpId,
           jwtId,
@@ -312,6 +326,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             name: identityName,
             authMethods: buildAuthMethods({
               uaId,
+              alicloudId,
               awsId,
               gcpId,
               kubernetesId,
@@ -459,6 +474,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
           db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
@@ -502,6 +518,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           total_count,
           id,
           uaId,
+          alicloudId,
           awsId,
           gcpId,
           jwtId,
@@ -536,6 +553,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             name: identityName,
             authMethods: buildAuthMethods({
               uaId,
+              alicloudId,
               awsId,
               gcpId,
               kubernetesId,

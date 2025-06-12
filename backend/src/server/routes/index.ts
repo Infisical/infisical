@@ -172,6 +172,8 @@ import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
 import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { identityAliCloudAuthDALFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-dal";
+import { identityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
 import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/identity-aws-auth-dal";
 import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { identityAzureAuthDALFactory } from "@app/services/identity-azure-auth/identity-azure-auth-dal";
@@ -383,6 +385,7 @@ export const registerRoutes = async (
   const identityUaDAL = identityUaDALFactory(db);
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
+  const identityAliCloudAuthDAL = identityAliCloudAuthDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
   const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
   const identityOciAuthDAL = identityOciAuthDALFactory(db);
@@ -1482,6 +1485,14 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const identityAliCloudAuthService = identityAliCloudAuthServiceFactory({
+    identityAccessTokenDAL,
+    identityAliCloudAuthDAL,
+    identityOrgMembershipDAL,
+    licenseService,
+    permissionService
+  });
+
   const identityAwsAuthService = identityAwsAuthServiceFactory({
     identityAccessTokenDAL,
     identityAwsAuthDAL,
@@ -1931,6 +1942,7 @@ export const registerRoutes = async (
     identityUa: identityUaService,
     identityKubernetesAuth: identityKubernetesAuthService,
     identityGcpAuth: identityGcpAuthService,
+    identityAliCloudAuth: identityAliCloudAuthService,
     identityAwsAuth: identityAwsAuthService,
     identityAzureAuth: identityAzureAuthService,
     identityOciAuth: identityOciAuthService,

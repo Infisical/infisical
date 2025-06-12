@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import {
   TableName,
   TIdentities,
+  TIdentityAlicloudAuths,
   TIdentityAwsAuths,
   TIdentityAzureAuths,
   TIdentityGcpAuths,
@@ -56,6 +57,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           TableName.IdentityGcpAuth,
           `${TableName.IdentityProjectMembership}.identityId`,
           `${TableName.IdentityGcpAuth}.identityId`
+        )
+        .leftJoin(
+          TableName.IdentityAliCloudAuth,
+          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.IdentityAliCloudAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityAwsAuth,
@@ -111,6 +117,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("type").as("projectType").withSchema(TableName.Project),
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
           db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
@@ -267,6 +274,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           `${TableName.Identity}.id`,
           `${TableName.IdentityGcpAuth}.identityId`
         )
+        .leftJoin<TIdentityAlicloudAuths>(
+          TableName.IdentityAliCloudAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityAliCloudAuth}.identityId`
+        )
         .leftJoin<TIdentityAwsAuths>(
           TableName.IdentityAwsAuth,
           `${TableName.Identity}.id`,
@@ -319,6 +331,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("name").as("projectName").withSchema(TableName.Project),
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
+          db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
           db.ref("id").as("kubernetesId").withSchema(TableName.IdentityKubernetesAuth),
           db.ref("id").as("ociId").withSchema(TableName.IdentityOciAuth),
@@ -346,6 +359,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           identityId,
           identityName,
           uaId,
+          alicloudId,
           awsId,
           gcpId,
           kubernetesId,
@@ -367,6 +381,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
             name: identityName,
             authMethods: buildAuthMethods({
               uaId,
+              alicloudId,
               awsId,
               gcpId,
               kubernetesId,

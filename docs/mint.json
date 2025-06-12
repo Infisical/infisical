@@ -329,6 +329,7 @@
         {
           "group": "Machine Identities",
           "pages": [
+            "documentation/platform/identities/alicloud-auth",
             "documentation/platform/identities/aws-auth",
             "documentation/platform/identities/azure-auth",
             "documentation/platform/identities/gcp-auth",
@@ -725,6 +726,16 @@
             "api-reference/endpoints/gcp-auth/retrieve",
             "api-reference/endpoints/gcp-auth/update",
             "api-reference/endpoints/gcp-auth/revoke"
+          ]
+        },
+        {
+          "group": "Alibaba Cloud Auth",
+          "pages": [
+            "api-reference/endpoints/alicloud-auth/login",
+            "api-reference/endpoints/alicloud-auth/attach",
+            "api-reference/endpoints/alicloud-auth/retrieve",
+            "api-reference/endpoints/alicloud-auth/update",
+            "api-reference/endpoints/alicloud-auth/revoke"
           ]
         },
         {

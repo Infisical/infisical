@@ -170,6 +170,12 @@ export enum EventType {
   REVOKE_IDENTITY_GCP_AUTH = "revoke-identity-gcp-auth",
   GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
 
+  LOGIN_IDENTITY_ALICLOUD_AUTH = "login-identity-alicloud-auth",
+  ADD_IDENTITY_ALICLOUD_AUTH = "add-identity-alicloud-auth",
+  UPDATE_IDENTITY_ALICLOUD_AUTH = "update-identity-alicloud-auth",
+  REVOKE_IDENTITY_ALICLOUD_AUTH = "revoke-identity-alicloud-auth",
+  GET_IDENTITY_ALICLOUD_AUTH = "get-identity-alicloud-auth",
+
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
@@ -1055,6 +1061,53 @@ interface UpdateIdentityAwsAuthEvent {
 
 interface GetIdentityAwsAuthEvent {
   type: EventType.GET_IDENTITY_AWS_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityAliCloudAuthEvent {
+  type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+    identityAliCloudAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityAliCloudAuthEvent {
+  type: EventType.ADD_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+    allowedArns: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityAliCloudAuthEvent {
+  type: EventType.REVOKE_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityAliCloudAuthEvent {
+  type: EventType.UPDATE_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+    allowedArns: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityAliCloudAuthEvent {
+  type: EventType.GET_IDENTITY_ALICLOUD_AUTH;
   metadata: {
     identityId: string;
   };
@@ -3272,6 +3325,11 @@ export type Event =
   | UpdateIdentityAwsAuthEvent
   | GetIdentityAwsAuthEvent
   | DeleteIdentityAwsAuthEvent
+  | LoginIdentityAliCloudAuthEvent
+  | AddIdentityAliCloudAuthEvent
+  | UpdateIdentityAliCloudAuthEvent
+  | GetIdentityAliCloudAuthEvent
+  | DeleteIdentityAliCloudAuthEvent
   | LoginIdentityOciAuthEvent
   | AddIdentityOciAuthEvent
   | UpdateIdentityOciAuthEvent
