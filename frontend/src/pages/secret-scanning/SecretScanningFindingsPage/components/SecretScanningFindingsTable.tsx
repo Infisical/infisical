@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Checkbox,
@@ -32,6 +33,10 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
+  ProjectPermissionSecretScanningFindingActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   SECRET_SCANNING_DATA_SOURCE_MAP,
   SECRET_SCANNING_FINDING_STATUS_ICON_MAP
 } from "@app/helpers/secretScanningV2";
@@ -45,11 +50,6 @@ import {
 
 import { SecretScanningFindingRow } from "./SecretScanningFindingRow";
 import { SecretScanningUpdateFindingModal } from "./SecretScanningUpdateFindingModal";
-import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  ProjectPermissionSecretScanningFindingActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
 
 enum FindingsOrderBy {
   ResourceName = "resource-name",

@@ -145,7 +145,7 @@ export const useUpdateMultipleSecretScanningFinding = () => {
   return useMutation({
     mutationFn: async (findings: TUpdateSecretScanningFinding[]) => {
       const { data } = await apiRequest.patch<TSecretScanningFindingResponse>(
-        `/api/v2/secret-scanning/findings`,
+        "/api/v2/secret-scanning/findings",
         findings
       );
 
