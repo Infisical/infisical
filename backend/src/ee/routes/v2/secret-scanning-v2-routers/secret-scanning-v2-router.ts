@@ -188,6 +188,56 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
   });
 
   server.route({
+    method: "PATCH",
+    url: "/findings",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretScanning],
+      description: "Update one or more Secret Scanning Findings in a batch.",
+      body: z
+        .object({
+          findingId: z.string().trim().min(1, "Finding ID required").describe(SecretScanningFindings.UPDATE.findingId),
+          status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.UPDATE.status),
+          remarks: z.string().nullish().describe(SecretScanningFindings.UPDATE.remarks)
+        })
+        .array()
+        .max(500),
+      response: {
+        200: z.object({ findings: SecretScanningFindingSchema.array() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { body, permission } = req;
+
+      const updatedFindingPromises = body.map(async (findingUpdatePayload) => {
+        const { finding, projectId } = await server.services.secretScanningV2.updateSecretScanningFindingById(
+          findingUpdatePayload,
+          permission
+        );
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId,
+          event: {
+            type: EventType.SECRET_SCANNING_FINDING_UPDATE,
+            metadata: findingUpdatePayload
+          }
+        });
+
+        return finding;
+      });
+
+      const findings = await Promise.all(updatedFindingPromises);
+
+      return { findings };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/configs",
     config: {

@@ -115,6 +115,7 @@ export const useTriggerSecretScanningDataSource = () => {
   });
 };
 
+// If possible, use useUpdateMultipleSecretScanningFinding instead.
 export const useUpdateSecretScanningFinding = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -132,6 +133,31 @@ export const useUpdateSecretScanningFinding = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.findingCount(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.dataSource()
+      });
+    }
+  });
+};
+
+export const useUpdateMultipleSecretScanningFinding = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (findings: TUpdateSecretScanningFinding[]) => {
+      const { data } = await apiRequest.patch<TSecretScanningFindingResponse>(
+        "/api/v2/secret-scanning/findings",
+        findings
+      );
+
+      return data.finding;
+    },
+    onSuccess: (_, findings) => {
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listFindings(findings[0].projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.findingCount(findings[0].projectId)
       });
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.dataSource()
