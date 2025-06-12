@@ -95,9 +95,6 @@ export const accessApprovalPolicyServiceFactory = ({
       (approver) => approver.type === ApproverType.User && approver.username
     ) as { username: string; sequence?: number }[];
 
-    if (!groupApprovers && approvals > userApprovers.length + userApproverNames.length)
-      throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -137,7 +134,6 @@ export const accessApprovalPolicyServiceFactory = ({
         }))
       );
     }
-
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
 

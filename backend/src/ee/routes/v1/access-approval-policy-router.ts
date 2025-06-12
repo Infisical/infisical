@@ -39,7 +39,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .max(100, "Cannot have more than 100 approvers")
           .min(1, { message: "At least one approver should be provided" })
           .refine(
-            (el) => el.every((i) => Object.hasOwn(i, "id") || Object.hasOwn(i, "username")),
+            // @ts-expect-error this is ok
+            (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
             "Must provide either username or id"
           ),
         bypassers: z
@@ -193,7 +194,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .min(1, { message: "At least one approver should be provided" })
           .max(100, "Cannot have more than 100 approvers")
           .refine(
-            (el) => el.every((i) => Object.hasOwn(i, "id") || Object.hasOwn(i, "username")),
+            // @ts-expect-error this is ok
+            (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
             "Must provide either username or id"
           ),
         bypassers: z
