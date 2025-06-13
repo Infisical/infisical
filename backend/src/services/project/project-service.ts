@@ -265,7 +265,11 @@ export const projectServiceFactory = ({
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
       const plan = await licenseService.getPlan(organization.id);
-      if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
+      if (
+        plan.workspaceLimit !== null &&
+        plan.workspacesUsed >= plan.workspaceLimit &&
+        type === ProjectType.SecretManager
+      ) {
         // case: limit imposed on number of workspaces allowed
         // case: number of workspaces used exceeds the number of workspaces allowed
         throw new BadRequestError({
