@@ -200,6 +200,7 @@
             "documentation/platform/secret-rotation/ldap-password",
             "documentation/platform/secret-rotation/mssql-credentials",
             "documentation/platform/secret-rotation/mysql-credentials",
+            "documentation/platform/secret-rotation/oracledb-credentials",
             "documentation/platform/secret-rotation/postgres-credentials"
           ]
         },
@@ -511,6 +512,7 @@
             "integrations/app-connections/mssql",
             "integrations/app-connections/mysql",
             "integrations/app-connections/oci",
+            "integrations/app-connections/oracledb",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
@@ -1052,6 +1054,19 @@
               ]
             },
             {
+              "group": "OracleDB Credentials",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/create",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/delete",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-id",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-name",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/list",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/update"
+              ]
+            },
+            {
               "group": "PostgreSQL Credentials",
               "pages": [
                 "api-reference/endpoints/secret-rotations/postgres-credentials/create",
@@ -1353,6 +1368,18 @@
                 "api-reference/endpoints/app-connections/oci/create",
                 "api-reference/endpoints/app-connections/oci/update",
                 "api-reference/endpoints/app-connections/oci/delete"
+              ]
+            },
+            {
+              "group": "OracleDB",
+              "pages": [
+                "api-reference/endpoints/app-connections/oracledb/list",
+                "api-reference/endpoints/app-connections/oracledb/available",
+                "api-reference/endpoints/app-connections/oracledb/get-by-id",
+                "api-reference/endpoints/app-connections/oracledb/get-by-name",
+                "api-reference/endpoints/app-connections/oracledb/create",
+                "api-reference/endpoints/app-connections/oracledb/update",
+                "api-reference/endpoints/app-connections/oracledb/delete"
               ]
             },
             {

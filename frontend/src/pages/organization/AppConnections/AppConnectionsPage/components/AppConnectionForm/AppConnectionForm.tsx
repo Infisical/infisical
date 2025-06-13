@@ -27,6 +27,7 @@ import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
+import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
@@ -96,6 +97,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <MsSqlConnectionForm onSubmit={onSubmit} />;
     case AppConnection.MySql:
       return <MySqlConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.OracleDB:
+      return <OracleDBConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureClientSecrets:
@@ -178,6 +181,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.MySql:
       return <MySqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.OracleDB:
+      return <OracleDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.AzureClientSecrets:

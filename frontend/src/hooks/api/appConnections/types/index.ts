@@ -18,6 +18,7 @@ import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
 import { TOCIConnection } from "./oci-connection";
+import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
@@ -42,6 +43,7 @@ export * from "./ldap-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
 export * from "./oci-connection";
+export * from "./oracledb-connection";
 export * from "./postgres-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
@@ -64,6 +66,7 @@ export type TAppConnection =
   | TPostgresConnection
   | TMsSqlConnection
   | TMySqlConnection
+  | TOracleDBConnection
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
@@ -114,6 +117,7 @@ export type TAppConnectionMap = {
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
   [AppConnection.MySql]: TMySqlConnection;
+  [AppConnection.OracleDB]: TOracleDBConnection;
   [AppConnection.Camunda]: TCamundaConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;

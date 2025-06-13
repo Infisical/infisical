@@ -3,6 +3,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FormControl, Input } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 
 export const SqlCredentialsRotationParametersFields = () => {
@@ -25,7 +26,15 @@ export const SqlCredentialsRotationParametersFields = () => {
             errorText={error?.message}
             label="Database Username 1"
           >
-            <Input value={value} onChange={onChange} placeholder="infiscal_user_1" />
+            <Input
+              value={value}
+              onChange={onChange}
+              placeholder={
+                rotationOption.connection === AppConnection.OracleDB
+                  ? "INFISICAL_USER_1"
+                  : "infisical_user_1"
+              }
+            />
           </FormControl>
         )}
         control={control}
@@ -38,7 +47,15 @@ export const SqlCredentialsRotationParametersFields = () => {
             errorText={error?.message}
             label="Database Username 2"
           >
-            <Input value={value} onChange={onChange} placeholder="infiscal_user_2" />
+            <Input
+              value={value}
+              onChange={onChange}
+              placeholder={
+                rotationOption.connection === AppConnection.OracleDB
+                  ? "INFISICAL_USER_2"
+                  : "infisical_user_2"
+              }
+            />
           </FormControl>
         )}
         control={control}

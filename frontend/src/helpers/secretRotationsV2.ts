@@ -20,6 +20,11 @@ export const SECRET_ROTATION_MAP: Record<
     image: "MySql.png",
     size: 50
   },
+  [SecretRotation.OracleDBCredentials]: {
+    name: "OracleDB Credentials",
+    image: "Oracle.png",
+    size: 50
+  },
   [SecretRotation.Auth0ClientSecret]: {
     name: "Auth0 Client Secret",
     image: "Auth0.png",
@@ -46,6 +51,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.PostgresCredentials]: AppConnection.Postgres,
   [SecretRotation.MsSqlCredentials]: AppConnection.MsSql,
   [SecretRotation.MySqlCredentials]: AppConnection.MySql,
+  [SecretRotation.OracleDBCredentials]: AppConnection.OracleDB,
   [SecretRotation.Auth0ClientSecret]: AppConnection.Auth0,
   [SecretRotation.AzureClientSecret]: AppConnection.AzureClientSecrets,
   [SecretRotation.LdapPassword]: AppConnection.LDAP,
@@ -57,6 +63,7 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.PostgresCredentials]: true,
   [SecretRotation.MsSqlCredentials]: true,
   [SecretRotation.MySqlCredentials]: true,
+  [SecretRotation.OracleDBCredentials]: true,
   [SecretRotation.Auth0ClientSecret]: false,
   [SecretRotation.AzureClientSecret]: true,
   [SecretRotation.LdapPassword]: false,
