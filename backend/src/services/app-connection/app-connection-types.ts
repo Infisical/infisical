@@ -112,6 +112,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TRenderConnection,
+  TRenderConnectionConfig,
+  TRenderConnectionInput,
+  TValidateRenderConnectionCredentialsSchema
+} from "./render/render-connection-types";
+import {
   TTeamCityConnection,
   TTeamCityConnectionConfig,
   TTeamCityConnectionInput,
@@ -161,6 +167,7 @@ export type TAppConnection = { id: string } & (
   | TOCIConnection
   | TOracleDBConnection
   | TOnePassConnection
+  | TRenderConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -192,6 +199,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOCIConnectionInput
   | TOracleDBConnectionInput
   | TOnePassConnectionInput
+  | TRenderConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -230,7 +238,8 @@ export type TAppConnectionConfig =
   | TLdapConnectionConfig
   | TTeamCityConnectionConfig
   | TOCIConnectionConfig
-  | TOnePassConnectionConfig;
+  | TOnePassConnectionConfig
+  | TRenderConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -256,7 +265,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateTeamCityConnectionCredentialsSchema
   | TValidateOCIConnectionCredentialsSchema
   | TValidateOracleDBConnectionCredentialsSchema
-  | TValidateOnePassConnectionCredentialsSchema;
+  | TValidateOnePassConnectionCredentialsSchema
+  | TValidateRenderConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

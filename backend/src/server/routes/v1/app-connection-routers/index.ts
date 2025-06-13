@@ -20,6 +20,7 @@ import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
+import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -52,5 +53,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
     [AppConnection.OCI]: registerOCIConnectionRouter,
     [AppConnection.OracleDB]: registerOracleDBConnectionRouter,
-    [AppConnection.OnePass]: registerOnePassConnectionRouter
+    [AppConnection.OnePass]: registerOnePassConnectionRouter,
+    [AppConnection.Render]: registerRenderConnectionRouter
   };
