@@ -1443,6 +1443,18 @@
                 "api-reference/endpoints/app-connections/windmill/update",
                 "api-reference/endpoints/app-connections/windmill/delete"
               ]
+            },
+            {
+              "group": "Render",
+              "pages": [
+                "api-reference/endpoints/app-connections/render/list",
+                "api-reference/endpoints/app-connections/render/available",
+                "api-reference/endpoints/app-connections/render/get-by-id",
+                "api-reference/endpoints/app-connections/render/get-by-name",
+                "api-reference/endpoints/app-connections/render/create",
+                "api-reference/endpoints/app-connections/render/update",
+                "api-reference/endpoints/app-connections/render/delete"
+              ]
             }
           ]
         },
@@ -1682,6 +1694,20 @@
                 "api-reference/endpoints/secret-syncs/windmill/sync-secrets",
                 "api-reference/endpoints/secret-syncs/windmill/import-secrets",
                 "api-reference/endpoints/secret-syncs/windmill/remove-secrets"
+              ]
+            },
+            {
+              "group": "Render",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/render/list",
+                "api-reference/endpoints/secret-syncs/render/get-by-id",
+                "api-reference/endpoints/secret-syncs/render/get-by-name",
+                "api-reference/endpoints/secret-syncs/render/create",
+                "api-reference/endpoints/secret-syncs/render/update",
+                "api-reference/endpoints/secret-syncs/render/delete",
+                "api-reference/endpoints/secret-syncs/render/sync-secrets",
+                "api-reference/endpoints/secret-syncs/render/import-secrets",
+                "api-reference/endpoints/secret-syncs/render/remove-secrets"
               ]
             }
           ]
