@@ -498,6 +498,7 @@
             "integrations/app-connections/aws",
             "integrations/app-connections/azure-app-configuration",
             "integrations/app-connections/azure-client-secrets",
+            "integrations/app-connections/azure-devops",
             "integrations/app-connections/azure-key-vault",
             "integrations/app-connections/camunda",
             "integrations/app-connections/databricks",
@@ -530,6 +531,7 @@
             "integrations/secret-syncs/aws-parameter-store",
             "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/azure-app-configuration",
+            "integrations/secret-syncs/azure-devops",
             "integrations/secret-syncs/azure-key-vault",
             "integrations/secret-syncs/camunda",
             "integrations/secret-syncs/databricks",
@@ -1198,6 +1200,18 @@
               ]
             },
             {
+              "group": "Azure DevOps",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-devops/list",
+                "api-reference/endpoints/app-connections/azure-devops/available",
+                "api-reference/endpoints/app-connections/azure-devops/get-by-id",
+                "api-reference/endpoints/app-connections/azure-devops/get-by-name",
+                "api-reference/endpoints/app-connections/azure-devops/create",
+                "api-reference/endpoints/app-connections/azure-devops/update",
+                "api-reference/endpoints/app-connections/azure-devops/delete"
+              ]
+            },
+            {
               "group": "Azure Key Vault",
               "pages": [
                 "api-reference/endpoints/app-connections/azure-key-vault/list",
@@ -1462,6 +1476,20 @@
                 "api-reference/endpoints/secret-syncs/azure-app-configuration/sync-secrets",
                 "api-reference/endpoints/secret-syncs/azure-app-configuration/import-secrets",
                 "api-reference/endpoints/secret-syncs/azure-app-configuration/remove-secrets"
+              ]
+            },
+            {
+              "group": "Azure DevOps",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/azure-devops/list",
+                "api-reference/endpoints/secret-syncs/azure-devops/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-devops/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-devops/create",
+                "api-reference/endpoints/secret-syncs/azure-devops/update",
+                "api-reference/endpoints/secret-syncs/azure-devops/delete",
+                "api-reference/endpoints/secret-syncs/azure-devops/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-devops/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-devops/remove-secrets"
               ]
             },
             {

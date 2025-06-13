@@ -61,6 +61,12 @@ import {
   TAzureAppConfigurationSyncWithCredentials
 } from "./azure-app-configuration";
 import {
+  TAzureDevOpsSync,
+  TAzureDevOpsSyncInput,
+  TAzureDevOpsSyncListItem,
+  TAzureDevOpsSyncWithCredentials
+} from "./azure-devops";
+import {
   TAzureKeyVaultSync,
   TAzureKeyVaultSyncInput,
   TAzureKeyVaultSyncListItem,
@@ -100,6 +106,7 @@ export type TSecretSync =
   | TGcpSync
   | TAzureKeyVaultSync
   | TAzureAppConfigurationSync
+  | TAzureDevOpsSync
   | TDatabricksSync
   | THumanitecSync
   | TTerraformCloudSync
@@ -118,6 +125,7 @@ export type TSecretSyncWithCredentials =
   | TGcpSyncWithCredentials
   | TAzureKeyVaultSyncWithCredentials
   | TAzureAppConfigurationSyncWithCredentials
+  | TAzureDevOpsSyncWithCredentials
   | TDatabricksSyncWithCredentials
   | THumanitecSyncWithCredentials
   | TTerraformCloudSyncWithCredentials
@@ -136,6 +144,7 @@ export type TSecretSyncInput =
   | TGcpSyncInput
   | TAzureKeyVaultSyncInput
   | TAzureAppConfigurationSyncInput
+  | TAzureDevOpsSyncInput
   | TDatabricksSyncInput
   | THumanitecSyncInput
   | TTerraformCloudSyncInput
@@ -154,6 +163,7 @@ export type TSecretSyncListItem =
   | TGcpSyncListItem
   | TAzureKeyVaultSyncListItem
   | TAzureAppConfigurationSyncListItem
+  | TAzureDevOpsSyncListItem
   | TDatabricksSyncListItem
   | THumanitecSyncListItem
   | TTerraformCloudSyncListItem

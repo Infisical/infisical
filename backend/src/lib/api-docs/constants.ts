@@ -2208,6 +2208,11 @@ export const AppConnections = {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
     },
+    AZURE_DEVOPS: {
+      code: "The OAuth code to use to connect with Azure DevOps.",
+      tenantId: "The Tenant ID to use to connect with Azure DevOps.",
+      orgName: "The Organization name to use to connect with Azure DevOps."
+    },
     OCI: {
       userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
       tenancyOcid: "The OCID (Oracle Cloud Identifier) of the tenancy in Oracle Cloud Infrastructure.",
@@ -2321,6 +2326,10 @@ export const SecretSyncs = {
       configurationUrl:
         "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
       label: "An optional label to assign to secrets created in Azure App Configuration."
+    },
+    AZURE_DEVOPS: {
+      devopsProjectId: "The ID of the Azure DevOps project to sync secrets to.",
+      devopsProjectName: "The name of the Azure DevOps project to sync secrets to."
     },
     GCP: {
       scope: "The Google project scope that secrets should be synced to.",

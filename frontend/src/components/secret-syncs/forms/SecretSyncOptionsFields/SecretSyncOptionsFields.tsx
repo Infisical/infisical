@@ -41,6 +41,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:
     case SecretSync.AzureAppConfiguration:
+    case SecretSync.AzureDevOps:
     case SecretSync.Databricks:
     case SecretSync.Humanitec:
     case SecretSync.TerraformCloud:

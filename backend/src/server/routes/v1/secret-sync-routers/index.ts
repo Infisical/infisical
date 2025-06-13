@@ -5,6 +5,7 @@ import { registerOnePassSyncRouter } from "./1password-sync-router";
 import { registerAwsParameterStoreSyncRouter } from "./aws-parameter-store-sync-router";
 import { registerAwsSecretsManagerSyncRouter } from "./aws-secrets-manager-sync-router";
 import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configuration-sync-router";
+import { registerAzureDevOpsSyncRouter } from "./azure-devops-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
@@ -26,6 +27,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.GCPSecretManager]: registerGcpSyncRouter,
   [SecretSync.AzureKeyVault]: registerAzureKeyVaultSyncRouter,
   [SecretSync.AzureAppConfiguration]: registerAzureAppConfigurationSyncRouter,
+  [SecretSync.AzureDevOps]: registerAzureDevOpsSyncRouter,
   [SecretSync.Databricks]: registerDatabricksSyncRouter,
   [SecretSync.Humanitec]: registerHumanitecSyncRouter,
   [SecretSync.TerraformCloud]: registerTerraformCloudSyncRouter,

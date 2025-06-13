@@ -39,6 +39,11 @@ import {
   getAzureClientSecretsConnectionListItem,
   validateAzureClientSecretsConnectionCredentials
 } from "./azure-client-secrets";
+import { AzureDevOpsConnectionMethod } from "./azure-devops/azure-devops-enums";
+import {
+  getAzureDevopsConnectionListItem,
+  validateAzureDevOpsConnectionCredentials
+} from "./azure-devops/azure-devops-fns";
 import {
   AzureKeyVaultConnectionMethod,
   getAzureKeyVaultConnectionListItem,
@@ -98,6 +103,7 @@ export const listAppConnectionOptions = () => {
     getGcpConnectionListItem(),
     getAzureKeyVaultConnectionListItem(),
     getAzureAppConfigurationConnectionListItem(),
+    getAzureDevopsConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
     getTerraformCloudConnectionListItem(),
@@ -173,6 +179,7 @@ export const validateAppConnectionCredentials = async (
       validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureClientSecrets]:
       validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureDevOps]: validateAzureDevOpsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -201,6 +208,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AzureAppConfigurationConnectionMethod.OAuth:
     case AzureClientSecretsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
+    case AzureDevOpsConnectionMethod.OAuth:
       return "OAuth";
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
@@ -225,6 +233,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
+    case AzureDevOpsConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
@@ -270,6 +279,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.GCP]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureKeyVault]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureDevOps]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
