@@ -28,7 +28,7 @@ import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "../permission/permission-fns";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,

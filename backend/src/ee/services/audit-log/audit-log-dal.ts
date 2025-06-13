@@ -2,16 +2,29 @@
 import knex from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TAuditLogs } from "@app/db/schemas";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { EventType, filterableSecretEvents } from "./audit-log-types";
 
-export type TAuditLogDALFactory = ReturnType<typeof auditLogDALFactory>;
+export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
+  pruneAuditLog: (tx?: knex.Knex) => Promise<void>;
+  find: (
+    arg: Omit<TFindQuery, "actor" | "eventType"> & {
+      actorId?: string | undefined;
+      actorType?: ActorType | undefined;
+      secretPath?: string | undefined;
+      secretKey?: string | undefined;
+      eventType?: EventType[] | undefined;
+      eventMetadata?: Record<string, string> | undefined;
+    },
+    tx?: knex.Knex
+  ) => Promise<TAuditLogs[]>;
+}
 
 type TFindQuery = {
   actor?: string;
@@ -29,7 +42,7 @@ type TFindQuery = {
 export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
 
-  const find = async (
+  const find: TAuditLogDALFactory["find"] = async (
     {
       orgId,
       projectId,
@@ -45,15 +58,8 @@ export const auditLogDALFactory = (db: TDbClient) => {
       secretKey,
       eventType,
       eventMetadata
-    }: Omit<TFindQuery, "actor" | "eventType"> & {
-      actorId?: string;
-      actorType?: ActorType;
-      secretPath?: string;
-      secretKey?: string;
-      eventType?: EventType[];
-      eventMetadata?: Record<string, string>;
     },
-    tx?: knex.Knex
+    tx
   ) => {
     if (!orgId && !projectId) {
       throw new Error("Either orgId or projectId must be provided");
@@ -154,7 +160,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
   };
 
   // delete all audit log that have expired
-  const pruneAuditLog = async (tx?: knex.Knex) => {
+  const pruneAuditLog: TAuditLogDALFactory["pruneAuditLog"] = async (tx) => {
     const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
     const MAX_RETRY_ON_FAILURE = 3;
 

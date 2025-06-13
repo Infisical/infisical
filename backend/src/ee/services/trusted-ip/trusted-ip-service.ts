@@ -3,14 +3,13 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
-import { TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TTrustedIpDALFactory } from "./trusted-ip-dal";
-import { TCreateIpDTO, TDeleteIpDTO, TUpdateIpDTO } from "./trusted-ip-types";
+import { TTrustedIpServiceFactory } from "./trusted-ip-types";
 
 type TTrustedIpServiceFactoryDep = {
   trustedIpDAL: TTrustedIpDALFactory;
@@ -19,15 +18,19 @@ type TTrustedIpServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
-export type TTrustedIpServiceFactory = ReturnType<typeof trustedIpServiceFactory>;
-
 export const trustedIpServiceFactory = ({
   trustedIpDAL,
   permissionService,
   licenseService,
   projectDAL
-}: TTrustedIpServiceFactoryDep) => {
-  const listIpsByProjectId = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TProjectPermission) => {
+}: TTrustedIpServiceFactoryDep): TTrustedIpServiceFactory => {
+  const listIpsByProjectId: TTrustedIpServiceFactory["listIpsByProjectId"] = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -43,7 +46,7 @@ export const trustedIpServiceFactory = ({
     return trustedIps;
   };
 
-  const addProjectIp = async ({
+  const addProjectIp: TTrustedIpServiceFactory["addProjectIp"] = async ({
     projectId,
     actorId,
     actorAuthMethod,
@@ -52,7 +55,7 @@ export const trustedIpServiceFactory = ({
     ipAddress: ip,
     comment,
     isActive
-  }: TCreateIpDTO) => {
+  }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -89,7 +92,7 @@ export const trustedIpServiceFactory = ({
     return { trustedIp, project }; // for audit log
   };
 
-  const updateProjectIp = async ({
+  const updateProjectIp: TTrustedIpServiceFactory["updateProjectIp"] = async ({
     projectId,
     actorId,
     actor,
@@ -98,7 +101,7 @@ export const trustedIpServiceFactory = ({
     ipAddress: ip,
     comment,
     trustedIpId
-  }: TUpdateIpDTO) => {
+  }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -137,14 +140,14 @@ export const trustedIpServiceFactory = ({
     return { trustedIp, project }; // for audit log
   };
 
-  const deleteProjectIp = async ({
+  const deleteProjectIp: TTrustedIpServiceFactory["deleteProjectIp"] = async ({
     projectId,
     actorId,
     actor,
     actorOrgId,
     actorAuthMethod,
     trustedIpId
-  }: TDeleteIpDTO) => {
+  }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

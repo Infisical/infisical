@@ -1,5 +1,5 @@
 import { OrgMembershipRole } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { ForbiddenRequestError } from "@app/lib/errors";
 

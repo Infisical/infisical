@@ -1,3 +1,4 @@
+import { TProjectUserAdditionalPrivilege } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TProjectPermissionV2Schema } from "../permission/project-permission";
@@ -40,3 +41,20 @@ export type TDeleteUserPrivilegeDTO = Omit<TProjectPermission, "projectId"> & { 
 export type TGetUserPrivilegeDetailsDTO = Omit<TProjectPermission, "projectId"> & { privilegeId: string };
 
 export type TListUserPrivilegesDTO = Omit<TProjectPermission, "projectId"> & { projectMembershipId: string };
+
+interface TAdditionalPrivilege extends TProjectUserAdditionalPrivilege {
+  permissions: {
+    action: string[];
+    subject?: string | undefined;
+    conditions?: unknown;
+    inverted?: boolean | undefined;
+  }[];
+}
+
+export type TProjectUserAdditionalPrivilegeServiceFactory = {
+  create: (arg: TCreateUserPrivilegeDTO) => Promise<TAdditionalPrivilege>;
+  updateById: (arg: TUpdateUserPrivilegeDTO) => Promise<TAdditionalPrivilege>;
+  deleteById: (arg: TDeleteUserPrivilegeDTO) => Promise<TAdditionalPrivilege>;
+  getPrivilegeDetailsById: (arg: TGetUserPrivilegeDetailsDTO) => Promise<TAdditionalPrivilege>;
+  listPrivileges: (arg: TListUserPrivilegesDTO) => Promise<TProjectUserAdditionalPrivilege[]>;
+};

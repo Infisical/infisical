@@ -1,10 +1,10 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { ormify } from "@app/lib/knex";
+import { ormify, TOrmify } from "@app/lib/knex";
 
-export type TAccessApprovalRequestReviewerDALFactory = ReturnType<typeof accessApprovalRequestReviewerDALFactory>;
+export type TAccessApprovalRequestReviewerDALFactory = TOrmify<TableName.AccessApprovalRequestReviewer>;
 
-export const accessApprovalRequestReviewerDALFactory = (db: TDbClient) => {
+export const accessApprovalRequestReviewerDALFactory = (db: TDbClient): TAccessApprovalRequestReviewerDALFactory => {
   const secretApprovalRequestReviewerOrm = ormify(db, TableName.AccessApprovalRequestReviewer);
   return secretApprovalRequestReviewerOrm;
 };

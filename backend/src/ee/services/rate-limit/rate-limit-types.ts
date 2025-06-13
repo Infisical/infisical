@@ -1,3 +1,5 @@
+import { CronJob } from "cron";
+
 export type TRateLimitUpdateDTO = {
   readRateLimit: number;
   writeRateLimit: number;
@@ -22,4 +24,11 @@ export type RateLimitConfiguration = {
   authRateLimit: number;
   inviteUserRateLimit: number;
   mfaRateLimit: number;
+};
+
+export type TRateLimitServiceFactory = {
+  getRateLimits: () => Promise<TRateLimit | undefined>;
+  updateRateLimit: (updates: TRateLimitUpdateDTO) => Promise<TRateLimit>;
+  initializeBackgroundSync: () => Promise<CronJob<null, null> | undefined>;
+  syncRateLimitConfiguration: () => Promise<void>;
 };

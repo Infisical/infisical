@@ -1,6 +1,6 @@
 import knex, { Knex } from "knex";
 
-export type TDbClient = ReturnType<typeof initDbConnection>;
+export type TDbClient = Knex;
 export const initDbConnection = ({
   dbConnectionUri,
   dbRootCert,

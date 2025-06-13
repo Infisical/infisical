@@ -7,11 +7,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
-import { EventType, TCreateAuditLogDTO, TListProjectAuditLogDTO } from "./audit-log-types";
+import { EventType, TAuditLogServiceFactory } from "./audit-log-types";
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -19,14 +19,18 @@ type TAuditLogServiceFactoryDep = {
   auditLogQueue: TAuditLogQueueServiceFactory;
 };
 
-export type TAuditLogServiceFactory = ReturnType<typeof auditLogServiceFactory>;
-
 export const auditLogServiceFactory = ({
   auditLogDAL,
   auditLogQueue,
   permissionService
-}: TAuditLogServiceFactoryDep) => {
-  const listAuditLogs = async ({ actorAuthMethod, actorId, actorOrgId, actor, filter }: TListProjectAuditLogDTO) => {
+}: TAuditLogServiceFactoryDep): TAuditLogServiceFactory => {
+  const listAuditLogs: TAuditLogServiceFactory["listAuditLogs"] = async ({
+    actorAuthMethod,
+    actorId,
+    actorOrgId,
+    actor,
+    filter
+  }) => {
     // Filter logs for specific project
     if (filter.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -75,7 +79,7 @@ export const auditLogServiceFactory = ({
     }));
   };
 
-  const createAuditLog = async (data: TCreateAuditLogDTO) => {
+  const createAuditLog: TAuditLogServiceFactory["createAuditLog"] = async (data) => {
     const appCfg = getConfig();
     if (appCfg.DISABLE_AUDIT_LOG_GENERATION) {
       return;

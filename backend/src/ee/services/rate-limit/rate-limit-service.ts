@@ -4,7 +4,7 @@ import { logger } from "@app/lib/logger";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TRateLimitDALFactory } from "./rate-limit-dal";
-import { RateLimitConfiguration, TRateLimit, TRateLimitUpdateDTO } from "./rate-limit-types";
+import { RateLimitConfiguration, TRateLimit, TRateLimitServiceFactory } from "./rate-limit-types";
 
 let rateLimitMaxConfiguration: RateLimitConfiguration = {
   readLimit: 60,
@@ -27,12 +27,13 @@ type TRateLimitServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
 };
 
-export type TRateLimitServiceFactory = ReturnType<typeof rateLimitServiceFactory>;
-
-export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateLimitServiceFactoryDep) => {
+export const rateLimitServiceFactory = ({
+  rateLimitDAL,
+  licenseService
+}: TRateLimitServiceFactoryDep): TRateLimitServiceFactory => {
   const DEFAULT_RATE_LIMIT_CONFIG_ID = "00000000-0000-0000-0000-000000000000";
 
-  const getRateLimits = async (): Promise<TRateLimit | undefined> => {
+  const getRateLimits: TRateLimitServiceFactory["getRateLimits"] = async () => {
     let rateLimit: TRateLimit;
 
     try {
@@ -51,11 +52,11 @@ export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateL
     }
   };
 
-  const updateRateLimit = async (updates: TRateLimitUpdateDTO): Promise<TRateLimit> => {
+  const updateRateLimit: TRateLimitServiceFactory["updateRateLimit"] = async (updates) => {
     return rateLimitDAL.updateById(DEFAULT_RATE_LIMIT_CONFIG_ID, updates);
   };
 
-  const syncRateLimitConfiguration = async () => {
+  const syncRateLimitConfiguration: TRateLimitServiceFactory["syncRateLimitConfiguration"] = async () => {
     try {
       const rateLimit = await getRateLimits();
       if (rateLimit) {
@@ -78,7 +79,7 @@ export const rateLimitServiceFactory = ({ rateLimitDAL, licenseService }: TRateL
     }
   };
 
-  const initializeBackgroundSync = async () => {
+  const initializeBackgroundSync: TRateLimitServiceFactory["initializeBackgroundSync"] = async () => {
     if (!licenseService.onPremFeatures.customRateLimits) {
       logger.info("Current license does not support custom rate limit configuration");
       return;

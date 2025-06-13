@@ -14,7 +14,7 @@ import { TGroupDALFactory } from "../group/group-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGithubOrgSyncDALFactory } from "./github-org-sync-dal";
 import { TCreateGithubOrgSyncDTO, TDeleteGithubOrgSyncDTO, TUpdateGithubOrgSyncDTO } from "./github-org-sync-types";
 

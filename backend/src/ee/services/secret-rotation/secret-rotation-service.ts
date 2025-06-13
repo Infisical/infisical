@@ -14,7 +14,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,

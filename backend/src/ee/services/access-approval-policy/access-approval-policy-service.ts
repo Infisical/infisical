@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -24,9 +24,8 @@ import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 import {
   ApproverType,
   BypasserType,
-  TCreateAccessApprovalPolicy,
+  TAccessApprovalPolicyServiceFactory,
   TDeleteAccessApprovalPolicy,
-  TGetAccessApprovalPolicyByIdDTO,
   TGetAccessPolicyCountByEnvironmentDTO,
   TListAccessApprovalPoliciesDTO,
   TUpdateAccessApprovalPolicy
@@ -48,8 +47,6 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
 };
 
-export type TAccessApprovalPolicyServiceFactory = ReturnType<typeof accessApprovalPolicyServiceFactory>;
-
 export const accessApprovalPolicyServiceFactory = ({
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
@@ -63,8 +60,8 @@ export const accessApprovalPolicyServiceFactory = ({
   additionalPrivilegeDAL,
   accessApprovalRequestReviewerDAL,
   orgMembershipDAL
-}: TAccessApprovalPolicyServiceFactoryDep) => {
-  const createAccessApprovalPolicy = async ({
+}: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
+  const createAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["createAccessApprovalPolicy"] = async ({
     name,
     actor,
     actorId,
@@ -79,7 +76,7 @@ export const accessApprovalPolicyServiceFactory = ({
     enforcementLevel,
     allowedSelfApprovals,
     approvalsRequired
-  }: TCreateAccessApprovalPolicy) => {
+  }) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -240,31 +237,26 @@ export const accessApprovalPolicyServiceFactory = ({
     return { ...accessApproval, environment: env, projectId: project.id };
   };
 
-  const getAccessApprovalPolicyByProjectSlug = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectSlug
-  }: TListAccessApprovalPoliciesDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+  const getAccessApprovalPolicyByProjectSlug: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyByProjectSlug"] =
+    async ({ actorId, actor, actorOrgId, actorAuthMethod, projectSlug }: TListAccessApprovalPoliciesDTO) => {
+      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    // Anyone in the project should be able to get the policies.
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+      // Anyone in the project should be able to get the policies.
+      await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: project.id,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.SecretManager
+      });
 
-    const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
-    return accessApprovalPolicies;
-  };
+      const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
+      return accessApprovalPolicies;
+    };
 
-  const updateAccessApprovalPolicy = async ({
+  const updateAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["updateAccessApprovalPolicy"] = async ({
     policyId,
     approvers,
     bypassers,
@@ -483,6 +475,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
       return doc;
     });
+
     return {
       ...updatedPolicy,
       environment: accessApprovalPolicy.environment,
@@ -490,7 +483,7 @@ export const accessApprovalPolicyServiceFactory = ({
     };
   };
 
-  const deleteAccessApprovalPolicy = async ({
+  const deleteAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["deleteAccessApprovalPolicy"] = async ({
     policyId,
     actor,
     actorId,
@@ -539,7 +532,7 @@ export const accessApprovalPolicyServiceFactory = ({
     return policy;
   };
 
-  const getAccessPolicyCountByEnvSlug = async ({
+  const getAccessPolicyCountByEnvSlug: TAccessApprovalPolicyServiceFactory["getAccessPolicyCountByEnvSlug"] = async ({
     actor,
     actorOrgId,
     actorAuthMethod,
@@ -576,13 +569,13 @@ export const accessApprovalPolicyServiceFactory = ({
     return { count: policies.length };
   };
 
-  const getAccessApprovalPolicyById = async ({
+  const getAccessApprovalPolicyById: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyById"] = async ({
     actorId,
     actor,
     actorOrgId,
     actorAuthMethod,
     policyId
-  }: TGetAccessApprovalPolicyByIdDTO) => {
+  }) => {
     const [policy] = await accessApprovalPolicyDAL.find({}, { policyId });
 
     if (!policy) {

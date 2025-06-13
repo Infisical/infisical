@@ -21,7 +21,9 @@ type TAuditLogQueueServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
-export type TAuditLogQueueServiceFactory = Awaited<ReturnType<typeof auditLogQueueServiceFactory>>;
+export type TAuditLogQueueServiceFactory = {
+  pushToLog: (data: TCreateAuditLogDTO) => Promise<void>;
+};
 
 // keep this timeout 5s it must be fast because else the queue will take time to finish
 // audit log is a crowded queue thus needs to be fast
@@ -33,7 +35,7 @@ export const auditLogQueueServiceFactory = async ({
   projectDAL,
   licenseService,
   auditLogStreamDAL
-}: TAuditLogQueueServiceFactoryDep) => {
+}: TAuditLogQueueServiceFactoryDep): Promise<TAuditLogQueueServiceFactory> => {
   const appCfg = getConfig();
 
   const pushToLog = async (data: TCreateAuditLogDTO) => {

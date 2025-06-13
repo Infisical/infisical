@@ -6,16 +6,312 @@ import {
   OrgMembershipRole,
   OrgMembershipsSchema,
   TableName,
+  TIdentityOrgMemberships,
   TProjectRoles,
   TProjects
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-export type TPermissionDALFactory = ReturnType<typeof permissionDALFactory>;
+export interface TPermissionDALFactory {
+  getOrgPermission: (
+    userId: string,
+    orgId: string
+  ) => Promise<
+    {
+      status: string;
+      orgId: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      role: string;
+      isActive: boolean;
+      shouldUseNewPrivilegeSystem: boolean;
+      bypassOrgAuthEnabled: boolean;
+      permissions?: unknown;
+      userId?: string | null | undefined;
+      roleId?: string | null | undefined;
+      inviteEmail?: string | null | undefined;
+      projectFavorites?: string[] | null | undefined;
+      customRoleSlug?: string | null | undefined;
+      orgAuthEnforced?: boolean | null | undefined;
+    } & {
+      groups: {
+        id: string;
+        updatedAt: Date;
+        createdAt: Date;
+        role: string;
+        roleId: string | null | undefined;
+        customRolePermission: unknown;
+        name: string;
+        slug: string;
+        orgId: string;
+      }[];
+    }
+  >;
+  getOrgIdentityPermission: (
+    identityId: string,
+    orgId: string
+  ) => Promise<
+    | (TIdentityOrgMemberships & {
+        orgAuthEnforced: boolean | null | undefined;
+        shouldUseNewPrivilegeSystem: boolean;
+        permissions?: unknown;
+      })
+    | undefined
+  >;
+  getProjectPermission: (
+    userId: string,
+    projectId: string
+  ) => Promise<
+    | {
+        roles: {
+          id: string;
+          role: string;
+          customRoleSlug: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+        additionalPrivileges: {
+          id: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+        orgId: string;
+        orgAuthEnforced: boolean | null | undefined;
+        orgRole: OrgMembershipRole;
+        userId: string;
+        projectId: string;
+        username: string;
+        projectType: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        shouldUseNewPrivilegeSystem: boolean;
+        bypassOrgAuthEnabled: boolean;
+        metadata: {
+          id: string;
+          key: string;
+          value: string;
+        }[];
+        userGroupRoles: {
+          id: string;
+          role: string;
+          customRoleSlug: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+        projecMembershiptRoles: {
+          id: string;
+          role: string;
+          customRoleSlug: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+      }
+    | undefined
+  >;
+  getProjectIdentityPermission: (
+    identityId: string,
+    projectId: string
+  ) => Promise<
+    | {
+        roles: {
+          id: string;
+          createdAt: Date;
+          updatedAt: Date;
+          isTemporary: boolean;
+          role: string;
+          projectMembershipId: string;
+          temporaryRange?: string | null | undefined;
+          permissions?: unknown;
+          customRoleId?: string | null | undefined;
+          temporaryMode?: string | null | undefined;
+          temporaryAccessStartTime?: Date | null | undefined;
+          temporaryAccessEndTime?: Date | null | undefined;
+          customRoleSlug?: string | null | undefined;
+        }[];
+        additionalPrivileges: {
+          id: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+        id: string;
+        identityId: string;
+        username: string;
+        projectId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        orgId: string;
+        projectType: string;
+        shouldUseNewPrivilegeSystem: boolean;
+        orgAuthEnforced: boolean;
+        metadata: {
+          id: string;
+          key: string;
+          value: string;
+        }[];
+      }
+    | undefined
+  >;
+  getProjectUserPermissions: (projectId: string) => Promise<
+    {
+      roles: {
+        id: string;
+        role: string;
+        customRoleSlug: string;
+        permissions: unknown;
+        temporaryRange: string | null | undefined;
+        temporaryMode: string | null | undefined;
+        temporaryAccessStartTime: Date | null | undefined;
+        temporaryAccessEndTime: Date | null | undefined;
+        isTemporary: boolean;
+      }[];
+      additionalPrivileges: {
+        id: string;
+        permissions: unknown;
+        temporaryRange: string | null | undefined;
+        temporaryMode: string | null | undefined;
+        temporaryAccessStartTime: Date | null | undefined;
+        temporaryAccessEndTime: Date | null | undefined;
+        isTemporary: boolean;
+      }[];
+      orgId: string;
+      orgAuthEnforced: boolean | null | undefined;
+      userId: string;
+      projectId: string;
+      username: string;
+      projectType: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      metadata: {
+        id: string;
+        key: string;
+        value: string;
+      }[];
+      userGroupRoles: {
+        id: string;
+        role: string;
+        customRoleSlug: string;
+        permissions: unknown;
+        temporaryRange: string | null | undefined;
+        temporaryMode: string | null | undefined;
+        temporaryAccessStartTime: Date | null | undefined;
+        temporaryAccessEndTime: Date | null | undefined;
+        isTemporary: boolean;
+      }[];
+      projectMembershipRoles: {
+        id: string;
+        role: string;
+        customRoleSlug: string;
+        permissions: unknown;
+        temporaryRange: string | null | undefined;
+        temporaryMode: string | null | undefined;
+        temporaryAccessStartTime: Date | null | undefined;
+        temporaryAccessEndTime: Date | null | undefined;
+        isTemporary: boolean;
+      }[];
+    }[]
+  >;
+  getProjectIdentityPermissions: (projectId: string) => Promise<
+    {
+      roles: {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        isTemporary: boolean;
+        role: string;
+        projectMembershipId: string;
+        temporaryRange?: string | null | undefined;
+        permissions?: unknown;
+        customRoleId?: string | null | undefined;
+        temporaryMode?: string | null | undefined;
+        temporaryAccessStartTime?: Date | null | undefined;
+        temporaryAccessEndTime?: Date | null | undefined;
+        customRoleSlug?: string | null | undefined;
+      }[];
+      additionalPrivileges: {
+        id: string;
+        permissions: unknown;
+        temporaryRange: string | null | undefined;
+        temporaryMode: string | null | undefined;
+        temporaryAccessEndTime: Date | null | undefined;
+        temporaryAccessStartTime: Date | null | undefined;
+        isTemporary: boolean;
+      }[];
+      id: string;
+      identityId: string;
+      username: string;
+      projectId: string;
+      createdAt: Date;
+      updatedAt: Date;
+      orgId: string;
+      projectType: string;
+      orgAuthEnforced: boolean;
+      metadata: {
+        id: string;
+        key: string;
+        value: string;
+      }[];
+    }[]
+  >;
+  getProjectGroupPermissions: (
+    projectId: string,
+    filterGroupId?: string
+  ) => Promise<
+    {
+      roles: {
+        id: string;
+        role: string;
+        customRoleSlug: string;
+        permissions: unknown;
+        temporaryRange: string | null | undefined;
+        temporaryMode: string | null | undefined;
+        temporaryAccessStartTime: Date | null | undefined;
+        temporaryAccessEndTime: Date | null | undefined;
+        isTemporary: boolean;
+      }[];
+      groupId: string;
+      username: string;
+      id: string;
+      groupRoles: {
+        id: string;
+        role: string;
+        customRoleSlug: string;
+        permissions: unknown;
+        temporaryRange: string | null | undefined;
+        temporaryMode: string | null | undefined;
+        temporaryAccessStartTime: Date | null | undefined;
+        temporaryAccessEndTime: Date | null | undefined;
+        isTemporary: boolean;
+      }[];
+    }[]
+  >;
+}
 
-export const permissionDALFactory = (db: TDbClient) => {
-  const getOrgPermission = async (userId: string, orgId: string) => {
+export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
+  const getOrgPermission: TPermissionDALFactory["getOrgPermission"] = async (userId: string, orgId: string) => {
     try {
       const groupSubQuery = db(TableName.Groups)
         .where(`${TableName.Groups}.orgId`, orgId)
@@ -112,7 +408,10 @@ export const permissionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getOrgIdentityPermission = async (identityId: string, orgId: string) => {
+  const getOrgIdentityPermission: TPermissionDALFactory["getOrgIdentityPermission"] = async (
+    identityId: string,
+    orgId: string
+  ) => {
     try {
       const membership = await db
         .replicaNode()(TableName.IdentityOrgMembership)
@@ -132,7 +431,10 @@ export const permissionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getProjectGroupPermissions = async (projectId: string, filterGroupId?: string) => {
+  const getProjectGroupPermissions: TPermissionDALFactory["getProjectGroupPermissions"] = async (
+    projectId: string,
+    filterGroupId?: string
+  ) => {
     try {
       const docs = await db
         .replicaNode()(TableName.GroupProjectMembership)
@@ -245,7 +547,7 @@ export const permissionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getProjectUserPermissions = async (projectId: string) => {
+  const getProjectUserPermissions: TPermissionDALFactory["getProjectUserPermissions"] = async (projectId: string) => {
     try {
       const docs = await db
         .replicaNode()(TableName.Users)
@@ -535,7 +837,10 @@ export const permissionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getProjectPermission = async (userId: string, projectId: string) => {
+  const getProjectPermission: TPermissionDALFactory["getProjectPermission"] = async (
+    userId: string,
+    projectId: string
+  ) => {
     try {
       const subQueryUserGroups = db(TableName.UserGroupMembership).where("userId", userId).select("groupId");
       const docs = await db
@@ -838,7 +1143,9 @@ export const permissionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getProjectIdentityPermissions = async (projectId: string) => {
+  const getProjectIdentityPermissions: TPermissionDALFactory["getProjectIdentityPermissions"] = async (
+    projectId: string
+  ) => {
     try {
       const docs = await db
         .replicaNode()(TableName.IdentityProjectMembership)
@@ -995,7 +1302,10 @@ export const permissionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getProjectIdentityPermission = async (identityId: string, projectId: string) => {
+  const getProjectIdentityPermission: TPermissionDALFactory["getProjectIdentityPermission"] = async (
+    identityId,
+    projectId
+  ) => {
     try {
       const docs = await db
         .replicaNode()(TableName.IdentityProjectMembership)

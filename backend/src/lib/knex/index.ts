@@ -71,8 +71,8 @@ export const buildFindFilter =
     return bd;
   };
 
-export type TFindReturn<TQuery extends Knex.QueryBuilder, TCount extends boolean = false> = Array<
-  Awaited<TQuery>[0] &
+export type TFindReturn<Tname extends keyof Tables, TCount extends boolean = false> = Array<
+  Tables[Tname]["base"] &
     (TCount extends true
       ? {
           count: string;
@@ -94,31 +94,73 @@ export type TFindOpt<
   tx?: Knex;
 };
 
+export type TOrmify<Tname extends keyof Tables> = {
+  transaction: <T>(cb: (tx: Knex) => Promise<T>) => Promise<T>;
+  findById: (id: string, tx?: Knex) => Promise<Tables[Tname]["base"]>;
+  find: <TCount extends boolean = false, TCountDistinct extends keyof Tables[Tname]["base"] | undefined = undefined>(
+    filter: TFindFilter<Tables[Tname]["base"]>,
+    { offset, limit, sort, count, tx, countDistinct }?: TFindOpt<Tables[Tname]["base"], TCount, TCountDistinct>
+  ) => Promise<TFindReturn<Tname, TCountDistinct extends undefined ? TCount : true>>;
+  findOne: (filter: Partial<Tables[Tname]["base"]>, tx?: Knex) => Promise<Tables[Tname]["base"]>;
+  create: (data: Tables[Tname]["insert"], tx?: Knex) => Promise<Tables[Tname]["base"]>;
+  insertMany: (data: readonly Tables[Tname]["insert"][], tx?: Knex) => Promise<Tables[Tname]["base"][]>;
+  batchInsert: (data: readonly Tables[Tname]["insert"][], tx?: Knex) => Promise<Tables[Tname]["base"][]>;
+  upsert: (
+    data: readonly Tables[Tname]["insert"][],
+    onConflictField: keyof Tables[Tname]["base"] | Array<keyof Tables[Tname]["base"]>,
+    tx?: Knex,
+    mergeColumns?: (keyof Knex.ResolveTableType<Knex.TableType<Tname>, "update">)[] | undefined
+  ) => Promise<Tables[Tname]["base"][]>;
+  updateById: (
+    id: string,
+    {
+      $incr,
+      $decr,
+      ...data
+    }: Tables[Tname]["update"] & {
+      $incr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
+      $decr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
+    },
+    tx?: Knex
+  ) => Promise<Tables[Tname]["base"]>;
+  update: (
+    filter: TFindFilter<Tables[Tname]["base"]>,
+    {
+      $incr,
+      $decr,
+      ...data
+    }: Tables[Tname]["update"] & {
+      $incr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
+      $decr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
+    },
+    tx?: Knex
+  ) => Promise<Tables[Tname]["base"][]>;
+  deleteById: (id: string, tx?: Knex) => Promise<Tables[Tname]["base"]>;
+  countDocuments: (tx?: Knex) => Promise<number>;
+  delete: (filter: TFindFilter<Tables[Tname]["base"]>, tx?: Knex) => Promise<Tables[Tname]["base"][]>;
+};
+
 // What is ormify
 // It is to inject typical operations like find, findOne, update, delete, create
 // This will avoid writing most common ones each time
-export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Knex, tableName: Tname, dal?: DbOps) => ({
+export const ormify = <DbOps extends object, Tname extends keyof Tables>(
+  db: Knex,
+  tableName: Tname,
+  dal?: DbOps
+): TOrmify<Tname> => ({
   transaction: async <T>(cb: (tx: Knex) => Promise<T>) =>
     db.transaction(async (trx) => {
       const res = await cb(trx);
       return res;
     }),
-  findById: async (id: string, tx?: Knex) => {
+  findById: async (id, tx): Promise<Tables[Tname]["base"]> => {
     try {
       const result = await (tx || db.replicaNode())(tableName)
         .where({ id } as never)
         .first("*");
-      return result;
+      return result as Tables[Tname]["base"];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id" });
-    }
-  },
-  findOne: async (filter: Partial<Tables[Tname]["base"]>, tx?: Knex) => {
-    try {
-      const res = await (tx || db.replicaNode())(tableName).where(filter).first("*");
-      return res;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find one" });
     }
   },
   find: async <
@@ -127,7 +169,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
   >(
     filter: TFindFilter<Tables[Tname]["base"]>,
     { offset, limit, sort, count, tx, countDistinct }: TFindOpt<Tables[Tname]["base"], TCount, TCountDistinct> = {}
-  ) => {
+  ): Promise<TFindReturn<Tname, TCountDistinct extends undefined ? TCount : true>> => {
     try {
       const query = (tx || db.replicaNode())(tableName).where(buildFindFilter(filter));
       if (countDistinct) {
@@ -142,35 +184,43 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
 
-      const res = (await query) as TFindReturn<typeof query, TCountDistinct extends undefined ? TCount : true>;
-      return res;
+      const res = await query;
+      return res as TFindReturn<Tname, TCountDistinct extends undefined ? TCount : true>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
     }
   },
-  create: async (data: Tables[Tname]["insert"], tx?: Knex) => {
+  findOne: async (filter, tx): Promise<Tables[Tname]["base"]> => {
+    try {
+      const res = await (tx || db.replicaNode())(tableName).where(filter).first("*");
+      return res as Tables[Tname]["base"];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one" });
+    }
+  },
+  create: async (data, tx): Promise<Tables[Tname]["base"]> => {
     try {
       const [res] = await (tx || db)(tableName)
         .insert(data as never)
         .returning("*");
-      return res;
+      return res as Tables[Tname]["base"];
     } catch (error) {
       throw new DatabaseError({ error, name: "Create" });
     }
   },
-  insertMany: async (data: readonly Tables[Tname]["insert"][], tx?: Knex) => {
+  insertMany: async (data, tx?): Promise<Tables[Tname]["base"][]> => {
     try {
       if (!data.length) return [];
       const res = await (tx || db)(tableName)
         .insert(data as never)
         .returning("*");
-      return res;
+      return res as Tables[Tname]["base"][];
     } catch (error) {
       throw new DatabaseError({ error, name: "Create" });
     }
   },
   // This spilit the insert into multiple chunk
-  batchInsert: async (data: readonly Tables[Tname]["insert"][], tx?: Knex) => {
+  batchInsert: async (data, tx): Promise<Tables[Tname]["base"][]> => {
     try {
       if (!data.length) return [];
       const res = await (tx || db).batchInsert(tableName, data as never).returning("*");
@@ -179,12 +229,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
       throw new DatabaseError({ error, name: "batchInsert" });
     }
   },
-  upsert: async (
-    data: readonly Tables[Tname]["insert"][],
-    onConflictField: keyof Tables[Tname]["base"] | Array<keyof Tables[Tname]["base"]>,
-    tx?: Knex,
-    mergeColumns?: (keyof Knex.ResolveTableType<Knex.TableType<Tname>, "update">)[] | undefined
-  ) => {
+  upsert: async (data, onConflictField, tx, mergeColumns): Promise<Tables[Tname]["base"][]> => {
     try {
       if (!data.length) return [];
       const res = await (tx || db)(tableName)
@@ -192,23 +237,12 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
         .onConflict(onConflictField as never)
         .merge(mergeColumns)
         .returning("*");
-      return res;
+      return res as Tables[Tname]["base"][];
     } catch (error) {
       throw new DatabaseError({ error, name: "Create" });
     }
   },
-  updateById: async (
-    id: string,
-    {
-      $incr,
-      $decr,
-      ...data
-    }: Tables[Tname]["update"] & {
-      $incr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
-      $decr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
-    },
-    tx?: Knex
-  ) => {
+  updateById: async (id, { $incr, $decr, ...data }, tx): Promise<Tables[Tname]["base"]> => {
     try {
       const query = (tx || db)(tableName)
         .where({ id } as never)
@@ -225,23 +259,12 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
         });
       }
       const [docs] = await query;
-      return docs;
+      return docs as Tables[Tname]["base"];
     } catch (error) {
       throw new DatabaseError({ error, name: "Update by id" });
     }
   },
-  update: async (
-    filter: TFindFilter<Tables[Tname]["base"]>,
-    {
-      $incr,
-      $decr,
-      ...data
-    }: Tables[Tname]["update"] & {
-      $incr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
-      $decr?: { [x in keyof Partial<Tables[Tname]["base"]>]: number };
-    },
-    tx?: Knex
-  ) => {
+  update: async (filter, { $incr, $decr, ...data }, tx): Promise<Tables[Tname]["base"][]> => {
     try {
       const query = (tx || db)(tableName)
         .where(buildFindFilter(filter))
@@ -258,26 +281,34 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(db: Kne
           void query.increment(incrementField, incrementValue);
         });
       }
-      return await query;
+      return (await query) as Tables[Tname]["base"][];
     } catch (error) {
       throw new DatabaseError({ error, name: "Update" });
     }
   },
-  deleteById: async (id: string, tx?: Knex) => {
+  deleteById: async (id, tx): Promise<Tables[Tname]["base"]> => {
     try {
       const [res] = await (tx || db)(tableName)
         .where({ id } as never)
         .delete()
         .returning("*");
-      return res;
+      return res as Tables[Tname]["base"];
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete by id" });
     }
   },
-  delete: async (filter: TFindFilter<Tables[Tname]["base"]>, tx?: Knex) => {
+  countDocuments: async (tx): Promise<number> => {
+    try {
+      const [res] = await (tx || db)(tableName).count({ count: "*" }).returning("*");
+      return Number((res as { count: number }).count || 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete by id" });
+    }
+  },
+  delete: async (filter, tx): Promise<Tables[Tname]["base"][]> => {
     try {
       const res = await (tx || db)(tableName).where(buildFindFilter(filter)).delete().returning("*");
-      return res;
+      return res as Tables[Tname]["base"][];
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete" });
     }

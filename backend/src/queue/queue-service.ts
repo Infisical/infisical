@@ -325,11 +325,69 @@ const isQueueEnabled = (name: QueueName) => {
   }
 };
 
-export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
+export type TQueueServiceFactory = {
+  initialize: () => Promise<void>;
+  start: <T extends QueueName>(
+    name: T,
+    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
+    queueSettings?: Omit<QueueOptions, "connection">
+  ) => void;
+  startPg: <T extends QueueName>(
+    jobName: QueueJobs,
+    jobsFn: (jobs: PgBoss.JobWithMetadata<TQueueJobTypes[T]["payload"]>[]) => Promise<void>,
+    options: WorkOptions & {
+      workerCount: number;
+    }
+  ) => Promise<void>;
+  listen: <
+    T extends QueueName,
+    U extends keyof WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>
+  >(
+    name: T,
+    event: U,
+    listener: WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>[U]
+  ) => void;
+  queue: <T extends QueueName>(
+    name: T,
+    job: TQueueJobTypes[T]["name"],
+    data: TQueueJobTypes[T]["payload"],
+    opts?: JobsOptions & {
+      jobId?: string;
+    }
+  ) => Promise<void>;
+  queuePg: <T extends QueueName>(
+    job: TQueueJobTypes[T]["name"],
+    data: TQueueJobTypes[T]["payload"],
+    opts?: PgBoss.SendOptions & { jobId?: string }
+  ) => Promise<void>;
+  schedulePg: <T extends QueueName>(
+    job: TQueueJobTypes[T]["name"],
+    cron: string,
+    data: TQueueJobTypes[T]["payload"],
+    opts?: PgBoss.ScheduleOptions & { jobId?: string }
+  ) => Promise<void>;
+  shutdown: () => Promise<void>;
+  stopRepeatableJob: <T extends QueueName>(
+    name: T,
+    job: TQueueJobTypes[T]["name"],
+    repeatOpt: RepeatOptions,
+    jobId?: string
+  ) => Promise<boolean | undefined>;
+  stopRepeatableJobByJobId: <T extends QueueName>(name: T, jobId: string) => Promise<boolean>;
+  stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
+  clearQueue: (name: QueueName) => Promise<void>;
+  stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
+  getRepeatableJobs: (
+    name: QueueName,
+    startOffset?: number,
+    endOffset?: number
+  ) => Promise<{ key: string; name: string; id: string | null }[]>;
+};
+
 export const queueServiceFactory = (
   redisCfg: TRedisConfigKeys,
   { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
-) => {
+): TQueueServiceFactory => {
   const connection = buildRedisFromConfig(redisCfg);
   const queueContainer = {} as Record<
     QueueName,
@@ -366,36 +424,26 @@ export const queueServiceFactory = (
     });
   };
 
-  const start = <T extends QueueName>(
-    name: T,
-    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
-    queueSettings: Omit<QueueOptions, "connection"> = {}
-  ) => {
+  const start: TQueueServiceFactory["start"] = (name, jobFn, queueSettings) => {
     if (queueContainer[name]) {
       throw new Error(`${name} queue is already initialized`);
     }
 
-    queueContainer[name] = new Queue<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name as string, {
+    queueContainer[name] = new Queue(name as string, {
       ...queueSettings,
       connection
     });
 
     const appCfg = getConfig();
     if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
-      workerContainer[name] = new Worker<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(name, jobFn, {
+      workerContainer[name] = new Worker(name, jobFn, {
         ...queueSettings,
         connection
       });
     }
   };
 
-  const startPg = async <T extends QueueName>(
-    jobName: QueueJobs,
-    jobsFn: (jobs: PgBoss.JobWithMetadata<TQueueJobTypes[T]["payload"]>[]) => Promise<void>,
-    options: WorkOptions & {
-      workerCount: number;
-    }
-  ) => {
+  const startPg: TQueueServiceFactory["startPg"] = async (jobName, jobsFn, options) => {
     if (queueContainerPg[jobName]) {
       throw new Error(`${jobName} queue is already initialized`);
     }
@@ -429,19 +477,12 @@ export const queueServiceFactory = (
 
     await Promise.all(
       Array.from({ length: options.workerCount }).map(() =>
-        pgBoss.work<TQueueJobTypes[T]["payload"]>(jobName, { ...options, includeMetadata: true }, jobsFn)
+        pgBoss.work(jobName, { ...options, includeMetadata: true }, jobsFn)
       )
     );
   };
 
-  const listen = <
-    T extends QueueName,
-    U extends keyof WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>
-  >(
-    name: T,
-    event: U,
-    listener: WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>[U]
-  ) => {
+  const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {
     const appCfg = getConfig();
     if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
       return;
@@ -451,12 +492,7 @@ export const queueServiceFactory = (
     worker.on(event, listener);
   };
 
-  const queue = async <T extends QueueName>(
-    name: T,
-    job: TQueueJobTypes[T]["name"],
-    data: TQueueJobTypes[T]["payload"],
-    opts?: JobsOptions & { jobId?: string }
-  ) => {
+  const queue: TQueueServiceFactory["queue"] = async (name, job, data, opts) => {
     const q = queueContainer[name];
 
     await q.add(job, data, opts);
@@ -474,35 +510,25 @@ export const queueServiceFactory = (
     });
   };
 
-  const schedulePg = async <T extends QueueName>(
-    job: TQueueJobTypes[T]["name"],
-    cron: string,
-    data: TQueueJobTypes[T]["payload"],
-    opts?: PgBoss.ScheduleOptions & { jobId?: string }
-  ) => {
+  const schedulePg: TQueueServiceFactory["schedulePg"] = async (job, cron, data, opts) => {
     await pgBoss.schedule(job, cron, data, opts);
   };
 
-  const stopRepeatableJob = async <T extends QueueName>(
-    name: T,
-    job: TQueueJobTypes[T]["name"],
-    repeatOpt: RepeatOptions,
-    jobId?: string
-  ) => {
+  const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {
     const q = queueContainer[name];
     if (q) {
       return q.removeRepeatable(job, repeatOpt, jobId);
     }
   };
 
-  const getRepeatableJobs = (name: QueueName, startOffset?: number, endOffset?: number) => {
+  const getRepeatableJobs: TQueueServiceFactory["getRepeatableJobs"] = (name, startOffset, endOffset) => {
     const q = queueContainer[name];
     if (!q) throw new Error(`Queue '${name}' not initialized`);
 
     return q.getRepeatableJobs(startOffset, endOffset);
   };
 
-  const stopRepeatableJobByJobId = async <T extends QueueName>(name: T, jobId: string) => {
+  const stopRepeatableJobByJobId: TQueueServiceFactory["stopRepeatableJobByJobId"] = async (name, jobId) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
     if (!job) return true;
@@ -511,23 +537,23 @@ export const queueServiceFactory = (
     return q.removeRepeatableByKey(job.repeatJobKey);
   };
 
-  const stopRepeatableJobByKey = async <T extends QueueName>(name: T, repeatJobKey: string) => {
+  const stopRepeatableJobByKey: TQueueServiceFactory["stopRepeatableJobByKey"] = async (name, repeatJobKey) => {
     const q = queueContainer[name];
     return q.removeRepeatableByKey(repeatJobKey);
   };
 
-  const stopJobById = async <T extends QueueName>(name: T, jobId: string) => {
+  const stopJobById: TQueueServiceFactory["stopJobById"] = async (name, jobId) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
     return job?.remove().catch(() => undefined);
   };
 
-  const clearQueue = async (name: QueueName) => {
+  const clearQueue: TQueueServiceFactory["clearQueue"] = async (name) => {
     const q = queueContainer[name];
     await q.drain();
   };
 
-  const shutdown = async () => {
+  const shutdown: TQueueServiceFactory["shutdown"] = async () => {
     await Promise.all(Object.values(workerContainer).map((worker) => worker.close()));
   };
 

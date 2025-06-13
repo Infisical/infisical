@@ -1,3 +1,4 @@
+import { TSamlConfigs } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
@@ -55,4 +56,27 @@ export type TSamlLoginDTO = {
   // saml thingy
   relayState?: string;
   metadata?: { key: string; value: string }[];
+};
+
+export type TSamlConfigServiceFactory = {
+  createSamlCfg: (arg: TCreateSamlCfgDTO) => Promise<TSamlConfigs>;
+  updateSamlCfg: (arg: TUpdateSamlCfgDTO) => Promise<TSamlConfigs>;
+  getSaml: (arg: TGetSamlCfgDTO) => Promise<
+    | {
+        id: string;
+        organization: string;
+        orgId: string;
+        authProvider: string;
+        isActive: boolean;
+        entryPoint: string;
+        issuer: string;
+        cert: string;
+        lastUsed: Date | null | undefined;
+      }
+    | undefined
+  >;
+  samlLogin: (arg: TSamlLoginDTO) => Promise<{
+    isUserCompleted: boolean;
+    providerAuthToken: string;
+  }>;
 };
