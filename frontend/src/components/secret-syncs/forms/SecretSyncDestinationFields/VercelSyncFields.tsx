@@ -193,7 +193,7 @@ export const VercelSyncFields = () => {
                 getNewOptionData={(inputValue, _optionLabel) => {
                   return {
                     id: inputValue,
-                    name: `Use custom input "${inputValue}" - press Enter`
+                    name: `${inputValue} - press Enter`
                   };
                 }}
                 getOptionLabel={(option) => option.name}
