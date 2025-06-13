@@ -2384,6 +2384,11 @@ export const SecretSyncs = {
     },
     ONEPASS: {
       vaultId: "The ID of the 1Password vault to sync secrets to."
+    },
+    RENDER: {
+      serviceId: "The ID of the Render service to sync secrets to.",
+      scope: "The Render scope that secrets should be synced to.",
+      type: "The type of Render resource to sync secrets to."
     }
   }
 };

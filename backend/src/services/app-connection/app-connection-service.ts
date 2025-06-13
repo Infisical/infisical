@@ -63,6 +63,7 @@ import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
+import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
 import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-cloud";
@@ -511,6 +512,7 @@ export const appConnectionServiceFactory = ({
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
-    onepass: onePassConnectionService(connectAppConnectionById)
+    onepass: onePassConnectionService(connectAppConnectionById),
+    render: renderConnectionService(connectAppConnectionById)
   };
 };

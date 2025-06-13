@@ -16,6 +16,7 @@ import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
+import { RenderSyncFields } from "./RenderSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
@@ -61,6 +62,8 @@ export const SecretSyncDestinationFields = () => {
       return <OCIVaultSyncFields />;
     case SecretSync.OnePass:
       return <OnePassSyncFields />;
+    case SecretSync.Render:
+      return <RenderSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

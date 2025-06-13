@@ -20,3 +20,16 @@ export type TValidateRenderConnectionCredentialsSchema = typeof ValidateRenderCo
 export type TRenderConnectionConfig = DiscriminativePick<TRenderConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
+
+export type TRenderService = {
+  name: string;
+  id: string;
+};
+
+export type TRawRenderService = {
+  cursor: string;
+  service: {
+    id: string;
+    name: string;
+  };
+};

@@ -34,6 +34,7 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
@@ -57,7 +58,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.HCVault]: HC_VAULT_SYNC_LIST_OPTION,
   [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
   [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION,
-  [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION
+  [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION,
+  [SecretSync.Render]: RENDER_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -215,6 +217,8 @@ export const SecretSyncFns = {
         return OCIVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OnePass:
         return OnePassSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Render:
+        return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -292,6 +296,9 @@ export const SecretSyncFns = {
       case SecretSync.OnePass:
         secretMap = await OnePassSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Render:
+        secretMap = await RenderSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -359,6 +366,8 @@ export const SecretSyncFns = {
         return OCIVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OnePass:
         return OnePassSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Render:
+        return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

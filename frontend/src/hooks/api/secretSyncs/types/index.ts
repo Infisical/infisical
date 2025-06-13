@@ -1,6 +1,7 @@
 import { SecretSync, SecretSyncImportBehavior } from "@app/hooks/api/secretSyncs";
 import { DiscriminativePick } from "@app/types";
 
+import { TRenderSync } from "../render-sync";
 import { TOnePassSync } from "./1password-sync";
 import { TAwsParameterStoreSync } from "./aws-parameter-store-sync";
 import { TAwsSecretsManagerSync } from "./aws-secrets-manager-sync";
@@ -43,7 +44,8 @@ export type TSecretSync =
   | THCVaultSync
   | TTeamCitySync
   | TOCIVaultSync
-  | TOnePassSync;
+  | TOnePassSync
+  | TRenderSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
