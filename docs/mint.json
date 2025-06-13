@@ -546,7 +546,8 @@
             "integrations/secret-syncs/teamcity",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
-            "integrations/secret-syncs/windmill"
+            "integrations/secret-syncs/windmill",
+            "integrations/secret-syncs/render"
           ]
         }
       ]
