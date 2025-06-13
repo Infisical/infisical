@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
+import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import {
   TVercelConnectionApp,
   useVercelConnectionListOrganizations
@@ -174,17 +175,36 @@ export const VercelSyncFields = () => {
               errorText={error?.message}
               label="Vercel Preview Branch (Optional)"
             >
-              <FilterableSelect
-                menuPlacement="top"
+              <CreatableSelect
+                className="w-full"
+                placeholder="Select a branch..."
                 isLoading={isProjectsLoading && Boolean(connectionId) && Boolean(currentApp)}
                 isDisabled={!connectionId || !currentApp}
+                options={previewBranchOptions}
+                menuPlacement="top"
                 value={previewBranchOptions.find((branch) => branch.id === value) ?? null}
                 onChange={(option) => onChange((option as SingleValue<{ id: string }>)?.id || "")}
-                options={previewBranchOptions}
-                placeholder="Select a branch..."
+                onCreateOption={(option) => {
+                  onChange(option);
+                  if (!option || option.trim() === "") return;
+                  previewBranchOptions.push({ id: option, name: option });
+                }}
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                getNewOptionData={(inputValue, _optionLabel) => {
+                  return {
+                    id: inputValue,
+                    name: `${inputValue} - press Enter`
+                  };
+                }}
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option?.id || ""}
-                isClearable
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                isValidNewOption={(inputValue, _value, _options, _accessors) => {
+                  return (
+                    inputValue.trim().length > 0 &&
+                    previewBranchOptions.filter((branch) => branch.id === inputValue).length === 0
+                  );
+                }}
               />
             </FormControl>
           )}
