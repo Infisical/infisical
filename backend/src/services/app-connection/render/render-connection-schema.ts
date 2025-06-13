@@ -11,7 +11,7 @@ import {
 import { RenderConnectionMethod } from "./render-connection-enums";
 
 export const RenderConnectionApiKeyCredentialsSchema = z.object({
-  apiKey: z.string().trim().min(1, "API key required")
+  apiKey: z.string().trim().min(1, "API key required").max(256, "API key cannot exceed 256 characters")
 });
 
 const BaseRenderConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Render) });
