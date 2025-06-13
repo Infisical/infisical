@@ -39,7 +39,8 @@ import {
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
-  getAllNestedSecretReferences
+  getAllNestedSecretReferences,
+  INFISICAL_SECRET_VALUE_HIDDEN_MASK
 } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretOperations } from "@app/services/secret/secret-types";
@@ -267,7 +268,6 @@ export const secretApprovalRequestServiceFactory = ({
       ProjectPermissionSecretActions.DescribeAndReadValue,
       ProjectPermissionSub.Secrets
     );
-    const hiddenSecretValue = "******";
 
     let secrets;
     if (shouldUseSecretV2Bridge) {
@@ -285,8 +285,9 @@ export const secretApprovalRequestServiceFactory = ({
         version: el.version,
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
+        secretValueHidden: !hasSecretReadAccess,
         secretValue: !hasSecretReadAccess
-          ? hiddenSecretValue
+          ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
           : el.secret && el.secret.isRotatedSecret
             ? undefined
             : el.encryptedValue
@@ -300,8 +301,9 @@ export const secretApprovalRequestServiceFactory = ({
               secretKey: el.secret.key,
               id: el.secret.id,
               version: el.secret.version,
+              secretValueHidden: !hasSecretReadAccess,
               secretValue: !hasSecretReadAccess
-                ? hiddenSecretValue
+                ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secret.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
                   : "",
@@ -315,8 +317,9 @@ export const secretApprovalRequestServiceFactory = ({
               secretKey: el.secretVersion.key,
               id: el.secretVersion.id,
               version: el.secretVersion.version,
+              secretValueHidden: !hasSecretReadAccess,
               secretValue: !hasSecretReadAccess
-                ? hiddenSecretValue
+                ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secretVersion.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
                   : "",
@@ -333,11 +336,13 @@ export const secretApprovalRequestServiceFactory = ({
       const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
       secrets = encryptedSecrets.map((el) => ({
         ...el,
+        secretValueHidden: !hasSecretReadAccess,
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
           ? {
               id: el.secret.id,
               version: el.secret.version,
+              secretValueHidden: false,
               ...decryptSecretWithBot(el.secret, botKey)
             }
           : undefined,
@@ -345,6 +350,7 @@ export const secretApprovalRequestServiceFactory = ({
           ? {
               id: el.secretVersion.id,
               version: el.secretVersion.version,
+              secretValueHidden: false,
               ...decryptSecretWithBot(el.secretVersion, botKey)
             }
           : undefined
@@ -353,6 +359,7 @@ export const secretApprovalRequestServiceFactory = ({
     const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
       secretApprovalRequest.folderId
     ]);
+
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 

@@ -14,6 +14,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
+import { twMerge } from "tailwind-merge";
 
 export type Props = {
   op: CommitType;
@@ -105,21 +106,38 @@ export const SecretApprovalRequestChangeItem = ({
                     </span>
                   ) : (
                     <div className="relative">
+                      {secretVersion?.secretValueHidden && (
+                        <div className="absolute left-1 top-1/2 -translate-y-1/2">
+                          <Tooltip content="You do not have access to view the old secret value.">
+                            <FontAwesomeIcon
+                              className="pl-2 text-mineshaft-300"
+                              size="sm"
+                              icon={faEyeSlash}
+                            />
+                          </Tooltip>
+                        </div>
+                      )}
                       <SecretInput
                         isReadOnly
                         isVisible={isOldSecretValueVisible}
+                        valueAlwaysHidden={secretVersion?.secretValueHidden}
                         value={secretVersion?.secretValue}
-                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
+                        containerClassName={twMerge(
+                          "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
+                          secretVersion?.secretValueHidden ? "pl-8 pr-2" : "px-2"
+                        )}
                       />
-                      <div
-                        className="absolute right-1 top-1"
-                        onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)}
-                      >
-                        <FontAwesomeIcon
-                          icon={isOldSecretValueVisible ? faEyeSlash : faEye}
-                          className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-                        />
-                      </div>
+                      {!secretVersion?.secretValueHidden && (
+                        <div
+                          className="absolute right-1 top-1"
+                          onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)}
+                        >
+                          <FontAwesomeIcon
+                            icon={isOldSecretValueVisible ? faEyeSlash : faEye}
+                            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -211,21 +229,38 @@ export const SecretApprovalRequestChangeItem = ({
                     </span>
                   ) : (
                     <div className="relative">
+                      {newVersion?.secretValueHidden && (
+                        <div className="absolute left-1 top-1/2 -translate-y-1/2">
+                          <Tooltip content="You do not have access to view the new secret value.">
+                            <FontAwesomeIcon
+                              className="pl-2 text-mineshaft-300"
+                              size="sm"
+                              icon={faEyeSlash}
+                            />
+                          </Tooltip>
+                        </div>
+                      )}
                       <SecretInput
                         isReadOnly
+                        valueAlwaysHidden={newVersion?.secretValueHidden}
                         isVisible={isNewSecretValueVisible}
                         value={newVersion?.secretValue}
-                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
+                        containerClassName={twMerge(
+                          "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
+                          newVersion?.secretValueHidden ? "pl-8 pr-2" : "px-2"
+                        )}
                       />
-                      <div
-                        className="absolute right-1 top-1"
-                        onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)}
-                      >
-                        <FontAwesomeIcon
-                          icon={isNewSecretValueVisible ? faEyeSlash : faEye}
-                          className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-                        />
-                      </div>
+                      {!newVersion?.secretValueHidden && (
+                        <div
+                          className="absolute right-1 top-1"
+                          onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)}
+                        >
+                          <FontAwesomeIcon
+                            icon={isNewSecretValueVisible ? faEyeSlash : faEye}
+                            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
