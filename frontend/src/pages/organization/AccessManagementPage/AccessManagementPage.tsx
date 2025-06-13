@@ -46,7 +46,7 @@ export const AccessManagementPage = () => {
   const tabSections = [
     {
       key: OrgAccessControlTabSections.Member,
-      label: "Users",
+      label: "User Identities",
       isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Member),
       component: OrgMembersTab
     },
@@ -58,7 +58,7 @@ export const AccessManagementPage = () => {
     },
     {
       key: OrgAccessControlTabSections.Identities,
-      label: "Identities",
+      label: "Machine Identities",
       isHidden: permission.cannot(
         OrgPermissionIdentityActions.Read,
         OrgPermissionSubjects.Identity
@@ -83,7 +83,7 @@ export const AccessManagementPage = () => {
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
           title="Organization Access Control"
-          description="Manage fine-grained access for users, groups, roles, and identities within your organization resources."
+          description="Manage fine-grained access for user identities, groups, roles, and machine identities within your organization resources."
         />
         {!currentOrg.shouldUseNewPrivilegeSystem && (
           <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">

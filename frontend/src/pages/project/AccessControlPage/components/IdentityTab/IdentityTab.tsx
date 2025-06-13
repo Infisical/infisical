@@ -162,9 +162,9 @@ export const IdentityTab = withProjectPermission(
         exit={{ opacity: 0, translateX: 30 }}
       >
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
-            <div className="flex w-full justify-end pr-4">
+          <div className="mb-4 flex items-center">
+            <p className="text-xl font-semibold text-mineshaft-100">Machine Identities</p>
+            <div className="ml-auto flex items-center gap-2">
               <a
                 target="_blank"
                 rel="noopener noreferrer"
@@ -178,23 +178,23 @@ export const IdentityTab = withProjectPermission(
                   />
                 </span>
               </a>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Create}
+                a={ProjectPermissionSub.Identity}
+              >
+                {(isAllowed) => (
+                  <Button
+                    colorSchema="primary"
+                    type="submit"
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                    onClick={() => handlePopUpOpen("identity")}
+                    isDisabled={!isAllowed}
+                  >
+                    Add Identity
+                  </Button>
+                )}
+              </ProjectPermissionCan>
             </div>
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.Identity}
-            >
-              {(isAllowed) => (
-                <Button
-                  colorSchema="primary"
-                  type="submit"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => handlePopUpOpen("identity")}
-                  isDisabled={!isAllowed}
-                >
-                  Add Identity
-                </Button>
-              )}
-            </ProjectPermissionCan>
           </div>
           <Input
             containerClassName="mb-4"
