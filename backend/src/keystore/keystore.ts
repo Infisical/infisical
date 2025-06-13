@@ -2,7 +2,7 @@ import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
-import { Redlock, Settings } from "@app/lib/red-lock";
+import { ExecutionResult, Redlock, Settings } from "@app/lib/red-lock";
 
 export const PgSqlLock = {
   BootUpMigration: 2023,
@@ -13,8 +13,6 @@ export const PgSqlLock = {
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`)
 } as const;
-
-export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
 
 // all the key prefixes used must be set here to avoid conflict
 export const KeyStorePrefixes = {
@@ -71,7 +69,28 @@ type TWaitTillReady = {
   jitter?: number;
 };
 
-export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys) => {
+export type TKeyStoreFactory = {
+  setItem: (key: string, value: string | number | Buffer, prefix?: string) => Promise<"OK">;
+  getItem: (key: string, prefix?: string) => Promise<string | null>;
+  setExpiry: (key: string, expiryInSeconds: number) => Promise<number>;
+  setItemWithExpiry: (
+    key: string,
+    expiryInSeconds: number | string,
+    value: string | number | Buffer,
+    prefix?: string
+  ) => Promise<"OK">;
+  deleteItem: (key: string) => Promise<number>;
+  deleteItems: (arg: TDeleteItems) => Promise<number>;
+  incrementBy: (key: string, value: number) => Promise<number>;
+  acquireLock(
+    resources: string[],
+    duration: number,
+    settings?: Partial<Settings>
+  ): Promise<{ release: () => Promise<ExecutionResult> }>;
+  waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
+};
+
+export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFactory => {
   const redis = buildRedisFromConfig(redisConfigKeys);
   const redisLock = new Redlock([redis], { retryCount: 2, retryDelay: 200 });
 
@@ -108,7 +127,6 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys) => {
         // eslint-disable-next-line no-await-in-loop
         await pipeline.exec();
         totalDeleted += batch.length;
-        console.log("BATCH DONE");
 
         // eslint-disable-next-line no-await-in-loop
         await delayMs(Math.max(0, applyJitter(delay, jitter)));

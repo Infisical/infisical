@@ -4,7 +4,7 @@ import { Tables } from "knex/types/tables";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt, TFindReturn } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
 export type TPkiTemplatesDALFactory = ReturnType<typeof pkiTemplatesDALFactory>;
 
@@ -91,7 +91,7 @@ export const pkiTemplatesDALFactory = (db: TDbClient) => {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
 
-      const res = (await query) as TFindReturn<typeof query, TCountDistinct extends undefined ? TCount : true>;
+      const res = await query;
       return res.map((el) => ({ ...el, ca: { id: el.caId, name: el.caName } }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
