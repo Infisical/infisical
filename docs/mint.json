@@ -517,7 +517,8 @@
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
             "integrations/app-connections/vercel",
-            "integrations/app-connections/windmill"
+            "integrations/app-connections/windmill",
+            "integrations/app-connections/render"
           ]
         }
       ]
