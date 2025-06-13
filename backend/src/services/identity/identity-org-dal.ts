@@ -422,6 +422,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityGcpAuth}.identityId`
         )
         .leftJoin(
+          TableName.IdentityAliCloudAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityAliCloudAuth}.identityId`
+        )
+        .leftJoin(
           TableName.IdentityAwsAuth,
           `${TableName.IdentityOrgMembership}.identityId`,
           `${TableName.IdentityAwsAuth}.identityId`
