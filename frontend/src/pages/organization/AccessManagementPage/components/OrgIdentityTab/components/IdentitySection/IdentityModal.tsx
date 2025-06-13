@@ -232,7 +232,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <Switch
                   className="ml-0 mr-2 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
                   containerClassName="flex-row-reverse w-fit"
-                  id="auto-rotation-enabled"
+                  id="delete-protection-enabled"
                   thumbClassName="bg-mineshaft-800"
                   onCheckedChange={onChange}
                   isChecked={value}
