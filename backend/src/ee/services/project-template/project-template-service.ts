@@ -4,18 +4,16 @@ import { packRules } from "@casl/ability/extra";
 import { ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import { getDefaultProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import {
-  TCreateProjectTemplateDTO,
   TProjectTemplateEnvironment,
   TProjectTemplateRole,
-  TUnpackedPermission,
-  TUpdateProjectTemplateDTO
+  TProjectTemplateServiceFactory,
+  TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
@@ -26,8 +24,6 @@ type TProjectTemplatesServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   projectTemplateDAL: TProjectTemplateDALFactory;
 };
-
-export type TProjectTemplateServiceFactory = ReturnType<typeof projectTemplateServiceFactory>;
 
 const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTemplates) => ({
   ...rest,
@@ -51,8 +47,11 @@ export const projectTemplateServiceFactory = ({
   licenseService,
   permissionService,
   projectTemplateDAL
-}: TProjectTemplatesServiceFactoryDep) => {
-  const listProjectTemplatesByOrg = async (actor: OrgServiceActor, type?: ProjectType) => {
+}: TProjectTemplatesServiceFactoryDep): TProjectTemplateServiceFactory => {
+  const listProjectTemplatesByOrg: TProjectTemplateServiceFactory["listProjectTemplatesByOrg"] = async (
+    actor,
+    type
+  ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
@@ -83,7 +82,10 @@ export const projectTemplateServiceFactory = ({
     ];
   };
 
-  const findProjectTemplateByName = async (name: string, actor: OrgServiceActor) => {
+  const findProjectTemplateByName: TProjectTemplateServiceFactory["findProjectTemplateByName"] = async (
+    name,
+    actor
+  ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
@@ -111,7 +113,7 @@ export const projectTemplateServiceFactory = ({
     };
   };
 
-  const findProjectTemplateById = async (id: string, actor: OrgServiceActor) => {
+  const findProjectTemplateById: TProjectTemplateServiceFactory["findProjectTemplateById"] = async (id, actor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
@@ -139,9 +141,9 @@ export const projectTemplateServiceFactory = ({
     };
   };
 
-  const createProjectTemplate = async (
-    { roles, environments, type, ...params }: TCreateProjectTemplateDTO,
-    actor: OrgServiceActor
+  const createProjectTemplate: TProjectTemplateServiceFactory["createProjectTemplate"] = async (
+    { roles, environments, type, ...params },
+    actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
@@ -195,10 +197,10 @@ export const projectTemplateServiceFactory = ({
     return $unpackProjectTemplate(projectTemplate);
   };
 
-  const updateProjectTemplateById = async (
-    id: string,
-    { roles, environments, ...params }: TUpdateProjectTemplateDTO,
-    actor: OrgServiceActor
+  const updateProjectTemplateById: TProjectTemplateServiceFactory["updateProjectTemplateById"] = async (
+    id,
+    { roles, environments, ...params },
+    actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
@@ -259,7 +261,7 @@ export const projectTemplateServiceFactory = ({
     return $unpackProjectTemplate(updatedProjectTemplate);
   };
 
-  const deleteProjectTemplateById = async (id: string, actor: OrgServiceActor) => {
+  const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)

@@ -16,7 +16,7 @@ import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 
 type TPitServiceFactoryDep = {
   folderCommitService: TFolderCommitServiceFactory;

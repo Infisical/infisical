@@ -82,6 +82,32 @@ export type TCreateAuditLogDTO = {
   projectId?: string;
 } & BaseAuthData;
 
+export type TAuditLogServiceFactory = {
+  createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
+    {
+      event: {
+        type: string;
+        metadata: unknown;
+      };
+      actor: {
+        type: string;
+        metadata: unknown;
+      };
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      orgId?: string | null | undefined;
+      userAgent?: string | null | undefined;
+      expiresAt?: Date | null | undefined;
+      ipAddress?: string | null | undefined;
+      userAgentType?: string | null | undefined;
+      projectId?: string | null | undefined;
+      projectName?: string | null | undefined;
+    }[]
+  >;
+};
+
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
 interface BaseAuthData {

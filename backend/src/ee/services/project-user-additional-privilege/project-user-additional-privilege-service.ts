@@ -11,7 +11,7 @@ import { TProjectMembershipDALFactory } from "@app/services/project-membership/p
 
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
 import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
@@ -21,11 +21,7 @@ import { ApprovalStatus } from "../secret-approval-request/secret-approval-reque
 import { TProjectUserAdditionalPrivilegeDALFactory } from "./project-user-additional-privilege-dal";
 import {
   ProjectUserAdditionalPrivilegeTemporaryMode,
-  TCreateUserPrivilegeDTO,
-  TDeleteUserPrivilegeDTO,
-  TGetUserPrivilegeDetailsDTO,
-  TListUserPrivilegesDTO,
-  TUpdateUserPrivilegeDTO
+  TProjectUserAdditionalPrivilegeServiceFactory
 } from "./project-user-additional-privilege-types";
 
 type TProjectUserAdditionalPrivilegeServiceFactoryDep = {
@@ -34,10 +30,6 @@ type TProjectUserAdditionalPrivilegeServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update">;
 };
-
-export type TProjectUserAdditionalPrivilegeServiceFactory = ReturnType<
-  typeof projectUserAdditionalPrivilegeServiceFactory
->;
 
 const unpackPermissions = (permissions: unknown) =>
   UnpackedPermissionSchema.array().parse(
@@ -49,8 +41,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
   projectMembershipDAL,
   permissionService,
   accessApprovalRequestDAL
-}: TProjectUserAdditionalPrivilegeServiceFactoryDep) => {
-  const create = async ({
+}: TProjectUserAdditionalPrivilegeServiceFactoryDep): TProjectUserAdditionalPrivilegeServiceFactory => {
+  const create: TProjectUserAdditionalPrivilegeServiceFactory["create"] = async ({
     slug,
     actor,
     actorId,
@@ -59,7 +51,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     actorAuthMethod,
     projectMembershipId,
     ...dto
-  }: TCreateUserPrivilegeDTO) => {
+  }) => {
     const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
     if (!projectMembership)
       throw new NotFoundError({ message: `Project membership with ID ${projectMembershipId} found` });
@@ -147,14 +139,14 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     };
   };
 
-  const updateById = async ({
+  const updateById: TProjectUserAdditionalPrivilegeServiceFactory["updateById"] = async ({
     privilegeId,
     actorOrgId,
     actor,
     actorId,
     actorAuthMethod,
     ...dto
-  }: TUpdateUserPrivilegeDTO) => {
+  }) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege)
       throw new NotFoundError({ message: `User additional privilege with ID ${privilegeId} not found` });
@@ -259,7 +251,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     };
   };
 
-  const deleteById = async ({ actorId, actor, actorOrgId, actorAuthMethod, privilegeId }: TDeleteUserPrivilegeDTO) => {
+  const deleteById: TProjectUserAdditionalPrivilegeServiceFactory["deleteById"] = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    privilegeId
+  }) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege)
       throw new NotFoundError({ message: `User additional privilege with ID ${privilegeId} not found` });
@@ -299,13 +297,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     };
   };
 
-  const getPrivilegeDetailsById = async ({
+  const getPrivilegeDetailsById: TProjectUserAdditionalPrivilegeServiceFactory["getPrivilegeDetailsById"] = async ({
     privilegeId,
     actorOrgId,
     actor,
     actorId,
     actorAuthMethod
-  }: TGetUserPrivilegeDetailsDTO) => {
+  }) => {
     const userPrivilege = await projectUserAdditionalPrivilegeDAL.findById(privilegeId);
     if (!userPrivilege)
       throw new NotFoundError({ message: `User additional privilege with ID  ${privilegeId} not found` });
@@ -335,13 +333,13 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     };
   };
 
-  const listPrivileges = async ({
+  const listPrivileges: TProjectUserAdditionalPrivilegeServiceFactory["listPrivileges"] = async ({
     projectMembershipId,
     actorOrgId,
     actor,
     actorId,
     actorAuthMethod
-  }: TListUserPrivilegesDTO) => {
+  }) => {
     const projectMembership = await projectMembershipDAL.findById(projectMembershipId);
     if (!projectMembership)
       throw new NotFoundError({ message: `Project membership with ID ${projectMembershipId} not found` });

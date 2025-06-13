@@ -11,16 +11,9 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AUDIT_LOG_STREAM_TIMEOUT } from "../audit-log/audit-log-queue";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
-import {
-  LogStreamHeaders,
-  TCreateAuditLogStreamDTO,
-  TDeleteAuditLogStreamDTO,
-  TGetDetailsAuditLogStreamDTO,
-  TListAuditLogStreamDTO,
-  TUpdateAuditLogStreamDTO
-} from "./audit-log-stream-types";
+import { LogStreamHeaders, TAuditLogStreamServiceFactory } from "./audit-log-stream-types";
 
 type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
@@ -28,21 +21,19 @@ type TAuditLogStreamServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
-export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServiceFactory>;
-
 export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   permissionService,
   licenseService
-}: TAuditLogStreamServiceFactoryDep) => {
-  const create = async ({
+}: TAuditLogStreamServiceFactoryDep): TAuditLogStreamServiceFactory => {
+  const create: TAuditLogStreamServiceFactory["create"] = async ({
     url,
     actor,
     headers = [],
     actorId,
     actorOrgId,
     actorAuthMethod
-  }: TCreateAuditLogStreamDTO) => {
+  }) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -110,7 +101,7 @@ export const auditLogStreamServiceFactory = ({
     return logStream;
   };
 
-  const updateById = async ({
+  const updateById: TAuditLogStreamServiceFactory["updateById"] = async ({
     id,
     url,
     actor,
@@ -118,7 +109,7 @@ export const auditLogStreamServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod
-  }: TUpdateAuditLogStreamDTO) => {
+  }) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -175,7 +166,13 @@ export const auditLogStreamServiceFactory = ({
     return updatedLogStream;
   };
 
-  const deleteById = async ({ id, actor, actorId, actorOrgId, actorAuthMethod }: TDeleteAuditLogStreamDTO) => {
+  const deleteById: TAuditLogStreamServiceFactory["deleteById"] = async ({
+    id,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
 
     const logStream = await auditLogStreamDAL.findById(id);
@@ -189,7 +186,13 @@ export const auditLogStreamServiceFactory = ({
     return deletedLogStream;
   };
 
-  const getById = async ({ id, actor, actorId, actorOrgId, actorAuthMethod }: TGetDetailsAuditLogStreamDTO) => {
+  const getById: TAuditLogStreamServiceFactory["getById"] = async ({
+    id,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }) => {
     const logStream = await auditLogStreamDAL.findById(id);
     if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
 
@@ -212,7 +215,7 @@ export const auditLogStreamServiceFactory = ({
     return { ...logStream, headers };
   };
 
-  const list = async ({ actor, actorId, actorOrgId, actorAuthMethod }: TListAuditLogStreamDTO) => {
+  const list: TAuditLogStreamServiceFactory["list"] = async ({ actor, actorId, actorOrgId, actorAuthMethod }) => {
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,

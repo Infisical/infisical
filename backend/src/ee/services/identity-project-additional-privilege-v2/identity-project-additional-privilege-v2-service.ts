@@ -11,7 +11,7 @@ import { TIdentityProjectDALFactory } from "@app/services/identity-project/ident
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TIdentityProjectAdditionalPrivilegeV2DALFactory } from "./identity-project-additional-privilege-v2-dal";
 import {

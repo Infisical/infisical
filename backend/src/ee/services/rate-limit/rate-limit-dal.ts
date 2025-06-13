@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { ormify } from "@app/lib/knex";
+import { ormify, TOrmify } from "@app/lib/knex";
 
-export type TRateLimitDALFactory = ReturnType<typeof rateLimitDALFactory>;
+export type TRateLimitDALFactory = TOrmify<TableName.RateLimit>;
 
-export const rateLimitDALFactory = (db: TDbClient) => ormify(db, TableName.RateLimit, {});
+export const rateLimitDALFactory = (db: TDbClient): TRateLimitDALFactory => ormify(db, TableName.RateLimit, {});

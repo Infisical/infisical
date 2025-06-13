@@ -1,5 +1,6 @@
 import { ScimPatchOperation } from "scim-patch";
 
+import { TScimTokens } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 
 export type TCreateScimTokenDTO = {
@@ -155,4 +156,48 @@ export type TScimGroup = {
     created: Date;
     lastModified: Date;
   };
+};
+
+export type TScimServiceFactory = {
+  createScimToken: (arg: TCreateScimTokenDTO) => Promise<{
+    scimToken: string;
+  }>;
+  listScimTokens: (arg: TOrgPermission) => Promise<TScimTokens[]>;
+  deleteScimToken: (arg: TDeleteScimTokenDTO) => Promise<{
+    orgId: string;
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    description: string;
+    ttlDays: number;
+  }>;
+  listScimUsers: (arg: TListScimUsersDTO) => Promise<TListScimUsers>;
+  getScimUser: (arg: TGetScimUserDTO) => Promise<TScimUser>;
+  createScimUser: (arg: TCreateScimUserDTO) => Promise<TScimUser>;
+  updateScimUser: (arg: TUpdateScimUserDTO) => Promise<TScimUser>;
+  replaceScimUser: (arg: TReplaceScimUserDTO) => Promise<TScimUser>;
+  deleteScimUser: (arg: TDeleteScimUserDTO) => Promise<object>;
+  listScimGroups: (arg: TListScimGroupsDTO) => Promise<TListScimGroups>;
+  createScimGroup: (arg: TCreateScimGroupDTO) => Promise<TScimGroup>;
+  getScimGroup: (arg: TGetScimGroupDTO) => Promise<TScimGroup>;
+  deleteScimGroup: (arg: TDeleteScimGroupDTO) => Promise<object>;
+  replaceScimGroup: (arg: TUpdateScimGroupNamePutDTO) => Promise<TScimGroup>;
+  updateScimGroup: (arg: TUpdateScimGroupNamePatchDTO) => Promise<{
+    members: {
+      value: string;
+      display: string;
+    }[];
+    schemas: string[];
+    id: string;
+    displayName: string;
+    meta: {
+      resourceType: string;
+      created: Date;
+      lastModified: Date;
+    };
+  }>;
+  fnValidateScimToken: (token: TScimTokenJwtPayload) => Promise<{
+    scimTokenId: string;
+    orgId: string;
+  }>;
 };

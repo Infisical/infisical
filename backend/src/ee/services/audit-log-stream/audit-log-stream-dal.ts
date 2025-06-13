@@ -1,10 +1,10 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { ormify } from "@app/lib/knex";
+import { ormify, TOrmify } from "@app/lib/knex";
 
-export type TAuditLogStreamDALFactory = ReturnType<typeof auditLogStreamDALFactory>;
+export type TAuditLogStreamDALFactory = TOrmify<TableName.AuditLogStream>;
 
-export const auditLogStreamDALFactory = (db: TDbClient) => {
+export const auditLogStreamDALFactory = (db: TDbClient): TAuditLogStreamDALFactory => {
   const orm = ormify(db, TableName.AuditLogStream);
 
   return orm;
