@@ -191,9 +191,11 @@ export const identityServiceFactory = ({
     }
 
     const identity = await identityDAL.transaction(async (tx) => {
-      const newIdentity = name
-        ? await identityDAL.updateById(id, { name, hasDeleteProtection }, tx)
-        : await identityDAL.findById(id, tx);
+      const newIdentity =
+        name || hasDeleteProtection
+          ? await identityDAL.updateById(id, { name, hasDeleteProtection }, tx)
+          : await identityDAL.findById(id, tx);
+
       if (role) {
         await identityOrgMembershipDAL.updateById(
           identityOrgMembership.id,
