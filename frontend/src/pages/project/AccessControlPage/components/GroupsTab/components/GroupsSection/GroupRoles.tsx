@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCheck, faClock, faEdit, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PopperContentProps } from "@radix-ui/react-popper";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -28,6 +29,7 @@ import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
+import { TProjectRole } from "@app/hooks/api/roles/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/workspace/types";
 import { groupBy } from "@app/lib/fn/array";
 
@@ -196,32 +198,37 @@ type TForm = z.infer<typeof formSchema>;
 export type TMemberRolesProp = {
   disableEdit?: boolean;
   groupId: string;
+  className?: string;
   roles: TGroupMembership["roles"];
+  popperContentProps?: PopperContentProps;
 };
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
-export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMemberRolesProp) => {
+type FormProps = {
+  projectRoles: Omit<TProjectRole, "permissions">[] | undefined;
+  roles: TGroupMembership["roles"];
+  groupId: string;
+  onClose: VoidFunction;
+};
+
+const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) => {
   const { currentWorkspace } = useWorkspace();
-  const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
+
   const [searchRoles, setSearchRoles] = useState("");
+
+  const userRolesGroupBySlug = groupBy(roles, ({ customRoleSlug, role }) => customRoleSlug || role);
+
+  const updateGroupWorkspaceRole = useUpdateGroupWorkspaceRole();
 
   const {
     handleSubmit,
     control,
-    reset,
     setValue,
     formState: { isSubmitting, isDirty }
   } = useForm<TForm>({
     resolver: zodResolver(formSchema)
   });
-
-  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
-    currentWorkspace?.id ?? ""
-  );
-  const userRolesGroupBySlug = groupBy(roles, ({ customRoleSlug, role }) => customRoleSlug || role);
-
-  const updateGroupWorkspaceRole = useUpdateGroupWorkspaceRole();
 
   const handleRoleUpdate = async (data: TForm) => {
     const selectedRoles = Object.keys(data)
@@ -253,7 +260,7 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
         roles: selectedRoles
       });
       createNotification({ text: "Successfully updated group role", type: "success" });
-      handlePopUpToggle("editRole");
+      onClose();
       setSearchRoles("");
     } catch {
       createNotification({ text: "Failed to update group role", type: "error" });
@@ -261,7 +268,120 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <form onSubmit={handleSubmit(handleRoleUpdate)} id="role-update-form">
+      <div className="thin-scrollbar max-h-80 space-y-4 overflow-y-auto">
+        {projectRoles
+          ?.filter(
+            ({ name, slug }) =>
+              name.toLowerCase().includes(searchRoles.toLowerCase()) ||
+              slug.toLowerCase().includes(searchRoles.toLowerCase())
+          )
+          ?.map(({ id, name, slug }) => {
+            const userProjectRoleDetails = userRolesGroupBySlug?.[slug]?.[0];
+
+            return (
+              <div key={id} className="flex items-center space-x-4">
+                <div className="flex-grow">
+                  <Controller
+                    control={control}
+                    defaultValue={Boolean(userProjectRoleDetails?.id)}
+                    name={`${slug}.isChecked`}
+                    render={({ field }) => (
+                      <Checkbox
+                        id={slug}
+                        isChecked={field.value}
+                        onCheckedChange={(isChecked) => {
+                          field.onChange(isChecked);
+                          setValue(`${slug}.temporaryAccess`, false);
+                        }}
+                      >
+                        {name}
+                      </Checkbox>
+                    )}
+                  />
+                </div>
+                <div>
+                  <Controller
+                    control={control}
+                    name={`${slug}.temporaryAccess`}
+                    defaultValue={
+                      userProjectRoleDetails?.isTemporary
+                        ? {
+                            isTemporary: true,
+                            temporaryAccessStartTime:
+                              userProjectRoleDetails.temporaryAccessStartTime as string,
+                            temporaryRange: userProjectRoleDetails.temporaryRange as string,
+                            temporaryAccessEndTime: userProjectRoleDetails.temporaryAccessEndTime
+                          }
+                        : false
+                    }
+                    render={({ field }) => (
+                      <IdentityTemporaryRoleForm
+                        temporaryConfig={
+                          typeof field.value === "boolean"
+                            ? { isTemporary: field.value }
+                            : field.value
+                        }
+                        onSetTemporary={(data) => {
+                          setValue(`${slug}.isChecked`, true, { shouldDirty: true });
+                          field.onChange({ isTemporary: true, ...data });
+                        }}
+                        onRemoveTemporary={() => {
+                          setValue(`${slug}.isChecked`, false, { shouldDirty: true });
+                          field.onChange(false);
+                        }}
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            );
+          })}
+      </div>
+      <div className="mt-3 flex items-center space-x-2 border-t border-t-gray-700 pt-3">
+        <div>
+          <Input
+            className="w-full p-1.5 pl-8"
+            size="xs"
+            value={searchRoles}
+            onChange={(el) => setSearchRoles(el.target.value)}
+            leftIcon={<FontAwesomeIcon icon={faSearch} />}
+            placeholder="Search roles.."
+          />
+        </div>
+        <div>
+          <Button
+            size="xs"
+            type="submit"
+            form="role-update-form"
+            leftIcon={<FontAwesomeIcon icon={faCheck} />}
+            isDisabled={!isDirty || isSubmitting}
+            isLoading={isSubmitting}
+          >
+            Save
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+};
+
+export const GroupRoles = ({
+  roles = [],
+  disableEdit = false,
+  groupId,
+  className,
+  popperContentProps
+}: TMemberRolesProp) => {
+  const { currentWorkspace } = useWorkspace();
+  const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
+
+  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
+    currentWorkspace?.id ?? ""
+  );
+
+  return (
+    <div className={twMerge("flex items-center space-x-1", className)}>
       {roles
         .slice(0, MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
         .map(({ role, customRoleName, id, isTemporary, temporaryAccessEndTime }) => {
@@ -325,119 +445,32 @@ export const GroupRoles = ({ roles = [], disableEdit = false, groupId }: TMember
           open={popUp.editRole.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("editRole", isOpen);
-            reset();
           }}
         >
           {!disableEdit && (
-            <PopoverTrigger>
+            <PopoverTrigger onClick={(e) => e.stopPropagation()}>
               <IconButton size="sm" variant="plain" ariaLabel="update">
                 <FontAwesomeIcon icon={faEdit} />
               </IconButton>
             </PopoverTrigger>
           )}
-          <PopoverContent hideCloseBtn className="pt-4">
+          <PopoverContent
+            {...popperContentProps}
+            onClick={(e) => e.stopPropagation()}
+            hideCloseBtn
+            className="pt-4"
+          >
             {isRolesLoading ? (
               <div className="flex h-8 w-full items-center justify-center">
                 <Spinner />
               </div>
             ) : (
-              <form onSubmit={handleSubmit(handleRoleUpdate)} id="role-update-form">
-                <div className="thin-scrollbar max-h-80 space-y-4 overflow-y-auto">
-                  {projectRoles
-                    ?.filter(
-                      ({ name, slug }) =>
-                        name.toLowerCase().includes(searchRoles.toLowerCase()) ||
-                        slug.toLowerCase().includes(searchRoles.toLowerCase())
-                    )
-                    ?.map(({ id, name, slug }) => {
-                      const userProjectRoleDetails = userRolesGroupBySlug?.[slug]?.[0];
-
-                      return (
-                        <div key={id} className="flex items-center space-x-4">
-                          <div className="flex-grow">
-                            <Controller
-                              control={control}
-                              defaultValue={Boolean(userProjectRoleDetails?.id)}
-                              name={`${slug}.isChecked`}
-                              render={({ field }) => (
-                                <Checkbox
-                                  id={slug}
-                                  isChecked={field.value}
-                                  onCheckedChange={(isChecked) => {
-                                    field.onChange(isChecked);
-                                    setValue(`${slug}.temporaryAccess`, false);
-                                  }}
-                                >
-                                  {name}
-                                </Checkbox>
-                              )}
-                            />
-                          </div>
-                          <div>
-                            <Controller
-                              control={control}
-                              name={`${slug}.temporaryAccess`}
-                              defaultValue={
-                                userProjectRoleDetails?.isTemporary
-                                  ? {
-                                      isTemporary: true,
-                                      temporaryAccessStartTime:
-                                        userProjectRoleDetails.temporaryAccessStartTime as string,
-                                      temporaryRange:
-                                        userProjectRoleDetails.temporaryRange as string,
-                                      temporaryAccessEndTime:
-                                        userProjectRoleDetails.temporaryAccessEndTime
-                                    }
-                                  : false
-                              }
-                              render={({ field }) => (
-                                <IdentityTemporaryRoleForm
-                                  temporaryConfig={
-                                    typeof field.value === "boolean"
-                                      ? { isTemporary: field.value }
-                                      : field.value
-                                  }
-                                  onSetTemporary={(data) => {
-                                    setValue(`${slug}.isChecked`, true, { shouldDirty: true });
-                                    field.onChange({ isTemporary: true, ...data });
-                                  }}
-                                  onRemoveTemporary={() => {
-                                    setValue(`${slug}.isChecked`, false, { shouldDirty: true });
-                                    field.onChange(false);
-                                  }}
-                                />
-                              )}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-                <div className="mt-3 flex items-center space-x-2 border-t border-t-gray-700 pt-3">
-                  <div>
-                    <Input
-                      className="w-full p-1.5 pl-8"
-                      size="xs"
-                      value={searchRoles}
-                      onChange={(el) => setSearchRoles(el.target.value)}
-                      leftIcon={<FontAwesomeIcon icon={faSearch} />}
-                      placeholder="Search roles.."
-                    />
-                  </div>
-                  <div>
-                    <Button
-                      size="xs"
-                      type="submit"
-                      form="role-update-form"
-                      leftIcon={<FontAwesomeIcon icon={faCheck} />}
-                      isDisabled={!isDirty || isSubmitting}
-                      isLoading={isSubmitting}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              </form>
+              <GroupRolesForm
+                projectRoles={projectRoles}
+                groupId={groupId}
+                roles={roles}
+                onClose={() => handlePopUpToggle("editRole")}
+              />
             )}
           </PopoverContent>
         </Popover>

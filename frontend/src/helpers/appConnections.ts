@@ -15,6 +15,7 @@ import {
   AwsConnectionMethod,
   AzureAppConfigurationConnectionMethod,
   AzureClientSecretsConnectionMethod,
+  AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   DatabricksConnectionMethod,
@@ -27,6 +28,7 @@ import {
   MsSqlConnectionMethod,
   MySqlConnectionMethod,
   OnePassConnectionMethod,
+  OracleDBConnectionMethod,
   PostgresConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
@@ -60,6 +62,7 @@ export const APP_CONNECTION_MAP: Record<
     name: "Azure Client Secrets",
     image: "Microsoft Azure.png"
   },
+  [AppConnection.AzureDevOps]: { name: "Azure DevOps", image: "Microsoft Azure.png" },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
   [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
   [AppConnection.TerraformCloud]: { name: "Terraform Cloud", image: "Terraform Cloud.png" },
@@ -67,6 +70,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Postgres]: { name: "PostgreSQL", image: "Postgres.png" },
   [AppConnection.MsSql]: { name: "Microsoft SQL Server", image: "MsSql.png" },
   [AppConnection.MySql]: { name: "MySQL", image: "MySql.png" },
+  [AppConnection.OracleDB]: { name: "OracleDB", image: "Oracle.png", enterprise: true },
   [AppConnection.Camunda]: { name: "Camunda", image: "Camunda.png" },
   [AppConnection.Windmill]: { name: "Windmill", image: "Windmill.png" },
   [AppConnection.Auth0]: { name: "Auth0", image: "Auth0.png", size: 40 },
@@ -85,6 +89,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
     case AzureClientSecretsConnectionMethod.OAuth:
+    case AzureDevOpsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
@@ -106,9 +111,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
+    case OracleDBConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
+    case AzureDevOpsConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:

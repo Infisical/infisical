@@ -40,7 +40,8 @@ export type TAwsGetCallerIdentityHeaders = {
   "X-Amz-Date": string;
   "Content-Length": number;
   "x-amz-security-token": string;
-  Authorization: string;
+  Authorization?: string;
+  authorization?: string;
 };
 
 export type TGetCallerIdentityResponse = {

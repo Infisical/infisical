@@ -8,6 +8,7 @@ import { Badge, FormControl, Select, SelectItem, Tooltip } from "@app/components
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { IdentityAliCloudAuthForm } from "./IdentityAliCloudAuthForm";
 import { IdentityAwsAuthForm } from "./IdentityAwsAuthForm";
 import { IdentityAzureAuthForm } from "./IdentityAzureAuthForm";
 import { IdentityGcpAuthForm } from "./IdentityGcpAuthForm";
@@ -45,6 +46,7 @@ const identityAuthMethods = [
   { label: "Universal Auth", value: IdentityAuthMethod.UNIVERSAL_AUTH },
   { label: "Kubernetes Auth", value: IdentityAuthMethod.KUBERNETES_AUTH },
   { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
+  { label: "Alibaba Cloud Auth", value: IdentityAuthMethod.ALICLOUD_AUTH },
   { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH },
   { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH },
   { label: "OCI Auth", value: IdentityAuthMethod.OCI_AUTH },
@@ -165,6 +167,16 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.KUBERNETES_AUTH]: {
       render: () => (
         <IdentityKubernetesAuthForm
+          identityId={identityAuthMethodData.identityId}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+      )
+    },
+
+    [IdentityAuthMethod.ALICLOUD_AUTH]: {
+      render: () => (
+        <IdentityAliCloudAuthForm
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}

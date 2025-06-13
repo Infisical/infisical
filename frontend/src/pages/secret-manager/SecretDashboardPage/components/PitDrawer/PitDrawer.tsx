@@ -3,6 +3,7 @@ import { InfiniteData } from "@tanstack/react-query";
 import { formatDistance } from "date-fns";
 
 import { Button, Drawer, DrawerContent } from "@app/components/v2";
+import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { TSecretSnapshot } from "@app/hooks/api/secretSnapshots/types";
 
 type Props = {
@@ -39,6 +40,21 @@ export const PitDrawer = ({
         subTitle="Note: This will recover secrets for all environments in this project"
       >
         <div className="flex flex-col space-y-2">
+          <NoticeBannerV2 title="Snapshots are being deprecated" className="mb-2">
+            <p className="my-1 text-sm text-mineshaft-300">
+              Snapshots will be replaced by{" "}
+              <a
+                target="_blank"
+                href="https://infisical.com/docs/documentation/platform/pit-recovery"
+                rel="noopener noreferrer"
+                className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+              >
+                Commits
+              </a>{" "}
+              to track history going forward. This feature will be officially removed in November
+              2025.
+            </p>
+          </NoticeBannerV2>
           {secretSnaphots?.pages?.map((group, i) => (
             <Fragment key={`snapshot-item-${i + 1}`}>
               {group.map(({ id, createdAt }, index) => (

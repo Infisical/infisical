@@ -21,6 +21,7 @@ export enum ApiDocsTags {
   TokenAuth = "Token Auth",
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
+  AliCloudAuth = "Alibaba Cloud Auth",
   AwsAuth = "AWS Auth",
   OciAuth = "OCI Auth",
   AzureAuth = "Azure Auth",
@@ -89,6 +90,7 @@ export const GROUPS = {
     limit: "The number of users to return.",
     username: "The username to search for.",
     search: "The text string that user email or name will be filtered by.",
+    projectId: "The ID of the project the group belongs to.",
     filterUsers:
       "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
@@ -239,6 +241,43 @@ export const LDAP_AUTH = {
   },
   REVOKE: {
     identityId: "The ID of the identity to revoke the configuration for."
+  }
+} as const;
+
+export const ALICLOUD_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login.",
+    Action: "The Alibaba Cloud API action. For STS GetCallerIdentity, this should be 'GetCallerIdentity'.",
+    Format: "The response format. For STS GetCallerIdentity, this should be 'JSON'.",
+    Version: "The API version. This should be in 'YYYY-MM-DD' format (e.g., '2015-04-01').",
+    AccessKeyId: "The AccessKey ID of the RAM user or STS token.",
+    SignatureMethod: "The signature algorithm. For STS GetCallerIdentity, this should be 'HMAC-SHA1'.",
+    Timestamp: "The timestamp of the request in UTC, formatted as 'YYYY-MM-DDTHH:mm:ssZ'.",
+    SignatureVersion: "The signature version. For STS GetCallerIdentity, this should be '1.0'.",
+    SignatureNonce: "A unique random string to prevent replay attacks.",
+    Signature: "The signature string calculated based on the request parameters and AccessKey Secret."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    allowedArns: "The comma-separated list of trusted ARNs that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    allowedArns: "The comma-separated list of trusted ARNs that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
   }
 } as const;
 
@@ -400,6 +439,8 @@ export const KUBERNETES_AUTH = {
     caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
+    tokenReviewMode:
+      "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -417,6 +458,8 @@ export const KUBERNETES_AUTH = {
     caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
       "Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.",
+    tokenReviewMode:
+      "The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.",
     allowedNamespaces:
       "The new comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical.",
     allowedNames: "The new comma-separated list of trusted service account names that can authenticate with Infisical.",
@@ -621,7 +664,8 @@ export const PROJECTS = {
     autoCapitalization: "Disable or enable auto-capitalization for the project.",
     slug: "An optional slug for the project. (must be unique within the organization)",
     hasDeleteProtection: "Enable or disable delete protection for the project.",
-    secretSharing: "Enable or disable secret sharing for the project."
+    secretSharing: "Enable or disable secret sharing for the project.",
+    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -1107,6 +1151,14 @@ export const DYNAMIC_SECRET_LEASES = {
     leaseId: "The ID of the dynamic secret lease.",
     isForced:
       "A boolean flag to delete the the dynamic secret from Infisical without trying to remove it from external provider. Used when the dynamic secret got modified externally."
+  },
+  KUBERNETES: {
+    CREATE: {
+      config: {
+        namespace:
+          "The Kubernetes namespace to create the lease in. If not specified, the first namespace defined in the configuration will be used."
+      }
+    }
   }
 } as const;
 export const SECRET_TAGS = {
@@ -2156,6 +2208,11 @@ export const AppConnections = {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
     },
+    AZURE_DEVOPS: {
+      code: "The OAuth code to use to connect with Azure DevOps.",
+      tenantId: "The Tenant ID to use to connect with Azure DevOps.",
+      orgName: "The Organization name to use to connect with Azure DevOps."
+    },
     OCI: {
       userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
       tenancyOcid: "The OCID (Oracle Cloud Identifier) of the tenancy in Oracle Cloud Infrastructure.",
@@ -2270,9 +2327,14 @@ export const SecretSyncs = {
         "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
       label: "An optional label to assign to secrets created in Azure App Configuration."
     },
+    AZURE_DEVOPS: {
+      devopsProjectId: "The ID of the Azure DevOps project to sync secrets to.",
+      devopsProjectName: "The name of the Azure DevOps project to sync secrets to."
+    },
     GCP: {
       scope: "The Google project scope that secrets should be synced to.",
-      projectId: "The ID of the Google project secrets should be synced to."
+      projectId: "The ID of the Google project secrets should be synced to.",
+      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").'
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."

@@ -152,7 +152,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
               </Th>
               <Th>Email</Th>
               <Th>Added On</Th>
-              <Th />
+              <Th className="w-5" />
             </Tr>
           </THead>
           <TBody>

@@ -44,6 +44,7 @@ import {
   TSecretSyncRaw,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
@@ -169,6 +170,12 @@ export enum EventType {
   REVOKE_IDENTITY_GCP_AUTH = "revoke-identity-gcp-auth",
   GET_IDENTITY_GCP_AUTH = "get-identity-gcp-auth",
 
+  LOGIN_IDENTITY_ALICLOUD_AUTH = "login-identity-alicloud-auth",
+  ADD_IDENTITY_ALICLOUD_AUTH = "add-identity-alicloud-auth",
+  UPDATE_IDENTITY_ALICLOUD_AUTH = "update-identity-alicloud-auth",
+  REVOKE_IDENTITY_ALICLOUD_AUTH = "revoke-identity-alicloud-auth",
+  GET_IDENTITY_ALICLOUD_AUTH = "get-identity-alicloud-auth",
+
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
   UPDATE_IDENTITY_AWS_AUTH = "update-identity-aws-auth",
@@ -206,6 +213,7 @@ export enum EventType {
   CREATE_WEBHOOK = "create-webhook",
   UPDATE_WEBHOOK_STATUS = "update-webhook-status",
   DELETE_WEBHOOK = "delete-webhook",
+  WEBHOOK_TRIGGERED = "webhook-triggered",
   GET_SECRET_IMPORTS = "get-secret-imports",
   GET_SECRET_IMPORT = "get-secret-import",
   CREATE_SECRET_IMPORT = "create-secret-import",
@@ -393,6 +401,13 @@ export enum EventType {
   PROJECT_ASSUME_PRIVILEGE_SESSION_START = "project-assume-privileges-session-start",
   PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end",
 
+  GET_PROJECT_PIT_COMMITS = "get-project-pit-commits",
+  GET_PROJECT_PIT_COMMIT_CHANGES = "get-project-pit-commit-changes",
+  GET_PROJECT_PIT_COMMIT_COUNT = "get-project-pit-commit-count",
+  PIT_ROLLBACK_COMMIT = "pit-rollback-commit",
+  PIT_REVERT_COMMIT = "pit-revert-commit",
+  PIT_GET_FOLDER_STATE = "pit-get-folder-state",
+  PIT_COMPARE_FOLDER_STATES = "pit-compare-folder-states",
   SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-source-list",
   SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-source-create",
   SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
@@ -1051,6 +1066,53 @@ interface GetIdentityAwsAuthEvent {
   };
 }
 
+interface LoginIdentityAliCloudAuthEvent {
+  type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+    identityAliCloudAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityAliCloudAuthEvent {
+  type: EventType.ADD_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+    allowedArns: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityAliCloudAuthEvent {
+  type: EventType.REVOKE_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityAliCloudAuthEvent {
+  type: EventType.UPDATE_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+    allowedArns: string;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityAliCloudAuthEvent {
+  type: EventType.GET_IDENTITY_ALICLOUD_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface LoginIdentityOciAuthEvent {
   type: EventType.LOGIN_IDENTITY_OCI_AUTH;
   metadata: {
@@ -1438,6 +1500,14 @@ interface DeleteWebhookEvent {
     secretPath: string;
     isDisabled: boolean;
   };
+}
+
+export interface WebhookTriggeredEvent {
+  type: EventType.WEBHOOK_TRIGGERED;
+  metadata: {
+    webhookId: string;
+    status: string;
+  } & TWebhookPayloads;
 }
 
 interface GetSecretImportsEvent {
@@ -2979,6 +3049,78 @@ interface MicrosoftTeamsWorkflowIntegrationUpdateEvent {
   };
 }
 
+interface GetProjectPitCommitsEvent {
+  type: EventType.GET_PROJECT_PIT_COMMITS;
+  metadata: {
+    commitCount: string;
+    environment: string;
+    path: string;
+    offset: string;
+    limit: string;
+    search?: string;
+    sort: string;
+  };
+}
+
+interface GetProjectPitCommitChangesEvent {
+  type: EventType.GET_PROJECT_PIT_COMMIT_CHANGES;
+  metadata: {
+    changesCount: string;
+    commitId: string;
+  };
+}
+
+interface GetProjectPitCommitCountEvent {
+  type: EventType.GET_PROJECT_PIT_COMMIT_COUNT;
+  metadata: {
+    environment: string;
+    path: string;
+    commitCount: string;
+  };
+}
+
+interface PitRollbackCommitEvent {
+  type: EventType.PIT_ROLLBACK_COMMIT;
+  metadata: {
+    targetCommitId: string;
+    folderId: string;
+    deepRollback: boolean;
+    message: string;
+    totalChanges: string;
+    environment: string;
+  };
+}
+
+interface PitRevertCommitEvent {
+  type: EventType.PIT_REVERT_COMMIT;
+  metadata: {
+    commitId: string;
+    revertCommitId?: string;
+    changesReverted?: string;
+  };
+}
+
+interface PitGetFolderStateEvent {
+  type: EventType.PIT_GET_FOLDER_STATE;
+  metadata: {
+    commitId: string;
+    folderId: string;
+    resourceCount: string;
+  };
+}
+
+interface PitCompareFolderStatesEvent {
+  type: EventType.PIT_COMPARE_FOLDER_STATES;
+  metadata: {
+    targetCommitId: string;
+    folderId: string;
+    deepRollback: boolean;
+    diffsCount: string;
+    environment: string;
+    folderPath: string;
+  };
+}
+
 interface SecretScanningDataSourceListEvent {
   type: EventType.SECRET_SCANNING_DATA_SOURCE_LIST;
   metadata: {
@@ -3183,6 +3325,11 @@ export type Event =
   | UpdateIdentityAwsAuthEvent
   | GetIdentityAwsAuthEvent
   | DeleteIdentityAwsAuthEvent
+  | LoginIdentityAliCloudAuthEvent
+  | AddIdentityAliCloudAuthEvent
+  | UpdateIdentityAliCloudAuthEvent
+  | GetIdentityAliCloudAuthEvent
+  | DeleteIdentityAliCloudAuthEvent
   | LoginIdentityOciAuthEvent
   | AddIdentityOciAuthEvent
   | UpdateIdentityOciAuthEvent
@@ -3221,6 +3368,7 @@ export type Event =
   | CreateWebhookEvent
   | UpdateWebhookStatusEvent
   | DeleteWebhookEvent
+  | WebhookTriggeredEvent
   | GetSecretImportsEvent
   | GetSecretImportEvent
   | CreateSecretImportEvent
@@ -3397,6 +3545,13 @@ export type Event =
   | MicrosoftTeamsWorkflowIntegrationGetEvent
   | MicrosoftTeamsWorkflowIntegrationListEvent
   | MicrosoftTeamsWorkflowIntegrationUpdateEvent
+  | GetProjectPitCommitsEvent
+  | GetProjectPitCommitChangesEvent
+  | PitRollbackCommitEvent
+  | GetProjectPitCommitCountEvent
+  | PitRevertCommitEvent
+  | PitCompareFolderStatesEvent
+  | PitGetFolderStateEvent
   | SecretScanningDataSourceListEvent
   | SecretScanningDataSourceGetEvent
   | SecretScanningDataSourceCreateEvent

@@ -10,7 +10,8 @@ export const PgSqlLock = {
   KmsRootKeyInit: 2025,
   OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
   OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
-  SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`)
+  SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
+  CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`)
 } as const;
 
 export type TKeyStoreFactory = ReturnType<typeof keyStoreFactory>;
@@ -26,6 +27,7 @@ export const KeyStorePrefixes = {
   KmsOrgDataKeyCreation: "kms-org-data-key-creation-lock",
   WaitUntilReadyKmsOrgKeyCreation: "wait-until-ready-kms-org-key-creation-",
   WaitUntilReadyKmsOrgDataKeyCreation: "wait-until-ready-kms-org-data-key-creation-",
+  FolderTreeCheckpoint: (envId: string) => `folder-tree-checkpoint-${envId}`,
 
   WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>
     `wait-until-ready-project-environments-operation-${projectId}`,

@@ -27,9 +27,8 @@ import {
 } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { isLoggedIn } from "@app/hooks/api/reactQuery";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-
-import { navigateUserToOrg } from "../LoginPage/Login.utils";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -70,6 +69,8 @@ export const SignupInvitePage = () => {
   const metadata = queryParams.get("metadata") || undefined;
 
   const { mutateAsync: selectOrganization } = useSelectOrganization();
+
+  const loggedIn = isLoggedIn();
 
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {
@@ -242,29 +243,10 @@ export const SignupInvitePage = () => {
                 if (response?.token) {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
+                } else if (loggedIn) {
+                  navigate({ to: "/login/select-organization", search: { force: true } });
                 } else {
-                  const redirectExistingUser = async () => {
-                    try {
-                      const { token: mfaToken, isMfaEnabled } = await selectOrganization({
-                        organizationId
-                      });
-
-                      if (isMfaEnabled) {
-                        SecurityClient.setMfaToken(mfaToken);
-                        toggleShowMfa.on();
-                        setMfaSuccessCallback(() => redirectExistingUser);
-                        return;
-                      }
-
-                      // user will be redirected to dashboard
-                      // if not logged in gets kicked out to login
-                      await navigateUserToOrg(navigate, organizationId);
-                    } catch (err) {
-                      navigate({ to: "/login" });
-                    }
-                  };
-
-                  await redirectExistingUser();
+                  navigate({ to: "/login" });
                 }
               }
             } catch (err) {

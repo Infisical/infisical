@@ -12,6 +12,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, Input, Tag, Tooltip } from "@app/components/v2";
+import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useGetSnapshotSecrets, usePerformSecretRollback } from "@app/hooks/api";
 import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
@@ -60,6 +61,7 @@ export const SnapshotView = ({
 
   const rollingFolder = snapshotData?.folders || [];
   const rollingSecrets = snapshotData?.secrets || [];
+  const isAllowedRollback = false;
 
   const folderDiffView = useMemo(() => {
     const folderGroupById = folders.reduce<Record<string, TSecretFolder>>(
@@ -157,6 +159,20 @@ export const SnapshotView = ({
         <h6 className="text-2xl">Snapshot</h6>
         <Tag colorSchema="green">{new Date(snapshotData?.createdAt || "").toLocaleString()}</Tag>
       </div>
+      <NoticeBannerV2 title="Snapshots are being deprecated" className="my-2">
+        <p className="my-1 text-sm text-mineshaft-300">
+          Snapshots will be replaced by{" "}
+          <a
+            target="_blank"
+            href="https://infisical.com/docs/documentation/platform/pit-recovery"
+            rel="noopener noreferrer"
+            className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+          >
+            Commits
+          </a>{" "}
+          to track history going forward. This feature will be officially removed in November 2025.
+        </p>
+      </NoticeBannerV2>
       <div className="mt-4 flex items-center space-x-2">
         <div className="w-2/5">
           <Input
@@ -168,17 +184,19 @@ export const SnapshotView = ({
           />
         </div>
         <div className="flex-grow" />
-        <div>
-          <Button
-            variant="outline_bg"
-            onClick={onClickListSnapshot}
-            leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-            className="h-10"
-            isDisabled={isRollingBack}
-          >
-            {snapshotCount} Commits
-          </Button>
-        </div>
+        {isAllowedRollback && (
+          <div>
+            <Button
+              variant="outline_bg"
+              onClick={onClickListSnapshot}
+              leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
+              className="h-10"
+              isDisabled={isRollingBack}
+            >
+              {snapshotCount} Commits
+            </Button>
+          </div>
+        )}
         <div>
           <Button
             onClick={onGoBack}
@@ -198,7 +216,7 @@ export const SnapshotView = ({
             {(isAllowed) => (
               <Button
                 onClick={handleClickRollback}
-                isDisabled={isRollingBack || !isAllowed}
+                isDisabled={isRollingBack || !isAllowed || !isAllowedRollback}
                 isLoading={isRollingBack}
                 leftIcon={<FontAwesomeIcon icon={faUndo} />}
                 className="h-10"

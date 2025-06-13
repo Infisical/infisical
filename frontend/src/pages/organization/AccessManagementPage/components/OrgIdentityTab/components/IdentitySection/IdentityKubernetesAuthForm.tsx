@@ -33,20 +33,26 @@ import {
   useGetIdentityKubernetesAuth,
   useUpdateIdentityKubernetesAuth
 } from "@app/hooks/api";
-import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
+import {
+  IdentityKubernetesAuthTokenReviewMode,
+  IdentityTrustedIp
+} from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
 
 const schema = z
   .object({
-    kubernetesHost: z.string().min(1),
+    tokenReviewMode: z
+      .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
+      .default(IdentityKubernetesAuthTokenReviewMode.Api),
+    kubernetesHost: z.string().optional().nullable(),
     tokenReviewerJwt: z.string().optional(),
     gatewayId: z.string().optional().nullable(),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
-    caCert: z.string(),
+    caCert: z.string().optional(),
     accessTokenTTL: z.string().refine((val) => Number(val) <= 315360000, {
       message: "Access Token TTL cannot be greater than 315360000"
     }),
@@ -62,7 +68,26 @@ const schema = z
       )
       .min(1)
   })
-  .required();
+  .superRefine((data, ctx) => {
+    if (
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !data.kubernetesHost?.length
+    ) {
+      ctx.addIssue({
+        path: ["kubernetesHost"],
+        code: z.ZodIssueCode.custom,
+        message: "When token review mode is set to API, a Kubernetes host must be provided"
+      });
+    }
+
+    if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+      ctx.addIssue({
+        path: ["gatewayId"],
+        code: z.ZodIssueCode.custom,
+        message: "When token review mode is set to Gateway, a gateway must be selected"
+      });
+    }
+  });
 
 export type FormData = z.infer<typeof schema>;
 
@@ -100,11 +125,14 @@ export const IdentityKubernetesAuthForm = ({
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
 
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
       kubernetesHost: "",
       tokenReviewerJwt: "",
       allowedNames: "",
@@ -128,6 +156,7 @@ export const IdentityKubernetesAuthForm = ({
   useEffect(() => {
     if (data) {
       reset({
+        tokenReviewMode: data.tokenReviewMode,
         kubernetesHost: data.kubernetesHost,
         tokenReviewerJwt: data.tokenReviewerJwt,
         allowedNames: data.allowedNames,
@@ -148,6 +177,7 @@ export const IdentityKubernetesAuthForm = ({
       });
     } else {
       reset({
+        tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
         kubernetesHost: "",
         tokenReviewerJwt: "",
         allowedNames: "",
@@ -173,6 +203,7 @@ export const IdentityKubernetesAuthForm = ({
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
     gatewayId,
+    tokenReviewMode,
     accessTokenTrustedIps
   }: FormData) => {
     try {
@@ -181,7 +212,13 @@ export const IdentityKubernetesAuthForm = ({
       if (data) {
         await updateMutateAsync({
           organizationId: orgId,
-          kubernetesHost,
+          ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+            ? {
+                kubernetesHost: kubernetesHost || ""
+              }
+            : {
+                kubernetesHost: null
+              }),
           tokenReviewerJwt: tokenReviewerJwt || null,
           allowedNames,
           allowedNamespaces,
@@ -189,6 +226,7 @@ export const IdentityKubernetesAuthForm = ({
           caCert,
           identityId,
           gatewayId: gatewayId || null,
+          tokenReviewMode,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -198,13 +236,20 @@ export const IdentityKubernetesAuthForm = ({
         await addMutateAsync({
           organizationId: orgId,
           identityId,
-          kubernetesHost: kubernetesHost || "",
+          ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+            ? {
+                kubernetesHost: kubernetesHost || ""
+              }
+            : {
+                kubernetesHost: null
+              }),
           tokenReviewerJwt: tokenReviewerJwt || undefined,
           allowedNames: allowedNames || "",
           allowedNamespaces: allowedNamespaces || "",
           allowedAudience: allowedAudience || "",
           gatewayId: gatewayId || null,
           caCert: caCert || "",
+          tokenReviewMode,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
@@ -228,6 +273,8 @@ export const IdentityKubernetesAuthForm = ({
     }
   };
 
+  const tokenReviewMode = watch("tokenReviewMode");
+
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
@@ -235,6 +282,7 @@ export const IdentityKubernetesAuthForm = ({
           [
             "kubernetesHost",
             "tokenReviewerJwt",
+            "tokenReviewMode",
             "gatewayId",
             "accessTokenTTL",
             "accessTokenMaxTTL",
@@ -253,37 +301,135 @@ export const IdentityKubernetesAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="kubernetesHost"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Kubernetes Host / Base Kubernetes API URL "
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
-                isRequired
+          <div className="flex w-full items-center gap-2">
+            <div className="w-full flex-1">
+              <OrgPermissionCan
+                I={OrgGatewayPermissionActions.AttachGateways}
+                a={OrgPermissionSubjects.Gateway}
               >
-                <Input {...field} placeholder="https://my-example-k8s-api-host.com" type="text" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="tokenReviewerJwt"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                tooltipClassName="max-w-md"
-                label="Token Reviewer JWT"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding."
-              >
-                <Input {...field} placeholder="" type="password" />
-              </FormControl>
-            )}
-          />
+                {(isAllowed) => (
+                  <Controller
+                    control={control}
+                    name="gatewayId"
+                    defaultValue=""
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        label="Gateway"
+                        isOptional
+                      >
+                        <Tooltip
+                          isDisabled={isAllowed}
+                          content="Restricted access. You don't have permission to attach gateways to resources."
+                        >
+                          <div>
+                            <Select
+                              isDisabled={!isAllowed}
+                              value={value as string}
+                              onValueChange={(v) => {
+                                if (v !== "") {
+                                  onChange(v);
+                                }
+
+                                if (v === null) {
+                                  setValue(
+                                    "tokenReviewMode",
+                                    IdentityKubernetesAuthTokenReviewMode.Api,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true
+                                    }
+                                  );
+                                }
+                              }}
+                              className="w-full border border-mineshaft-500"
+                              dropdownContainerClassName="max-w-none"
+                              isLoading={isGatewayLoading}
+                              placeholder="Default: Internet Gateway"
+                              position="popper"
+                            >
+                              <SelectItem
+                                value={null as unknown as string}
+                                onClick={() => {
+                                  onChange(null);
+                                }}
+                              >
+                                Internet Gateway
+                              </SelectItem>
+                              {gateways?.map((el) => (
+                                <SelectItem value={el.id} key={el.id}>
+                                  {el.name}
+                                </SelectItem>
+                              ))}
+                            </Select>
+                          </div>
+                        </Tooltip>
+                      </FormControl>
+                    )}
+                  />
+                )}
+              </OrgPermissionCan>
+            </div>
+
+            <Controller
+              control={control}
+              name="tokenReviewMode"
+              render={({ field }) => (
+                <FormControl
+                  tooltipClassName="max-w-md"
+                  tooltipText="The method of which tokens are reviewed. If you select Gateway as Reviewer, the selected gateway will be used to review tokens with. If this option is enabled, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding."
+                  label="Review Mode"
+                >
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectItem value="gateway">Gateway as Reviewer</SelectItem>
+                    <SelectItem value="api">Manual Token Reviewer JWT (API)</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+          </div>
+          {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
+            <Controller
+              control={control}
+              defaultValue="2592000"
+              name="kubernetesHost"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Kubernetes Host / Base Kubernetes API URL "
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  tooltipText="The host string, host:port pair, or URL to the base of the Kubernetes API server. This can usually be obtained by running 'kubectl cluster-info'"
+                  isRequired
+                >
+                  <Input
+                    {...field}
+                    placeholder="https://my-example-k8s-api-host.com"
+                    type="text"
+                    value={field.value || ""}
+                  />
+                </FormControl>
+              )}
+            />
+          )}
+
+          {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
+            <Controller
+              control={control}
+              name="tokenReviewerJwt"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  tooltipClassName="max-w-md"
+                  label="Token Reviewer JWT"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  tooltipText="Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding."
+                >
+                  <Input {...field} placeholder="" type="password" />
+                </FormControl>
+              )}
+            />
+          )}
           <Controller
             control={control}
             defaultValue=""
@@ -299,61 +445,6 @@ export const IdentityKubernetesAuthForm = ({
               </FormControl>
             )}
           />
-
-          <OrgPermissionCan
-            I={OrgGatewayPermissionActions.AttachGateways}
-            a={OrgPermissionSubjects.Gateway}
-          >
-            {(isAllowed) => (
-              <Controller
-                control={control}
-                name="gatewayId"
-                defaultValue=""
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    label="Gateway"
-                    isOptional
-                  >
-                    <Tooltip
-                      isDisabled={isAllowed}
-                      content="Restricted access. You don't have permission to attach gateways to resources."
-                    >
-                      <div>
-                        <Select
-                          isDisabled={!isAllowed}
-                          value={value as string}
-                          onValueChange={(v) => {
-                            if (v !== "") {
-                              onChange(v);
-                            }
-                          }}
-                          className="w-full border border-mineshaft-500"
-                          dropdownContainerClassName="max-w-none"
-                          isLoading={isGatewayLoading}
-                          placeholder="Default: Internet Gateway"
-                          position="popper"
-                        >
-                          <SelectItem
-                            value={null as unknown as string}
-                            onClick={() => onChange(null)}
-                          >
-                            Internet Gateway
-                          </SelectItem>
-                          {gateways?.map((el) => (
-                            <SelectItem value={el.id} key={el.id}>
-                              {el.name}
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </div>
-                    </Tooltip>
-                  </FormControl>
-                )}
-              />
-            )}
-          </OrgPermissionCan>
 
           <Controller
             control={control}
@@ -431,20 +522,22 @@ export const IdentityKubernetesAuthForm = ({
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="caCert"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="CA Certificate"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
-              >
-                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-              </FormControl>
-            )}
-          />
+          {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && (
+            <Controller
+              control={control}
+              name="caCert"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="CA Certificate"
+                  errorText={error?.message}
+                  isError={Boolean(error)}
+                  tooltipText="An optional PEM-encoded CA cert for the Kubernetes API server. This is used by the TLS client for secure communication with the Kubernetes API server."
+                >
+                  <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+                </FormControl>
+              )}
+            />
+          )}
           {accessTokenTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>
               <Controller

@@ -4,6 +4,7 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -15,9 +16,17 @@ import {
   TGcpSyncWithCredentials
 } from "./gcp-sync-types";
 
-const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCredentials) => {
+const getProjectUrl = (secretSync: TGcpSyncWithCredentials) => {
   const { destinationConfig } = secretSync;
 
+  if (destinationConfig.scope === GcpSyncScope.Global) {
+    return `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}`;
+  }
+
+  return `https://secretmanager.${destinationConfig.locationId}.rep.googleapis.com/v1/projects/${destinationConfig.projectId}/locations/${destinationConfig.locationId}`;
+};
+
+const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCredentials) => {
   let gcpSecrets: GCPSecret[] = [];
 
   const pageSize = 100;
@@ -31,16 +40,13 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
     });
 
     // eslint-disable-next-line no-await-in-loop
-    const { data: secretsRes } = await request.get<GCPSMListSecretsRes>(
-      `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${secretSync.destinationConfig.projectId}/secrets`,
-      {
-        params,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
-        }
+    const { data: secretsRes } = await request.get<GCPSMListSecretsRes>(`${getProjectUrl(secretSync)}/secrets`, {
+      params,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
       }
-    );
+    });
 
     if (secretsRes.secrets) {
       gcpSecrets = gcpSecrets.concat(secretsRes.secrets);
@@ -61,7 +67,7 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
 
     try {
       const { data: secretLatest } = await request.get<GCPLatestSecretVersionAccess>(
-        `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}/versions/latest:access`,
+        `${getProjectUrl(secretSync)}/secrets/${key}/versions/latest:access`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -113,11 +119,14 @@ export const GcpSyncFns = {
         if (!(key in gcpSecrets)) {
           // case: create secret
           await request.post(
-            `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets`,
+            `${getProjectUrl(secretSync)}/secrets`,
             {
-              replication: {
-                automatic: {}
-              }
+              replication:
+                destinationConfig.scope === GcpSyncScope.Global
+                  ? {
+                      automatic: {}
+                    }
+                  : undefined
             },
             {
               params: {
@@ -131,7 +140,7 @@ export const GcpSyncFns = {
           );
 
           await request.post(
-            `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}:addVersion`,
+            `${getProjectUrl(secretSync)}/secrets/${key}:addVersion`,
             {
               payload: {
                 data: Buffer.from(secretMap[key].value).toString("base64")
@@ -155,7 +164,7 @@ export const GcpSyncFns = {
 
     for await (const key of Object.keys(gcpSecrets)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
       try {
         if (!(key in secretMap) || !secretMap[key].value) {
@@ -163,15 +172,12 @@ export const GcpSyncFns = {
           if (secretSync.syncOptions.disableSecretDeletion) continue;
 
           // case: delete secret
-          await request.delete(
-            `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Accept-Encoding": "application/json"
-              }
+          await request.delete(`${getProjectUrl(secretSync)}/secrets/${key}`, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json"
             }
-          );
+          });
         } else if (secretMap[key].value !== gcpSecrets[key]) {
           if (!secretMap[key].value) {
             logger.warn(
@@ -180,7 +186,7 @@ export const GcpSyncFns = {
           }
 
           await request.post(
-            `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}:addVersion`,
+            `${getProjectUrl(secretSync)}/secrets/${key}:addVersion`,
             {
               payload: {
                 data: Buffer.from(secretMap[key].value).toString("base64")
@@ -212,21 +218,18 @@ export const GcpSyncFns = {
   },
 
   removeSecrets: async (secretSync: TGcpSyncWithCredentials, secretMap: TSecretMap) => {
-    const { destinationConfig, connection } = secretSync;
+    const { connection } = secretSync;
     const accessToken = await getGcpConnectionAuthToken(connection);
 
     const gcpSecrets = await getGcpSecrets(accessToken, secretSync);
     for await (const [key] of Object.entries(gcpSecrets)) {
       if (key in secretMap) {
-        await request.delete(
-          `${IntegrationUrls.GCP_SECRET_MANAGER_URL}/v1/projects/${destinationConfig.projectId}/secrets/${key}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json"
-            }
+        await request.delete(`${getProjectUrl(secretSync)}/secrets/${key}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
           }
-        );
+        });
       }
     }
   }

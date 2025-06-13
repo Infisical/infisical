@@ -10,6 +10,7 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretStatus } from "../dynamic-secret/dynamic-secret-types";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
+import { TDynamicSecretLeaseConfig } from "./dynamic-secret-lease-types";
 
 type TDynamicSecretLeaseQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -99,7 +100,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
         ) as object;
 
-        await selectedProvider.revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId);
+        await selectedProvider.revoke(decryptedStoredInput, dynamicSecretLease.externalEntityId, {
+          projectId: folder.projectId
+        });
         await dynamicSecretLeaseDAL.deleteById(dynamicSecretLease.id);
         return;
       }
@@ -132,8 +135,15 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
           await Promise.all(dynamicSecretLeases.map(({ id }) => unsetLeaseRevocation(id)));
           await Promise.all(
-            dynamicSecretLeases.map(({ externalEntityId }) =>
-              selectedProvider.revoke(decryptedStoredInput, externalEntityId)
+            dynamicSecretLeases.map(({ externalEntityId, config }) =>
+              selectedProvider.revoke(
+                decryptedStoredInput,
+                externalEntityId,
+                {
+                  projectId: folder.projectId
+                },
+                config as TDynamicSecretLeaseConfig
+              )
             )
           );
         }

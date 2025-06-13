@@ -8,6 +8,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AzureKeyVault]: "Azure Key Vault",
   [AppConnection.AzureAppConfiguration]: "Azure App Configuration",
   [AppConnection.AzureClientSecrets]: "Azure Client Secrets",
+  [AppConnection.AzureDevOps]: "Azure DevOps",
   [AppConnection.Databricks]: "Databricks",
   [AppConnection.Humanitec]: "Humanitec",
   [AppConnection.TerraformCloud]: "Terraform Cloud",
@@ -22,6 +23,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.LDAP]: "LDAP",
   [AppConnection.TeamCity]: "TeamCity",
   [AppConnection.OCI]: "OCI",
+  [AppConnection.OracleDB]: "OracleDB",
   [AppConnection.OnePass]: "1Password"
 };
 
@@ -33,6 +35,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.AzureKeyVault]: AppConnectionPlanType.Regular,
   [AppConnection.AzureAppConfiguration]: AppConnectionPlanType.Regular,
   [AppConnection.AzureClientSecrets]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureDevOps]: AppConnectionPlanType.Regular,
   [AppConnection.Databricks]: AppConnectionPlanType.Regular,
   [AppConnection.Humanitec]: AppConnectionPlanType.Regular,
   [AppConnection.TerraformCloud]: AppConnectionPlanType.Regular,
@@ -46,6 +49,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.LDAP]: AppConnectionPlanType.Regular,
   [AppConnection.TeamCity]: AppConnectionPlanType.Regular,
   [AppConnection.OCI]: AppConnectionPlanType.Enterprise,
+  [AppConnection.OracleDB]: AppConnectionPlanType.Enterprise,
   [AppConnection.OnePass]: AppConnectionPlanType.Regular,
   [AppConnection.MySql]: AppConnectionPlanType.Regular
 };

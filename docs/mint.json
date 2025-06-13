@@ -200,6 +200,7 @@
             "documentation/platform/secret-rotation/ldap-password",
             "documentation/platform/secret-rotation/mssql-credentials",
             "documentation/platform/secret-rotation/mysql-credentials",
+            "documentation/platform/secret-rotation/oracledb-credentials",
             "documentation/platform/secret-rotation/postgres-credentials"
           ]
         },
@@ -207,20 +208,21 @@
           "group": "Dynamic Secrets",
           "pages": [
             "documentation/platform/dynamic-secrets/overview",
-            "documentation/platform/dynamic-secrets/postgresql",
-            "documentation/platform/dynamic-secrets/mysql",
-            "documentation/platform/dynamic-secrets/mssql",
-            "documentation/platform/dynamic-secrets/oracle",
-            "documentation/platform/dynamic-secrets/cassandra",
-            "documentation/platform/dynamic-secrets/redis",
             "documentation/platform/dynamic-secrets/aws-elasticache",
-            "documentation/platform/dynamic-secrets/elastic-search",
-            "documentation/platform/dynamic-secrets/rabbit-mq",
             "documentation/platform/dynamic-secrets/aws-iam",
+            "documentation/platform/dynamic-secrets/azure-entra-id",
+            "documentation/platform/dynamic-secrets/cassandra",
+            "documentation/platform/dynamic-secrets/elastic-search",
+            "documentation/platform/dynamic-secrets/gcp-iam",
+            "documentation/platform/dynamic-secrets/ldap",
             "documentation/platform/dynamic-secrets/mongo-atlas",
             "documentation/platform/dynamic-secrets/mongo-db",
-            "documentation/platform/dynamic-secrets/azure-entra-id",
-            "documentation/platform/dynamic-secrets/ldap",
+            "documentation/platform/dynamic-secrets/mssql",
+            "documentation/platform/dynamic-secrets/mysql",
+            "documentation/platform/dynamic-secrets/oracle",
+            "documentation/platform/dynamic-secrets/postgresql",
+            "documentation/platform/dynamic-secrets/rabbit-mq",
+            "documentation/platform/dynamic-secrets/redis",
             "documentation/platform/dynamic-secrets/sap-ase",
             "documentation/platform/dynamic-secrets/sap-hana",
             "documentation/platform/dynamic-secrets/snowflake",
@@ -233,7 +235,8 @@
           "group": "Gateway",
           "pages": [
             "documentation/platform/gateways/overview",
-            "documentation/platform/gateways/gateway-security"
+            "documentation/platform/gateways/gateway-security",
+            "documentation/platform/gateways/networking"
           ]
         },
         "documentation/platform/project-templates",
@@ -328,6 +331,7 @@
         {
           "group": "Machine Identities",
           "pages": [
+            "documentation/platform/identities/alicloud-auth",
             "documentation/platform/identities/aws-auth",
             "documentation/platform/identities/azure-auth",
             "documentation/platform/identities/gcp-auth",
@@ -340,6 +344,7 @@
               "group": "OIDC Auth",
               "pages": [
                 "documentation/platform/identities/oidc-auth/general",
+                "documentation/platform/identities/oidc-auth/azure",
                 "documentation/platform/identities/oidc-auth/github",
                 "documentation/platform/identities/oidc-auth/circleci",
                 "documentation/platform/identities/oidc-auth/gitlab",
@@ -447,6 +452,8 @@
     {
       "group": "Infrastructure Integrations",
       "pages": [
+        "integrations/platforms/ansible",
+        "integrations/platforms/apache-airflow",
         {
           "group": "Container orchestrators",
           "pages": [
@@ -465,7 +472,6 @@
             "integrations/platforms/ecs-with-agent"
           ]
         },
-        "integrations/platforms/infisical-agent",
         {
           "group": "Docker",
           "pages": [
@@ -475,10 +481,10 @@
             "integrations/platforms/docker-compose"
           ]
         },
-        "integrations/frameworks/terraform",
+        "integrations/platforms/infisical-agent",
+        "integrations/frameworks/packer",
         "integrations/frameworks/pulumi",
-        "integrations/platforms/ansible",
-        "integrations/platforms/apache-airflow"
+        "integrations/frameworks/terraform"
       ]
     },
     {
@@ -493,6 +499,7 @@
             "integrations/app-connections/aws",
             "integrations/app-connections/azure-app-configuration",
             "integrations/app-connections/azure-client-secrets",
+            "integrations/app-connections/azure-devops",
             "integrations/app-connections/azure-key-vault",
             "integrations/app-connections/camunda",
             "integrations/app-connections/databricks",
@@ -505,6 +512,7 @@
             "integrations/app-connections/mssql",
             "integrations/app-connections/mysql",
             "integrations/app-connections/oci",
+            "integrations/app-connections/oracledb",
             "integrations/app-connections/postgres",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
@@ -525,6 +533,7 @@
             "integrations/secret-syncs/aws-parameter-store",
             "integrations/secret-syncs/aws-secrets-manager",
             "integrations/secret-syncs/azure-app-configuration",
+            "integrations/secret-syncs/azure-devops",
             "integrations/secret-syncs/azure-key-vault",
             "integrations/secret-syncs/camunda",
             "integrations/secret-syncs/databricks",
@@ -725,6 +734,16 @@
           ]
         },
         {
+          "group": "Alibaba Cloud Auth",
+          "pages": [
+            "api-reference/endpoints/alicloud-auth/login",
+            "api-reference/endpoints/alicloud-auth/attach",
+            "api-reference/endpoints/alicloud-auth/retrieve",
+            "api-reference/endpoints/alicloud-auth/update",
+            "api-reference/endpoints/alicloud-auth/revoke"
+          ]
+        },
+        {
           "group": "AWS Auth",
           "pages": [
             "api-reference/endpoints/aws-auth/login",
@@ -824,8 +843,7 @@
             "api-reference/endpoints/workspaces/delete-workspace",
             "api-reference/endpoints/workspaces/get-workspace",
             "api-reference/endpoints/workspaces/update-workspace",
-            "api-reference/endpoints/workspaces/secret-snapshots",
-            "api-reference/endpoints/workspaces/rollback-snapshot"
+            "api-reference/endpoints/workspaces/secret-snapshots"
           ]
         },
         {
@@ -925,6 +943,12 @@
         {
           "group": "Dynamic Secrets",
           "pages": [
+            {
+              "group": "Kubernetes",
+              "pages": [
+                "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
+              ]
+            },
             "api-reference/endpoints/dynamic-secrets/create",
             "api-reference/endpoints/dynamic-secrets/update",
             "api-reference/endpoints/dynamic-secrets/delete",
@@ -1030,6 +1054,19 @@
               ]
             },
             {
+              "group": "OracleDB Credentials",
+              "pages": [
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/create",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/delete",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-id",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-name",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/get-generated-credentials-by-id",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/list",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/rotate-secrets",
+                "api-reference/endpoints/secret-rotations/oracledb-credentials/update"
+              ]
+            },
+            {
               "group": "PostgreSQL Credentials",
               "pages": [
                 "api-reference/endpoints/secret-rotations/postgres-credentials/create",
@@ -1048,8 +1085,8 @@
           "group": "Secret Scanning",
           "pages": [
             {
-              "group":  "Data Sources",
-              "pages":  [
+              "group": "Data Sources",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/data-sources/list",
                 "api-reference/endpoints/secret-scanning/data-sources/options",
                 {
@@ -1070,15 +1107,15 @@
               ]
             },
             {
-              "group":  "Findings",
-              "pages":  [
+              "group": "Findings",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/findings/list",
                 "api-reference/endpoints/secret-scanning/findings/update"
               ]
             },
             {
-              "group":  "Configuration",
-              "pages":  [
+              "group": "Configuration",
+              "pages": [
                 "api-reference/endpoints/secret-scanning/config/get-by-project-id",
                 "api-reference/endpoints/secret-scanning/config/update"
               ]
@@ -1175,6 +1212,18 @@
                 "api-reference/endpoints/app-connections/azure-client-secret/create",
                 "api-reference/endpoints/app-connections/azure-client-secret/update",
                 "api-reference/endpoints/app-connections/azure-client-secret/delete"
+              ]
+            },
+            {
+              "group": "Azure DevOps",
+              "pages": [
+                "api-reference/endpoints/app-connections/azure-devops/list",
+                "api-reference/endpoints/app-connections/azure-devops/available",
+                "api-reference/endpoints/app-connections/azure-devops/get-by-id",
+                "api-reference/endpoints/app-connections/azure-devops/get-by-name",
+                "api-reference/endpoints/app-connections/azure-devops/create",
+                "api-reference/endpoints/app-connections/azure-devops/update",
+                "api-reference/endpoints/app-connections/azure-devops/delete"
               ]
             },
             {
@@ -1322,6 +1371,18 @@
               ]
             },
             {
+              "group": "OracleDB",
+              "pages": [
+                "api-reference/endpoints/app-connections/oracledb/list",
+                "api-reference/endpoints/app-connections/oracledb/available",
+                "api-reference/endpoints/app-connections/oracledb/get-by-id",
+                "api-reference/endpoints/app-connections/oracledb/get-by-name",
+                "api-reference/endpoints/app-connections/oracledb/create",
+                "api-reference/endpoints/app-connections/oracledb/update",
+                "api-reference/endpoints/app-connections/oracledb/delete"
+              ]
+            },
+            {
               "group": "PostgreSQL",
               "pages": [
                 "api-reference/endpoints/app-connections/postgres/list",
@@ -1442,6 +1503,20 @@
                 "api-reference/endpoints/secret-syncs/azure-app-configuration/sync-secrets",
                 "api-reference/endpoints/secret-syncs/azure-app-configuration/import-secrets",
                 "api-reference/endpoints/secret-syncs/azure-app-configuration/remove-secrets"
+              ]
+            },
+            {
+              "group": "Azure DevOps",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/azure-devops/list",
+                "api-reference/endpoints/secret-syncs/azure-devops/get-by-id",
+                "api-reference/endpoints/secret-syncs/azure-devops/get-by-name",
+                "api-reference/endpoints/secret-syncs/azure-devops/create",
+                "api-reference/endpoints/secret-syncs/azure-devops/update",
+                "api-reference/endpoints/secret-syncs/azure-devops/delete",
+                "api-reference/endpoints/secret-syncs/azure-devops/sync-secrets",
+                "api-reference/endpoints/secret-syncs/azure-devops/import-secrets",
+                "api-reference/endpoints/secret-syncs/azure-devops/remove-secrets"
               ]
             },
             {

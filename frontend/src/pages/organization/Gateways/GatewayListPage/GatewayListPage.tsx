@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
+  faCopy,
   faEdit,
   faEllipsisV,
   faInfoCircle,
@@ -169,6 +170,12 @@ export const GatewayListPage = withPermission(
                                   </IconButton>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    icon={<FontAwesomeIcon icon={faCopy} />}
+                                    onClick={() => navigator.clipboard.writeText(el.id)}
+                                  >
+                                    Copy ID
+                                  </DropdownMenuItem>
                                   <OrgPermissionCan
                                     I={OrgGatewayPermissionActions.EditGateways}
                                     a={OrgPermissionSubjects.Gateway}

@@ -293,6 +293,45 @@ export type DeleteIdentityAwsAuthDTO = {
   identityId: string;
 };
 
+export type IdentityAliCloudAuth = {
+  identityId: string;
+  type: "iam";
+  allowedArns: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityAliCloudAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  allowedArns: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityAliCloudAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  allowedArns: string;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityAliCloudAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type IdentityOciAuth = {
   identityId: string;
   type: "iam";
@@ -379,10 +418,16 @@ export type DeleteIdentityAzureAuthDTO = {
   identityId: string;
 };
 
+export enum IdentityKubernetesAuthTokenReviewMode {
+  Api = "api",
+  Gateway = "gateway"
+}
+
 export type IdentityKubernetesAuth = {
   identityId: string;
   kubernetesHost: string;
   tokenReviewerJwt: string;
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -397,8 +442,9 @@ export type IdentityKubernetesAuth = {
 export type AddIdentityKubernetesAuthDTO = {
   organizationId: string;
   identityId: string;
-  kubernetesHost: string;
+  kubernetesHost: string | null;
   tokenReviewerJwt?: string;
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
@@ -415,8 +461,9 @@ export type AddIdentityKubernetesAuthDTO = {
 export type UpdateIdentityKubernetesAuthDTO = {
   organizationId: string;
   identityId: string;
-  kubernetesHost?: string;
+  kubernetesHost?: string | null;
   tokenReviewerJwt?: string | null;
+  tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces?: string;
   allowedNames?: string;
   allowedAudience?: string;

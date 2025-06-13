@@ -6,6 +6,7 @@ import { TReactQueryOptions } from "@app/types/reactQuery";
 import {
   ClientSecretData,
   IdentityAccessToken,
+  IdentityAliCloudAuth,
   IdentityAwsAuth,
   IdentityAzureAuth,
   IdentityGcpAuth,
@@ -33,6 +34,8 @@ export const identitiesKeys = {
   getIdentityGcpAuth: (identityId: string) => [{ identityId }, "identity-gcp-auth"] as const,
   getIdentityOidcAuth: (identityId: string) => [{ identityId }, "identity-oidc-auth"] as const,
   getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
+  getIdentityAliCloudAuth: (identityId: string) =>
+    [{ identityId }, "identity-alicloud-auth"] as const,
   getIdentityOciAuth: (identityId: string) => [{ identityId }, "identity-oci-auth"] as const,
   getIdentityAzureAuth: (identityId: string) => [{ identityId }, "identity-azure-auth"] as const,
   getIdentityTokenAuth: (identityId: string) => [{ identityId }, "identity-token-auth"] as const,
@@ -185,6 +188,27 @@ export const useGetIdentityOciAuth = (
         `/api/v1/auth/oci-auth/identities/${identityId}`
       );
       return identityOciAuth;
+    },
+    staleTime: 0,
+    gcTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
+  });
+};
+
+export const useGetIdentityAliCloudAuth = (
+  identityId: string,
+  options?: TReactQueryOptions["options"]
+) => {
+  return useQuery({
+    queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityAliCloudAuth }
+      } = await apiRequest.get<{ identityAliCloudAuth: IdentityAliCloudAuth }>(
+        `/api/v1/auth/alicloud-auth/identities/${identityId}`
+      );
+      return identityAliCloudAuth;
     },
     staleTime: 0,
     gcTime: 0,

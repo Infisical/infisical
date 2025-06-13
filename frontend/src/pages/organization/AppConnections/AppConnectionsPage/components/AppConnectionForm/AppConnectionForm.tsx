@@ -14,6 +14,7 @@ import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
+import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -26,6 +27,7 @@ import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
+import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
@@ -95,10 +97,14 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <MsSqlConnectionForm onSubmit={onSubmit} />;
     case AppConnection.MySql:
       return <MySqlConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.OracleDB:
+      return <OracleDBConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureClientSecrets:
       return <AzureClientSecretsConnectionForm />;
+    case AppConnection.AzureDevOps:
+      return <AzureDevOpsConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Windmill:
       return <WindmillConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Auth0:
@@ -175,10 +181,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <MsSqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.MySql:
       return <MySqlConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.OracleDB:
+      return <OracleDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.AzureClientSecrets:
       return <AzureClientSecretsConnectionForm appConnection={appConnection} />;
+    case AppConnection.AzureDevOps:
+      return <AzureDevOpsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.Windmill:
       return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Auth0:

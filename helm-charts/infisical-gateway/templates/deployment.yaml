@@ -39,18 +39,9 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - gateway
-            - --token
-            - $(TOKEN)
           envFrom:
             - secretRef:
                 name: {{ .Values.secret.name }}
-          env:
-            - name: TOKEN_VALIDATION
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secret.name }}
-                  key: TOKEN
-                  optional: false
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}

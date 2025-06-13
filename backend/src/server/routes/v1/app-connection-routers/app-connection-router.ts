@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/ee/services/app-connections/oci";
+import {
+  OracleDBConnectionListItemSchema,
+  SanitizedOracleDBConnectionSchema
+} from "@app/ee/services/app-connections/oracledb";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -19,6 +23,10 @@ import {
   AzureClientSecretsConnectionListItemSchema,
   SanitizedAzureClientSecretsConnectionSchema
 } from "@app/services/app-connection/azure-client-secrets";
+import {
+  AzureDevOpsConnectionListItemSchema,
+  SanitizedAzureDevOpsConnectionSchema
+} from "@app/services/app-connection/azure-devops/azure-devops-schemas";
 import {
   AzureKeyVaultConnectionListItemSchema,
   SanitizedAzureKeyVaultConnectionSchema
@@ -75,6 +83,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedGcpConnectionSchema.options,
   ...SanitizedAzureKeyVaultConnectionSchema.options,
   ...SanitizedAzureAppConfigurationConnectionSchema.options,
+  ...SanitizedAzureDevOpsConnectionSchema.options,
   ...SanitizedDatabricksConnectionSchema.options,
   ...SanitizedHumanitecConnectionSchema.options,
   ...SanitizedTerraformCloudConnectionSchema.options,
@@ -90,6 +99,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLdapConnectionSchema.options,
   ...SanitizedTeamCityConnectionSchema.options,
   ...SanitizedOCIConnectionSchema.options,
+  ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options
 ]);
 
@@ -100,6 +110,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   GcpConnectionListItemSchema,
   AzureKeyVaultConnectionListItemSchema,
   AzureAppConfigurationConnectionListItemSchema,
+  AzureDevOpsConnectionListItemSchema,
   DatabricksConnectionListItemSchema,
   HumanitecConnectionListItemSchema,
   TerraformCloudConnectionListItemSchema,
@@ -115,6 +126,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LdapConnectionListItemSchema,
   TeamCityConnectionListItemSchema,
   OCIConnectionListItemSchema,
+  OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema
 ]);
 

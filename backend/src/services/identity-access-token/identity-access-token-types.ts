@@ -11,5 +11,9 @@ export type TIdentityAccessTokenJwtPayload = {
     oidc?: {
       claims: Record<string, string>;
     };
+    kubernetes?: {
+      namespace: string;
+      name: string;
+    };
   };
 };

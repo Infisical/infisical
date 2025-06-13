@@ -291,8 +291,9 @@ export const VercelSyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const vercelSecret of vercelSecrets) {
-      // eslint-disable-next-line no-continue
-      if (!matchesSchema(vercelSecret.key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(vercelSecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
+        // eslint-disable-next-line no-continue
+        continue;
 
       if (!secretMap[vercelSecret.key]) {
         await deleteSecret(secretSync, vercelSecret);

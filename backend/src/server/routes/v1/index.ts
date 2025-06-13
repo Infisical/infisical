@@ -15,6 +15,7 @@ import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
+import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
 import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
@@ -63,6 +64,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityKubernetesRouter);
       await authRouter.register(registerIdentityGcpAuthRouter);
       await authRouter.register(registerIdentityAccessTokenRouter);
+      await authRouter.register(registerIdentityAliCloudAuthRouter);
       await authRouter.register(registerIdentityAwsAuthRouter);
       await authRouter.register(registerIdentityAzureAuthRouter);
       await authRouter.register(registerIdentityOciAuthRouter);

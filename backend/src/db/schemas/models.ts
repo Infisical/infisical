@@ -80,6 +80,7 @@ export enum TableName {
   IdentityGcpAuth = "identity_gcp_auths",
   IdentityAzureAuth = "identity_azure_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
+  IdentityAliCloudAuth = "identity_alicloud_auths",
   IdentityAwsAuth = "identity_aws_auths",
   IdentityOciAuth = "identity_oci_auths",
   IdentityOidcAuth = "identity_oidc_auths",
@@ -160,6 +161,12 @@ export enum TableName {
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
   SecretReminderRecipients = "secret_reminder_recipients",
   GithubOrgSyncConfig = "github_org_sync_configs",
+  FolderCommit = "folder_commits",
+  FolderCommitChanges = "folder_commit_changes",
+  FolderCheckpoint = "folder_checkpoints",
+  FolderCheckpointResources = "folder_checkpoint_resources",
+  FolderTreeCheckpoint = "folder_tree_checkpoints",
+  FolderTreeCheckpointResources = "folder_tree_checkpoint_resources",
   SecretScanningDataSource = "secret_scanning_data_sources",
   SecretScanningResource = "secret_scanning_resources",
   SecretScanningScan = "secret_scanning_scans",
@@ -167,7 +174,7 @@ export enum TableName {
   SecretScanningConfig = "secret_scanning_configs"
 }
 
-export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
+export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
 
 export const UserDeviceSchema = z
   .object({
@@ -241,6 +248,7 @@ export enum IdentityAuthMethod {
   UNIVERSAL_AUTH = "universal-auth",
   KUBERNETES_AUTH = "kubernetes-auth",
   GCP_AUTH = "gcp-auth",
+  ALICLOUD_AUTH = "alicloud-auth",
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
   OCI_AUTH = "oci-auth",

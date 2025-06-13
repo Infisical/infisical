@@ -9,6 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { LdapCredentialType, LdapSchema, TDynamicProviderFns } from "./models";
+import { compileUsernameTemplate } from "./templateUtils";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
@@ -22,13 +23,13 @@ const encodePassword = (password?: string) => {
   return base64Password;
 };
 
-const generateUsername = (usernameTemplate?: string | null) => {
+const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
   if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
+  return compileUsernameTemplate({
+    usernameTemplate,
     randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
+    identity
   });
 };
 
@@ -196,8 +197,8 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return dnArray;
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null }) => {
-    const { inputs, usernameTemplate } = data;
+  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
+    const { inputs, usernameTemplate, identity } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
@@ -224,7 +225,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
         });
       }
     } else {
-      const username = generateUsername(usernameTemplate);
+      const username = generateUsername(usernameTemplate, identity);
       const password = generatePassword();
       const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.creationLdif });
 

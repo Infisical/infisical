@@ -11,7 +11,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,6 +32,10 @@ import {
   Tr
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import {
+  ProjectPermissionSecretScanningFindingActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import {
   SECRET_SCANNING_DATA_SOURCE_MAP,
   SECRET_SCANNING_FINDING_STATUS_ICON_MAP
@@ -84,6 +91,8 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
     dataSourceTypes: [],
     status: initStatus ? [initStatus] : []
   });
+
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
   const {
     search,
@@ -158,6 +167,13 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
     offset,
     setPage
   });
+
+  const currentPageData = useMemo(
+    () => filteredFindings.slice(offset, perPage * page),
+    [filteredFindings, offset, perPage, page]
+  );
+
+  const currentPageDataIds = useMemo(() => currentPageData.map((f) => f.id), [currentPageData]);
 
   const handleSort = (column: FindingsOrderBy) => {
     if (column === orderBy) {
@@ -276,6 +292,37 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
         <Table>
           <THead>
             <Tr>
+              <Th className="">
+                <Checkbox
+                  id="checkbox-select-all"
+                  isChecked={
+                    currentPageDataIds.length > 0 &&
+                    currentPageDataIds.every((id) => selectedRows.includes(id))
+                  }
+                  onCheckedChange={() => {
+                    const allCurrentlySelectedOnPage =
+                      currentPageDataIds.length > 0 &&
+                      currentPageDataIds.every((id) => selectedRows.includes(id));
+
+                    if (allCurrentlySelectedOnPage) {
+                      // Deselect all on current page
+                      setSelectedRows((prev) =>
+                        prev.filter((rowId) => !currentPageDataIds.includes(rowId))
+                      );
+                    } else {
+                      // Select all on current page
+                      setSelectedRows((prev) => {
+                        const newSelectedRows = new Set(prev);
+                        currentPageDataIds.forEach((id) => newSelectedRows.add(id));
+                        return Array.from(newSelectedRows);
+                      });
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                />
+              </Th>
               <Th className="min-w-[10rem]">Platform</Th>
               <Th className="w-1/4">
                 <div className="flex items-center">
@@ -333,11 +380,17 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {filteredFindings.slice(offset, perPage * page).map((finding) => (
+            {currentPageData.map((finding) => (
               <SecretScanningFindingRow
+                isSelected={selectedRows.includes(finding.id)}
+                onToggleSelect={(v) =>
+                  v
+                    ? setSelectedRows((sr) => [...sr, finding.id])
+                    : setSelectedRows((sr) => sr.filter((r) => r !== finding.id))
+                }
                 key={finding.id}
                 finding={finding}
-                onUpdate={() => handlePopUpOpen("updateFinding", finding)}
+                onUpdate={() => handlePopUpOpen("updateFinding", [finding])}
               />
             ))}
           </TBody>
@@ -365,8 +418,38 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
       <SecretScanningUpdateFindingModal
         isOpen={popUp.updateFinding.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("updateFinding", isOpen)}
-        finding={popUp.updateFinding.data}
+        onComplete={() => setSelectedRows([])}
+        findings={popUp.updateFinding.data}
       />
+      {selectedRows.length > 0 && (
+        <div className="mt-4 flex items-center justify-between rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-2 pl-4">
+          <span>
+            {selectedRows.length} finding{selectedRows.length === 1 ? "" : "s"} selected
+          </span>
+
+          <div className="flex gap-2">
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningFindingActions.Update}
+              a={ProjectPermissionSub.SecretScanningFindings}
+            >
+              {(isAllowed) => (
+                <Button
+                  onClick={() =>
+                    handlePopUpOpen(
+                      "updateFinding",
+                      findings.filter((f) => selectedRows.includes(f.id))
+                    )
+                  }
+                  colorSchema="secondary"
+                  isDisabled={!isAllowed}
+                >
+                  Update Status
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

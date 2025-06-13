@@ -45,6 +45,11 @@ export type TDatabricksConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Databricks;
 };
 
+export type TAzureDevOpsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureDevOps;
+  oauthClientId?: string;
+};
+
 export type THumanitecConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Humanitec;
 };
@@ -67,6 +72,10 @@ export type TMsSqlConnectionOption = TAppConnectionOptionBase & {
 
 export type TMySqlConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.MySql;
+};
+
+export type TOracleDBConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OracleDB;
 };
 
 export type TCamundaConnectionOption = TAppConnectionOptionBase & {
@@ -108,6 +117,7 @@ export type TAppConnectionOption =
   | TAzureAppConfigurationConnectionOption
   | TAzureKeyVaultConnectionOption
   | TAzureClientSecretsConnectionOption
+  | TAzureDevOpsConnectionOption
   | TDatabricksConnectionOption
   | THumanitecConnectionOption
   | TTerraformCloudConnectionOption
@@ -115,6 +125,7 @@ export type TAppConnectionOption =
   | TPostgresConnectionOption
   | TMsSqlConnectionOption
   | TMySqlConnectionOption
+  | TOracleDBConnectionOption
   | TCamundaConnectionOption
   | TWindmillConnectionOption
   | TAuth0ConnectionOption
@@ -131,6 +142,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnectionOption;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
   [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnectionOption;
+  [AppConnection.AzureDevOps]: TAzureDevOpsConnectionOption;
   [AppConnection.Databricks]: TDatabricksConnectionOption;
   [AppConnection.Humanitec]: THumanitecConnectionOption;
   [AppConnection.TerraformCloud]: TTerraformCloudConnectionOption;
@@ -138,6 +150,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Postgres]: TPostgresConnectionOption;
   [AppConnection.MsSql]: TMsSqlConnectionOption;
   [AppConnection.MySql]: TMySqlConnectionOption;
+  [AppConnection.OracleDB]: TOracleDBConnectionOption;
   [AppConnection.Camunda]: TCamundaConnectionOption;
   [AppConnection.Windmill]: TWindmillConnectionOption;
   [AppConnection.Auth0]: TAuth0ConnectionOption;

@@ -4,6 +4,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
@@ -14,6 +15,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.AzureKeyVault]: { name: "Azure Key Vault", image: "Microsoft Azure.png" },
   [SecretSync.AzureAppConfiguration]: {
     name: "Azure App Configuration",
+    image: "Microsoft Azure.png"
+  },
+  [SecretSync.AzureDevOps]: {
+    name: "Azure DevOps",
     image: "Microsoft Azure.png"
   },
   [SecretSync.Databricks]: {
@@ -65,6 +70,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GCPSecretManager]: AppConnection.GCP,
   [SecretSync.AzureKeyVault]: AppConnection.AzureKeyVault,
   [SecretSync.AzureAppConfiguration]: AppConnection.AzureAppConfiguration,
+  [SecretSync.AzureDevOps]: AppConnection.AzureDevOps,
   [SecretSync.Databricks]: AppConnection.Databricks,
   [SecretSync.Humanitec]: AppConnection.Humanitec,
   [SecretSync.TerraformCloud]: AppConnection.TerraformCloud,
@@ -122,5 +128,16 @@ export const HUMANITEC_SYNC_SCOPES: Record<
     name: "Environment",
     description:
       "Infisical will sync secrets as environment level shared values to the specified Humanitec application environment."
+  }
+};
+
+export const GCP_SYNC_SCOPES: Record<GcpSyncScope, { name: string; description: string }> = {
+  [GcpSyncScope.Global]: {
+    name: "Global",
+    description: "Secrets will be synced globally; being available in all project regions."
+  },
+  [GcpSyncScope.Region]: {
+    name: "Region",
+    description: "Secrets will be synced to the specified region."
   }
 };

@@ -709,6 +709,10 @@ export const licenseServiceFactory = ({
     return licenses;
   };
 
+  const invalidateGetPlan = async (orgId: string) => {
+    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
+  };
+
   return {
     generateOrgCustomerId,
     removeOrgCustomer,
@@ -723,6 +727,7 @@ export const licenseServiceFactory = ({
       return onPremFeatures;
     },
     getPlan,
+    invalidateGetPlan,
     updateSubscriptionOrgMemberCount,
     refreshPlan,
     getOrgPlan,

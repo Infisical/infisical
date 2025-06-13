@@ -8,10 +8,12 @@ import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   AzureAppConfigurationConnectionMethod,
   AzureClientSecretsConnectionMethod,
+  AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
   TAzureAppConfigurationConnection,
   TAzureClientSecretsConnection,
+  TAzureDevOpsConnection,
   TAzureKeyVaultConnection,
   TGitHubConnection,
   TGitHubRadarConnection,
@@ -42,6 +44,19 @@ type AzureClientSecretsFormData = BaseFormData &
   Pick<TAzureClientSecretsConnection, "name" | "method" | "description"> &
   Pick<TAzureClientSecretsConnection["credentials"], "tenantId">;
 
+type OAuthCredentials = Extract<
+  TAzureDevOpsConnection,
+  { method: AzureDevOpsConnectionMethod.OAuth }
+>["credentials"];
+type AccessTokenCredentials = Extract<
+  TAzureDevOpsConnection,
+  { method: AzureDevOpsConnectionMethod.AccessToken }
+>["credentials"];
+
+type AzureDevOpsFormData = BaseFormData &
+  Pick<TAzureDevOpsConnection, "name" | "method" | "description"> &
+  (Pick<OAuthCredentials, "tenantId" | "orgName"> | Pick<AccessTokenCredentials, "orgName">);
+
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
   [AppConnection.GitHubRadar]: GithubRadarFormData & { app: AppConnection.GitHubRadar };
@@ -52,6 +67,9 @@ type FormDataMap = {
   [AppConnection.AzureClientSecrets]: AzureClientSecretsFormData & {
     app: AppConnection.AzureClientSecrets;
   };
+  [AppConnection.AzureDevOps]: AzureDevOpsFormData & {
+    app: AppConnection.AzureDevOps;
+  };
 };
 
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
@@ -59,7 +77,8 @@ const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.GitHubRadar]: "githubRadarConnectionFormData",
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
   [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
-  [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData"
+  [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData",
+  [AppConnection.AzureDevOps]: "azureDevOpsConnectionFormData"
 };
 
 export const OAuthCallbackPage = () => {
@@ -258,6 +277,60 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
+  const handleAzureDevOps = useCallback(async () => {
+    const formData = getFormData(AppConnection.AzureDevOps);
+    if (formData === null) return null;
+
+    clearState(AppConnection.AzureDevOps);
+
+    const { connectionId, name, description, returnUrl } = formData;
+
+    try {
+      if (!("tenantId" in formData)) {
+        throw new Error("Expected OAuth form data but got access token data");
+      }
+
+      if (connectionId) {
+        await updateAppConnection.mutateAsync({
+          app: AppConnection.AzureDevOps,
+          connectionId,
+          credentials: {
+            code: code as string,
+            tenantId: formData.tenantId as string,
+            orgName: formData.orgName
+          }
+        });
+      } else {
+        await createAppConnection.mutateAsync({
+          app: AppConnection.AzureDevOps,
+          name,
+          description,
+          method: AzureDevOpsConnectionMethod.OAuth,
+          credentials: {
+            code: code as string,
+            tenantId: formData.tenantId as string,
+            orgName: formData.orgName
+          }
+        });
+      }
+    } catch (err: any) {
+      createNotification({
+        title: `Failed to ${connectionId ? "update" : "add"} Azure DevOps Connection`,
+        text: err?.message,
+        type: "error"
+      });
+      navigate({
+        to: returnUrl ?? "/organization/app-connections"
+      });
+    }
+
+    return {
+      connectionId,
+      returnUrl,
+      appConnectionName: formData.app
+    };
+  }, []);
+
   const handleGithub = useCallback(async () => {
     const formData = getFormData(AppConnection.GitHub);
     if (formData === null) return null;
@@ -396,6 +469,8 @@ export const OAuthCallbackPage = () => {
         data = await handleAzureAppConfiguration();
       } else if (appConnection === AppConnection.AzureClientSecrets) {
         data = await handleAzureClientSecrets();
+      } else if (appConnection === AppConnection.AzureDevOps) {
+        data = await handleAzureDevOps();
       }
 
       if (data) {

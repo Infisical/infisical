@@ -17,56 +17,75 @@ import { SECRET_SCANNING_FINDING_STATUS_ICON_MAP } from "@app/helpers/secretScan
 import {
   SecretScanningFindingStatus,
   TSecretScanningFinding,
-  useUpdateSecretScanningFinding
+  useUpdateMultipleSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
-  finding?: TSecretScanningFinding;
+  findings?: TSecretScanningFinding[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onComplete?: () => void;
 };
 
 const FormSchema = z.object({
   remarks: z.string().max(256, "Cannot exceed 256 characters").optional(),
-  status: z.nativeEnum(SecretScanningFindingStatus)
+  status: z.nativeEnum(SecretScanningFindingStatus).optional()
 });
 
 type FormType = z.infer<typeof FormSchema>;
 
 type ContentProps = {
-  finding: TSecretScanningFinding;
+  findings: TSecretScanningFinding[];
   onComplete: () => void;
 };
 
-const Content = ({ finding, onComplete }: ContentProps) => {
-  const updateFinding = useUpdateSecretScanningFinding();
+const Content = ({ findings, onComplete }: ContentProps) => {
+  const updateMultipleFindings = useUpdateMultipleSecretScanningFinding();
+
+  const single = findings.length === 1;
 
   const { handleSubmit, control } = useForm<FormType>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      status: finding.status,
-      remarks: finding.remarks ?? ""
+      status: single ? findings[0].status : undefined,
+      remarks: single ? findings[0].remarks : undefined
     }
   });
 
   const onSubmit = async (data: FormType) => {
+    if (!data.status) return;
+
     try {
-      await updateFinding.mutateAsync({
-        ...data,
-        findingId: finding.id,
-        projectId: finding.projectId
-      });
+      if (findings.length > 1) {
+        await updateMultipleFindings.mutateAsync(
+          findings.map((f) => ({
+            ...data,
+            status: data.status!,
+            findingId: f.id,
+            projectId: f.projectId
+          }))
+        );
+      } else {
+        await updateMultipleFindings.mutateAsync([
+          {
+            ...data,
+            status: data.status,
+            findingId: findings[0].id,
+            projectId: findings[0].projectId
+          }
+        ]);
+      }
 
       createNotification({
         type: "success",
-        text: "Finding status successfully updated"
+        text: `Finding status${single ? "" : "es"} successfully updated`
       });
 
       onComplete();
     } catch {
       createNotification({
         type: "error",
-        text: "Failed to update Finding status"
+        text: `Failed to update finding status${single ? "" : "es"}`
       });
     }
   };
@@ -81,12 +100,15 @@ const Content = ({ finding, onComplete }: ContentProps) => {
             <FormControl label="Status" isError={Boolean(error)} errorText={error?.message}>
               <Select
                 value={value}
+                placeholder="Select status..."
                 onValueChange={onChange}
                 className="w-full border border-mineshaft-500 capitalize"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
-                icon={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[value].icon}
-                iconClassName={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[value].className}
+                icon={value ? SECRET_SCANNING_FINDING_STATUS_ICON_MAP[value].icon : undefined}
+                iconClassName={
+                  value ? SECRET_SCANNING_FINDING_STATUS_ICON_MAP[value].className : undefined
+                }
               >
                 {Object.values(SecretScanningFindingStatus).map((status) => {
                   return (
@@ -114,8 +136,8 @@ const Content = ({ finding, onComplete }: ContentProps) => {
       <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
         <Button
           type="submit"
-          isLoading={updateFinding.isPending}
-          isDisabled={updateFinding.isPending}
+          isLoading={updateMultipleFindings.isPending}
+          isDisabled={updateMultipleFindings.isPending}
           colorSchema="secondary"
         >
           Update Status
@@ -128,13 +150,27 @@ const Content = ({ finding, onComplete }: ContentProps) => {
   );
 };
 
-export const SecretScanningUpdateFindingModal = ({ finding, isOpen, onOpenChange }: Props) => {
-  if (!finding) return null;
+export const SecretScanningUpdateFindingModal = ({
+  findings,
+  isOpen,
+  onOpenChange,
+  onComplete
+}: Props) => {
+  if (!findings?.length) return null;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Update Finding" subTitle="Update the status or leave remarks">
-        <Content finding={finding} onComplete={() => onOpenChange(false)} />
+      <ModalContent
+        title={`Update Finding${findings.length === 1 ? "" : "s"}`}
+        subTitle="Update the status or leave remarks"
+      >
+        <Content
+          findings={findings}
+          onComplete={() => {
+            onOpenChange(false);
+            if (onComplete) onComplete();
+          }}
+        />
       </ModalContent>
     </Modal>
   );

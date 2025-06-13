@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import RE2 from "re2";
+import handlebars from "handlebars";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
@@ -26,6 +26,7 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
+import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
@@ -45,6 +46,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.GitHub]: GITHUB_SYNC_LIST_OPTION,
   [SecretSync.GCPSecretManager]: GCP_SYNC_LIST_OPTION,
   [SecretSync.AzureKeyVault]: AZURE_KEY_VAULT_SYNC_LIST_OPTION,
+  [SecretSync.AzureDevOps]: AZURE_DEVOPS_SYNC_LIST_OPTION,
   [SecretSync.AzureAppConfiguration]: AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION,
   [SecretSync.Databricks]: DATABRICKS_SYNC_LIST_OPTION,
   [SecretSync.Humanitec]: HUMANITEC_SYNC_LIST_OPTION,
@@ -68,13 +70,17 @@ type TSyncSecretDeps = {
 };
 
 // Add schema to secret keys
-const addSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMap => {
+const addSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   if (!schema) return unprocessedSecretMap;
 
   const processedSecretMap: TSecretMap = {};
 
   for (const [key, value] of Object.entries(unprocessedSecretMap)) {
-    const newKey = new RE2("{{secretKey}}").replace(schema, key);
+    const newKey = handlebars.compile(schema)({
+      secretKey: key,
+      environment
+    });
+
     processedSecretMap[newKey] = value;
   }
 
@@ -82,10 +88,17 @@ const addSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMa
 };
 
 // Strip schema from secret keys
-const stripSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecretMap => {
+const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   if (!schema) return unprocessedSecretMap;
 
-  const [prefix, suffix] = schema.split("{{secretKey}}");
+  const compiledSchemaPattern = handlebars.compile(schema)({
+    secretKey: "{{secretKey}}", // Keep secretKey
+    environment
+  });
+
+  const parts = compiledSchemaPattern.split("{{secretKey}}");
+  const prefix = parts[0];
+  const suffix = parts[parts.length - 1];
 
   const strippedMap: TSecretMap = {};
 
@@ -103,21 +116,40 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, schema?: string): TSecret
 };
 
 // Checks if a key matches a schema
-export const matchesSchema = (key: string, schema?: string): boolean => {
+export const matchesSchema = (key: string, environment: string, schema?: string): boolean => {
   if (!schema) return true;
 
-  const [prefix, suffix] = schema.split("{{secretKey}}");
-  if (prefix === undefined || suffix === undefined) return true;
+  const compiledSchemaPattern = handlebars.compile(schema)({
+    secretKey: "{{secretKey}}", // Keep secretKey
+    environment
+  });
 
-  return key.startsWith(prefix) && key.endsWith(suffix);
+  // This edge-case shouldn't be possible
+  if (!compiledSchemaPattern.includes("{{secretKey}}")) {
+    return key === compiledSchemaPattern;
+  }
+
+  const parts = compiledSchemaPattern.split("{{secretKey}}");
+  const prefix = parts[0];
+  const suffix = parts[parts.length - 1];
+
+  if (prefix === "" && suffix === "") return true;
+
+  // If prefix is empty, key must end with suffix
+  if (prefix === "") return key.endsWith(suffix);
+
+  // If suffix is empty, key must start with prefix
+  if (suffix === "") return key.startsWith(prefix);
+
+  return key.startsWith(prefix) && key.endsWith(suffix) && key.length >= prefix.length + suffix.length;
 };
 
 // Filter only for secrets with keys that match the schema
-const filterForSchema = (secretMap: TSecretMap, schema?: string): TSecretMap => {
+const filterForSchema = (secretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   const filteredMap: TSecretMap = {};
 
   for (const [key, value] of Object.entries(secretMap)) {
-    if (matchesSchema(key, schema)) {
+    if (matchesSchema(key, environment, schema)) {
       filteredMap[key] = value;
     }
   }
@@ -131,7 +163,7 @@ export const SecretSyncFns = {
     secretMap: TSecretMap,
     { kmsService, appConnectionDAL }: TSyncSecretDeps
   ): Promise<void> => {
-    const schemaSecretMap = addSchema(secretMap, secretSync.syncOptions.keySchema);
+    const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -149,6 +181,11 @@ export const SecretSyncFns = {
         }).syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.AzureDevOps:
+        return azureDevOpsSyncFactory({
           appConnectionDAL,
           kmsService
         }).syncSecrets(secretSync, schemaSecretMap);
@@ -214,6 +251,12 @@ export const SecretSyncFns = {
           kmsService
         }).getSecrets(secretSync);
         break;
+      case SecretSync.AzureDevOps:
+        secretMap = await azureDevOpsSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).getSecrets(secretSync);
+        break;
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
@@ -255,14 +298,16 @@ export const SecretSyncFns = {
         );
     }
 
-    return stripSchema(filterForSchema(secretMap), secretSync.syncOptions.keySchema);
+    const filtered = filterForSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
+    const stripped = stripSchema(filtered, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
+    return stripped;
   },
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
     { kmsService, appConnectionDAL }: TSyncSecretDeps
   ): Promise<void> => {
-    const schemaSecretMap = addSchema(secretMap, secretSync.syncOptions.keySchema);
+    const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -283,6 +328,11 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService
         }).removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.AzureDevOps:
+        return azureDevOpsSyncFactory({
+          appConnectionDAL,
+          kmsService
+        }).removeSecrets(secretSync);
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,

@@ -1,0 +1,139 @@
+---
+title: "OracleDB Connection"
+description: "Learn how to configure a Oracle Database Connection for Infisical."
+---
+
+<Info>
+    OracleDB App Connection is a paid feature.
+
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    then you should contact team@infisical.com to purchase an enterprise license to use it.
+</Info>
+
+Infisical supports connecting to OracleDB using a database user.
+
+## Configure an Oracle Database User for Infisical
+
+<Steps>
+    <Step title="Create a User">
+        Infisical recommends creating a designated user in your Oracle Database for your connection.
+        ```SQL
+        -- create user
+        CREATE USER infisical IDENTIFIED BY "my-password";
+
+        -- grant create session privileges
+        GRANT CREATE SESSION TO infisical;
+        ```
+        <Note>
+          Username must either be ALL UPPERCASE or not be surrounded by "quotes". Values not surrounded by quotes get automatically transformed to uppercase by Oracle Database.
+        </Note>
+    </Step>
+    <Step title="Grant Relevant Permissions">
+       Depending on how you intend to use your OracleDB connection, you'll need to grant one or more of the following permissions.
+        <Tip>
+            To learn more about the Oracle Database permission system, please visit their [documentation](https://docs.oracle.com/en/database/oracle/oracle-database/19/dbseg/configuring-privilege-and-role-authorization.html).
+        </Tip>
+        <Tabs>
+            <Tab title="Secret Rotation">
+                For Secret Rotations, your Infisical user will require the ability to alter other users' passwords:
+                ```SQL
+                -- enable permissions to alter login credentials
+                GRANT ALTER USER TO infisical;
+                ```
+            </Tab>
+        </Tabs>
+    </Step>
+    <Step title="Get Connection Details">
+        You'll need the following information to create your Oracle Database connection:
+        - `host` - The hostname or IP address of your Oracle Database server
+        - `port` - The port number your Oracle Database server is listening on (default: 1521)
+        - `database` - The Oracle Service Name or SID (System Identifier) for the database you are connecting to. For example: `ORCL`, `FREEPDB1`, `XEPDB1`
+        - `username` - The user name of the login created in the steps above
+        - `password` - The user password of the login created in the steps above
+        - `sslCertificate` (optional) - The SSL certificate required for connection (if configured)
+
+        <Note>
+            If you are self-hosting Infisical and intend to connect to an internal/private IP address, be sure to set the `ALLOW_INTERNAL_IP_CONNECTIONS` environment variable to `true`.
+        </Note>
+    </Step>
+</Steps>
+
+## Create Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to the App Connections tab on the Organization Settings page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+
+        2. Select the **OracleDB Connection** option.
+        ![Select OracleDB Connection](/images/app-connections/oracledb/select-oracledb-connection.png)
+
+        3. Select the **Username & Password** method option and provide the details obtained from the previous section and press **Connect to OracleDB**.
+
+        <Note>
+            Optionally, if you'd like Infisical to manage the credentials of this connection, you can enable the Platform Managed Credentials option.
+            If enabled, Infisical will update the password of the connection on creation to prevent external access to this database user.
+        </Note>
+
+        ![Create OracleDB Connection](/images/app-connections/oracledb/create-username-and-password-method.png)
+
+        4. Your **OracleDB Connection** is now available for use.
+        ![Assume User OracleDB Connection](/images/app-connections/oracledb/username-and-password-connection.png)
+    </Tab>
+    <Tab title="API">
+        To create an Oracle Database Connection, make an API request to the [Create OracleDB Connection](/api-reference/endpoints/app-connections/oracledb/create) API endpoint.
+
+        <Note>
+            Optionally, if you'd like Infisical to manage the credentials of this connection, you can set the `isPlatformManagedCredentials` option to `true`.
+            If enabled, Infisical will update the password of the connection on creation to prevent external access to this database user.
+        </Note>
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+        --url https://app.infisical.com/api/v1/app-connections/oracledb \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-oracledb-connection",
+            "method": "username-and-password",
+            "isPlatformManagedCredentials": true,
+            "credentials": {
+                "host": "123.4.5.6",
+                "port": 1521,
+                "database": "FREEPDB1",
+                "username": "infisical",
+                "password": "my-password",
+                "sslEnabled": true,
+                "sslRejectUnauthorized": true
+            },
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "appConnection": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-oracledb-connection",
+                "version": 1,
+                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "app": "oracledb",
+                "method": "username-and-password",
+                "isPlatformManagedCredentials": true,
+                "credentials": {
+                    "host": "123.4.5.6",
+                    "port": 1521,
+                    "database": "FREEPDB1",
+                    "username": "infisical",
+                    "sslEnabled": true,
+                    "sslRejectUnauthorized": true
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

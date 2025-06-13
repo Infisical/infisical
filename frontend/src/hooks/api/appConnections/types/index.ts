@@ -5,6 +5,7 @@ import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
+import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
@@ -17,6 +18,7 @@ import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
 import { TOCIConnection } from "./oci-connection";
+import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
@@ -28,6 +30,7 @@ export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
+export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
 export * from "./camunda-connection";
 export * from "./databricks-connection";
@@ -40,6 +43,7 @@ export * from "./ldap-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
 export * from "./oci-connection";
+export * from "./oracledb-connection";
 export * from "./postgres-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
@@ -54,6 +58,7 @@ export type TAppConnection =
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
   | TAzureClientSecretsConnection
+  | TAzureDevOpsConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -61,6 +66,7 @@ export type TAppConnection =
   | TPostgresConnection
   | TMsSqlConnection
   | TMySqlConnection
+  | TOracleDBConnection
   | TCamundaConnection
   | TWindmillConnection
   | TAuth0Connection
@@ -103,6 +109,7 @@ export type TAppConnectionMap = {
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnection;
+  [AppConnection.AzureDevOps]: TAzureDevOpsConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
   [AppConnection.TerraformCloud]: TTerraformCloudConnection;
@@ -110,6 +117,7 @@ export type TAppConnectionMap = {
   [AppConnection.Postgres]: TPostgresConnection;
   [AppConnection.MsSql]: TMsSqlConnection;
   [AppConnection.MySql]: TMySqlConnection;
+  [AppConnection.OracleDB]: TOracleDBConnection;
   [AppConnection.Camunda]: TCamundaConnection;
   [AppConnection.Windmill]: TWindmillConnection;
   [AppConnection.Auth0]: TAuth0Connection;

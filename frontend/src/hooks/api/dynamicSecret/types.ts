@@ -34,7 +34,13 @@ export enum DynamicSecretProviders {
   Totp = "totp",
   SapAse = "sap-ase",
   Kubernetes = "kubernetes",
-  Vertica = "vertica"
+  Vertica = "vertica",
+  GcpIam = "gcp-iam"
+}
+
+export enum KubernetesDynamicSecretCredentialType {
+  Static = "static",
+  Dynamic = "dynamic"
 }
 
 export enum SqlProviders {
@@ -42,6 +48,11 @@ export enum SqlProviders {
   MySql = "mysql2",
   Oracle = "oracledb",
   MsSQL = "mssql"
+}
+
+export enum DynamicSecretAwsIamAuth {
+  AssumeRole = "assume-role",
+  AccessKey = "access-key"
 }
 
 export type TDynamicSecretProvider =
@@ -78,15 +89,26 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.AwsIam;
-      inputs: {
-        accessKey: string;
-        secretAccessKey: string;
-        region: string;
-        awsPath?: string;
-        policyDocument?: string;
-        userGroups?: string;
-        policyArns?: string;
-      };
+      inputs:
+        | {
+            method: DynamicSecretAwsIamAuth.AccessKey;
+            accessKey: string;
+            secretAccessKey: string;
+            region: string;
+            awsPath?: string;
+            policyDocument?: string;
+            userGroups?: string;
+            policyArns?: string;
+          }
+        | {
+            method: DynamicSecretAwsIamAuth.AssumeRole;
+            roleArn: string;
+            region: string;
+            awsPath?: string;
+            policyDocument?: string;
+            userGroups?: string;
+            policyArns?: string;
+          };
     }
   | {
       type: DynamicSecretProviders.Redis;
@@ -267,17 +289,32 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.Kubernetes;
-      inputs: {
-        url: string;
-        clusterToken: string;
-        ca?: string;
-        serviceAccountName: string;
-        credentialType: "dynamic" | "static";
-        namespace: string;
-        gatewayId?: string;
-        sslEnabled: boolean;
-        audiences: string[];
-      };
+      inputs:
+        | {
+            url?: string;
+            clusterToken?: string;
+            ca?: string;
+            serviceAccountName: string;
+            credentialType: KubernetesDynamicSecretCredentialType.Static;
+            namespace: string;
+            gatewayId?: string;
+            sslEnabled: boolean;
+            audiences: string[];
+            authMethod: string;
+          }
+        | {
+            url?: string;
+            clusterToken?: string;
+            ca?: string;
+            credentialType: KubernetesDynamicSecretCredentialType.Dynamic;
+            namespace: string;
+            gatewayId?: string;
+            sslEnabled: boolean;
+            audiences: string[];
+            roleType: string;
+            role: string;
+            authMethod: string;
+          };
     }
   | {
       type: DynamicSecretProviders.Vertica;
@@ -289,6 +326,12 @@ export type TDynamicSecretProvider =
         password: string;
         creationStatement: string;
         revocationStatement: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.GcpIam;
+      inputs: {
+        serviceAccountEmail: string;
       };
     };
 

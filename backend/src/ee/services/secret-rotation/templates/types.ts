@@ -10,7 +10,8 @@ export enum TDbProviderClients {
   // mysql and maria db
   MySql = "mysql",
 
-  MsSqlServer = "mssql"
+  MsSqlServer = "mssql",
+  OracleDB = "oracledb"
 }
 
 export enum TAwsProviderSystems {
