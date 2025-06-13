@@ -108,7 +108,7 @@ export const getAzureDevopsConnection = async (
       if (!("accessToken" in credentials)) {
         throw new BadRequestError({ message: "Invalid API token credentials" });
       }
-      // For API token, return the basic auth token directly
+      // For access token, return the basic auth token directly
       return credentials.accessToken;
 
     default:
@@ -189,16 +189,16 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
       };
 
     case AzureDevOpsConnectionMethod.AccessToken:
-      const apiTokenCredentials = inputCredentials as { accessToken: string; orgName?: string };
+      const accessTokenCredentials = inputCredentials as { accessToken: string; orgName?: string };
 
       try {
-        if (apiTokenCredentials.orgName) {
+        if (accessTokenCredentials.orgName) {
           // Validate against specific organization
           const response = await request.get(
-            `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(apiTokenCredentials.orgName)}/_apis/projects?api-version=7.2-preview.2&$top=1`,
+            `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(accessTokenCredentials.orgName)}/_apis/projects?api-version=7.2-preview.2&$top=1`,
             {
               headers: {
-                Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.accessToken}`).toString("base64")}`
+                Authorization: `Basic ${Buffer.from(`:${accessTokenCredentials.accessToken}`).toString("base64")}`
               }
             }
           );
@@ -210,8 +210,8 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
           }
 
           return {
-            accessToken: apiTokenCredentials.accessToken,
-            orgName: apiTokenCredentials.orgName
+            accessToken: accessTokenCredentials.accessToken,
+            orgName: accessTokenCredentials.orgName
           };
         }
         // Validate via profile and discover organizations
@@ -219,7 +219,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
           `https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1`,
           {
             headers: {
-              Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.accessToken}`).toString("base64")}`
+              Authorization: `Basic ${Buffer.from(`:${accessTokenCredentials.accessToken}`).toString("base64")}`
             }
           }
         );
@@ -230,7 +230,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
             value: Array<{ accountId: string; accountName: string; accountUri: string }>;
           }>(`https://app.vssps.visualstudio.com/_apis/accounts?api-version=7.1`, {
             headers: {
-              Authorization: `Basic ${Buffer.from(`:${apiTokenCredentials.accessToken}`).toString("base64")}`
+              Authorization: `Basic ${Buffer.from(`:${accessTokenCredentials.accessToken}`).toString("base64")}`
             }
           });
           organizations = orgsResponse.data.value || [];
@@ -239,7 +239,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
         }
 
         return {
-          accessToken: apiTokenCredentials.accessToken,
+          accessToken: accessTokenCredentials.accessToken,
           userDisplayName: profileResponse.data.displayName,
           organizations: organizations.map((org) => ({
             accountId: org.accountId,
@@ -249,9 +249,9 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
         };
       } catch (error) {
         if (error instanceof AxiosError) {
-          const errorMessage = apiTokenCredentials.orgName
+          const errorMessage = accessTokenCredentials.orgName
             ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              `Failed to validate API token for organization '${apiTokenCredentials.orgName}': ${error.response?.data?.message || error.message}`
+              `Failed to validate access token for organization '${accessTokenCredentials.orgName}': ${error.response?.data?.message || error.message}`
             : `Invalid Azure DevOps Personal Access Token: ${error.response?.status === 401 ? "Token is invalid or expired" : error.message}`;
 
           throw new BadRequestError({ message: errorMessage });

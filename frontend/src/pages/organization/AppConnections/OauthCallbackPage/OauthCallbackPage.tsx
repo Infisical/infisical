@@ -48,14 +48,14 @@ type OAuthCredentials = Extract<
   TAzureDevOpsConnection,
   { method: AzureDevOpsConnectionMethod.OAuth }
 >["credentials"];
-type ApiTokenCredentials = Extract<
+type AccessTokenCredentials = Extract<
   TAzureDevOpsConnection,
   { method: AzureDevOpsConnectionMethod.AccessToken }
 >["credentials"];
 
 type AzureDevOpsFormData = BaseFormData &
   Pick<TAzureDevOpsConnection, "name" | "method" | "description"> &
-  (Pick<OAuthCredentials, "tenantId" | "orgName"> | Pick<ApiTokenCredentials, "orgName">);
+  (Pick<OAuthCredentials, "tenantId" | "orgName"> | Pick<AccessTokenCredentials, "orgName">);
 
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
@@ -287,7 +287,7 @@ export const OAuthCallbackPage = () => {
 
     try {
       if (!("tenantId" in formData)) {
-        throw new Error("Expected OAuth form data but got API token data");
+        throw new Error("Expected OAuth form data but got access token data");
       }
 
       if (connectionId) {

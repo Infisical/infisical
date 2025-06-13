@@ -21,11 +21,11 @@ import {
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
 
-type ApiTokenForm = z.infer<typeof apiTokenSchema>;
+type AccessTokenForm = z.infer<typeof accessTokenSchema>;
 
 type Props = {
   appConnection?: TAzureDevOpsConnection;
-  onSubmit: (formData: ApiTokenForm) => Promise<void>;
+  onSubmit: (formData: AccessTokenForm) => Promise<void>;
 };
 
 // Base schema with common fields
@@ -41,7 +41,7 @@ const oauthSchema = baseSchema.extend({
   orgName: z.string().trim().min(1, "Organization name is required")
 });
 
-const apiTokenSchema = baseSchema.extend({
+const accessTokenSchema = baseSchema.extend({
   method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
   credentials: z.object({
     accessToken: z.string().trim().min(1, "Access Token is required"),
@@ -50,7 +50,7 @@ const apiTokenSchema = baseSchema.extend({
 });
 
 // Union schema
-const formSchema = z.discriminatedUnion("method", [oauthSchema, apiTokenSchema]);
+const formSchema = z.discriminatedUnion("method", [oauthSchema, accessTokenSchema]);
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -230,7 +230,7 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
           </>
         )}
 
-        {/* API Token-specific fields */}
+        {/* Access Token-specific fields */}
         {selectedMethod === AzureDevOpsConnectionMethod.AccessToken && (
           <>
             <Controller

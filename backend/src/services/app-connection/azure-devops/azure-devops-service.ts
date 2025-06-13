@@ -46,7 +46,7 @@ const getAuthHeaders = (appConnection: TAzureDevOpsConnection, accessToken: stri
         Accept: "application/json"
       };
     case AzureDevOpsConnectionMethod.AccessToken:
-      // For API token, create Basic auth header
+      // For access token, create Basic auth header
       const basicAuthToken = Buffer.from(`user:${accessToken}`).toString("base64");
       return {
         Authorization: `Basic ${basicAuthToken}`,
@@ -64,7 +64,7 @@ const listAzureDevOpsProjects = async (
 ): Promise<TAzureDevOpsProject[]> => {
   const accessToken = await getAzureDevopsConnection(appConnection.id, appConnectionDAL, kmsService);
 
-  // Both OAuth and API Token methods use organization name from credentials
+  // Both OAuth and access Token methods use organization name from credentials
   const credentials = appConnection.credentials as { orgName: string };
   const { orgName } = credentials;
 

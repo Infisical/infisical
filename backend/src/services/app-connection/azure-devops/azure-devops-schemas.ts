@@ -28,12 +28,12 @@ export const AzureDevOpsConnectionOAuthOutputCredentialsSchema = z.object({
   expiresAt: z.number()
 });
 
-export const AzureDevOpsConnectionApiTokenInputCredentialsSchema = z.object({
+export const AzureDevOpsConnectionAccessTokenInputCredentialsSchema = z.object({
   accessToken: z.string().trim().min(1, "Access Token required"),
   orgName: z.string().trim().min(1, "Organization name required")
 });
 
-export const AzureDevOpsConnectionApiTokenOutputCredentialsSchema = z.object({
+export const AzureDevOpsConnectionAccessTokenOutputCredentialsSchema = z.object({
   accessToken: z.string(),
   orgName: z.string()
 });
@@ -51,7 +51,7 @@ export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUni
     method: z
       .literal(AzureDevOpsConnectionMethod.AccessToken)
       .describe(AppConnections.CREATE(AppConnection.AzureDevOps).method),
-    credentials: AzureDevOpsConnectionApiTokenInputCredentialsSchema.describe(
+    credentials: AzureDevOpsConnectionAccessTokenInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureDevOps).credentials
     )
   })
@@ -64,7 +64,7 @@ export const CreateAzureDevOpsConnectionSchema = ValidateAzureDevOpsConnectionCr
 export const UpdateAzureDevOpsConnectionSchema = z
   .object({
     credentials: z
-      .union([AzureDevOpsConnectionOAuthInputCredentialsSchema, AzureDevOpsConnectionApiTokenInputCredentialsSchema])
+      .union([AzureDevOpsConnectionOAuthInputCredentialsSchema, AzureDevOpsConnectionAccessTokenInputCredentialsSchema])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureDevOps).credentials)
   })
@@ -83,7 +83,7 @@ export const AzureDevOpsConnectionSchema = z.intersection(
     }),
     z.object({
       method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
-      credentials: AzureDevOpsConnectionApiTokenOutputCredentialsSchema
+      credentials: AzureDevOpsConnectionAccessTokenOutputCredentialsSchema
     })
   ])
 );
@@ -98,7 +98,7 @@ export const SanitizedAzureDevOpsConnectionSchema = z.discriminatedUnion("method
   }),
   BaseAzureDevOpsConnectionSchema.extend({
     method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
-    credentials: AzureDevOpsConnectionApiTokenOutputCredentialsSchema.pick({
+    credentials: AzureDevOpsConnectionAccessTokenOutputCredentialsSchema.pick({
       orgName: true
     })
   })
