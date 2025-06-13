@@ -27,7 +27,10 @@ export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
   environment: string;
-  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
+  approvers: (
+    | { type: ApproverType.Group; id: string; sequence?: number }
+    | { type: ApproverType.User; id?: string; username?: string; sequence?: number }
+  )[];
   bypassers?: (
     | { type: BypasserType.Group; id: string }
     | { type: BypasserType.User; id?: string; username?: string }
@@ -36,12 +39,16 @@ export type TCreateAccessApprovalPolicy = {
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
-  approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
+  approvers: (
+    | { type: ApproverType.Group; id: string; sequence?: number }
+    | { type: ApproverType.User; id?: string; username?: string; sequence?: number }
+  )[];
   bypassers?: (
     | { type: BypasserType.Group; id: string }
     | { type: BypasserType.User; id?: string; username?: string }
@@ -50,6 +57,7 @@ export type TUpdateAccessApprovalPolicy = {
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {

@@ -64,6 +64,10 @@ export const FilterableSelect = <T,>({
         control: (base) => ({
           ...base,
           transition: "none"
+        }),
+        menuPortal: (provided) => ({
+          ...provided,
+          zIndex: 9999
         })
       }}
       tabSelectsValue={tabSelectsValue}

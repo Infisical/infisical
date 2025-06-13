@@ -48,6 +48,8 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
       .select(tx.ref("username").withSchema("bypasserUsers").as("bypasserUsername"))
       .select(tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("approverGroupId").withSchema(TableName.AccessApprovalPolicyApprover))
+      .select(tx.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
+      .select(tx.ref("approvalsRequired").withSchema(TableName.AccessApprovalPolicyApprover))
       .select(tx.ref("bypasserUserId").withSchema(TableName.AccessApprovalPolicyBypasser))
       .select(tx.ref("bypasserGroupId").withSchema(TableName.AccessApprovalPolicyBypasser))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
@@ -80,23 +82,31 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
           {
             key: "approverUserId",
             label: "approvers" as const,
-            mapper: ({ approverUserId: id }) => ({
+            mapper: ({ approverUserId: id, approverSequence, approvalsRequired }) => ({
               id,
-              type: "user"
+              type: "user",
+              sequence: approverSequence,
+              approvalsRequired
             })
           },
           {
             key: "approverGroupId",
             label: "approvers" as const,
-            mapper: ({ approverGroupId: id }) => ({
+            mapper: ({ approverGroupId: id, approverSequence, approvalsRequired }) => ({
               id,
-              type: "group"
+              type: "group",
+              sequence: approverSequence,
+              approvalsRequired
             })
           }
         ]
       });
+      if (!formattedDoc?.[0]) return;
 
-      return formattedDoc?.[0];
+      return {
+        ...formattedDoc?.[0],
+        approvers: formattedDoc?.[0]?.approvers.sort((a, b) => (a.sequence || 1) - (b.sequence || 1))
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindById" });
     }
@@ -129,18 +139,22 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
           {
             key: "approverUserId",
             label: "approvers" as const,
-            mapper: ({ approverUserId: id, approverUsername }) => ({
+            mapper: ({ approverUserId: id, approverUsername, approverSequence, approvalsRequired }) => ({
               id,
               type: ApproverType.User,
-              name: approverUsername
+              name: approverUsername,
+              sequence: approverSequence,
+              approvalsRequired
             })
           },
           {
             key: "approverGroupId",
             label: "approvers" as const,
-            mapper: ({ approverGroupId: id }) => ({
+            mapper: ({ approverGroupId: id, approverSequence, approvalsRequired }) => ({
               id,
-              type: ApproverType.Group
+              type: ApproverType.Group,
+              sequence: approverSequence,
+              approvalsRequired
             })
           },
           {
@@ -163,7 +177,10 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return formattedDocs;
+      return formattedDocs.map((el) => ({
+        ...el,
+        approvers: el?.approvers.sort((a, b) => (a.sequence || 1) - (b.sequence || 1))
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find" });
     }

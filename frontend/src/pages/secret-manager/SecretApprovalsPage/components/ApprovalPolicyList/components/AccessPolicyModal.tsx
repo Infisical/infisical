@@ -1,6 +1,9 @@
-import { useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { faGripVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -8,12 +11,15 @@ import {
   Button,
   FilterableSelect,
   FormControl,
+  IconButton,
   Input,
   Modal,
   ModalContent,
   Select,
   SelectItem,
-  Switch
+  Switch,
+  Tag,
+  Tooltip
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
@@ -28,6 +34,7 @@ import {
   useUpdateAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval";
 import {
+  Approver,
   ApproverType,
   BypasserType,
   TAccessApprovalPolicy
@@ -68,10 +75,28 @@ const formSchema = z
       .default([]),
     policyType: z.nativeEnum(PolicyType),
     enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-    allowedSelfApprovals: z.boolean().default(true)
+    allowedSelfApprovals: z.boolean().default(true),
+    sequenceApprovers: z
+      .object({
+        user: z
+          .object({ type: z.literal(ApproverType.User), id: z.string() })
+          .array()
+          .default([]),
+        group: z
+          .object({ type: z.literal(ApproverType.Group), id: z.string() })
+          .array()
+          .default([]),
+        approvals: z.number().min(1).default(1)
+      })
+      .array()
+      .default([])
+      .optional()
   })
   .superRefine((data, ctx) => {
-    if (!(data.groupApprovers.length || data.userApprovers.length)) {
+    if (
+      data.policyType === PolicyType.ChangePolicy &&
+      !(data.groupApprovers.length || data.userApprovers.length)
+    ) {
       ctx.addIssue({
         path: ["userApprovers"],
         code: z.ZodIssueCode.custom,
@@ -95,6 +120,9 @@ export const AccessPolicyForm = ({
   projectSlug,
   editValues
 }: Props) => {
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const modalContainer = useRef<HTMLDivElement>(null);
   const {
     control,
     handleSubmit,
@@ -104,7 +132,7 @@ export const AccessPolicyForm = ({
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
     values: editValues
-      ? {
+      ? ({
           ...editValues,
           environment: editValues.environment,
           userApprovers:
@@ -124,15 +152,47 @@ export const AccessPolicyForm = ({
               ?.filter((bypasser) => bypasser.type === BypasserType.Group)
               .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
           approvals: editValues?.approvals,
-          allowedSelfApprovals: editValues?.allowedSelfApprovals
-        }
-      : undefined
+          allowedSelfApprovals: editValues?.allowedSelfApprovals,
+          sequenceApprovers: editValues.approvers
+            ?.sort((a, b) => (a?.sequence || 0) - (b?.sequence || 0))
+            .reduce(
+              (acc, curr) => {
+                if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
+                  acc[acc.length - 1][curr.type]?.push(curr);
+                  return acc;
+                }
+                const approvals = curr.approvals || editValues.approvals;
+                acc.push(
+                  curr.type === ApproverType.User
+                    ? {
+                        user: [curr],
+                        group: [],
+                        sequence: 1,
+                        approvals
+                      }
+                    : { group: [curr], user: [], sequence: 1, approvals }
+                );
+                return acc;
+              },
+              [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
+            )
+        } as TFormSchema)
+      : undefined,
+    defaultValues: {
+      sequenceApprovers: [{ approvals: 1 }]
+    }
   });
+  const sequenceApproversFieldArray = useFieldArray({
+    control,
+    name: "sequenceApprovers"
+  });
+
   const { currentWorkspace } = useWorkspace();
   const { data: groups } = useListWorkspaceGroups(projectId);
 
   const environments = currentWorkspace?.environments || [];
   const isEditMode = Boolean(editValues);
+  const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
 
   useEffect(() => {
     if (!isOpen || !isEditMode) reset({});
@@ -157,6 +217,7 @@ export const AccessPolicyForm = ({
     userApprovers,
     groupBypassers,
     userBypassers,
+    sequenceApprovers,
     ...data
   }: TFormSchema) => {
     if (!projectId) return;
@@ -175,7 +236,15 @@ export const AccessPolicyForm = ({
       } else {
         await createAccessApprovalPolicy({
           ...data,
-          approvers: [...userApprovers, ...groupApprovers],
+          approvers: sequenceApprovers?.flatMap((approvers, index) =>
+            approvers.user
+              .map((el) => ({ ...el, sequence: index + 1 }) as Approver)
+              .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
+          ),
+          approvalsRequired: sequenceApprovers?.map((el, index) => ({
+            stepNumber: index + 1,
+            numberOfApprovals: el.approvals
+          })),
           bypassers: bypassers.length > 0 ? bypassers : undefined,
           environment: environment.slug,
           projectSlug
@@ -201,6 +270,7 @@ export const AccessPolicyForm = ({
     groupApprovers,
     userBypassers,
     groupBypassers,
+    sequenceApprovers,
     ...data
   }: TFormSchema) => {
     if (!projectId || !projectSlug) return;
@@ -221,7 +291,15 @@ export const AccessPolicyForm = ({
         await updateAccessApprovalPolicy({
           id: editValues?.id,
           ...data,
-          approvers: [...userApprovers, ...groupApprovers],
+          approvers: sequenceApprovers?.flatMap((approvers, index) =>
+            approvers.user
+              .map((el) => ({ ...el, sequence: index + 1 }) as Approver)
+              .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
+          ),
+          approvalsRequired: sequenceApprovers?.map((el, index) => ({
+            stepNumber: index + 1,
+            numberOfApprovals: el.approvals
+          })),
           bypassers: bypassers.length > 0 ? bypassers : undefined,
           environment: environment.slug,
           projectSlug
@@ -285,16 +363,45 @@ export const AccessPolicyForm = ({
     [groups]
   );
 
+  const handleDragStart = (_: React.DragEvent, index: number) => {
+    setDraggedItem(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverItem(index);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+
+    if (draggedItem === null || dragOverItem === null || draggedItem === dragOverItem) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    sequenceApproversFieldArray.move(draggedItem, dragOverItem);
+
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onToggle}>
       <ModalContent
-        className="max-w-2xl"
-        bodyClassName="overflow-visible"
+        className="max-w-3xl"
+        ref={modalContainer}
         title={isEditMode ? `Edit ${policyName}` : "Create Policy"}
       >
         <div className="flex flex-col space-y-3">
           <form onSubmit={handleSubmit(handleFormSubmit)}>
-            <div className="grid grid-cols-2 gap-x-3">
+            <div className="flex items-center gap-x-3">
               <Controller
                 control={control}
                 name="policyType"
@@ -306,6 +413,7 @@ export const AccessPolicyForm = ({
                     isError={Boolean(error)}
                     tooltipText="Change policies govern secret changes within a given environment and secret path. Access policies allow underprivileged user to request access to environment/secret path."
                     errorText={error?.message}
+                    className="flex-grow"
                   >
                     <Select
                       isDisabled={isEditMode}
@@ -324,25 +432,30 @@ export const AccessPolicyForm = ({
                   </FormControl>
                 )}
               />
-              <Controller
-                control={control}
-                name="approvals"
-                defaultValue={1}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Minimum Approvals Required"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input
-                      {...field}
-                      type="number"
-                      min={1}
-                      onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
-                    />
-                  </FormControl>
-                )}
-              />
+              {!isAccessPolicyType && (
+                <Controller
+                  control={control}
+                  name="approvals"
+                  defaultValue={1}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Min. Approvals Required"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      className="flex-grow"
+                    >
+                      <Input
+                        {...field}
+                        type="number"
+                        min={1}
+                        onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
+                      />
+                    </FormControl>
+                  )}
+                />
+              )}
+            </div>
+            <div className="flex items-center gap-x-3">
               <Controller
                 control={control}
                 name="name"
@@ -351,6 +464,7 @@ export const AccessPolicyForm = ({
                     label="Policy Name"
                     isError={Boolean(error)}
                     errorText={error?.message}
+                    className="flex-grow"
                   >
                     <Input {...field} value={field.value || ""} />
                   </FormControl>
@@ -366,6 +480,7 @@ export const AccessPolicyForm = ({
                     label="Secret Path"
                     isError={Boolean(error)}
                     errorText={error?.message}
+                    className="flex-grow"
                   >
                     <Input {...field} value={field.value || ""} />
                   </FormControl>
@@ -400,62 +515,199 @@ export const AccessPolicyForm = ({
                 Select members or groups that are allowed to approve requests from this policy.
               </p>
             </div>
-            <div className="flex gap-2">
-              <Controller
-                control={control}
-                name="userApprovers"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="User Approvers"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    className="w-1/2"
-                  >
-                    <FilterableSelect
-                      menuPlacement="top"
-                      isMulti
-                      placeholder="Select members..."
-                      options={memberOptions}
-                      getOptionValue={(option) => option.id}
-                      getOptionLabel={(option) => {
-                        const member = members?.find((m) => m.user.id === option.id);
+            {isAccessPolicyType ? (
+              <>
+                <div className="thin-scrollbar max-h-64 space-y-2 overflow-y-auto rounded">
+                  {sequenceApproversFieldArray.fields.map((el, index) => (
+                    <div
+                      className={twMerge(
+                        "rounded border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0",
+                        dragOverItem === index ? "border-2 border-blue-400" : "",
+                        draggedItem === index ? "opacity-50" : ""
+                      )}
+                      key={el.id}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={handleDrop}
+                    >
+                      <div className="mb-3 flex items-center justify-between">
+                        <Tag>Step {index + 1}</Tag>
+                        <div className="flex items-center gap-3">
+                          <div className="inline text-xs text-mineshaft-400">Min. Approvals</div>
+                          <div className="mr-2 w-20 border-r border-mineshaft-400 pr-3">
+                            <Controller
+                              control={control}
+                              name={`sequenceApprovers.${index}.approvals` as const}
+                              defaultValue={1}
+                              render={({ field }) => (
+                                <Input
+                                  {...field}
+                                  type="number"
+                                  size="xs"
+                                  min={1}
+                                  onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
+                                />
+                              )}
+                            />
+                          </div>
+                          <Tooltip content="Remove step">
+                            <IconButton
+                              ariaLabel="delete"
+                              variant="plain"
+                              onClick={() => sequenceApproversFieldArray.remove(index)}
+                              className="text-red-500 hover:text-gray-200"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip content="Drag to reorder permission">
+                            <div
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, index)}
+                              onDragEnd={handleDragEnd}
+                              className="mr-2 cursor-move text-gray-400 hover:text-gray-200"
+                            >
+                              <FontAwesomeIcon icon={faGripVertical} />
+                            </div>
+                          </Tooltip>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Controller
+                          control={control}
+                          name={`sequenceApprovers.${index}.user` as const}
+                          render={({ field: { value, onChange }, fieldState: { error } }) => (
+                            <FormControl
+                              label="User Approvers"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              className="flex-grow"
+                            >
+                              <FilterableSelect
+                                menuPortalTarget={modalContainer.current}
+                                menuPlacement="top"
+                                isMulti
+                                placeholder="Select members..."
+                                options={memberOptions}
+                                getOptionValue={(option) => option.id}
+                                getOptionLabel={(option) => {
+                                  const member = members?.find((m) => m.user.id === option.id);
 
-                        if (!member) return option.id;
+                                  if (!member) return option.id;
 
-                        return getMemberLabel(member);
-                      }}
-                      value={value}
-                      onChange={onChange}
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="groupApprovers"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Group Approvers"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    className="w-1/2"
+                                  return getMemberLabel(member);
+                                }}
+                                value={value}
+                                onChange={onChange}
+                              />
+                            </FormControl>
+                          )}
+                        />
+                        <Controller
+                          control={control}
+                          name={`sequenceApprovers.${index}.group` as const}
+                          render={({ field: { value, onChange }, fieldState: { error } }) => (
+                            <FormControl
+                              label="Group Approvers"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              className="flex-grow"
+                            >
+                              <FilterableSelect
+                                menuPortalTarget={modalContainer.current}
+                                menuPlacement="top"
+                                isMulti
+                                placeholder="Select groups..."
+                                options={groupOptions}
+                                getOptionValue={(option) => option.id}
+                                getOptionLabel={(option) =>
+                                  groups?.find(({ group }) => group.id === option.id)?.group.name ??
+                                  option.id
+                                }
+                                value={value}
+                                onChange={onChange}
+                              />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="my-2">
+                  <Button
+                    size="xs"
+                    variant="outline_bg"
+                    onClick={() =>
+                      sequenceApproversFieldArray.append({
+                        approvals: 1,
+                        user: [],
+                        group: []
+                      })
+                    }
                   >
-                    <FilterableSelect
-                      menuPlacement="top"
-                      isMulti
-                      placeholder="Select groups..."
-                      options={groupOptions}
-                      getOptionValue={(option) => option.id}
-                      getOptionLabel={(option) =>
-                        groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id
-                      }
-                      value={value}
-                      onChange={onChange}
-                    />
-                  </FormControl>
-                )}
-              />
-            </div>
+                    Add Step
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex gap-2">
+                <Controller
+                  control={control}
+                  name="userApprovers"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      label="User Approvers"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      className="w-1/2"
+                    >
+                      <FilterableSelect
+                        menuPlacement="top"
+                        isMulti
+                        placeholder="Select members..."
+                        options={memberOptions}
+                        getOptionValue={(option) => option.id}
+                        getOptionLabel={(option) => {
+                          const member = members?.find((m) => m.user.id === option.id);
+
+                          if (!member) return option.id;
+
+                          return getMemberLabel(member);
+                        }}
+                        value={value}
+                        onChange={onChange}
+                      />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="groupApprovers"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Group Approvers"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      className="w-1/2"
+                    >
+                      <FilterableSelect
+                        menuPlacement="top"
+                        isMulti
+                        placeholder="Select groups..."
+                        options={groupOptions}
+                        getOptionValue={(option) => option.id}
+                        getOptionLabel={(option) =>
+                          groups?.find(({ group }) => group.id === option.id)?.group.name ??
+                          option.id
+                        }
+                        value={value}
+                        onChange={onChange}
+                      />
+                    </FormControl>
+                  )}
+                />
+              </div>
+            )}
             <Controller
               control={control}
               name="allowedSelfApprovals"

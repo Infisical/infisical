@@ -39,11 +39,15 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.AccessApprovalRequest}.id`,
           `${TableName.AccessApprovalRequestReviewer}.requestId`
         )
-
         .leftJoin(
           TableName.AccessApprovalPolicyApprover,
           `${TableName.AccessApprovalPolicy}.id`,
           `${TableName.AccessApprovalPolicyApprover}.policyId`
+        )
+        .leftJoin<TUsers>(
+          db(TableName.Users).as("accessApprovalPolicyApproverUser"),
+          `${TableName.AccessApprovalPolicyApprover}.approverUserId`,
+          "accessApprovalPolicyApproverUser.id"
         )
         .leftJoin(
           TableName.UserGroupMembership,
@@ -82,13 +86,18 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("envId").withSchema(TableName.AccessApprovalPolicy).as("policyEnvId"),
           db.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt")
         )
-
         .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
+        .select(db.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
+        .select(db.ref("approvalsRequired").withSchema(TableName.AccessApprovalPolicyApprover))
         .select(db.ref("userId").withSchema(TableName.UserGroupMembership).as("approverGroupUserId"))
-
         .select(db.ref("bypasserUserId").withSchema(TableName.AccessApprovalPolicyBypasser))
         .select(db.ref("userId").withSchema("bypasserUserGroupMembership").as("bypasserGroupUserId"))
-
+        .select(
+          db.ref("email").withSchema("accessApprovalPolicyApproverUser").as("approverEmail"),
+          db.ref("email").withSchema(TableName.Users).as("approverGroupEmail"),
+          db.ref("username").withSchema("accessApprovalPolicyApproverUser").as("approverUsername"),
+          db.ref("username").withSchema(TableName.Users).as("approverGroupUsername")
+        )
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
@@ -164,8 +173,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
                 permissions: doc.privilegePermissions
               }
             : null,
-
-          isApproved: !!doc.policyDeletedAt || !!doc.privilegeId || doc.status !== ApprovalStatus.PENDING
+          isApproved: doc.status === ApprovalStatus.APPROVED
         }),
         childrenMapper: [
           {
@@ -173,11 +181,33 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
             label: "reviewers" as const,
             mapper: ({ reviewerUserId: userId, reviewerStatus: status }) => (userId ? { userId, status } : undefined)
           },
-          { key: "approverUserId", label: "approvers" as const, mapper: ({ approverUserId }) => approverUserId },
+          {
+            key: "approverUserId",
+            label: "approvers" as const,
+            mapper: ({ approverUserId, approverSequence, approvalsRequired, approverUsername, approverEmail }) => ({
+              userId: approverUserId,
+              sequence: approverSequence,
+              approvalsRequired,
+              email: approverEmail,
+              username: approverUsername
+            })
+          },
           {
             key: "approverGroupUserId",
             label: "approvers" as const,
-            mapper: ({ approverGroupUserId }) => approverGroupUserId
+            mapper: ({
+              approverGroupUserId,
+              approverSequence,
+              approvalsRequired,
+              approverGroupEmail,
+              approverGroupUsername
+            }) => ({
+              userId: approverGroupUserId,
+              sequence: approverSequence,
+              approvalsRequired,
+              email: approverGroupEmail,
+              username: approverGroupUsername
+            })
           },
           { key: "bypasserUserId", label: "bypassers" as const, mapper: ({ bypasserUserId }) => bypasserUserId },
           {
@@ -192,7 +222,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
 
       return formattedDocs.map((doc) => ({
         ...doc,
-        policy: { ...doc.policy, approvers: doc.approvers, bypassers: doc.bypassers }
+        policy: {
+          ...doc.policy,
+          approvers: doc.approvers.filter((el) => el.userId).sort((a, b) => (a.sequence || 0) - (b.sequence || 0)),
+          bypassers: doc.bypassers
+        }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindRequestsWithPrivilege" });
@@ -272,6 +306,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
+        tx.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"),
+        tx.ref("approvalsRequired").withSchema(TableName.AccessApprovalPolicyApprover),
         tx.ref("userId").withSchema(TableName.UserGroupMembership),
         tx.ref("email").withSchema("accessApprovalPolicyApproverUser").as("approverEmail"),
         tx.ref("email").withSchema("accessApprovalPolicyGroupApproverUser").as("approverGroupEmail"),
@@ -367,13 +403,17 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
               approverEmail: email,
               approverUsername: username,
               approverLastName: lastName,
-              approverFirstName: firstName
+              approverFirstName: firstName,
+              approverSequence,
+              approvalsRequired
             }) => ({
               userId: approverUserId,
               email,
               firstName,
               lastName,
-              username
+              username,
+              sequence: approverSequence,
+              approvalsRequired
             })
           },
           {
@@ -384,13 +424,17 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
               approverGroupEmail: email,
               approverGroupUsername: username,
               approverGroupLastName: lastName,
-              approverFirstName: firstName
+              approverFirstName: firstName,
+              approverSequence,
+              approvalsRequired
             }) => ({
               userId,
               email,
               firstName,
               lastName,
-              username
+              username,
+              sequence: approverSequence,
+              approvalsRequired
             })
           },
           {
@@ -434,7 +478,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
         ...formattedDoc[0],
         policy: {
           ...formattedDoc[0].policy,
-          approvers: formattedDoc[0].approvers,
+          approvers: formattedDoc[0].approvers
+            .filter((el) => el.userId)
+            .sort((a, b) => (a.sequence || 0) - (b.sequence || 0)),
           bypassers: formattedDoc[0].bypassers
         }
       };
@@ -495,7 +541,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
           req.status === ApprovalStatus.PENDING
       );
 
-      // an approval is finalized if there are any rejections, a privilege ID is set or the number of approvals is equal to the number of approvals required
+      // an approval is finalized if there are any rejections, a privilege ID is set or the number of approvals is equal to the number of approvals required.
       const finalizedApprovals = formattedRequests.filter(
         (req) =>
           req.privilegeId ||
@@ -509,5 +555,27 @@ export const accessApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...accessApprovalRequestOrm, findById, findRequestsWithPrivilegeByPolicyIds, getCount };
+  const resetReviewByPolicyId = async (policyId: string, tx?: Knex) => {
+    try {
+      await (tx || db)(TableName.AccessApprovalRequestReviewer)
+        .leftJoin(
+          TableName.AccessApprovalRequest,
+          `${TableName.AccessApprovalRequest}.id`,
+          `${TableName.AccessApprovalRequestReviewer}.requestId`
+        )
+        .where(`${TableName.AccessApprovalRequest}.status` as "status", ApprovalStatus.PENDING)
+        .where(`${TableName.AccessApprovalRequest}.policyId` as "policyId", policyId)
+        .del();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ResetReviewByPolicyId" });
+    }
+  };
+
+  return {
+    ...accessApprovalRequestOrm,
+    findById,
+    findRequestsWithPrivilegeByPolicyIds,
+    getCount,
+    resetReviewByPolicyId
+  };
 };

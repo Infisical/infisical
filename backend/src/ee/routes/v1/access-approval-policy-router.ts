@@ -23,12 +23,26 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         environment: z.string(),
         approvers: z
           .discriminatedUnion("type", [
-            z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
-            z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), username: z.string().optional() })
+            z.object({
+              type: z.literal(ApproverType.Group),
+              id: z.string(),
+              sequence: z.number().int().default(1)
+            }),
+            z.object({
+              type: z.literal(ApproverType.User),
+              id: z.string().optional(),
+              username: z.string().optional(),
+              sequence: z.number().int().default(1)
+            })
           ])
           .array()
           .max(100, "Cannot have more than 100 approvers")
-          .min(1, { message: "At least one approver should be provided" }),
+          .min(1, { message: "At least one approver should be provided" })
+          .refine(
+            // @ts-expect-error this is ok
+            (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
+            "Must provide either username or id"
+          ),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -36,6 +50,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           ])
           .array()
           .max(100, "Cannot have more than 100 bypassers")
+          .optional(),
+        approvalsRequired: z
+          .object({
+            numberOfApprovals: z.number().int(),
+            stepNumber: z.number().int()
+          })
+          .array()
           .optional(),
         approvals: z.number().min(1).default(1),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
@@ -78,7 +99,12 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           approvals: sapPubSchema
             .extend({
               approvers: z
-                .object({ type: z.nativeEnum(ApproverType), id: z.string().nullable().optional() })
+                .object({
+                  type: z.nativeEnum(ApproverType),
+                  id: z.string().nullable().optional(),
+                  sequence: z.number().nullable().optional(),
+                  approvalsRequired: z.number().nullable().optional()
+                })
                 .array()
                 .nullable()
                 .optional(),
@@ -152,12 +178,26 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .transform((val) => (val === "" ? "/" : val)),
         approvers: z
           .discriminatedUnion("type", [
-            z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
-            z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), username: z.string().optional() })
+            z.object({
+              type: z.literal(ApproverType.Group),
+              id: z.string(),
+              sequence: z.number().int().default(1)
+            }),
+            z.object({
+              type: z.literal(ApproverType.User),
+              id: z.string().optional(),
+              username: z.string().optional(),
+              sequence: z.number().int().default(1)
+            })
           ])
           .array()
           .min(1, { message: "At least one approver should be provided" })
-          .max(100, "Cannot have more than 100 approvers"),
+          .max(100, "Cannot have more than 100 approvers")
+          .refine(
+            // @ts-expect-error this is ok
+            (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
+            "Must provide either username or id"
+          ),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -168,7 +208,14 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional(),
         approvals: z.number().min(1).optional(),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        allowedSelfApprovals: z.boolean().default(true)
+        allowedSelfApprovals: z.boolean().default(true),
+        approvalsRequired: z
+          .object({
+            numberOfApprovals: z.number().int(),
+            stepNumber: z.number().int()
+          })
+          .array()
+          .optional()
       }),
       response: {
         200: z.object({
@@ -235,7 +282,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               .object({
                 type: z.nativeEnum(ApproverType),
                 id: z.string().nullable().optional(),
-                name: z.string().nullable().optional()
+                name: z.string().nullable().optional(),
+                approvalsRequired: z.number().nullable().optional()
               })
               .array()
               .nullable()

@@ -1,5 +1,6 @@
 import { EnforcementLevel, PolicyType } from "../policies/enums";
 import { TProjectPermission } from "../roles/types";
+import { ApprovalStatus } from "../secretApprovalRequest/types";
 import { WorkspaceEnv } from "../workspace/types";
 
 export type TAccessApprovalPolicy = {
@@ -33,6 +34,8 @@ export enum BypasserType {
 export type Approver = {
   id: string;
   type: ApproverType;
+  sequence?: number;
+  approvals?: number;
 };
 
 export type Bypasser = {
@@ -73,12 +76,18 @@ export type TAccessApprovalRequest = {
     permissions: TProjectPermission[];
     isApproved: boolean;
   } | null;
-
+  status: ApprovalStatus;
   policy: {
     id: string;
     name: string;
     approvals: number;
-    approvers: string[];
+    approvers: {
+      userId: string;
+      sequence?: number;
+      approvalsRequired?: number;
+      username: string;
+      email: string;
+    }[];
     bypassers: string[];
     secretPath?: string | null;
     envId: string;
@@ -88,7 +97,7 @@ export type TAccessApprovalRequest = {
   };
 
   reviewers: {
-    member: string;
+    userId: string;
     status: string;
   }[];
 
@@ -163,6 +172,7 @@ export type TCreateAccessPolicyDTO = {
   secretPath?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -177,6 +187,7 @@ export type TUpdateAccessPolicyDTO = {
   allowedSelfApprovals: boolean;
   // for invalidating list
   projectSlug: string;
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
 };
 
 export type TDeleteSecretPolicyDTO = {
