@@ -106,9 +106,11 @@ export const userServiceFactory = ({
       code
     });
 
+    const userEmails = user?.email ? await userDAL.find({ email: user.email }) : [];
+
     await userDAL.updateById(user.id, {
       isEmailVerified: true,
-      username: usersByusername.length === 1 && user.email ? user.email.toLowerCase() : undefined
+      username: userEmails?.length === 1 && userEmails?.[0]?.id === user.id ? user.email.toLowerCase() : undefined
     });
   };
 

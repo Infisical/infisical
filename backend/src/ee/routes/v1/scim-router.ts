@@ -270,7 +270,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         schemas: z.array(z.string()),
-        id: z.string().trim(),
         userName: z.string().trim(),
         name: z
           .object({
@@ -278,7 +277,6 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
             givenName: z.string().trim().optional()
           })
           .optional(),
-        displayName: z.string().trim(),
         emails: z
           .array(
             z.object({
