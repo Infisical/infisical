@@ -48,6 +48,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   value?: string | null;
   isVisible?: boolean;
+  valueAlwaysHidden?: boolean;
   isImport?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
@@ -63,6 +64,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       value,
       isVisible,
       isImport,
+      valueAlwaysHidden,
       containerClassName,
       onBlur,
       isDisabled,
@@ -84,7 +86,11 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           <pre aria-hidden className="m-0">
             <code className={`inline-block w-full ${commonClassName}`}>
               <span style={{ whiteSpace: "break-spaces" }}>
-                {syntaxHighlight(value, isVisible || isSecretFocused, isImport)}
+                {syntaxHighlight(
+                  value,
+                  isVisible || (isSecretFocused && !valueAlwaysHidden),
+                  isImport
+                )}
               </span>
             </code>
           </pre>
