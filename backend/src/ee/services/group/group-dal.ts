@@ -169,11 +169,29 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findById = async (id: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.Groups)
+        .leftJoin(TableName.OrgRoles, `${TableName.Groups}.roleId`, `${TableName.OrgRoles}.id`)
+        .where(`${TableName.Groups}.id`, id)
+        .select(
+          selectAllTableCols(TableName.Groups),
+          db.ref("slug").as("customRoleSlug").withSchema(TableName.OrgRoles)
+        )
+        .first();
+
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id" });
+    }
+  };
+
   return {
+    ...groupOrm,
     findGroups,
     findByOrgId,
     findAllGroupPossibleMembers,
     findGroupsByProjectId,
-    ...groupOrm
+    findById
   };
 };

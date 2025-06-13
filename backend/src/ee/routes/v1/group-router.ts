@@ -48,7 +48,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(GROUPS.GET_BY_ID.id)
       }),
       response: {
-        200: GroupsSchema
+        200: GroupsSchema.extend({
+          customRoleSlug: z.string().nullable()
+        })
       }
     },
     handler: async (req) => {
