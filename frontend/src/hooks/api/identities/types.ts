@@ -14,6 +14,7 @@ export type IdentityTrustedIp = {
 export type Identity = {
   id: string;
   name: string;
+  hasDeleteProtection: boolean;
   authMethods: IdentityAuthMethod[];
   createdAt: string;
   updatedAt: string;
@@ -83,6 +84,7 @@ export type CreateIdentityDTO = {
   name: string;
   organizationId: string;
   role?: string;
+  hasDeleteProtection: boolean;
   metadata?: { key: string; value: string }[];
 };
 
@@ -90,6 +92,7 @@ export type UpdateIdentityDTO = {
   identityId: string;
   name?: string;
   role?: string;
+  hasDeleteProtection?: boolean;
   organizationId: string;
   metadata?: { key: string; value: string }[];
 };

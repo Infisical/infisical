@@ -101,6 +101,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
 
           db.ref("id").as("identityId").withSchema(TableName.Identity),
           db.ref("name").as("identityName").withSchema(TableName.Identity),
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity),
           db.ref("id").withSchema(TableName.IdentityProjectMembership),
           db.ref("role").withSchema(TableName.IdentityProjectMembershipRole),
           db.ref("id").withSchema(TableName.IdentityProjectMembershipRole).as("membershipRoleId"),
@@ -130,6 +131,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
         data: docs,
         parentMapper: ({
           identityName,
+          hasDeleteProtection,
           uaId,
           awsId,
           gcpId,
@@ -151,6 +153,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           identity: {
             id: identityId,
             name: identityName,
+            hasDeleteProtection,
             authMethods: buildAuthMethods({
               uaId,
               awsId,

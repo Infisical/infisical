@@ -47,6 +47,7 @@ export const identityServiceFactory = ({
   const createIdentity = async ({
     name,
     role,
+    hasDeleteProtection,
     actor,
     orgId,
     actorId,
@@ -96,7 +97,7 @@ export const identityServiceFactory = ({
     }
 
     const identity = await identityDAL.transaction(async (tx) => {
-      const newIdentity = await identityDAL.create({ name }, tx);
+      const newIdentity = await identityDAL.create({ name, hasDeleteProtection }, tx);
       await identityOrgMembershipDAL.create(
         {
           identityId: newIdentity.id,
@@ -138,6 +139,7 @@ export const identityServiceFactory = ({
   const updateIdentity = async ({
     id,
     role,
+    hasDeleteProtection,
     name,
     actor,
     actorId,
@@ -189,7 +191,9 @@ export const identityServiceFactory = ({
     }
 
     const identity = await identityDAL.transaction(async (tx) => {
-      const newIdentity = name ? await identityDAL.updateById(id, { name }, tx) : await identityDAL.findById(id, tx);
+      const newIdentity = name
+        ? await identityDAL.updateById(id, { name, hasDeleteProtection }, tx)
+        : await identityDAL.findById(id, tx);
       if (role) {
         await identityOrgMembershipDAL.updateById(
           identityOrgMembership.id,
@@ -271,6 +275,9 @@ export const identityServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
+
+    if (identityOrgMembership.identity.hasDeleteProtection)
+      throw new BadRequestError({ message: "Identity has delete protection" });
 
     const deletedIdentity = await identityDAL.deleteById(id);
 

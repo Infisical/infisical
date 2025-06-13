@@ -47,13 +47,19 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
           <DropdownMenuTrigger asChild>
             <Button
               size="xs"
-              rightIcon={<FontAwesomeIcon className="ml-1" icon={faChevronDown} />}
+              rightIcon={
+                <FontAwesomeIcon
+                  className="ml-1 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                  icon={faChevronDown}
+                />
+              }
               colorSchema="secondary"
+              className="group select-none"
             >
               Options
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-[120px]" align="end">
+          <DropdownMenuContent className="mt-3 min-w-[120px]" align="end">
             <OrgPermissionCan
               I={OrgPermissionIdentityActions.Edit}
               a={OrgPermissionSubjects.Identity}
@@ -68,6 +74,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                     handlePopUpOpen("identity", {
                       identityId,
                       name: data.identity.name,
+                      hasDeleteProtection: data.identity.hasDeleteProtection,
                       role: data.role,
                       customRole: data.customRole
                     });
@@ -130,6 +137,12 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Delete Protection</p>
+          <p className="text-sm text-mineshaft-300">
+            {data.identity.hasDeleteProtection ? "On" : "Off"}
+          </p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
