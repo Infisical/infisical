@@ -3,8 +3,8 @@ import { Controller, useFormContext } from "react-hook-form";
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FormControl, Input } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
-import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 
 export const SqlCredentialsRotationParametersFields = () => {
   const { control, watch } = useFormContext<
