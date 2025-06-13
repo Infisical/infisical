@@ -11,10 +11,10 @@ import {
   faKey
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
-import { twMerge } from "tailwind-merge";
 
 export type Props = {
   op: CommitType;
@@ -107,8 +107,11 @@ export const SecretApprovalRequestChangeItem = ({
                   ) : (
                     <div className="relative">
                       {secretVersion?.secretValueHidden && (
-                        <div className="absolute left-1 top-1/2 -translate-y-1/2">
-                          <Tooltip content="You do not have access to view the old secret value.">
+                        <div className="absolute left-1 top-1/2 z-50 -translate-y-1/2">
+                          <Tooltip
+                            position="right"
+                            content="You do not have access to view the old secret value."
+                          >
                             <FontAwesomeIcon
                               className="pl-2 text-mineshaft-300"
                               size="sm"
@@ -230,8 +233,11 @@ export const SecretApprovalRequestChangeItem = ({
                   ) : (
                     <div className="relative">
                       {newVersion?.secretValueHidden && (
-                        <div className="absolute left-1 top-1/2 -translate-y-1/2">
-                          <Tooltip content="You do not have access to view the new secret value.">
+                        <div className="absolute left-1 top-1/2 z-50 -translate-y-1/2">
+                          <Tooltip
+                            position="right"
+                            content="You do not have access to view the new secret value."
+                          >
                             <FontAwesomeIcon
                               className="pl-2 text-mineshaft-300"
                               size="sm"
