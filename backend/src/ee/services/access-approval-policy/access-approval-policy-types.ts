@@ -76,3 +76,217 @@ export type TGetAccessApprovalPolicyByIdDTO = {
 export type TListAccessApprovalPoliciesDTO = {
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export interface TAccessApprovalPolicyServiceFactory {
+  getAccessPolicyCountByEnvSlug: ({
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectSlug,
+    actorId,
+    envSlug
+  }: TGetAccessPolicyCountByEnvironmentDTO) => Promise<{
+    count: number;
+  }>;
+  createAccessApprovalPolicy: ({
+    name,
+    actor,
+    actorId,
+    actorOrgId,
+    secretPath,
+    actorAuthMethod,
+    approvals,
+    approvers,
+    bypassers,
+    projectSlug,
+    environment,
+    enforcementLevel,
+    allowedSelfApprovals,
+    approvalsRequired
+  }: TCreateAccessApprovalPolicy) => Promise<{
+    environment: {
+      name: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      projectId: string;
+      slug: string;
+      position: number;
+    };
+    projectId: string;
+    name: string;
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    approvals: number;
+    envId: string;
+    enforcementLevel: string;
+    allowedSelfApprovals: boolean;
+    secretPath?: string | null | undefined;
+    deletedAt?: Date | null | undefined;
+  }>;
+  deleteAccessApprovalPolicy: ({
+    policyId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDeleteAccessApprovalPolicy) => Promise<{
+    approvers: {
+      id: string | null | undefined;
+      type: string;
+      sequence: number | null | undefined;
+      approvalsRequired: number | null | undefined;
+    }[];
+    name: string;
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    approvals: number;
+    envId: string;
+    enforcementLevel: string;
+    allowedSelfApprovals: boolean;
+    secretPath?: string | null | undefined;
+    deletedAt?: Date | null | undefined;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    projectId: string;
+  }>;
+  updateAccessApprovalPolicy: ({
+    policyId,
+    approvers,
+    bypassers,
+    secretPath,
+    name,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    approvals,
+    enforcementLevel,
+    allowedSelfApprovals,
+    approvalsRequired
+  }: TUpdateAccessApprovalPolicy) => Promise<{
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    projectId: string;
+    name: string;
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    approvals: number;
+    envId: string;
+    enforcementLevel: string;
+    allowedSelfApprovals: boolean;
+    secretPath?: string | null | undefined;
+    deletedAt?: Date | null | undefined;
+  }>;
+  getAccessApprovalPolicyByProjectSlug: ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectSlug
+  }: TListAccessApprovalPoliciesDTO) => Promise<
+    {
+      approvers: (
+        | {
+            id: string | null | undefined;
+            type: ApproverType;
+            name: string;
+            sequence: number | null | undefined;
+            approvalsRequired: number | null | undefined;
+          }
+        | {
+            id: string | null | undefined;
+            type: ApproverType;
+            sequence: number | null | undefined;
+            approvalsRequired: number | null | undefined;
+          }
+      )[];
+      name: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      approvals: number;
+      envId: string;
+      enforcementLevel: string;
+      allowedSelfApprovals: boolean;
+      secretPath?: string | null | undefined;
+      deletedAt?: Date | null | undefined;
+      environment: {
+        id: string;
+        name: string;
+        slug: string;
+      };
+      projectId: string;
+      bypassers: (
+        | {
+            id: string | null | undefined;
+            type: BypasserType;
+            name: string;
+          }
+        | {
+            id: string | null | undefined;
+            type: BypasserType;
+          }
+      )[];
+    }[]
+  >;
+  getAccessApprovalPolicyById: ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    policyId
+  }: TGetAccessApprovalPolicyByIdDTO) => Promise<{
+    approvers: (
+      | {
+          id: string | null | undefined;
+          type: ApproverType.User;
+          name: string;
+          sequence: number | null | undefined;
+          approvalsRequired: number | null | undefined;
+        }
+      | {
+          id: string | null | undefined;
+          type: ApproverType.Group;
+          sequence: number | null | undefined;
+          approvalsRequired: number | null | undefined;
+        }
+    )[];
+    name: string;
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    approvals: number;
+    envId: string;
+    enforcementLevel: string;
+    allowedSelfApprovals: boolean;
+    secretPath?: string | null | undefined;
+    deletedAt?: Date | null | undefined;
+    environment: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    projectId: string;
+    bypassers: (
+      | {
+          id: string | null | undefined;
+          type: BypasserType.User;
+          name: string;
+        }
+      | {
+          id: string | null | undefined;
+          type: BypasserType.Group;
+        }
+    )[];
+  }>;
+}

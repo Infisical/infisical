@@ -561,7 +561,7 @@ const formatMultiValueEnv = (val?: string) => {
   return `"${val.replaceAll("\n", "\\n")}"`;
 };
 
-type TSecretReferenceTraceNode = {
+export type TSecretReferenceTraceNode = {
   key: string;
   value?: string;
   environment: string;

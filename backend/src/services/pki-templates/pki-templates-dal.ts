@@ -91,7 +91,7 @@ export const pkiTemplatesDALFactory = (db: TDbClient) => {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
 
-      const res = await query;
+      const res = (await query) as Array<Awaited<typeof query>[0] & { count: string }>;
       return res.map((el) => ({ ...el, ca: { id: el.caId, name: el.caName } }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
