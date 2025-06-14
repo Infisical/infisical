@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/rs/zerolog/log"
 	"github.com/zalando/go-keyring"
 )
 
@@ -102,7 +103,10 @@ func GetCurrentLoggedInUserDetails(setConfigVariables bool) (LoggedInUserDetails
 			}
 		}
 
-		_ = StoreUserCredsInKeyRing(&userCreds)
+		err = StoreUserCredsInKeyRing(&userCreds)
+		if err != nil {
+			log.Debug().Msg("unable to store your user credentials with new access token")
+		}
 
 		if !isAuthenticated {
 			return LoggedInUserDetails{
