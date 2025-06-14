@@ -267,7 +267,7 @@ type GetLoginTwoV2Response struct {
 	ProtectedKey        string `json:"protectedKey"`
 	ProtectedKeyIV      string `json:"protectedKeyIV"`
 	ProtectedKeyTag     string `json:"protectedKeyTag"`
-	RefreshToken        string `json:"RefreshToken"`
+	RefreshToken        string `json:"refreshToken"`
 }
 
 type VerifyMfaTokenRequest struct {

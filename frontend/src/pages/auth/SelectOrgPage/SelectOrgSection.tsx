@@ -112,7 +112,7 @@ export const SelectOrganizationSection = () => {
         return;
       }
 
-      const { token, isMfaEnabled, mfaMethod } = await selectOrg
+      const { token, isMfaEnabled, mfaMethod, refreshToken } = await selectOrg
         .mutateAsync({
           organizationId: organization.id,
           userAgent: callbackPort ? UserAgentType.CLI : undefined
@@ -151,13 +151,14 @@ export const SelectOrganizationSection = () => {
         const payload = {
           JTWToken: token,
           email: user?.email,
-          privateKey
+          privateKey,
+          refreshToken
         } as IsCliLoginSuccessful["loginResponse"];
 
         // send request to server endpoint
         const instance = axios.create();
         await instance.post(`http://127.0.0.1:${callbackPort}/`, payload).catch(() => {
-          // if error happens to communicate we set the token with an expiry in sessino storage
+          // if error happens to communicate we set the token with an expiry in session storage
           // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
           sessionStorage.setItem(
             SessionStorageKeys.CLI_TERMINAL_TOKEN,

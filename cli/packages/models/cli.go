@@ -6,7 +6,7 @@ type UserCredentials struct {
 	Email        string `json:"email"`
 	PrivateKey   string `json:"privateKey"`
 	JTWToken     string `json:"JTWToken"`
-	RefreshToken string `json:"RefreshToken"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 // The file struct for Infisical config file

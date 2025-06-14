@@ -111,7 +111,7 @@ var loginCmd = &cobra.Command{
 		infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
 			SiteUrl:          config.INFISICAL_URL,
 			UserAgent:        api.USER_AGENT,
-			AutoTokenRefresh: false,
+			AutoTokenRefresh: true,
 			CustomHeaders:    customHeaders,
 		})
 
@@ -438,6 +438,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 	userCredentialsToBeStored.Email = email
 	userCredentialsToBeStored.PrivateKey = string(decryptedPrivateKey)
 	userCredentialsToBeStored.JTWToken = newJwtToken
+	userCredentialsToBeStored.RefreshToken = loginTwoResponse.RefreshToken
 }
 
 func init() {
