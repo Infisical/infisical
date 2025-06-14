@@ -156,7 +156,7 @@
     "@octokit/core": "^5.2.1",
     "@octokit/plugin-paginate-graphql": "^4.0.1",
     "@octokit/plugin-retry": "^5.0.5",
-    "@octokit/rest": "^20.0.2",
+    "@octokit/rest": "^22.0.0",
     "@octokit/webhooks-types": "^7.3.1",
     "@octopusdeploy/api-client": "^3.4.1",
     "@opentelemetry/api": "^1.9.0",
