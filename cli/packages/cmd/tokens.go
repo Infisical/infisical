@@ -115,7 +115,7 @@ var tokensCreateCmd = &cobra.Command{
 			}
 		}
 
-		workspaceKey, err := util.GetPlainTextWorkspaceKey(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceId)
+		workspaceKey, err := util.GetPlainTextWorkspaceKey(loggedInUserDetails.UserCredentials.JWTToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceId)
 		if err != nil {
 			util.HandleError(err, "Unable to get workspace key needed to create service token")
 		}
@@ -140,7 +140,7 @@ var tokensCreateCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get resty client with custom headers")
 		}
 
-		httpClient.SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
+		httpClient.SetAuthToken(loggedInUserDetails.UserCredentials.JWTToken).
 			SetHeader("Accept", "application/json")
 
 		createServiceTokenResponse, err := api.CallCreateServiceToken(httpClient, api.CreateServiceTokenRequest{

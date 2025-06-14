@@ -53,7 +53,7 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			util.HandleError(err, "Unable to get resty client with custom headers")
 		}
-		httpClient.SetAuthToken(userCreds.UserCredentials.JTWToken)
+		httpClient.SetAuthToken(userCreds.UserCredentials.JWTToken)
 
 		organizationResponse, err := api.CallGetAllOrganizations(httpClient)
 		if err != nil {
@@ -124,7 +124,7 @@ var initCmd = &cobra.Command{
 		}
 
 		// set the config jwt token to the new token
-		userCreds.UserCredentials.JTWToken = tokenResponse.Token
+		userCreds.UserCredentials.JWTToken = tokenResponse.Token
 		err = util.StoreUserCredsInKeyRing(&userCreds.UserCredentials)
 		httpClient.SetAuthToken(tokenResponse.Token)
 

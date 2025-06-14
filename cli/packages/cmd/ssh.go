@@ -186,7 +186,7 @@ func issueCredentials(cmd *cobra.Command, args []string) {
 		if loggedInUserDetails.LoginExpired {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
-		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
 	}
 
 	certificateTemplateId, err := cmd.Flags().GetString("certificateTemplateId")
@@ -419,7 +419,7 @@ func signKey(cmd *cobra.Command, args []string) {
 		if loggedInUserDetails.LoginExpired {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
-		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
 	}
 
 	certificateTemplateId, err := cmd.Flags().GetString("certificateTemplateId")
@@ -628,7 +628,7 @@ func sshConnect(cmd *cobra.Command, args []string) {
 		if loggedInUserDetails.LoginExpired {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
-		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
 	}
 
 	writeHostCaToFile, err := cmd.Flags().GetBool("write-host-ca-to-file")
@@ -881,7 +881,7 @@ func sshAddHost(cmd *cobra.Command, args []string) {
 		if loggedInUserDetails.LoginExpired {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
-		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
 	}
 
 	projectId, err := cmd.Flags().GetString("projectId")

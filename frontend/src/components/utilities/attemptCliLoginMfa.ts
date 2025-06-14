@@ -14,7 +14,7 @@ interface IsMfaLoginSuccessful {
   success: boolean;
   loginResponse: {
     privateKey: string;
-    JTWToken: string;
+    JWTToken: string;
   };
 }
 
@@ -95,7 +95,7 @@ const attemptLoginMfa = async ({
             success: true,
             loginResponse: {
               privateKey,
-              JTWToken: token
+              JWTToken: token
             }
           });
         } catch (err) {

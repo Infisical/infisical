@@ -5,8 +5,8 @@ import "time"
 type UserCredentials struct {
 	Email        string `json:"email"`
 	PrivateKey   string `json:"privateKey"`
-	JTWToken     string `json:"JTWToken"`
-	RefreshToken string `json:"RefreshToken"`
+	JWTToken     string `json:"JWTToken"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 // The file struct for Infisical config file

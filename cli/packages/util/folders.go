@@ -35,7 +35,7 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 			params.WorkspaceId = workspaceFile.WorkspaceId
 		}
 
-		folders, err := GetFoldersViaJTW(loggedInUserDetails.UserCredentials.JTWToken, params.WorkspaceId, params.Environment, params.FoldersPath)
+		folders, err := GetFoldersViaJWT(loggedInUserDetails.UserCredentials.JWTToken, params.WorkspaceId, params.Environment, params.FoldersPath)
 		folderErr = err
 		foldersToReturn = folders
 	} else if params.InfisicalToken != "" {
@@ -60,14 +60,14 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 	return foldersToReturn, folderErr
 }
 
-func GetFoldersViaJTW(JTWToken string, workspaceId string, environmentName string, foldersPath string) ([]models.SingleFolder, error) {
+func GetFoldersViaJWT(JWTToken string, workspaceId string, environmentName string, foldersPath string) ([]models.SingleFolder, error) {
 	// set up resty client
 	httpClient, err := GetRestyClientWithCustomHeaders()
 	if err != nil {
 		return nil, err
 	}
 
-	httpClient.SetAuthToken(JTWToken).
+	httpClient.SetAuthToken(JWTToken).
 		SetHeader("Accept", "application/json")
 
 	getFoldersRequest := api.GetFoldersV1Request{
@@ -194,7 +194,7 @@ func CreateFolder(params models.CreateFolderParameters) (models.SingleFolder, er
 			loggedInUserDetails = EstablishUserLoginSession()
 		}
 
-		params.InfisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+		params.InfisicalToken = loggedInUserDetails.UserCredentials.JWTToken
 	}
 
 	// set up resty client
@@ -243,7 +243,7 @@ func DeleteFolder(params models.DeleteFolderParameters) ([]models.SingleFolder, 
 			loggedInUserDetails = EstablishUserLoginSession()
 		}
 
-		params.InfisicalToken = loggedInUserDetails.UserCredentials.JTWToken
+		params.InfisicalToken = loggedInUserDetails.UserCredentials.JWTToken
 	}
 
 	// set up resty client
