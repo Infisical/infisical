@@ -302,9 +302,9 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectCo
 			params.WorkspaceId = infisicalDotJson.WorkspaceId
 		}
 
-		res, err := GetPlainTextSecretsV3(loggedInUserDetails.UserCredentials.JTWToken, params.WorkspaceId,
+		res, err := GetPlainTextSecretsV3(loggedInUserDetails.UserCredentials.JWTToken, params.WorkspaceId,
 			params.Environment, params.SecretsPath, params.IncludeImport, params.Recursive, params.TagSlugs, true)
-		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", err)
+		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JWT token [err=%s]", err)
 
 		if err == nil {
 			backupEncryptionKey, err := GetBackupEncryptionKey()

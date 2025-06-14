@@ -90,7 +90,7 @@ func GetCurrentLoggedInUserDetails(setConfigVariables bool) (LoggedInUserDetails
 		}
 
 		httpClient.
-			SetAuthToken(userCreds.JTWToken).
+			SetAuthToken(userCreds.JWTToken).
 			SetHeader("Accept", "application/json")
 
 		isAuthenticated := api.CallIsAuthenticated(httpClient)
@@ -98,7 +98,7 @@ func GetCurrentLoggedInUserDetails(setConfigVariables bool) (LoggedInUserDetails
 			accessTokenResponse, refreshErr := api.CallGetNewAccessTokenWithRefreshToken(httpClient, userCreds.RefreshToken)
 			if refreshErr == nil && accessTokenResponse.Token != "" {
 				isAuthenticated = true
-				userCreds.JTWToken = accessTokenResponse.Token
+				userCreds.JWTToken = accessTokenResponse.Token
 			}
 		}
 

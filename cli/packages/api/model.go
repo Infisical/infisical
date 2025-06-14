@@ -21,7 +21,7 @@ type LoginTwoRequest struct {
 }
 
 type LoginTwoResponse struct {
-	JTWToken            string `json:"token"`
+	JWTToken            string `json:"token"`
 	RefreshToken        string `json:"refreshToken"`
 	PublicKey           string `json:"publicKey"`
 	EncryptedPrivateKey string `json:"encryptedPrivateKey"`

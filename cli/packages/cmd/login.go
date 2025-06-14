@@ -437,7 +437,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 	//updating usercredentials
 	userCredentialsToBeStored.Email = email
 	userCredentialsToBeStored.PrivateKey = string(decryptedPrivateKey)
-	userCredentialsToBeStored.JTWToken = newJwtToken
+	userCredentialsToBeStored.JWTToken = newJwtToken
 	userCredentialsToBeStored.RefreshToken = loginTwoResponse.RefreshToken
 }
 
@@ -863,7 +863,7 @@ func askToPasteJwtToken(success chan models.UserCredentials, failure chan error)
 		os.Exit(1)
 	}
 
-	// verify JTW
+	// verify JWT
 	httpClient, err := util.GetRestyClientWithCustomHeaders()
 	if err != nil {
 		failure <- err
@@ -872,7 +872,7 @@ func askToPasteJwtToken(success chan models.UserCredentials, failure chan error)
 	}
 
 	httpClient.
-		SetAuthToken(userCredentials.JTWToken).
+		SetAuthToken(userCredentials.JWTToken).
 		SetHeader("Accept", "application/json")
 
 	isAuthenticated := api.CallIsAuthenticated(httpClient)

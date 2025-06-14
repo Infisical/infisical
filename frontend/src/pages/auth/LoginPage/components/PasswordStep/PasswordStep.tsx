@@ -96,7 +96,7 @@ export const PasswordStep = ({
             const payload = {
               privateKey,
               email,
-              JTWToken: token,
+              JWTToken: token,
               refreshToken
             };
             await instance.post(cliUrl, payload).catch(() => {
@@ -209,7 +209,7 @@ export const PasswordStep = ({
               const instance = axios.create();
               const payload = {
                 ...isCliLoginSuccessful.loginResponse,
-                JTWToken: token,
+                JWTToken: token,
                 refreshToken
               };
               await instance.post(cliUrl, payload).catch(() => {
