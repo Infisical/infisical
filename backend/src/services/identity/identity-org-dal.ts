@@ -114,16 +114,18 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
           db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
-          db.ref("name").withSchema(TableName.Identity)
+          db.ref("name").withSchema(TableName.Identity),
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity)
         );
 
       if (data) {
-        const { name } = data;
+        const { name, hasDeleteProtection } = data;
         return {
           ...data,
           identity: {
             id: data.identityId,
             name,
+            hasDeleteProtection,
             authMethods: buildAuthMethods(data)
           }
         };
@@ -155,7 +157,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection)
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
-          db.ref("name").withSchema(TableName.Identity).as("identityName")
+          db.ref("name").withSchema(TableName.Identity).as("identityName"),
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity)
         )
         .where(filter)
         .as("paginatedIdentity");
@@ -245,6 +248,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("updatedAt").withSchema("paginatedIdentity"),
           db.ref("identityId").withSchema("paginatedIdentity").as("identityId"),
           db.ref("identityName").withSchema("paginatedIdentity"),
+          db.ref("hasDeleteProtection").withSchema("paginatedIdentity"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
@@ -286,6 +290,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           crName,
           identityId,
           identityName,
+          hasDeleteProtection,
           role,
           roleId,
           id,
@@ -324,6 +329,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identity: {
             id: identityId,
             name: identityName,
+            hasDeleteProtection,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,
@@ -476,6 +482,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("updatedAt").withSchema(TableName.IdentityOrgMembership),
           db.ref("identityId").withSchema(TableName.IdentityOrgMembership).as("identityId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
@@ -518,6 +525,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           crName,
           identityId,
           identityName,
+          hasDeleteProtection,
           role,
           roleId,
           total_count,
@@ -556,6 +564,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identity: {
             id: identityId,
             name: identityName,
+            hasDeleteProtection,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,

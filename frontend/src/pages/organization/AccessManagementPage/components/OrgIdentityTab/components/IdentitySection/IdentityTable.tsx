@@ -329,7 +329,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                             <FontAwesomeIcon size="sm" icon={faEllipsis} />
                           </div>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="p-1">
+                        <DropdownMenuContent align="start" className="mt-3 p-1">
                           <OrgPermissionCan
                             I={OrgPermissionIdentityActions.Edit}
                             a={OrgPermissionSubjects.Identity}

@@ -5,12 +5,14 @@ import { OrderByDirection, TOrgPermission } from "@app/lib/types";
 export type TCreateIdentityDTO = {
   role: string;
   name: string;
+  hasDeleteProtection: boolean;
   metadata?: { key: string; value: string }[];
 } & TOrgPermission;
 
 export type TUpdateIdentityDTO = {
   id: string;
   role?: string;
+  hasDeleteProtection?: boolean;
   name?: string;
   metadata?: { key: string; value: string }[];
   isActorSuperAdmin?: boolean;

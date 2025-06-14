@@ -15,7 +15,8 @@ import {
   IconButton,
   Input,
   Modal,
-  ModalContent
+  ModalContent,
+  Switch
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
@@ -27,6 +28,7 @@ const schema = z
   .object({
     name: z.string().min(1, "Required"),
     role: z.object({ slug: z.string(), name: z.string() }),
+    hasDeleteProtection: z.boolean(),
     metadata: z
       .object({
         key: z.string().trim().min(1),
@@ -64,7 +66,8 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: ""
+      name: "",
+      hasDeleteProtection: false
     }
   });
 
@@ -78,6 +81,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       identityId: string;
       name: string;
       role: string;
+      hasDeleteProtection: boolean;
       metadata?: { key: string; value: string }[];
       customRole: {
         name: string;
@@ -91,22 +95,25 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       reset({
         name: identity.name,
         role: identity.customRole ?? findOrgMembershipRole(roles, identity.role),
+        hasDeleteProtection: identity.hasDeleteProtection,
         metadata: identity.metadata
       });
     } else {
       reset({
         name: "",
-        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole)
+        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole),
+        hasDeleteProtection: false
       });
     }
   }, [popUp?.identity?.data, roles]);
 
-  const onFormSubmit = async ({ name, role, metadata }: FormData) => {
+  const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection }: FormData) => {
     try {
       const identity = popUp?.identity?.data as {
         identityId: string;
         name: string;
         role: string;
+        hasDeleteProtection: boolean;
       };
 
       if (identity) {
@@ -116,6 +123,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           identityId: identity.identityId,
           name,
           role: role.slug || undefined,
+          hasDeleteProtection,
           organizationId: orgId,
           metadata
         });
@@ -127,6 +135,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         const { id: createdId } = await createMutateAsync({
           name,
           role: role.slug || undefined,
+          hasDeleteProtection,
           organizationId: orgId,
           metadata
         });
@@ -212,6 +221,24 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
                 />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="hasDeleteProtection"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <FormControl errorText={error?.message} isError={Boolean(error)}>
+                <Switch
+                  className="ml-0 mr-2 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                  containerClassName="flex-row-reverse w-fit"
+                  id="delete-protection-enabled"
+                  thumbClassName="bg-mineshaft-800"
+                  onCheckedChange={onChange}
+                  isChecked={value}
+                >
+                  <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
+                </Switch>
               </FormControl>
             )}
           />

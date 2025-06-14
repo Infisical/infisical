@@ -242,6 +242,7 @@ interface CreateIdentityEvent {
   metadata: {
     identityId: string;
     name: string;
+    hasDeleteProtection: boolean;
   };
 }
 
@@ -250,6 +251,7 @@ interface UpdateIdentityEvent {
   metadata: {
     identityId: string;
     name?: string;
+    hasDeleteProtection?: boolean;
   };
 }
 
