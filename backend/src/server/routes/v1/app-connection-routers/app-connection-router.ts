@@ -61,6 +61,10 @@ import {
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
 import {
+  RenderConnectionListItemSchema,
+  SanitizedRenderConnectionSchema
+} from "@app/services/app-connection/render/render-connection-schema";
+import {
   SanitizedTeamCityConnectionSchema,
   TeamCityConnectionListItemSchema
 } from "@app/services/app-connection/teamcity";
@@ -100,7 +104,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedTeamCityConnectionSchema.options,
   ...SanitizedOCIConnectionSchema.options,
   ...SanitizedOracleDBConnectionSchema.options,
-  ...SanitizedOnePassConnectionSchema.options
+  ...SanitizedOnePassConnectionSchema.options,
+  ...SanitizedRenderConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -127,7 +132,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   TeamCityConnectionListItemSchema,
   OCIConnectionListItemSchema,
   OracleDBConnectionListItemSchema,
-  OnePassConnectionListItemSchema
+  OnePassConnectionListItemSchema,
+  RenderConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

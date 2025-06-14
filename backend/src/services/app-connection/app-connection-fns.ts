@@ -78,6 +78,8 @@ import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import { RenderConnectionMethod } from "./render/render-connection-enums";
+import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import {
   getTeamCityConnectionListItem,
   TeamCityConnectionMethod,
@@ -121,7 +123,8 @@ export const listAppConnectionOptions = () => {
     getTeamCityConnectionListItem(),
     getOCIConnectionListItem(),
     getOracleDBConnectionListItem(),
-    getOnePassConnectionListItem()
+    getOnePassConnectionListItem(),
+    getRenderConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -196,7 +199,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -245,6 +249,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "App Role";
     case LdapConnectionMethod.SimpleBind:
       return "Simple Bind";
+    case RenderConnectionMethod.ApiKey:
+      return "API Key";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -299,7 +305,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
   [AppConnection.OCI]: platformManagedCredentialsNotSupported,
   [AppConnection.OracleDB]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
-  [AppConnection.OnePass]: platformManagedCredentialsNotSupported
+  [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
+  [AppConnection.Render]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

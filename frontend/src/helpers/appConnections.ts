@@ -37,6 +37,7 @@ import {
   WindmillConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -78,7 +79,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
   [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
-  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" }
+  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" },
+  [AppConnection.Render]: { name: "Render", image: "Render.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -124,6 +126,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "App Role", icon: faUser };
     case LdapConnectionMethod.SimpleBind:
       return { name: "Simple Bind", icon: faLink };
+    case RenderConnectionMethod.ApiKey:
+      return { name: "API Key", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
