@@ -63,6 +63,12 @@ import {
   TValidateCamundaConnectionCredentialsSchema
 } from "./camunda";
 import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyConnectionInput,
+  TValidateCoolifyConnectionCredentialsSchema
+} from "./coolify";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -161,6 +167,7 @@ export type TAppConnection = { id: string } & (
   | TOCIConnection
   | TOracleDBConnection
   | TOnePassConnection
+  | TCoolifyConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -192,6 +199,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOCIConnectionInput
   | TOracleDBConnectionInput
   | TOnePassConnectionInput
+  | TCoolifyConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -230,7 +238,8 @@ export type TAppConnectionConfig =
   | TLdapConnectionConfig
   | TTeamCityConnectionConfig
   | TOCIConnectionConfig
-  | TOnePassConnectionConfig;
+  | TOnePassConnectionConfig
+  | TCoolifyConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -256,7 +265,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateTeamCityConnectionCredentialsSchema
   | TValidateOCIConnectionCredentialsSchema
   | TValidateOracleDBConnectionCredentialsSchema
-  | TValidateOnePassConnectionCredentialsSchema;
+  | TValidateOnePassConnectionCredentialsSchema
+  | TValidateCoolifyConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

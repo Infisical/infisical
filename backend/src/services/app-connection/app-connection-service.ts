@@ -47,6 +47,8 @@ import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-servic
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
+import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
+import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -104,7 +106,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema,
   [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema,
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
-  [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema
+  [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
+  [AppConnection.Coolify]: ValidateCoolifyConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -509,6 +512,7 @@ export const appConnectionServiceFactory = ({
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
-    onepass: onePassConnectionService(connectAppConnectionById)
+    onepass: onePassConnectionService(connectAppConnectionById),
+    coolify: coolifyConnectionService(connectAppConnectionById)
   };
 };

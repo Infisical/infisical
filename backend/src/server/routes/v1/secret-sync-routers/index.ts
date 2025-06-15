@@ -8,6 +8,7 @@ import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configurati
 import { registerAzureDevOpsSyncRouter } from "./azure-devops-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
+import { registerCoolifySyncRouter } from "./coolify-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
@@ -37,5 +38,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.HCVault]: registerHCVaultSyncRouter,
   [SecretSync.TeamCity]: registerTeamCitySyncRouter,
   [SecretSync.OCIVault]: registerOCIVaultSyncRouter,
-  [SecretSync.OnePass]: registerOnePassSyncRouter
+  [SecretSync.OnePass]: registerOnePassSyncRouter,
+  [SecretSync.Coolify]: registerCoolifySyncRouter
 };
