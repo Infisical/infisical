@@ -39,7 +39,12 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { usePagination, usePopUp } from "@app/hooks";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
@@ -93,7 +98,14 @@ export const ProjectRoleList = () => {
     setPerPage,
     setPage,
     offset
-  } = usePagination<RolesOrderBy>(RolesOrderBy.Name);
+  } = usePagination<RolesOrderBy>(RolesOrderBy.Name, {
+    initPerPage: getUserTablePreference("projectRolesTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("projectRolesTable", PreferenceKey.PerPage, newPerPage);
+  };
 
   const filteredRoles = useMemo(
     () =>
@@ -117,9 +129,15 @@ export const ProjectRoleList = () => {
             default:
               return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
           }
-        }),
+        }) ?? [],
     [roles, orderDirection, search, orderBy]
   );
+
+  useResetPageHelper({
+    totalCount: filteredRoles.length,
+    offset,
+    setPage
+  });
 
   const handleSort = (column: RolesOrderBy) => {
     if (column === orderBy) {
@@ -143,7 +161,7 @@ export const ProjectRoleList = () => {
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
           {(isAllowed) => (
             <Button
-              colorSchema="primary"
+              colorSchema="secondary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handlePopUpOpen("role")}
@@ -319,7 +337,7 @@ export const ProjectRoleList = () => {
             page={page}
             perPage={perPage}
             onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePerPage={handlePerPageChange}
           />
         )}
         {!filteredRoles?.length && !isRolesLoading && (
