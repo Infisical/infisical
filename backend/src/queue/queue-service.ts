@@ -427,7 +427,7 @@ export const queueServiceFactory = (
       throw new Error(`${name} queue is already initialized`);
     }
 
-    queueContainer[name] = new Queue(name as string, {
+    queueContainer[name] = new Queue(name, {
       ...queueSettings,
       connection
     });
