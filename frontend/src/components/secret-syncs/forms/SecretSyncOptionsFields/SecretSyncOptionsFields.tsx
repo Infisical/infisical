@@ -52,6 +52,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.TeamCity:
     case SecretSync.OnePass:
     case SecretSync.OCIVault:
+    case SecretSync.Flyio:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

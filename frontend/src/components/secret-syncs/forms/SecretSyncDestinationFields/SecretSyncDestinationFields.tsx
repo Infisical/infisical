@@ -11,6 +11,7 @@ import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
+import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
@@ -61,6 +62,8 @@ export const SecretSyncDestinationFields = () => {
       return <OCIVaultSyncFields />;
     case SecretSync.OnePass:
       return <OnePassSyncFields />;
+    case SecretSync.Flyio:
+      return <FlyioSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

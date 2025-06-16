@@ -35,7 +35,6 @@ export const registerFlyioConnectionRouter = async (server: FastifyZodProvider) 
       response: {
         200: z
           .object({
-            // TODO(andrey): apps
             id: z.string(),
             name: z.string()
           })

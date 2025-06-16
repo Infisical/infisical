@@ -2387,6 +2387,9 @@ export const SecretSyncs = {
     },
     ONEPASS: {
       vaultId: "The ID of the 1Password vault to sync secrets to."
+    },
+    FLYIO: {
+      appId: "The ID of the Fly.io app to sync secrets to."
     }
   }
 };

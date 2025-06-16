@@ -15,7 +15,8 @@ export enum SecretSync {
   HCVault = "hashicorp-vault",
   TeamCity = "teamcity",
   OCIVault = "oci-vault",
-  OnePass = "1password"
+  OnePass = "1password",
+  Flyio = "flyio"
 }
 
 export enum SecretSyncStatus {

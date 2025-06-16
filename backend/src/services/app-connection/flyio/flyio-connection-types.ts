@@ -21,7 +21,6 @@ export type TFlyioConnectionConfig = DiscriminativePick<TFlyioConnectionInput, "
   orgId: string;
 };
 
-// TODO(andrey): apps
 export type TFlyioApp = {
   id: string;
   name: string;
