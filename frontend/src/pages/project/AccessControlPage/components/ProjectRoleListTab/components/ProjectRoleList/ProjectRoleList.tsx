@@ -1,4 +1,16 @@
-import { faEllipsis, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { useMemo } from "react";
+import {
+  faArrowDown,
+  faArrowUp,
+  faCopy,
+  faEdit,
+  faEllipsisV,
+  faEye,
+  faMagnifyingGlass,
+  faPlus,
+  faSearch,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
@@ -12,6 +24,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  EmptyState,
+  IconButton,
+  Input,
+  Pagination,
   Table,
   TableContainer,
   TableSkeleton,
@@ -19,14 +35,21 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { usePagination, usePopUp } from "@app/hooks";
 import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
+
+enum RolesOrderBy {
+  Name = "name",
+  Slug = "slug"
+}
 
 export const ProjectRoleList = () => {
   const navigate = useNavigate();
@@ -57,6 +80,62 @@ export const ProjectRoleList = () => {
     }
   };
 
+  const {
+    orderDirection,
+    toggleOrderDirection,
+    orderBy,
+    setOrderDirection,
+    setOrderBy,
+    search,
+    setSearch,
+    page,
+    perPage,
+    setPerPage,
+    setPage,
+    offset
+  } = usePagination<RolesOrderBy>(RolesOrderBy.Name);
+
+  const filteredRoles = useMemo(
+    () =>
+      roles
+        ?.filter((role) => {
+          const { slug, name } = role;
+
+          const searchValue = search.trim().toLowerCase();
+
+          return (
+            name.toLowerCase().includes(searchValue) || slug.toLowerCase().includes(searchValue)
+          );
+        })
+        .sort((a, b) => {
+          const [roleOne, roleTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
+
+          switch (orderBy) {
+            case RolesOrderBy.Slug:
+              return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
+            case RolesOrderBy.Name:
+            default:
+              return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
+          }
+        }),
+    [roles, orderDirection, search, orderBy]
+  );
+
+  const handleSort = (column: RolesOrderBy) => {
+    if (column === orderBy) {
+      toggleOrderDirection();
+      return;
+    }
+
+    setOrderBy(column);
+    setOrderDirection(OrderByDirection.ASC);
+  };
+
+  const getClassName = (col: RolesOrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+
+  const getColSortIcon = (col: RolesOrderBy) =>
+    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
@@ -75,18 +154,50 @@ export const ProjectRoleList = () => {
           )}
         </ProjectPermissionCan>
       </div>
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+        placeholder="Search project roles..."
+        className="flex-1"
+        containerClassName="mb-4"
+      />
       <TableContainer>
         <Table>
           <THead>
             <Tr>
-              <Th>Name</Th>
-              <Th>Slug</Th>
+              <Th>
+                <div className="flex items-center">
+                  Name
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(RolesOrderBy.Name)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(RolesOrderBy.Name)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Name)} />
+                  </IconButton>
+                </div>
+              </Th>
+              <Th>
+                <div className="flex items-center">
+                  Slug
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(RolesOrderBy.Slug)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(RolesOrderBy.Slug)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Slug)} />
+                  </IconButton>
+                </div>
+              </Th>
               <Th aria-label="actions" className="w-5" />
             </Tr>
           </THead>
           <TBody>
-            {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-            {roles?.map((role) => {
+            {isRolesLoading && <TableSkeleton columns={3} innerKey="project-roles" />}
+            {filteredRoles?.slice(offset, perPage * page).map((role) => {
               const { id, name, slug } = role;
               const isNonMutatable = Object.values(ProjectMembershipRole).includes(
                 slug as ProjectMembershipRole
@@ -109,88 +220,118 @@ export const ProjectRoleList = () => {
                   <Td>{name}</Td>
                   <Td>{slug}</Td>
                   <Td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="rounded-lg">
-                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                          <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                        </div>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="p-1">
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Edit}
-                          a={ProjectPermissionSub.Role}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate({
-                                  to: `/${currentWorkspace?.type}/$projectId/roles/$roleSlug` as const,
-                                  params: {
-                                    projectId: currentWorkspace.id,
-                                    roleSlug: slug
-                                  }
-                                });
-                              }}
-                              disabled={!isAllowed}
-                            >
-                              {`${isNonMutatable ? "View" : "Edit"} Role`}
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Create}
-                          a={ProjectPermissionSub.Role}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePopUpOpen("duplicateRole", role);
-                              }}
-                              disabled={!isAllowed}
-                            >
-                              Duplicate Role
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                        {!isNonMutatable && (
+                    <Tooltip className="max-w-sm text-center" content="Options">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            ariaLabel="Options"
+                            colorSchema="secondary"
+                            className="w-6"
+                            variant="plain"
+                          >
+                            <FontAwesomeIcon icon={faEllipsisV} />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="min-w-[12rem]" sideOffset={2} align="end">
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Delete}
+                            I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Role}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
+                                icon={<FontAwesomeIcon icon={isNonMutatable ? faEye : faEdit} />}
                                 className={twMerge(
-                                  isAllowed
-                                    ? "hover:!bg-red-500 hover:!text-white"
-                                    : "pointer-events-none cursor-not-allowed opacity-50"
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePopUpOpen("deleteRole", role);
+                                  navigate({
+                                    to: `/${currentWorkspace?.type}/$projectId/roles/$roleSlug` as const,
+                                    params: {
+                                      projectId: currentWorkspace.id,
+                                      roleSlug: slug
+                                    }
+                                  });
                                 }}
                                 disabled={!isAllowed}
                               >
-                                Delete Role
+                                {`${isNonMutatable ? "View" : "Edit"} Role`}
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Create}
+                            a={ProjectPermissionSub.Role}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                icon={<FontAwesomeIcon icon={faCopy} />}
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("duplicateRole", role);
+                                }}
+                                disabled={!isAllowed}
+                              >
+                                Duplicate Role
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          {!isNonMutatable && (
+                            <ProjectPermissionCan
+                              I={ProjectPermissionActions.Delete}
+                              a={ProjectPermissionSub.Role}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  icon={<FontAwesomeIcon icon={faTrash} />}
+                                  className={twMerge(
+                                    isAllowed
+                                      ? "hover:!bg-red-500 hover:!text-white"
+                                      : "pointer-events-none cursor-not-allowed opacity-50",
+                                    "transition-colors duration-100"
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("deleteRole", role);
+                                  }}
+                                  disabled={!isAllowed}
+                                >
+                                  Delete Role
+                                </DropdownMenuItem>
+                              )}
+                            </ProjectPermissionCan>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </Tooltip>
                   </Td>
                 </Tr>
               );
             })}
           </TBody>
         </Table>
+        {Boolean(filteredRoles?.length) && (
+          <Pagination
+            count={filteredRoles!.length}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={setPerPage}
+          />
+        )}
+        {!filteredRoles?.length && !isRolesLoading && (
+          <EmptyState
+            title={
+              roles?.length
+                ? "No project roles match search..."
+                : "This project does not have any roles"
+            }
+            icon={roles?.length ? faSearch : undefined}
+          />
+        )}
       </TableContainer>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
