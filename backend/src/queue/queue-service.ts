@@ -389,10 +389,9 @@ export const queueServiceFactory = (
   { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
 ): TQueueServiceFactory => {
   const connection = buildRedisFromConfig(redisCfg);
-  const queueContainer = {} as Record<
-    QueueName,
-    Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
-  >;
+  const queueContainer: Partial<
+    Record<QueueName, Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
+  > = {};
 
   const pgBoss = new PgBoss({
     connectionString: dbConnectionUrl,
@@ -408,12 +407,11 @@ export const queueServiceFactory = (
       : false
   });
 
-  const queueContainerPg = {} as Record<QueueJobs, boolean>;
+  const queueContainerPg: Partial<Record<QueueJobs, boolean>> = {};
 
-  const workerContainer = {} as Record<
-    QueueName,
-    Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
-  >;
+  const workerContainer: Partial<
+    Record<QueueName, Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
+  > = {};
 
   const initialize = async () => {
     logger.info("Initializing pg-queue...");
@@ -489,11 +487,14 @@ export const queueServiceFactory = (
     }
 
     const worker = workerContainer[name];
+    if (!worker) throw new Error(`Worker '${name}' not initialized`);
+
     worker.on(event, listener);
   };
 
   const queue: TQueueServiceFactory["queue"] = async (name, job, data, opts) => {
     const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
 
     await q.add(job, data, opts);
   };
@@ -516,9 +517,9 @@ export const queueServiceFactory = (
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {
     const q = queueContainer[name];
-    if (q) {
-      return q.removeRepeatable(job, repeatOpt, jobId);
-    }
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    return q.removeRepeatable(job, repeatOpt, jobId);
   };
 
   const getRepeatableJobs: TQueueServiceFactory["getRepeatableJobs"] = (name, startOffset, endOffset) => {
@@ -530,6 +531,8 @@ export const queueServiceFactory = (
 
   const stopRepeatableJobByJobId: TQueueServiceFactory["stopRepeatableJobByJobId"] = async (name, jobId) => {
     const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
     const job = await q.getJob(jobId);
     if (!job) return true;
     if (!job.repeatJobKey) return true;
@@ -539,17 +542,23 @@ export const queueServiceFactory = (
 
   const stopRepeatableJobByKey: TQueueServiceFactory["stopRepeatableJobByKey"] = async (name, repeatJobKey) => {
     const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
     return q.removeRepeatableByKey(repeatJobKey);
   };
 
   const stopJobById: TQueueServiceFactory["stopJobById"] = async (name, jobId) => {
     const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
     const job = await q.getJob(jobId);
     return job?.remove().catch(() => undefined);
   };
 
   const clearQueue: TQueueServiceFactory["clearQueue"] = async (name) => {
     const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
     await q.drain();
   };
 
