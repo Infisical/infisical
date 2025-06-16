@@ -212,6 +212,10 @@ export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.CircleCI;
 };
 
+export type TCoolifyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Coolify;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -261,7 +265,8 @@ export type TAppConnectionOption =
   | TDNSMadeEasyConnectionOption
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
-  | TSmbConnectionOption;
+  | TSmbConnectionOption
+  | TCoolifyConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -313,4 +318,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
+  [AppConnection.Coolify]: TCoolifyConnectionOption;
 };
