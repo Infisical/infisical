@@ -22,7 +22,8 @@ export enum AppConnection {
   TeamCity = "teamcity",
   OCI = "oci",
   OracleDB = "oracledb",
-  OnePass = "1password"
+  OnePass = "1password",
+  Flyio = "flyio"
 }
 
 export enum AWSRegion {

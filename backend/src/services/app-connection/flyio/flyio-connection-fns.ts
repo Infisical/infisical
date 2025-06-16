@@ -1,0 +1,65 @@
+import { AxiosError } from "axios";
+
+import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+
+import { FlyioConnectionMethod } from "./flyio-connection-enums";
+import { TFlyioApp, TFlyioConnection, TFlyioConnectionConfig } from "./flyio-connection-types";
+
+export const getFlyioConnectionListItem = () => {
+  return {
+    name: "Fly.io" as const,
+    app: AppConnection.Flyio as const,
+    methods: Object.values(FlyioConnectionMethod) as [FlyioConnectionMethod.AccessToken]
+  };
+};
+
+export const validateFlyioConnectionCredentials = async (config: TFlyioConnectionConfig) => {
+  const { accessToken } = config.credentials;
+
+  try {
+    await request.post(
+      "https://api.fly.io/graphql",
+      { query: "query { viewer { id email } }" },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to validate connection: verify credentials"
+    });
+  }
+
+  return config.credentials;
+};
+
+export const listFlyioApps = async (appConnection: TFlyioConnection) => {
+  const { accessToken } = appConnection.credentials;
+
+  const resp = await request.post<{ data: { apps: { nodes: TFlyioApp[] } } }>(
+    "https://api.fly.io/graphql",
+    {
+      query:
+        "query GetApps { apps { nodes { id name hostname status organization { id slug } currentRelease { version status createdAt } } } }"
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      }
+    }
+  );
+
+  return resp.data.data.apps.nodes;
+};

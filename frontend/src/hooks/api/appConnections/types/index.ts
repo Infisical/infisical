@@ -9,6 +9,7 @@ import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
@@ -34,6 +35,7 @@ export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
 export * from "./camunda-connection";
 export * from "./databricks-connection";
+export * from "./flyio-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./github-radar-connection";
@@ -74,7 +76,8 @@ export type TAppConnection =
   | TLdapConnection
   | TTeamCityConnection
   | TOCIConnection
-  | TOnePassConnection;
+  | TOnePassConnection
+  | TFlyioConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -126,4 +129,5 @@ export type TAppConnectionMap = {
   [AppConnection.TeamCity]: TTeamCityConnection;
   [AppConnection.OCI]: TOCIConnection;
   [AppConnection.OnePass]: TOnePassConnection;
+  [AppConnection.Flyio]: TFlyioConnection;
 };

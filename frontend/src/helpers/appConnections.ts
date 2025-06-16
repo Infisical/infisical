@@ -19,6 +19,7 @@ import {
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   DatabricksConnectionMethod,
+  FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
   GitHubRadarConnectionMethod,
@@ -78,7 +79,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.LDAP]: { name: "LDAP", image: "LDAP.png", size: 65 },
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
   [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
-  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" }
+  [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" },
+  [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -117,6 +119,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
+    case FlyioConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
