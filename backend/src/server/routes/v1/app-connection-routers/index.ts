@@ -10,6 +10,7 @@ import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secre
 import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-router";
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
+import { registerCoolifyConnectionRouter } from "./coolify-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -28,29 +29,30 @@ import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 export * from "./app-connection-router";
 
 export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: FastifyZodProvider) => Promise<void>> =
-  {
-    [AppConnection.AWS]: registerAwsConnectionRouter,
-    [AppConnection.GitHub]: registerGitHubConnectionRouter,
-    [AppConnection.GitHubRadar]: registerGitHubRadarConnectionRouter,
-    [AppConnection.GCP]: registerGcpConnectionRouter,
-    [AppConnection.AzureKeyVault]: registerAzureKeyVaultConnectionRouter,
-    [AppConnection.AzureAppConfiguration]: registerAzureAppConfigurationConnectionRouter,
-    [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
-    [AppConnection.AzureDevOps]: registerAzureDevOpsConnectionRouter,
-    [AppConnection.Databricks]: registerDatabricksConnectionRouter,
-    [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
-    [AppConnection.TerraformCloud]: registerTerraformCloudConnectionRouter,
-    [AppConnection.Vercel]: registerVercelConnectionRouter,
-    [AppConnection.Postgres]: registerPostgresConnectionRouter,
-    [AppConnection.MsSql]: registerMsSqlConnectionRouter,
-    [AppConnection.MySql]: registerMySqlConnectionRouter,
-    [AppConnection.Camunda]: registerCamundaConnectionRouter,
-    [AppConnection.Windmill]: registerWindmillConnectionRouter,
-    [AppConnection.Auth0]: registerAuth0ConnectionRouter,
-    [AppConnection.HCVault]: registerHCVaultConnectionRouter,
-    [AppConnection.LDAP]: registerLdapConnectionRouter,
-    [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
-    [AppConnection.OCI]: registerOCIConnectionRouter,
-    [AppConnection.OracleDB]: registerOracleDBConnectionRouter,
-    [AppConnection.OnePass]: registerOnePassConnectionRouter
-  };
+{
+  [AppConnection.AWS]: registerAwsConnectionRouter,
+  [AppConnection.GitHub]: registerGitHubConnectionRouter,
+  [AppConnection.GitHubRadar]: registerGitHubRadarConnectionRouter,
+  [AppConnection.GCP]: registerGcpConnectionRouter,
+  [AppConnection.AzureKeyVault]: registerAzureKeyVaultConnectionRouter,
+  [AppConnection.AzureAppConfiguration]: registerAzureAppConfigurationConnectionRouter,
+  [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
+  [AppConnection.AzureDevOps]: registerAzureDevOpsConnectionRouter,
+  [AppConnection.Databricks]: registerDatabricksConnectionRouter,
+  [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
+  [AppConnection.TerraformCloud]: registerTerraformCloudConnectionRouter,
+  [AppConnection.Vercel]: registerVercelConnectionRouter,
+  [AppConnection.Postgres]: registerPostgresConnectionRouter,
+  [AppConnection.MsSql]: registerMsSqlConnectionRouter,
+  [AppConnection.MySql]: registerMySqlConnectionRouter,
+  [AppConnection.Camunda]: registerCamundaConnectionRouter,
+  [AppConnection.Windmill]: registerWindmillConnectionRouter,
+  [AppConnection.Auth0]: registerAuth0ConnectionRouter,
+  [AppConnection.HCVault]: registerHCVaultConnectionRouter,
+  [AppConnection.LDAP]: registerLdapConnectionRouter,
+  [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
+  [AppConnection.OCI]: registerOCIConnectionRouter,
+  [AppConnection.OracleDB]: registerOracleDBConnectionRouter,
+  [AppConnection.OnePass]: registerOnePassConnectionRouter,
+  [AppConnection.Coolify]: registerCoolifyConnectionRouter
+};

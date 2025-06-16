@@ -19,6 +19,7 @@ import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSy
 import { AzureDevOpsSyncReviewFields } from "./AzureDevOpsSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
+import { CoolifySyncReviewFields } from "./CoolifySyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
@@ -103,6 +104,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.OnePass:
       DestinationFieldsComponent = <OnePassSyncReviewFields />;
+      break;
+    case SecretSync.Coolify:
+      DestinationFieldsComponent = <CoolifySyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

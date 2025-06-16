@@ -8,6 +8,7 @@ import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
 import { TAzureDevOpsSync } from "./azure-devops-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TCamundaSync } from "./camunda-sync";
+import { TCoolifySync } from "./coolify-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
@@ -43,7 +44,8 @@ export type TSecretSync =
   | THCVaultSync
   | TTeamCitySync
   | TOCIVaultSync
-  | TOnePassSync;
+  | TOnePassSync
+  | TCoolifySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

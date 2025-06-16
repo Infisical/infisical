@@ -2225,6 +2225,10 @@ export const AppConnections = {
     ONEPASS: {
       instanceUrl: "The URL of the 1Password Connect Server instance to authenticate with.",
       apiToken: "The API token used to access the 1Password Connect Server."
+    },
+    COOLIFY: {
+      instanceUrl: "The Coolify instance URL to connect with",
+      apiToken: "The API token used to access the Coolify server"
     }
   }
 };
@@ -2386,6 +2390,9 @@ export const SecretSyncs = {
     },
     ONEPASS: {
       vaultId: "The ID of the 1Password vault to sync secrets to."
+    },
+    COOLIFY: {
+      applicationId: "The UUID of the application or service to sync secret to."
     }
   }
 };

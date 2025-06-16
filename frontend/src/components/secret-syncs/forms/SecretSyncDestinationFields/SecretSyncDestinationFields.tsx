@@ -10,6 +10,7 @@ import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFiel
 import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
+import { CoolifySyncFields } from "./CoolifySyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
@@ -61,6 +62,8 @@ export const SecretSyncDestinationFields = () => {
       return <OCIVaultSyncFields />;
     case SecretSync.OnePass:
       return <OnePassSyncFields />;
+    case SecretSync.Coolify:
+      return <CoolifySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }
