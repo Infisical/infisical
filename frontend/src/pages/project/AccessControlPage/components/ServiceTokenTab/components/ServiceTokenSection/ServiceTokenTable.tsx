@@ -94,11 +94,19 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
     () =>
       data
         ?.filter((token) => {
-          const { name } = token;
+          const { name, scopes } = token;
 
           const searchValue = search.trim().toLowerCase();
 
-          return name.toLowerCase().includes(searchValue);
+          if (name.toLowerCase().includes(searchValue)) {
+            return true;
+          }
+
+          return scopes.some(
+            ({ environment, secretPath }) =>
+              environment.toLowerCase().includes(searchValue) ||
+              secretPath.toLowerCase().includes(searchValue)
+          );
         })
         .sort((a, b) => {
           const [tokenOne, tokenTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
@@ -148,7 +156,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search service tokens..."
+        placeholder="Search service tokens by name, environment or secret path..."
         className="flex-1"
         containerClassName="mb-4 mt-2"
       />
