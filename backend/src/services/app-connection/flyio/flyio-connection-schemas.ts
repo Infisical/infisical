@@ -11,7 +11,12 @@ import {
 import { FlyioConnectionMethod } from "./flyio-connection-enums";
 
 export const FlyioConnectionAccessTokenCredentialsSchema = z.object({
-  accessToken: z.string().trim().min(1, "Access Token required").describe(AppConnections.CREDENTIALS.FLYIO.accessToken)
+  accessToken: z
+    .string()
+    .trim()
+    .min(1, "Access Token required")
+    .max(1000)
+    .describe(AppConnections.CREDENTIALS.FLYIO.accessToken)
 });
 
 const BaseFlyioConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Flyio) });

@@ -11,7 +11,7 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const FlyioSyncDestinationConfigSchema = z.object({
-  appId: z.string().trim().min(1, "App required").describe(SecretSyncs.DESTINATION_CONFIG.FLYIO.appId)
+  appId: z.string().trim().min(1, "App required").max(255).describe(SecretSyncs.DESTINATION_CONFIG.FLYIO.appId)
 });
 
 const FlyioSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
