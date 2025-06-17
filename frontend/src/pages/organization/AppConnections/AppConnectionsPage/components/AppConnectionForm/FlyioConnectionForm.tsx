@@ -32,7 +32,11 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(FlyioConnectionMethod.AccessToken),
     credentials: z.object({
-      accessToken: z.string().trim().min(1, "Access Token required")
+      accessToken: z
+        .string()
+        .trim()
+        .min(1, "Access Token required")
+        .startsWith("FlyV1", "Token must start with 'FlyV1'")
     })
   })
 ]);

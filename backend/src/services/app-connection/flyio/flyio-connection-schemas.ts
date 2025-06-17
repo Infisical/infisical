@@ -16,6 +16,7 @@ export const FlyioConnectionAccessTokenCredentialsSchema = z.object({
     .trim()
     .min(1, "Access Token required")
     .max(1000)
+    .startsWith("FlyV1", "Token must start with 'FlyV1'")
     .describe(AppConnections.CREDENTIALS.FLYIO.accessToken)
 });
 

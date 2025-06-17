@@ -1,4 +1,5 @@
 import { request } from "@app/lib/config/request";
+import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import {
   TDeleteFlyioVariable,
   TFlyioListVariables,
@@ -14,7 +15,7 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const listFlyioSecrets = async ({ accessToken, appId }: TFlyioListVariables) => {
   const { data } = await request.post<{ data: { app: { secrets: TFlyioSecret[] } } }>(
-    "https://api.fly.io/graphql",
+    IntegrationUrls.FLYIO_API_URL,
     {
       query: "query GetAppSecrets($appId: String!) { app(id: $appId) { id name secrets { name createdAt } } }",
       variables: { appId }
@@ -33,7 +34,7 @@ const listFlyioSecrets = async ({ accessToken, appId }: TFlyioListVariables) => 
 
 const putFlyioSecrets = async ({ accessToken, appId, secretMap }: TPutFlyioVariable) => {
   return request.post(
-    "https://api.fly.io/graphql",
+    IntegrationUrls.FLYIO_API_URL,
     {
       query:
         "mutation SetAppSecrets($appId: ID!, $secrets: [SecretInput!]!) { setSecrets(input: { appId: $appId, secrets: $secrets }) { app { name } release { version } } }",
@@ -53,7 +54,7 @@ const putFlyioSecrets = async ({ accessToken, appId, secretMap }: TPutFlyioVaria
 
 const deleteFlyioSecrets = async ({ accessToken, appId, keys }: TDeleteFlyioVariable) => {
   return request.post(
-    "https://api.fly.io/graphql",
+    IntegrationUrls.FLYIO_API_URL,
     {
       query:
         "mutation UnsetAppSecrets($appId: ID!, $keys: [String!]!) { unsetSecrets(input: { appId: $appId, keys: $keys }) { app { name } release { version } } }",
