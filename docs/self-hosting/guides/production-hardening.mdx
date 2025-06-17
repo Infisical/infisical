@@ -642,7 +642,7 @@ Infisical can integrate with external KMS providers to encrypt project secrets, 
 
 - **Supported Providers**: AWS KMS, Google Cloud KMS, Azure Key Vault (coming soon)
 - **Workspace Key Protection**: Each project's encryption key is protected by your external KMS
-- **Zero Trust**: Infisical never stores your KMS keys - all encryption/decryption operations happen via your cloud KMS
+- **Envelope Encryption**: Infisical uses your cloud KMS to encrypt/decrypt project workspace keys, which in turn encrypt the actual secret data
 - **Compliance**: Leverage your cloud provider's compliance certifications (FedRAMP, SOC2, ISO 27001)
 
 #### Benefits for Production Deployments
