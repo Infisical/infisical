@@ -291,6 +291,13 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
+
       [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Member]: MemberPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Groups]: GroupPolicyActionSchema.array().default([]),
@@ -342,7 +349,6 @@ export const projectRoleFormSchema = z.object({
         .default([]),
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretScanningDataSources]:
         SecretScanningDataSourcePolicyActionSchema.array().default([]),
@@ -366,7 +372,8 @@ type TConditionalFields =
   | ProjectPermissionSub.CertificateTemplates
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
-  | ProjectPermissionSub.Identity;
+  | ProjectPermissionSub.Identity
+  | ProjectPermissionSub.SecretSyncs;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -379,7 +386,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SshHosts ||
   subject === ProjectPermissionSub.SecretRotation ||
   subject === ProjectPermissionSub.PkiSubscribers ||
-  subject === ProjectPermissionSub.CertificateTemplates;
+  subject === ProjectPermissionSub.CertificateTemplates ||
+  subject === ProjectPermissionSub.SecretSyncs;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -484,7 +492,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SshCertificateTemplates,
         ProjectPermissionSub.SshCertificateAuthorities,
         ProjectPermissionSub.SshCertificates,
-        ProjectPermissionSub.SshHostGroups
+        ProjectPermissionSub.SshHostGroups,
+        ProjectPermissionSub.SecretSyncs
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -786,7 +795,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canImportSecrets = action.includes(ProjectPermissionSecretSyncActions.ImportSecrets);
       const canRemoveSecrets = action.includes(ProjectPermissionSecretSyncActions.RemoveSecrets);
 
-      if (!formVal[subject]) formVal[subject] = [{}];
+      if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
 
       // from above statement we are sure it won't be undefined
       if (canRead) formVal[subject]![0][ProjectPermissionSecretSyncActions.Read] = true;

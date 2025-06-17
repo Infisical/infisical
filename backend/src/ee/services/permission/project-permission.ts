@@ -211,6 +211,11 @@ export type SecretFolderSubjectFields = {
   secretPath: string;
 };
 
+export type SecretSyncSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type DynamicSecretSubjectFields = {
   environment: string;
   secretPath: string;
@@ -268,6 +273,10 @@ export type ProjectPermissionSet =
       )
     ]
   | [
+      ProjectPermissionSecretSyncActions,
+      ProjectPermissionSub.SecretSyncs | (ForcedSubject<ProjectPermissionSub.SecretSyncs> & SecretSyncSubjectFields)
+    ]
+  | [
       ProjectPermissionActions,
       (
         | ProjectPermissionSub.SecretImports
@@ -323,7 +332,6 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
-  | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
   | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
@@ -409,6 +417,23 @@ const DynamicSecretConditionV2Schema = z
         })
         .partial()
     })
+  })
+  .partial();
+
+const SecretSyncConditionV2Schema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
   })
   .partial();
 
@@ -672,12 +697,6 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
-    subject: z.literal(ProjectPermissionSub.SecretSyncs).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretSyncActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
     subject: z.literal(ProjectPermissionSub.Kmip).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionKmipActions).describe(
       "Describe what action an entity can take."
@@ -833,6 +852,15 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: SecretConditionV1Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretSyncs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretSyncActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretSyncConditionV2Schema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),

@@ -1,17 +1,45 @@
+import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
+import { subject } from "@casl/ability";
 
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useWorkspace } from "@app/context";
+import { useProjectPermission, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionSecretSyncActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 import { TSecretSyncForm } from "./schemas";
 
 export const SecretSyncSourceFields = () => {
-  const { control, watch } = useFormContext<TSecretSyncForm>();
+  const { control, watch, setError, clearErrors } = useFormContext<TSecretSyncForm>();
 
+  const { permission } = useProjectPermission();
   const { currentWorkspace } = useWorkspace();
 
   const selectedEnvironment = watch("environment");
+  const selectedSecretPath = watch("secretPath");
+
+  useEffect(() => {
+    const hasAccessToSource =
+      selectedEnvironment &&
+      permission.can(
+        ProjectPermissionSecretSyncActions.Create,
+        subject(ProjectPermissionSub.SecretSyncs, {
+          environment: selectedEnvironment.slug,
+          secretPath: selectedSecretPath
+        })
+      );
+
+    if (!hasAccessToSource) {
+      setError("secretPath", {
+        message: "You do not have permission to create secret syncs in this environment or path."
+      });
+    } else {
+      clearErrors("secretPath");
+    }
+  }, [selectedEnvironment, selectedSecretPath]);
 
   return (
     <>
