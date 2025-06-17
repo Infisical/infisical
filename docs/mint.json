@@ -1,6 +1,6 @@
 {
   "name": "Infisical",
-  "openapi": "http://localhost:8080/api/docs/json",
+  "openapi": "https://app.infisical.com/api/docs/json",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg",
