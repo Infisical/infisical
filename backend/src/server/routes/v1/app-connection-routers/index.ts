@@ -15,6 +15,7 @@ import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
+import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
@@ -52,5 +53,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
     [AppConnection.OCI]: registerOCIConnectionRouter,
     [AppConnection.OracleDB]: registerOracleDBConnectionRouter,
-    [AppConnection.OnePass]: registerOnePassConnectionRouter
+    [AppConnection.OnePass]: registerOnePassConnectionRouter,
+    [AppConnection.Heroku]: registerHerokuConnectionRouter
   };

@@ -18,7 +18,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.HCVault]: "Hashicorp Vault",
   [SecretSync.TeamCity]: "TeamCity",
   [SecretSync.OCIVault]: "OCI Vault",
-  [SecretSync.OnePass]: "1Password"
+  [SecretSync.OnePass]: "1Password",
+  [SecretSync.Heroku]: "Heroku"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -38,7 +39,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.HCVault]: AppConnection.HCVault,
   [SecretSync.TeamCity]: AppConnection.TeamCity,
   [SecretSync.OCIVault]: AppConnection.OCI,
-  [SecretSync.OnePass]: AppConnection.OnePass
+  [SecretSync.OnePass]: AppConnection.OnePass,
+  [SecretSync.Heroku]: AppConnection.Heroku
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -58,5 +60,6 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.HCVault]: SecretSyncPlanType.Regular,
   [SecretSync.TeamCity]: SecretSyncPlanType.Regular,
   [SecretSync.OCIVault]: SecretSyncPlanType.Enterprise,
-  [SecretSync.OnePass]: SecretSyncPlanType.Regular
+  [SecretSync.OnePass]: SecretSyncPlanType.Regular,
+  [SecretSync.Heroku]: SecretSyncPlanType.Regular
 };

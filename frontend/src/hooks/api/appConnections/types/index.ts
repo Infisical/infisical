@@ -13,6 +13,7 @@ import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
+import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
@@ -38,6 +39,7 @@ export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./github-radar-connection";
 export * from "./hc-vault-connection";
+export * from "./heroku-connection";
 export * from "./humanitec-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
@@ -74,7 +76,8 @@ export type TAppConnection =
   | TLdapConnection
   | TTeamCityConnection
   | TOCIConnection
-  | TOnePassConnection;
+  | TOnePassConnection
+  | THerokuConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -126,4 +129,5 @@ export type TAppConnectionMap = {
   [AppConnection.TeamCity]: TTeamCityConnection;
   [AppConnection.OCI]: TOCIConnection;
   [AppConnection.OnePass]: TOnePassConnection;
+  [AppConnection.Heroku]: THerokuConnection;
 };

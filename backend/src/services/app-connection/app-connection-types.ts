@@ -93,6 +93,12 @@ import {
   TValidateHCVaultConnectionCredentialsSchema
 } from "./hc-vault";
 import {
+  THerokuConnection,
+  THerokuConnectionConfig,
+  THerokuConnectionInput,
+  TValidateHerokuConnectionCredentialsSchema
+} from "./heroku";
+import {
   THumanitecConnection,
   THumanitecConnectionConfig,
   THumanitecConnectionInput,
@@ -161,6 +167,7 @@ export type TAppConnection = { id: string } & (
   | TOCIConnection
   | TOracleDBConnection
   | TOnePassConnection
+  | THerokuConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -192,6 +199,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOCIConnectionInput
   | TOracleDBConnectionInput
   | TOnePassConnectionInput
+  | THerokuConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -230,7 +238,8 @@ export type TAppConnectionConfig =
   | TLdapConnectionConfig
   | TTeamCityConnectionConfig
   | TOCIConnectionConfig
-  | TOnePassConnectionConfig;
+  | TOnePassConnectionConfig
+  | THerokuConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -256,7 +265,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateTeamCityConnectionCredentialsSchema
   | TValidateOCIConnectionCredentialsSchema
   | TValidateOracleDBConnectionCredentialsSchema
-  | TValidateOnePassConnectionCredentialsSchema;
+  | TValidateOnePassConnectionCredentialsSchema
+  | TValidateHerokuConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

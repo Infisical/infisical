@@ -68,6 +68,7 @@ import {
   HCVaultConnectionMethod,
   validateHCVaultConnectionCredentials
 } from "./hc-vault";
+import { getHerokuConnectionListItem, HerokuConnectionMethod, validateHerokuConnectionCredentials } from "./heroku";
 import {
   getHumanitecConnectionListItem,
   HumanitecConnectionMethod,
@@ -121,7 +122,8 @@ export const listAppConnectionOptions = () => {
     getTeamCityConnectionListItem(),
     getOCIConnectionListItem(),
     getOracleDBConnectionListItem(),
-    getOnePassConnectionListItem()
+    getOnePassConnectionListItem(),
+    getHerokuConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -196,7 +198,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.TeamCity]: validateTeamCityConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -212,7 +215,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AzureClientSecretsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
     case AzureDevOpsConnectionMethod.OAuth:
+    case HerokuConnectionMethod.OAuth:
       return "OAuth";
+    case HerokuConnectionMethod.AuthToken:
+      return "Auth Token";
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
       return "Access Key";
@@ -299,7 +305,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.TeamCity]: platformManagedCredentialsNotSupported,
   [AppConnection.OCI]: platformManagedCredentialsNotSupported,
   [AppConnection.OracleDB]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
-  [AppConnection.OnePass]: platformManagedCredentialsNotSupported
+  [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
+  [AppConnection.Heroku]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

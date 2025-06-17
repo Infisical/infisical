@@ -106,6 +106,11 @@ export type TOCIConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OCI;
 };
 
+export type THerokuConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Heroku;
+  oauthClientId?: string;
+};
+
 export type TOnePassConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OnePass;
 };
@@ -132,7 +137,8 @@ export type TAppConnectionOption =
   | THCVaultConnectionOption
   | TTeamCityConnectionOption
   | TOCIConnectionOption
-  | TOnePassConnectionOption;
+  | TOnePassConnectionOption
+  | THerokuConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -159,4 +165,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.TeamCity]: TTeamCityConnectionOption;
   [AppConnection.OCI]: TOCIConnectionOption;
   [AppConnection.OnePass]: TOnePassConnectionOption;
+  [AppConnection.Heroku]: THerokuConnectionOption;
 };

@@ -52,6 +52,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.TeamCity:
     case SecretSync.OCIVault:
     case SecretSync.OnePass:
+    case SecretSync.Heroku:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

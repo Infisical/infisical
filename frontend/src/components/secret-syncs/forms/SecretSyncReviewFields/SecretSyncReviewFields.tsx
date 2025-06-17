@@ -23,6 +23,7 @@ import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
+import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
@@ -103,6 +104,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.OnePass:
       DestinationFieldsComponent = <OnePassSyncReviewFields />;
+      break;
+    case SecretSync.Heroku:
+      DestinationFieldsComponent = <HerokuSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

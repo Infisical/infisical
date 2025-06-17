@@ -12,6 +12,7 @@ import { TDatabricksSync } from "./databricks-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
 import { THCVaultSync } from "./hc-vault-sync";
+import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TTeamCitySync } from "./teamcity-sync";
@@ -43,7 +44,8 @@ export type TSecretSync =
   | THCVaultSync
   | TTeamCitySync
   | TOCIVaultSync
-  | TOnePassSync;
+  | TOnePassSync
+  | THerokuSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

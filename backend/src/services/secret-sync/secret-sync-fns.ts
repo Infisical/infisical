@@ -32,6 +32,7 @@ import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
+import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
@@ -57,7 +58,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.HCVault]: HC_VAULT_SYNC_LIST_OPTION,
   [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
   [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION,
-  [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION
+  [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION,
+  [SecretSync.Heroku]: HEROKU_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -203,6 +205,8 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService
         }).syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Heroku:
+        return HerokuSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.Vercel:
         return VercelSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Windmill:
@@ -292,6 +296,9 @@ export const SecretSyncFns = {
       case SecretSync.OnePass:
         secretMap = await OnePassSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Heroku:
+        secretMap = await HerokuSyncFns.getSecrets(secretSync, { appConnectionDAL, kmsService });
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -359,6 +366,8 @@ export const SecretSyncFns = {
         return OCIVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OnePass:
         return OnePassSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Heroku:
+        return HerokuSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

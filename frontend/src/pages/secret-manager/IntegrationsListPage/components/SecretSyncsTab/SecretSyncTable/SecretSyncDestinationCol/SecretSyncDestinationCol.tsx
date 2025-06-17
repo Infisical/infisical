@@ -11,6 +11,7 @@ import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
+import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
@@ -58,6 +59,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <OnePassSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.AzureDevOps:
       return <AzureDevOpsSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Heroku:
+      return <HerokuSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

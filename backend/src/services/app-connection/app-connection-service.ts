@@ -56,6 +56,8 @@ import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
+import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
+import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
@@ -104,7 +106,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema,
   [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema,
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
-  [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema
+  [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
+  [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -509,6 +512,7 @@ export const appConnectionServiceFactory = ({
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
-    onepass: onePassConnectionService(connectAppConnectionById)
+    onepass: onePassConnectionService(connectAppConnectionById),
+    heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };

@@ -49,6 +49,7 @@ import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
+import { HerokuConnectionListItemSchema, SanitizedHerokuConnectionSchema } from "@app/services/app-connection/heroku";
 import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
@@ -100,7 +101,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedTeamCityConnectionSchema.options,
   ...SanitizedOCIConnectionSchema.options,
   ...SanitizedOracleDBConnectionSchema.options,
-  ...SanitizedOnePassConnectionSchema.options
+  ...SanitizedOnePassConnectionSchema.options,
+  ...SanitizedHerokuConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -127,7 +129,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   TeamCityConnectionListItemSchema,
   OCIConnectionListItemSchema,
   OracleDBConnectionListItemSchema,
-  OnePassConnectionListItemSchema
+  OnePassConnectionListItemSchema,
+  HerokuConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

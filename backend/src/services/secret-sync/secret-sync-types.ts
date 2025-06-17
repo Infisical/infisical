@@ -79,6 +79,7 @@ import {
   THCVaultSyncListItem,
   THCVaultSyncWithCredentials
 } from "./hc-vault/hc-vault-sync-types";
+import { THerokuSync, THerokuSyncInput, THerokuSyncListItem, THerokuSyncWithCredentials } from "./heroku";
 import {
   THumanitecSync,
   THumanitecSyncInput,
@@ -116,7 +117,8 @@ export type TSecretSync =
   | THCVaultSync
   | TTeamCitySync
   | TOCIVaultSync
-  | TOnePassSync;
+  | TOnePassSync
+  | THerokuSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -135,7 +137,8 @@ export type TSecretSyncWithCredentials =
   | THCVaultSyncWithCredentials
   | TTeamCitySyncWithCredentials
   | TOCIVaultSyncWithCredentials
-  | TOnePassSyncWithCredentials;
+  | TOnePassSyncWithCredentials
+  | THerokuSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -154,7 +157,8 @@ export type TSecretSyncInput =
   | THCVaultSyncInput
   | TTeamCitySyncInput
   | TOCIVaultSyncInput
-  | TOnePassSyncInput;
+  | TOnePassSyncInput
+  | THerokuSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -173,7 +177,8 @@ export type TSecretSyncListItem =
   | THCVaultSyncListItem
   | TTeamCitySyncListItem
   | TOCIVaultSyncListItem
-  | TOnePassSyncListItem;
+  | TOnePassSyncListItem
+  | THerokuSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

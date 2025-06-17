@@ -22,6 +22,7 @@ import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
 import { GitHubRadarConnectionForm } from "./GitHubRadarConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
+import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
@@ -119,6 +120,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <OCIConnectionForm onSubmit={onSubmit} />;
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Heroku:
+      return <HerokuConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -203,6 +206,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Heroku:
+      return <HerokuConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

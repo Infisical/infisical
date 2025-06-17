@@ -14,6 +14,7 @@ import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
+import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
@@ -61,6 +62,8 @@ export const SecretSyncDestinationFields = () => {
       return <OCIVaultSyncFields />;
     case SecretSync.OnePass:
       return <OnePassSyncFields />;
+    case SecretSync.Heroku:
+      return <HerokuSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }
