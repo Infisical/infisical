@@ -96,6 +96,10 @@ import { SecretOverviewSecretRotationRow } from "@app/pages/secret-manager/Overv
 
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
+import {
+  HIDDEN_SECRET_VALUE,
+  HIDDEN_SECRET_VALUE_API_MASK
+} from "../SecretDashboardPage/components/SecretListView/SecretItem";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { SecretOverviewDynamicSecretRow } from "./components/SecretOverviewDynamicSecretRow";
@@ -509,15 +513,25 @@ export const OverviewPage = () => {
     env: string,
     key: string,
     value: string,
+    secretValueHidden: boolean,
     type = SecretType.Shared
   ) => {
+    let secretValue: string | undefined = value;
+
+    if (
+      secretValueHidden &&
+      (value === HIDDEN_SECRET_VALUE_API_MASK || value === HIDDEN_SECRET_VALUE)
+    ) {
+      secretValue = undefined;
+    }
+
     try {
       const result = await updateSecretV3({
         environment: env,
         workspaceId,
         secretPath,
         secretKey: key,
-        secretValue: value,
+        secretValue,
         type
       });
 

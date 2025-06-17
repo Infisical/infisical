@@ -20,7 +20,7 @@ import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/c
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
-import { SecretItem } from "./SecretItem";
+import { HIDDEN_SECRET_VALUE, HIDDEN_SECRET_VALUE_API_MASK, SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 
 type Props = {
@@ -168,7 +168,7 @@ export const SecretListView = ({
       },
       cb?: () => void
     ) => {
-      const { key: oldKey } = orgSecret;
+      const { key: oldKey, secretValueHidden } = orgSecret;
       const {
         key,
         value,
@@ -235,8 +235,17 @@ export const SecretListView = ({
 
         // shared secret change
         if (!isSharedSecUnchanged && !personalAction) {
+          let secretValue = value;
+
+          if (
+            secretValueHidden &&
+            (value === HIDDEN_SECRET_VALUE_API_MASK || value === HIDDEN_SECRET_VALUE)
+          ) {
+            secretValue = undefined;
+          }
+
           await handleSecretOperation("update", SecretType.Shared, oldKey, {
-            value,
+            value: secretValue,
             tags: tagIds,
             comment,
             reminderRepeatDays,
