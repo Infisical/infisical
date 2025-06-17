@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction } from "react";
-import { faFileImport, faFolder, faKey, faLock } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport, faFingerprint, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Handle, NodeProps, Position } from "@xyflow/react";
 
@@ -12,15 +12,15 @@ import { createRoleNode } from "../utils";
 const getSubjectIcon = (subject: ProjectPermissionSub) => {
   switch (subject) {
     case ProjectPermissionSub.Secrets:
-      return <FontAwesomeIcon icon={faLock} className="h-4 w-4 text-yellow-700" />;
+      return <FontAwesomeIcon icon={faKey} className="h-4 w-4 text-bunker-300" />;
     case ProjectPermissionSub.SecretFolders:
       return <FontAwesomeIcon icon={faFolder} className="h-4 w-4 text-yellow-700" />;
     case ProjectPermissionSub.DynamicSecrets:
-      return <FontAwesomeIcon icon={faKey} className="h-4 w-4 text-yellow-700" />;
+      return <FontAwesomeIcon icon={faFingerprint} className="h-4 w-4 text-yellow-700" />;
     case ProjectPermissionSub.SecretImports:
-      return <FontAwesomeIcon icon={faFileImport} className="h-4 w-4 text-yellow-700" />;
+      return <FontAwesomeIcon icon={faFileImport} className="h-4 w-4 text-green-700" />;
     default:
-      return <FontAwesomeIcon icon={faLock} className="h-4 w-4 text-yellow-700" />;
+      return <FontAwesomeIcon icon={faKey} className="h-4 w-4 text-bunker-300" />;
   }
 };
 

@@ -33,6 +33,12 @@ const ACTION_MAP: Record<string, string[] | undefined> = {
   ]
 };
 
+const SUBJECT_HEIGHT_MAP: Record<string, number> = {
+  [ProjectPermissionSub.DynamicSecrets]: 130,
+  [ProjectPermissionSub.Secrets]: 85,
+  default: 64
+};
+
 const evaluateCondition = (
   value: string,
   operator: PermissionConditionOperators,
@@ -52,13 +58,113 @@ const evaluateCondition = (
   }
 };
 
+const doesConditionMatch = (
+  conditions: Record<string, any> | undefined,
+  value: string
+): boolean => {
+  if (!conditions) return true;
+
+  return Object.entries(conditions).every(([operator, comparisonValue]) =>
+    evaluateCondition(value, operator as PermissionConditionOperators, comparisonValue)
+  );
+};
+
+const doBaseConditionsApply = (
+  ruleConditions: any,
+  environment: string,
+  folderPath: string
+): boolean => {
+  return (
+    doesConditionMatch(ruleConditions?.environment, environment) &&
+    doesConditionMatch(ruleConditions?.secretPath, folderPath)
+  );
+};
+
+const shouldShowConditionalAccess = (
+  actionRuleMap: TActionRuleMap,
+  action: string,
+  environment: string,
+  folderPath: string,
+  conditionalFields: string[]
+): boolean => {
+  return actionRuleMap.some((rule) => {
+    const ruleConditions = rule[action]?.conditions;
+    if (!ruleConditions) return false;
+
+    // Check if any of the conditional fields are present
+    const hasConditionalField = conditionalFields.some((field) => ruleConditions[field]);
+    if (!hasConditionalField) return false;
+
+    // Check if base conditions (environment and secretPath) apply
+    return doBaseConditionsApply(ruleConditions, environment, folderPath);
+  });
+};
+
+const determineAccessLevel = (
+  hasPermission: boolean,
+  subject: ProjectPermissionSub,
+  action: string,
+  actionRuleMap: TActionRuleMap,
+  environment: string,
+  folderPath: string,
+  secretName: string,
+  metadata: Array<{ key: string; value: string }>
+): PermissionAccess => {
+  if (!hasPermission) {
+    return PermissionAccess.None;
+  }
+
+  if (subject === ProjectPermissionSub.Secrets) {
+    if (
+      !secretName &&
+      shouldShowConditionalAccess(actionRuleMap, action, environment, folderPath, [
+        "secretName",
+        "secretTags"
+      ])
+    ) {
+      return PermissionAccess.Partial;
+    }
+  } else if (subject === ProjectPermissionSub.DynamicSecrets) {
+    if (
+      !metadata.length &&
+      shouldShowConditionalAccess(actionRuleMap, action, environment, folderPath, ["metadata"])
+    ) {
+      return PermissionAccess.Partial;
+    }
+  }
+
+  return PermissionAccess.Full;
+};
+
+const checkPermission = (
+  permissions: MongoAbility<ProjectPermissionSet, MongoQuery>,
+  subject: ProjectPermissionSub,
+  action: string,
+  subjectFields: any
+): boolean => {
+  if (
+    subject === ProjectPermissionSub.Secrets &&
+    (action === ProjectPermissionSecretActions.ReadValue ||
+      action === ProjectPermissionSecretActions.DescribeSecret)
+  ) {
+    return hasSecretReadValueOrDescribePermission(permissions, action, subjectFields);
+  }
+
+  return permissions.can(
+    // @ts-expect-error we are not specifying which so can't resolve if valid
+    action,
+    abilitySubject(subject, subjectFields)
+  );
+};
+
 export const createFolderNode = ({
   folder,
   permissions,
   environment,
   subject,
   secretName,
-  actionRuleMap
+  actionRuleMap,
+  metadata
 }: {
   folder: TSecretFolderWithPath;
   permissions: MongoAbility<ProjectPermissionSet, MongoQuery>;
@@ -66,6 +172,7 @@ export const createFolderNode = ({
   subject: ProjectPermissionSub;
   secretName: string;
   actionRuleMap: TActionRuleMap;
+  metadata: Array<{ key: string; value: string }>;
 }) => {
   const actions = Object.fromEntries(
     Object.values(ACTION_MAP[subject] ?? Object.values(ProjectPermissionActions)).map((action) => {
@@ -73,74 +180,26 @@ export const createFolderNode = ({
 
       // wrapped in try because while editing certain conditions, if their values are empty it throws an error
       try {
-        let hasPermission: boolean;
-
         const subjectFields = {
           secretPath: folder.path,
           environment,
           secretName: secretName || "*",
-          secretTags: ["*"]
+          secretTags: ["*"],
+          metadata: metadata.length ? metadata : ["*"]
         };
 
-        if (
-          subject === ProjectPermissionSub.Secrets &&
-          (action === ProjectPermissionSecretActions.ReadValue ||
-            action === ProjectPermissionSecretActions.DescribeSecret)
-        ) {
-          hasPermission = hasSecretReadValueOrDescribePermission(
-            permissions,
-            action,
-            subjectFields
-          );
-        } else {
-          hasPermission = permissions.can(
-            // @ts-expect-error we are not specifying which so can't resolve if valid
-            action,
-            abilitySubject(subject, subjectFields)
-          );
-        }
+        const hasPermission = checkPermission(permissions, subject, action, subjectFields);
 
-        if (hasPermission) {
-          // we want to show yellow/conditional access if user hasn't specified secret name to fully resolve access
-          if (
-            !secretName &&
-            actionRuleMap.some((el) => {
-              // we only show conditional if secretName/secretTags are present - environment and path can be directly determined
-              if (!el[action]?.conditions?.secretName && !el[action]?.conditions?.secretTags)
-                return false;
-
-              // make sure condition applies to env
-              if (el[action]?.conditions?.environment) {
-                if (
-                  !Object.entries(el[action]?.conditions?.environment).every(([operator, value]) =>
-                    evaluateCondition(environment, operator as PermissionConditionOperators, value)
-                  )
-                ) {
-                  return false;
-                }
-              }
-
-              // and applies to path
-              if (el[action]?.conditions?.secretPath) {
-                if (
-                  !Object.entries(el[action]?.conditions?.secretPath).every(([operator, value]) =>
-                    evaluateCondition(folder.path, operator as PermissionConditionOperators, value)
-                  )
-                ) {
-                  return false;
-                }
-              }
-
-              return true;
-            })
-          ) {
-            access = PermissionAccess.Partial;
-          } else {
-            access = PermissionAccess.Full;
-          }
-        } else {
-          access = PermissionAccess.None;
-        }
+        access = determineAccessLevel(
+          hasPermission,
+          subject,
+          action,
+          actionRuleMap,
+          environment,
+          folder.path,
+          secretName,
+          metadata
+        );
       } catch (e) {
         console.error(e);
         access = PermissionAccess.None;
@@ -150,18 +209,7 @@ export const createFolderNode = ({
     })
   );
 
-  let height: number;
-
-  switch (subject) {
-    case ProjectPermissionSub.DynamicSecrets:
-      height = 130;
-      break;
-    case ProjectPermissionSub.Secrets:
-      height = 85;
-      break;
-    default:
-      height = 64;
-  }
+  const height = SUBJECT_HEIGHT_MAP[subject] ?? SUBJECT_HEIGHT_MAP.default;
 
   return {
     type: PermissionNode.Folder,
