@@ -9,8 +9,8 @@ import {
   faFilter,
   faMagnifyingGlass,
   faSearch,
-  faUserMinus,
-  faUsers
+  faUsers,
+  faUserXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
@@ -435,7 +435,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                               >
                                 {(isAllowed) => (
                                   <DropdownMenuItem
-                                    icon={<FontAwesomeIcon icon={faUserMinus} />}
+                                    icon={<FontAwesomeIcon icon={faUserXmark} />}
                                     isDisabled={!isAllowed}
                                     onClick={(evt) => {
                                       evt.preventDefault();

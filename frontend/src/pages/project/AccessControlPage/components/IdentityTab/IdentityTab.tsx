@@ -4,7 +4,7 @@ import {
   faArrowUp,
   faArrowUpRightFromSquare,
   faBookOpen,
-  faCircleMinus,
+  faCircleXmark,
   faClock,
   faEllipsisV,
   faMagnifyingGlass,
@@ -400,7 +400,7 @@ export const IdentityTab = withProjectPermission(
                                 >
                                   {(isAllowed) => (
                                     <DropdownMenuItem
-                                      icon={<FontAwesomeIcon icon={faCircleMinus} />}
+                                      icon={<FontAwesomeIcon icon={faCircleXmark} />}
                                       isDisabled={!isAllowed}
                                       onClick={(evt) => {
                                         evt.stopPropagation();
