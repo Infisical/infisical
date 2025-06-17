@@ -85,6 +85,7 @@ export const SecretListView = ({
     type: SecretType,
     key: string,
     {
+      secretValueHidden,
       value,
       comment,
       reminderRepeatDays,
@@ -97,6 +98,7 @@ export const SecretListView = ({
       secretMetadata,
       isRotatedSecret
     }: Partial<{
+      secretValueHidden: boolean;
       value: string;
       comment: string;
       reminderRepeatDays: number | null;
@@ -123,6 +125,15 @@ export const SecretListView = ({
     }
 
     if (operation === "update") {
+      let secretValue = value;
+
+      if (
+        secretValueHidden &&
+        (value === HIDDEN_SECRET_VALUE_API_MASK || value === HIDDEN_SECRET_VALUE)
+      ) {
+        secretValue = undefined;
+      }
+
       await updateSecretV3({
         environment,
         workspaceId,
@@ -130,7 +141,7 @@ export const SecretListView = ({
         secretKey: key,
         ...(!isRotatedSecret && {
           newSecretName: newKey,
-          secretValue: value || ""
+          secretValue: secretValueHidden ? secretValue : secretValue || ""
         }),
         type,
         tagIds: tags,
@@ -235,17 +246,8 @@ export const SecretListView = ({
 
         // shared secret change
         if (!isSharedSecUnchanged && !personalAction) {
-          let secretValue = value;
-
-          if (
-            secretValueHidden &&
-            (value === HIDDEN_SECRET_VALUE_API_MASK || value === HIDDEN_SECRET_VALUE)
-          ) {
-            secretValue = undefined;
-          }
-
           await handleSecretOperation("update", SecretType.Shared, oldKey, {
-            value: secretValue,
+            value,
             tags: tagIds,
             comment,
             reminderRepeatDays,
@@ -255,7 +257,8 @@ export const SecretListView = ({
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding,
             secretMetadata,
-            isRotatedSecret: orgSecret.isRotatedSecret
+            isRotatedSecret: orgSecret.isRotatedSecret,
+            secretValueHidden
           });
           if (cb) cb();
         }
