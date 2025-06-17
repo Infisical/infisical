@@ -20,7 +20,7 @@ export const validateFlyioConnectionCredentials = async (config: TFlyioConnectio
   const { accessToken } = config.credentials;
 
   try {
-    await request.post(
+    const resp = await request.post<{ data: { viewer: { id: string | null; email: string } } | null }>(
       IntegrationUrls.FLYIO_API_URL,
       { query: "query { viewer { id email } }" },
       {
@@ -30,6 +30,12 @@ export const validateFlyioConnectionCredentials = async (config: TFlyioConnectio
         }
       }
     );
+
+    if (resp.data.data === null) {
+      throw new BadRequestError({
+        message: "Unable to validate connection: Invalid access token provided."
+      });
+    }
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
