@@ -10,6 +10,8 @@ import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretAwsIamAuth, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
 
+import { MetadataForm } from "../MetadataForm";
+
 const formSchema = z.object({
   inputs: z.discriminatedUnion("method", [
     z.object({
@@ -56,6 +58,9 @@ const formSchema = z.object({
     })
     .nullable(),
   newName: slugSchema().optional(),
+  tags: z
+    .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+    .optional(),
   usernameTemplate: z.string().trim().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
@@ -89,7 +94,8 @@ export const EditDynamicSecretAwsIamForm = ({
       usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
-      }
+      },
+      tags: dynamicSecret.tags
     }
   });
   const isAccessKeyMethod = watch("inputs.method") === DynamicSecretAwsIamAuth.AccessKey;
@@ -101,7 +107,8 @@ export const EditDynamicSecretAwsIamForm = ({
     maxTTL,
     defaultTTL,
     newName,
-    usernameTemplate
+    usernameTemplate,
+    tags
   }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
@@ -117,7 +124,9 @@ export const EditDynamicSecretAwsIamForm = ({
           defaultTTL,
           inputs,
           newName: newName === dynamicSecret.name ? undefined : newName,
-          usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
+          usernameTemplate:
+            !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate,
+          tags
         }
       });
       onClose();
@@ -380,6 +389,7 @@ export const EditDynamicSecretAwsIamForm = ({
                 </FormControl>
               )}
             />
+            <MetadataForm control={control} name="tags" isValueRequired />
           </div>
         </div>
         <div className="mt-4 flex items-center space-x-4">

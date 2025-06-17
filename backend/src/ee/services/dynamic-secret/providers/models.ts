@@ -525,6 +525,7 @@ export type TDynamicProviderFns = {
       name: string;
     };
     metadata: { projectId: string };
+    tags?: Record<string, string>[];
     config?: TDynamicSecretLeaseConfig;
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;

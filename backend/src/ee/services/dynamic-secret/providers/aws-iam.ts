@@ -119,20 +119,31 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     identity?: {
       name: string;
     };
+    tags?: Record<string, string>[];
     metadata: { projectId: string };
   }) => {
-    const { inputs, usernameTemplate, metadata, identity } = data;
+    const { inputs, usernameTemplate, metadata, identity, tags } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs, metadata.projectId);
 
     const username = generateUsername(usernameTemplate, identity);
     const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
+    const awsTags = [{ Key: "createdBy", Value: "infisical-dynamic-secret" }];
+
+    if (tags && Array.isArray(tags)) {
+      const additionalTags = tags.map((tag) => ({
+        Key: tag.key,
+        Value: tag.value
+      }));
+      awsTags.push(...additionalTags);
+    }
+
     const createUserRes = await client.send(
       new CreateUserCommand({
         Path: awsPath,
         PermissionsBoundary: permissionBoundaryPolicyArn || undefined,
-        Tags: [{ Key: "createdBy", Value: "infisical-dynamic-secret" }],
+        Tags: awsTags,
         UserName: username
       })
     );

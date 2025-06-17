@@ -4,14 +4,22 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { FormControl, FormLabel, IconButton, Input } from "@app/components/v2";
 
-export const MetadataForm = ({ control }: { control: Control<any> }) => {
+export const MetadataForm = ({
+  control,
+  name = "metadata",
+  isValueRequired = false
+}: {
+  control: Control<any>;
+  name?: string;
+  isValueRequired?: boolean;
+}) => {
   const metadataFormFields = useFieldArray({
     control,
-    name: "metadata"
+    name
   });
 
   return (
-    <FormControl label="Metadata">
+    <FormControl label={name.charAt(0).toUpperCase() + name.slice(1)}>
       <div className="flex flex-col space-y-2">
         {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
           <div key={metadataFieldId} className="flex items-end space-x-2">
@@ -19,7 +27,7 @@ export const MetadataForm = ({ control }: { control: Control<any> }) => {
               {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
               <Controller
                 control={control}
-                name={`metadata.${i}.key`}
+                name={`${name}.${i}.key`}
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     isError={Boolean(error?.message)}
@@ -33,11 +41,15 @@ export const MetadataForm = ({ control }: { control: Control<any> }) => {
             </div>
             <div className="flex-grow">
               {i === 0 && (
-                <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
+                <FormLabel
+                  label="Value"
+                  className="text-xs text-mineshaft-400"
+                  isOptional={!isValueRequired}
+                />
               )}
               <Controller
                 control={control}
-                name={`metadata.${i}.value`}
+                name={`${name}.${i}.value`}
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     isError={Boolean(error?.message)}

@@ -21,6 +21,8 @@ import {
 } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
+import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
+
 const formSchema = z.object({
   provider: z.discriminatedUnion("method", [
     z.object({
@@ -67,7 +69,10 @@ const formSchema = z.object({
     }),
   name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
   environment: z.object({ name: z.string(), slug: z.string() }),
-  usernameTemplate: z.string().nullable().optional()
+  usernameTemplate: z.string().nullable().optional(),
+  tags: z
+    .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+    .optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -100,7 +105,8 @@ export const AwsIamInputForm = ({
       usernameTemplate: "{{randomUsername}}",
       provider: {
         method: DynamicSecretAwsIamAuth.AssumeRole
-      }
+      },
+      tags: []
     }
   });
 
@@ -113,7 +119,8 @@ export const AwsIamInputForm = ({
     provider,
     defaultTTL,
     environment,
-    usernameTemplate
+    usernameTemplate,
+    tags
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
@@ -129,7 +136,8 @@ export const AwsIamInputForm = ({
         projectSlug,
         environmentSlug: environment.slug,
         usernameTemplate:
-          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
+          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate,
+        tags
       });
       onCompleted();
     } catch {
@@ -398,6 +406,7 @@ export const AwsIamInputForm = ({
                   </FormControl>
                 )}
               />
+              <MetadataForm control={control} name="tags" isValueRequired />
               {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}

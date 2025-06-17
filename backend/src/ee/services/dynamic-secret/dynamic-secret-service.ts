@@ -79,6 +79,7 @@ export const dynamicSecretServiceFactory = ({
     defaultTTL,
     actorAuthMethod,
     metadata,
+    tags,
     usernameTemplate
   }: TCreateDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
@@ -165,7 +166,8 @@ export const dynamicSecretServiceFactory = ({
           folderId: folder.id,
           name,
           gatewayId: selectedGatewayId,
-          usernameTemplate
+          usernameTemplate,
+          tags: JSON.stringify(tags)
         },
         tx
       );
@@ -202,6 +204,7 @@ export const dynamicSecretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     metadata,
+    tags,
     usernameTemplate
   }: TUpdateDynamicSecretDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
@@ -315,7 +318,8 @@ export const dynamicSecretServiceFactory = ({
           name: newName ?? name,
           status: null,
           gatewayId: selectedGatewayId,
-          usernameTemplate
+          usernameTemplate,
+          tags: JSON.stringify(tags)
         },
         tx
       );

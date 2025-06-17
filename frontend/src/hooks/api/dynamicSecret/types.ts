@@ -15,6 +15,7 @@ export type TDynamicSecret = {
   maxTTL: string;
   usernameTemplate?: string | null;
   metadata?: { key: string; value: string }[];
+  tags?: { key: string; value: string }[];
 };
 
 export enum DynamicSecretProviders {
@@ -89,6 +90,7 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.AwsIam;
+      tags?: { key: string; value: string }[];
       inputs:
         | {
             method: DynamicSecretAwsIamAuth.AccessKey;
@@ -345,6 +347,7 @@ export type TCreateDynamicSecretDTO = {
   name: string;
   metadata?: { key: string; value: string }[];
   usernameTemplate?: string;
+  tags?: { key: string; value: string }[];
 };
 
 export type TUpdateDynamicSecretDTO = {
@@ -359,6 +362,7 @@ export type TUpdateDynamicSecretDTO = {
     maxTTL?: string | null;
     inputs?: unknown;
     usernameTemplate?: string | null;
+    tags?: { key: string; value: string }[];
   };
 };
 
