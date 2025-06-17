@@ -111,12 +111,14 @@ export const IDENTITIES = {
   CREATE: {
     name: "The name of the identity to create.",
     organizationId: "The organization ID to which the identity belongs.",
-    role: "The role of the identity. Possible values are 'no-access', 'member', and 'admin'."
+    role: "The role of the identity. Possible values are 'no-access', 'member', and 'admin'.",
+    hasDeleteProtection: "Prevents deletion of the identity when enabled."
   },
   UPDATE: {
     identityId: "The ID of the identity to update.",
     name: "The new name of the identity.",
-    role: "The new role of the identity."
+    role: "The new role of the identity.",
+    hasDeleteProtection: "Prevents deletion of the identity when enabled."
   },
   DELETE: {
     identityId: "The ID of the identity to delete."
