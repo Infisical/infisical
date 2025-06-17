@@ -337,18 +337,18 @@ spec:
           port: 6379
 ```
 
-**Infrastructure firewall considerations**. In addition to the universal host firewalls, implement cloud-level security:
+**Infrastructure firewall considerations**. In addition to the universal host firewalls, implement infrastructure-level security:
 
-```bash
-# Example: AWS Security Groups, Azure NSGs, or GCP Firewall Rules
-# Allow ingress from load balancer to NodePort/ClusterIP service
-# Allow egress to managed databases
-# Block all other traffic
+For cloud deployments (AWS Security Groups, Azure NSGs, or GCP Firewall Rules):
 
-# For on-premises, ensure node-level firewalls allow:
-# - Ingress traffic from ingress controllers
-# - Egress traffic to external services (databases, SMTP)
-```
+- Allow ingress from load balancer to NodePort/ClusterIP service
+- Allow egress to managed databases
+- Block all other traffic
+
+For on-premises deployments, ensure node-level firewalls allow:
+
+- Ingress traffic from ingress controllers
+- Egress traffic to external services (databases, SMTP)
 
 #### Access Control
 
