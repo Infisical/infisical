@@ -89,6 +89,10 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
                     <span className="italic">{rule.inverted ? "Forbids" : "Allows"}</span>
                     <span> when:</span>
                     {Object.entries(rule.conditions).map(([key, condition]) => {
+                      if (key.match(/secretPath|environment/)) {
+                        return null;
+                      }
+
                       return (
                         <ul key={`${action}_${index + 1}_${key}`} className="list-[square] pl-4">
                           {Object.entries(condition as object).map(([operator, value]) => {
