@@ -50,6 +50,7 @@ type Props = {
     env: string,
     key: string,
     value: string,
+    secretValueHidden: boolean,
     type?: SecretType,
     secretId?: string
   ) => Promise<void>;
@@ -147,6 +148,7 @@ export const SecretEditRow = ({
           environment,
           secretName,
           value,
+          secretValueHidden,
           isOverride ? SecretType.Personal : SecretType.Shared,
           secretId
         );
@@ -166,6 +168,7 @@ export const SecretEditRow = ({
       environment,
       secretName,
       secretValue,
+      secretValueHidden,
       isOverride ? SecretType.Personal : SecretType.Shared,
       secretId
     );
@@ -257,7 +260,7 @@ export const SecretEditRow = ({
             >
               {(isAllowed) => (
                 <div>
-                  <Tooltip content="save">
+                  <Tooltip content="Save">
                     <IconButton
                       variant="plain"
                       ariaLabel="submit-value"

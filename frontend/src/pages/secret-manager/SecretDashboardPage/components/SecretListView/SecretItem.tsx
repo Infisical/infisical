@@ -59,6 +59,7 @@ import {
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 
 export const HIDDEN_SECRET_VALUE = "******";
+export const HIDDEN_SECRET_VALUE_API_MASK = "<hidden-by-infisical>";
 
 type Props = {
   secret: SecretV3RawSanitized;
