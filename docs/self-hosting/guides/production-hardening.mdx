@@ -161,12 +161,26 @@ These recommendations are specific to Docker deployments of Infisical.
 
 #### Container Security
 
-**Use read-only root filesystems**. Prevent runtime modifications:
+**Use read-only root filesystems**. Prevent runtime modifications while allowing necessary temporary access:
 
 ```bash
-# Run with read-only filesystem
-docker run --read-only --tmpfs /tmp infisical/infisical:latest
+# Run with read-only filesystem but allow /tmp access
+docker run --read-only \
+  --tmpfs /tmp:rw,exec,size=1G \
+  infisical/infisical:latest
 ```
+
+**Note**: Infisical requires temporary directory access for:
+
+- Secret scanning operations
+- SSH certificate generation and validation
+
+The `--tmpfs` mounts provide secure, isolated temporary storage that is:
+
+- Automatically cleaned up on container restart
+- Limited in size to prevent disk exhaustion
+- Isolated from the host system
+- Wiped on container removal
 
 **Drop unnecessary capabilities**. Remove all Linux capabilities:
 
@@ -412,6 +426,11 @@ stringData:
   SITE_URL: "<your-site-url>"
 ```
 
+**Note:** Kubernetes secrets are only base64-encoded by default and are not encrypted at rest unless you explicitly enable etcd encryption. For production environments, you should:
+
+- Enable [etcd encryption at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) to protect secrets stored in the cluster
+- Limit access to etcd and Kubernetes API to only trusted administrators
+
 #### Health Monitoring
 
 **Set up health checks**. Configure readiness and liveness probes:
@@ -591,7 +610,7 @@ sudo systemctl start ntp
 timedatectl status
 ```
 
-**Regular updates**. Monitor [GitHub releases](https://github.com/Infisical/infisical/releases) for new binary versions and update your installation regularly.
+**Regular updates**. Monitor [Cloudsmith releases](https://cloudsmith.io/~infisical/repos/infisical-core/packages) for new binary versions and update your installation regularly.
 
 ## Enterprise Security Features
 
