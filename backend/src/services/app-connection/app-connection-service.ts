@@ -49,6 +49,8 @@ import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
+import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
@@ -104,7 +106,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.TeamCity]: ValidateTeamCityConnectionCredentialsSchema,
   [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema,
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
-  [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema
+  [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
+  [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -509,6 +512,7 @@ export const appConnectionServiceFactory = ({
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
-    onepass: onePassConnectionService(connectAppConnectionById)
+    onepass: onePassConnectionService(connectAppConnectionById),
+    flyio: flyioConnectionService(connectAppConnectionById)
   };
 };

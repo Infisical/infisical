@@ -2225,6 +2225,9 @@ export const AppConnections = {
     ONEPASS: {
       instanceUrl: "The URL of the 1Password Connect Server instance to authenticate with.",
       apiToken: "The API token used to access the 1Password Connect Server."
+    },
+    FLYIO: {
+      accessToken: "The Access Token used to access fly.io."
     }
   }
 };
@@ -2386,6 +2389,9 @@ export const SecretSyncs = {
     },
     ONEPASS: {
       vaultId: "The ID of the 1Password vault to sync secrets to."
+    },
+    FLYIO: {
+      appId: "The ID of the Fly.io app to sync secrets to."
     }
   }
 };

@@ -11,6 +11,7 @@ import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-r
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
+import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
@@ -52,5 +53,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.TeamCity]: registerTeamCityConnectionRouter,
     [AppConnection.OCI]: registerOCIConnectionRouter,
     [AppConnection.OracleDB]: registerOracleDBConnectionRouter,
-    [AppConnection.OnePass]: registerOnePassConnectionRouter
+    [AppConnection.OnePass]: registerOnePassConnectionRouter,
+    [AppConnection.Flyio]: registerFlyioConnectionRouter
   };

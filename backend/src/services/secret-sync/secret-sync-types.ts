@@ -72,6 +72,7 @@ import {
   TAzureKeyVaultSyncListItem,
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
+import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import {
   THCVaultSync,
@@ -116,7 +117,8 @@ export type TSecretSync =
   | THCVaultSync
   | TTeamCitySync
   | TOCIVaultSync
-  | TOnePassSync;
+  | TOnePassSync
+  | TFlyioSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -135,7 +137,8 @@ export type TSecretSyncWithCredentials =
   | THCVaultSyncWithCredentials
   | TTeamCitySyncWithCredentials
   | TOCIVaultSyncWithCredentials
-  | TOnePassSyncWithCredentials;
+  | TOnePassSyncWithCredentials
+  | TFlyioSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -154,7 +157,8 @@ export type TSecretSyncInput =
   | THCVaultSyncInput
   | TTeamCitySyncInput
   | TOCIVaultSyncInput
-  | TOnePassSyncInput;
+  | TOnePassSyncInput
+  | TFlyioSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -173,7 +177,8 @@ export type TSecretSyncListItem =
   | THCVaultSyncListItem
   | TTeamCitySyncListItem
   | TOCIVaultSyncListItem
-  | TOnePassSyncListItem;
+  | TOnePassSyncListItem
+  | TFlyioSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
