@@ -21,17 +21,16 @@ type ConditionDisplayProps = {
   _key: string;
   operator: string;
   value: string | string[];
-  inverted?: boolean;
 };
 
-const Display = ({ _key: key, value, operator, inverted }: ConditionDisplayProps) => {
+const ConditionDisplay = ({ _key: key, value, operator }: ConditionDisplayProps) => {
   return (
     <li>
       <span className="font-medium capitalize text-mineshaft-100">{camelCaseToSpaces(key)}</span>{" "}
       <span className="text-mineshaft-200">
         {formatedConditionsOperatorNames[operator as PermissionConditionOperators]}
       </span>{" "}
-      <span className={inverted ? "text-red" : "text-green"}>
+      <span className="rounded bg-mineshaft-600 p-0.5 font-mono">
         {typeof value === "string" ? value : value.join(", ")}
       </span>
       .
@@ -87,9 +86,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
               ) {
                 return (
                   <li key={`${action}_${index + 1}`}>
-                    <span className={`italic ${rule.inverted ? "text-red" : "text-green"} `}>
-                      {rule.inverted ? "Forbids" : "Allows"}
-                    </span>
+                    <span className="italic">{rule.inverted ? "Forbids" : "Allows"}</span>
                     <span> when:</span>
                     {Object.entries(rule.conditions).map(([key, condition]) => {
                       return (
@@ -100,8 +97,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
                                 ([nestedKey, nestedCondition]) =>
                                   Object.entries(nestedCondition as object).map(
                                     ([nestedOperator, nestedValue]) => (
-                                      <Display
-                                        inverted={rule.inverted}
+                                      <ConditionDisplay
                                         _key={`${key} ${nestedKey}`}
                                         operator={nestedOperator}
                                         value={nestedValue}
@@ -113,8 +109,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
                             }
 
                             return (
-                              <Display
-                                inverted={rule.inverted}
+                              <ConditionDisplay
                                 _key={key}
                                 operator={operator}
                                 value={value}

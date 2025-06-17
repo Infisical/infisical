@@ -163,7 +163,7 @@ export type IdentityManagementSubjectFields = {
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
-  [PermissionConditionOperators.$IN]: "contains",
+  [PermissionConditionOperators.$IN]: "in",
   [PermissionConditionOperators.$ALL]: "contains all",
   [PermissionConditionOperators.$NEQ]: "not equal to",
   [PermissionConditionOperators.$GLOB]: "matches glob pattern",
