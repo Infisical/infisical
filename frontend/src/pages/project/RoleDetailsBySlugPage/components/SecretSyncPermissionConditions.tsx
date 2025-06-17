@@ -145,7 +145,7 @@ export const SecretSyncPermissionConditions = ({ position = 0, isDisabled }: Pro
               </div>
               <div>
                 <IconButton
-                  ariaLabel="plus"
+                  ariaLabel="remove"
                   variant="outline_bg"
                   className="p-2.5"
                   onClick={() => items.remove(index)}

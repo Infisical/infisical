@@ -857,6 +857,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretSyncs).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretSyncActions).describe(
       "Describe what action an entity can take."
     ),
