@@ -71,7 +71,9 @@ const formSchema = z.object({
   environment: z.object({ name: z.string(), slug: z.string() }),
   usernameTemplate: z.string().nullable().optional(),
   tags: z
-    .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+    .array(
+      z.object({ key: z.string().trim().min(1).max(128), value: z.string().trim().min(1).max(256) })
+    )
     .optional()
 });
 type TForm = z.infer<typeof formSchema>;
