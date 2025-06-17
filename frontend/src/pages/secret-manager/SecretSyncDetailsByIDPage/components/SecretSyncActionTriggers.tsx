@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { subject } from "@casl/ability";
 import {
   faBan,
   faCheck,
@@ -63,7 +64,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
   const triggerSyncSecrets = useTriggerSecretSyncSyncSecrets();
   const updateSync = useUpdateSecretSync();
 
-  const { destination } = secretSync;
+  const { destination, environment, folder } = secretSync;
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
   const { syncOption } = useSecretSyncOption(destination);
@@ -128,6 +129,14 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
     }
   };
 
+  const permissionSubject =
+    environment && folder
+      ? subject(ProjectPermissionSub.SecretSyncs, {
+          environment: environment.slug,
+          secretPath: folder.path
+        })
+      : ProjectPermissionSub.SecretSyncs;
+
   return (
     <>
       <div className="ml-auto mt-4 flex flex-wrap items-center justify-end gap-2">
@@ -157,7 +166,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
         <div>
           <ProjectPermissionCan
             I={ProjectPermissionSecretSyncActions.SyncSecrets}
-            a={ProjectPermissionSub.SecretSyncs}
+            a={permissionSubject}
           >
             {(isAllowed: boolean) => (
               <Button
@@ -194,7 +203,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
               {syncOption?.canImportSecrets && (
                 <ProjectPermissionCan
                   I={ProjectPermissionSecretSyncActions.ImportSecrets}
-                  a={ProjectPermissionSub.SecretSyncs}
+                  a={permissionSubject}
                 >
                   {(isAllowed: boolean) => (
                     <DropdownMenuItem
@@ -222,7 +231,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
               )}
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.RemoveSecrets}
-                a={ProjectPermissionSub.SecretSyncs}
+                a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
@@ -249,7 +258,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
               </ProjectPermissionCan>
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.Edit}
-                a={ProjectPermissionSub.SecretSyncs}
+                a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
@@ -267,7 +276,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
               </ProjectPermissionCan>
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.Delete}
-                a={ProjectPermissionSub.SecretSyncs}
+                a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem

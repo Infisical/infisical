@@ -89,7 +89,17 @@ export const secretSyncServiceFactory = ({
       projectId
     });
 
-    return secretSyncs as TSecretSync[];
+    return secretSyncs.filter((secretSync) =>
+      permission.can(
+        ProjectPermissionSecretSyncActions.Read,
+        secretSync.environment && secretSync.folder
+          ? subject(ProjectPermissionSub.SecretSyncs, {
+              environment: secretSync.environment.slug,
+              secretPath: secretSync.folder.path
+            })
+          : ProjectPermissionSub.SecretSyncs
+      )
+    ) as TSecretSync[];
   };
 
   const listSecretSyncsBySecretPath = async (
@@ -105,7 +115,15 @@ export const secretSyncServiceFactory = ({
       projectId
     });
 
-    if (permission.cannot(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs)) {
+    if (
+      permission.cannot(
+        ProjectPermissionSecretSyncActions.Read,
+        subject(ProjectPermissionSub.SecretSyncs, {
+          environment,
+          secretPath
+        })
+      )
+    ) {
       return [];
     }
 
@@ -142,7 +160,12 @@ export const secretSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretSyncActions.Read,
-      ProjectPermissionSub.SecretSyncs
+      secretSync.environment && secretSync.folder
+        ? subject(ProjectPermissionSub.SecretSyncs, {
+            environment: secretSync.environment.slug,
+            secretPath: secretSync.folder.path
+          })
+        : ProjectPermissionSub.SecretSyncs
     );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
@@ -179,7 +202,12 @@ export const secretSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretSyncActions.Read,
-      ProjectPermissionSub.SecretSyncs
+      secretSync.environment && secretSync.folder
+        ? subject(ProjectPermissionSub.SecretSyncs, {
+            environment: secretSync.environment.slug,
+            secretPath: secretSync.folder.path
+          })
+        : ProjectPermissionSub.SecretSyncs
     );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])

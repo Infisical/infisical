@@ -524,6 +524,36 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.SecretSyncs) {
+          const canRead = action.includes(ProjectPermissionSecretSyncActions.Read);
+          const canEdit = action.includes(ProjectPermissionSecretSyncActions.Edit);
+          const canDelete = action.includes(ProjectPermissionSecretSyncActions.Delete);
+          const canCreate = action.includes(ProjectPermissionSecretSyncActions.Create);
+          const canSyncSecrets = action.includes(ProjectPermissionSecretSyncActions.SyncSecrets);
+          const canImportSecrets = action.includes(
+            ProjectPermissionSecretSyncActions.ImportSecrets
+          );
+          const canRemoveSecrets = action.includes(
+            ProjectPermissionSecretSyncActions.RemoveSecrets
+          );
+
+          if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            [ProjectPermissionSecretSyncActions.Read]: canRead,
+            [ProjectPermissionSecretSyncActions.Create]: canCreate,
+            [ProjectPermissionSecretSyncActions.Edit]: canEdit,
+            [ProjectPermissionSecretSyncActions.Delete]: canDelete,
+            [ProjectPermissionSecretSyncActions.SyncSecrets]: canSyncSecrets,
+            [ProjectPermissionSecretSyncActions.ImportSecrets]: canImportSecrets,
+            [ProjectPermissionSecretSyncActions.RemoveSecrets]: canRemoveSecrets,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
         if (subject === ProjectPermissionSub.DynamicSecrets) {
           const canRead = action.includes(ProjectPermissionDynamicSecretActions.ReadRootCredential);
           const canEdit = action.includes(ProjectPermissionDynamicSecretActions.EditRootCredential);
@@ -783,31 +813,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0][ProjectPermissionGroupActions.Delete] = true;
       if (canGrantPrivileges)
         formVal[subject]![0][ProjectPermissionGroupActions.GrantPrivileges] = true;
-      return;
-    }
-
-    if (subject === ProjectPermissionSub.SecretSyncs) {
-      const canRead = action.includes(ProjectPermissionSecretSyncActions.Read);
-      const canEdit = action.includes(ProjectPermissionSecretSyncActions.Edit);
-      const canDelete = action.includes(ProjectPermissionSecretSyncActions.Delete);
-      const canCreate = action.includes(ProjectPermissionSecretSyncActions.Create);
-      const canSyncSecrets = action.includes(ProjectPermissionSecretSyncActions.SyncSecrets);
-      const canImportSecrets = action.includes(ProjectPermissionSecretSyncActions.ImportSecrets);
-      const canRemoveSecrets = action.includes(ProjectPermissionSecretSyncActions.RemoveSecrets);
-
-      if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
-
-      // from above statement we are sure it won't be undefined
-      if (canRead) formVal[subject]![0][ProjectPermissionSecretSyncActions.Read] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionSecretSyncActions.Edit] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionSecretSyncActions.Create] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionSecretSyncActions.Delete] = true;
-      if (canSyncSecrets)
-        formVal[subject]![0][ProjectPermissionSecretSyncActions.SyncSecrets] = true;
-      if (canImportSecrets)
-        formVal[subject]![0][ProjectPermissionSecretSyncActions.ImportSecrets] = true;
-      if (canRemoveSecrets)
-        formVal[subject]![0][ProjectPermissionSecretSyncActions.RemoveSecrets] = true;
       return;
     }
 
