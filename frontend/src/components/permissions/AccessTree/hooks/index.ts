@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
 import { MongoAbility, MongoQuery } from "@casl/ability";
 import { Edge, Node, useEdgesState, useNodesState } from "@xyflow/react";
 
@@ -7,7 +8,7 @@ import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
 import { TSecretFolderWithPath } from "@app/hooks/api/secretFolders/types";
 
-import { useAccessTreeContext } from "../components";
+import { AccessTreeForm, useAccessTreeContext } from "../components";
 import { PermissionAccess } from "../types";
 import {
   createBaseEdge,
@@ -36,6 +37,8 @@ export const useAccessTree = (
 ) => {
   const { currentWorkspace } = useWorkspace();
   const { secretName, setSecretName, setViewMode, viewMode } = useAccessTreeContext();
+  const { control } = useFormContext<AccessTreeForm>();
+  const metadata = useWatch({ control, name: "metadata" });
   const [nodes, setNodes] = useNodesState<Node>([]);
   const [edges, setEdges] = useEdgesState<Edge>([]);
   const [subject, setSubject] = useState(ProjectPermissionSub.Secrets);
@@ -168,7 +171,8 @@ export const useAccessTree = (
         environment,
         subject,
         secretName,
-        actionRuleMap
+        actionRuleMap,
+        metadata
       })
     );
 
@@ -266,7 +270,8 @@ export const useAccessTree = (
     subject,
     secretName,
     setNodes,
-    setEdges
+    setEdges,
+    metadata
   ]);
 
   return {

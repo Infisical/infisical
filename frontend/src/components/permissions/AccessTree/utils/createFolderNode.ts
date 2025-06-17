@@ -58,7 +58,8 @@ export const createFolderNode = ({
   environment,
   subject,
   secretName,
-  actionRuleMap
+  actionRuleMap,
+  metadata
 }: {
   folder: TSecretFolderWithPath;
   permissions: MongoAbility<ProjectPermissionSet, MongoQuery>;
@@ -66,6 +67,7 @@ export const createFolderNode = ({
   subject: ProjectPermissionSub;
   secretName: string;
   actionRuleMap: TActionRuleMap;
+  metadata: Array<{ key: string; value: string }>;
 }) => {
   const actions = Object.fromEntries(
     Object.values(ACTION_MAP[subject] ?? Object.values(ProjectPermissionActions)).map((action) => {
@@ -79,7 +81,8 @@ export const createFolderNode = ({
           secretPath: folder.path,
           environment,
           secretName: secretName || "*",
-          secretTags: ["*"]
+          secretTags: ["*"],
+          metadata: metadata.length ? metadata : ["*"]
         };
 
         if (
@@ -101,40 +104,98 @@ export const createFolderNode = ({
         }
 
         if (hasPermission) {
-          // we want to show yellow/conditional access if user hasn't specified secret name to fully resolve access
-          if (
-            !secretName &&
-            actionRuleMap.some((el) => {
-              // we only show conditional if secretName/secretTags are present - environment and path can be directly determined
-              if (!el[action]?.conditions?.secretName && !el[action]?.conditions?.secretTags)
-                return false;
-
-              // make sure condition applies to env
-              if (el[action]?.conditions?.environment) {
-                if (
-                  !Object.entries(el[action]?.conditions?.environment).every(([operator, value]) =>
-                    evaluateCondition(environment, operator as PermissionConditionOperators, value)
-                  )
-                ) {
+          if (subject === ProjectPermissionSub.Secrets) {
+            // we want to show yellow/conditional access if user hasn't specified secret name to fully resolve access
+            if (
+              !secretName &&
+              actionRuleMap.some((el) => {
+                // we only show conditional if secretName/secretTags are present - environment and path can be directly determined
+                if (!el[action]?.conditions?.secretName && !el[action]?.conditions?.secretTags)
                   return false;
-                }
-              }
 
-              // and applies to path
-              if (el[action]?.conditions?.secretPath) {
-                if (
-                  !Object.entries(el[action]?.conditions?.secretPath).every(([operator, value]) =>
-                    evaluateCondition(folder.path, operator as PermissionConditionOperators, value)
-                  )
-                ) {
-                  return false;
+                // make sure condition applies to env
+                if (el[action]?.conditions?.environment) {
+                  if (
+                    !Object.entries(el[action]?.conditions?.environment).every(
+                      ([operator, value]) =>
+                        evaluateCondition(
+                          environment,
+                          operator as PermissionConditionOperators,
+                          value
+                        )
+                    )
+                  ) {
+                    return false;
+                  }
                 }
-              }
 
-              return true;
-            })
-          ) {
-            access = PermissionAccess.Partial;
+                // and applies to path
+                if (el[action]?.conditions?.secretPath) {
+                  if (
+                    !Object.entries(el[action]?.conditions?.secretPath).every(([operator, value]) =>
+                      evaluateCondition(
+                        folder.path,
+                        operator as PermissionConditionOperators,
+                        value
+                      )
+                    )
+                  ) {
+                    return false;
+                  }
+                }
+
+                return true;
+              })
+            ) {
+              access = PermissionAccess.Partial;
+            } else {
+              access = PermissionAccess.Full;
+            }
+          } else if (subject === ProjectPermissionSub.DynamicSecrets) {
+            if (
+              !metadata.length &&
+              actionRuleMap.some((el) => {
+                // we only show conditional if metadata present - environment and path can be directly determined
+                if (!el[action]?.conditions?.metadata) return false;
+
+                // make sure condition applies to env
+                if (el[action]?.conditions?.environment) {
+                  if (
+                    !Object.entries(el[action]?.conditions?.environment).every(
+                      ([operator, value]) =>
+                        evaluateCondition(
+                          environment,
+                          operator as PermissionConditionOperators,
+                          value
+                        )
+                    )
+                  ) {
+                    return false;
+                  }
+                }
+
+                // and applies to path
+                if (el[action]?.conditions?.secretPath) {
+                  if (
+                    !Object.entries(el[action]?.conditions?.secretPath).every(([operator, value]) =>
+                      evaluateCondition(
+                        folder.path,
+                        operator as PermissionConditionOperators,
+                        value
+                      )
+                    )
+                  ) {
+                    return false;
+                  }
+                }
+
+                return true;
+              })
+            ) {
+              access = PermissionAccess.Partial;
+            } else {
+              access = PermissionAccess.Full;
+            }
           } else {
             access = PermissionAccess.Full;
           }
