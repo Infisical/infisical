@@ -214,6 +214,7 @@
             "documentation/platform/dynamic-secrets/cassandra",
             "documentation/platform/dynamic-secrets/elastic-search",
             "documentation/platform/dynamic-secrets/gcp-iam",
+            "documentation/platform/dynamic-secrets/github",
             "documentation/platform/dynamic-secrets/ldap",
             "documentation/platform/dynamic-secrets/mongo-atlas",
             "documentation/platform/dynamic-secrets/mongo-db",

@@ -29,7 +29,7 @@ import {
 import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetDynamicSecretLeases, useRevokeDynamicSecretLease } from "@app/hooks/api";
-import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { DynamicSecretProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
 
 import { RenewDynamicSecretLease } from "./RenewDynamicSecretLease";
@@ -43,6 +43,8 @@ type Props = {
   onClickNewLease: () => void;
   onClose: () => void;
 };
+
+const DYNAMIC_SECRETS_WITHOUT_RENEWAL = [DynamicSecretProviders.Github];
 
 export const DynamicSecretLease = ({
   projectSlug,
@@ -94,6 +96,8 @@ export const DynamicSecretLease = ({
     }
   };
 
+  const canRenew = !DYNAMIC_SECRETS_WITHOUT_RENEWAL.includes(dynamicSecret.type);
+
   return (
     <div>
       <TableContainer>
@@ -141,29 +145,31 @@ export const DynamicSecretLease = ({
                 </Td>
                 <Td>
                   <div className="flex items-center space-x-4">
-                    <ProjectPermissionCan
-                      I={ProjectPermissionDynamicSecretActions.Lease}
-                      a={subject(ProjectPermissionSub.DynamicSecrets, {
-                        environment,
-                        secretPath,
-                        metadata: dynamicSecret.metadata
-                      })}
-                      renderTooltip
-                      allowedLabel="Renew"
-                    >
-                      {(isAllowed) => (
-                        <IconButton
-                          ariaLabel="edit-folder"
-                          variant="plain"
-                          size="sm"
-                          className="p-0"
-                          isDisabled={!isAllowed}
-                          onClick={() => handlePopUpOpen("renewSecret", { leaseId: id })}
-                        >
-                          <FontAwesomeIcon icon={faRepeat} size="lg" />
-                        </IconButton>
-                      )}
-                    </ProjectPermissionCan>
+                    {canRenew && (
+                      <ProjectPermissionCan
+                        I={ProjectPermissionDynamicSecretActions.Lease}
+                        a={subject(ProjectPermissionSub.DynamicSecrets, {
+                          environment,
+                          secretPath,
+                          metadata: dynamicSecret.metadata
+                        })}
+                        renderTooltip
+                        allowedLabel="Renew"
+                      >
+                        {(isAllowed) => (
+                          <IconButton
+                            ariaLabel="edit-folder"
+                            variant="plain"
+                            size="sm"
+                            className="p-0"
+                            isDisabled={!isAllowed}
+                            onClick={() => handlePopUpOpen("renewSecret", { leaseId: id })}
+                          >
+                            <FontAwesomeIcon icon={faRepeat} size="lg" />
+                          </IconButton>
+                        )}
+                      </ProjectPermissionCan>
+                    )}
                     <ProjectPermissionCan
                       I={ProjectPermissionDynamicSecretActions.Lease}
                       a={subject(ProjectPermissionSub.DynamicSecrets, {

@@ -12,7 +12,7 @@ export type TDynamicSecret = {
   defaultTTL: string;
   status?: DynamicSecretStatus;
   statusDetails?: string;
-  maxTTL: string;
+  maxTTL?: string;
   usernameTemplate?: string | null;
   metadata?: { key: string; value: string }[];
 };
@@ -35,7 +35,8 @@ export enum DynamicSecretProviders {
   SapAse = "sap-ase",
   Kubernetes = "kubernetes",
   Vertica = "vertica",
-  GcpIam = "gcp-iam"
+  GcpIam = "gcp-iam",
+  Github = "github"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -332,6 +333,14 @@ export type TDynamicSecretProvider =
       type: DynamicSecretProviders.GcpIam;
       inputs: {
         serviceAccountEmail: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Github;
+      inputs: {
+        appId: number;
+        installationId: number;
+        privateKey: string;
       };
     };
 
