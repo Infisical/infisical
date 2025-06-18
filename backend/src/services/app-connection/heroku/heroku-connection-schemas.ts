@@ -19,8 +19,8 @@ export const HerokuConnectionOAuthCredentialsSchema = z.object({
 });
 
 export const HerokuConnectionOAuthOutputCredentialsSchema = z.object({
-  authToken: z.string(),
-  refreshToken: z.string(),
+  authToken: z.string().trim(),
+  refreshToken: z.string().trim(),
   expiresAt: z.date()
 });
 

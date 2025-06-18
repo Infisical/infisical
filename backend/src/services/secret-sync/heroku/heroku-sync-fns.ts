@@ -41,12 +41,15 @@ const getValidAuthToken = async (
 };
 
 const getHerokuConfigVars = async ({ authToken, app }: THerokuListVariables): Promise<THerokuConfigVars> => {
-  const { data } = await request.get<THerokuConfigVars>(`${IntegrationUrls.HEROKU_API_URL}/apps/${app}/config-vars`, {
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-      Accept: "application/vnd.heroku+json; version=3"
+  const { data } = await request.get<THerokuConfigVars>(
+    `${IntegrationUrls.HEROKU_API_URL}/apps/${encodeURIComponent(app)}/config-vars`,
+    {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        Accept: "application/vnd.heroku+json; version=3"
+      }
     }
-  });
+  );
 
   return data;
 };

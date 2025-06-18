@@ -82,7 +82,7 @@ description: "Learn how to configure a Heroku Sync for Infisical."
             },
             "destinationConfig": {
                 "app": "8dd25736052a4b50",
-                "appName": "my-app",
+                "appName": "my-app"
             }
         }'
         ```
@@ -114,7 +114,8 @@ description: "Learn how to configure a Heroku Sync for Infisical."
                 "lastRemoveMessage": null,
                 "lastRemovedAt": null,
                 "syncOptions": {
-                    "initialSyncBehavior": "overwrite-destination"
+                    "initialSyncBehavior": "overwrite-destination",
+                    "disableSecretDeletion": true
                 },
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connection": {

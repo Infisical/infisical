@@ -113,7 +113,7 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
             })
           );
 
-          // Redirect to Heroku OAuh
+          // Redirect to Heroku OAuth
           const oauthUrl = new URL("https://id.heroku.com/oauth/authorize");
           oauthUrl.searchParams.set("client_id", oauthClientId);
           oauthUrl.searchParams.set("response_type", "code");

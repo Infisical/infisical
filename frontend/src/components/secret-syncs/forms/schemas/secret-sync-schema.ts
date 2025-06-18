@@ -11,7 +11,7 @@ import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-s
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
-import { HerokuSyncDestinationSchema } from "./heroku-destination-schema";
+import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";

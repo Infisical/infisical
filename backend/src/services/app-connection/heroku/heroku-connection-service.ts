@@ -22,10 +22,9 @@ export const herokuConnectionService = (
     const appConnection = await getAppConnection(AppConnection.Heroku, connectionId, actor);
     try {
       const apps = await getHerokuApps({ appConnection, appConnectionDAL, kmsService });
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return apps;
     } catch (error) {
-      logger.error(error, "Failed to establish connection with Heroku");
+      logger.error(error, `Failed to establish connection with Heroku for app ${connectionId}`);
       return [];
     }
   };

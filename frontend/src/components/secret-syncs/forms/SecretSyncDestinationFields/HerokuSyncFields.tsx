@@ -27,6 +27,7 @@ export const HerokuSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.app", "");
+          setValue("destinationConfig.appName", "");
         }}
       />
 
