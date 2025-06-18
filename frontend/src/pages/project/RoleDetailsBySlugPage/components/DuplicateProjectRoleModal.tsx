@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
@@ -61,7 +61,7 @@ const Content = ({ role, onClose }: ContentProps) => {
         return {
           ...permission,
           action: (permission.action as string[])?.filter(
-            (action) => action !== ProjectPermissionActions.Read
+            (action) => action !== ProjectPermissionSecretActions.DescribeAndReadValue
           )
         };
       }
