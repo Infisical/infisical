@@ -2,10 +2,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionSecretActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -248,15 +246,6 @@ export const secretSyncServiceFactory = ({
       subject(ProjectPermissionSub.SecretSyncs, { environment, secretPath })
     );
 
-    throwIfMissingSecretReadValueOrDescribePermission(
-      projectPermission,
-      ProjectPermissionSecretActions.DescribeSecret,
-      {
-        environment,
-        secretPath
-      }
-    );
-
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
     if (!folder)
@@ -374,11 +363,6 @@ export const secretSyncServiceFactory = ({
 
       if (!updatedEnvironment || !updatedSecretPath)
         throw new BadRequestError({ message: "Must specify both source environment and secret path" });
-
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-        environment: updatedEnvironment,
-        secretPath: updatedSecretPath
-      });
 
       const newFolder = await folderDAL.findBySecretPath(secretSync.projectId, updatedEnvironment, updatedSecretPath);
 
