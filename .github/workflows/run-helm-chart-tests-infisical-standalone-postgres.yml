@@ -51,6 +51,13 @@ jobs:
             --from-literal=ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218 \
             --from-literal=SITE_URL=http://localhost:8080
 
+      - name: Create bootstrap secret
+        run: |
+          kubectl create secret generic infisical-bootstrap-credentials \
+            --namespace infisical-standalone-postgres \
+            --from-literal=INFISICAL_ADMIN_EMAIL=admin@example.com \
+            --from-literal=INFISICAL_ADMIN_PASSWORD=admin-password
+
       - name: Run chart-testing (install)
         run: |
           ct install \

@@ -8,6 +8,7 @@ Infisical's Automated Bootstrapping feature enables you to provision and configu
 ## Overview
 
 The Automated Bootstrapping workflow automates the following processes:
+
 - Creating an admin user account
 - Initializing an organization for the entire instance
 - Establishing an **instance admin machine identity** with full administrative permissions
@@ -51,6 +52,7 @@ You can bootstrap an Infisical instance using either the API or the CLI.
       -d '{"email":"admin@example.com","password":"your-secure-password","organization":"your-org-name"}' \
       http://your-infisical-instance.com/api/v1/admin/bootstrap
     ```
+
   </Tab>
   <Tab title="Using the CLI">
     Use the [Infisical CLI](/cli/commands/bootstrap) to bootstrap the instance and extract the token for immediate use in automation:
@@ -60,8 +62,87 @@ You can bootstrap an Infisical instance using either the API or the CLI.
     ```
 
     This example command pipes the output through `jq` to extract only the machine identity token, making it easy to capture and use directly in automation scripts or export as an environment variable for tools like Terraform.
+
   </Tab>
 </Tabs>
+
+## Helm Chart Auto Bootstrap
+
+When deploying Infisical using the official Helm chart, you can enable automatic bootstrapping that runs as part of the deployment process. This eliminates the need to manually bootstrap the instance after deployment.
+
+### Configuration
+
+Enable auto bootstrapping in your Helm values by setting `autoBootstrap.enabled: true` and providing the necessary configuration:
+
+```yaml
+autoBootstrap:
+  enabled: true
+  organization: "My Organization"
+  secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token | b64enc}}"}}'
+
+  secretDestination:
+    name: "infisical-bootstrap-secret"
+    namespace: "default" # defaults to release namespace if not specified
+
+  credentialSecret:
+    name: "infisical-bootstrap-credentials"
+```
+
+You'll also need to create a secret containing the bootstrap credentials before deployment. The secret must contain `INFISICAL_ADMIN_EMAIL` and `INFISICAL_ADMIN_PASSWORD` keys:
+
+```bash
+kubectl create secret generic infisical-bootstrap-credentials \
+  --from-literal=INFISICAL_ADMIN_EMAIL="admin@example.com" \
+  --from-literal=INFISICAL_ADMIN_PASSWORD="your-secure-password" \
+  --namespace=release-namespace
+```
+
+### How It Works
+
+The Helm chart auto bootstrap feature:
+
+1. **Post-Install Hook**: Runs automatically after the main Infisical deployment is complete
+2. **Readiness Check**: Uses an init container with curl to wait for Infisical to be ready by polling the `/api/status` endpoint
+3. **Bootstrap Execution**: Uses the Infisical CLI to bootstrap the instance
+4. **Kubernetes Secret Creation**: Creates a Kubernetes secret directly via the Kubernetes API using the rendered template
+5. **RBAC**: Automatically configures the necessary permissions (`get`, `create`, `update` on secrets) for the bootstrap job
+
+### Template System
+
+The `secretTemplate` field allows you to customize the data section of the created Kubernetes secret. The template has access to the full bootstrap response and includes helper functions:
+
+- `{{ .Identity.Credentials.Token }}` - The admin machine identity token
+- `{{ .Organization.Id }}` - The created organization ID
+- `{{ .Organization.Slug }}` - The organization slug
+- `{{ .User.Email }}` - The admin user email
+- `b64enc` function for base64 encoding values
+
+Example template for storing multiple values:
+
+```yaml
+secretTemplate: |
+  {
+    "data": {
+      "infisical_token": "{{ .Identity.Credentials.Token | b64enc }}",
+      "admin_email": "{{ .User.Email | b64enc }}",
+      "organization": "{{ .Organization.Name | b64enc }}"
+    }
+  }
+```
+
+### Benefits
+
+- **Zero-Touch Deployment**: Complete Infisical setup without manual intervention
+- **Infrastructure as Code**: Bootstrap configuration is versioned with your Helm values
+- **Secure Token Storage**: Admin identity credentials are immediately stored in Kubernetes secrets
+- **Integration Ready**: The created secret can be referenced by other applications or automation tools
+
+### Security Considerations
+
+- The bootstrap job requires permissions to create secrets in the specified namespace
+- Bootstrap credentials should be stored securely and rotated regularly
+- The generated admin token has full instance privileges and should be protected accordingly
+- Consider using Kubernetes RBAC to restrict access to the generated secret
 
 ## API Response Structure
 
