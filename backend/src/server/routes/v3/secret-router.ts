@@ -577,6 +577,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
         workspaceId = workspace.id;
       }
+      if (!workspaceId) throw new BadRequestError({ message: "You must provide workspaceId or projectSlug" });
 
       const secretOperation = await server.services.secret.createSecretRaw({
         actorId: req.permission.id,
@@ -718,6 +719,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
         workspaceId = workspace.id;
       }
+      if (!workspaceId) throw new BadRequestError({ message: "You must provide workspaceId or projectSlug" });
+
       const secretOperation = await server.services.secret.updateSecretRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -838,6 +841,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
         workspaceId = workspace.id;
       }
+      if (!workspaceId) throw new BadRequestError({ message: "You must provide workspaceId or projectSlug" });
 
       const secretOperation = await server.services.secret.deleteSecretRaw({
         actorId: req.permission.id,
