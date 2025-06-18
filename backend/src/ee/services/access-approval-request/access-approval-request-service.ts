@@ -23,19 +23,13 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
-import {
-  ApprovalStatus,
-  TCreateAccessApprovalRequestDTO,
-  TGetAccessRequestCountDTO,
-  TListApprovalRequestsDTO,
-  TReviewAccessRequestDTO
-} from "./access-approval-request-types";
+import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "create" | "findById">;
@@ -75,8 +69,6 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
 };
 
-export type TAccessApprovalRequestServiceFactory = ReturnType<typeof accessApprovalRequestServiceFactory>;
-
 export const accessApprovalRequestServiceFactory = ({
   groupDAL,
   projectDAL,
@@ -93,8 +85,8 @@ export const accessApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL
-}: TSecretApprovalRequestServiceFactoryDep) => {
-  const createAccessApprovalRequest = async ({
+}: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
+  const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
     actorId,
@@ -104,7 +96,7 @@ export const accessApprovalRequestServiceFactory = ({
     actorAuthMethod,
     projectSlug,
     note
-  }: TCreateAccessApprovalRequestDTO) => {
+  }) => {
     const cfg = getConfig();
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -281,7 +273,7 @@ export const accessApprovalRequestServiceFactory = ({
     return { request: approval };
   };
 
-  const listApprovalRequests = async ({
+  const listApprovalRequests: TAccessApprovalRequestServiceFactory["listApprovalRequests"] = async ({
     projectSlug,
     authorProjectMembershipId,
     envSlug,
@@ -289,7 +281,7 @@ export const accessApprovalRequestServiceFactory = ({
     actorOrgId,
     actorId,
     actorAuthMethod
-  }: TListApprovalRequestsDTO) => {
+  }) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -319,7 +311,7 @@ export const accessApprovalRequestServiceFactory = ({
     return { requests };
   };
 
-  const reviewAccessRequest = async ({
+  const reviewAccessRequest: TAccessApprovalRequestServiceFactory["reviewAccessRequest"] = async ({
     requestId,
     actor,
     status,
@@ -327,7 +319,7 @@ export const accessApprovalRequestServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     bypassReason
-  }: TReviewAccessRequestDTO) => {
+  }) => {
     const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
     if (!accessApprovalRequest) {
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
@@ -566,7 +558,13 @@ export const accessApprovalRequestServiceFactory = ({
     return reviewStatus;
   };
 
-  const getCount = async ({ projectSlug, actor, actorAuthMethod, actorId, actorOrgId }: TGetAccessRequestCountDTO) => {
+  const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({
+    projectSlug,
+    actor,
+    actorAuthMethod,
+    actorId,
+    actorOrgId
+  }) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 

@@ -1,5 +1,5 @@
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TSecretDALFactory } from "../secret/secret-dal";

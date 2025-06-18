@@ -56,6 +56,7 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks";
+import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
 import {
@@ -124,7 +125,8 @@ export const listAppConnectionOptions = () => {
     getOCIConnectionListItem(),
     getOracleDBConnectionListItem(),
     getOnePassConnectionListItem(),
-    getRenderConnectionListItem()
+    getRenderConnectionListItem(),
+    getFlyioConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -200,7 +202,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -242,6 +245,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
+    case FlyioConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
@@ -306,7 +310,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OCI]: platformManagedCredentialsNotSupported,
   [AppConnection.OracleDB]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
-  [AppConnection.Render]: platformManagedCredentialsNotSupported
+  [AppConnection.Render]: platformManagedCredentialsNotSupported,
+  [AppConnection.Flyio]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

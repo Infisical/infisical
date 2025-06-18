@@ -12,7 +12,7 @@ import {
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
@@ -22,8 +22,10 @@ import {
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
-import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
+import {
+  InfisicalProjectTemplate,
+  TProjectTemplateServiceFactory
+} from "@app/ee/services/project-template/project-template-types";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
@@ -263,7 +265,11 @@ export const projectServiceFactory = ({
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
       const plan = await licenseService.getPlan(organization.id);
-      if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
+      if (
+        plan.workspaceLimit !== null &&
+        plan.workspacesUsed >= plan.workspaceLimit &&
+        type === ProjectType.SecretManager
+      ) {
         // case: limit imposed on number of workspaces allowed
         // case: number of workspaces used exceeds the number of workspaces allowed
         throw new BadRequestError({

@@ -35,6 +35,7 @@ import {
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
 import { SecretPermissionConditions } from "./SecretPermissionConditions";
+import { SecretSyncPermissionConditions } from "./SecretSyncPermissionConditions";
 import { SshHostPermissionConditions } from "./SshHostPermissionConditions";
 
 type Props = {
@@ -67,6 +68,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.CertificateTemplates) {
       return <PkiTemplatePermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.SecretSyncs) {
+      return <SecretSyncPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

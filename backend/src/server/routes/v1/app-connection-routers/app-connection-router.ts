@@ -39,6 +39,7 @@ import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
+import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
@@ -105,7 +106,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOCIConnectionSchema.options,
   ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options,
-  ...SanitizedRenderConnectionSchema.options
+  ...SanitizedRenderConnectionSchema.options,
+  ...SanitizedFlyioConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -133,7 +135,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OCIConnectionListItemSchema,
   OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema,
-  RenderConnectionListItemSchema
+  RenderConnectionListItemSchema,
+  FlyioConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

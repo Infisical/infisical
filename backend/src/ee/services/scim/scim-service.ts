@@ -11,7 +11,6 @@ import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { TOrgPermission } from "@app/lib/types";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -33,28 +32,10 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList, parseScimFilter } from "./scim-fns";
-import {
-  TCreateScimGroupDTO,
-  TCreateScimTokenDTO,
-  TCreateScimUserDTO,
-  TDeleteScimGroupDTO,
-  TDeleteScimTokenDTO,
-  TDeleteScimUserDTO,
-  TGetScimGroupDTO,
-  TGetScimUserDTO,
-  TListScimGroupsDTO,
-  TListScimUsers,
-  TListScimUsersDTO,
-  TReplaceScimUserDTO,
-  TScimGroup,
-  TScimTokenJwtPayload,
-  TUpdateScimGroupNamePatchDTO,
-  TUpdateScimGroupNamePutDTO,
-  TUpdateScimUserDTO
-} from "./scim-types";
+import { TScimGroup, TScimServiceFactory } from "./scim-types";
 
 type TScimServiceFactoryDep = {
   scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById">;
@@ -111,8 +92,6 @@ type TScimServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
 };
 
-export type TScimServiceFactory = ReturnType<typeof scimServiceFactory>;
-
 export const scimServiceFactory = ({
   licenseService,
   scimDAL,
@@ -131,8 +110,8 @@ export const scimServiceFactory = ({
   projectUserAdditionalPrivilegeDAL,
   smtpService,
   externalGroupOrgRoleMappingDAL
-}: TScimServiceFactoryDep) => {
-  const createScimToken = async ({
+}: TScimServiceFactoryDep): TScimServiceFactory => {
+  const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
     actorId,
     actorOrgId,
@@ -140,7 +119,7 @@ export const scimServiceFactory = ({
     orgId,
     description,
     ttlDays
-  }: TCreateScimTokenDTO) => {
+  }) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
 
@@ -169,7 +148,13 @@ export const scimServiceFactory = ({
     return { scimToken };
   };
 
-  const listScimTokens = async ({ actor, actorId, actorOrgId, actorAuthMethod, orgId }: TOrgPermission) => {
+  const listScimTokens: TScimServiceFactory["listScimTokens"] = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    orgId
+  }) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
 
@@ -183,7 +168,13 @@ export const scimServiceFactory = ({
     return scimTokens;
   };
 
-  const deleteScimToken = async ({ scimTokenId, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteScimTokenDTO) => {
+  const deleteScimToken: TScimServiceFactory["deleteScimToken"] = async ({
+    scimTokenId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }) => {
     let scimToken = await scimDAL.findById(scimTokenId);
     if (!scimToken) throw new NotFoundError({ message: `SCIM token with ID '${scimTokenId}' not found` });
 
@@ -208,12 +199,12 @@ export const scimServiceFactory = ({
   };
 
   // SCIM server endpoints
-  const listScimUsers = async ({
+  const listScimUsers: TScimServiceFactory["listScimUsers"] = async ({
     startIndex = 0,
     limit = 100,
     filter,
     orgId
-  }: TListScimUsersDTO): Promise<TListScimUsers> => {
+  }) => {
     const org = await orgDAL.findById(orgId);
 
     if (!org.scimEnabled)
@@ -250,7 +241,7 @@ export const scimServiceFactory = ({
     });
   };
 
-  const getScimUser = async ({ orgMembershipId, orgId }: TGetScimUserDTO) => {
+  const getScimUser: TScimServiceFactory["getScimUser"] = async ({ orgMembershipId, orgId }) => {
     const [membership] = await orgDAL
       .findMembership({
         [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
@@ -287,7 +278,13 @@ export const scimServiceFactory = ({
     });
   };
 
-  const createScimUser = async ({ externalId, email, firstName, lastName, orgId }: TCreateScimUserDTO) => {
+  const createScimUser: TScimServiceFactory["createScimUser"] = async ({
+    externalId,
+    email,
+    firstName,
+    lastName,
+    orgId
+  }) => {
     if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
 
     const org = await orgDAL.findOrgById(orgId);
@@ -467,7 +464,7 @@ export const scimServiceFactory = ({
   };
 
   // partial
-  const updateScimUser = async ({ orgMembershipId, orgId, operations }: TUpdateScimUserDTO) => {
+  const updateScimUser: TScimServiceFactory["updateScimUser"] = async ({ orgMembershipId, orgId, operations }) => {
     const org = await orgDAL.findOrgById(orgId);
     if (!org.orgAuthMethod) {
       throw new ScimRequestError({
@@ -540,7 +537,7 @@ export const scimServiceFactory = ({
     return scimUser;
   };
 
-  const replaceScimUser = async ({
+  const replaceScimUser: TScimServiceFactory["replaceScimUser"] = async ({
     orgMembershipId,
     active,
     orgId,
@@ -548,7 +545,7 @@ export const scimServiceFactory = ({
     firstName,
     email,
     externalId
-  }: TReplaceScimUserDTO) => {
+  }) => {
     const org = await orgDAL.findOrgById(orgId);
     if (!org.orgAuthMethod) {
       throw new ScimRequestError({
@@ -627,7 +624,7 @@ export const scimServiceFactory = ({
     });
   };
 
-  const deleteScimUser = async ({ orgMembershipId, orgId }: TDeleteScimUserDTO) => {
+  const deleteScimUser: TScimServiceFactory["deleteScimUser"] = async ({ orgMembershipId, orgId }) => {
     const [membership] = await orgDAL.findMembership({
       [`${TableName.OrgMembership}.id` as "id"]: orgMembershipId,
       [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
@@ -660,7 +657,13 @@ export const scimServiceFactory = ({
     return {}; // intentionally return empty object upon success
   };
 
-  const listScimGroups = async ({ orgId, startIndex, limit, filter, isMembersExcluded }: TListScimGroupsDTO) => {
+  const listScimGroups: TScimServiceFactory["listScimGroups"] = async ({
+    orgId,
+    startIndex,
+    limit,
+    filter,
+    isMembersExcluded
+  }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -768,7 +771,7 @@ export const scimServiceFactory = ({
     );
   };
 
-  const createScimGroup = async ({ displayName, orgId, members }: TCreateScimGroupDTO) => {
+  const createScimGroup: TScimServiceFactory["createScimGroup"] = async ({ displayName, orgId, members }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -863,7 +866,7 @@ export const scimServiceFactory = ({
     });
   };
 
-  const getScimGroup = async ({ groupId, orgId }: TGetScimGroupDTO) => {
+  const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -1011,7 +1014,12 @@ export const scimServiceFactory = ({
     return updatedGroup;
   };
 
-  const replaceScimGroup = async ({ groupId, orgId, displayName, members }: TUpdateScimGroupNamePutDTO) => {
+  const replaceScimGroup: TScimServiceFactory["replaceScimGroup"] = async ({
+    groupId,
+    orgId,
+    displayName,
+    members
+  }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -1043,7 +1051,7 @@ export const scimServiceFactory = ({
     });
   };
 
-  const updateScimGroup = async ({ groupId, orgId, operations }: TUpdateScimGroupNamePatchDTO) => {
+  const updateScimGroup: TScimServiceFactory["updateScimGroup"] = async ({ groupId, orgId, operations }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -1101,7 +1109,7 @@ export const scimServiceFactory = ({
     };
   };
 
-  const deleteScimGroup = async ({ groupId, orgId }: TDeleteScimGroupDTO) => {
+  const deleteScimGroup: TScimServiceFactory["deleteScimGroup"] = async ({ groupId, orgId }) => {
     const plan = await licenseService.getPlan(orgId);
     if (!plan.groups)
       throw new BadRequestError({
@@ -1137,7 +1145,7 @@ export const scimServiceFactory = ({
     return {}; // intentionally return empty object upon success
   };
 
-  const fnValidateScimToken = async (token: TScimTokenJwtPayload) => {
+  const fnValidateScimToken: TScimServiceFactory["fnValidateScimToken"] = async (token) => {
     const scimToken = await scimDAL.findById(token.scimTokenId);
     if (!scimToken) throw new UnauthorizedError();
 

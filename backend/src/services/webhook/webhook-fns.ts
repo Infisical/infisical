@@ -4,8 +4,7 @@ import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
-import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
-import { EventType, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";

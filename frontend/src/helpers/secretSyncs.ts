@@ -65,6 +65,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Render]: {
     name: "Render",
     image: "Render.png"
+  },
+  [SecretSync.Flyio]: {
+    name: "Fly.io",
+    image: "Flyio.svg"
   }
 };
 
@@ -86,7 +90,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TeamCity]: AppConnection.TeamCity,
   [SecretSync.OCIVault]: AppConnection.OCI,
   [SecretSync.OnePass]: AppConnection.OnePass,
-  [SecretSync.Render]: AppConnection.Render
+  [SecretSync.Render]: AppConnection.Render,
+  [SecretSync.Flyio]: AppConnection.Flyio
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

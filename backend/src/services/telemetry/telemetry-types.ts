@@ -81,6 +81,7 @@ export type TMachineIdentityCreatedEvent = {
   event: PostHogEventTypes.MachineIdentityCreated;
   properties: {
     name: string;
+    hasDeleteProtection: boolean;
     orgId: string;
     identityId: string;
   };

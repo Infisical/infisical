@@ -15,7 +15,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGroupDALFactory } from "./group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "./group-fns";
 import {

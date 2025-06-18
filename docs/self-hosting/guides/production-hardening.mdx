@@ -1,0 +1,697 @@
+---
+title: "Production Hardening"
+description: "Security hardening recommendations for production Infisical deployments"
+---
+
+This document provides specific security hardening recommendations for production Infisical deployments. These recommendations follow Infisical's security model and focus on defense in depth.
+
+Choose your deployment method below and follow the recommendations for your specific setup. Start with **Universal Security Fundamentals** that apply to all deployments, then follow your deployment-specific section.
+
+## Universal Security Fundamentals
+
+These security configurations apply to **all** Infisical deployments regardless of how you deploy.
+
+### Cryptographic Security
+
+#### Generate Secure Keys
+
+Generate strong cryptographic keys for your deployment:
+
+```bash
+# Required - Generate secure encryption key
+ENCRYPTION_KEY=$(openssl rand -hex 16)
+
+# Required - Generate secure auth secret
+AUTH_SECRET=$(openssl rand -base64 32)
+```
+
+#### Configure Token Lifetimes
+
+Minimize exposure window for compromised tokens:
+
+```bash
+# JWT token configuration (adjust based on security requirements)
+JWT_AUTH_LIFETIME=15m        # Authentication tokens
+JWT_REFRESH_LIFETIME=24h     # Refresh tokens
+JWT_SERVICE_LIFETIME=1h      # Service tokens
+```
+
+### Network Security
+
+#### TLS Configuration
+
+Configure HTTPS and secure database connections:
+
+```bash
+# Enable HTTPS (recommended for production)
+HTTPS_ENABLED=true
+
+# Secure PostgreSQL connection with SSL
+DB_CONNECTION_URI="postgresql://user:pass@host:5432/db?sslmode=require"
+
+# For base64-encoded SSL certificate
+DB_ROOT_CERT="<base64-encoded-certificate>"
+```
+
+#### Redis Security
+
+Use authentication and TLS for Redis:
+
+```bash
+# Redis with TLS (if supported by your Redis deployment)
+REDIS_URL="rediss://user:password@redis:6380"
+
+# Redis Sentinel configuration for high availability
+REDIS_SENTINEL_HOSTS="192.168.65.254:26379,192.168.65.254:26380"
+REDIS_SENTINEL_MASTER_NAME="mymaster"
+REDIS_SENTINEL_ENABLE_TLS=true
+REDIS_SENTINEL_USERNAME="sentinel_user"
+REDIS_SENTINEL_PASSWORD="sentinel_password"
+```
+
+#### Network Access Controls
+
+Configure network restrictions and firewall rules:
+
+```bash
+# Limit CORS to specific domains
+CORS_ALLOWED_ORIGINS=["https://your-app.example.com"]
+
+# Prevent connections to internal/private IP addresses
+# This blocks access to internal services like metadata endpoints,
+# internal APIs, databases, and other sensitive infrastructure
+ALLOW_INTERNAL_IP_CONNECTIONS=false
+```
+
+**Implement network firewalls**. Restrict network access to only necessary services:
+
+- **Required ports**: Infisical API (8080) and HTTPS (if applicable)
+- **Database access**: Restrict PostgreSQL and Redis to authorized sources only
+- **Principle**: Default deny incoming, allow only required traffic
+- **Implementation**: See your deployment-specific section below for exact configuration
+
+### Application Security
+
+#### Site Configuration
+
+Set proper site URL for your Infisical instance:
+
+```bash
+# Required - Must be absolute URL with protocol
+SITE_URL="https://app.infisical.com"
+```
+
+#### SMTP Security
+
+Use TLS for email communications:
+
+```bash
+# SMTP with TLS
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="587"
+SMTP_USERNAME="your-smtp-user"
+SMTP_PASSWORD="your-smtp-password"
+SMTP_REQUIRE_TLS=true
+SMTP_IGNORE_TLS=false
+SMTP_FROM_ADDRESS="noreply@example.com"
+SMTP_FROM_NAME="Infisical"
+```
+
+#### Privacy Configuration
+
+Control telemetry and data collection:
+
+```bash
+# Optional - Disable telemetry (enabled by default)
+TELEMETRY_ENABLED=false
+```
+
+### Database Security
+
+#### High Availability Configuration
+
+Configure database read replicas for high availability PostgreSQL setups:
+
+```bash
+# Read replica configuration (JSON format)
+DB_READ_REPLICAS='[{"DB_CONNECTION_URI":"postgresql://user:pass@replica:5432/db?sslmode=require"}]'
+```
+
+### Operational Security
+
+#### User Access Management
+
+**Establish user off-boarding procedures**. Remove access promptly when users leave:
+
+1. Remove user from organization
+2. Revoke active service tokens
+3. Remove from external identity providers
+4. Audit access logs for the user's activity
+5. Rotate any shared secrets the user had access to
+
+#### Maintenance and Updates
+
+**Keep frequent upgrade cadence**. Regularly update to the latest Infisical version for your deployment method.
+
+## Deployment-Specific Hardening
+
+### Docker Deployment
+
+These recommendations are specific to Docker deployments of Infisical.
+
+#### Container Security
+
+**Use read-only root filesystems**. Prevent runtime modifications while allowing necessary temporary access:
+
+```bash
+# Run with read-only filesystem but allow /tmp access
+docker run --read-only \
+  --tmpfs /tmp:rw,exec,size=1G \
+  infisical/infisical:latest
+```
+
+**Note**: Infisical requires temporary directory access for:
+
+- Secret scanning operations
+- SSH certificate generation and validation
+
+The `--tmpfs` mounts provide secure, isolated temporary storage that is:
+
+- Automatically cleaned up on container restart
+- Limited in size to prevent disk exhaustion
+- Isolated from the host system
+- Wiped on container removal
+
+**Drop unnecessary capabilities**. Remove all Linux capabilities:
+
+```bash
+# Drop all capabilities
+docker run --cap-drop=ALL infisical/infisical:latest
+```
+
+**Use specific image tags**. Never use `latest` tags in production:
+
+```bash
+# Use specific version tags
+docker run infisical/infisical:v0.93.1-postgres
+```
+
+#### Resource Management
+
+**Set resource limits**. Prevent resource exhaustion attacks:
+
+```bash
+# Set memory and CPU limits
+docker run --memory=1g --cpus=0.5 infisical/infisical:latest
+```
+
+#### Health Monitoring
+
+**Configure health checks**. Set up Docker health checks:
+
+```dockerfile
+# In Dockerfile or docker-compose.yml
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8080/api/status || exit 1
+```
+
+#### Network Security
+
+**Host firewall configuration**. Configure host-level firewall for Docker deployments:
+
+```bash
+# Docker manages its own iptables rules, but configure host firewall
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# Allow Docker-mapped ports (adjust based on your port mapping)
+sudo ufw allow 8080/tcp  # If mapping container 8080 to host 8080
+sudo ufw allow 443/tcp   # If terminating HTTPS at host level
+
+# Enable firewall
+sudo ufw --force enable
+
+# Verify Docker iptables integration
+sudo iptables -L DOCKER
+```
+
+#### Maintenance
+
+**Regular updates**. Monitor [Docker Hub](https://hub.docker.com/r/infisical/infisical/tags) for new releases and update your image tags regularly.
+
+### Kubernetes Deployment
+
+These recommendations are specific to Kubernetes deployments of Infisical.
+
+#### Pod Security
+
+**Use Pod Security Standards**. Apply restricted security profile:
+
+```yaml
+# Namespace-level Pod Security Standards
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infisical
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+```
+
+**Configure security context**. Set comprehensive security context:
+
+```yaml
+# Deployment security context
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infisical
+spec:
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+        - name: infisical
+          image: infisical/infisical:v0.93.1-postgres
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              memory: 1000Mi
+              cpu: 500m
+            requests:
+              cpu: 350m
+              memory: 512Mi
+```
+
+#### Network Security
+
+**Configure network policies**. Restrict pod-to-pod communication:
+
+```yaml
+# Example Kubernetes NetworkPolicy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: infisical-netpol
+  namespace: infisical
+spec:
+  podSelector:
+    matchLabels:
+      app: infisical
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-system
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+```
+
+**Infrastructure firewall considerations**. In addition to the universal host firewalls, implement infrastructure-level security:
+
+For cloud deployments (AWS Security Groups, Azure NSGs, or GCP Firewall Rules):
+
+- Allow ingress from load balancer to NodePort/ClusterIP service
+- Allow egress to managed databases
+- Block all other traffic
+
+For on-premises deployments, ensure node-level firewalls allow:
+
+- Ingress traffic from ingress controllers
+- Egress traffic to external services (databases, SMTP)
+
+#### Access Control
+
+**Use dedicated service accounts**. Create service accounts with minimal permissions:
+
+```yaml
+# Service account configuration
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: infisical
+  namespace: infisical
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infisical
+spec:
+  template:
+    spec:
+      serviceAccountName: infisical
+```
+
+#### Ingress Security
+
+**Configure ingress with TLS**. Set up secure ingress:
+
+```yaml
+# Secure ingress configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: infisical-ingress
+  namespace: infisical
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - secretName: infisical-tls
+      hosts:
+        - app.example.com
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: infisical
+                port:
+                  number: 8080
+```
+
+#### Secret Management
+
+**Use Kubernetes secrets**. Store sensitive configuration securely:
+
+```yaml
+# Kubernetes secret for environment variables
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-secrets
+  namespace: infisical
+type: Opaque
+stringData:
+  AUTH_SECRET: "<generate-with-openssl-rand-base64-32>"
+  ENCRYPTION_KEY: "<generate-with-openssl-rand-hex-16>"
+  DB_CONNECTION_URI: "<your-postgres-connection-string>"
+  REDIS_URL: "<your-redis-connection-string>"
+  SITE_URL: "<your-site-url>"
+```
+
+**Note:** Kubernetes secrets are only base64-encoded by default and are not encrypted at rest unless you explicitly enable etcd encryption. For production environments, you should:
+
+- Enable [etcd encryption at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) to protect secrets stored in the cluster
+- Limit access to etcd and Kubernetes API to only trusted administrators
+
+#### Health Monitoring
+
+**Set up health checks**. Configure readiness and liveness probes:
+
+```yaml
+# Health check configuration
+containers:
+  - name: infisical
+    readinessProbe:
+      httpGet:
+        path: /api/status
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 5
+    livenessProbe:
+      httpGet:
+        path: /api/status
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 10
+```
+
+#### Infrastructure Considerations
+
+**Use managed databases (if possible)**. For production deployments, consider using managed PostgreSQL and Redis services instead of in-cluster instances when feasible, as they typically provide better security, backup, and maintenance capabilities.
+
+#### Maintenance
+
+**Regular updates**. Monitor [Docker Hub](https://hub.docker.com/r/infisical/infisical/tags) for new releases and update your deployment manifests with new image tags regularly.
+
+### Linux Binary Deployment
+
+These recommendations are specific to Linux binary deployments of Infisical.
+
+#### System User Management
+
+**Create dedicated user account**. Run Infisical under a dedicated service account:
+
+```bash
+# Create dedicated user
+sudo useradd --system --shell /bin/false --home-dir /opt/infisical infisical
+
+# Create application directory
+sudo mkdir -p /opt/infisical
+sudo chown infisical:infisical /opt/infisical
+```
+
+#### Service Configuration
+
+**Configure systemd service**. Create a secure systemd service:
+
+```ini
+# /etc/systemd/system/infisical.service
+[Unit]
+Description=Infisical Secret Management
+After=network.target
+
+[Service]
+Type=simple
+# IMPORTANT: Change from default 'root' user to dedicated service account
+User=infisical
+Group=infisical
+WorkingDirectory=/opt/infisical
+ExecStart=/opt/infisical/infisical-linux-amd64
+Restart=always
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/infisical
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LimitCORE=0
+MemorySwapMax=0
+
+# Environment file
+EnvironmentFile=/etc/infisical/environment
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### Configuration Security
+
+**Secure environment configuration**. Store environment variables securely:
+
+```bash
+# Create secure config directory
+sudo mkdir -p /etc/infisical
+sudo chmod 750 /etc/infisical
+sudo chown root:infisical /etc/infisical
+
+# Create environment file
+sudo touch /etc/infisical/environment
+sudo chmod 640 /etc/infisical/environment
+sudo chown root:infisical /etc/infisical/environment
+```
+
+#### System Security
+
+**Disable memory swapping**. Prevent sensitive data from being written to disk:
+
+```bash
+# Disable swap immediately
+sudo swapoff -a
+
+# Disable swap permanently (comment out swap entries)
+sudo sed -i '/swap/d' /etc/fstab
+```
+
+**Disable core dumps**. Prevent potential exposure of encryption keys:
+
+```bash
+# Set system-wide core dump limits
+echo "* hard core 0" | sudo tee -a /etc/security/limits.conf
+
+# Disable core dumps for current session
+ulimit -c 0
+```
+
+#### File Permissions
+
+**Secure file permissions**. Set proper permissions on application files:
+
+```bash
+# Set binary permissions
+sudo chmod 755 /opt/infisical/infisical-linux-amd64
+sudo chown infisical:infisical /opt/infisical/infisical-linux-amd64
+
+# Set config file permissions
+sudo chmod 640 /etc/infisical/environment
+sudo chown root:infisical /etc/infisical/environment
+```
+
+#### Network Security
+
+**Host firewall configuration**. Configure comprehensive firewall for Linux binary deployments:
+
+```bash
+# Configure UFW firewall
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# Allow Infisical API access
+sudo ufw allow 8080/tcp
+
+# Allow HTTPS (if terminating TLS at Infisical)
+sudo ufw allow 443/tcp
+
+# If running PostgreSQL locally, restrict to localhost
+sudo ufw allow from 127.0.0.1 to any port 5432
+
+# If running Redis locally, restrict to localhost
+sudo ufw allow from 127.0.0.1 to any port 6379
+
+# Enable firewall
+sudo ufw --force enable
+```
+
+#### System Maintenance
+
+**Synchronize system clocks**. Ensure accurate time for JWT tokens and audit logs:
+
+```bash
+# Install and configure NTP
+sudo apt-get update
+sudo apt-get install -y ntp
+sudo systemctl enable ntp
+sudo systemctl start ntp
+
+# Verify time synchronization
+timedatectl status
+```
+
+**Regular updates**. Monitor [Cloudsmith releases](https://cloudsmith.io/~infisical/repos/infisical-core/packages) for new binary versions and update your installation regularly.
+
+## Enterprise Security Features
+
+### Hardware Security Module (HSM) Integration
+
+For the highest level of encryption security, integrate with Hardware Security Modules:
+
+HSM integration provides hardware-protected encryption keys stored on tamper-proof devices, offering superior security for encryption operations:
+
+- **Supported HSM Providers**: Thales Luna Cloud HSM, AWS CloudHSM, Fortanix HSM
+- **Root Key Protection**: HSM encrypts Infisical's root encryption keys using hardware-protected keys
+- **Enterprise Requirements**: Ideal for government, financial, and healthcare organizations
+
+```bash
+# HSM Environment Variables (example for production)
+HSM_LIB_PATH="/path/to/hsm/library.so"
+HSM_PIN="your-hsm-pin"
+HSM_SLOT="0"
+HSM_KEY_LABEL="infisical-root-key"
+```
+
+For complete HSM setup instructions, see the [HSM Integration Guide](/documentation/platform/kms/hsm-integration).
+
+### External Key Management Service (KMS) Integration
+
+Leverage cloud-native KMS providers for enhanced security and compliance:
+
+Infisical can integrate with external KMS providers to encrypt project secrets, providing enterprise-grade key management:
+
+- **Supported Providers**: AWS KMS, Google Cloud KMS, Azure Key Vault (coming soon)
+- **Workspace Key Protection**: Each project's encryption key is protected by your external KMS
+- **Envelope Encryption**: Infisical uses your cloud KMS to encrypt/decrypt project workspace keys, which in turn encrypt the actual secret data
+- **Compliance**: Leverage your cloud provider's compliance certifications (FedRAMP, SOC2, ISO 27001)
+
+#### Benefits for Production Deployments
+
+- **Separation of Concerns**: Keys managed in your cloud infrastructure, separate from Infisical
+- **Regulatory Compliance**: Use your existing compliance-certified KMS infrastructure
+- **Audit Integration**: KMS operations logged in your cloud provider's audit trails
+- **Disaster Recovery**: Keys backed by your cloud provider's HA and backup systems
+- **Access Controls**: Leverage your cloud IAM for KMS access management
+
+#### Configuration Resources
+
+For external KMS configuration, see:
+
+- [AWS KMS Integration](/documentation/platform/kms-configuration/aws-kms)
+- [GCP KMS Integration](/documentation/platform/kms-configuration/gcp-kms)
+- [External KMS Overview](/documentation/platform/kms-configuration/overview)
+
+## Advanced Security Configurations
+
+### Backup Security
+
+**Configure backup encryption**. Encrypt PostgreSQL backups:
+
+```bash
+# PostgreSQL backup with encryption
+pg_dump $DB_CONNECTION_URI | gpg --cipher-algo AES256 --compress-algo 1 --symmetric --output backup.sql.gpg
+```
+
+### Monitoring and Logging
+
+**Implement log monitoring**. Set up centralized logging for security analysis and audit trails. Configure your SIEM or logging platform to monitor Infisical operations.
+
+### Security Updates
+
+**Regular security updates**. Monitor the [Infisical repository](https://github.com/Infisical/infisical) for security updates and apply them promptly.
+
+## Compliance and Monitoring
+
+### Enterprise Compliance Requirements
+
+For enterprise deployments requiring compliance certifications:
+
+- Implement audit log retention policies
+- Set up security event monitoring and alerting
+- Configure automated vulnerability scanning
+- Establish incident response procedures
+- Document security controls for compliance audits
+
+### Standards Compliance
+
+**FIPS 140-3 Compliance**. Infisical is actively working on FIPS 140-3 compliance to meet U.S. and Canadian government cryptographic standards. This will provide validated cryptographic modules for organizations requiring certified encryption implementations.

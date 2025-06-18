@@ -163,7 +163,7 @@ export type IdentityManagementSubjectFields = {
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
-  [PermissionConditionOperators.$IN]: "contains",
+  [PermissionConditionOperators.$IN]: "in",
   [PermissionConditionOperators.$ALL]: "contains all",
   [PermissionConditionOperators.$NEQ]: "not equal to",
   [PermissionConditionOperators.$GLOB]: "matches glob pattern",
@@ -263,6 +263,11 @@ export type SecretImportSubjectFields = {
   secretPath: string;
 };
 
+export type SecretSyncSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type SecretRotationSubjectFields = {
   environment: string;
   secretPath: string;
@@ -301,6 +306,13 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.DynamicSecrets
         | (ForcedSubject<ProjectPermissionSub.DynamicSecrets> & DynamicSecretSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionSecretSyncActions,
+      (
+        | ProjectPermissionSub.SecretSyncs
+        | (ForcedSubject<ProjectPermissionSub.SecretSyncs> & SecretSyncSubjectFields)
       )
     ]
   | [
@@ -365,7 +377,6 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
-  | [ProjectPermissionSecretSyncActions, ProjectPermissionSub.SecretSyncs]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]

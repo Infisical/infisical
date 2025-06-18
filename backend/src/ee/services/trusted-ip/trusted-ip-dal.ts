@@ -1,10 +1,10 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { ormify } from "@app/lib/knex";
+import { ormify, TOrmify } from "@app/lib/knex";
 
-export type TTrustedIpDALFactory = ReturnType<typeof trustedIpDALFactory>;
+export type TTrustedIpDALFactory = TOrmify<TableName.TrustedIps>;
 
-export const trustedIpDALFactory = (db: TDbClient) => {
+export const trustedIpDALFactory = (db: TDbClient): TTrustedIpDALFactory => {
   const trustedIpOrm = ormify(db, TableName.TrustedIps);
   return trustedIpOrm;
 };

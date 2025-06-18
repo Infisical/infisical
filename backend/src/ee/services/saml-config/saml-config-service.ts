@@ -23,9 +23,9 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
-import { TCreateSamlCfgDTO, TGetSamlCfgDTO, TSamlLoginDTO, TUpdateSamlCfgDTO } from "./saml-config-types";
+import { TSamlConfigServiceFactory } from "./saml-config-types";
 
 type TSamlConfigServiceFactoryDep = {
   samlConfigDAL: Pick<TSamlConfigDALFactory, "create" | "findOne" | "update" | "findById">;
@@ -47,8 +47,6 @@ type TSamlConfigServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
-export type TSamlConfigServiceFactory = ReturnType<typeof samlConfigServiceFactory>;
-
 export const samlConfigServiceFactory = ({
   samlConfigDAL,
   orgDAL,
@@ -61,8 +59,8 @@ export const samlConfigServiceFactory = ({
   smtpService,
   identityMetadataDAL,
   kmsService
-}: TSamlConfigServiceFactoryDep) => {
-  const createSamlCfg = async ({
+}: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
+  const createSamlCfg: TSamlConfigServiceFactory["createSamlCfg"] = async ({
     idpCert,
     actor,
     actorAuthMethod,
@@ -73,7 +71,7 @@ export const samlConfigServiceFactory = ({
     isActive,
     entryPoint,
     authProvider
-  }: TCreateSamlCfgDTO) => {
+  }) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
 
@@ -101,7 +99,7 @@ export const samlConfigServiceFactory = ({
     return samlConfig;
   };
 
-  const updateSamlCfg = async ({
+  const updateSamlCfg: TSamlConfigServiceFactory["updateSamlCfg"] = async ({
     orgId,
     actor,
     actorOrgId,
@@ -112,7 +110,7 @@ export const samlConfigServiceFactory = ({
     isActive,
     entryPoint,
     authProvider
-  }: TUpdateSamlCfgDTO) => {
+  }) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
     const plan = await licenseService.getPlan(orgId);
@@ -146,7 +144,7 @@ export const samlConfigServiceFactory = ({
     return ssoConfig;
   };
 
-  const getSaml = async (dto: TGetSamlCfgDTO) => {
+  const getSaml: TSamlConfigServiceFactory["getSaml"] = async (dto) => {
     let samlConfig: TSamlConfigs | undefined;
     if (dto.type === "org") {
       samlConfig = await samlConfigDAL.findOne({ orgId: dto.orgId });
@@ -221,7 +219,7 @@ export const samlConfigServiceFactory = ({
     };
   };
 
-  const samlLogin = async ({
+  const samlLogin: TSamlConfigServiceFactory["samlLogin"] = async ({
     externalId,
     email,
     firstName,
@@ -230,7 +228,7 @@ export const samlConfigServiceFactory = ({
     orgId,
     relayState,
     metadata
-  }: TSamlLoginDTO) => {
+  }) => {
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 

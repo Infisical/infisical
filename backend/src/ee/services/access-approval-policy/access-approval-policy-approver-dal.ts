@@ -1,15 +1,15 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { ormify } from "@app/lib/knex";
+import { ormify, TOrmify } from "@app/lib/knex";
 
-export type TAccessApprovalPolicyApproverDALFactory = ReturnType<typeof accessApprovalPolicyApproverDALFactory>;
+export type TAccessApprovalPolicyApproverDALFactory = TOrmify<TableName.AccessApprovalPolicyApprover>;
 
 export const accessApprovalPolicyApproverDALFactory = (db: TDbClient) => {
   const accessApprovalPolicyApproverOrm = ormify(db, TableName.AccessApprovalPolicyApprover);
   return { ...accessApprovalPolicyApproverOrm };
 };
 
-export type TAccessApprovalPolicyBypasserDALFactory = ReturnType<typeof accessApprovalPolicyBypasserDALFactory>;
+export type TAccessApprovalPolicyBypasserDALFactory = TOrmify<TableName.AccessApprovalPolicyBypasser>;
 
 export const accessApprovalPolicyBypasserDALFactory = (db: TDbClient) => {
   const accessApprovalPolicyBypasserOrm = ormify(db, TableName.AccessApprovalPolicyBypasser);

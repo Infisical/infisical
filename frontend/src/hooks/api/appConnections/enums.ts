@@ -23,5 +23,6 @@ export enum AppConnection {
   TeamCity = "teamcity",
   OCI = "oci",
   OnePass = "1password",
-  Render = "render"
+  Render = "render",
+  Flyio = "flyio"
 }

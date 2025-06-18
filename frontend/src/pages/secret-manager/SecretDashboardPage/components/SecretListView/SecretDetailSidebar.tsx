@@ -62,6 +62,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
 
 import { CreateReminderForm } from "./CreateReminderForm";
+import { HIDDEN_SECRET_VALUE } from "./SecretItem";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
 
 type Props = {
@@ -897,7 +898,9 @@ export const SecretDetailSidebar = ({
                                     </button>
                                   </div>
                                   <span className="group-[.show-value]:hidden">
-                                    {secretValueHidden ? "******" : secretValue?.replace(/./g, "*")}
+                                    {secretValueHidden
+                                      ? HIDDEN_SECRET_VALUE
+                                      : secretValue?.replace(/./g, "*")}
                                     <button
                                       type="button"
                                       className="ml-1 cursor-pointer"

@@ -23,7 +23,7 @@ import {
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
@@ -38,7 +38,8 @@ import {
   TGetIdentityProjectPermissionArg,
   TGetProjectPermissionArg,
   TGetServiceTokenProjectPermissionArg,
-  TGetUserProjectPermissionArg
+  TGetUserProjectPermissionArg,
+  TPermissionServiceFactory
 } from "./permission-service-types";
 import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./project-permission";
 
@@ -50,15 +51,13 @@ type TPermissionServiceFactoryDep = {
   permissionDAL: TPermissionDALFactory;
 };
 
-export type TPermissionServiceFactory = ReturnType<typeof permissionServiceFactory>;
-
 export const permissionServiceFactory = ({
   permissionDAL,
   orgRoleDAL,
   projectRoleDAL,
   serviceTokenDAL,
   projectDAL
-}: TPermissionServiceFactoryDep) => {
+}: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const buildOrgPermission = (orgUserRoles: TBuildOrgPermissionDTO) => {
     const rules = orgUserRoles
       .map(({ role, permissions }) => {
@@ -120,11 +119,11 @@ export const permissionServiceFactory = ({
   /*
    * Get user permission in an organization
    */
-  const getUserOrgPermission = async (
-    userId: string,
-    orgId: string,
-    authMethod: ActorAuthMethod,
-    userOrgId?: string
+  const getUserOrgPermission: TPermissionServiceFactory["getUserOrgPermission"] = async (
+    userId,
+    orgId,
+    authMethod,
+    userOrgId
   ) => {
     // when token is scoped, ensure the passed org id is same as user org id
     if (userOrgId && userOrgId !== orgId)
@@ -172,12 +171,12 @@ export const permissionServiceFactory = ({
     };
   };
 
-  const getOrgPermission = async (
-    type: ActorType,
-    id: string,
-    orgId: string,
-    authMethod: ActorAuthMethod,
-    actorOrgId: string | undefined
+  const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async (
+    type,
+    id,
+    orgId,
+    authMethod,
+    actorOrgId
   ) => {
     switch (type) {
       case ActorType.USER:
@@ -194,7 +193,7 @@ export const permissionServiceFactory = ({
 
   // instead of actor type this will fetch by role slug. meaning it can be the pre defined slugs like
   // admin member or user defined ones like biller etc
-  const getOrgPermissionByRole = async (role: string, orgId: string) => {
+  const getOrgPermissionByRole: TPermissionServiceFactory["getOrgPermissionByRole"] = async (role, orgId) => {
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     if (isCustomRole) {
       const orgRole = await orgRoleDAL.findOne({ slug: role, orgId });
@@ -437,7 +436,7 @@ export const permissionServiceFactory = ({
         hasRole: (role: string) => boolean;
       };
 
-  const getProjectPermissions = async (projectId: string) => {
+  const getProjectPermissions: TPermissionServiceFactory["getProjectPermissions"] = async (projectId) => {
     // fetch user permissions
     const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId);
     const userPermissions = rawUserProjectPermissions.map((userProjectPermission) => {
@@ -607,7 +606,10 @@ export const permissionServiceFactory = ({
     }
   };
 
-  const getProjectPermissionByRole = async (role: string, projectId: string) => {
+  const getProjectPermissionByRole: TPermissionServiceFactory["getProjectPermissionByRole"] = async (
+    role,
+    projectId
+  ) => {
     const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
     if (isCustomRole) {
       const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
@@ -630,14 +632,10 @@ export const permissionServiceFactory = ({
     return { permission };
   };
 
-  const checkGroupProjectPermission = async ({
+  const checkGroupProjectPermission: TPermissionServiceFactory["checkGroupProjectPermission"] = async ({
     groupId,
     projectId,
     checkPermissions
-  }: {
-    groupId: string;
-    projectId: string;
-    checkPermissions: ProjectPermissionSet;
   }) => {
     const rawGroupProjectPermissions = await permissionDAL.getProjectGroupPermissions(projectId, groupId);
     const groupPermissions = rawGroupProjectPermissions.map((groupProjectPermission) => {

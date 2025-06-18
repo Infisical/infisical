@@ -120,6 +120,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.serviceName ?? destinationConfig.serviceId;
       secondaryText = "Service";
       break;
+    case SecretSync.Flyio:
+      primaryText = destinationConfig.appId;
+      secondaryText = "App ID";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

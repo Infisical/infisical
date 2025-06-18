@@ -137,7 +137,7 @@ export const SecretPathInput = ({
           maxHeight: "var(--radix-select-content-available-height)"
         }}
       >
-        <div className="max-h-[25vh] w-full flex-col items-center justify-center overflow-y-scroll rounded-md text-white">
+        <div className="thin-scrollbar max-h-[25vh] w-full flex-col items-center justify-center overflow-y-scroll rounded-md text-white">
           {suggestions.map((suggestion, i) => (
             <div
               tabIndex={0}

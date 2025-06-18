@@ -69,6 +69,12 @@ import {
   TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
 import {
+  TFlyioConnection,
+  TFlyioConnectionConfig,
+  TFlyioConnectionInput,
+  TValidateFlyioConnectionCredentialsSchema
+} from "./flyio";
+import {
   TGcpConnection,
   TGcpConnectionConfig,
   TGcpConnectionInput,
@@ -168,6 +174,7 @@ export type TAppConnection = { id: string } & (
   | TOracleDBConnection
   | TOnePassConnection
   | TRenderConnection
+  | TFlyioConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -200,6 +207,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOracleDBConnectionInput
   | TOnePassConnectionInput
   | TRenderConnectionInput
+  | TFlyioConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -239,7 +247,8 @@ export type TAppConnectionConfig =
   | TTeamCityConnectionConfig
   | TOCIConnectionConfig
   | TOnePassConnectionConfig
-  | TRenderConnectionConfig;
+  | TRenderConnectionConfig
+  | TFlyioConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -266,7 +275,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOCIConnectionCredentialsSchema
   | TValidateOracleDBConnectionCredentialsSchema
   | TValidateOnePassConnectionCredentialsSchema
-  | TValidateRenderConnectionCredentialsSchema;
+  | TValidateRenderConnectionCredentialsSchema
+  | TValidateFlyioConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

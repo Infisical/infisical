@@ -18,7 +18,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { BillingPlanRows, BillingPlanTableHead } from "./licence-enums";
 import { TLicenseDALFactory } from "./license-dal";
 import { getDefaultOnPremFeatures, setupLicenseRequestWithStore } from "./license-fns";

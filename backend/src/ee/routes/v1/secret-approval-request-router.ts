@@ -285,6 +285,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               commits: secretRawSchema
                 .omit({ _id: true, environment: true, workspace: true, type: true, version: true, secretValue: true })
                 .extend({
+                  secretValueHidden: z.boolean(),
                   secretValue: z.string().optional(),
                   isRotatedSecret: z.boolean().optional(),
                   op: z.string(),
@@ -296,6 +297,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                       version: z.number(),
                       secretKey: z.string(),
                       secretValue: z.string().optional(),
+                      secretValueHidden: z.boolean(),
                       secretComment: z.string().optional()
                     })
                     .optional()
@@ -306,6 +308,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                       version: z.number(),
                       secretKey: z.string(),
                       secretValue: z.string().optional(),
+                      secretValueHidden: z.boolean(),
                       secretComment: z.string().optional(),
                       tags: SanitizedTagSchema.array().optional(),
                       secretMetadata: ResourceMetadataSchema.nullish()

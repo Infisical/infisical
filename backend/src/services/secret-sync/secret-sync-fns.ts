@@ -29,6 +29,7 @@ import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFact
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
+import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
@@ -59,7 +60,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
   [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION,
   [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION,
-  [SecretSync.Render]: RENDER_SYNC_LIST_OPTION
+  [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
+  [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -219,6 +221,8 @@ export const SecretSyncFns = {
         return OnePassSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Render:
         return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Flyio:
+        return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -299,6 +303,9 @@ export const SecretSyncFns = {
       case SecretSync.Render:
         secretMap = await RenderSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Flyio:
+        secretMap = await FlyioSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -368,6 +375,8 @@ export const SecretSyncFns = {
         return OnePassSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Render:
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Flyio:
+        return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

@@ -8,3 +8,28 @@ export type TAssumeProjectPrivilegeDTO = {
   tokenVersionId: string;
   actorPermissionDetails: OrgServiceActor;
 };
+
+export interface TAssumePrivilegeServiceFactory {
+  assumeProjectPrivileges: ({
+    targetActorType,
+    targetActorId,
+    projectId,
+    actorPermissionDetails,
+    tokenVersionId
+  }: TAssumeProjectPrivilegeDTO) => Promise<{
+    actorType: ActorType.USER | ActorType.IDENTITY;
+    actorId: string;
+    projectId: string;
+    assumePrivilegesToken: string;
+  }>;
+  verifyAssumePrivilegeToken: (
+    token: string,
+    tokenVersionId: string
+  ) => {
+    tokenVersionId: string;
+    projectId: string;
+    requesterId: string;
+    actorType: ActorType;
+    actorId: string;
+  };
+}

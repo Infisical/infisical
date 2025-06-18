@@ -1,10 +1,12 @@
 import { Dispatch, SetStateAction, useState } from "react";
+import { useFormContext } from "react-hook-form";
 import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Panel } from "@xyflow/react";
 
 import { Button, FormLabel, IconButton, Input, Select, SelectItem } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
+import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 import { ViewMode } from "../types";
 
@@ -32,6 +34,7 @@ export const PermissionSimulation = ({
   setSecretName
 }: TProps) => {
   const [expand, setExpand] = useState(false);
+  const { control } = useFormContext();
 
   const handlePermissionSimulation = () => {
     setExpand(true);
@@ -137,6 +140,11 @@ export const PermissionSimulation = ({
                   value={secretName}
                   onChange={(e) => setSecretName(e.target.value)}
                 />
+              </div>
+            )}
+            {subject === ProjectPermissionSub.DynamicSecrets && (
+              <div>
+                <MetadataForm control={control} />
               </div>
             )}
           </>

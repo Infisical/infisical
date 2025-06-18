@@ -11,7 +11,7 @@ import { KmsDataKey, KmsKeyUsage } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TExternalKmsDALFactory } from "./external-kms-dal";
 import {
   TCreateExternalKmsDTO,

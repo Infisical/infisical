@@ -2,10 +2,11 @@ import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faEllipsisV,
   faMagnifyingGlass,
   faSearch,
-  faTrash,
-  faUsers
+  faUsers,
+  faUsersSlash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
@@ -13,6 +14,10 @@ import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
   IconButton,
   Input,
@@ -184,33 +189,42 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       </Td>
                       <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
                       <Td className="flex justify-end">
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
-                          a={ProjectPermissionSub.Groups}
-                        >
-                          {(isAllowed) => (
-                            <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                              <Tooltip content="Remove">
-                                <IconButton
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteGroup", {
-                                      id,
-                                      name
-                                    });
-                                  }}
-                                  colorSchema="danger"
-                                  variant="plain"
-                                  ariaLabel="update"
-                                  className="ml-4"
-                                  isDisabled={!isAllowed}
-                                >
-                                  <FontAwesomeIcon icon={faTrash} />
-                                </IconButton>
-                              </Tooltip>
-                            </div>
-                          )}
-                        </ProjectPermissionCan>
+                        <Tooltip className="max-w-sm text-center" content="Options">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                ariaLabel="Options"
+                                colorSchema="secondary"
+                                className="w-6"
+                                variant="plain"
+                              >
+                                <FontAwesomeIcon icon={faEllipsisV} />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Delete}
+                                a={ProjectPermissionSub.Groups}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    icon={<FontAwesomeIcon icon={faUsersSlash} />}
+                                    isDisabled={!isAllowed}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deleteGroup", {
+                                        id,
+                                        name
+                                      });
+                                    }}
+                                  >
+                                    Remove Group From Project
+                                  </DropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </Tooltip>
                       </Td>
                     </Tr>
                   );

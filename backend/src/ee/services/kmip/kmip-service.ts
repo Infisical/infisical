@@ -18,7 +18,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionKmipActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TKmipClientCertificateDALFactory } from "./kmip-client-certificate-dal";
 import { TKmipClientDALFactory } from "./kmip-client-dal";

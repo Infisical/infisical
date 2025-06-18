@@ -17,6 +17,27 @@ type Props = {
   access: PermissionAccess;
 } & Pick<ReturnType<typeof createFolderNode>["data"], "actionRuleMap" | "subject">;
 
+type ConditionDisplayProps = {
+  _key: string;
+  operator: string;
+  value: string | string[];
+};
+
+const ConditionDisplay = ({ _key: key, value, operator }: ConditionDisplayProps) => {
+  return (
+    <li>
+      <span className="font-medium capitalize text-mineshaft-100">{camelCaseToSpaces(key)}</span>{" "}
+      <span className="text-mineshaft-200">
+        {formatedConditionsOperatorNames[operator as PermissionConditionOperators]}
+      </span>{" "}
+      <span className="rounded bg-mineshaft-600 p-0.5 font-mono">
+        {typeof value === "string" ? value : value.join(", ")}
+      </span>
+      .
+    </li>
+  );
+};
+
 export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subject }: Props) => {
   let component: ReactElement;
 
@@ -56,43 +77,58 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
             {actionRuleMap.map((ruleMap, index) => {
               const rule = ruleMap[action];
 
-              if (
-                !rule ||
-                !rule.conditions ||
-                (!rule.conditions.secretName && !rule.conditions.secretTags)
-              )
-                return null;
+              if (!rule || !rule.conditions) return null;
 
-              return (
-                <li key={`${action}_${index + 1}`}>
-                  <span className={`italic ${rule.inverted ? "text-red" : "text-green"} `}>
-                    {rule.inverted ? "Forbids" : "Allows"}
-                  </span>
-                  <span> when:</span>
-                  {Object.entries(rule.conditions).map(([key, condition]) => (
-                    <ul key={`${action}_${index + 1}_${key}`} className="list-[square] pl-4">
-                      {Object.entries(condition as object).map(([operator, value]) => (
-                        <li key={`${action}_${index + 1}_${key}_${operator}`}>
-                          <span className="font-medium capitalize text-mineshaft-100">
-                            {camelCaseToSpaces(key)}
-                          </span>{" "}
-                          <span className="text-mineshaft-200">
-                            {
-                              formatedConditionsOperatorNames[
-                                operator as PermissionConditionOperators
-                              ]
+              if (
+                rule.conditions.secretName ||
+                rule.conditions.secretTags ||
+                rule.conditions.metadata
+              ) {
+                return (
+                  <li key={`${action}_${index + 1}`}>
+                    <span className="italic">{rule.inverted ? "Forbids" : "Allows"}</span>
+                    <span> when:</span>
+                    {Object.entries(rule.conditions).map(([key, condition]) => {
+                      if (key.match(/secretPath|environment/)) {
+                        return null;
+                      }
+
+                      return (
+                        <ul key={`${action}_${index + 1}_${key}`} className="list-[square] pl-4">
+                          {Object.entries(condition as object).map(([operator, value]) => {
+                            if (operator === "$elemMatch") {
+                              return Object.entries(value as object).map(
+                                ([nestedKey, nestedCondition]) =>
+                                  Object.entries(nestedCondition as object).map(
+                                    ([nestedOperator, nestedValue]) => (
+                                      <ConditionDisplay
+                                        _key={`${key} ${nestedKey}`}
+                                        operator={nestedOperator}
+                                        value={nestedValue}
+                                        key={`${action}_${index + 1}_${key}_${operator}_${nestedKey}_${nestedOperator}`}
+                                      />
+                                    )
+                                  )
+                              );
                             }
-                          </span>{" "}
-                          <span className={rule.inverted ? "text-red" : "text-green"}>
-                            {typeof value === "string" ? value : value.join(", ")}
-                          </span>
-                          .
-                        </li>
-                      ))}
-                    </ul>
-                  ))}
-                </li>
-              );
+
+                            return (
+                              <ConditionDisplay
+                                _key={key}
+                                operator={operator}
+                                value={value}
+                                key={`${action}_${index + 1}_${key}_${operator}`}
+                              />
+                            );
+                          })}
+                        </ul>
+                      );
+                    })}
+                  </li>
+                );
+              }
+
+              return null;
             })}
           </ul>
         </>
