@@ -516,11 +516,11 @@
             "integrations/app-connections/oci",
             "integrations/app-connections/oracledb",
             "integrations/app-connections/postgres",
+            "integrations/app-connections/render",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
             "integrations/app-connections/vercel",
-            "integrations/app-connections/windmill",
-            "integrations/app-connections/render"
+            "integrations/app-connections/windmill"
           ]
         }
       ]
@@ -546,11 +546,11 @@
             "integrations/secret-syncs/hashicorp-vault",
             "integrations/secret-syncs/humanitec",
             "integrations/secret-syncs/oci-vault",
+            "integrations/secret-syncs/render",
             "integrations/secret-syncs/teamcity",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
-            "integrations/secret-syncs/windmill",
-            "integrations/secret-syncs/render"
+            "integrations/secret-syncs/windmill"
           ]
         }
       ]
@@ -1412,6 +1412,18 @@
               ]
             },
             {
+              "group": "Render",
+              "pages": [
+                "api-reference/endpoints/app-connections/render/list",
+                "api-reference/endpoints/app-connections/render/available",
+                "api-reference/endpoints/app-connections/render/get-by-id",
+                "api-reference/endpoints/app-connections/render/get-by-name",
+                "api-reference/endpoints/app-connections/render/create",
+                "api-reference/endpoints/app-connections/render/update",
+                "api-reference/endpoints/app-connections/render/delete"
+              ]
+            },
+            {
               "group": "TeamCity",
               "pages": [
                 "api-reference/endpoints/app-connections/teamcity/list",
@@ -1457,18 +1469,6 @@
                 "api-reference/endpoints/app-connections/windmill/create",
                 "api-reference/endpoints/app-connections/windmill/update",
                 "api-reference/endpoints/app-connections/windmill/delete"
-              ]
-            },
-            {
-              "group": "Render",
-              "pages": [
-                "api-reference/endpoints/app-connections/render/list",
-                "api-reference/endpoints/app-connections/render/available",
-                "api-reference/endpoints/app-connections/render/get-by-id",
-                "api-reference/endpoints/app-connections/render/get-by-name",
-                "api-reference/endpoints/app-connections/render/create",
-                "api-reference/endpoints/app-connections/render/update",
-                "api-reference/endpoints/app-connections/render/delete"
               ]
             }
           ]
@@ -1670,6 +1670,20 @@
               ]
             },
             {
+              "group": "Render",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/render/list",
+                "api-reference/endpoints/secret-syncs/render/get-by-id",
+                "api-reference/endpoints/secret-syncs/render/get-by-name",
+                "api-reference/endpoints/secret-syncs/render/create",
+                "api-reference/endpoints/secret-syncs/render/update",
+                "api-reference/endpoints/secret-syncs/render/delete",
+                "api-reference/endpoints/secret-syncs/render/sync-secrets",
+                "api-reference/endpoints/secret-syncs/render/import-secrets",
+                "api-reference/endpoints/secret-syncs/render/remove-secrets"
+              ]
+            },
+            {
               "group": "TeamCity",
               "pages": [
                 "api-reference/endpoints/secret-syncs/teamcity/list",
@@ -1722,20 +1736,6 @@
                 "api-reference/endpoints/secret-syncs/windmill/sync-secrets",
                 "api-reference/endpoints/secret-syncs/windmill/import-secrets",
                 "api-reference/endpoints/secret-syncs/windmill/remove-secrets"
-              ]
-            },
-            {
-              "group": "Render",
-              "pages": [
-                "api-reference/endpoints/secret-syncs/render/list",
-                "api-reference/endpoints/secret-syncs/render/get-by-id",
-                "api-reference/endpoints/secret-syncs/render/get-by-name",
-                "api-reference/endpoints/secret-syncs/render/create",
-                "api-reference/endpoints/secret-syncs/render/update",
-                "api-reference/endpoints/secret-syncs/render/delete",
-                "api-reference/endpoints/secret-syncs/render/sync-secrets",
-                "api-reference/endpoints/secret-syncs/render/import-secrets",
-                "api-reference/endpoints/secret-syncs/render/remove-secrets"
               ]
             }
           ]

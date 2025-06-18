@@ -90,11 +90,17 @@ const deleteEnvironmentSecret = async (secretSync: TRenderSyncWithCredentials, s
   );
 };
 
+const sleep = async () =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 500);
+  });
+
 export const RenderSyncFns = {
   syncSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
     const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
     for await (const key of Object.keys(secretMap)) {
       await putEnvironmentSecret(secretSync, secretMap, key);
+      await sleep();
     }
 
     if (secretSync.syncOptions.disableSecretDeletion) return;
@@ -106,6 +112,7 @@ export const RenderSyncFns = {
 
       if (!secretMap[renderSecret.key]) {
         await deleteEnvironmentSecret(secretSync, renderSecret);
+        await sleep();
       }
     }
   },
@@ -120,6 +127,7 @@ export const RenderSyncFns = {
     for await (const encryptedSecret of encryptedSecrets) {
       if (encryptedSecret.key in secretMap) {
         await deleteEnvironmentSecret(secretSync, encryptedSecret);
+        await sleep();
       }
     }
   }
