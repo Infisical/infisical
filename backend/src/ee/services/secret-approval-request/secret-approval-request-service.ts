@@ -208,8 +208,21 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
+    const getSecretMapPath = async (folderIds: string[]) => {
+      const secretPaths = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+
+      const secretPathMap: Record<string, string> = {};
+
+      secretPaths.forEach((folder) => {
+        if (folder) secretPathMap[folder.id] = folder.path;
+      });
+
+      return secretPathMap;
+    };
+
     if (shouldUseSecretV2Bridge) {
-      return secretApprovalRequestDAL.findByProjectIdBridgeSecretV2({
+      const approvalsV2 = await secretApprovalRequestDAL.findByProjectIdBridgeSecretV2({
         projectId,
         committer,
         environment,
@@ -218,7 +231,12 @@ export const secretApprovalRequestServiceFactory = ({
         limit,
         offset
       });
+
+      const secretPathMap = await getSecretMapPath([...new Set(approvalsV2.map((approval) => approval.folderId))]);
+
+      return approvalsV2.map((approval) => ({ ...approval, secretPath: secretPathMap[approval.folderId] }));
     }
+
     const approvals = await secretApprovalRequestDAL.findByProjectId({
       projectId,
       committer,
@@ -228,7 +246,10 @@ export const secretApprovalRequestServiceFactory = ({
       limit,
       offset
     });
-    return approvals;
+
+    const secretPathMap = await getSecretMapPath([...new Set(approvals.map((approval) => approval.folderId))]);
+
+    return approvals.map((approval) => ({ ...approval, secretPath: secretPathMap[approval.folderId] }));
   };
 
   const getSecretApprovalDetails = async ({

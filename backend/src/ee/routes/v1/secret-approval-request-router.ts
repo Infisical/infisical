@@ -60,6 +60,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
             committerUser: approvalRequestUser,
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
             environment: z.string(),
+            secretPath: z.string(),
             reviewers: z.object({ userId: z.string(), status: z.string() }).array(),
             approvers: z
               .object({
