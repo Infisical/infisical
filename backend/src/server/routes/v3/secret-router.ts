@@ -518,7 +518,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: SecretNameSchema.describe(RAW_SECRETS.CREATE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim().describe(RAW_SECRETS.CREATE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.CREATE.workspaceId),
+        projectSlug: z.string().trim().optional().describe(RAW_SECRETS.CREATE.projectSlug),
         environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
         secretPath: z
           .string()
@@ -558,13 +559,32 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      let { workspaceId } = req.body;
+      if (req.permission.type === ActorType.IDENTITY && req.body.projectSlug && !workspaceId) {
+        const workspace = await server.services.project.getAProject({
+          filter: {
+            type: ProjectFilterType.SLUG,
+            orgId: req.permission.orgId,
+            slug: req.body.projectSlug
+          },
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId
+        });
+
+        if (!workspace) throw new NotFoundError({ message: `No project found with slug ${req.body.projectSlug}` });
+
+        workspaceId = workspace.id;
+      }
+
       const secretOperation = await server.services.secret.createSecretRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         environment: req.body.environment,
         actorAuthMethod: req.permission.authMethod,
-        projectId: req.body.workspaceId,
+        projectId: workspaceId,
         secretPath: req.body.secretPath,
         secretName: req.params.secretName,
         type: req.body.type,
@@ -582,7 +602,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       const { secret } = secretOperation;
       await server.services.auditLog.createAuditLog({
-        projectId: req.body.workspaceId,
+        projectId: workspaceId,
         ...req.auditLogInfo,
         event: {
           type: EventType.CREATE_SECRET,
@@ -602,7 +622,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
-          workspaceId: req.body.workspaceId,
+          workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -633,7 +653,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: BaseSecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim().describe(RAW_SECRETS.UPDATE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.workspaceId),
+        projectSlug: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectSlug),
         environment: z.string().trim().describe(RAW_SECRETS.UPDATE.environment),
         secretValue: z
           .string()
@@ -679,13 +700,31 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      let { workspaceId } = req.body;
+      if (req.permission.type === ActorType.IDENTITY && req.body.projectSlug && !workspaceId) {
+        const workspace = await server.services.project.getAProject({
+          filter: {
+            type: ProjectFilterType.SLUG,
+            orgId: req.permission.orgId,
+            slug: req.body.projectSlug
+          },
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId
+        });
+
+        if (!workspace) throw new NotFoundError({ message: `No project found with slug ${req.body.projectSlug}` });
+
+        workspaceId = workspace.id;
+      }
       const secretOperation = await server.services.secret.updateSecretRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         environment: req.body.environment,
-        projectId: req.body.workspaceId,
+        projectId: workspaceId,
         secretPath: req.body.secretPath,
         secretName: req.params.secretName,
         type: req.body.type,
@@ -707,7 +746,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { secret } = secretOperation;
 
       await server.services.auditLog.createAuditLog({
-        projectId: req.body.workspaceId,
+        projectId: workspaceId,
         ...req.auditLogInfo,
         event: {
           type: EventType.UPDATE_SECRET,
@@ -727,7 +766,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
-          workspaceId: req.body.workspaceId,
+          workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -757,7 +796,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: z.string().min(1).describe(RAW_SECRETS.DELETE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim().describe(RAW_SECRETS.DELETE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.workspaceId),
+        projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
         environment: z.string().trim().describe(RAW_SECRETS.DELETE.environment),
         secretPath: z
           .string()
@@ -780,13 +820,32 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      let { workspaceId } = req.body;
+      if (req.permission.type === ActorType.IDENTITY && req.body.projectSlug && !workspaceId) {
+        const workspace = await server.services.project.getAProject({
+          filter: {
+            type: ProjectFilterType.SLUG,
+            orgId: req.permission.orgId,
+            slug: req.body.projectSlug
+          },
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId
+        });
+
+        if (!workspace) throw new NotFoundError({ message: `No project found with slug ${req.body.projectSlug}` });
+
+        workspaceId = workspace.id;
+      }
+
       const secretOperation = await server.services.secret.deleteSecretRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         environment: req.body.environment,
-        projectId: req.body.workspaceId,
+        projectId: workspaceId,
         secretPath: req.body.secretPath,
         secretName: req.params.secretName,
         type: req.body.type
@@ -798,7 +857,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { secret } = secretOperation;
 
       await server.services.auditLog.createAuditLog({
-        projectId: req.body.workspaceId,
+        projectId: workspaceId,
         ...req.auditLogInfo,
         event: {
           type: EventType.DELETE_SECRET,
@@ -817,7 +876,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         properties: {
           numberOfSecrets: 1,
-          workspaceId: req.body.workspaceId,
+          workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
