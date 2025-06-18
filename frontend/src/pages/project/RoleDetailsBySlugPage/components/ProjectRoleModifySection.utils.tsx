@@ -291,6 +291,13 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
+
       [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Member]: MemberPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Groups]: GroupPolicyActionSchema.array().default([]),
@@ -342,7 +349,6 @@ export const projectRoleFormSchema = z.object({
         .default([]),
       [ProjectPermissionSub.Kms]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Cmek]: CmekPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.SecretSyncs]: SecretSyncPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Kmip]: KmipPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretScanningDataSources]:
         SecretScanningDataSourcePolicyActionSchema.array().default([]),
@@ -366,7 +372,8 @@ type TConditionalFields =
   | ProjectPermissionSub.CertificateTemplates
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
-  | ProjectPermissionSub.Identity;
+  | ProjectPermissionSub.Identity
+  | ProjectPermissionSub.SecretSyncs;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -379,7 +386,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SshHosts ||
   subject === ProjectPermissionSub.SecretRotation ||
   subject === ProjectPermissionSub.PkiSubscribers ||
-  subject === ProjectPermissionSub.CertificateTemplates;
+  subject === ProjectPermissionSub.CertificateTemplates ||
+  subject === ProjectPermissionSub.SecretSyncs;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -484,7 +492,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SshCertificateTemplates,
         ProjectPermissionSub.SshCertificateAuthorities,
         ProjectPermissionSub.SshCertificates,
-        ProjectPermissionSub.SshHostGroups
+        ProjectPermissionSub.SshHostGroups,
+        ProjectPermissionSub.SecretSyncs
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -509,6 +518,36 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionSecretRotationActions.Edit]: canEdit,
             [ProjectPermissionSecretRotationActions.Delete]: canDelete,
             [ProjectPermissionSecretRotationActions.RotateSecrets]: canRotate,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
+        if (subject === ProjectPermissionSub.SecretSyncs) {
+          const canRead = action.includes(ProjectPermissionSecretSyncActions.Read);
+          const canEdit = action.includes(ProjectPermissionSecretSyncActions.Edit);
+          const canDelete = action.includes(ProjectPermissionSecretSyncActions.Delete);
+          const canCreate = action.includes(ProjectPermissionSecretSyncActions.Create);
+          const canSyncSecrets = action.includes(ProjectPermissionSecretSyncActions.SyncSecrets);
+          const canImportSecrets = action.includes(
+            ProjectPermissionSecretSyncActions.ImportSecrets
+          );
+          const canRemoveSecrets = action.includes(
+            ProjectPermissionSecretSyncActions.RemoveSecrets
+          );
+
+          if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            [ProjectPermissionSecretSyncActions.Read]: canRead,
+            [ProjectPermissionSecretSyncActions.Create]: canCreate,
+            [ProjectPermissionSecretSyncActions.Edit]: canEdit,
+            [ProjectPermissionSecretSyncActions.Delete]: canDelete,
+            [ProjectPermissionSecretSyncActions.SyncSecrets]: canSyncSecrets,
+            [ProjectPermissionSecretSyncActions.ImportSecrets]: canImportSecrets,
+            [ProjectPermissionSecretSyncActions.RemoveSecrets]: canRemoveSecrets,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -774,31 +813,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0][ProjectPermissionGroupActions.Delete] = true;
       if (canGrantPrivileges)
         formVal[subject]![0][ProjectPermissionGroupActions.GrantPrivileges] = true;
-      return;
-    }
-
-    if (subject === ProjectPermissionSub.SecretSyncs) {
-      const canRead = action.includes(ProjectPermissionSecretSyncActions.Read);
-      const canEdit = action.includes(ProjectPermissionSecretSyncActions.Edit);
-      const canDelete = action.includes(ProjectPermissionSecretSyncActions.Delete);
-      const canCreate = action.includes(ProjectPermissionSecretSyncActions.Create);
-      const canSyncSecrets = action.includes(ProjectPermissionSecretSyncActions.SyncSecrets);
-      const canImportSecrets = action.includes(ProjectPermissionSecretSyncActions.ImportSecrets);
-      const canRemoveSecrets = action.includes(ProjectPermissionSecretSyncActions.RemoveSecrets);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      // from above statement we are sure it won't be undefined
-      if (canRead) formVal[subject]![0][ProjectPermissionSecretSyncActions.Read] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionSecretSyncActions.Edit] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionSecretSyncActions.Create] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionSecretSyncActions.Delete] = true;
-      if (canSyncSecrets)
-        formVal[subject]![0][ProjectPermissionSecretSyncActions.SyncSecrets] = true;
-      if (canImportSecrets)
-        formVal[subject]![0][ProjectPermissionSecretSyncActions.ImportSecrets] = true;
-      if (canRemoveSecrets)
-        formVal[subject]![0][ProjectPermissionSecretSyncActions.RemoveSecrets] = true;
       return;
     }
 

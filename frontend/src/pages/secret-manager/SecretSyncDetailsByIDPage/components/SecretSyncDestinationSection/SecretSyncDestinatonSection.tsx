@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -35,7 +36,7 @@ type Props = {
 };
 
 export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: Props) => {
-  const { destination, connection } = secretSync;
+  const { destination, connection, folder, environment } = secretSync;
 
   const app = APP_CONNECTION_MAP[connection.app].name;
 
@@ -101,14 +102,19 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       throw new Error(`Unhandled Destination Section components: ${destination}`);
   }
 
+  const permissionSubject =
+    environment && folder
+      ? subject(ProjectPermissionSub.SecretSyncs, {
+          environment: environment.slug,
+          secretPath: folder.path
+        })
+      : ProjectPermissionSub.SecretSyncs;
+
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="font-semibold text-mineshaft-100">Destination Configuration</h3>
-        <ProjectPermissionCan
-          I={ProjectPermissionSecretSyncActions.Edit}
-          a={ProjectPermissionSub.SecretSyncs}
-        >
+        <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
           {(isAllowed) => (
             <IconButton
               variant="plain"

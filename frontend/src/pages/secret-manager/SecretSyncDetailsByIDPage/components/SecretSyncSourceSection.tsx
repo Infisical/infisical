@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import { faEdit, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -15,6 +16,14 @@ type Props = {
 
 export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => {
   const { folder, environment } = secretSync;
+
+  const permissionSubject =
+    environment && folder
+      ? subject(ProjectPermissionSub.SecretSyncs, {
+          environment: environment.slug,
+          secretPath: folder.path
+        })
+      : ProjectPermissionSub.SecretSyncs;
 
   return (
     <div>
@@ -35,10 +44,7 @@ export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => 
                 </div>
               </Tooltip>
             )}
-            <ProjectPermissionCan
-              I={ProjectPermissionSecretSyncActions.Edit}
-              a={ProjectPermissionSub.SecretSyncs}
-            >
+            <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
               {(isAllowed) => (
                 <IconButton
                   variant="plain"
