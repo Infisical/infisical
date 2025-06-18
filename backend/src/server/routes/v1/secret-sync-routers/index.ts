@@ -14,6 +14,7 @@ import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
 import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
+import { registerRenderSyncRouter } from "./render-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
@@ -39,5 +40,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.TeamCity]: registerTeamCitySyncRouter,
   [SecretSync.OCIVault]: registerOCIVaultSyncRouter,
   [SecretSync.OnePass]: registerOnePassSyncRouter,
+  [SecretSync.Render]: registerRenderSyncRouter,
   [SecretSync.Flyio]: registerFlyioSyncRouter
 };

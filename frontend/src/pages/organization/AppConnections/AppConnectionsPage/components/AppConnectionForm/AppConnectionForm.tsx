@@ -30,6 +30,7 @@ import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
+import { RenderConnectionForm } from "./RenderConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
@@ -120,6 +121,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <OCIConnectionForm onSubmit={onSubmit} />;
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Render:
+      return <RenderConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} />;
     default:
@@ -206,6 +209,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Render:
+      return <RenderConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:

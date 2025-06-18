@@ -62,6 +62,10 @@ import {
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
 import {
+  RenderConnectionListItemSchema,
+  SanitizedRenderConnectionSchema
+} from "@app/services/app-connection/render/render-connection-schema";
+import {
   SanitizedTeamCityConnectionSchema,
   TeamCityConnectionListItemSchema
 } from "@app/services/app-connection/teamcity";
@@ -102,6 +106,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOCIConnectionSchema.options,
   ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options,
+  ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options
 ]);
 
@@ -130,6 +135,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OCIConnectionListItemSchema,
   OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema,
+  RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema
 ]);
 

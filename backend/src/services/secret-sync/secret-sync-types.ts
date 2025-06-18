@@ -87,6 +87,12 @@ import {
   THumanitecSyncWithCredentials
 } from "./humanitec";
 import {
+  TRenderSync,
+  TRenderSyncInput,
+  TRenderSyncListItem,
+  TRenderSyncWithCredentials
+} from "./render/render-sync-types";
+import {
   TTeamCitySync,
   TTeamCitySyncInput,
   TTeamCitySyncListItem,
@@ -118,6 +124,7 @@ export type TSecretSync =
   | TTeamCitySync
   | TOCIVaultSync
   | TOnePassSync
+  | TRenderSync
   | TFlyioSync;
 
 export type TSecretSyncWithCredentials =
@@ -138,6 +145,7 @@ export type TSecretSyncWithCredentials =
   | TTeamCitySyncWithCredentials
   | TOCIVaultSyncWithCredentials
   | TOnePassSyncWithCredentials
+  | TRenderSyncWithCredentials
   | TFlyioSyncWithCredentials;
 
 export type TSecretSyncInput =
@@ -158,6 +166,7 @@ export type TSecretSyncInput =
   | TTeamCitySyncInput
   | TOCIVaultSyncInput
   | TOnePassSyncInput
+  | TRenderSyncInput
   | TFlyioSyncInput;
 
 export type TSecretSyncListItem =
@@ -178,6 +187,7 @@ export type TSecretSyncListItem =
   | TTeamCitySyncListItem
   | TOCIVaultSyncListItem
   | TOnePassSyncListItem
+  | TRenderSyncListItem
   | TFlyioSyncListItem;
 
 export type TSyncOptionsConfig = {

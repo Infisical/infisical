@@ -27,6 +27,7 @@ import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
+import { RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
@@ -104,6 +105,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.OnePass:
       DestinationFieldsComponent = <OnePassSyncReviewFields />;
+      break;
+    case SecretSync.Render:
+      DestinationFieldsComponent = <RenderSyncReviewFields />;
       break;
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;

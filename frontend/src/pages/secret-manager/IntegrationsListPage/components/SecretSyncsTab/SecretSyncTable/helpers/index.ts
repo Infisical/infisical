@@ -116,6 +116,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.devopsProjectName;
       secondaryText = destinationConfig.devopsProjectId;
       break;
+    case SecretSync.Render:
+      primaryText = destinationConfig.serviceName ?? destinationConfig.serviceId;
+      secondaryText = "Service";
+      break;
     case SecretSync.Flyio:
       primaryText = destinationConfig.appId;
       secondaryText = "App ID";

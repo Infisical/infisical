@@ -21,6 +21,7 @@ import { TMySqlConnection } from "./mysql-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TRenderConnection } from "./render-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
@@ -47,6 +48,7 @@ export * from "./mysql-connection";
 export * from "./oci-connection";
 export * from "./oracledb-connection";
 export * from "./postgres-connection";
+export * from "./render-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
@@ -77,6 +79,7 @@ export type TAppConnection =
   | TTeamCityConnection
   | TOCIConnection
   | TOnePassConnection
+  | TRenderConnection
   | TFlyioConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
@@ -129,5 +132,6 @@ export type TAppConnectionMap = {
   [AppConnection.TeamCity]: TTeamCityConnection;
   [AppConnection.OCI]: TOCIConnection;
   [AppConnection.OnePass]: TOnePassConnection;
+  [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
 };

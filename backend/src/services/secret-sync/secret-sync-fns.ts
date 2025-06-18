@@ -35,6 +35,7 @@ import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
@@ -59,6 +60,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
   [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION,
   [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION,
+  [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION
 };
 
@@ -217,6 +219,8 @@ export const SecretSyncFns = {
         return OCIVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OnePass:
         return OnePassSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Render:
+        return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
@@ -296,6 +300,9 @@ export const SecretSyncFns = {
       case SecretSync.OnePass:
         secretMap = await OnePassSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Render:
+        secretMap = await RenderSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Flyio:
         secretMap = await FlyioSyncFns.getSecrets(secretSync);
         break;
@@ -366,6 +373,8 @@ export const SecretSyncFns = {
         return OCIVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OnePass:
         return OnePassSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Render:
+        return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:

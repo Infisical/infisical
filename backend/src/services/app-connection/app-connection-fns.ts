@@ -79,6 +79,8 @@ import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import { RenderConnectionMethod } from "./render/render-connection-enums";
+import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import {
   getTeamCityConnectionListItem,
   TeamCityConnectionMethod,
@@ -123,6 +125,7 @@ export const listAppConnectionOptions = () => {
     getOCIConnectionListItem(),
     getOracleDBConnectionListItem(),
     getOnePassConnectionListItem(),
+    getRenderConnectionListItem(),
     getFlyioConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -199,6 +202,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -249,6 +253,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "App Role";
     case LdapConnectionMethod.SimpleBind:
       return "Simple Bind";
+    case RenderConnectionMethod.ApiKey:
+      return "API Key";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -304,6 +310,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OCI]: platformManagedCredentialsNotSupported,
   [AppConnection.OracleDB]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
+  [AppConnection.Render]: platformManagedCredentialsNotSupported,
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported
 };
 

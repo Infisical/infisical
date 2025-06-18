@@ -110,6 +110,10 @@ export type TOnePassConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OnePass;
 };
 
+export type TRenderConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Render;
+};
+
 export type TFlyioConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Flyio;
 };
@@ -137,6 +141,7 @@ export type TAppConnectionOption =
   | TTeamCityConnectionOption
   | TOCIConnectionOption
   | TOnePassConnectionOption
+  | TRenderConnectionOption
   | TFlyioConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -164,5 +169,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.TeamCity]: TTeamCityConnectionOption;
   [AppConnection.OCI]: TOCIConnectionOption;
   [AppConnection.OnePass]: TOnePassConnectionOption;
+  [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
 };

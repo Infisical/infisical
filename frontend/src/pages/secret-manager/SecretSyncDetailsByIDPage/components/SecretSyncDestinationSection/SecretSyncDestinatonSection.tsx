@@ -25,6 +25,7 @@ import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
+import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
@@ -94,6 +95,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.AzureDevOps:
       DestinationComponents = <AzureDevOpsSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Render:
+      DestinationComponents = <RenderSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Flyio:
       DestinationComponents = <FlyioSyncDestinationSection secretSync={secretSync} />;
