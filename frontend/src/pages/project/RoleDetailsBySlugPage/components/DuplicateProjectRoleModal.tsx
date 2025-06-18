@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -49,9 +50,27 @@ const Content = ({ role, onClose }: ContentProps) => {
   const navigate = useNavigate();
 
   const handleDuplicateRole = async (form: FormData) => {
+    const sanitizedPermission = role.permissions.map((permission) => {
+      if (
+        // if contains new secret action the legacy one can be stripped off
+        // mainly done for duplicating predefined roles
+        permission.subject === ProjectPermissionSub.Secrets &&
+        (permission.action.includes(ProjectPermissionSecretActions.DescribeSecret) ||
+          permission.action.includes(ProjectPermissionSecretActions.ReadValue))
+      ) {
+        return {
+          ...permission,
+          action: (permission.action as string[])?.filter(
+            (action) => action !== ProjectPermissionSecretActions.DescribeAndReadValue
+          )
+        };
+      }
+      return permission;
+    });
+
     const newRole = await createRole.mutateAsync({
       projectId: currentWorkspace.id,
-      permissions: role.permissions,
+      permissions: sanitizedPermission,
       ...form
     });
 
