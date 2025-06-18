@@ -112,7 +112,7 @@ The Helm chart auto bootstrap feature:
 The `secretTemplate` field allows you to customize the data section of the created Kubernetes secret. The template has access to the full bootstrap response and includes helper functions:
 
 - `{{ .Identity.Credentials.Token }}` - The admin machine identity token
-- `{{ .Organization.Id }}` - The created organization ID
+- `{{ .Organization.ID }}` - The created organization ID
 - `{{ .Organization.Slug }}` - The organization slug
 - `{{ .User.Email }}` - The admin user email
 - `b64enc` function for base64 encoding values

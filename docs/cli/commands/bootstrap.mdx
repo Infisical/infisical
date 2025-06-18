@@ -107,7 +107,7 @@ When using `k8-secret`, the command will create or update a Kubernetes secret di
 infisical bootstrap --k8-secret-template='{"data":{"token":"{{.Identity.Credentials.Token | b64enc}}"}}'
 
 # Example template with multiple fields
-infisical bootstrap --k8-secret-template='{"stringData":{"token":"{{.Identity.Credentials.Token}}","org-id":"{{.Organization.Id}}","user-email":"{{.User.Email}}"}}'
+infisical bootstrap --k8-secret-template='{"stringData":{"token":"{{.Identity.Credentials.Token}}","org-id":"{{.Organization.ID}}","user-email":"{{.User.Email}}"}}'
 ```
 
 Available template functions:
@@ -117,13 +117,13 @@ Available template functions:
 Available data fields:
 
 - `.Identity.Credentials.Token`: The machine identity token
-- `.Identity.Id`: The identity ID
+- `.Identity.ID`: The identity ID
 - `.Identity.Name`: The identity name
-- `.Organization.Id`: The organization ID
+- `.Organization.ID`: The organization ID
 - `.Organization.Name`: The organization name
 - `.Organization.Slug`: The organization slug
 - `.User.Email`: The admin user email
-- `.User.Id`: The admin user ID
+- `.User.ID`: The admin user ID
 - `.User.FirstName`: The admin user first name
 - `.User.LastName`: The admin user last name
 
