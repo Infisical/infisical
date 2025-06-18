@@ -209,7 +209,7 @@ var bootstrapCmd = &cobra.Command{
 
 		k8SecretTemplate, err := cmd.Flags().GetString("k8-secret-template")
 		if err != nil {
-			log.Error().Msgf("Failed to get output template: %v", err)
+			log.Error().Msgf("Failed to get k8-secret-template: %v", err)
 		}
 
 		k8SecretName, err := cmd.Flags().GetString("k8-secret-name")
@@ -248,6 +248,7 @@ var bootstrapCmd = &cobra.Command{
 		ignoreIfBootstrapped, err := cmd.Flags().GetBool("ignore-if-bootstrapped")
 		if err != nil {
 			log.Error().Msgf("Failed to get ignore-if-bootstrapped flag: %v", err)
+			return
 		}
 
 		httpClient.SetHeader("Accept", "application/json")
@@ -290,7 +291,7 @@ func init() {
 	bootstrapCmd.Flags().String("organization", "", "The name of the organization to create for the instance")
 	bootstrapCmd.Flags().String("output", "", "The type of output to use for the bootstrap command (json or k8-secret)")
 	bootstrapCmd.Flags().Bool("ignore-if-bootstrapped", false, "Whether to continue on error if the instance has already been bootstrapped")
-	bootstrapCmd.Flags().String("k8-secret-template", "", "The template to use for rendering the Kubernetes secret (entire secret YAML)")
+	bootstrapCmd.Flags().String("k8-secret-template", "", "The template to use for rendering the Kubernetes secret (entire secret JSON)")
 	bootstrapCmd.Flags().String("k8-secret-namespace", "", "The namespace to use for the Kubernetes secret")
 	bootstrapCmd.Flags().String("k8-secret-name", "", "The name of the Kubernetes secret to create")
 	rootCmd.AddCommand(bootstrapCmd)
