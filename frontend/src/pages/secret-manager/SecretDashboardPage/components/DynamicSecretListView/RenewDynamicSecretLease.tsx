@@ -7,7 +7,7 @@ import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useRenewDynamicSecretLease } from "@app/hooks/api";
-import { DynamicSecretProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 type Props = {
   onClose: () => void;

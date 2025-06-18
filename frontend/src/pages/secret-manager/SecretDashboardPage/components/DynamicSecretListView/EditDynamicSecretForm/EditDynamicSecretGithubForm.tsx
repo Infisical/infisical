@@ -1,4 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -6,8 +8,6 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, FormLabel, Input, SecretInput, Tooltip } from "@app/components/v2";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 
 const formSchema = z.object({
   inputs: z.object({

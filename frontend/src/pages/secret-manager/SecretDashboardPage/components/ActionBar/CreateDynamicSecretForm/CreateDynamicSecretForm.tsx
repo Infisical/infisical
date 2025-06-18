@@ -26,6 +26,7 @@ import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
 import { GcpIamInputForm } from "./GcpIamInputForm";
+import { GithubInputForm } from "./GithubInputForm";
 import { KubernetesInputForm } from "./KubernetesInputForm";
 import { LdapInputForm } from "./LdapInputForm";
 import { MongoAtlasInputForm } from "./MongoAtlasInputForm";
@@ -38,7 +39,6 @@ import { SnowflakeInputForm } from "./SnowflakeInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 import { TotpInputForm } from "./TotpInputForm";
 import { VerticaInputForm } from "./VerticaInputForm";
-import { GithubInputForm } from "./GithubInputForm";
 
 type Props = {
   isOpen?: boolean;

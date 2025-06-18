@@ -1,4 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -15,8 +17,6 @@ import {
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 
 const formSchema = z.object({
   provider: z.object({

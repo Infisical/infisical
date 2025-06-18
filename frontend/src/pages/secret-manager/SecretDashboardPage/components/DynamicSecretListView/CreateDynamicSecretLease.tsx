@@ -624,6 +624,7 @@ export const CreateDynamicSecretLease = ({
     return <Spinner className="mx-auto h-40 text-mineshaft-700" />;
   }
 
+  // Github tokens are fixed to 1 hour
   const fixedTtl = provider === DynamicSecretProviders.Github;
 
   return (

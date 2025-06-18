@@ -10,6 +10,7 @@ import { EditDynamicSecretAzureEntraIdForm } from "./EditDynamicSecretAzureEntra
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
 import { EditDynamicSecretElasticSearchForm } from "./EditDynamicSecretElasticSearchForm";
 import { EditDynamicSecretGcpIamForm } from "./EditDynamicSecretGcpIamForm";
+import { EditDynamicSecretGithubForm } from "./EditDynamicSecretGithubForm";
 import { EditDynamicSecretKubernetesForm } from "./EditDynamicSecretKubernetesForm";
 import { EditDynamicSecretLdapForm } from "./EditDynamicSecretLdapForm";
 import { EditDynamicSecretMongoAtlasForm } from "./EditDynamicSecretMongoAtlasForm";
@@ -22,7 +23,6 @@ import { EditDynamicSecretSnowflakeForm } from "./EditDynamicSecretSnowflakeForm
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
 import { EditDynamicSecretTotpForm } from "./EditDynamicSecretTotpForm";
 import { EditDynamicSecretVerticaForm } from "./EditDynamicSecretVertica";
-import { EditDynamicSecretGithubForm } from "./EditDynamicSecretGithubForm";
 
 type Props = {
   onClose: () => void;

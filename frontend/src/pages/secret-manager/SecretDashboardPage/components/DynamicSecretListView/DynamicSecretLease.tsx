@@ -158,7 +158,7 @@ export const DynamicSecretLease = ({
                       >
                         {(isAllowed) => (
                           <IconButton
-                            ariaLabel="edit-folder"
+                            ariaLabel="renew-lease"
                             variant="plain"
                             size="sm"
                             className="p-0"
