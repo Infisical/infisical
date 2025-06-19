@@ -26,6 +26,7 @@ import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
+import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 
 export * from "./app-connection-router";
 
@@ -56,5 +57,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.OracleDB]: registerOracleDBConnectionRouter,
     [AppConnection.OnePass]: registerOnePassConnectionRouter,
     [AppConnection.Render]: registerRenderConnectionRouter,
-    [AppConnection.Flyio]: registerFlyioConnectionRouter
+    [AppConnection.Flyio]: registerFlyioConnectionRouter,
+    [AppConnection.Cloudflare]: registerCloudflareConnectionRouter
   };

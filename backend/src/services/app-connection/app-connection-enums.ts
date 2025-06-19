@@ -24,7 +24,8 @@ export enum AppConnection {
   OracleDB = "oracledb",
   OnePass = "1password",
   Render = "render",
-  Flyio = "flyio"
+  Flyio = "flyio",
+  Cloudflare = "cloudflare"
 }
 
 export enum AWSRegion {

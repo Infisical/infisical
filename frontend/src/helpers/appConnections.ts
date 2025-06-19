@@ -18,6 +18,7 @@ import {
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
+  CloudflareConnectionMethod,
   DatabricksConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
@@ -82,7 +83,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
   [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" },
   [AppConnection.Render]: { name: "Render", image: "Render.png" },
-  [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" }
+  [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
+  [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -111,6 +113,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
+    case CloudflareConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

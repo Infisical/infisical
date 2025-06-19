@@ -24,5 +24,6 @@ export enum AppConnection {
   OCI = "oci",
   OnePass = "1password",
   Render = "render",
-  Flyio = "flyio"
+  Flyio = "flyio",
+  Cloudflare = "cloudflare"
 }

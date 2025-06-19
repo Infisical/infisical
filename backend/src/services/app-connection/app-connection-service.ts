@@ -47,6 +47,7 @@ import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-servic
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
+import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
@@ -110,7 +111,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
   [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
-  [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema
+  [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
+  [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

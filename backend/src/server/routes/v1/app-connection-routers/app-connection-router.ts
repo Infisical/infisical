@@ -79,6 +79,10 @@ import {
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
 import { AuthMode } from "@app/services/auth/auth-type";
+import {
+  CloudflareConnectionListItemSchema,
+  SanitizedCloudflareConnectionSchema
+} from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
 
 // can't use discriminated due to multiple schemas for certain apps
 const SanitizedAppConnectionSchema = z.union([
@@ -107,7 +111,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
-  ...SanitizedFlyioConnectionSchema.options
+  ...SanitizedFlyioConnectionSchema.options,
+  ...SanitizedCloudflareConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -136,7 +141,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema,
   RenderConnectionListItemSchema,
-  FlyioConnectionListItemSchema
+  FlyioConnectionListItemSchema,
+  CloudflareConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

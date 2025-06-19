@@ -84,6 +84,7 @@ export enum IntegrationUrls {
   QOVERY_API_URL = "https://api.qovery.com",
   TERRAFORM_CLOUD_API_URL = "https://app.terraform.io",
   CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com",
+  CLOUDFLARE_API_URL = "https://api.cloudflare.com",
   // eslint-disable-next-line
   CLOUDFLARE_WORKERS_API_URL = "https://api.cloudflare.com",
   BITBUCKET_API_URL = "https://api.bitbucket.org",
