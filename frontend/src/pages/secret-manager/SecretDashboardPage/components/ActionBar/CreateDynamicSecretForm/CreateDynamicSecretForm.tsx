@@ -148,7 +148,7 @@ const DYNAMIC_SECRET_LIST = [
   {
     icon: <FontAwesomeIcon icon={faGithub} size="lg" />,
     provider: DynamicSecretProviders.Github,
-    title: "Github"
+    title: "GitHub"
   }
 ];
 

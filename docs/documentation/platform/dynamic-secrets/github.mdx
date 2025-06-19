@@ -1,23 +1,15 @@
 ---
-title: "Github"
-description: "Learn how to dynamically generate Github app tokens."
+title: "GitHub"
+description: "Learn how to dynamically generate GitHub App tokens."
 ---
 
-The Infisical Github dynamic secret allows you to generate short-lived tokens for a Github app on demand based on service account permissions.
+The Infisical GitHub dynamic secret allows you to generate short-lived tokens for a GitHub App on demand based on service account permissions.
 
-<Warning>
-    Github app tokens cannot be revoked. As such, revoking a token on Infisical does not invalidate the Github token; it remains active until it expires.
-</Warning>
-
-<Warning>
-    Github app tokens are fixed to a TTL of 1 hour.
-</Warning>
-
-## Setup Github App
+## Setup GitHub App
 
 <Steps>
     <Step title="Create an application on GitHub">
-        Navigate to [GitHub app settings](https://github.com/settings/apps) and click **New GitHub App**.
+        Navigate to [GitHub App settings](https://github.com/settings/apps) and click **New GitHub App**.
 
         ![integrations github app create](/images/integrations/github/app/self-hosted-github-app-create.png)
 
@@ -26,9 +18,9 @@ The Infisical Github dynamic secret allows you to generate short-lived tokens fo
         Disable webhook by unchecking the Active checkbox.
         ![integrations github app webhook](/images/integrations/github/app/self-hosted-github-app-webhook.png)
 
-        Configure the app's permissions to grant the necessary access for the dynamic secret's short-lived tokens.
+        Configure the app's permissions to grant the necessary access for the dynamic secret's short-lived tokens based on your use case.
 
-        Create the Github application.
+        Create the GitHub Application.
         ![integrations github app create confirm](/images/integrations/github/app/self-hosted-github-app-create-confirm.png)
 
         <Note>
@@ -37,7 +29,7 @@ The Infisical Github dynamic secret allows you to generate short-lived tokens fo
         </Note>
     </Step>
     <Step title="Save app credentials">
-        Copy the **App ID** and generate a new **Private Key** for your Github application.
+        Copy the **App ID** and generate a new **Private Key** for your GitHub Application.
         ![integrations github app create private key](/images/integrations/github/app/self-hosted-github-app-private-key.png)
 
         Save these for later steps.
@@ -53,7 +45,7 @@ The Infisical Github dynamic secret allows you to generate short-lived tokens fo
     </Step>
 </Steps>
 
-## Set up Dynamic Secrets with Github
+## Set up Dynamic Secrets with GitHub
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -62,7 +54,7 @@ The Infisical Github dynamic secret allows you to generate short-lived tokens fo
   <Step title="Click on the 'Add Dynamic Secret' button">
 	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
   </Step>
-  <Step title="Select 'Github'">
+  <Step title="Select 'GitHub'">
 	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/github/modal.png)
   </Step>
   <Step title="Provide the inputs for dynamic secret parameters">
@@ -110,11 +102,11 @@ This will allow you to see the expiration time of the lease or delete a lease be
 ![Lease Data](/images/platform/dynamic-secrets/lease-data.png)
 
 <Warning>
-    Github app tokens cannot be revoked. As such, revoking a token on Infisical does not invalidate the Github token; it remains active until it expires.
+    GitHub App tokens cannot be revoked. As such, revoking a token on Infisical does not invalidate the GitHub token; it remains active until it expires.
 </Warning>
 
 ## Renew Leases
 
-<Warning>
-    Github app tokens cannot be renewed because they are fixed to a lifetime of 1 hour.
-</Warning>
+<Note>
+    GitHub App tokens cannot be renewed because they are fixed to a lifetime of 1 hour.
+</Note>

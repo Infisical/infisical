@@ -33,8 +33,8 @@ export const GithubProvider = (): TDynamicProviderFns => {
 
     const nowInSeconds = Math.floor(Date.now() / 1000);
     const jwtPayload = {
-      iat: nowInSeconds - 60,
-      exp: nowInSeconds + 10 * 60 - 60,
+      iat: nowInSeconds - 5,
+      exp: nowInSeconds + 60,
       iss: String(appId)
     };
 
@@ -110,9 +110,12 @@ export const GithubProvider = (): TDynamicProviderFns => {
     };
   };
 
-  const revoke = async (_inputs: unknown, entityId: string) => {
-    // GitHub installation access tokens cannot be revoked.
-    return { entityId };
+  const revoke = async () => {
+    // GitHub installation tokens cannot be revoked.
+    throw new BadRequestError({
+      message:
+        "Github dynamic secret does not support revocation because GitHub itself cannot revoke installation tokens"
+    });
   };
 
   const renew = async () => {
