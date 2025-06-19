@@ -150,6 +150,7 @@ export const SelectOrganizationSection = () => {
 
         const payload = {
           JWTToken: token,
+          JTWToken: token, // CLI Versions 0.41.85 and below expect "JTWToken"
           email: user?.email,
           privateKey,
           refreshToken

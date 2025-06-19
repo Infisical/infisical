@@ -97,6 +97,7 @@ export const PasswordStep = ({
               privateKey,
               email,
               JWTToken: token,
+              JTWToken: token, // CLI Versions 0.41.85 and below expect "JTWToken"
               refreshToken
             };
             await instance.post(cliUrl, payload).catch(() => {
@@ -210,6 +211,7 @@ export const PasswordStep = ({
               const payload = {
                 ...isCliLoginSuccessful.loginResponse,
                 JWTToken: token,
+                JTWToken: token, // CLI Versions 0.41.85 and below expect "JTWToken"
                 refreshToken
               };
               await instance.post(cliUrl, payload).catch(() => {
