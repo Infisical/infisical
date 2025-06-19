@@ -59,11 +59,11 @@ export const ApprovalPolicyRow = ({
     const sortedSteps = policy.approvers?.sort((a, b) => (a?.sequence || 0) - (b?.sequence || 0));
     const entityInSameSequence = sortedSteps?.reduce(
       (acc, curr) => {
-        if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
+        if (acc.length && acc[acc.length - 1].sequence === (curr.sequence || 1)) {
           acc[acc.length - 1][curr.type]?.push(curr);
           return acc;
         }
-        const approvals = curr.approvals || policy.approvals;
+        const approvals = curr.approvalsRequired || policy.approvals;
         acc.push(
           curr.type === ApproverType.User
             ? { user: [curr], group: [], sequence: 1, approvals }
