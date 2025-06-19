@@ -713,12 +713,19 @@ export const oidcConfigServiceFactory = ({
           }
         }
 
+        const name = claims?.given_name || claims?.name;
+        if (!name) {
+          throw new BadRequestError({
+            message: "Invalid request. Missing name claim."
+          });
+        }
+
         const groups = typeof claims.groups === "string" ? [claims.groups] : (claims.groups as string[] | undefined);
 
         oidcLogin({
           email: claims.email.toLowerCase(),
           externalId: claims.sub,
-          firstName: claims?.given_name || claims?.name || "",
+          firstName: name,
           lastName: claims.family_name ?? "",
           orgId: org.id,
           groups,
