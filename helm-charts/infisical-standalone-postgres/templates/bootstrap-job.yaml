@@ -40,7 +40,7 @@ spec:
           echo "Infisical is ready! Proceeding with bootstrap..."
       containers:
         - name: infisical-bootstrap
-          image: "infisical/cli:{{ $infisicalValues.image.tag }}"
+          image: "infisical/cli:{{ $infisicalValues.autoBootstrap.image.tag }}"
           imagePullPolicy: {{ $infisicalValues.image.pullPolicy | default "IfNotPresent" }}
           args:
             - bootstrap
