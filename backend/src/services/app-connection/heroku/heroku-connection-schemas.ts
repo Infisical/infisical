@@ -10,8 +10,8 @@ import {
 
 import { HerokuConnectionMethod } from "./heroku-connection-enums";
 
-export const HerokuConnectionAccessTokenCredentialsSchema = z.object({
-  authToken: z.string().trim().min(1, "Auth Token required")
+export const HerokuConnectionAuthTokenCredentialsSchema = z.object({
+  authToken: z.string().trim().min(1, "Auth Token required").startsWith("HRKU-", "Token must start with 'HRKU-")
 });
 
 export const HerokuConnectionOAuthCredentialsSchema = z.object({
@@ -38,7 +38,7 @@ export const HerokuConnectionSchema = z.intersection(
   z.discriminatedUnion("method", [
     z.object({
       method: z.literal(HerokuConnectionMethod.AuthToken),
-      credentials: HerokuConnectionAccessTokenCredentialsSchema
+      credentials: HerokuConnectionAuthTokenCredentialsSchema
     }),
     z.object({
       method: z.literal(HerokuConnectionMethod.OAuth),
@@ -50,7 +50,7 @@ export const HerokuConnectionSchema = z.intersection(
 export const SanitizedHerokuConnectionSchema = z.discriminatedUnion("method", [
   BaseHerokuConnectionSchema.extend({
     method: z.literal(HerokuConnectionMethod.AuthToken),
-    credentials: HerokuConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: HerokuConnectionAuthTokenCredentialsSchema.pick({})
   }),
   BaseHerokuConnectionSchema.extend({
     method: z.literal(HerokuConnectionMethod.OAuth),
@@ -61,7 +61,7 @@ export const SanitizedHerokuConnectionSchema = z.discriminatedUnion("method", [
 export const ValidateHerokuConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z.literal(HerokuConnectionMethod.AuthToken).describe(AppConnections.CREATE(AppConnection.Heroku).method),
-    credentials: HerokuConnectionAccessTokenCredentialsSchema.describe(
+    credentials: HerokuConnectionAuthTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Heroku).credentials
     )
   }),
@@ -85,7 +85,7 @@ export const UpdateHerokuConnectionSchema = z
   .object({
     credentials: z
       .union([
-        HerokuConnectionAccessTokenCredentialsSchema,
+        HerokuConnectionAuthTokenCredentialsSchema,
         HerokuConnectionOAuthOutputCredentialsSchema,
         HerokuConnectionRefreshTokenCredentialsSchema,
         HerokuConnectionOAuthCredentialsSchema

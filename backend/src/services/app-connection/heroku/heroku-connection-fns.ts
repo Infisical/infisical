@@ -86,7 +86,7 @@ export const refreshHerokuToken = async (
     credentials: {
       refreshToken,
       authToken: data.access_token,
-      expiresAt: new Date(Date.now() + data.expires_in - 60)
+      expiresAt: new Date(Date.now() + data.expires_in * 1000 - 60000)
     },
     orgId,
     kmsService

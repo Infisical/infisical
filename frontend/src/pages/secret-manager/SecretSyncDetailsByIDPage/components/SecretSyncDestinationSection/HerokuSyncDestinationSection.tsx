@@ -12,8 +12,8 @@ export const HerokuSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="App name">{appName}</GenericFieldLabel>
-      <GenericFieldLabel label="App Id">{app}</GenericFieldLabel>
+      <GenericFieldLabel label="App Name">{appName}</GenericFieldLabel>
+      <GenericFieldLabel label="App ID">{app}</GenericFieldLabel>
     </>
   );
 };

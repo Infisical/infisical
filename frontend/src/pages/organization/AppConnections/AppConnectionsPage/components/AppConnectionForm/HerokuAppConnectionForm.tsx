@@ -81,6 +81,7 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { isSubmitting, isDirty }
   } = form;
 
@@ -175,7 +176,13 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
               <Select
                 isDisabled={isUpdate}
                 value={value}
-                onValueChange={(val) => onChange(val)}
+                onValueChange={(val) => {
+                  console.log("val", val === HerokuConnectionMethod.OAuth);
+                  onChange(val);
+                  if (val === HerokuConnectionMethod.OAuth) {
+                    setValue("credentials.code", "custom");
+                  }
+                }}
                 className="w-full border border-mineshaft-500"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
@@ -202,7 +209,7 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
                 label="Auth Token"
                 errorText={error?.message}
                 isError={Boolean(error?.message)}
-                tooltipText="Your Heroku API key or auth token"
+                tooltipText="Your Heroku Auth Token"
               >
                 <SecretInput
                   containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"

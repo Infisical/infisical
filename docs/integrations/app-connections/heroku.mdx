@@ -39,8 +39,8 @@ Infisical supports two methods for connecting to Heroku: **OAuth** and **Auth To
 
           Back in your Infisical instance, add two new environment variables for the credentials of your Heroku API client:
 
-          - `INF_APP_CONNECTION_HEROKU_CLIENT_ID`: The **Client ID** of your Heroku API client.
-          - `INF_APP_CONNECTION_HEROKU_CLIENT_SECRET`: The **Client Secret** of your Heroku API client.
+          - `CLIENT_ID_HEROKU`: The **Client ID** of your Heroku API client.
+          - `CLIENT_SECRET_HEROKU`: The **Client Secret** of your Heroku API client.
 
           Once added, restart your Infisical instance and use the Heroku App Connection.
         </Step>
@@ -84,7 +84,7 @@ Infisical supports two methods for connecting to Heroku: **OAuth** and **Auth To
       <Step title="Generate Heroku API Token">
         Log in to your Heroku account and navigate to Account Settings.
 
-        Under the **Authorizations** section, reveal and copy your Authorization token. If you don't have one, click **Create Authorization** to create a new token.
+        Under the **Authorizations** section on the **Applications** tab, reveal and copy your Authorization token. If you don't have one, click **Create Authorization** to create a new token.
 
         <Warning>
           Keep your Authorization token secure and do not share it. Anyone with access to this token can manage your Heroku applications.

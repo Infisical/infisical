@@ -55,7 +55,7 @@ const getHerokuConfigVars = async ({ authToken, app }: THerokuListVariables): Pr
 };
 
 const updateHerokuConfigVars = async ({ authToken, app, configVars }: THerokuUpdateVariables) => {
-  return request.patch(`${IntegrationUrls.HEROKU_API_URL}/apps/${app}/config-vars`, configVars, {
+  return request.patch(`${IntegrationUrls.HEROKU_API_URL}/apps/${encodeURIComponent(app)}/config-vars`, configVars, {
     headers: {
       Authorization: `Bearer ${authToken}`,
       Accept: "application/vnd.heroku+json; version=3",
