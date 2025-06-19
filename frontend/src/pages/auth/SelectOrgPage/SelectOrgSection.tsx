@@ -149,7 +149,7 @@ export const SelectOrganizationSection = () => {
         }
 
         const payload = {
-          JWTToken: token,
+          JTWToken: token,
           email: user?.email,
           privateKey,
           refreshToken
