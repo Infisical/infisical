@@ -204,8 +204,6 @@ export const dynamicSecretServiceFactory = ({
     metadata,
     usernameTemplate
   }: TUpdateDynamicSecretDTO) => {
-    console.log({ inputs });
-
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 

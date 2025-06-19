@@ -124,7 +124,6 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     const { inputs, usernameTemplate, metadata, identity } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
-    console.log({ providerInputs, inputs });
     const client = await $getClient(providerInputs, metadata.projectId);
 
     const username = generateUsername(usernameTemplate, identity);
