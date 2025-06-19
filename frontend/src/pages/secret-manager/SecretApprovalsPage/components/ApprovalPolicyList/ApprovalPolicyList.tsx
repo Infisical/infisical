@@ -19,6 +19,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
   EmptyState,
+  Modal,
+  ModalContent,
   Table,
   TableContainer,
   TableSkeleton,
@@ -264,14 +266,29 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
           </TBody>
         </Table>
       </TableContainer>
-      <AccessPolicyForm
-        projectId={currentWorkspace.id}
-        projectSlug={currentWorkspace.slug}
+      <Modal
         isOpen={popUp.policyForm.isOpen}
-        onToggle={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
-        members={members}
-        editValues={popUp.policyForm.data as TAccessApprovalPolicy}
-      />
+        onOpenChange={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
+      >
+        <ModalContent
+          className="max-w-3xl"
+          title={
+            popUp.policyForm.data
+              ? `Edit ${popUp?.policyForm?.data?.name || "Policy"}`
+              : "Create Policy"
+          }
+          id="policy-form"
+        >
+          <AccessPolicyForm
+            projectId={currentWorkspace.id}
+            projectSlug={currentWorkspace.slug}
+            isOpen={popUp.policyForm.isOpen}
+            onToggle={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
+            members={members}
+            editValues={popUp.policyForm.data as TAccessApprovalPolicy}
+          />
+        </ModalContent>
+      </Modal>
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
         deleteKey="remove"
