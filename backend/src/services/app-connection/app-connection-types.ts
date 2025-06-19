@@ -99,6 +99,12 @@ import {
   TValidateHCVaultConnectionCredentialsSchema
 } from "./hc-vault";
 import {
+  THerokuConnection,
+  THerokuConnectionConfig,
+  THerokuConnectionInput,
+  TValidateHerokuConnectionCredentialsSchema
+} from "./heroku";
+import {
   THumanitecConnection,
   THumanitecConnectionConfig,
   THumanitecConnectionInput,
@@ -173,6 +179,7 @@ export type TAppConnection = { id: string } & (
   | TOCIConnection
   | TOracleDBConnection
   | TOnePassConnection
+  | THerokuConnection
   | TRenderConnection
   | TFlyioConnection
 );
@@ -206,6 +213,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOCIConnectionInput
   | TOracleDBConnectionInput
   | TOnePassConnectionInput
+  | THerokuConnectionInput
   | TRenderConnectionInput
   | TFlyioConnectionInput
 );
@@ -247,6 +255,7 @@ export type TAppConnectionConfig =
   | TTeamCityConnectionConfig
   | TOCIConnectionConfig
   | TOnePassConnectionConfig
+  | THerokuConnectionConfig
   | TRenderConnectionConfig
   | TFlyioConnectionConfig;
 
@@ -275,6 +284,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOCIConnectionCredentialsSchema
   | TValidateOracleDBConnectionCredentialsSchema
   | TValidateOnePassConnectionCredentialsSchema
+  | TValidateHerokuConnectionCredentialsSchema
   | TValidateRenderConnectionCredentialsSchema
   | TValidateFlyioConnectionCredentialsSchema;
 

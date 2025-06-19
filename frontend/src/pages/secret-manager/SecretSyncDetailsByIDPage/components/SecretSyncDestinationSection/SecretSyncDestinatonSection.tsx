@@ -23,6 +23,7 @@ import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
+import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
@@ -95,6 +96,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.AzureDevOps:
       DestinationComponents = <AzureDevOpsSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Heroku:
+      DestinationComponents = <HerokuSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Render:
       DestinationComponents = <RenderSyncDestinationSection secretSync={secretSync} />;

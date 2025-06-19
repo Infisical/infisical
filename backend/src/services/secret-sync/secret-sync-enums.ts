@@ -16,6 +16,7 @@ export enum SecretSync {
   TeamCity = "teamcity",
   OCIVault = "oci-vault",
   OnePass = "1password",
+  Heroku = "heroku",
   Render = "render",
   Flyio = "flyio"
 }
