@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -107,8 +108,14 @@ export const ApprovalPolicyRow = ({
         <Td>{policy.environment.name}</Td>
         <Td>{policy.secretPath || "*"}</Td>
         <Td>
-          <Badge className={policyDetails[policy.policyType].className}>
-            {policyDetails[policy.policyType].name}
+          <Badge
+            className={twMerge(
+              policyDetails[policy.policyType].className,
+              "flex w-min items-center gap-1.5 whitespace-nowrap"
+            )}
+          >
+            <FontAwesomeIcon icon={policyDetails[policy.policyType].icon} />
+            <span>{policyDetails[policy.policyType].name}</span>
           </Badge>
         </Td>
         <Td>

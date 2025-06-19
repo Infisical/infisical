@@ -7,6 +7,7 @@ import {
   faCheck,
   faCheckCircle,
   faChevronDown,
+  faClipboardCheck,
   faLock,
   faMagnifyingGlass,
   faPlus,
@@ -28,6 +29,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   Input,
+  Pagination,
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
@@ -39,7 +41,12 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
 import {
   accessApprovalKeys,
@@ -59,7 +66,7 @@ const generateRequestText = (request: TAccessApprovalRequest) => {
   const { isTemporary } = request;
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between text-sm">
       <div>
         Requested {isTemporary ? "temporary" : "permanent"} access to{" "}
         <code className="mx-1 rounded bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
@@ -130,7 +137,14 @@ export const AccessApprovalRequest = ({
     envSlug: envFilter
   });
 
-  const [searchFilter, setSearchFilter] = useState("");
+  const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
+    initPerPage: getUserTablePreference("accessRequestsTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("accessRequestsTable", PreferenceKey.PerPage, newPerPage);
+  };
 
   const filteredRequests = useMemo(() => {
     let accessRequests: typeof requests;
@@ -150,19 +164,27 @@ export const AccessApprovalRequest = ({
           request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
       );
 
-    return accessRequests?.filter((request) => {
-      const { environmentName, requestedByUser } = request;
+    return (
+      accessRequests?.filter((request) => {
+        const { environmentName, requestedByUser } = request;
 
-      const searchValue = searchFilter.trim().toLowerCase();
+        const searchValue = search.trim().toLowerCase();
 
-      return (
-        environmentName?.toLowerCase().includes(searchValue) ||
-        `${requestedByUser?.email ?? ""} ${requestedByUser?.firstName ?? ""} ${requestedByUser?.lastName ?? ""}`
-          .toLowerCase()
-          .includes(searchValue)
-      );
-    });
-  }, [requests, statusFilter, requestedByFilter, envFilter, searchFilter]);
+        return (
+          environmentName?.toLowerCase().includes(searchValue) ||
+          `${requestedByUser?.email ?? ""} ${requestedByUser?.firstName ?? ""} ${requestedByUser?.lastName ?? ""}`
+            .toLowerCase()
+            .includes(searchValue)
+        );
+      }) ?? []
+    );
+  }, [requests, statusFilter, requestedByFilter, envFilter, search]);
+
+  useResetPageHelper({
+    totalCount: filteredRequests.length,
+    offset,
+    setPage
+  });
 
   const generateRequestDetails = useCallback(
     (request: TAccessApprovalRequest) => {
@@ -299,8 +321,8 @@ export const AccessApprovalRequest = ({
             </Tooltip>
           </div>
           <Input
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             placeholder="Search approval requests by requesting user or environment..."
             className="flex-1"
@@ -423,7 +445,7 @@ export const AccessApprovalRequest = ({
               <EmptyState title="No Requests Match Search" icon={faSearch} />
             )}
             {!!filteredRequests?.length &&
-              filteredRequests?.map((request) => {
+              filteredRequests?.slice(offset, perPage * page).map((request) => {
                 const details = generateRequestDetails(request);
 
                 return (
@@ -463,21 +485,35 @@ export const AccessApprovalRequest = ({
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {request.requestedByUserId === user.id && (
                           <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-bunker-300">
                             <FontAwesomeIcon icon={faUser} size="sm" />
                             <span>Requested By You</span>
                           </div>
                         )}
-                        <Badge className="whitespace-nowrap" variant={details.displayData.type}>
-                          {details.displayData.label}
+                        <Badge
+                          className="flex items-center gap-1.5 whitespace-nowrap"
+                          variant={details.displayData.type}
+                        >
+                          <FontAwesomeIcon icon={faClipboardCheck} />
+                          <span>{details.displayData.label}</span>
                         </Badge>
                       </div>
                     </div>
                   </div>
                 );
               })}
+            {Boolean(filteredRequests.length) && (
+              <Pagination
+                className="border-none"
+                count={filteredRequests.length}
+                page={page}
+                perPage={perPage}
+                onChangePage={setPage}
+                onChangePerPage={handlePerPageChange}
+              />
+            )}
           </div>
         </div>
         {!!policies && (

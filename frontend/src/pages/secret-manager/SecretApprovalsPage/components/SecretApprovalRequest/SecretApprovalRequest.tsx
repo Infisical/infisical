@@ -316,7 +316,7 @@ export const SecretApprovalRequest = () => {
                       if (evt.key === "Enter") setSelectedApprovalId(secretApproval.id);
                     }}
                   >
-                    <div className="mb-1">
+                    <div className="mb-1 text-sm">
                       <FontAwesomeIcon
                         icon={faCodeBranch}
                         size="sm"
