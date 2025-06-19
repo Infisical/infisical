@@ -79,8 +79,6 @@ export const HerokuSyncFns = {
     const authToken = await getValidAuthToken(connection, appConnectionDAL, kmsService);
 
     try {
-      const currentConfigVars = await getHerokuConfigVars({ authToken, app });
-
       const updatedConfigVars: THerokuConfigVars = {};
 
       for (const [key, { value }] of Object.entries(secretMap)) {
@@ -88,6 +86,8 @@ export const HerokuSyncFns = {
       }
 
       if (!secretSync.syncOptions.disableSecretDeletion) {
+        const currentConfigVars = await getHerokuConfigVars({ authToken, app });
+
         for (const key of Object.keys(currentConfigVars)) {
           if (matchesSchema(key, environment?.slug || "", secretSync.syncOptions.keySchema) && !(key in secretMap)) {
             updatedConfigVars[key] = null;
