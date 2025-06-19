@@ -10,6 +10,8 @@ import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretAwsIamAuth, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
 
+import { MetadataForm } from "../MetadataForm";
+
 const formSchema = z.object({
   inputs: z.discriminatedUnion("method", [
     z.object({
@@ -21,7 +23,10 @@ const formSchema = z.object({
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: z
+      .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+      .optional(),
     }),
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
@@ -31,7 +36,10 @@ const formSchema = z.object({
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: z
+      .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+      .optional()
     })
   ]),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -89,7 +97,7 @@ export const EditDynamicSecretAwsIamForm = ({
       usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
-      }
+      },
     }
   });
   const isAccessKeyMethod = watch("inputs.method") === DynamicSecretAwsIamAuth.AccessKey;
@@ -117,7 +125,8 @@ export const EditDynamicSecretAwsIamForm = ({
           defaultTTL,
           inputs,
           newName: newName === dynamicSecret.name ? undefined : newName,
-          usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
+          usernameTemplate:
+            !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
         }
       });
       onClose();
@@ -380,6 +389,7 @@ export const EditDynamicSecretAwsIamForm = ({
                 </FormControl>
               )}
             />
+            <MetadataForm control={control} name="inputs.tags" title="Tags" isValueRequired />
           </div>
         </div>
         <div className="mt-4 flex items-center space-x-4">

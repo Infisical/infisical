@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 
@@ -207,7 +208,8 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: ResourceMetadataSchema.optional()
     }),
     z.object({
       method: z.literal(AwsIamAuthType.AssumeRole),
@@ -217,7 +219,8 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: ResourceMetadataSchema.optional()
     })
   ])
 );
