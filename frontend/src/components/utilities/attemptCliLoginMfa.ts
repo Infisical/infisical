@@ -14,8 +14,7 @@ interface IsMfaLoginSuccessful {
   success: boolean;
   loginResponse: {
     privateKey: string;
-    JWTToken: string;
-    JTWToken: string; // CLI Versions 0.41.85 and below expect "JTWToken"
+    JTWToken: string;
   };
 }
 
@@ -96,8 +95,7 @@ const attemptLoginMfa = async ({
             success: true,
             loginResponse: {
               privateKey,
-              JWTToken: token,
-              JTWToken: token // CLI Versions 0.41.85 and below expect "JTWToken"
+              JTWToken: token
             }
           });
         } catch (err) {
