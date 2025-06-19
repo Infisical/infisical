@@ -194,7 +194,8 @@ export const secretApprovalRequestServiceFactory = ({
     environment,
     committer,
     limit,
-    offset
+    offset,
+    search
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
@@ -209,47 +210,29 @@ export const secretApprovalRequestServiceFactory = ({
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
-    const getSecretMapPath = async (folderIds: string[]) => {
-      const secretPaths = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
-
-      const secretPathMap: Record<string, string> = {};
-
-      secretPaths.forEach((folder) => {
-        if (folder) secretPathMap[folder.id] = folder.path;
-      });
-
-      return secretPathMap;
-    };
-
     if (shouldUseSecretV2Bridge) {
-      const approvalsV2 = await secretApprovalRequestDAL.findByProjectIdBridgeSecretV2({
+      return secretApprovalRequestDAL.findByProjectIdBridgeSecretV2({
         projectId,
         committer,
         environment,
         status,
         userId: actorId,
         limit,
-        offset
+        offset,
+        search
       });
-
-      const secretPathMap = await getSecretMapPath([...new Set(approvalsV2.map((approval) => approval.folderId))]);
-
-      return approvalsV2.map((approval) => ({ ...approval, secretPath: secretPathMap[approval.folderId] }));
     }
 
-    const approvals = await secretApprovalRequestDAL.findByProjectId({
+    return secretApprovalRequestDAL.findByProjectId({
       projectId,
       committer,
       environment,
       status,
       userId: actorId,
       limit,
-      offset
+      offset,
+      search
     });
-
-    const secretPathMap = await getSecretMapPath([...new Set(approvals.map((approval) => approval.folderId))]);
-
-    return approvals.map((approval) => ({ ...approval, secretPath: secretPathMap[approval.folderId] }));
   };
 
   const getSecretApprovalDetails = async ({

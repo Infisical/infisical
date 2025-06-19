@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   Input,
+  Pagination,
   Skeleton
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -34,6 +35,12 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { usePagination } from "@app/hooks";
 import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests,
@@ -58,18 +65,41 @@ export const SecretApprovalRequest = () => {
   const [usingUrlRequestId, setUsingUrlRequestId] = useState(false);
 
   const {
-    data: secretApprovalRequests,
-    isFetchingNextPage: isFetchingNextApprovalRequest,
-    fetchNextPage: fetchNextApprovalRequest,
-    hasNextPage: hasNextApprovalPage,
+    debouncedSearch: debouncedSearchFilter,
+    search: searchFilter,
+    setSearch: setSearchFilter,
+    setPage,
+    page,
+    perPage,
+    setPerPage,
+    offset,
+    limit
+  } = usePagination("", {
+    initPerPage: getUserTablePreference("changeRequestsTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("changeRequestsTable", PreferenceKey.PerPage, newPerPage);
+  };
+
+  const {
+    data,
     isPending: isApprovalRequestLoading,
     refetch
   } = useGetSecretApprovalRequests({
     workspaceId,
     status: statusFilter,
     environment: envFilter,
-    committer: committerFilter
+    committer: committerFilter,
+    search: debouncedSearchFilter,
+    limit,
+    offset
   });
+
+  const totalApprovalCount = data?.totalCount ?? 0;
+  const secretApprovalRequests = data?.approvals ?? [];
+
   const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
     useGetSecretApprovalRequestCount({ workspaceId });
   const { user: userSession } = useUser();
@@ -94,30 +124,7 @@ export const SecretApprovalRequest = () => {
     refetch();
   };
 
-  const isRequestListEmpty =
-    !isApprovalRequestLoading && secretApprovalRequests?.pages[0]?.length === 0;
-
-  const [searchFilter, setSearchFilter] = useState("");
-
-  const filteredRequests = useMemo(
-    () =>
-      secretApprovalRequests?.pages.flatMap((requests) =>
-        requests.filter((request) => {
-          const { environment, committerUser, secretPath } = request;
-
-          const searchValue = searchFilter.trim().toLowerCase();
-
-          return (
-            environment?.toLowerCase().includes(searchValue) ||
-            `${committerUser?.email ?? ""} ${committerUser?.firstName ?? ""} ${committerUser?.lastName ?? ""}`
-              .toLowerCase()
-              .includes(searchValue) ||
-            secretPath?.toLowerCase().includes(searchValue)
-          );
-        })
-      ) ?? [],
-    [secretApprovalRequests?.pages, searchFilter]
-  );
+  const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
 
   return (
     <AnimatePresence mode="wait">
@@ -171,7 +178,7 @@ export const SecretApprovalRequest = () => {
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-              placeholder="Search change requests by author, environment slug or secret path..."
+              placeholder="Search change requests by author, environment or policy path..."
               className="flex-1"
               containerClassName="mb-4"
             />
@@ -285,14 +292,14 @@ export const SecretApprovalRequest = () => {
               </div>
             </div>
             <div className="flex flex-col rounded-b-md border-x border-b border-t border-mineshaft-600 bg-mineshaft-800">
-              {isRequestListEmpty && (
+              {isRequestListEmpty && !searchFilter && (
                 <div className="py-12">
                   <EmptyState
                     title={`No ${statusFilter === "open" ? "Open" : "Closed"} Change Requests`}
                   />
                 </div>
               )}
-              {filteredRequests.map((secretApproval) => {
+              {secretApprovalRequests.map((secretApproval) => {
                 const {
                   id: reqId,
                   commits,
@@ -337,9 +344,23 @@ export const SecretApprovalRequest = () => {
                 );
               })}
               {Boolean(
-                !filteredRequests.length && !isRequestListEmpty && !isApprovalRequestLoading
-              ) && <EmptyState title="No Requests Match Search" icon={faSearch} />}
-              {(isFetchingNextApprovalRequest || isApprovalRequestLoading) && (
+                !secretApprovalRequests.length && searchFilter && !isApprovalRequestLoading
+              ) && (
+                <div className="py-12">
+                  <EmptyState title="No Requests Match Search" icon={faSearch} />
+                </div>
+              )}
+              {Boolean(totalApprovalCount) && (
+                <Pagination
+                  className="border-none"
+                  count={totalApprovalCount}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={setPage}
+                  onChangePerPage={handlePerPageChange}
+                />
+              )}
+              {isApprovalRequestLoading && (
                 <div>
                   {Array.apply(0, Array(3)).map((_x, index) => (
                     <div
@@ -356,18 +377,6 @@ export const SecretApprovalRequest = () => {
                 </div>
               )}
             </div>
-            {hasNextApprovalPage && (
-              <Button
-                className="mt-4 text-sm"
-                isFullWidth
-                colorSchema="secondary"
-                isLoading={isFetchingNextApprovalRequest}
-                isDisabled={isFetchingNextApprovalRequest || !hasNextApprovalPage}
-                onClick={() => fetchNextApprovalRequest()}
-              >
-                {hasNextApprovalPage ? "Load More" : "End of History"}
-              </Button>
-            )}
           </div>
         </motion.div>
       )}

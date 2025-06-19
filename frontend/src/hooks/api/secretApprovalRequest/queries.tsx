@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign */
-import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
@@ -25,10 +25,11 @@ export const secretApprovalRequestKeys = {
     status,
     committer,
     offset,
-    limit
+    limit,
+    search
   }: TGetSecretApprovalRequestList) =>
     [
-      { workspaceId, environment, status, committer, offset, limit },
+      { workspaceId, environment, status, committer, offset, limit, search },
       "secret-approval-requests"
     ] as const,
   detail: ({ id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) =>
@@ -118,23 +119,25 @@ const fetchSecretApprovalRequestList = async ({
   committer,
   status = "open",
   limit = 20,
-  offset
+  offset = 0,
+  search = ""
 }: TGetSecretApprovalRequestList) => {
-  const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequest[] }>(
-    "/api/v1/secret-approval-requests",
-    {
-      params: {
-        workspaceId,
-        environment,
-        committer,
-        status,
-        limit,
-        offset
-      }
+  const { data } = await apiRequest.get<{
+    approvals: TSecretApprovalRequest[];
+    totalCount: number;
+  }>("/api/v1/secret-approval-requests", {
+    params: {
+      workspaceId,
+      environment,
+      committer,
+      status,
+      limit,
+      offset,
+      search
     }
-  );
+  });
 
-  return data.approvals;
+  return data;
 };
 
 export const useGetSecretApprovalRequests = ({
@@ -143,31 +146,32 @@ export const useGetSecretApprovalRequests = ({
   options = {},
   status,
   limit = 20,
+  offset = 0,
+  search,
   committer
 }: TGetSecretApprovalRequestList & TReactQueryOptions) =>
-  useInfiniteQuery({
-    initialPageParam: 0,
+  useQuery({
     queryKey: secretApprovalRequestKeys.list({
       workspaceId,
       environment,
       committer,
-      status
+      status,
+      limit,
+      search,
+      offset
     }),
-    queryFn: ({ pageParam }) =>
+    queryFn: () =>
       fetchSecretApprovalRequestList({
         workspaceId,
         environment,
         status,
         committer,
         limit,
-        offset: pageParam
+        offset,
+        search
       }),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-    getNextPageParam: (lastPage, pages) => {
-      if (lastPage.length && lastPage.length < limit) return undefined;
-
-      return lastPage?.length !== 0 ? pages.length * limit : undefined;
-    }
+    placeholderData: (previousData) => previousData
   });
 
 const fetchSecretApprovalRequestDetails = async ({

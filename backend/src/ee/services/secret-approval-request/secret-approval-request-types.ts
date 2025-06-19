@@ -93,6 +93,7 @@ export type TListApprovalsDTO = {
   committer?: string;
   limit?: number;
   offset?: number;
+  search?: string;
 } & TProjectPermission;
 
 export type TSecretApprovalDetailsDTO = {
