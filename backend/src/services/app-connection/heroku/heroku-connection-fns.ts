@@ -4,9 +4,9 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { HerokuConnectionMethod } from "./heroku-connection-enums";
@@ -20,31 +20,6 @@ interface HerokuOAuthTokenResponse {
   user_id: string;
   session_nonce: string;
 }
-
-const encryptAppConnectionCredentials = async ({
-  orgId,
-  credentials,
-  kmsService
-}: {
-  orgId: string;
-  credentials: {
-    refreshToken: string;
-    authToken: string;
-    expiresAt: Date;
-  };
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-}) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
-
-  const { cipherTextBlob: encryptedCredentialsBlob } = encryptor({
-    plainText: Buffer.from(JSON.stringify(credentials))
-  });
-
-  return encryptedCredentialsBlob;
-};
 
 export const getHerokuConnectionListItem = () => {
   const { CLIENT_ID_HEROKU } = getConfig();
