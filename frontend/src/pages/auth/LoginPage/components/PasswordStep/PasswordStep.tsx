@@ -76,7 +76,7 @@ export const PasswordStep = ({
       // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
       if (organizationId) {
         const finishWithOrgWorkflow = async () => {
-          const { token, isMfaEnabled, mfaMethod, refreshToken } = await selectOrganization({
+          const { token, isMfaEnabled, mfaMethod, RefreshToken } = await selectOrganization({
             organizationId
           });
 
@@ -97,7 +97,7 @@ export const PasswordStep = ({
               privateKey,
               email,
               JTWToken: token,
-              refreshToken
+              RefreshToken
             };
             await instance.post(cliUrl, payload).catch(() => {
               // if error happens to communicate we set the token with an expiry in session storage
@@ -190,7 +190,7 @@ export const PasswordStep = ({
           // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
           if (organizationId) {
             const finishWithOrgWorkflow = async () => {
-              const { token, isMfaEnabled, mfaMethod, refreshToken } = await selectOrganization({
+              const { token, isMfaEnabled, mfaMethod, RefreshToken } = await selectOrganization({
                 organizationId
               });
 
@@ -210,7 +210,7 @@ export const PasswordStep = ({
               const payload = {
                 ...isCliLoginSuccessful.loginResponse,
                 JTWToken: token,
-                refreshToken
+                RefreshToken
               };
               await instance.post(cliUrl, payload).catch(() => {
                 // if error happens to communicate we set the token with an expiry in session storage

@@ -73,7 +73,7 @@ export const selectOrganization = async (data: {
 }) => {
   const { data: res } = await apiRequest.post<{
     token: string;
-    refreshToken: string;
+    RefreshToken: string;
     isMfaEnabled: boolean;
     mfaMethod?: MfaMethod;
   }>("/api/v3/auth/select-organization", data);
