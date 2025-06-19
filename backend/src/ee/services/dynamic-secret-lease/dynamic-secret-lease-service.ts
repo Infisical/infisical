@@ -166,7 +166,6 @@ export const dynamicSecretLeaseServiceFactory = ({
         usernameTemplate: dynamicSecretCfg.usernameTemplate,
         identity,
         metadata: { projectId },
-        tags: dynamicSecretCfg.tags as Record<string, string>[] | undefined,
         config
       });
     } catch (error: unknown) {

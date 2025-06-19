@@ -23,7 +23,6 @@ export type TCreateDynamicSecretDTO = {
   projectSlug: string;
   metadata?: ResourceMetadataDTO;
   usernameTemplate?: string | null;
-  tags?: ResourceMetadataDTO;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateDynamicSecretDTO = {
@@ -36,7 +35,6 @@ export type TUpdateDynamicSecretDTO = {
   inputs?: TProvider["inputs"];
   projectSlug: string;
   metadata?: ResourceMetadataDTO;
-  tags?: ResourceMetadataDTO;
   usernameTemplate?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 

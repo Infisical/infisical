@@ -34,7 +34,12 @@ const formSchema = z.object({
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: z
+      .array(
+        z.object({ key: z.string().trim().min(1).max(128), value: z.string().trim().min(1).max(256) })
+      )
+      .optional()
     }),
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
@@ -44,7 +49,12 @@ const formSchema = z.object({
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: z
+      .array(
+        z.object({ key: z.string().trim().min(1).max(128), value: z.string().trim().min(1).max(256) })
+      )
+      .optional()
     })
   ]),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -69,12 +79,7 @@ const formSchema = z.object({
     }),
   name: z.string().refine((val) => val.toLowerCase() === val, "Must be lowercase"),
   environment: z.object({ name: z.string(), slug: z.string() }),
-  usernameTemplate: z.string().nullable().optional(),
-  tags: z
-    .array(
-      z.object({ key: z.string().trim().min(1).max(128), value: z.string().trim().min(1).max(256) })
-    )
-    .optional()
+  usernameTemplate: z.string().nullable().optional()
 });
 type TForm = z.infer<typeof formSchema>;
 
@@ -107,8 +112,7 @@ export const AwsIamInputForm = ({
       usernameTemplate: "{{randomUsername}}",
       provider: {
         method: DynamicSecretAwsIamAuth.AssumeRole
-      },
-      tags: []
+      }
     }
   });
 
@@ -121,8 +125,7 @@ export const AwsIamInputForm = ({
     provider,
     defaultTTL,
     environment,
-    usernameTemplate,
-    tags
+    usernameTemplate
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
@@ -138,8 +141,7 @@ export const AwsIamInputForm = ({
         projectSlug,
         environmentSlug: environment.slug,
         usernameTemplate:
-          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate,
-        tags
+          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
       });
       onCompleted();
     } catch {
@@ -408,7 +410,7 @@ export const AwsIamInputForm = ({
                   </FormControl>
                 )}
               />
-              <MetadataForm control={control} name="tags" isValueRequired />
+              <MetadataForm control={control} name="provider.tags" title="Tags" isValueRequired />
               {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}

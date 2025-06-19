@@ -80,7 +80,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         environmentSlug: z.string().describe(DYNAMIC_SECRETS.CREATE.environmentSlug).min(1),
         name: slugSchema({ min: 1, max: 64, field: "Name" }).describe(DYNAMIC_SECRETS.CREATE.name),
         metadata: ResourceMetadataSchema.optional(),
-        tags: ResourceMetadataSchema.optional(),
         usernameTemplate: userTemplateSchema.optional()
       }),
       response: {
@@ -147,7 +146,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
             .nullable(),
           newName: z.string().describe(DYNAMIC_SECRETS.UPDATE.newName).optional(),
           metadata: ResourceMetadataSchema.optional(),
-          tags: ResourceMetadataSchema.optional(),
           usernameTemplate: userTemplateSchema.nullable().optional()
         })
       }),

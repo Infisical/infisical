@@ -7,10 +7,12 @@ import { FormControl, FormLabel, IconButton, Input } from "@app/components/v2";
 export const MetadataForm = ({
   control,
   name = "metadata",
+  title = "Metadata",
   isValueRequired = false
 }: {
   control: Control<any>;
   name?: string;
+  title?: string;
   isValueRequired?: boolean;
 }) => {
   const metadataFormFields = useFieldArray({
@@ -19,7 +21,7 @@ export const MetadataForm = ({
   });
 
   return (
-    <FormControl label={name.charAt(0).toUpperCase() + name.slice(1)}>
+    <FormControl label={title}>
       <div className="flex flex-col space-y-2">
         {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
           <div key={metadataFieldId} className="flex items-end space-x-2">
