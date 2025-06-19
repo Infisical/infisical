@@ -9,6 +9,7 @@ const arnRegex = new RE2(/^arn:aws:iam::\d{12}:(user\/[a-zA-Z0-9_.@+*/-]+|role\/
 export const validateAccountIds = z
   .string()
   .trim()
+  .max(2048)
   .default("")
   // Custom validation to ensure each part is a 12-digit number
   .refine(
@@ -36,6 +37,7 @@ export const validateAccountIds = z
 export const validatePrincipalArns = z
   .string()
   .trim()
+  .max(2048)
   .default("")
   // Custom validation for ARN format
   .refine(

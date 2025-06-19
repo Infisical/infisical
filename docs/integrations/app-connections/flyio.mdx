@@ -1,0 +1,96 @@
+---
+title: "Fly.io Connection"
+description: "Learn how to configure a Fly.io Connection for Infisical."
+---
+
+Infisical supports the use of [Access Tokens](https://fly.io/docs/security/tokens/) to connect with Fly.io.
+
+## Create Fly.io Access Token
+
+<Steps>
+    <Step title="Navigate to 'Access Tokens'">
+        ![Dashboard Page](/images/app-connections/flyio/dashboard-page.png)
+    </Step>
+    <Step title="Click 'Create Token'">
+        ![Click Create Token](/images/app-connections/flyio/create-token.png)
+    </Step>
+    <Step title="Provide Token Information">
+        Ensure that you give this token access to the correct app, then click 'Create Token'.
+
+        ![Create Token Page](/images/app-connections/flyio/create-token-page.png)
+    </Step>
+    <Step title="Save Token">
+        After clicking 'Create Token', a modal containing your access token will appear. Save this token for later steps.
+    </Step>
+</Steps>
+
+## Create Fly.io Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select Fly.io Connection">
+                Click the **+ Add Connection** button and select the **Fly.io Connection** option from the available integrations.
+
+                ![Select Fly.io Connection](/images/app-connections/flyio/app-connection-option.png)
+            </Step>
+            <Step title="Fill out the Fly.io Connection Modal">
+                Complete the Fly.io Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - The Access Token from earlier steps
+
+                ![Fly.io Connection Modal](/images/app-connections/flyio/app-connection-modal.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **Fly.io Connection** is established and ready to use with your Infisical projects.
+
+                ![Fly.io Connection Created](/images/app-connections/flyio/app-connection-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Fly.io Connection, make an API request to the [Create Fly.io Connection](/api-reference/endpoints/app-connections/flyio/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/flyio \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-flyio-connection",
+                    "method": "access-token",
+                    "credentials": {
+                        "accessToken": "[PRIVATE TOKEN]"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-flyio-connection",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "flyio",
+              "method": "access-token",
+              "credentials": {}
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

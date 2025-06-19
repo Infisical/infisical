@@ -23,7 +23,9 @@ export enum AppConnection {
   OCI = "oci",
   OracleDB = "oracledb",
   OnePass = "1password",
-  Heroku = "heroku"
+  Heroku = "heroku",
+  Render = "render",
+  Flyio = "flyio"
 }
 
 export enum AWSRegion {

@@ -4,6 +4,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { RenderSyncScope } from "@app/hooks/api/secretSyncs/render-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
@@ -64,6 +65,14 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Heroku]: {
     name: "Heroku",
     image: "Heroku.png"
+  },
+  [SecretSync.Render]: {
+    name: "Render",
+    image: "Render.png"
+  },
+  [SecretSync.Flyio]: {
+    name: "Fly.io",
+    image: "Flyio.svg"
   }
 };
 
@@ -85,7 +94,9 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TeamCity]: AppConnection.TeamCity,
   [SecretSync.OCIVault]: AppConnection.OCI,
   [SecretSync.OnePass]: AppConnection.OnePass,
-  [SecretSync.Heroku]: AppConnection.Heroku
+  [SecretSync.Heroku]: AppConnection.Heroku,
+  [SecretSync.Render]: AppConnection.Render,
+  [SecretSync.Flyio]: AppConnection.Flyio
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
@@ -144,5 +155,12 @@ export const GCP_SYNC_SCOPES: Record<GcpSyncScope, { name: string; description: 
   [GcpSyncScope.Region]: {
     name: "Region",
     description: "Secrets will be synced to the specified region."
+  }
+};
+
+export const RENDER_SYNC_SCOPES: Record<RenderSyncScope, { name: string; description: string }> = {
+  [RenderSyncScope.Service]: {
+    name: "Service",
+    description: "Infisical will sync secrets to the specified Render service."
   }
 };

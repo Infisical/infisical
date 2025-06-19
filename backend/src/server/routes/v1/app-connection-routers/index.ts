@@ -11,6 +11,7 @@ import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-r
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
+import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
@@ -21,6 +22,7 @@ import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
+import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -54,5 +56,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.OCI]: registerOCIConnectionRouter,
     [AppConnection.OracleDB]: registerOracleDBConnectionRouter,
     [AppConnection.OnePass]: registerOnePassConnectionRouter,
-    [AppConnection.Heroku]: registerHerokuConnectionRouter
+    [AppConnection.Heroku]: registerHerokuConnectionRouter,
+    [AppConnection.Render]: registerRenderConnectionRouter,
+    [AppConnection.Flyio]: registerFlyioConnectionRouter
   };

@@ -24,6 +24,7 @@ import { useToggle } from "@app/hooks";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
+import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { SecretEditRow } from "./SecretEditRow";
 import SecretRenameRow from "./SecretRenameRow";
@@ -40,6 +41,7 @@ type Props = {
     env: string,
     key: string,
     value: string,
+    secretValueHidden: boolean,
     type?: SecretType,
     secretId?: string
   ) => Promise<void>;
@@ -96,7 +98,7 @@ export const SecretOverviewTableRow = ({
     );
 
     if (secret?.secretValueHidden && !secret?.valueOverride) {
-      return canEditSecretValue ? "******" : "";
+      return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
     }
     return secret?.valueOverride || secret?.value || importedSecret?.secret?.value || "";
   };

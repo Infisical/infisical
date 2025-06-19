@@ -262,8 +262,8 @@ const envSchema = z
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
 
     // PIT
-    PIT_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("2")),
-    PIT_TREE_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("30")),
+    PIT_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("100")),
+    PIT_TREE_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("200")),
 
     /* CORS ----------------------------------------------------------------------------- */
     CORS_ALLOWED_ORIGINS: zpStr(

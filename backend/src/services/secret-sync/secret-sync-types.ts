@@ -72,6 +72,7 @@ import {
   TAzureKeyVaultSyncListItem,
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
+import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import {
   THCVaultSync,
@@ -86,6 +87,12 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import {
+  TRenderSync,
+  TRenderSyncInput,
+  TRenderSyncListItem,
+  TRenderSyncWithCredentials
+} from "./render/render-sync-types";
 import {
   TTeamCitySync,
   TTeamCitySyncInput,
@@ -118,7 +125,9 @@ export type TSecretSync =
   | TTeamCitySync
   | TOCIVaultSync
   | TOnePassSync
-  | THerokuSync;
+  | THerokuSync
+  | TRenderSync
+  | TFlyioSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -138,7 +147,9 @@ export type TSecretSyncWithCredentials =
   | TTeamCitySyncWithCredentials
   | TOCIVaultSyncWithCredentials
   | TOnePassSyncWithCredentials
-  | THerokuSyncWithCredentials;
+  | THerokuSyncWithCredentials
+  | TRenderSyncWithCredentials
+  | TFlyioSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -158,7 +169,9 @@ export type TSecretSyncInput =
   | TTeamCitySyncInput
   | TOCIVaultSyncInput
   | TOnePassSyncInput
-  | THerokuSyncInput;
+  | THerokuSyncInput
+  | TRenderSyncInput
+  | TFlyioSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -178,7 +191,9 @@ export type TSecretSyncListItem =
   | TTeamCitySyncListItem
   | TOCIVaultSyncListItem
   | TOnePassSyncListItem
-  | THerokuSyncListItem;
+  | THerokuSyncListItem
+  | TRenderSyncListItem
+  | TFlyioSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

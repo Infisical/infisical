@@ -12,7 +12,7 @@ Each permission consists of:
 - **Subject**: The resource the permission applies to (e.g., secrets, members, settings)
 - **Action**: The operation that can be performed (e.g., read, create, edit, delete)
 
-Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, and `dynamic-secrets`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, or tags) that must be met for the permission to apply.
+Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, and `secret-syncs`, support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, or tags) that must be met for the permission to apply.
 
 ## Available Project Permissions
 
@@ -207,6 +207,8 @@ Supports conditions and permission inversion
 | `delete`                       | Remove secret rotation configurations          |
 
 #### Subject: `secret-syncs`
+
+Supports conditions and permission inversion.
 
 | Action           | Description                                        |
 | ---------------- | -------------------------------------------------- |

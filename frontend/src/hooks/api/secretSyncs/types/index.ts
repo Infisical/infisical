@@ -1,6 +1,7 @@
 import { SecretSync, SecretSyncImportBehavior } from "@app/hooks/api/secretSyncs";
 import { DiscriminativePick } from "@app/types";
 
+import { TRenderSync } from "../render-sync";
 import { TOnePassSync } from "./1password-sync";
 import { TAwsParameterStoreSync } from "./aws-parameter-store-sync";
 import { TAwsSecretsManagerSync } from "./aws-secrets-manager-sync";
@@ -9,6 +10,7 @@ import { TAzureDevOpsSync } from "./azure-devops-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TCamundaSync } from "./camunda-sync";
 import { TDatabricksSync } from "./databricks-sync";
+import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
 import { THCVaultSync } from "./hc-vault-sync";
@@ -45,7 +47,9 @@ export type TSecretSync =
   | TTeamCitySync
   | TOCIVaultSync
   | TOnePassSync
-  | THerokuSync;
+  | THerokuSync
+  | TRenderSync
+  | TFlyioSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

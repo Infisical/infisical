@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -16,7 +17,8 @@ type Props = {
 };
 
 export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) => {
-  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description } = secretSync;
+  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, environment, folder } =
+    secretSync;
 
   const failureMessage = useMemo(() => {
     if (syncStatus === SecretSyncStatus.Failed) {
@@ -32,14 +34,19 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
     return null;
   }, [syncStatus, lastSyncMessage]);
 
+  const permissionSubject =
+    environment && folder
+      ? subject(ProjectPermissionSub.SecretSyncs, {
+          environment: environment.slug,
+          secretPath: folder.path
+        })
+      : ProjectPermissionSub.SecretSyncs;
+
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="font-semibold text-mineshaft-100">Details</h3>
-        <ProjectPermissionCan
-          I={ProjectPermissionSecretSyncActions.Edit}
-          a={ProjectPermissionSub.SecretSyncs}
-        >
+        <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
           {(isAllowed) => (
             <IconButton
               variant="plain"

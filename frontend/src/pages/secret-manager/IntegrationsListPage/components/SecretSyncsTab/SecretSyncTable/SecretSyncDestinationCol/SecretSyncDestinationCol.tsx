@@ -8,12 +8,14 @@ import { AzureDevOpsSyncDestinationCol } from "./AzureDevOpsSyncDestinationCol";
 import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncCol";
 import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
+import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
+import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
@@ -61,6 +63,10 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <AzureDevOpsSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Heroku:
       return <HerokuSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Render:
+      return <RenderSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Flyio:
+      return <FlyioSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

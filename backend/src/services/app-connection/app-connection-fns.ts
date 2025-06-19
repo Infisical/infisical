@@ -56,6 +56,7 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks";
+import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
 import {
@@ -79,6 +80,8 @@ import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import { RenderConnectionMethod } from "./render/render-connection-enums";
+import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import {
   getTeamCityConnectionListItem,
   TeamCityConnectionMethod,
@@ -123,7 +126,9 @@ export const listAppConnectionOptions = () => {
     getOCIConnectionListItem(),
     getOracleDBConnectionListItem(),
     getOnePassConnectionListItem(),
-    getHerokuConnectionListItem()
+    getHerokuConnectionListItem(),
+    getRenderConnectionListItem(),
+    getFlyioConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -199,7 +204,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -244,6 +251,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
+    case FlyioConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
       return "Client Credentials";
@@ -251,6 +259,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "App Role";
     case LdapConnectionMethod.SimpleBind:
       return "Simple Bind";
+    case RenderConnectionMethod.ApiKey:
+      return "API Key";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -306,7 +316,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OCI]: platformManagedCredentialsNotSupported,
   [AppConnection.OracleDB]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
-  [AppConnection.Heroku]: platformManagedCredentialsNotSupported
+  [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
+  [AppConnection.Render]: platformManagedCredentialsNotSupported,
+  [AppConnection.Flyio]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

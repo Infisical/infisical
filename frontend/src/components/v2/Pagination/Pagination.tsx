@@ -70,7 +70,15 @@ export const Pagination = ({
                 key={`pagination-per-page-options-${perPageOption}`}
                 icon={perPage === perPageOption && <FontAwesomeIcon size="sm" icon={faCheck} />}
                 iconPos="right"
-                onClick={() => onChangePerPage(perPageOption)}
+                onClick={() => {
+                  const totalPages = Math.ceil(count / perPageOption);
+
+                  if (page > totalPages) {
+                    onChangePage(totalPages);
+                  }
+
+                  onChangePerPage(perPageOption);
+                }}
               >
                 {perPageOption} rows per page
               </DropdownMenuItem>

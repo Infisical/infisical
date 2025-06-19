@@ -39,6 +39,7 @@ import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
+import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
 import {
@@ -61,6 +62,10 @@ import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import {
+  RenderConnectionListItemSchema,
+  SanitizedRenderConnectionSchema
+} from "@app/services/app-connection/render/render-connection-schema";
 import {
   SanitizedTeamCityConnectionSchema,
   TeamCityConnectionListItemSchema
@@ -102,7 +107,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOCIConnectionSchema.options,
   ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options,
-  ...SanitizedHerokuConnectionSchema.options
+  ...SanitizedHerokuConnectionSchema.options,
+  ...SanitizedRenderConnectionSchema.options,
+  ...SanitizedFlyioConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -130,7 +137,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OCIConnectionListItemSchema,
   OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema,
-  HerokuConnectionListItemSchema
+  HerokuConnectionListItemSchema,
+  RenderConnectionListItemSchema,
+  FlyioConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

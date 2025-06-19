@@ -11,12 +11,14 @@ import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
+import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
+import { RenderSyncFields } from "./RenderSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
@@ -64,6 +66,10 @@ export const SecretSyncDestinationFields = () => {
       return <OnePassSyncFields />;
     case SecretSync.Heroku:
       return <HerokuSyncFields />;
+    case SecretSync.Render:
+      return <RenderSyncFields />;
+    case SecretSync.Flyio:
+      return <FlyioSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

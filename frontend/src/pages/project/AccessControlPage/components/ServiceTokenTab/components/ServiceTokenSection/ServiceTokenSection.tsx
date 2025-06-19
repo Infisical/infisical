@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -48,8 +48,29 @@ export const ServiceTokenSection = withProjectPermission(
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-2 flex justify-between">
-          <p className="text-xl font-semibold text-mineshaft-100">Service Tokens</p>
+        <div className="mb-2 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1">
+              <p className="text-xl font-semibold text-mineshaft-100">Service Tokens</p>
+              <a
+                href="https://infisical.com/docs/documentation/platform/token"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  <span>Docs</span>
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="mb-[0.07rem] ml-1.5 text-[10px]"
+                  />
+                </div>
+              </a>
+            </div>
+            <p className="text-sm text-bunker-300">
+              {t("section.token.service-tokens-description")}
+            </p>
+          </div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.ServiceTokens}
@@ -63,12 +84,11 @@ export const ServiceTokenSection = withProjectPermission(
                 }}
                 isDisabled={!isAllowed}
               >
-                Create token
+                Create Token
               </Button>
             )}
           </ProjectPermissionCan>
         </div>
-        <p className="mb-8 text-gray-400">{t("section.token.service-tokens-description")}</p>
         <ServiceTokenTable handlePopUpOpen={handlePopUpOpen} />
         <AddServiceTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal

@@ -7,7 +7,6 @@ import { Button, Modal, ModalClose, ModalContent } from "@app/components/v2";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAppConnection, useUpdateAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { DiscriminativePick } from "@app/types";
 
 import { genericAppConnectionFieldsSchema, GenericAppConnectionsFields } from "./AppConnectionForm";
 
@@ -43,7 +42,7 @@ const Content = ({ appConnection, onComplete }: ContentProps) => {
     formState: { isSubmitting, isDirty }
   } = form;
 
-  const onSubmit = async (formData: DiscriminativePick<TAppConnection, "name" | "app">) => {
+  const onSubmit = async (formData: FormData) => {
     try {
       await updateAppConnection.mutateAsync({
         connectionId: appConnection.id,

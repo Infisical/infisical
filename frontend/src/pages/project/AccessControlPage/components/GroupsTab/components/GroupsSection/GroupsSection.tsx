@@ -72,7 +72,7 @@ export const GroupsSection = () => {
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Groups}>
           {(isAllowed) => (
             <Button
-              colorSchema="primary"
+              colorSchema="secondary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handleAddGroupModal()}

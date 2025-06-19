@@ -35,7 +35,7 @@ export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props
                   Options
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="min-w-[120px]" align="end">
+              <DropdownMenuContent className="mt-3 min-w-[120px]" align="end">
                 <OrgPermissionCan
                   I={OrgPermissionIdentityActions.Edit}
                   a={OrgPermissionSubjects.Identity}

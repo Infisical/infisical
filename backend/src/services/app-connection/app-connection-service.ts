@@ -49,6 +49,8 @@ import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
+import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
@@ -64,6 +66,8 @@ import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
+import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
 import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-cloud";
@@ -107,7 +111,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema,
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
   [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
-  [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema
+  [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema,
+  [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
+  [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -513,6 +519,8 @@ export const appConnectionServiceFactory = ({
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
     onepass: onePassConnectionService(connectAppConnectionById),
-    heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    render: renderConnectionService(connectAppConnectionById),
+    flyio: flyioConnectionService(connectAppConnectionById)
   };
 };

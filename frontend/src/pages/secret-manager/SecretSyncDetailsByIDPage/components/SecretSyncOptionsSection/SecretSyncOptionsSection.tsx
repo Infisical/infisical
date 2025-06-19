@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -21,7 +22,9 @@ type Props = {
 export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) => {
   const {
     destination,
-    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema }
+    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema },
+    environment,
+    folder
   } = secretSync;
 
   let AdditionalSyncOptionsComponent: ReactNode;
@@ -53,21 +56,28 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.OCIVault:
     case SecretSync.OnePass:
     case SecretSync.Heroku:
+    case SecretSync.Render:
+    case SecretSync.Flyio:
       AdditionalSyncOptionsComponent = null;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
   }
 
+  const permissionSubject =
+    environment && folder
+      ? subject(ProjectPermissionSub.SecretSyncs, {
+          environment: environment.slug,
+          secretPath: folder.path
+        })
+      : ProjectPermissionSub.SecretSyncs;
+
   return (
     <div>
       <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <h3 className="font-semibold text-mineshaft-100">Sync Options</h3>
-          <ProjectPermissionCan
-            I={ProjectPermissionSecretSyncActions.Edit}
-            a={ProjectPermissionSub.SecretSyncs}
-          >
+          <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
             {(isAllowed) => (
               <IconButton
                 variant="plain"

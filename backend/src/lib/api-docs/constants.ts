@@ -111,12 +111,14 @@ export const IDENTITIES = {
   CREATE: {
     name: "The name of the identity to create.",
     organizationId: "The organization ID to which the identity belongs.",
-    role: "The role of the identity. Possible values are 'no-access', 'member', and 'admin'."
+    role: "The role of the identity. Possible values are 'no-access', 'member', and 'admin'.",
+    hasDeleteProtection: "Prevents deletion of the identity when enabled."
   },
   UPDATE: {
     identityId: "The ID of the identity to update.",
     name: "The new name of the identity.",
-    role: "The new role of the identity."
+    role: "The new role of the identity.",
+    hasDeleteProtection: "Prevents deletion of the identity when enabled."
   },
   DELETE: {
     identityId: "The ID of the identity to delete."
@@ -2223,6 +2225,9 @@ export const AppConnections = {
     ONEPASS: {
       instanceUrl: "The URL of the 1Password Connect Server instance to authenticate with.",
       apiToken: "The API token used to access the 1Password Connect Server."
+    },
+    FLYIO: {
+      accessToken: "The Access Token used to access fly.io."
     }
   }
 };
@@ -2388,6 +2393,14 @@ export const SecretSyncs = {
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",
       appName: "The name of the Heroku app to sync secrets to."
+    },
+    RENDER: {
+      serviceId: "The ID of the Render service to sync secrets to.",
+      scope: "The Render scope that secrets should be synced to.",
+      type: "The Render resource type to sync secrets to."
+    },
+    FLYIO: {
+      appId: "The ID of the Fly.io app to sync secrets to."
     }
   }
 };

@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { subject } from "@casl/ability";
 import {
   faBan,
   faCalendarCheck,
@@ -116,6 +117,14 @@ export const SecretSyncRow = ({
   }, [syncStatus, lastSyncMessage]);
 
   const destinationDetails = SECRET_SYNC_MAP[destination];
+
+  const permissionSubject =
+    environment && folder
+      ? subject(ProjectPermissionSub.SecretSyncs, {
+          environment: environment.slug,
+          secretPath: folder.path
+        })
+      : ProjectPermissionSub.SecretSyncs;
 
   return (
     <Tr
@@ -264,7 +273,7 @@ export const SecretSyncRow = ({
               </DropdownMenuItem>
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.SyncSecrets}
-                a={ProjectPermissionSub.SecretSyncs}
+                a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
@@ -295,7 +304,7 @@ export const SecretSyncRow = ({
               {syncOption?.canImportSecrets && (
                 <ProjectPermissionCan
                   I={ProjectPermissionSecretSyncActions.ImportSecrets}
-                  a={ProjectPermissionSub.SecretSyncs}
+                  a={permissionSubject}
                 >
                   {(isAllowed: boolean) => (
                     <DropdownMenuItem
@@ -326,7 +335,7 @@ export const SecretSyncRow = ({
               )}
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.RemoveSecrets}
-                a={ProjectPermissionSub.SecretSyncs}
+                a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
@@ -356,7 +365,7 @@ export const SecretSyncRow = ({
               </ProjectPermissionCan>
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.Edit}
-                a={ProjectPermissionSub.SecretSyncs}
+                a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
@@ -373,7 +382,7 @@ export const SecretSyncRow = ({
               </ProjectPermissionCan>
               <ProjectPermissionCan
                 I={ProjectPermissionSecretSyncActions.Delete}
-                a={ProjectPermissionSub.SecretSyncs}
+                a={permissionSubject}
               >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem

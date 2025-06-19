@@ -69,6 +69,12 @@ import {
   TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
 import {
+  TFlyioConnection,
+  TFlyioConnectionConfig,
+  TFlyioConnectionInput,
+  TValidateFlyioConnectionCredentialsSchema
+} from "./flyio";
+import {
   TGcpConnection,
   TGcpConnectionConfig,
   TGcpConnectionInput,
@@ -117,6 +123,12 @@ import {
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
+import {
+  TRenderConnection,
+  TRenderConnectionConfig,
+  TRenderConnectionInput,
+  TValidateRenderConnectionCredentialsSchema
+} from "./render/render-connection-types";
 import {
   TTeamCityConnection,
   TTeamCityConnectionConfig,
@@ -168,6 +180,8 @@ export type TAppConnection = { id: string } & (
   | TOracleDBConnection
   | TOnePassConnection
   | THerokuConnection
+  | TRenderConnection
+  | TFlyioConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -200,6 +214,8 @@ export type TAppConnectionInput = { id: string } & (
   | TOracleDBConnectionInput
   | TOnePassConnectionInput
   | THerokuConnectionInput
+  | TRenderConnectionInput
+  | TFlyioConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -239,7 +255,9 @@ export type TAppConnectionConfig =
   | TTeamCityConnectionConfig
   | TOCIConnectionConfig
   | TOnePassConnectionConfig
-  | THerokuConnectionConfig;
+  | THerokuConnectionConfig
+  | TRenderConnectionConfig
+  | TFlyioConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -266,7 +284,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOCIConnectionCredentialsSchema
   | TValidateOracleDBConnectionCredentialsSchema
   | TValidateOnePassConnectionCredentialsSchema
-  | TValidateHerokuConnectionCredentialsSchema;
+  | TValidateHerokuConnectionCredentialsSchema
+  | TValidateRenderConnectionCredentialsSchema
+  | TValidateFlyioConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

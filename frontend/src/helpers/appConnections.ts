@@ -19,6 +19,7 @@ import {
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   DatabricksConnectionMethod,
+  FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
   GitHubRadarConnectionMethod,
@@ -38,6 +39,7 @@ import {
 } from "@app/hooks/api/appConnections/types";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -80,7 +82,9 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
   [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
   [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" },
-  [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" }
+  [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" },
+  [AppConnection.Render]: { name: "Render", image: "Render.png" },
+  [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -120,6 +124,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
+    case FlyioConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
@@ -129,6 +134,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Simple Bind", icon: faLink };
     case HerokuConnectionMethod.AuthToken:
       return { name: "Auth Token", icon: faKey };
+    case RenderConnectionMethod.ApiKey:
+      return { name: "API Key", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

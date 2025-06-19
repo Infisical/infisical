@@ -396,7 +396,8 @@
           "pages": [
             "self-hosting/guides/mongo-to-postgres",
             "self-hosting/guides/custom-certificates",
-            "self-hosting/guides/automated-bootstrapping"
+            "self-hosting/guides/automated-bootstrapping",
+            "self-hosting/guides/production-hardening"
           ]
         },
         {
@@ -503,6 +504,7 @@
             "integrations/app-connections/azure-key-vault",
             "integrations/app-connections/camunda",
             "integrations/app-connections/databricks",
+            "integrations/app-connections/flyio",
             "integrations/app-connections/gcp",
             "integrations/app-connections/github",
             "integrations/app-connections/github-radar",
@@ -515,6 +517,7 @@
             "integrations/app-connections/oci",
             "integrations/app-connections/oracledb",
             "integrations/app-connections/postgres",
+            "integrations/app-connections/render",
             "integrations/app-connections/teamcity",
             "integrations/app-connections/terraform-cloud",
             "integrations/app-connections/vercel",
@@ -538,12 +541,14 @@
             "integrations/secret-syncs/azure-key-vault",
             "integrations/secret-syncs/camunda",
             "integrations/secret-syncs/databricks",
+            "integrations/secret-syncs/flyio",
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/hashicorp-vault",
             "integrations/secret-syncs/heroku",
             "integrations/secret-syncs/humanitec",
             "integrations/secret-syncs/oci-vault",
+            "integrations/secret-syncs/render",
             "integrations/secret-syncs/teamcity",
             "integrations/secret-syncs/terraform-cloud",
             "integrations/secret-syncs/vercel",
@@ -666,9 +671,9 @@
         "sdks/languages/node",
         "sdks/languages/python",
         "sdks/languages/java",
+        "sdks/languages/csharp",
         "sdks/languages/go",
-        "sdks/languages/ruby",
-        "sdks/languages/csharp"
+        "sdks/languages/ruby"
       ]
     },
     {
@@ -1265,6 +1270,18 @@
               ]
             },
             {
+              "group": "Fly.io",
+              "pages": [
+                "api-reference/endpoints/app-connections/flyio/list",
+                "api-reference/endpoints/app-connections/flyio/available",
+                "api-reference/endpoints/app-connections/flyio/get-by-id",
+                "api-reference/endpoints/app-connections/flyio/get-by-name",
+                "api-reference/endpoints/app-connections/flyio/create",
+                "api-reference/endpoints/app-connections/flyio/update",
+                "api-reference/endpoints/app-connections/flyio/delete"
+              ]
+            },
+            {
               "group": "GCP",
               "pages": [
                 "api-reference/endpoints/app-connections/gcp/list",
@@ -1406,6 +1423,18 @@
                 "api-reference/endpoints/app-connections/postgres/create",
                 "api-reference/endpoints/app-connections/postgres/update",
                 "api-reference/endpoints/app-connections/postgres/delete"
+              ]
+            },
+            {
+              "group": "Render",
+              "pages": [
+                "api-reference/endpoints/app-connections/render/list",
+                "api-reference/endpoints/app-connections/render/available",
+                "api-reference/endpoints/app-connections/render/get-by-id",
+                "api-reference/endpoints/app-connections/render/get-by-name",
+                "api-reference/endpoints/app-connections/render/create",
+                "api-reference/endpoints/app-connections/render/update",
+                "api-reference/endpoints/app-connections/render/delete"
               ]
             },
             {
@@ -1574,6 +1603,19 @@
               ]
             },
             {
+              "group": "Fly.io",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/flyio/list",
+                "api-reference/endpoints/secret-syncs/flyio/get-by-id",
+                "api-reference/endpoints/secret-syncs/flyio/get-by-name",
+                "api-reference/endpoints/secret-syncs/flyio/create",
+                "api-reference/endpoints/secret-syncs/flyio/update",
+                "api-reference/endpoints/secret-syncs/flyio/delete",
+                "api-reference/endpoints/secret-syncs/flyio/sync-secrets",
+                "api-reference/endpoints/secret-syncs/flyio/remove-secrets"
+              ]
+            },
+            {
               "group": "GCP Secret Manager",
               "pages": [
                 "api-reference/endpoints/secret-syncs/gcp-secret-manager/list",
@@ -1652,6 +1694,20 @@
                 "api-reference/endpoints/secret-syncs/oci-vault/sync-secrets",
                 "api-reference/endpoints/secret-syncs/oci-vault/import-secrets",
                 "api-reference/endpoints/secret-syncs/oci-vault/remove-secrets"
+              ]
+            },
+            {
+              "group": "Render",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/render/list",
+                "api-reference/endpoints/secret-syncs/render/get-by-id",
+                "api-reference/endpoints/secret-syncs/render/get-by-name",
+                "api-reference/endpoints/secret-syncs/render/create",
+                "api-reference/endpoints/secret-syncs/render/update",
+                "api-reference/endpoints/secret-syncs/render/delete",
+                "api-reference/endpoints/secret-syncs/render/sync-secrets",
+                "api-reference/endpoints/secret-syncs/render/import-secrets",
+                "api-reference/endpoints/secret-syncs/render/remove-secrets"
               ]
             },
             {
