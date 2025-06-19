@@ -434,15 +434,17 @@ export const AccessApprovalRequest = ({
             </div>
           </div>
           <div className="flex flex-col rounded-b-md border-x border-b border-t border-mineshaft-600 bg-mineshaft-800">
-            {filteredRequests?.length === 0 && (
+            {filteredRequests?.length === 0 && !search && (
               <div className="py-12">
                 <EmptyState
                   title={`No ${statusFilter === "open" ? "Pending" : "Completed"} Access Requests`}
                 />
               </div>
             )}
-            {Boolean(!filteredRequests?.length && requests?.length && !areRequestsPending) && (
-              <EmptyState title="No Requests Match Search" icon={faSearch} />
+            {Boolean(!filteredRequests?.length && search && !areRequestsPending) && (
+              <div className="py-12">
+                <EmptyState title="No Requests Match Search" icon={faSearch} />
+              </div>
             )}
             {!!filteredRequests?.length &&
               filteredRequests?.slice(offset, perPage * page).map((request) => {
