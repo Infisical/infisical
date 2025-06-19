@@ -700,7 +700,7 @@ export const oidcConfigServiceFactory = ({
         const claims = tokenSet.claims();
         if (!claims.email) {
           throw new BadRequestError({
-            message: "Invalid request. Missing email or first name"
+            message: "Invalid request. Missing email claim."
           });
         }
 
