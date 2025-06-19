@@ -48,6 +48,7 @@ import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-va
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
+import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
@@ -519,6 +520,7 @@ export const appConnectionServiceFactory = ({
     oci: ociConnectionService(connectAppConnectionById, licenseService),
     onepass: onePassConnectionService(connectAppConnectionById),
     render: renderConnectionService(connectAppConnectionById),
+    cloudflare: cloudflareConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById)
   };
 };

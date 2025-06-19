@@ -105,6 +105,12 @@ import {
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
+import {
+  TCloudflarePagesSync,
+  TCloudflarePagesSyncInput,
+  TCloudflarePagesSyncListItem,
+  TCloudflarePagesSyncWithCredentials
+} from "./cloudflare-pages/cloudflare-pages-types";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -125,7 +131,8 @@ export type TSecretSync =
   | TOCIVaultSync
   | TOnePassSync
   | TRenderSync
-  | TFlyioSync;
+  | TFlyioSync
+  | TCloudflarePagesSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -146,7 +153,8 @@ export type TSecretSyncWithCredentials =
   | TOCIVaultSyncWithCredentials
   | TOnePassSyncWithCredentials
   | TRenderSyncWithCredentials
-  | TFlyioSyncWithCredentials;
+  | TFlyioSyncWithCredentials
+  | TCloudflarePagesSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -167,7 +175,8 @@ export type TSecretSyncInput =
   | TOCIVaultSyncInput
   | TOnePassSyncInput
   | TRenderSyncInput
-  | TFlyioSyncInput;
+  | TFlyioSyncInput
+  | TCloudflarePagesSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -188,7 +197,8 @@ export type TSecretSyncListItem =
   | TOCIVaultSyncListItem
   | TOnePassSyncListItem
   | TRenderSyncListItem
-  | TFlyioSyncListItem;
+  | TFlyioSyncListItem
+  | TCloudflarePagesSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

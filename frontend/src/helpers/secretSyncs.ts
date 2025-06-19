@@ -69,6 +69,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Flyio]: {
     name: "Fly.io",
     image: "Flyio.svg"
+  },
+  [SecretSync.CloudflarePages]: {
+    name: "Cloudflare Pages",
+    image: "Cloudflare.png"
   }
 };
 
@@ -91,7 +95,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.OCIVault]: AppConnection.OCI,
   [SecretSync.OnePass]: AppConnection.OnePass,
   [SecretSync.Render]: AppConnection.Render,
-  [SecretSync.Flyio]: AppConnection.Flyio
+  [SecretSync.Flyio]: AppConnection.Flyio,
+  [SecretSync.CloudflarePages]: AppConnection.Cloudflare
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

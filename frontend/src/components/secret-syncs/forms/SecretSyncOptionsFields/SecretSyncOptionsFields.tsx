@@ -54,6 +54,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.OCIVault:
     case SecretSync.Render:
     case SecretSync.Flyio:
+    case SecretSync.CloudflarePages:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

@@ -19,6 +19,7 @@ import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSy
 import { AzureDevOpsSyncReviewFields } from "./AzureDevOpsSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
+import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
@@ -111,6 +112,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;
+      break;
+    case SecretSync.CloudflarePages:
+      DestinationFieldsComponent = <CloudflarePagesSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

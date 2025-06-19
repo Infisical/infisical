@@ -2397,6 +2397,10 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    CLOUDFLARE_PAGES: {
+      projectName: "The name of the Cloudflare Pages project to sync secrets to.",
+      environment: "The environment of the Cloudflare Pages project to sync secrets to."
     }
   }
 };

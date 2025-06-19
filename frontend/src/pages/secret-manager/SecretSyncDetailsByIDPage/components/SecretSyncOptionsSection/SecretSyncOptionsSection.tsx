@@ -57,6 +57,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.OnePass:
     case SecretSync.Render:
     case SecretSync.Flyio:
+    case SecretSync.CloudflarePages:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

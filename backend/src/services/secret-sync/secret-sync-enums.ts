@@ -17,7 +17,8 @@ export enum SecretSync {
   OCIVault = "oci-vault",
   OnePass = "1password",
   Render = "render",
-  Flyio = "flyio"
+  Flyio = "flyio",
+  CloudflarePages = "cloudflare-pages"
 }
 
 export enum SecretSyncInitialSyncBehavior {

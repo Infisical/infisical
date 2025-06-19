@@ -20,7 +20,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.OCIVault]: "OCI Vault",
   [SecretSync.OnePass]: "1Password",
   [SecretSync.Render]: "Render",
-  [SecretSync.Flyio]: "Fly.io"
+  [SecretSync.Flyio]: "Fly.io",
+  [SecretSync.CloudflarePages]: "Cloudflare Pages"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -42,7 +43,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.OCIVault]: AppConnection.OCI,
   [SecretSync.OnePass]: AppConnection.OnePass,
   [SecretSync.Render]: AppConnection.Render,
-  [SecretSync.Flyio]: AppConnection.Flyio
+  [SecretSync.Flyio]: AppConnection.Flyio,
+  [SecretSync.CloudflarePages]: AppConnection.Cloudflare
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -64,5 +66,6 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.OCIVault]: SecretSyncPlanType.Enterprise,
   [SecretSync.OnePass]: SecretSyncPlanType.Regular,
   [SecretSync.Render]: SecretSyncPlanType.Regular,
-  [SecretSync.Flyio]: SecretSyncPlanType.Regular
+  [SecretSync.Flyio]: SecretSyncPlanType.Regular,
+  [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular
 };

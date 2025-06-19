@@ -7,6 +7,7 @@ import { AzureAppConfigurationDestinationSyncCol } from "./AzureAppConfiguration
 import { AzureDevOpsSyncDestinationCol } from "./AzureDevOpsSyncDestinationCol";
 import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncCol";
 import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
+import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
@@ -64,6 +65,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <RenderSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Flyio:
       return <FlyioSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.CloudflarePages:
+      return <CloudflarePagesSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

@@ -29,6 +29,8 @@ import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFact
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
+import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
+import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
@@ -61,7 +63,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION,
   [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION,
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
-  [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION
+  [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
+  [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -223,6 +226,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.CloudflarePages:
+        return CloudflarePagesSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -306,6 +311,9 @@ export const SecretSyncFns = {
       case SecretSync.Flyio:
         secretMap = await FlyioSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.CloudflarePages:
+        secretMap = await CloudflarePagesSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -377,6 +385,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.CloudflarePages:
+        return CloudflarePagesSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

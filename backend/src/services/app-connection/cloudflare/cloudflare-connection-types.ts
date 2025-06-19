@@ -23,3 +23,8 @@ export type TCloudflareConnectionConfig = DiscriminativePick<
 > & {
   orgId: string;
 };
+
+export type TCloudflarePagesProject = {
+  id: string;
+  name: string;
+};
