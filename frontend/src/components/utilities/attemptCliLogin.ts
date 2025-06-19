@@ -16,8 +16,7 @@ export interface IsCliLoginSuccessful {
   loginResponse?: {
     email: string;
     privateKey: string;
-    JWTToken: string;
-    JTWToken: string; // CLI Versions 0.41.85 and below expect "JTWToken"
+    JTWToken: string;
   };
   success: boolean;
 }
@@ -132,8 +131,7 @@ const attemptLogin = async ({
               loginResponse: {
                 email,
                 privateKey,
-                JWTToken: token,
-                JTWToken: token // CLI Versions 0.41.85 and below expect "JTWToken"
+                JTWToken: token
               },
               success: true
             });
