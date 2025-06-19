@@ -698,7 +698,7 @@ export const oidcConfigServiceFactory = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (_req: any, tokenSet: TokenSet, cb: any) => {
         const claims = tokenSet.claims();
-        if (!claims.email || !claims.given_name) {
+        if (!claims.email) {
           throw new BadRequestError({
             message: "Invalid request. Missing email or first name"
           });
@@ -718,7 +718,7 @@ export const oidcConfigServiceFactory = ({
         oidcLogin({
           email: claims.email.toLowerCase(),
           externalId: claims.sub,
-          firstName: claims.given_name ?? "",
+          firstName: claims?.given_name || claims?.name || "",
           lastName: claims.family_name ?? "",
           orgId: org.id,
           groups,
