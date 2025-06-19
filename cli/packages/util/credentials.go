@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/rs/zerolog/log"
 	"github.com/zalando/go-keyring"
 )
 
@@ -90,23 +91,22 @@ func GetCurrentLoggedInUserDetails(setConfigVariables bool) (LoggedInUserDetails
 		}
 
 		httpClient.
-			SetAuthToken(userCreds.JTWToken).
+			SetAuthToken(userCreds.JWTToken).
 			SetHeader("Accept", "application/json")
 
 		isAuthenticated := api.CallIsAuthenticated(httpClient)
-		// TODO: add refresh token
-		// if !isAuthenticated {
-		// 	accessTokenResponse, err := api.CallGetNewAccessTokenWithRefreshToken(httpClient, userCreds.RefreshToken)
-		// 	if err == nil && accessTokenResponse.Token != "" {
-		// 		isAuthenticated = true
-		// 		userCreds.JTWToken = accessTokenResponse.Token
-		// 	}
-		// }
+		if !isAuthenticated {
+			accessTokenResponse, refreshErr := api.CallGetNewAccessTokenWithRefreshToken(httpClient, userCreds.RefreshToken)
+			if refreshErr == nil && accessTokenResponse.Token != "" {
+				isAuthenticated = true
+				userCreds.JWTToken = accessTokenResponse.Token
+			}
+		}
 
-		// err = StoreUserCredsInKeyRing(&userCreds)
-		// if err != nil {
-		// 	log.Debug().Msg("unable to store your user credentials with new access token")
-		// }
+		err = StoreUserCredsInKeyRing(&userCreds)
+		if err != nil {
+			log.Debug().Msg("unable to store your user credentials with new access token")
+		}
 
 		if !isAuthenticated {
 			return LoggedInUserDetails{
