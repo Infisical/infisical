@@ -112,7 +112,7 @@ export const SelectOrganizationSection = () => {
         return;
       }
 
-      const { token, isMfaEnabled, mfaMethod, refreshToken } = await selectOrg
+      const { token, isMfaEnabled, mfaMethod, RefreshToken } = await selectOrg
         .mutateAsync({
           organizationId: organization.id,
           userAgent: callbackPort ? UserAgentType.CLI : undefined
@@ -152,7 +152,7 @@ export const SelectOrganizationSection = () => {
           JTWToken: token,
           email: user?.email,
           privateKey,
-          refreshToken
+          RefreshToken
         } as IsCliLoginSuccessful["loginResponse"];
 
         // send request to server endpoint

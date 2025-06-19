@@ -51,7 +51,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
           token: z.string(),
           isMfaEnabled: z.boolean(),
           mfaMethod: z.string().optional(),
-          refreshToken: z.string().optional()
+          RefreshToken: z.string().optional()
         })
       }
     },
@@ -102,7 +102,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         maxAge: 0
       });
 
-      return { token: tokens.access, isMfaEnabled: false, refreshToken: tokens.refresh };
+      return { token: tokens.access, isMfaEnabled: false, RefreshToken: tokens.refresh };
     }
   });
 
@@ -131,7 +131,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
           iv: z.string(),
           tag: z.string(),
           token: z.string(),
-          refreshToken: z.string().optional()
+          RefreshToken: z.string().optional()
         })
       }
     },
@@ -175,7 +175,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         protectedKey: data.user.protectedKey || null,
         protectedKeyIV: data.user.protectedKeyIV || null,
         protectedKeyTag: data.user.protectedKeyTag || null,
-        refreshToken: data.token.refresh
+        RefreshToken: data.token.refresh
       } as const;
     }
   });
