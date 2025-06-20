@@ -103,7 +103,11 @@ export const CloudflareConnectionForm = ({ appConnection, onSubmit }: Props) => 
               isError={Boolean(error?.message)}
               label="Account ID"
             >
-              <Input value={value} onChange={(e) => onChange(e.target.value)} />
+              <Input
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder="802fcff12d4340f8e22feb5dd1d6ecac"
+              />
             </FormControl>
           )}
         />
