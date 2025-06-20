@@ -56,6 +56,11 @@ export type TUpdateServerConfigDTO = {
   microsoftTeamsAppId?: string;
   microsoftTeamsClientSecret?: string;
   microsoftTeamsBotId?: string;
+  gitHubAppConnectionClientId?: string;
+  gitHubAppConnectionClientSecret?: string;
+  gitHubAppConnectionSlug?: string;
+  gitHubAppConnectionId?: string;
+  gitHubAppConnectionPrivateKey?: string;
 } & Partial<TServerConfig>;
 
 export type TCreateAdminUserDTO = {
@@ -99,6 +104,13 @@ export type AdminIntegrationsConfig = {
     appId: string;
     clientSecret: string;
     botId: string;
+  };
+  gitHubAppConnection: {
+    clientId: string;
+    clientSecret: string;
+    appSlug: string;
+    appId: string;
+    privateKey: string;
   };
 };
 

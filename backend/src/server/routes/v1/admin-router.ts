@@ -37,7 +37,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             encryptedSlackClientSecret: true,
             encryptedMicrosoftTeamsAppId: true,
             encryptedMicrosoftTeamsClientSecret: true,
-            encryptedMicrosoftTeamsBotId: true
+            encryptedMicrosoftTeamsBotId: true,
+            encryptedGitHubAppConnectionClientId: true,
+            encryptedGitHubAppConnectionClientSecret: true,
+            encryptedGitHubAppConnectionSlug: true,
+            encryptedGitHubAppConnectionId: true,
+            encryptedGitHubAppConnectionPrivateKey: true
           }).extend({
             isMigrationModeOn: z.boolean(),
             defaultAuthOrgSlug: z.string().nullable(),
@@ -87,6 +92,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         microsoftTeamsAppId: z.string().optional(),
         microsoftTeamsClientSecret: z.string().optional(),
         microsoftTeamsBotId: z.string().optional(),
+        gitHubAppConnectionClientId: z.string().optional(),
+        gitHubAppConnectionClientSecret: z.string().optional(),
+        gitHubAppConnectionSlug: z.string().optional(),
+        gitHubAppConnectionId: z.string().optional(),
+        gitHubAppConnectionPrivateKey: z.string().optional(),
         authConsentContent: z
           .string()
           .trim()
@@ -348,6 +358,13 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             appId: z.string(),
             clientSecret: z.string(),
             botId: z.string()
+          }),
+          gitHubAppConnection: z.object({
+            clientId: z.string(),
+            clientSecret: z.string(),
+            appSlug: z.string(),
+            appId: z.string(),
+            privateKey: z.string()
           })
         })
       }

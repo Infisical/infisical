@@ -1,5 +1,6 @@
 import { useGetAdminIntegrationsConfig } from "@app/hooks/api";
 
+import { GitHubAppConnectionForm } from "./GitHubAppConnectionForm";
 import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
 import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
@@ -11,13 +12,13 @@ export const IntegrationsPageForm = () => {
       <div className="mb-4">
         <div className="text-xl font-semibold text-mineshaft-100">Integrations</div>
         <div className="text-sm text-mineshaft-300">
-          Configure your instance-wide settings to enable integration with Slack and Microsoft
-          Teams.
+          Configure your instance-wide settings to enable integration with third-party services.
         </div>
       </div>
       <div className="flex flex-col gap-2">
         <SlackIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
         <MicrosoftTeamsIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
+        <GitHubAppConnectionForm adminIntegrationsConfig={adminIntegrationsConfig} />
       </div>
     </div>
   );
