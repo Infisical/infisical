@@ -118,7 +118,7 @@ var userGetTokenCmd = &cobra.Command{
 			util.HandleError(err, "[infisical user get token]: Unable to get logged in user token")
 		}
 
-		tokenParts := strings.Split(loggedInUserDetails.UserCredentials.JWTToken, ".")
+		tokenParts := strings.Split(loggedInUserDetails.UserCredentials.JTWToken, ".")
 		if len(tokenParts) != 3 {
 			util.HandleError(errors.New("invalid token format"), "[infisical user get token]: Invalid token format")
 		}
@@ -136,7 +136,7 @@ var userGetTokenCmd = &cobra.Command{
 		}
 
 		fmt.Println("Session ID:", tokenPayload.TokenVersionId)
-		fmt.Println("Token:", loggedInUserDetails.UserCredentials.JWTToken)
+		fmt.Println("Token:", loggedInUserDetails.UserCredentials.JTWToken)
 	},
 }
 

@@ -101,9 +101,9 @@ const envSchema = z
     LOOPS_API_KEY: zpStr(z.string().optional()),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
-    JWT_AUTH_LIFETIME: zpStr(z.string().default("1d")),
+    JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
     JWT_SIGNUP_LIFETIME: zpStr(z.string().default("15m")),
-    JWT_REFRESH_LIFETIME: zpStr(z.string().default("14d")),
+    JWT_REFRESH_LIFETIME: zpStr(z.string().default("90d")),
     JWT_INVITE_LIFETIME: zpStr(z.string().default("1d")),
     JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
     JWT_PROVIDER_AUTH_LIFETIME: zpStr(z.string().default("15m")),

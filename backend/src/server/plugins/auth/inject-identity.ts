@@ -107,7 +107,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.addHook("onRequest", async (req) => {
     const appCfg = getConfig();
 
-    if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/") || req.url === "/api/v1/auth/token") {
+    if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/")) {
       return;
     }
 

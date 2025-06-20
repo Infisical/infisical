@@ -5,7 +5,7 @@ import "time"
 type UserCredentials struct {
 	Email        string `json:"email"`
 	PrivateKey   string `json:"privateKey"`
-	JWTToken     string `json:"JTWToken"`
+	JTWToken     string `json:"JTWToken"`
 	RefreshToken string `json:"RefreshToken"`
 }
 

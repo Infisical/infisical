@@ -111,7 +111,7 @@ var loginCmd = &cobra.Command{
 		infisicalClient := infisicalSdk.NewInfisicalClient(context.Background(), infisicalSdk.Config{
 			SiteUrl:          config.INFISICAL_URL,
 			UserAgent:        api.USER_AGENT,
-			AutoTokenRefresh: true,
+			AutoTokenRefresh: false,
 			CustomHeaders:    customHeaders,
 		})
 
@@ -437,8 +437,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 	//updating usercredentials
 	userCredentialsToBeStored.Email = email
 	userCredentialsToBeStored.PrivateKey = string(decryptedPrivateKey)
-	userCredentialsToBeStored.JWTToken = newJwtToken
-	userCredentialsToBeStored.RefreshToken = loginTwoResponse.RefreshToken
+	userCredentialsToBeStored.JTWToken = newJwtToken
 }
 
 func init() {
@@ -863,7 +862,7 @@ func askToPasteJwtToken(success chan models.UserCredentials, failure chan error)
 		os.Exit(1)
 	}
 
-	// verify JWT
+	// verify JTW
 	httpClient, err := util.GetRestyClientWithCustomHeaders()
 	if err != nil {
 		failure <- err
@@ -872,7 +871,7 @@ func askToPasteJwtToken(success chan models.UserCredentials, failure chan error)
 	}
 
 	httpClient.
-		SetAuthToken(userCredentials.JWTToken).
+		SetAuthToken(userCredentials.JTWToken).
 		SetHeader("Accept", "application/json")
 
 	isAuthenticated := api.CallIsAuthenticated(httpClient)
