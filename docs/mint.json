@@ -504,6 +504,7 @@
             "integrations/app-connections/azure-devops",
             "integrations/app-connections/azure-key-vault",
             "integrations/app-connections/camunda",
+            "integrations/app-connections/cloudflare",
             "integrations/app-connections/databricks",
             "integrations/app-connections/flyio",
             "integrations/app-connections/gcp",
