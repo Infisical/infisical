@@ -8,6 +8,7 @@ import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configurati
 import { registerAzureDevOpsSyncRouter } from "./azure-devops-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
+import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerFlyioSyncRouter } from "./flyio-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
@@ -20,7 +21,6 @@ import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
 import { registerWindmillSyncRouter } from "./windmill-sync-router";
-import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 
 export * from "./secret-sync-router";
 

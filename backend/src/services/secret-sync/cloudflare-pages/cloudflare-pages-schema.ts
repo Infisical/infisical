@@ -21,7 +21,7 @@ const CloudflarePagesSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_PAGES.environment)
 });
 
-const CloudflarePagesSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
+const CloudflarePagesSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
 export const CloudflarePagesSyncSchema = BaseSecretSyncSchema(
   SecretSync.CloudflarePages,

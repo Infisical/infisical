@@ -35,7 +35,7 @@ const getProjectEnvironmentSecrets = async (secretSync: TCloudflarePagesSyncWith
     )
   ).data.result.deployment_configs[destinationConfig.environment].env_vars;
 
-  return Object.entries(secrets ?? []).map(([key, envVar]) => ({
+  return Object.entries(secrets ?? {}).map(([key, envVar]) => ({
     key,
     value: envVar.value
   }));

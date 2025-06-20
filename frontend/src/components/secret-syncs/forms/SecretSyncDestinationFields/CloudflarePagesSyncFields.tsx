@@ -78,7 +78,7 @@ export const CloudflarePagesSyncFields = () => {
               onValueChange={(val) => onChange(val)}
               className="w-full border border-mineshaft-500 capitalize"
               position="popper"
-              placeholder="Select a scope..."
+              placeholder="Select an environment..."
               dropdownContainerClassName="max-w-none"
             >
               {CLOUDFLARE_ENVIRONMENTS.map(({ name, value: envValue }) => (
