@@ -19,3 +19,5 @@ export const getMinExpiresIn = (exp1: string | number, exp2: string | number): s
 
   return ms1 <= ms2 ? exp1 : exp2;
 };
+
+export const convertMsToSecond = (time: number) => time / 1000;

@@ -1903,6 +1903,7 @@ export const registerRoutes = async (
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await kmsService.startService();
   await microsoftTeamsService.start();
+  await dynamicSecretQueueService.init();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
