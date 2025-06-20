@@ -194,7 +194,8 @@ export const secretApprovalRequestServiceFactory = ({
     environment,
     committer,
     limit,
-    offset
+    offset,
+    search
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
@@ -208,6 +209,7 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
     if (shouldUseSecretV2Bridge) {
       return secretApprovalRequestDAL.findByProjectIdBridgeSecretV2({
         projectId,
@@ -216,19 +218,21 @@ export const secretApprovalRequestServiceFactory = ({
         status,
         userId: actorId,
         limit,
-        offset
+        offset,
+        search
       });
     }
-    const approvals = await secretApprovalRequestDAL.findByProjectId({
+
+    return secretApprovalRequestDAL.findByProjectId({
       projectId,
       committer,
       environment,
       status,
       userId: actorId,
       limit,
-      offset
+      offset,
+      search
     });
-    return approvals;
   };
 
   const getSecretApprovalDetails = async ({

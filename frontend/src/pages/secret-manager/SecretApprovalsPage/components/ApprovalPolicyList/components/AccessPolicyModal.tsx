@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { RefObject, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faGripVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,6 +13,8 @@ import {
   FormControl,
   IconButton,
   Input,
+  Modal,
+  ModalContent,
   Select,
   SelectItem,
   Switch,
@@ -110,20 +112,20 @@ const formSchema = z
 
 type TFormSchema = z.infer<typeof formSchema>;
 
-export const AccessPolicyForm = ({
-  isOpen,
+const Form = ({
   onToggle,
   members = [],
   projectId,
   projectSlug,
-  editValues
-}: Props) => {
+  editValues,
+  modalContainer,
+  isEditMode
+}: Props & { modalContainer: RefObject<HTMLDivElement>; isEditMode: boolean }) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
   const {
     control,
     handleSubmit,
-    reset,
     watch,
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
@@ -188,12 +190,7 @@ export const AccessPolicyForm = ({
   const { data: groups } = useListWorkspaceGroups(projectId);
 
   const environments = currentWorkspace?.environments || [];
-  const isEditMode = Boolean(editValues);
   const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
-
-  useEffect(() => {
-    if (!isOpen || !isEditMode) reset({});
-  }, [isOpen, isEditMode]);
 
   const { mutateAsync: createAccessApprovalPolicy } = useCreateAccessApprovalPolicy();
   const { mutateAsync: updateAccessApprovalPolicy } = useUpdateAccessApprovalPolicy();
@@ -387,6 +384,7 @@ export const AccessPolicyForm = ({
     setDraggedItem(null);
     setDragOverItem(null);
   };
+
   return (
     <div className="flex flex-col space-y-3">
       <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -572,7 +570,7 @@ export const AccessPolicyForm = ({
                           className="flex-grow"
                         >
                           <FilterableSelect
-                            menuPortalTarget={document.getElementById("policy-form")}
+                            menuPortalTarget={modalContainer.current}
                             menuPlacement="top"
                             isMulti
                             placeholder="Select members..."
@@ -602,7 +600,7 @@ export const AccessPolicyForm = ({
                           className="flex-grow"
                         >
                           <FilterableSelect
-                            menuPortalTarget={document.getElementById("policy-form")}
+                            menuPortalTarget={modalContainer.current}
                             menuPlacement="top"
                             isMulti
                             placeholder="Select groups..."
@@ -811,5 +809,29 @@ export const AccessPolicyForm = ({
         </div>
       </form>
     </div>
+  );
+};
+
+export const AccessPolicyForm = ({ isOpen, onToggle, editValues, ...props }: Props) => {
+  const modalContainer = useRef<HTMLDivElement>(null);
+  const isEditMode = Boolean(editValues);
+
+  return (
+    <Modal isOpen={isOpen} onOpenChange={onToggle}>
+      <ModalContent
+        className="max-w-3xl"
+        ref={modalContainer}
+        title={isEditMode ? "Edit Policy" : "Create Policy"}
+      >
+        <Form
+          {...props}
+          isOpen={isOpen}
+          onToggle={onToggle}
+          editValues={editValues}
+          modalContainer={modalContainer}
+          isEditMode={isEditMode}
+        />
+      </ModalContent>
+    </Modal>
   );
 };

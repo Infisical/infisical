@@ -275,7 +275,7 @@ export const accessApprovalRequestServiceFactory = ({
 
   const listApprovalRequests: TAccessApprovalRequestServiceFactory["listApprovalRequests"] = async ({
     projectSlug,
-    authorProjectMembershipId,
+    authorUserId,
     envSlug,
     actor,
     actorOrgId,
@@ -300,8 +300,8 @@ export const accessApprovalRequestServiceFactory = ({
     const policies = await accessApprovalPolicyDAL.find({ projectId: project.id });
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
 
-    if (authorProjectMembershipId) {
-      requests = requests.filter((request) => request.requestedByUserId === actorId);
+    if (authorUserId) {
+      requests = requests.filter((request) => request.requestedByUserId === authorUserId);
     }
 
     if (envSlug) {
