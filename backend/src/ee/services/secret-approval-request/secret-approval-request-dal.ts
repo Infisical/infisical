@@ -315,7 +315,6 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                   .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
                   .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
             )
-            .andWhere((bd) => void bd.where(`${TableName.SecretApprovalPolicy}.deletedAt`, null))
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
             .count("status")
@@ -347,7 +346,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     try {
       // akhilmhdh: If ever u wanted a 1 to so many relationship connected with pagination
       // this is the place u wanna look at.
-      const query = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
+      const innerQuery = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(
@@ -434,24 +433,31 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
-          db.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
-
-          db.raw(`count(*) OVER() as total_count`)
+          db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
         )
-        .orderBy("createdAt", "desc");
+        .distinctOn(`${TableName.SecretApprovalRequest}.id`)
+        .as("inner");
+
+      const query = (tx || db)
+        .select("*")
+        .select(db.raw("count(*) OVER() as total_count"))
+        .from(innerQuery)
+        .orderBy("createdAt", "desc") as typeof innerQuery;
 
       if (search) {
-        void query
-          .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
-            db.ref("firstName").withSchema("committerUser"),
-            db.ref("lastName").withSchema("committerUser"),
-            `%${search}%`
-          ])
-          .orWhereRaw(`?? ilike ?`, [db.ref("username").withSchema("committerUser"), `%${search}%`])
-          .orWhereRaw(`?? ilike ?`, [db.ref("email").withSchema("committerUser"), `%${search}%`])
-          .orWhereILike(`${TableName.Environment}.name`, `%${search}%`)
-          .orWhereILike(`${TableName.Environment}.slug`, `%${search}%`)
-          .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${search}%`);
+        void query.where((qb) => {
+          void qb
+            .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
+              db.ref("firstName").withSchema("committerUser"),
+              db.ref("lastName").withSchema("committerUser"),
+              `%${search}%`
+            ])
+            .orWhereRaw(`?? ilike ?`, [db.ref("username").withSchema("committerUser"), `%${search}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("email").withSchema("committerUser"), `%${search}%`])
+            .orWhereILike(`${TableName.Environment}.name`, `%${search}%`)
+            .orWhereILike(`${TableName.Environment}.slug`, `%${search}%`)
+            .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${search}%`);
+        });
       }
 
       const docs = await (tx || db)
@@ -544,7 +550,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     try {
       // akhilmhdh: If ever u wanted a 1 to so many relationship connected with pagination
       // this is the place u wanna look at.
-      const query = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
+      const innerQuery = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(
@@ -631,24 +637,31 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
-          db.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
-
-          db.raw(`count(*) OVER() as total_count`)
+          db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
         )
-        .orderBy("createdAt", "desc");
+        .distinctOn(`${TableName.SecretApprovalRequest}.id`)
+        .as("inner");
+
+      const query = (tx || db)
+        .select("*")
+        .select(db.raw("count(*) OVER() as total_count"))
+        .from(innerQuery)
+        .orderBy("createdAt", "desc") as typeof innerQuery;
 
       if (search) {
-        void query
-          .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
-            db.ref("firstName").withSchema("committerUser"),
-            db.ref("lastName").withSchema("committerUser"),
-            `%${search}%`
-          ])
-          .orWhereRaw(`?? ilike ?`, [db.ref("username").withSchema("committerUser"), `%${search}%`])
-          .orWhereRaw(`?? ilike ?`, [db.ref("email").withSchema("committerUser"), `%${search}%`])
-          .orWhereILike(`${TableName.Environment}.name`, `%${search}%`)
-          .orWhereILike(`${TableName.Environment}.slug`, `%${search}%`)
-          .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${search}%`);
+        void query.where((qb) => {
+          void qb
+            .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
+              db.ref("firstName").withSchema("committerUser"),
+              db.ref("lastName").withSchema("committerUser"),
+              `%${search}%`
+            ])
+            .orWhereRaw(`?? ilike ?`, [db.ref("username").withSchema("committerUser"), `%${search}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("email").withSchema("committerUser"), `%${search}%`])
+            .orWhereILike(`${TableName.Environment}.name`, `%${search}%`)
+            .orWhereILike(`${TableName.Environment}.slug`, `%${search}%`)
+            .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${search}%`);
+        });
       }
 
       const rankOffset = offset + 1;

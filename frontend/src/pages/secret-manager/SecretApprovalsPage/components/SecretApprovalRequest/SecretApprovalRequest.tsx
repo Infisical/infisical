@@ -126,6 +126,8 @@ export const SecretApprovalRequest = () => {
 
   const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
 
+  const isFiltered = Boolean(searchFilter || envFilter || committerFilter);
+
   return (
     <AnimatePresence mode="wait">
       {isSecretApprovalScreen ? (
@@ -292,7 +294,7 @@ export const SecretApprovalRequest = () => {
               </div>
             </div>
             <div className="flex flex-col rounded-b-md border-x border-b border-t border-mineshaft-600 bg-mineshaft-800">
-              {isRequestListEmpty && !searchFilter && (
+              {isRequestListEmpty && !isFiltered && (
                 <div className="py-12">
                   <EmptyState
                     title={`No ${statusFilter === "open" ? "Open" : "Closed"} Change Requests`}
@@ -344,10 +346,10 @@ export const SecretApprovalRequest = () => {
                 );
               })}
               {Boolean(
-                !secretApprovalRequests.length && searchFilter && !isApprovalRequestLoading
+                !secretApprovalRequests.length && isFiltered && !isApprovalRequestLoading
               ) && (
                 <div className="py-12">
-                  <EmptyState title="No Requests Match Search" icon={faSearch} />
+                  <EmptyState title="No Requests Match Filters" icon={faSearch} />
                 </div>
               )}
               {Boolean(totalApprovalCount) && (

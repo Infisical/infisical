@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   faArrowUpRightFromSquare,
+  faBan,
   faBookOpen,
   faCheck,
   faCheckCircle,
@@ -12,10 +13,12 @@ import {
   faMagnifyingGlass,
   faPlus,
   faSearch,
-  faUser
+  faStopwatch,
+  faUser,
+  IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { formatDistance } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
@@ -133,7 +136,7 @@ export const AccessApprovalRequest = ({
     isPending: areRequestsPending
   } = useGetAccessApprovalRequests({
     projectSlug,
-    authorProjectMembershipId: requestedByFilter,
+    authorUserId: requestedByFilter,
     envSlug: envFilter
   });
 
@@ -203,9 +206,15 @@ export const AccessApprovalRequest = ({
       const canBypass =
         !request.policy.bypassers.length || request.policy.bypassers.includes(user.id);
 
-      let displayData: { label: string; type: "primary" | "danger" | "success" } = {
+      let displayData: {
+        label: string;
+        type: "primary" | "danger" | "success";
+        tooltipContent?: string;
+        icon: IconDefinition | null;
+      } = {
         label: "",
-        type: "primary"
+        type: "primary",
+        icon: null
       };
 
       const isExpired =
@@ -213,20 +222,42 @@ export const AccessApprovalRequest = ({
         request.isApproved &&
         new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
 
-      if (isExpired) displayData = { label: "Access Expired", type: "danger" };
-      else if (isAccepted) displayData = { label: "Access Granted", type: "success" };
-      else if (isRejectedByAnyone) displayData = { label: "Rejected", type: "danger" };
+      if (isExpired)
+        displayData = {
+          label: "Access Expired",
+          type: "danger",
+          icon: faStopwatch,
+          tooltipContent: request.privilege?.temporaryAccessEndTime
+            ? `Expired ${format(request.privilege.temporaryAccessEndTime, "M/d/yyyy h:mm aa")}`
+            : undefined
+        };
+      else if (isAccepted)
+        displayData = {
+          label: "Access Granted",
+          type: "success",
+          icon: faCheck,
+          tooltipContent: `Granted ${format(request.updatedAt, "M/d/yyyy h:mm aa")}`
+        };
+      else if (isRejectedByAnyone)
+        displayData = {
+          label: "Rejected",
+          type: "danger",
+          icon: faBan,
+          tooltipContent: `Rejected ${format(request.updatedAt, "M/d/yyyy h:mm aa")}`
+        };
       else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
           label: `Pending ${request.policy.approvals - request.reviewers.length} review${
             request.policy.approvals - request.reviewers.length > 1 ? "s" : ""
           }`,
-          type: "primary"
+          type: "primary",
+          icon: faClipboardCheck
         };
       } else if (!isReviewedByUser)
         displayData = {
           label: "Review Required",
-          type: "primary"
+          type: "primary",
+          icon: faClipboardCheck
         };
 
       return {
@@ -265,6 +296,8 @@ export const AccessApprovalRequest = ({
     },
     [generateRequestDetails, membersGroupById, user, setSelectedRequest, handlePopUpOpen]
   );
+
+  const isFiltered = Boolean(search || envFilter || requestedByFilter);
 
   return (
     <AnimatePresence mode="wait">
@@ -357,7 +390,7 @@ export const AccessApprovalRequest = ({
               }}
             >
               <FontAwesomeIcon icon={faCheck} className="mr-2" />
-              {!!requestCount && requestCount.finalizedCount} Completed
+              {!!requestCount && requestCount.finalizedCount} Closed
             </div>
             <div className="flex flex-grow justify-end space-x-8">
               <DropdownMenu>
@@ -365,7 +398,7 @@ export const AccessApprovalRequest = ({
                   <Button
                     variant="plain"
                     colorSchema="secondary"
-                    className="text-bunker-300"
+                    className={envFilter ? "text-white" : "text-bunker-300"}
                     rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
                   >
                     Environments
@@ -419,10 +452,16 @@ export const AccessApprovalRequest = ({
                     {members?.map(({ user: membershipUser, id }) => (
                       <DropdownMenuItem
                         onClick={() =>
-                          setRequestedByFilter((state) => (state === id ? undefined : id))
+                          setRequestedByFilter((state) =>
+                            state === membershipUser.id ? undefined : membershipUser.id
+                          )
                         }
                         key={`request-filter-member-${id}`}
-                        icon={requestedByFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
+                        icon={
+                          requestedByFilter === membershipUser.id && (
+                            <FontAwesomeIcon icon={faCheckCircle} />
+                          )
+                        }
                         iconPos="right"
                       >
                         {membershipUser.username}
@@ -434,16 +473,16 @@ export const AccessApprovalRequest = ({
             </div>
           </div>
           <div className="flex flex-col rounded-b-md border-x border-b border-t border-mineshaft-600 bg-mineshaft-800">
-            {filteredRequests?.length === 0 && !search && (
+            {filteredRequests?.length === 0 && !isFiltered && (
               <div className="py-12">
                 <EmptyState
-                  title={`No ${statusFilter === "open" ? "Pending" : "Completed"} Access Requests`}
+                  title={`No ${statusFilter === "open" ? "Pending" : "Closed"} Access Requests`}
                 />
               </div>
             )}
-            {Boolean(!filteredRequests?.length && search && !areRequestsPending) && (
+            {Boolean(!filteredRequests?.length && isFiltered && !areRequestsPending) && (
               <div className="py-12">
-                <EmptyState title="No Requests Match Search" icon={faSearch} />
+                <EmptyState title="No Requests Match Filters" icon={faSearch} />
               </div>
             )}
             {!!filteredRequests?.length &&
@@ -494,13 +533,19 @@ export const AccessApprovalRequest = ({
                             <span>Requested By You</span>
                           </div>
                         )}
-                        <Badge
-                          className="flex items-center gap-1.5 whitespace-nowrap"
-                          variant={details.displayData.type}
-                        >
-                          <FontAwesomeIcon icon={faClipboardCheck} />
-                          <span>{details.displayData.label}</span>
-                        </Badge>
+                        <Tooltip content={details.displayData.tooltipContent}>
+                          <div>
+                            <Badge
+                              className="flex items-center gap-1.5 whitespace-nowrap"
+                              variant={details.displayData.type}
+                            >
+                              {details.displayData.icon && (
+                                <FontAwesomeIcon icon={details.displayData.icon} />
+                              )}
+                              <span>{details.displayData.label}</span>
+                            </Badge>
+                          </div>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>
