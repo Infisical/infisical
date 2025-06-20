@@ -542,6 +542,7 @@
             "integrations/secret-syncs/azure-devops",
             "integrations/secret-syncs/azure-key-vault",
             "integrations/secret-syncs/camunda",
+            "integrations/secret-syncs/cloudflare-pages",
             "integrations/secret-syncs/databricks",
             "integrations/secret-syncs/flyio",
             "integrations/secret-syncs/gcp-secret-manager",
