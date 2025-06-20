@@ -127,8 +127,8 @@ Follow the instructions for your operating system to install the Infisical CLI.
 
    </Tab>
 	 <Tab title="Debian/Ubuntu">
-	 	Add Infisical repository 
-			
+	 	Add Infisical repository
+
 		```console
 		$ curl -1sLf \
 		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
@@ -143,7 +143,7 @@ Follow the instructions for your operating system to install the Infisical CLI.
    </Tab>
 	<Tab title="Arch Linux">
 		Use the `yay` package manager to install from the [Arch User Repository](https://aur.archlinux.org/packages/infisical-bin)
-			
+
 		```console
 		$ yay -S infisical-bin
 		```
@@ -187,7 +187,7 @@ We'll now use the Infisical-Vercel integration send secrets from Infisical to Ve
 
 ### Infisical-Vercel integration
 
-To begin we have to import the Next.js app into Vercel as a project. [Follow these instructions](https://nextjs.org/learn/basics/deploying-nextjs-app/deploy) to deploy the Next.js app to Vercel.
+To begin we have to import the Next.js app into Vercel as a project. [Follow these instructions](https://vercel.com/docs/frameworks/nextjs) to deploy the Next.js app to Vercel.
 
 Next, navigate to your project's integrations tab in Infisical and press on the Vercel tile to grant Infisical access to your Vercel account.
 
@@ -237,7 +237,7 @@ At this stage, you know how to use the Infisical-Vercel integration to sync prod
     </Accordion>
     <Accordion title="Is opting out of end-to-end encryption for the Infisical-Vercel integration safe?">
         Yes. Your secrets are still encrypted at rest. To note, most secret managers actually don't support end-to-end encryption.
-        
+
         Check out the [security guide](/security/overview).
     </Accordion>
 </AccordionGroup>

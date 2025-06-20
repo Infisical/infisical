@@ -116,6 +116,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.devopsProjectName;
       secondaryText = destinationConfig.devopsProjectId;
       break;
+    case SecretSync.Heroku:
+      primaryText = destinationConfig.appName;
+      secondaryText = destinationConfig.app;
+      break;
     case SecretSync.Render:
       primaryText = destinationConfig.serviceName ?? destinationConfig.serviceId;
       secondaryText = "Service";

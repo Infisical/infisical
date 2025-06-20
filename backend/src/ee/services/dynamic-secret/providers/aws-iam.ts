@@ -128,11 +128,21 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
     const username = generateUsername(usernameTemplate, identity);
     const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
+    const awsTags = [{ Key: "createdBy", Value: "infisical-dynamic-secret" }];
+
+    if (providerInputs.tags && Array.isArray(providerInputs.tags)) {
+      const additionalTags = providerInputs.tags.map((tag) => ({
+        Key: tag.key,
+        Value: tag.value
+      }));
+      awsTags.push(...additionalTags);
+    }
+
     const createUserRes = await client.send(
       new CreateUserCommand({
         Path: awsPath,
         PermissionsBoundary: permissionBoundaryPolicyArn || undefined,
-        Tags: [{ Key: "createdBy", Value: "infisical-dynamic-secret" }],
+        Tags: awsTags,
         UserName: username
       })
     );

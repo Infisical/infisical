@@ -16,7 +16,7 @@ export interface IsCliLoginSuccessful {
   loginResponse?: {
     email: string;
     privateKey: string;
-    JWTToken: string;
+    JTWToken: string;
   };
   success: boolean;
 }
@@ -131,7 +131,7 @@ const attemptLogin = async ({
               loginResponse: {
                 email,
                 privateKey,
-                JWTToken: token
+                JTWToken: token
               },
               success: true
             });

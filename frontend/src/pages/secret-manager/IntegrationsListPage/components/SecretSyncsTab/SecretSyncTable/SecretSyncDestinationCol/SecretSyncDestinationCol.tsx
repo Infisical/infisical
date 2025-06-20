@@ -12,6 +12,7 @@ import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
+import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
@@ -60,6 +61,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <OnePassSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.AzureDevOps:
       return <AzureDevOpsSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Heroku:
+      return <HerokuSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Render:
       return <RenderSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Flyio:

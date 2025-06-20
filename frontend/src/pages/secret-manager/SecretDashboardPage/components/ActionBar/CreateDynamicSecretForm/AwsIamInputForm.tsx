@@ -21,6 +21,8 @@ import {
 } from "@app/hooks/api/dynamicSecret/types";
 import { WorkspaceEnv } from "@app/hooks/api/types";
 
+import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
+
 const formSchema = z.object({
   provider: z.discriminatedUnion("method", [
     z.object({
@@ -32,7 +34,12 @@ const formSchema = z.object({
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: z
+      .array(
+        z.object({ key: z.string().trim().min(1).max(128), value: z.string().trim().min(1).max(256) })
+      )
+      .optional()
     }),
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
@@ -42,7 +49,12 @@ const formSchema = z.object({
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: z
+      .array(
+        z.object({ key: z.string().trim().min(1).max(128), value: z.string().trim().min(1).max(256) })
+      )
+      .optional()
     })
   ]),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -398,6 +410,7 @@ export const AwsIamInputForm = ({
                   </FormControl>
                 )}
               />
+              <MetadataForm control={control} name="provider.tags" title="Tags" isValueRequired />
               {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}

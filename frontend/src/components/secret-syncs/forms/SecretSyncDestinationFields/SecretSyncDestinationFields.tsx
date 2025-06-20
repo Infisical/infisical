@@ -15,6 +15,7 @@ import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
+import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
@@ -63,6 +64,8 @@ export const SecretSyncDestinationFields = () => {
       return <OCIVaultSyncFields />;
     case SecretSync.OnePass:
       return <OnePassSyncFields />;
+    case SecretSync.Heroku:
+      return <HerokuSyncFields />;
     case SecretSync.Render:
       return <RenderSyncFields />;
     case SecretSync.Flyio:

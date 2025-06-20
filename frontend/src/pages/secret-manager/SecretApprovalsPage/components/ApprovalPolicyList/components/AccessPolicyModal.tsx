@@ -152,34 +152,34 @@ const Form = ({
               .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
           approvals: editValues?.approvals,
           allowedSelfApprovals: editValues?.allowedSelfApprovals,
-          sequenceApprovers: editValues.approvers
-            ?.sort((a, b) => (a?.sequence || 0) - (b?.sequence || 0))
-            .reduce(
-              (acc, curr) => {
-                if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
-                  acc[acc.length - 1][curr.type]?.push(curr);
-                  return acc;
-                }
-                const approvals = curr.approvals || editValues.approvals;
-                acc.push(
-                  curr.type === ApproverType.User
-                    ? {
-                        user: [curr],
-                        group: [],
-                        sequence: 1,
-                        approvals
-                      }
-                    : { group: [curr], user: [], sequence: 1, approvals }
-                );
+          sequenceApprovers: editValues.approvers?.reduce(
+            (acc, curr) => {
+              if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
+                acc[acc.length - 1][curr.type]?.push(curr);
                 return acc;
-              },
-              [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
-            )
+              }
+              const approvals = curr.approvalsRequired || editValues.approvals;
+              acc.push(
+                curr.type === ApproverType.User
+                  ? {
+                      user: [curr],
+                      group: [],
+                      sequence: 1,
+                      approvals
+                    }
+                  : { group: [curr], user: [], sequence: 1, approvals }
+              );
+              return acc;
+            },
+            [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
+          )
         } as TFormSchema)
       : undefined,
-    defaultValues: {
-      sequenceApprovers: [{ approvals: 1 }]
-    }
+    defaultValues: !editValues
+      ? {
+          sequenceApprovers: [{ approvals: 1 }]
+        }
+      : undefined
   });
   const sequenceApproversFieldArray = useFieldArray({
     control,

@@ -62,6 +62,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     name: "1Password",
     image: "1Password.png"
   },
+  [SecretSync.Heroku]: {
+    name: "Heroku",
+    image: "Heroku.png"
+  },
   [SecretSync.Render]: {
     name: "Render",
     image: "Render.png"
@@ -90,6 +94,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TeamCity]: AppConnection.TeamCity,
   [SecretSync.OCIVault]: AppConnection.OCI,
   [SecretSync.OnePass]: AppConnection.OnePass,
+  [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
   [SecretSync.Flyio]: AppConnection.Flyio
 };

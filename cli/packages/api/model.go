@@ -21,7 +21,7 @@ type LoginTwoRequest struct {
 }
 
 type LoginTwoResponse struct {
-	JWTToken            string `json:"token"`
+	JTWToken            string `json:"token"`
 	RefreshToken        string `json:"refreshToken"`
 	PublicKey           string `json:"publicKey"`
 	EncryptedPrivateKey string `json:"encryptedPrivateKey"`
@@ -267,7 +267,7 @@ type GetLoginTwoV2Response struct {
 	ProtectedKey        string `json:"protectedKey"`
 	ProtectedKeyIV      string `json:"protectedKeyIV"`
 	ProtectedKeyTag     string `json:"protectedKeyTag"`
-	RefreshToken        string `json:"refreshToken"`
+	RefreshToken        string `json:"RefreshToken"`
 }
 
 type VerifyMfaTokenRequest struct {

@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 
@@ -207,7 +208,8 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: ResourceMetadataSchema.optional()
     }),
     z.object({
       method: z.literal(AwsIamAuthType.AssumeRole),
@@ -217,7 +219,8 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
       permissionBoundaryPolicyArn: z.string().trim().optional(),
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional()
+      policyArns: z.string().trim().optional(),
+      tags: ResourceMetadataSchema.optional()
     })
   ])
 );
@@ -474,6 +477,23 @@ export const DynamicSecretGcpIamSchema = z.object({
   serviceAccountEmail: z.string().email().trim().min(1, "Service account email required").max(128)
 });
 
+export const DynamicSecretGithubSchema = z.object({
+  appId: z.number().min(1).describe("The ID of your GitHub App."),
+  installationId: z.number().min(1).describe("The ID of the GitHub App installation."),
+  privateKey: z
+    .string()
+    .trim()
+    .min(1)
+    .refine(
+      (val) =>
+        new RE2(
+          /^-----BEGIN(?:(?: RSA| PGP| ENCRYPTED)? PRIVATE KEY)-----\s*[\s\S]*?-----END(?:(?: RSA| PGP| ENCRYPTED)? PRIVATE KEY)-----$/
+        ).test(val),
+      "Invalid PEM format for private key"
+    )
+    .describe("The private key generated for your GitHub App.")
+});
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -492,7 +512,8 @@ export enum DynamicSecretProviders {
   SapAse = "sap-ase",
   Kubernetes = "kubernetes",
   Vertica = "vertica",
-  GcpIam = "gcp-iam"
+  GcpIam = "gcp-iam",
+  Github = "github"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -513,7 +534,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.GcpIam), inputs: DynamicSecretGcpIamSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.GcpIam), inputs: DynamicSecretGcpIamSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Github), inputs: DynamicSecretGithubSchema })
 ]);
 
 export type TDynamicProviderFns = {

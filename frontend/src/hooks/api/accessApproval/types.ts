@@ -35,7 +35,7 @@ export type Approver = {
   id: string;
   type: ApproverType;
   sequence?: number;
-  approvals?: number;
+  approvalsRequired?: number;
 };
 
 export type Bypasser = {
