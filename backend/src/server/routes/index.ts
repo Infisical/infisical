@@ -2020,9 +2020,15 @@ export const registerRoutes = async (
     if (licenseSyncJob) {
       cronJobs.push(licenseSyncJob);
     }
+
     const microsoftTeamsSyncJob = await microsoftTeamsService.initializeBackgroundSync();
     if (microsoftTeamsSyncJob) {
       cronJobs.push(microsoftTeamsSyncJob);
+    }
+
+    const adminIntegrationsSyncJob = await superAdminService.initializeAdminIntegrationConfigSync();
+    if (adminIntegrationsSyncJob) {
+      cronJobs.push(adminIntegrationsSyncJob);
     }
   }
 
