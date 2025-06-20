@@ -28,7 +28,7 @@ export const RenewDynamicSecretLease = ({
   environment,
   dynamicSecret
 }: Props) => {
-  const maxTtlMs = ms(dynamicSecret.maxTTL);
+  const maxTtlMs = dynamicSecret.maxTTL ? ms(dynamicSecret.maxTTL) : undefined;
 
   const formSchema = z.object({
     ttl: z.string().superRefine((val, ctx) => {
@@ -39,7 +39,7 @@ export const RenewDynamicSecretLease = ({
           code: z.ZodIssueCode.custom,
           message: "TTL must be greater than 1 second"
         });
-      if (valMs > maxTtlMs)
+      if (maxTtlMs && valMs > maxTtlMs)
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `TTL must be less than ${dynamicSecret.maxTTL}`
