@@ -1,0 +1,121 @@
+---
+title: "Heroku App Connection"
+description: "Learn how to configure a Heroku App Connection for Infisical using OAuth or Auth Token methods."
+---
+
+Infisical supports two methods for connecting to Heroku: **OAuth** and **Auth Token**. Choose the method that best fits your setup and security requirements.
+
+<Tabs>
+  <Tab title="OAuth Method">
+    The OAuth method provides secure authentication through Heroku's OAuth flow.
+
+    <Accordion title="Self-Hosted Instance Setup">
+      Using the Heroku App Connection with OAuth on a self-hosted instance of Infisical requires configuring an API client in Heroku and registering your instance with it.
+
+      **Prerequisites:**
+      - A Heroku account with existing applications
+      - Self-hosted Infisical instance
+
+      <Steps>
+        <Step title="Create an API client in Heroku">
+          Navigate to your user Account settings > Applications to create a new API client.
+
+          ![Heroku config settings](/images/integrations/heroku/integrations-heroku-config-settings.png)
+          ![Heroku config applications](/images/integrations/heroku/integrations-heroku-config-applications.png)
+          ![Heroku config new app](/images/integrations/heroku/integrations-heroku-config-new-app.png)
+
+          Create the API client. As part of the form, set the **OAuth callback URL** to `https://your-domain.com/integrations/heroku/oauth2/callback`.
+
+          <Tip>
+            The domain you defined in the OAuth callback URL should be equivalent to the `SITE_URL` configured in your Infisical instance.
+          </Tip>
+
+          ![Heroku config new app form](/images/integrations/heroku/integrations-heroku-config-new-app-form.png)
+        </Step>
+        <Step title="Add your Heroku API client credentials to Infisical">
+          Obtain the **Client ID** and **Client Secret** for your Heroku API client.
+
+          ![Heroku config credentials](/images/integrations/heroku/integrations-heroku-config-credentials.png)
+
+          Back in your Infisical instance, add two new environment variables for the credentials of your Heroku API client:
+
+          - `CLIENT_ID_HEROKU`: The **Client ID** of your Heroku API client.
+          - `CLIENT_SECRET_HEROKU`: The **Client Secret** of your Heroku API client.
+
+          Once added, restart your Infisical instance and use the Heroku App Connection.
+        </Step>
+      </Steps>
+    </Accordion>
+
+    ## Setup Heroku OAuth Connection in Infisical
+
+    <Steps>
+      <Step title="Navigate to App Connections">
+        Navigate to the **App Connections** tab on the **Organization Settings** page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Add Connection">
+        Select the **Heroku App Connection** option from the connection options modal.
+        ![Select Heroku Connection](/images/app-connections/heroku/heroku-select-connection.png)
+      </Step>
+      <Step title="Choose OAuth Method">
+        Select the **OAuth** method and click **Connect to Heroku**.
+
+        ![Connect via Heroku OAuth](/images/app-connections/heroku/heroku-create-oauth-method.png)
+      </Step>
+      <Step title="Grant Access">
+        You will be redirected to Heroku to grant Infisical access to your Heroku account. Once granted, you will be redirected back to Infisical's App Connections page.
+        ![Heroku Authorization](/images/integrations/heroku/integrations-heroku-auth.png)
+      </Step>
+      <Step title="Connection Created">
+        Your **Heroku App Connection** is now available for use.
+        ![Heroku OAuth Connection](/images/app-connections/heroku/heroku-connection.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="Auth Token Method">
+    The Auth Token method uses a Heroku API token for authentication, providing a straightforward setup process.
+
+    ## Setup Heroku Auth Token Connection in Infisical
+
+    <Steps>
+      <Step title="Generate Heroku API Token">
+        Log in to your Heroku account and navigate to Account Settings.
+
+        Under the **Authorizations** section on the **Applications** tab, reveal and copy your Authorization token. If you don't have one, click **Create Authorization** to create a new token.
+
+        <Warning>
+          Keep your Authorization token secure and do not share it. Anyone with access to this token can manage your Heroku applications.
+        </Warning>
+
+        ![Heroku API Token](/images/app-connections/heroku/heroku-api-token.png)
+      </Step>
+      <Step title="Navigate to App Connections">
+        Navigate to the **App Connections** tab on the **Organization Settings** page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Add Connection">
+        Select the **Heroku App Connection** option from the connection options modal.
+        ![Select Heroku Connection](/images/app-connections/heroku/heroku-select-connection.png)
+      </Step>
+      <Step title="Configure Auth Token">
+        Select the **Auth Token** method and paste your Heroku Authorization token in the provided field.
+
+        ![Configure Auth Token](/images/app-connections/heroku/heroku-create-token-method.png)
+
+        Click **Connect** to establish the connection.
+      </Step>
+      <Step title="Connection Created">
+        Your **Heroku App Connection** is now available for use.
+        ![Heroku Auth Token Connection](/images/app-connections/heroku/heroku-connection.png)
+      </Step>
+    </Steps>
+
+    <Info>
+      Auth Token connections require manual token rotation when your Heroku Authorization expires or is regenerated. Monitor your connection status and update the token as needed.
+    </Info>
+
+  </Tab>
+</Tabs>

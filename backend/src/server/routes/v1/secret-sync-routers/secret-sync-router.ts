@@ -27,6 +27,7 @@ import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-s
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
+import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
@@ -56,6 +57,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   TeamCitySyncSchema,
   OCIVaultSyncSchema,
   OnePassSyncSchema,
+  HerokuSyncSchema,
   RenderSyncSchema,
   FlyioSyncSchema,
   CloudflarePagesSyncSchema
@@ -79,6 +81,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   TeamCitySyncListItemSchema,
   OCIVaultSyncListItemSchema,
   OnePassSyncListItemSchema,
+  HerokuSyncListItemSchema,
   RenderSyncListItemSchema,
   FlyioSyncListItemSchema,
   CloudflarePagesSyncListItemSchema

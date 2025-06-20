@@ -35,6 +35,7 @@ import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
+import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
@@ -62,6 +63,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.TeamCity]: TEAMCITY_SYNC_LIST_OPTION,
   [SecretSync.OCIVault]: OCI_VAULT_SYNC_LIST_OPTION,
   [SecretSync.OnePass]: ONEPASS_SYNC_LIST_OPTION,
+  [SecretSync.Heroku]: HEROKU_SYNC_LIST_OPTION,
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION
@@ -210,6 +212,8 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService
         }).syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Heroku:
+        return HerokuSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.Vercel:
         return VercelSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Windmill:
@@ -305,6 +309,9 @@ export const SecretSyncFns = {
       case SecretSync.OnePass:
         secretMap = await OnePassSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Heroku:
+        secretMap = await HerokuSyncFns.getSecrets(secretSync, { appConnectionDAL, kmsService });
+        break;
       case SecretSync.Render:
         secretMap = await RenderSyncFns.getSecrets(secretSync);
         break;
@@ -381,6 +388,8 @@ export const SecretSyncFns = {
         return OCIVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OnePass:
         return OnePassSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Heroku:
+        return HerokuSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.Render:
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:

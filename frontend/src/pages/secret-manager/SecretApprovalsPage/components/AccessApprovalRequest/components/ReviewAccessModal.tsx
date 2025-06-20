@@ -185,7 +185,7 @@ export const ReviewAccessRequestModal = ({
           return acc;
         }
 
-        const approvals = curr.approvals || policy.approvals;
+        const approvals = curr.approvalsRequired || policy.approvals;
         const sequence = curr.sequence || 1;
 
         acc.push(

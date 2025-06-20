@@ -161,6 +161,11 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
           {{replace identity.name 'user' 'replace'}}      // testreplace
           ```
         </ParamField>
+
+        <ParamField path="Tags" type="map<string, string>[]">
+          Tags to be added to the created IAM User resource.
+        </ParamField>
+
         <ParamField path="Method" type="string" required>
             Select *Assume Role* method.
         </ParamField>
@@ -302,6 +307,10 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
 
           - `{{randomUsername}}`: Random username string
           - `{{unixTimestamp}}`: Current Unix timestamp
+        </ParamField>
+
+        <ParamField path="Tags" type="map[string]string">
+          Tags to be added to the created IAM User resource.
         </ParamField>
 
       </Step>

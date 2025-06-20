@@ -13,6 +13,7 @@ import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
+import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
@@ -39,6 +40,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   TeamCitySyncDestinationSchema,
   OCIVaultSyncDestinationSchema,
   OnePassSyncDestinationSchema,
+  HerokuSyncDestinationSchema,
   RenderSyncDestinationSchema,
   FlyioSyncDestinationSchema,
   CloudflarePagesSyncDestinationSchema

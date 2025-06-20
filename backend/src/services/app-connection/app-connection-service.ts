@@ -60,6 +60,8 @@ import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
+import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
+import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
@@ -111,6 +113,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OCI]: ValidateOCIConnectionCredentialsSchema,
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
   [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
+  [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema,
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema
@@ -519,6 +522,7 @@ export const appConnectionServiceFactory = ({
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
     onepass: onePassConnectionService(connectAppConnectionById),
+    heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById)

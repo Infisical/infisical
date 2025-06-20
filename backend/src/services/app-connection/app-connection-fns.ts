@@ -69,6 +69,7 @@ import {
   HCVaultConnectionMethod,
   validateHCVaultConnectionCredentials
 } from "./hc-vault";
+import { getHerokuConnectionListItem, HerokuConnectionMethod, validateHerokuConnectionCredentials } from "./heroku";
 import {
   getHumanitecConnectionListItem,
   HumanitecConnectionMethod,
@@ -130,6 +131,7 @@ export const listAppConnectionOptions = () => {
     getOCIConnectionListItem(),
     getOracleDBConnectionListItem(),
     getOnePassConnectionListItem(),
+    getHerokuConnectionListItem(),
     getRenderConnectionListItem(),
     getFlyioConnectionListItem(),
     getCloudflareConnectionListItem()
@@ -208,6 +210,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator
@@ -226,7 +229,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AzureClientSecretsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
     case AzureDevOpsConnectionMethod.OAuth:
+    case HerokuConnectionMethod.OAuth:
       return "OAuth";
+    case HerokuConnectionMethod.AuthToken:
+      return "Auth Token";
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
       return "Access Key";
@@ -318,6 +324,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OCI]: platformManagedCredentialsNotSupported,
   [AppConnection.OracleDB]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
+  [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported

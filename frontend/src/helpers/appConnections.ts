@@ -38,6 +38,7 @@ import {
   VercelConnectionMethod,
   WindmillConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 
@@ -82,6 +83,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.TeamCity]: { name: "TeamCity", image: "TeamCity.png" },
   [AppConnection.OCI]: { name: "OCI", image: "Oracle.png", enterprise: true },
   [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" },
+  [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" },
   [AppConnection.Render]: { name: "Render", image: "Render.png" },
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" }
@@ -97,6 +99,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureClientSecretsConnectionMethod.OAuth:
     case AzureDevOpsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
+    case HerokuConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
@@ -132,6 +135,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "App Role", icon: faUser };
     case LdapConnectionMethod.SimpleBind:
       return { name: "Simple Bind", icon: faLink };
+    case HerokuConnectionMethod.AuthToken:
+      return { name: "Auth Token", icon: faKey };
     case RenderConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     default:

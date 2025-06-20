@@ -23,6 +23,7 @@ export enum AppConnection {
   TeamCity = "teamcity",
   OCI = "oci",
   OnePass = "1password",
+  Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
   Cloudflare = "cloudflare"

@@ -50,6 +50,7 @@ import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
+import { HerokuConnectionListItemSchema, SanitizedHerokuConnectionSchema } from "@app/services/app-connection/heroku";
 import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
@@ -110,6 +111,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOCIConnectionSchema.options,
   ...SanitizedOracleDBConnectionSchema.options,
   ...SanitizedOnePassConnectionSchema.options,
+  ...SanitizedHerokuConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
   ...SanitizedCloudflareConnectionSchema.options
@@ -140,6 +142,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OCIConnectionListItemSchema,
   OracleDBConnectionListItemSchema,
   OnePassConnectionListItemSchema,
+  HerokuConnectionListItemSchema,
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
   CloudflareConnectionListItemSchema

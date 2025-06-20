@@ -214,6 +214,7 @@
             "documentation/platform/dynamic-secrets/cassandra",
             "documentation/platform/dynamic-secrets/elastic-search",
             "documentation/platform/dynamic-secrets/gcp-iam",
+            "documentation/platform/dynamic-secrets/github",
             "documentation/platform/dynamic-secrets/ldap",
             "documentation/platform/dynamic-secrets/mongo-atlas",
             "documentation/platform/dynamic-secrets/mongo-db",
@@ -509,6 +510,7 @@
             "integrations/app-connections/github",
             "integrations/app-connections/github-radar",
             "integrations/app-connections/hashicorp-vault",
+            "integrations/app-connections/heroku",
             "integrations/app-connections/humanitec",
             "integrations/app-connections/ldap",
             "integrations/app-connections/mssql",
@@ -544,6 +546,7 @@
             "integrations/secret-syncs/gcp-secret-manager",
             "integrations/secret-syncs/github",
             "integrations/secret-syncs/hashicorp-vault",
+            "integrations/secret-syncs/heroku",
             "integrations/secret-syncs/humanitec",
             "integrations/secret-syncs/oci-vault",
             "integrations/secret-syncs/render",
@@ -1328,6 +1331,18 @@
               ]
             },
             {
+              "group": "Heroku",
+              "pages": [
+                "api-reference/endpoints/app-connections/heroku/list",
+                "api-reference/endpoints/app-connections/heroku/available",
+                "api-reference/endpoints/app-connections/heroku/get-by-id",
+                "api-reference/endpoints/app-connections/heroku/get-by-name",
+                "api-reference/endpoints/app-connections/heroku/create",
+                "api-reference/endpoints/app-connections/heroku/update",
+                "api-reference/endpoints/app-connections/heroku/delete"
+              ]
+            },
+            {
               "group": "Humanitec",
               "pages": [
                 "api-reference/endpoints/app-connections/humanitec/list",
@@ -1640,6 +1655,19 @@
                 "api-reference/endpoints/secret-syncs/hashicorp-vault/sync-secrets",
                 "api-reference/endpoints/secret-syncs/hashicorp-vault/import-secrets",
                 "api-reference/endpoints/secret-syncs/hashicorp-vault/remove-secrets"
+              ]
+            },
+            {
+              "group": "Heroku",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/heroku/list",
+                "api-reference/endpoints/secret-syncs/heroku/get-by-id",
+                "api-reference/endpoints/secret-syncs/heroku/get-by-name",
+                "api-reference/endpoints/secret-syncs/heroku/create",
+                "api-reference/endpoints/secret-syncs/heroku/update",
+                "api-reference/endpoints/secret-syncs/heroku/delete",
+                "api-reference/endpoints/secret-syncs/heroku/sync-secrets",
+                "api-reference/endpoints/secret-syncs/heroku/remove-secrets"
               ]
             },
             {

@@ -23,6 +23,7 @@ export enum AppConnection {
   OCI = "oci",
   OracleDB = "oracledb",
   OnePass = "1password",
+  Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
   Cloudflare = "cloudflare"
