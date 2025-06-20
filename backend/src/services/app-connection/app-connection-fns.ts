@@ -99,6 +99,11 @@ import {
   validateWindmillConnectionCredentials,
   WindmillConnectionMethod
 } from "./windmill";
+import {
+  getCloudflareConnectionListItem,
+  validateCloudflareConnectionCredentials
+} from "./cloudflare/cloudflare-connection-fns";
+import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -128,7 +133,8 @@ export const listAppConnectionOptions = () => {
     getOnePassConnectionListItem(),
     getHerokuConnectionListItem(),
     getRenderConnectionListItem(),
-    getFlyioConnectionListItem()
+    getFlyioConnectionListItem(),
+    getCloudflareConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -206,7 +212,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -241,6 +248,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
+    case CloudflareConnectionMethod.APIToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -318,7 +326,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
   [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
-  [AppConnection.Flyio]: platformManagedCredentialsNotSupported
+  [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
+  [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

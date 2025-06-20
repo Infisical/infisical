@@ -128,6 +128,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.appId;
       secondaryText = "App ID";
       break;
+    case SecretSync.CloudflarePages:
+      primaryText = destinationConfig.projectName;
+      secondaryText = destinationConfig.environment;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

@@ -9,6 +9,7 @@ import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
 import { TAzureDevOpsSync } from "./azure-devops-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TCamundaSync } from "./camunda-sync";
+import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
@@ -49,7 +50,8 @@ export type TSecretSync =
   | TOnePassSync
   | THerokuSync
   | TRenderSync
-  | TFlyioSync;
+  | TFlyioSync
+  | TCloudflarePagesSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

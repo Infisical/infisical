@@ -8,6 +8,7 @@ import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configurati
 import { registerAzureDevOpsSyncRouter } from "./azure-devops-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
+import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerFlyioSyncRouter } from "./flyio-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
@@ -43,5 +44,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.OnePass]: registerOnePassSyncRouter,
   [SecretSync.Heroku]: registerHerokuSyncRouter,
   [SecretSync.Render]: registerRenderSyncRouter,
-  [SecretSync.Flyio]: registerFlyioSyncRouter
+  [SecretSync.Flyio]: registerFlyioSyncRouter,
+  [SecretSync.CloudflarePages]: registerCloudflarePagesSyncRouter
 };
