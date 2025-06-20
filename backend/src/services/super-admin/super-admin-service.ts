@@ -166,6 +166,74 @@ export const superAdminServiceFactory = ({
     return serverCfg;
   };
 
+  const getAdminIntegrationsConfig = async () => {
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+
+    if (!serverCfg) {
+      throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
+    }
+
+    const decrypt = kmsService.decryptWithRootKey();
+
+    const slackClientId = serverCfg.encryptedSlackClientId ? decrypt(serverCfg.encryptedSlackClientId).toString() : "";
+    const slackClientSecret = serverCfg.encryptedSlackClientSecret
+      ? decrypt(serverCfg.encryptedSlackClientSecret).toString()
+      : "";
+
+    const microsoftAppId = serverCfg.encryptedMicrosoftTeamsAppId
+      ? decrypt(serverCfg.encryptedMicrosoftTeamsAppId).toString()
+      : "";
+    const microsoftClientSecret = serverCfg.encryptedMicrosoftTeamsClientSecret
+      ? decrypt(serverCfg.encryptedMicrosoftTeamsClientSecret).toString()
+      : "";
+    const microsoftBotId = serverCfg.encryptedMicrosoftTeamsBotId
+      ? decrypt(serverCfg.encryptedMicrosoftTeamsBotId).toString()
+      : "";
+
+    const gitHubAppConnectionClientId = serverCfg.encryptedGitHubAppConnectionClientId
+      ? decrypt(serverCfg.encryptedGitHubAppConnectionClientId).toString()
+      : "";
+    const gitHubAppConnectionClientSecret = serverCfg.encryptedGitHubAppConnectionClientSecret
+      ? decrypt(serverCfg.encryptedGitHubAppConnectionClientSecret).toString()
+      : "";
+
+    const gitHubAppConnectionAppSlug = serverCfg.encryptedGitHubAppConnectionSlug
+      ? decrypt(serverCfg.encryptedGitHubAppConnectionSlug).toString()
+      : "";
+
+    const gitHubAppConnectionAppId = serverCfg.encryptedGitHubAppConnectionId
+      ? decrypt(serverCfg.encryptedGitHubAppConnectionId).toString()
+      : "";
+    const gitHubAppConnectionAppPrivateKey = serverCfg.encryptedGitHubAppConnectionPrivateKey
+      ? decrypt(serverCfg.encryptedGitHubAppConnectionPrivateKey).toString()
+      : "";
+
+    return {
+      slack: {
+        clientSecret: slackClientSecret,
+        clientId: slackClientId
+      },
+      microsoftTeams: {
+        appId: microsoftAppId,
+        clientSecret: microsoftClientSecret,
+        botId: microsoftBotId
+      },
+      gitHubAppConnection: {
+        clientId: gitHubAppConnectionClientId,
+        clientSecret: gitHubAppConnectionClientSecret,
+        appSlug: gitHubAppConnectionAppSlug,
+        appId: gitHubAppConnectionAppId,
+        privateKey: gitHubAppConnectionAppPrivateKey
+      }
+    };
+  };
+
+  const $syncAdminIntegrationConfig = async () => {
+    const config = await getAdminIntegrationsConfig();
+    Object.freeze(config);
+    adminIntegrationsConfig = config;
+  };
+
   const updateServerCfg = async (
     data: TSuperAdminUpdate & {
       slackClientId?: string;
@@ -270,39 +338,49 @@ export const superAdminServiceFactory = ({
       microsoftTeamsSettingsUpdated = true;
     }
 
+    let gitHubAppConnectionSettingsUpdated = false;
     if (data.gitHubAppConnectionClientId !== undefined) {
       const encryptedClientId = encryptWithRoot(Buffer.from(data.gitHubAppConnectionClientId));
       updatedData.encryptedGitHubAppConnectionClientId = encryptedClientId;
       updatedData.gitHubAppConnectionClientId = undefined;
+      gitHubAppConnectionSettingsUpdated = true;
     }
 
     if (data.gitHubAppConnectionClientSecret !== undefined) {
       const encryptedClientSecret = encryptWithRoot(Buffer.from(data.gitHubAppConnectionClientSecret));
       updatedData.encryptedGitHubAppConnectionClientSecret = encryptedClientSecret;
       updatedData.gitHubAppConnectionClientSecret = undefined;
+      gitHubAppConnectionSettingsUpdated = true;
     }
 
     if (data.gitHubAppConnectionSlug !== undefined) {
       const encryptedAppSlug = encryptWithRoot(Buffer.from(data.gitHubAppConnectionSlug));
       updatedData.encryptedGitHubAppConnectionSlug = encryptedAppSlug;
       updatedData.gitHubAppConnectionSlug = undefined;
+      gitHubAppConnectionSettingsUpdated = true;
     }
 
     if (data.gitHubAppConnectionId !== undefined) {
       const encryptedAppId = encryptWithRoot(Buffer.from(data.gitHubAppConnectionId));
       updatedData.encryptedGitHubAppConnectionId = encryptedAppId;
       updatedData.gitHubAppConnectionId = undefined;
+      gitHubAppConnectionSettingsUpdated = true;
     }
 
     if (data.gitHubAppConnectionPrivateKey !== undefined) {
       const encryptedAppPrivateKey = encryptWithRoot(Buffer.from(data.gitHubAppConnectionPrivateKey));
       updatedData.encryptedGitHubAppConnectionPrivateKey = encryptedAppPrivateKey;
       updatedData.gitHubAppConnectionPrivateKey = undefined;
+      gitHubAppConnectionSettingsUpdated = true;
     }
 
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
+
+    if (gitHubAppConnectionSettingsUpdated) {
+      await $syncAdminIntegrationConfig();
+    }
 
     if (
       updatedServerCfg.encryptedMicrosoftTeamsAppId &&
@@ -657,68 +735,6 @@ export const superAdminServiceFactory = ({
     await userDAL.updateById(userId, { superAdmin: true });
   };
 
-  const getAdminIntegrationsConfig = async () => {
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-
-    if (!serverCfg) {
-      throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
-    }
-
-    const decrypt = kmsService.decryptWithRootKey();
-
-    const slackClientId = serverCfg.encryptedSlackClientId ? decrypt(serverCfg.encryptedSlackClientId).toString() : "";
-    const slackClientSecret = serverCfg.encryptedSlackClientSecret
-      ? decrypt(serverCfg.encryptedSlackClientSecret).toString()
-      : "";
-
-    const microsoftAppId = serverCfg.encryptedMicrosoftTeamsAppId
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsAppId).toString()
-      : "";
-    const microsoftClientSecret = serverCfg.encryptedMicrosoftTeamsClientSecret
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsClientSecret).toString()
-      : "";
-    const microsoftBotId = serverCfg.encryptedMicrosoftTeamsBotId
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsBotId).toString()
-      : "";
-
-    const gitHubAppConnectionClientId = serverCfg.encryptedGitHubAppConnectionClientId
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionClientId).toString()
-      : "";
-    const gitHubAppConnectionClientSecret = serverCfg.encryptedGitHubAppConnectionClientSecret
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionClientSecret).toString()
-      : "";
-
-    const gitHubAppConnectionAppSlug = serverCfg.encryptedGitHubAppConnectionSlug
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionSlug).toString()
-      : "";
-
-    const gitHubAppConnectionAppId = serverCfg.encryptedGitHubAppConnectionId
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionId).toString()
-      : "";
-    const gitHubAppConnectionAppPrivateKey = serverCfg.encryptedGitHubAppConnectionPrivateKey
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionPrivateKey).toString()
-      : "";
-
-    return {
-      slack: {
-        clientSecret: slackClientSecret,
-        clientId: slackClientId
-      },
-      microsoftTeams: {
-        appId: microsoftAppId,
-        clientSecret: microsoftClientSecret,
-        botId: microsoftBotId
-      },
-      gitHubAppConnection: {
-        clientId: gitHubAppConnectionClientId,
-        clientSecret: gitHubAppConnectionClientSecret,
-        appSlug: gitHubAppConnectionAppSlug,
-        appId: gitHubAppConnectionAppId,
-        privateKey: gitHubAppConnectionAppPrivateKey
-      }
-    };
-  };
-
   const getConfiguredEncryptionStrategies = async () => {
     const appCfg = getConfig();
 
@@ -783,12 +799,6 @@ export const superAdminServiceFactory = ({
 
   const checkIfInvalidatingCache = async () => {
     return (await keyStore.getItem("invalidating-cache")) !== null;
-  };
-
-  const $syncAdminIntegrationConfig = async () => {
-    const config = await getAdminIntegrationsConfig();
-    Object.freeze(config);
-    adminIntegrationsConfig = config;
   };
 
   const initializeAdminIntegrationConfigSync = async () => {
