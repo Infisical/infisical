@@ -49,11 +49,21 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         ```
     </Step>
     <Step title="Install the Issuer Controller">
-        Install the Infisical PKI Issuer controller into your Kubernetes cluster by running the following command:
+        Install the Infisical PKI Issuer controller into your Kubernetes cluster using one of the following methods:
 
-        ```bash
-        kubectl apply -f https://raw.githubusercontent.com/Infisical/infisical-issuer/main/build/install.yaml
-        ```
+        <Tabs>
+            <Tab title="Helm">
+                ```bash
+                helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+                helm install infisical-pki-issuer infisical-helm-charts/infisical-pki-issuer
+                ```
+            </Tab>
+            <Tab title="kubectl">
+                ```bash
+                kubectl apply -f https://raw.githubusercontent.com/Infisical/infisical-issuer/main/build/install.yaml
+                ```
+            </Tab>
+        </Tabs>
     </Step>
     <Step title="Create Kubernetes Secret for Infisical PKI Issuer">
         Start by creating a Kubernetes `Secret` containing the **Client Secret** from step 1. As mentioned previously, this will be used by the Infisical PKI issuer to authenticate with Infisical.
