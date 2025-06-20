@@ -377,6 +377,7 @@ export type TQueueServiceFactory = {
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
+  stopJobByIdPg: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
   getRepeatableJobs: (
     name: QueueName,
     startOffset?: number,
@@ -542,6 +543,10 @@ export const queueServiceFactory = (
     return q.removeRepeatableByKey(repeatJobKey);
   };
 
+  const stopJobByIdPg: TQueueServiceFactory["stopJobByIdPg"] = async (name, jobId) => {
+    await pgBoss.deleteJob(name, jobId);
+  };
+
   const stopJobById: TQueueServiceFactory["stopJobById"] = async (name, jobId) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
@@ -568,6 +573,7 @@ export const queueServiceFactory = (
     stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
+    stopJobByIdPg,
     getRepeatableJobs,
     startPg,
     queuePg,

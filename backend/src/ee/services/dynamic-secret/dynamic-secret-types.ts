@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { TDynamicSecrets } from "@app/db/schemas";
+import { OrderByDirection, OrgServiceActor, TDynamicSecretWithMetadata, TProjectPermission } from "@app/lib/types";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
@@ -82,4 +83,28 @@ export type TListDynamicSecretsMultiEnvDTO = Omit<
 
 export type TGetDynamicSecretsCountDTO = Omit<TListDynamicSecretsDTO, "projectSlug" | "projectId"> & {
   projectId: string;
+};
+
+export type TDynamicSecretServiceFactory = {
+  create: (arg: TCreateDynamicSecretDTO) => Promise<TDynamicSecrets>;
+  updateByName: (arg: TUpdateDynamicSecretDTO) => Promise<TDynamicSecrets>;
+  deleteByName: (arg: TDeleteDynamicSecretDTO) => Promise<TDynamicSecrets>;
+  getDetails: (arg: TDetailsDynamicSecretDTO) => Promise<TDynamicSecretWithMetadata>;
+  listDynamicSecretsByEnv: (arg: TListDynamicSecretsDTO) => Promise<TDynamicSecretWithMetadata[]>;
+  listDynamicSecretsByEnvs: (
+    arg: TListDynamicSecretsMultiEnvDTO
+  ) => Promise<Array<TDynamicSecretWithMetadata & { environment: string }>>;
+  getDynamicSecretCount: (arg: TGetDynamicSecretsCountDTO) => Promise<number>;
+  getCountMultiEnv: (arg: TListDynamicSecretsMultiEnvDTO) => Promise<number>;
+  fetchAzureEntraIdUsers: (arg: { tenantId: string; applicationId: string; clientSecret: string }) => Promise<
+    {
+      name: string;
+      id: string;
+      email: string;
+    }[]
+  >;
+  listDynamicSecretsByFolderIds: (
+    arg: TListDynamicSecretsByFolderMappingsDTO,
+    actor: OrgServiceActor
+  ) => Promise<Array<TDynamicSecretWithMetadata & { environment: string; path: string }>>;
 };
