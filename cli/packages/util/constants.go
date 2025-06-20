@@ -10,6 +10,10 @@ const (
 	INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN_NAME = "INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN"
 	INFISICAL_VAULT_FILE_PASSPHRASE_ENV_NAME   = "INFISICAL_VAULT_FILE_PASSPHRASE" // This works because we've forked the keyring package and added support for this env variable. This explains why you won't find any occurrences of it in the CLI codebase.
 
+	INFISICAL_BOOTSTRAP_EMAIL_NAME        = "INFISICAL_ADMIN_EMAIL"
+	INFISICAL_BOOTSTRAP_PASSWORD_NAME     = "INFISICAL_ADMIN_PASSWORD"
+	INFISICAL_BOOTSTRAP_ORGANIZATION_NAME = "INFISICAL_ADMIN_ORGANIZATION"
+
 	VAULT_BACKEND_AUTO_MODE = "auto"
 	VAULT_BACKEND_FILE_MODE = "file"
 
@@ -47,6 +51,11 @@ const (
 
 	INFISICAL_BACKUP_SECRET                = "infisical-backup-secrets" // akhilmhdh: @depreciated remove in version v0.30
 	INFISICAL_BACKUP_SECRET_ENCRYPTION_KEY = "infisical-backup-secret-encryption-key"
+
+	KUBERNETES_SERVICE_HOST_ENV_NAME        = "KUBERNETES_SERVICE_HOST"
+	KUBERNETES_SERVICE_PORT_HTTPS_ENV_NAME  = "KUBERNETES_SERVICE_PORT_HTTPS"
+	KUBERNETES_SERVICE_ACCOUNT_CA_CERT_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH   = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 var (

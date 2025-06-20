@@ -631,8 +631,8 @@ func CallGatewayHeartBeatV1(httpClient *resty.Client) error {
 	return nil
 }
 
-func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRequest) (map[string]interface{}, error) {
-	var resBody map[string]interface{}
+func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRequest) (BootstrapInstanceResponse, error) {
+	var resBody BootstrapInstanceResponse
 	response, err := httpClient.
 		R().
 		SetResult(&resBody).
@@ -641,11 +641,11 @@ func CallBootstrapInstance(httpClient *resty.Client, request BootstrapInstanceRe
 		Post(fmt.Sprintf("%v/v1/admin/bootstrap", request.Domain))
 
 	if err != nil {
-		return nil, NewGenericRequestError(operationCallBootstrapInstance, err)
+		return BootstrapInstanceResponse{}, NewGenericRequestError(operationCallBootstrapInstance, err)
 	}
 
 	if response.IsError() {
-		return nil, NewAPIErrorWithResponse(operationCallBootstrapInstance, response, nil)
+		return BootstrapInstanceResponse{}, NewAPIErrorWithResponse(operationCallBootstrapInstance, response, nil)
 	}
 
 	return resBody, nil

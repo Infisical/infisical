@@ -1,0 +1,57 @@
+{{- $infisicalValues := .Values.infisical }}
+{{- if $infisicalValues.autoBootstrap.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-bootstrap-{{ .Release.Revision }}"
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      name: "{{ .Release.Name }}-bootstrap"
+      labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+      serviceAccountName: {{ include "infisical.serviceAccountName" . }}
+    {{- if $infisicalValues.image.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
+    {{- end }}
+      restartPolicy: OnFailure
+      initContainers:
+      - name: wait-for-infisical
+        image: curlimages/curl:8.14.1
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Waiting for Infisical to be ready..."
+          until curl -f http://{{ include "infisical.fullname" . }}:8080/api/status; do
+            echo "Infisical not ready yet, retrying in 10 seconds..."
+            sleep 10
+          done
+          echo "Infisical is ready! Proceeding with bootstrap..."
+      containers:
+        - name: infisical-bootstrap
+          image: "infisical/cli:{{ $infisicalValues.autoBootstrap.image.tag }}"
+          imagePullPolicy: {{ $infisicalValues.image.pullPolicy | default "IfNotPresent" }}
+          args:
+            - bootstrap
+            - --domain=http://{{ include "infisical.fullname" . }}:8080
+            - --output=k8-secret
+            - --k8-secret-name={{ $infisicalValues.autoBootstrap.secretDestination.name }}
+            - --k8-secret-namespace={{ $infisicalValues.autoBootstrap.secretDestination.namespace | default .Release.Namespace }}
+            - --organization={{ $infisicalValues.autoBootstrap.organization }}
+            - --k8-secret-template={{ $infisicalValues.autoBootstrap.secretTemplate }}
+            - --ignore-if-bootstrapped=true
+          envFrom:
+            - secretRef:
+                name: {{ $infisicalValues.autoBootstrap.credentialSecret.name }}
+{{- end }}
