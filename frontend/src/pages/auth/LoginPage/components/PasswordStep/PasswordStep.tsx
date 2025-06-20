@@ -76,9 +76,7 @@ export const PasswordStep = ({
       // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
       if (organizationId) {
         const finishWithOrgWorkflow = async () => {
-          const { token, isMfaEnabled, mfaMethod, RefreshToken } = await selectOrganization({
-            organizationId
-          });
+          const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
 
           if (isMfaEnabled) {
             SecurityClient.setMfaToken(token);
@@ -96,11 +94,10 @@ export const PasswordStep = ({
             const payload = {
               privateKey,
               email,
-              JTWToken: token,
-              RefreshToken
+              JTWToken: token
             };
             await instance.post(cliUrl, payload).catch(() => {
-              // if error happens to communicate we set the token with an expiry in session storage
+              // if error happens to communicate we set the token with an expiry in sessino storage
               // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
               sessionStorage.setItem(
                 SessionStorageKeys.CLI_TERMINAL_TOKEN,
@@ -190,7 +187,7 @@ export const PasswordStep = ({
           // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
           if (organizationId) {
             const finishWithOrgWorkflow = async () => {
-              const { token, isMfaEnabled, mfaMethod, RefreshToken } = await selectOrganization({
+              const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
                 organizationId
               });
 
@@ -209,11 +206,10 @@ export const PasswordStep = ({
               const instance = axios.create();
               const payload = {
                 ...isCliLoginSuccessful.loginResponse,
-                JTWToken: token,
-                RefreshToken
+                JTWToken: token
               };
               await instance.post(cliUrl, payload).catch(() => {
-                // if error happens to communicate we set the token with an expiry in session storage
+                // if error happens to communicate we set the token with an expiry in sessino storage
                 // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
                 sessionStorage.setItem(
                   SessionStorageKeys.CLI_TERMINAL_TOKEN,

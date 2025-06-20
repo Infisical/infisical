@@ -87,7 +87,7 @@ func getDynamicSecretList(cmd *cobra.Command, args []string) {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 
-		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
 	httpClient.SetAuthToken(infisicalToken)
@@ -211,7 +211,7 @@ func createDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		if loggedInUserDetails.LoginExpired {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
-		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
 	httpClient.SetAuthToken(infisicalToken)
@@ -363,7 +363,7 @@ func renewDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 
-		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
 	httpClient.SetAuthToken(infisicalToken)
@@ -478,7 +478,7 @@ func revokeDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 
-		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
 	httpClient.SetAuthToken(infisicalToken)
@@ -592,7 +592,7 @@ func listDynamicSecretLeaseByName(cmd *cobra.Command, args []string) {
 		if loggedInUserDetails.LoginExpired {
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
-		infisicalToken = loggedInUserDetails.UserCredentials.JWTToken
+		infisicalToken = loggedInUserDetails.UserCredentials.JTWToken
 	}
 
 	httpClient.SetAuthToken(infisicalToken)
