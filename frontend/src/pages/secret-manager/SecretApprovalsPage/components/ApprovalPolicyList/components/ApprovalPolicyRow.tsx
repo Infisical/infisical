@@ -82,11 +82,11 @@ export const ApprovalPolicyRow = ({
         userLabels: members
           ?.filter((member) => el.user.find((i) => i.id === member.user.id))
           .map((member) => getMemberLabel(member))
-          .join(","),
+          .join(", "),
         groupLabels: groups
           ?.filter(({ group }) => el.group.find((i) => i.id === group.id))
           .map(({ group }) => group.name)
-          .join(","),
+          .join(", "),
         approvals: el.approvals
       };
     });
