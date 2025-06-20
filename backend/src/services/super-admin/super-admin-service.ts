@@ -94,7 +94,7 @@ let adminIntegrationsConfig: TAdminIntegrationConfig = {
 
 Object.freeze(adminIntegrationsConfig);
 
-export const getSyncedAdminIntegrationsConfig = () => {
+export const getInstanceIntegrationsConfig = () => {
   return adminIntegrationsConfig;
 };
 

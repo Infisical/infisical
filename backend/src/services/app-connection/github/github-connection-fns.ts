@@ -7,7 +7,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { getSyncedAdminIntegrationsConfig } from "@app/services/super-admin/super-admin-service";
+import { getInstanceIntegrationsConfig } from "@app/services/super-admin/super-admin-service";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
@@ -15,7 +15,7 @@ import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-
 
 export const getGitHubConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
-  const { gitHubAppConnection } = getSyncedAdminIntegrationsConfig();
+  const { gitHubAppConnection } = getInstanceIntegrationsConfig();
 
   return {
     name: "GitHub" as const,
@@ -32,7 +32,7 @@ export const getGitHubClient = (appConnection: TGitHubConnection) => {
   const { method, credentials } = appConnection;
 
   let client: Octokit;
-  const { gitHubAppConnection } = getSyncedAdminIntegrationsConfig();
+  const { gitHubAppConnection } = getInstanceIntegrationsConfig();
 
   const appId = gitHubAppConnection.appId || appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
   const appPrivateKey = gitHubAppConnection.privateKey || appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
@@ -157,7 +157,7 @@ type TokenRespData = {
 export const validateGitHubConnectionCredentials = async (config: TGitHubConnectionConfig) => {
   const { credentials, method } = config;
 
-  const { gitHubAppConnection } = getSyncedAdminIntegrationsConfig();
+  const { gitHubAppConnection } = getInstanceIntegrationsConfig();
 
   const {
     INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
