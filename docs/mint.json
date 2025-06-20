@@ -1261,6 +1261,18 @@
               ]
             },
             {
+              "group": "Cloudflare",
+              "pages": [
+                "api-reference/endpoints/app-connections/cloudflare/list",
+                "api-reference/endpoints/app-connections/cloudflare/available",
+                "api-reference/endpoints/app-connections/cloudflare/get-by-id",
+                "api-reference/endpoints/app-connections/cloudflare/get-by-name",
+                "api-reference/endpoints/app-connections/cloudflare/create",
+                "api-reference/endpoints/app-connections/cloudflare/update",
+                "api-reference/endpoints/app-connections/cloudflare/delete"
+              ]
+            },
+            {
               "group": "Databricks",
               "pages": [
                 "api-reference/endpoints/app-connections/databricks/list",
@@ -1590,6 +1602,19 @@
                 "api-reference/endpoints/secret-syncs/camunda/delete",
                 "api-reference/endpoints/secret-syncs/camunda/sync-secrets",
                 "api-reference/endpoints/secret-syncs/camunda/remove-secrets"
+              ]
+            },
+            {
+              "group": "Cloudflare Pages",
+              "pages": [
+                "api-reference/endpoints/secret-syncs/cloudflare-pages/list",
+                "api-reference/endpoints/secret-syncs/cloudflare-pages/get-by-id",
+                "api-reference/endpoints/secret-syncs/cloudflare-pages/get-by-name",
+                "api-reference/endpoints/secret-syncs/cloudflare-pages/create",
+                "api-reference/endpoints/secret-syncs/cloudflare-pages/update",
+                "api-reference/endpoints/secret-syncs/cloudflare-pages/delete",
+                "api-reference/endpoints/secret-syncs/cloudflare-pages/sync-secrets",
+                "api-reference/endpoints/secret-syncs/cloudflare-pages/remove-secrets"
               ]
             },
             {
