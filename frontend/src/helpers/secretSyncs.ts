@@ -73,6 +73,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Flyio]: {
     name: "Fly.io",
     image: "Flyio.svg"
+  },
+  [SecretSync.Gitlab]: {
+    name: "Gitlab",
+    image: "GitLab.png"
   }
 };
 
@@ -96,7 +100,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.OnePass]: AppConnection.OnePass,
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
-  [SecretSync.Flyio]: AppConnection.Flyio
+  [SecretSync.Flyio]: AppConnection.Flyio,
+  [SecretSync.Gitlab]: AppConnection.Gitlab
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

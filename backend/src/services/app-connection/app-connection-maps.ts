@@ -27,7 +27,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.OnePass]: "1Password",
   [AppConnection.Heroku]: "Heroku",
   [AppConnection.Render]: "Render",
-  [AppConnection.Flyio]: "Fly.io"
+  [AppConnection.Flyio]: "Fly.io",
+  [AppConnection.GitLab]: "GitLab"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -57,5 +58,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.MySql]: AppConnectionPlanType.Regular,
   [AppConnection.Heroku]: AppConnectionPlanType.Regular,
   [AppConnection.Render]: AppConnectionPlanType.Regular,
-  [AppConnection.Flyio]: AppConnectionPlanType.Regular
+  [AppConnection.Flyio]: AppConnectionPlanType.Regular,
+  [AppConnection.GitLab]: AppConnectionPlanType.Regular
 };

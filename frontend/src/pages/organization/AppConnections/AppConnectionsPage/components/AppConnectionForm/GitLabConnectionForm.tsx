@@ -1,0 +1,297 @@
+/* eslint-disable no-case-declarations */
+/* eslint-disable no-nested-ternary */
+import crypto from "crypto";
+
+import { useState } from "react";
+import { Controller, FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import {
+  Button,
+  FormControl,
+  Input,
+  ModalClose,
+  SecretInput,
+  Select,
+  SelectItem
+} from "@app/components/v2";
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { isInfisicalCloud } from "@app/helpers/platform";
+import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import {
+  GitlabConnectionMethod,
+  TGitlabConnection
+} from "@app/hooks/api/appConnections/types/gitlab-connection";
+
+import {
+  genericAppConnectionFieldsSchema,
+  GenericAppConnectionsFields
+} from "./GenericAppConnectionFields";
+
+type Props = {
+  appConnection?: TGitlabConnection;
+  onSubmit: (formData: FormData) => Promise<void>;
+};
+
+const formSchema = z.discriminatedUnion("method", [
+  genericAppConnectionFieldsSchema.extend({
+    app: z.literal(AppConnection.Gitlab),
+    method: z.literal(GitlabConnectionMethod.AccessToken),
+    credentials: z.object({
+      accessToken: z.string().min(1, "Access token is required"),
+      instanceUrl: z
+        .string()
+        .trim()
+        .transform((value) => value || undefined)
+        .refine((value) => (!value ? true : z.string().url().safeParse(value).success), {
+          message: "Invalid instance URL"
+        })
+        .optional()
+    })
+  }),
+  genericAppConnectionFieldsSchema.extend({
+    app: z.literal(AppConnection.Gitlab),
+    method: z.literal(GitlabConnectionMethod.OAuth),
+    credentials: z.object({
+      code: z.string().min(1, "Code is required"),
+      instanceUrl: z
+        .string()
+        .trim()
+        .transform((value) => value || undefined)
+        .refine((value) => (!value ? true : z.string().url().safeParse(value).success), {
+          message: "Invalid instance URL"
+        })
+        .optional()
+    })
+  })
+]);
+
+type FormData = z.infer<typeof formSchema>;
+
+export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Props) => {
+  const isUpdate = Boolean(appConnection);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const {
+    option: { oauthClientId },
+    isLoading
+  } = useGetAppConnectionOption(AppConnection.Gitlab);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues:
+      appConnection?.method === GitlabConnectionMethod.OAuth
+        ? { ...appConnection, credentials: { code: "custom" } }
+        : (appConnection ??
+          ({
+            app: AppConnection.Gitlab,
+            method: GitlabConnectionMethod.AccessToken,
+            credentials: {
+              accessToken: "",
+              instanceUrl: ""
+            }
+          } as FormData))
+  });
+
+  const {
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    formState: { isSubmitting, isDirty }
+  } = form;
+
+  const selectedMethod = watch("method");
+  const gitLabURL = watch("credentials.instanceUrl");
+
+  const onSubmit = async (formData: FormData) => {
+    try {
+      switch (formData.method) {
+        case GitlabConnectionMethod.AccessToken:
+          await formSubmit(formData);
+          break;
+
+        case GitlabConnectionMethod.OAuth:
+          if (!oauthClientId) {
+            return;
+          }
+          setIsRedirecting(true);
+
+          // Generate CSRF token
+          const state = crypto.randomBytes(16).toString("hex");
+
+          // Store state and form data for callback
+          localStorage.setItem("latestCSRFToken", state);
+          localStorage.setItem(
+            "gitlabConnectionFormData",
+            JSON.stringify({
+              ...formData,
+              connectionId: appConnection?.id,
+              isUpdate
+            })
+          );
+
+          // Redirect to Gitlab OAuth
+          const baseURL =
+            gitLabURL && (gitLabURL as string)?.trim() !== ""
+              ? (gitLabURL as string)?.trim()
+              : "https://gitlab.com";
+          const oauthUrl = new URL(`${baseURL}/oauth/authorize`);
+          oauthUrl.searchParams.set("client_id", oauthClientId);
+          oauthUrl.searchParams.set(
+            "redirect_uri",
+            `${window.location.origin}/integrations/gitlab/oauth2/callback`
+          );
+          oauthUrl.searchParams.set("response_type", "code");
+          oauthUrl.searchParams.set("state", state);
+
+          window.location.assign(oauthUrl.toString());
+          break;
+
+        default:
+          throw new Error("Unhandled Gitlab Connection method");
+      }
+    } catch (error) {
+      console.error("Error handling form submission:", error);
+      setIsRedirecting(false);
+    }
+  };
+
+  let isMissingConfig: boolean;
+
+  switch (selectedMethod) {
+    case GitlabConnectionMethod.OAuth:
+      isMissingConfig = !oauthClientId;
+      break;
+    case GitlabConnectionMethod.AccessToken:
+      isMissingConfig = false;
+      break;
+    default:
+      throw new Error(`Unhandled Gitlab Connection method: ${selectedMethod}`);
+  }
+
+  const methodDetails = getAppConnectionMethodDetails(selectedMethod);
+
+  return (
+    <FormProvider {...form}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {!isUpdate && <GenericAppConnectionsFields />}
+
+        <Controller
+          name="credentials.instanceUrl"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              label="Self-hosted URL (optional)"
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              tooltipText="Will default to GitLab Cloud if not specified."
+            >
+              <Input
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder="https://gitlab.com"
+              />
+            </FormControl>
+          )}
+        />
+
+        <Controller
+          name="method"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              tooltipText={`The method you would like to use to connect with ${
+                APP_CONNECTION_MAP[AppConnection.Gitlab].name
+              }. This field cannot be changed after creation.`}
+              errorText={
+                !isLoading && isMissingConfig && selectedMethod === GitlabConnectionMethod.OAuth
+                  ? `Environment variables have not been configured. ${
+                      isInfisicalCloud()
+                        ? "Please contact Infisical."
+                        : `See Docs to configure Gitlab ${methodDetails.name} Connections.`
+                    }`
+                  : error?.message
+              }
+              isError={Boolean(error?.message) || isMissingConfig}
+              label="Method"
+            >
+              <Select
+                isDisabled={isUpdate}
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  if (val === GitlabConnectionMethod.OAuth) {
+                    setValue("credentials.code", "custom");
+                  }
+                }}
+                className="w-full border border-mineshaft-500"
+                position="popper"
+                dropdownContainerClassName="max-w-none"
+              >
+                {Object.values(GitlabConnectionMethod).map((method) => {
+                  return (
+                    <SelectItem value={method} key={method}>
+                      {getAppConnectionMethodDetails(method).name}{" "}
+                      {method === GitlabConnectionMethod.AccessToken ? " (Recommended)" : ""}
+                    </SelectItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          )}
+        />
+
+        {selectedMethod === GitlabConnectionMethod.AccessToken && (
+          <Controller
+            name="credentials.accessToken"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                label="Access Token"
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                tooltipText="Your Gitlab Access Token"
+              >
+                <SecretInput
+                  containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+              </FormControl>
+            )}
+          />
+        )}
+
+        <div className="mt-8 flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            colorSchema="secondary"
+            isLoading={isSubmitting || isRedirecting}
+            isDisabled={
+              isSubmitting ||
+              (!isUpdate && !isDirty) ||
+              (isMissingConfig && selectedMethod === GitlabConnectionMethod.OAuth) ||
+              isRedirecting
+            }
+          >
+            {isRedirecting && selectedMethod === GitlabConnectionMethod.OAuth
+              ? "Redirecting to Gitlab..."
+              : isUpdate
+                ? "Reconnect to Gitlab"
+                : "Connect to Gitlab"}
+          </Button>
+          <ModalClose asChild>
+            <Button colorSchema="secondary" variant="plain">
+              Cancel
+            </Button>
+          </ModalClose>
+        </div>
+      </form>
+    </FormProvider>
+  );
+};

@@ -14,6 +14,7 @@ import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
+import { GitLabSyncFields } from "./GitLabSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
@@ -70,6 +71,8 @@ export const SecretSyncDestinationFields = () => {
       return <RenderSyncFields />;
     case SecretSync.Flyio:
       return <FlyioSyncFields />;
+    case SecretSync.Gitlab:
+      return <GitLabSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

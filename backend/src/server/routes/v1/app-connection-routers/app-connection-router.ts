@@ -46,6 +46,7 @@ import {
   GitHubRadarConnectionListItemSchema,
   SanitizedGitHubRadarConnectionSchema
 } from "@app/services/app-connection/github-radar";
+import { GitLabConnectionListItemSchema, SanitizedGitLabConnectionSchema } from "@app/services/app-connection/gitlab";
 import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
@@ -109,7 +110,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOnePassConnectionSchema.options,
   ...SanitizedHerokuConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
-  ...SanitizedFlyioConnectionSchema.options
+  ...SanitizedFlyioConnectionSchema.options,
+  ...SanitizedGitLabConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -139,7 +141,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OnePassConnectionListItemSchema,
   HerokuConnectionListItemSchema,
   RenderConnectionListItemSchema,
-  FlyioConnectionListItemSchema
+  FlyioConnectionListItemSchema,
+  GitLabConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
