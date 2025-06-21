@@ -56,6 +56,8 @@ import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
+import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
+import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
@@ -113,7 +115,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
   [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema,
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
-  [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema
+  [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
+  [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -521,6 +524,7 @@ export const appConnectionServiceFactory = ({
     onepass: onePassConnectionService(connectAppConnectionById),
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
-    flyio: flyioConnectionService(connectAppConnectionById)
+    flyio: flyioConnectionService(connectAppConnectionById),
+    gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };

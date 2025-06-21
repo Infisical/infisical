@@ -15,6 +15,7 @@ import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
+import { registerGitLabConnectionRouter } from "./gitlab-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
@@ -58,5 +59,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.OnePass]: registerOnePassConnectionRouter,
     [AppConnection.Heroku]: registerHerokuConnectionRouter,
     [AppConnection.Render]: registerRenderConnectionRouter,
-    [AppConnection.Flyio]: registerFlyioConnectionRouter
+    [AppConnection.Flyio]: registerFlyioConnectionRouter,
+    [AppConnection.GitLab]: registerGitLabConnectionRouter
   };

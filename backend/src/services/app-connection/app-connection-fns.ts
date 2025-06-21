@@ -64,6 +64,7 @@ import {
   GitHubRadarConnectionMethod,
   validateGitHubRadarConnectionCredentials
 } from "./github-radar";
+import { getGitLabConnectionListItem, GitLabConnectionMethod, validateGitLabConnectionCredentials } from "./gitlab";
 import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
@@ -128,7 +129,8 @@ export const listAppConnectionOptions = () => {
     getOnePassConnectionListItem(),
     getHerokuConnectionListItem(),
     getRenderConnectionListItem(),
-    getFlyioConnectionListItem()
+    getFlyioConnectionListItem(),
+    getGitLabConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -206,7 +208,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -223,6 +226,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubConnectionMethod.OAuth:
     case AzureDevOpsConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
+    case GitLabConnectionMethod.OAuth:
       return "OAuth";
     case HerokuConnectionMethod.AuthToken:
       return "Auth Token";
@@ -318,7 +322,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
   [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
-  [AppConnection.Flyio]: platformManagedCredentialsNotSupported
+  [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
+  [AppConnection.GitLab]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

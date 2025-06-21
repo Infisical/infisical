@@ -93,6 +93,12 @@ import {
   TValidateGitHubRadarConnectionCredentialsSchema
 } from "./github-radar";
 import {
+  TGitLabConnection,
+  TGitLabConnectionConfig,
+  TGitLabConnectionInput,
+  TValidateGitLabConnectionCredentialsSchema
+} from "./gitlab";
+import {
   THCVaultConnection,
   THCVaultConnectionConfig,
   THCVaultConnectionInput,
@@ -182,6 +188,7 @@ export type TAppConnection = { id: string } & (
   | THerokuConnection
   | TRenderConnection
   | TFlyioConnection
+  | TGitLabConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -216,6 +223,7 @@ export type TAppConnectionInput = { id: string } & (
   | THerokuConnectionInput
   | TRenderConnectionInput
   | TFlyioConnectionInput
+  | TGitLabConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -257,7 +265,8 @@ export type TAppConnectionConfig =
   | TOnePassConnectionConfig
   | THerokuConnectionConfig
   | TRenderConnectionConfig
-  | TFlyioConnectionConfig;
+  | TFlyioConnectionConfig
+  | TGitLabConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -286,7 +295,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOnePassConnectionCredentialsSchema
   | TValidateHerokuConnectionCredentialsSchema
   | TValidateRenderConnectionCredentialsSchema
-  | TValidateFlyioConnectionCredentialsSchema;
+  | TValidateFlyioConnectionCredentialsSchema
+  | TValidateGitLabConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

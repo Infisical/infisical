@@ -23,6 +23,7 @@ import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
+import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
@@ -115,6 +116,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;
+      break;
+    case SecretSync.Gitlab:
+      DestinationFieldsComponent = <GitLabSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

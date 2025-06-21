@@ -74,6 +74,7 @@ import {
 } from "./azure-key-vault";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
+import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
 import {
   THCVaultSync,
   THCVaultSyncInput,
@@ -127,7 +128,8 @@ export type TSecretSync =
   | TOnePassSync
   | THerokuSync
   | TRenderSync
-  | TFlyioSync;
+  | TFlyioSync
+  | TGitLabSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -149,7 +151,8 @@ export type TSecretSyncWithCredentials =
   | TOnePassSyncWithCredentials
   | THerokuSyncWithCredentials
   | TRenderSyncWithCredentials
-  | TFlyioSyncWithCredentials;
+  | TFlyioSyncWithCredentials
+  | TGitLabSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -171,7 +174,8 @@ export type TSecretSyncInput =
   | TOnePassSyncInput
   | THerokuSyncInput
   | TRenderSyncInput
-  | TFlyioSyncInput;
+  | TFlyioSyncInput
+  | TGitLabSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -193,7 +197,8 @@ export type TSecretSyncListItem =
   | TOnePassSyncListItem
   | THerokuSyncListItem
   | TRenderSyncListItem
-  | TFlyioSyncListItem;
+  | TFlyioSyncListItem
+  | TGitLabSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

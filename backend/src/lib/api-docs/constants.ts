@@ -2228,6 +2228,11 @@ export const AppConnections = {
     },
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
+    },
+    GITLAB: {
+      instanceUrl: "The GitLab instance URL to connect with.",
+      accessToken: "The Access Token used to access GitLab.",
+      code: "The OAuth code to use to connect with GitLab."
     }
   }
 };
@@ -2401,6 +2406,16 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    GITLAB: {
+      projectId: "The GitLab project to sync secrets to.",
+      projectName: "The GitLab project name to sync secrets to.",
+      groupId: "The GitLab group to sync secrets to.",
+      scope: "The GitLab project scope that secrets should be synced to. (default: individual)",
+      targetEnvironment: "The GitLab environment scope that secrets should be synced to. (default: *)",
+      shouldProtectSecrets: "Whether variables should be protected",
+      shouldMaskSecrets: "Whether variables should be masked in logs",
+      shouldHideSecrets: "Whether variables should be hidden"
     }
   }
 };
