@@ -44,7 +44,11 @@ export const KeyStorePrefixes = {
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
-  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`
+  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
+
+  CreateFolderLock: (envId: string, projectId: string) => `folder-creation-${envId}-${projectId}` as const,
+  WaitUntilReadyCreateFolder: (envId: string, projectId: string) =>
+    `wait-until-ready-folder-creation-${envId}-${projectId}` as const
 };
 
 export const KeyStoreTtls = {
