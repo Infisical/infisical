@@ -53,7 +53,22 @@ Infisical supports two methods for connecting to GitHub.
                     Obtain the necessary Github application credentials. This would be the application slug, client ID, app ID, client secret, and private key.
                     ![integrations github app credentials](/images/integrations/github/app/self-hosted-github-app-credentials.png)
 
-                    Back in your Infisical instance, add the five new environment variables for the credentials of your GitHub application:
+                    Back in your Infisical instance, you can configure the GitHub App credentials in one of two ways:
+
+                    **Option 1: Server Admin Panel (Recommended)**
+
+                    Navigate to the server admin panel > **Integrations** > **GitHub App** and enter the GitHub application credentials:
+                    ![integrations github app admin panel](/images/integrations/github/app/self-hosted-github-app-admin-panel.png)
+
+                    - **Client ID**: The Client ID of your GitHub application
+                    - **Client Secret**: The Client Secret of your GitHub application
+                    - **App Slug**: The Slug of your GitHub application (found in the URL)
+                    - **App ID**: The App ID of your GitHub application
+                    - **Private Key**: The Private Key of your GitHub application
+
+                    **Option 2: Environment Variables**
+
+                    Alternatively, you can add the new environment variables for the credentials of your GitHub application:
 
                     - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID`: The **Client ID** of your GitHub application.
                     - `INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET`: The **Client Secret** of your GitHub application.
@@ -61,7 +76,7 @@ Infisical supports two methods for connecting to GitHub.
                     - `INF_APP_CONNECTION_GITHUB_APP_ID`: The **App ID** of your GitHub application.
                     - `INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY`: The **Private Key** of your GitHub application.
 
-                    Once added, restart your Infisical instance and use the GitHub integration via app authentication.
+                    Once configured, you can use the GitHub integration via app authentication. If you configured the credentials using environment variables, restart your Infisical instance for the changes to take effect. If you configured them through the server admin panel, allow approximately 5 minutes for the changes to propagate.
                 </Step>
             </Steps>
         </Accordion>
@@ -158,4 +173,5 @@ Infisical supports two methods for connecting to GitHub.
             </Step>
         </Steps>
     </Tab>
+
 </Tabs>

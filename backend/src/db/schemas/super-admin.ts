@@ -29,7 +29,12 @@ export const SuperAdminSchema = z.object({
   adminIdentityIds: z.string().array().nullable().optional(),
   encryptedMicrosoftTeamsAppId: zodBuffer.nullable().optional(),
   encryptedMicrosoftTeamsClientSecret: zodBuffer.nullable().optional(),
-  encryptedMicrosoftTeamsBotId: zodBuffer.nullable().optional()
+  encryptedMicrosoftTeamsBotId: zodBuffer.nullable().optional(),
+  encryptedGitHubAppConnectionClientId: zodBuffer.nullable().optional(),
+  encryptedGitHubAppConnectionClientSecret: zodBuffer.nullable().optional(),
+  encryptedGitHubAppConnectionSlug: zodBuffer.nullable().optional(),
+  encryptedGitHubAppConnectionId: zodBuffer.nullable().optional(),
+  encryptedGitHubAppConnectionPrivateKey: zodBuffer.nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;
