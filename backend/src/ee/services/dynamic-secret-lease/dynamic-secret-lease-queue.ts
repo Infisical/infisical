@@ -64,6 +64,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   };
 
   const unsetLeaseRevocation = async (leaseId: string) => {
+    await queueService.stopJobById(QueueName.DynamicSecretRevocation, leaseId);
     await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, leaseId);
   };
 
@@ -169,6 +170,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       if (error instanceof DisableRotationErrors) {
         if (jobId) {
           await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, jobId);
+          await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, jobId);
         }
       }
       // propogate to next part
@@ -187,8 +189,8 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         await $dynamicSecretQueueJob(job.name, job.id, job.data);
       },
       {
-        workerCount: 2,
-        pollingIntervalSeconds: 30
+        workerCount: 5,
+        pollingIntervalSeconds: 1
       }
     );
 
@@ -198,8 +200,8 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         await $dynamicSecretQueueJob(job.name, job.id, job.data);
       },
       {
-        workerCount: 2,
-        pollingIntervalSeconds: 5
+        workerCount: 1,
+        pollingIntervalSeconds: 1
       }
     );
   };
