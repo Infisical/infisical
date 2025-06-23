@@ -560,24 +560,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       let { workspaceId } = req.body;
-      if (req.permission.type === ActorType.IDENTITY && req.body.projectSlug && !workspaceId) {
-        const workspace = await server.services.project.getAProject({
-          filter: {
-            type: ProjectFilterType.SLUG,
-            orgId: req.permission.orgId,
-            slug: req.body.projectSlug
-          },
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId
-        });
-
-        if (!workspace) throw new NotFoundError({ message: `No project found with slug ${req.body.projectSlug}` });
-
-        workspaceId = workspace.id;
-      }
-      if (!workspaceId) throw new BadRequestError({ message: "You must provide workspaceId or projectSlug" });
+      workspaceId = await server.services.project.extractProjectIdFromSlug({
+        projectSlug: req.body.projectSlug,
+        projectId: req.body.workspaceId,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
 
       const secretOperation = await server.services.secret.createSecretRaw({
         actorId: req.permission.id,
@@ -702,24 +692,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       let { workspaceId } = req.body;
-      if (req.permission.type === ActorType.IDENTITY && req.body.projectSlug && !workspaceId) {
-        const workspace = await server.services.project.getAProject({
-          filter: {
-            type: ProjectFilterType.SLUG,
-            orgId: req.permission.orgId,
-            slug: req.body.projectSlug
-          },
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId
-        });
-
-        if (!workspace) throw new NotFoundError({ message: `No project found with slug ${req.body.projectSlug}` });
-
-        workspaceId = workspace.id;
-      }
-      if (!workspaceId) throw new BadRequestError({ message: "You must provide workspaceId or projectSlug" });
+      workspaceId = await server.services.project.extractProjectIdFromSlug({
+        projectSlug: req.body.projectSlug,
+        projectId: req.body.workspaceId,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
 
       const secretOperation = await server.services.secret.updateSecretRaw({
         actorId: req.permission.id,
@@ -824,24 +804,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       let { workspaceId } = req.body;
-      if (req.permission.type === ActorType.IDENTITY && req.body.projectSlug && !workspaceId) {
-        const workspace = await server.services.project.getAProject({
-          filter: {
-            type: ProjectFilterType.SLUG,
-            orgId: req.permission.orgId,
-            slug: req.body.projectSlug
-          },
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId
-        });
-
-        if (!workspace) throw new NotFoundError({ message: `No project found with slug ${req.body.projectSlug}` });
-
-        workspaceId = workspace.id;
-      }
-      if (!workspaceId) throw new BadRequestError({ message: "You must provide workspaceId or projectSlug" });
+      workspaceId = await server.services.project.extractProjectIdFromSlug({
+        projectSlug: req.body.projectSlug,
+        projectId: req.body.workspaceId,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
 
       const secretOperation = await server.services.secret.deleteSecretRaw({
         actorId: req.permission.id,
