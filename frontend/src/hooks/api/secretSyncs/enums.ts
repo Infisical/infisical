@@ -19,7 +19,7 @@ export enum SecretSync {
   Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
-  Gitlab = "gitlab"
+  GitLab = "gitlab"
 }
 
 export enum SecretSyncStatus {

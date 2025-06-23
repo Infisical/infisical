@@ -86,7 +86,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" },
   [AppConnection.Render]: { name: "Render", image: "Render.png" },
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
-  [AppConnection.Gitlab]: { name: "Gitlab", image: "GitLab.png" }
+  [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {

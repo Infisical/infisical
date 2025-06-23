@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { request } from "@app/lib/config/request";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { GitLabConnectionMethod, refreshGitLabToken, TGitLabConnection } from "@app/services/app-connection/gitlab";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -55,8 +56,9 @@ const getValidAccessToken = async (
   return connection.credentials.accessToken;
 };
 
-const getGitLabApiUrl = (connection: TGitLabConnection): string => {
+const getGitLabApiUrl = async (connection: TGitLabConnection): Promise<string> => {
   const baseUrl = connection.credentials.instanceUrl || IntegrationUrls.GITLAB_API_URL;
+  await blockLocalAndPrivateIpAddresses(baseUrl);
   return baseUrl.includes("/api") ? baseUrl : `${baseUrl}/api`;
 };
 
@@ -76,7 +78,7 @@ const getGitLabVariables = async ({
   targetEnvironment?: string;
 }): Promise<TGitLabVariable[]> => {
   try {
-    const apiUrl = getGitLabApiUrl(connection);
+    const apiUrl = await getGitLabApiUrl(connection);
     const baseEndpoint = buildVariablesEndpoint(apiUrl, projectId);
 
     const headers = {
@@ -131,7 +133,7 @@ const createGitLabVariable = async ({
   variable: TGitLabVariableCreate;
 }): Promise<void> => {
   try {
-    const apiUrl = getGitLabApiUrl(connection);
+    const apiUrl = await getGitLabApiUrl(connection);
     const endpoint = buildVariablesEndpoint(apiUrl, projectId);
 
     const payload = {
@@ -177,7 +179,7 @@ const updateGitLabVariable = async ({
   targetEnvironment?: string;
 }): Promise<void> => {
   try {
-    const apiUrl = getGitLabApiUrl(connection);
+    const apiUrl = await getGitLabApiUrl(connection);
     const baseEndpoint = buildVariablesEndpoint(apiUrl, projectId);
     let url = `${baseEndpoint}/${encodeURIComponent(key)}`;
 
@@ -224,7 +226,7 @@ const deleteGitLabVariable = async ({
   targetEnvironment?: string;
 }): Promise<void> => {
   try {
-    const apiUrl = getGitLabApiUrl(connection);
+    const apiUrl = await getGitLabApiUrl(connection);
     const baseEndpoint = buildVariablesEndpoint(apiUrl, projectId);
     let url = `${baseEndpoint}/${encodeURIComponent(key)}`;
 

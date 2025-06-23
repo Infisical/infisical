@@ -128,7 +128,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.appId;
       secondaryText = "App ID";
       break;
-    case SecretSync.Gitlab:
+    case SecretSync.GitLab:
       primaryText = destinationConfig.projectName;
       secondaryText = destinationConfig.projectId;
       break;

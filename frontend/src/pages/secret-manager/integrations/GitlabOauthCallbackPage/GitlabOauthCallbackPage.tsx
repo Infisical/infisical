@@ -33,7 +33,6 @@ export const GitLabOAuthCallbackPage = () => {
 
         localStorage.removeItem("latestCSRFToken");
 
-        // Retrieve stored form dataAdd commentMore actions
         const storedFormData = localStorage.getItem("gitlabConnectionFormData");
         if (!storedFormData) {
           console.error("No stored form data found");

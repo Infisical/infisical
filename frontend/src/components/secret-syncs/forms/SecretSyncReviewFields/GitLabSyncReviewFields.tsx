@@ -5,7 +5,7 @@ import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const GitLabSyncReviewFields = () => {
-  const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Gitlab }>();
+  const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.GitLab }>();
   const projectId = watch("destinationConfig.projectId");
   const targetEnvironment = watch("destinationConfig.targetEnvironment");
   const groupId = watch("destinationConfig.groupId");

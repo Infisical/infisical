@@ -71,7 +71,7 @@ export const SecretSyncDestinationFields = () => {
       return <RenderSyncFields />;
     case SecretSync.Flyio:
       return <FlyioSyncFields />;
-    case SecretSync.Gitlab:
+    case SecretSync.GitLab:
       return <GitLabSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);

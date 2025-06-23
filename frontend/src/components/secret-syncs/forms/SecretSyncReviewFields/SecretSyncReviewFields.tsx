@@ -117,7 +117,7 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;
       break;
-    case SecretSync.Gitlab:
+    case SecretSync.GitLab:
       DestinationFieldsComponent = <GitLabSyncReviewFields />;
       break;
     default:

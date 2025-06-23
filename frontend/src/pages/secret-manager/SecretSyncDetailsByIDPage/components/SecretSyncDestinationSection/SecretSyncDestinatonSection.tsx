@@ -107,7 +107,7 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.Flyio:
       DestinationComponents = <FlyioSyncDestinationSection secretSync={secretSync} />;
       break;
-    case SecretSync.Gitlab:
+    case SecretSync.GitLab:
       DestinationComponents = <GitLabSyncDestinationSection secretSync={secretSync} />;
       break;
     default:

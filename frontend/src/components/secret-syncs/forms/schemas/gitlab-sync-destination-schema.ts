@@ -6,7 +6,7 @@ import { GitlabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 export const GitlabSyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({
-    destination: z.literal(SecretSync.Gitlab),
+    destination: z.literal(SecretSync.GitLab),
     destinationConfig: z.discriminatedUnion("scope", [
       z.object({
         scope: z.literal(GitlabSyncScope.Individual),

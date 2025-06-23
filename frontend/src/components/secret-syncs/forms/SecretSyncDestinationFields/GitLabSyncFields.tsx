@@ -65,7 +65,7 @@ const SecretProtectionOption = ({
 
 export const GitLabSyncFields = () => {
   const { control, setValue } = useFormContext<
-    TSecretSyncForm & { destination: SecretSync.Gitlab }
+    TSecretSyncForm & { destination: SecretSync.GitLab }
   >();
 
   const connectionId = useWatch({ name: "connection.id", control });
@@ -259,10 +259,10 @@ export const GitLabSyncFields = () => {
             control={control}
             name="destinationConfig.shouldHideSecrets"
             render={({ field: { onChange, value } }) => (
-              <div className='"max-h-32 opacity-100" transition-all duration-300'>
+              <div className="max-h-32 opacity-100 transition-all duration-300">
                 <SecretProtectionOption
                   id="should-hide-secrets"
-                  title="Mark Infisical secrets in GitLab as 'Protected' secrets"
+                  title="Mark Infisical secrets in GitLab as 'Hidden' secrets"
                   tooltip="Secrets can only be marked as hidden if they are also masked."
                   isEnabled={value || false}
                   onChange={onChange}

@@ -55,7 +55,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Heroku:
     case SecretSync.Render:
     case SecretSync.Flyio:
-    case SecretSync.Gitlab:
+    case SecretSync.GitLab:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

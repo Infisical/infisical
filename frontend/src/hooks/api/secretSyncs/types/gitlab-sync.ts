@@ -8,7 +8,7 @@ export enum GitlabSyncScope {
 }
 
 export type TGitlabSync = TRootSecretSync & {
-  destination: SecretSync.Gitlab;
+  destination: SecretSync.GitLab;
   destinationConfig:
     | {
         scope: GitlabSyncScope.Individual;

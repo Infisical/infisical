@@ -68,7 +68,7 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <RenderSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Flyio:
       return <FlyioSyncDestinationCol secretSync={secretSync} />;
-    case SecretSync.Gitlab:
+    case SecretSync.GitLab:
       return <GitLabSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(

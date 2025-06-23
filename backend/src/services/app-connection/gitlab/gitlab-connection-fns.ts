@@ -4,7 +4,9 @@ import { AxiosError, AxiosResponse } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -37,6 +39,14 @@ export const getGitLabConnectionListItem = () => {
   };
 };
 
+export const getGitLabInstanceUrl = async (instanceUrl?: string) => {
+  const gitLabInstanceUrl = instanceUrl ? removeTrailingSlash(instanceUrl) : IntegrationUrls.GITLAB_URL;
+
+  await blockLocalAndPrivateIpAddresses(gitLabInstanceUrl);
+
+  return gitLabInstanceUrl;
+};
+
 export const refreshGitLabToken = async (
   refreshToken: string,
   appId: string,
@@ -61,16 +71,13 @@ export const refreshGitLabToken = async (
   });
 
   try {
-    const { data } = await request.post<GitLabOAuthTokenResponse>(
-      `${instanceUrl ? `${instanceUrl}/oauth/token` : IntegrationUrls.GITLAB_TOKEN_URL}`,
-      payload.toString(),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json"
-        }
+    const url = await getGitLabInstanceUrl(instanceUrl);
+    const { data } = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json"
       }
-    );
+    });
 
     const expiresAt = new Date(Date.now() + data.expires_in * 1000 - 60000);
 
@@ -118,17 +125,14 @@ export const exchangeGitLabOAuthCode = async (
       client_secret: CLIENT_SECRET_GITLAB_LOGIN,
       redirect_uri: `${SITE_URL}/integrations/gitlab/oauth2/callback`
     });
+    const url = await getGitLabInstanceUrl(instanceUrl);
 
-    const response = await request.post<GitLabOAuthTokenResponse>(
-      instanceUrl ? `${instanceUrl}/oauth/token` : IntegrationUrls.GITLAB_TOKEN_URL,
-      payload.toString(),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json"
-        }
+    const response = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json"
       }
-    );
+    });
 
     if (!response.data) {
       throw new InternalServerError({
@@ -169,15 +173,13 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
   let response: AxiosResponse<TGitLabProject[]> | null = null;
 
   try {
-    response = await request.get<TGitLabProject[]>(
-      `${inputCredentials.instanceUrl ? `${inputCredentials.instanceUrl}/api` : IntegrationUrls.GITLAB_API_URL}/v4/groups`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        }
+    const url = await getGitLabInstanceUrl(inputCredentials.instanceUrl);
+    response = await request.get<TGitLabProject[]>(`${url}/api/v4/groups`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
       }
-    );
+    });
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
@@ -236,9 +238,8 @@ export const listGitLabProjects = async ({
     );
   }
 
-  const gitLabApiUrl = appConnection.credentials.instanceUrl
-    ? `${appConnection.credentials.instanceUrl}/api/v4`
-    : `${IntegrationUrls.GITLAB_API_URL}/v4`;
+  const url = await getGitLabInstanceUrl(appConnection.credentials.instanceUrl);
+  const gitLabApiUrl = `${url}/api/v4`;
 
   const projects: TGitLabProject[] = [];
   let page = 1;
@@ -433,9 +434,8 @@ export const listGitLabGroups = async ({
     );
   }
 
-  const gitLabApiUrl = appConnection.credentials.instanceUrl
-    ? `${appConnection.credentials.instanceUrl}/api/v4`
-    : `${IntegrationUrls.GITLAB_API_URL}/v4`;
+  const url = await getGitLabInstanceUrl(appConnection.credentials.instanceUrl);
+  const gitLabApiUrl = `${url}/api/v4`;
 
   const groups: TGitLabGroup[] = [];
   let page = 1;
