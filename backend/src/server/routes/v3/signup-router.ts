@@ -55,7 +55,9 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     url: "/email/verify",
     method: "POST",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) ?? req.realIp
+      })
     },
     schema: {
       body: z.object({

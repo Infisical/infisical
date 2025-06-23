@@ -107,7 +107,9 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/email/password-reset-verify",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) ?? req.realIp
+      })
     },
     schema: {
       body: z.object({
