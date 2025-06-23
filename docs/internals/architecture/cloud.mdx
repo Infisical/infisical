@@ -1,0 +1,128 @@
+---
+title: "Infisical Cloud"
+description: "Architecture overview of Infisical's US and EU cloud deployments"
+---
+
+This document provides an overview of Infisical's cloud architecture for our US and EU deployments, detailing the core components and how they interact to provide security and infrastructure services.
+
+## Overview
+
+Infisical Cloud operates on AWS infrastructure using containerized services deployed via Amazon ECS (Elastic Container Service). Our US and EU deployments use identical architectural patterns to ensure consistency and reliability across regions.
+
+![Infisical Cloud Architecture](/images/self-hosting/reference-architectures/Infisical-AWS-ECS-architecture.jpeg)
+
+## Components
+
+A typical Infisical Cloud deployment consists of the following components:
+
+### Application Services
+
+- **Infisical Core**: Main application server running the Infisical backend API
+- **License API**: Dedicated API service for license management with separate RDS instance (shared between US/EU)
+- **Application Load Balancer**: Routes incoming traffic to application containers with SSL termination and host-based routing
+
+### Data Layer
+
+- **Amazon RDS (PostgreSQL)**:
+  - **Main RDS Instance**: Primary database for secrets, users, and metadata (Multi-AZ, encryption enabled)
+  - **License API RDS Instance**: Dedicated database for license management services
+- **Amazon ElastiCache (Redis)**:
+  - **Main Redis Cluster**: Multi-AZ replication group for core application caching and queuing
+  - **License API Redis**: Dedicated cache for license services
+  - Redis 7 engine with CloudWatch logging and snapshot backups
+
+### Infrastructure
+
+- **ECS Fargate**: Serverless container platform running application services
+- **AWS Global Accelerator**: Global traffic routing and performance optimization
+- **Cloudflare**: DNS management and routing
+- **AWS SSM Parameter Store**: Stores application configuration and secrets
+- **CloudWatch**: Centralized logging and monitoring
+
+## System Layout
+
+### Service Architecture
+
+The Infisical application runs as multiple containerized services on ECS:
+
+- **Main Server**: Auto-scaling containerized application services
+- **License API**: Dedicated service with separate infrastructure (shared globally)
+- **Monitoring**: AWS OTel Collector and Datadog Agent sidecars
+
+Container images are pulled from Docker Hub and managed via GitHub Actions for deployments.
+
+### Network Configuration
+
+Services are deployed in private subnets with the following connectivity:
+
+- External traffic → Application Load Balancer → ECS Services
+- Main server exposes port 8080
+- License API exposes port 4000 (portal.infisical.com, license.infisical.com)
+- Service-to-service communication via AWS Service Connect
+
+### Data Flow
+
+1. **DNS resolution** via Cloudflare routes traffic to AWS Global Accelerator
+2. **Global Accelerator** optimizes routing to the nearest AWS region
+3. **Client requests** are routed through the Application Load Balancer to ECS containers
+4. **Application logic** processes requests in the Infisical Core service
+5. **Data persistence** occurs via encrypted connections to RDS
+6. **Caching** utilizes ElastiCache for performance optimization
+7. **Configuration** is retrieved from AWS SSM Parameter Store
+
+## Regional Deployments
+
+Each region operates in a separate AWS account, providing strong isolation boundaries for security, compliance, and operational independence.
+
+### US Cloud (us.infisical.com or app.infisical.com)
+
+- **AWS Account**: Dedicated US AWS account
+- **Infrastructure**: ECS-based containerized deployment
+- **Monitoring**: Integrated with Datadog for observability and security monitoring
+
+### EU Cloud (eu.infisical.com)
+
+- **AWS Account**: Dedicated EU AWS account
+- **Infrastructure**: ECS-based containerized deployment
+- **Monitoring**: Integrated with Datadog for observability and security monitoring
+
+## Configuration Management
+
+Application configuration and secrets are managed through AWS SSM Parameter Store, with deployment automation handled via GitHub Actions.
+
+## Monitoring and Observability
+
+### Logging
+
+- **CloudWatch**: 365-day retention for application logs
+- **Health Checks**: HTTP endpoint monitoring for service health
+
+### Metrics
+
+- **AWS OTel Collector**: Prometheus metrics collection
+- **Datadog Agent**: Application performance monitoring and infrastructure metrics
+
+## Container Management
+
+- **Images**: `infisical/staging_infisical` and `infisical/license-api` from Docker Hub
+- **Deployment**: Automated via GitHub Actions updating SSM parameter for image tags
+- **Registry Access**: Docker Hub credentials stored in AWS Secrets Manager
+- **Platform**: ECS Fargate serverless container platform
+
+## Security Overview
+
+### Data Protection
+
+- **Encryption**: All secrets encrypted at rest and in transit
+- **Network Isolation**: Services deployed in private subnets with controlled access
+- **Authentication**: API tokens and service accounts for secure access
+- **Audit Logging**: Comprehensive audit trails for all secret operations
+
+### Network Architecture
+
+- **VPC Design**: Dedicated VPC with public and private subnets across multiple Availability Zones
+- **NAT Gateway**: Controlled outbound connectivity from private subnets
+- **Load Balancing**: Application Load Balancer with SSL termination and health checks
+- **Security Groups**: Restrictive firewall rules and controlled network access
+- **High Availability**: Multi-AZ deployment with automatic failover
+- **Network Monitoring**: VPC Flow Logs with 365-day retention for traffic analysis
