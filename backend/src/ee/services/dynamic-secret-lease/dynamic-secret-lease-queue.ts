@@ -21,7 +21,12 @@ type TDynamicSecretLeaseQueueServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findById">;
 };
 
-export type TDynamicSecretLeaseQueueServiceFactory = ReturnType<typeof dynamicSecretLeaseQueueServiceFactory>;
+export type TDynamicSecretLeaseQueueServiceFactory = {
+  pruneDynamicSecret: (dynamicSecretCfgId: string) => Promise<void>;
+  setLeaseRevocation: (leaseId: string, expiryAt: Date) => Promise<void>;
+  unsetLeaseRevocation: (leaseId: string) => Promise<void>;
+  init: () => Promise<void>;
+};
 
 export const dynamicSecretLeaseQueueServiceFactory = ({
   queueService,
@@ -30,55 +35,48 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   dynamicSecretLeaseDAL,
   kmsService,
   folderDAL
-}: TDynamicSecretLeaseQueueServiceFactoryDep) => {
+}: TDynamicSecretLeaseQueueServiceFactoryDep): TDynamicSecretLeaseQueueServiceFactory => {
   const pruneDynamicSecret = async (dynamicSecretCfgId: string) => {
-    await queueService.queue(
-      QueueName.DynamicSecretRevocation,
+    await queueService.queuePg<QueueName.DynamicSecretRevocation>(
       QueueJobs.DynamicSecretPruning,
       { dynamicSecretCfgId },
       {
-        jobId: dynamicSecretCfgId,
-        backoff: {
-          type: "exponential",
-          delay: 3000
-        },
-        removeOnFail: {
-          count: 3
-        },
-        removeOnComplete: true
+        singletonKey: dynamicSecretCfgId,
+        retryLimit: 3,
+        retryBackoff: true
       }
     );
   };
 
-  const setLeaseRevocation = async (leaseId: string, expiry: number) => {
-    await queueService.queue(
-      QueueName.DynamicSecretRevocation,
+  const setLeaseRevocation = async (leaseId: string, expiryAt: Date) => {
+    await queueService.queuePg<QueueName.DynamicSecretRevocation>(
       QueueJobs.DynamicSecretRevocation,
       { leaseId },
       {
-        jobId: leaseId,
-        backoff: {
-          type: "exponential",
-          delay: 3000
-        },
-        delay: expiry,
-        removeOnFail: {
-          count: 3
-        },
-        removeOnComplete: true
+        id: leaseId,
+        singletonKey: leaseId,
+        startAfter: expiryAt,
+        retryLimit: 3,
+        retryBackoff: true,
+        retentionDays: 2
       }
     );
   };
 
   const unsetLeaseRevocation = async (leaseId: string) => {
     await queueService.stopJobById(QueueName.DynamicSecretRevocation, leaseId);
+    await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, leaseId);
   };
 
-  queueService.start(QueueName.DynamicSecretRevocation, async (job) => {
+  const $dynamicSecretQueueJob = async (
+    jobName: string,
+    jobId: string,
+    data: { leaseId: string } | { dynamicSecretCfgId: string }
+  ): Promise<void> => {
     try {
-      if (job.name === QueueJobs.DynamicSecretRevocation) {
-        const { leaseId } = job.data as { leaseId: string };
-        logger.info("Dynamic secret lease revocation started: ", leaseId, job.id);
+      if (jobName === QueueJobs.DynamicSecretRevocation) {
+        const { leaseId } = data as { leaseId: string };
+        logger.info("Dynamic secret lease revocation started: ", leaseId, jobId);
 
         const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
         if (!dynamicSecretLease) throw new DisableRotationErrors({ message: "Dynamic secret lease not found" });
@@ -107,9 +105,9 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         return;
       }
 
-      if (job.name === QueueJobs.DynamicSecretPruning) {
-        const { dynamicSecretCfgId } = job.data as { dynamicSecretCfgId: string };
-        logger.info("Dynamic secret pruning started: ", dynamicSecretCfgId, job.id);
+      if (jobName === QueueJobs.DynamicSecretPruning) {
+        const { dynamicSecretCfgId } = data as { dynamicSecretCfgId: string };
+        logger.info("Dynamic secret pruning started: ", dynamicSecretCfgId, jobId);
         const dynamicSecretCfg = await dynamicSecretDAL.findById(dynamicSecretCfgId);
         if (!dynamicSecretCfg) throw new DisableRotationErrors({ message: "Dynamic secret not found" });
         if ((dynamicSecretCfg.status as DynamicSecretStatus) !== DynamicSecretStatus.Deleting)
@@ -150,38 +148,68 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
         await dynamicSecretDAL.deleteById(dynamicSecretCfgId);
       }
-      logger.info("Finished dynamic secret job", job.id);
+      logger.info("Finished dynamic secret job", jobId);
     } catch (error) {
       logger.error(error);
 
-      if (job?.name === QueueJobs.DynamicSecretPruning) {
-        const { dynamicSecretCfgId } = job.data as { dynamicSecretCfgId: string };
+      if (jobName === QueueJobs.DynamicSecretPruning) {
+        const { dynamicSecretCfgId } = data as { dynamicSecretCfgId: string };
         await dynamicSecretDAL.updateById(dynamicSecretCfgId, {
           status: DynamicSecretStatus.FailedDeletion,
           statusDetails: (error as Error)?.message?.slice(0, 255)
         });
       }
 
-      if (job?.name === QueueJobs.DynamicSecretRevocation) {
-        const { leaseId } = job.data as { leaseId: string };
+      if (jobName === QueueJobs.DynamicSecretRevocation) {
+        const { leaseId } = data as { leaseId: string };
         await dynamicSecretLeaseDAL.updateById(leaseId, {
           status: DynamicSecretStatus.FailedDeletion,
           statusDetails: (error as Error)?.message?.slice(0, 255)
         });
       }
       if (error instanceof DisableRotationErrors) {
-        if (job.id) {
-          await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, job.id);
+        if (jobId) {
+          await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, jobId);
+          await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, jobId);
         }
       }
       // propogate to next part
       throw error;
     }
+  };
+
+  queueService.start(QueueName.DynamicSecretRevocation, async (job) => {
+    await $dynamicSecretQueueJob(job.name, job.id as string, job.data);
   });
+
+  const init = async () => {
+    await queueService.startPg<QueueName.DynamicSecretRevocation>(
+      QueueJobs.DynamicSecretRevocation,
+      async ([job]) => {
+        await $dynamicSecretQueueJob(job.name, job.id, job.data);
+      },
+      {
+        workerCount: 5,
+        pollingIntervalSeconds: 1
+      }
+    );
+
+    await queueService.startPg<QueueName.DynamicSecretRevocation>(
+      QueueJobs.DynamicSecretPruning,
+      async ([job]) => {
+        await $dynamicSecretQueueJob(job.name, job.id, job.data);
+      },
+      {
+        workerCount: 1,
+        pollingIntervalSeconds: 1
+      }
+    );
+  };
 
   return {
     pruneDynamicSecret,
     setLeaseRevocation,
-    unsetLeaseRevocation
+    unsetLeaseRevocation,
+    init
   };
 };

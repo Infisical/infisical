@@ -8,7 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { OrderByDirection } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -20,17 +20,7 @@ import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/
 import { TGatewayDALFactory } from "../gateway/gateway-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
-import {
-  DynamicSecretStatus,
-  TCreateDynamicSecretDTO,
-  TDeleteDynamicSecretDTO,
-  TDetailsDynamicSecretDTO,
-  TGetDynamicSecretsCountDTO,
-  TListDynamicSecretsByFolderMappingsDTO,
-  TListDynamicSecretsDTO,
-  TListDynamicSecretsMultiEnvDTO,
-  TUpdateDynamicSecretDTO
-} from "./dynamic-secret-types";
+import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./providers/models";
 
@@ -51,8 +41,6 @@ type TDynamicSecretServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
-export type TDynamicSecretServiceFactory = ReturnType<typeof dynamicSecretServiceFactory>;
-
 export const dynamicSecretServiceFactory = ({
   dynamicSecretDAL,
   dynamicSecretLeaseDAL,
@@ -65,8 +53,8 @@ export const dynamicSecretServiceFactory = ({
   kmsService,
   gatewayDAL,
   resourceMetadataDAL
-}: TDynamicSecretServiceFactoryDep) => {
-  const create = async ({
+}: TDynamicSecretServiceFactoryDep): TDynamicSecretServiceFactory => {
+  const create: TDynamicSecretServiceFactory["create"] = async ({
     path,
     actor,
     name,
@@ -80,7 +68,7 @@ export const dynamicSecretServiceFactory = ({
     actorAuthMethod,
     metadata,
     usernameTemplate
-  }: TCreateDynamicSecretDTO) => {
+  }) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -188,7 +176,7 @@ export const dynamicSecretServiceFactory = ({
     return dynamicSecretCfg;
   };
 
-  const updateByName = async ({
+  const updateByName: TDynamicSecretServiceFactory["updateByName"] = async ({
     name,
     maxTTL,
     defaultTTL,
@@ -203,7 +191,7 @@ export const dynamicSecretServiceFactory = ({
     actorAuthMethod,
     metadata,
     usernameTemplate
-  }: TUpdateDynamicSecretDTO) => {
+  }) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -345,7 +333,7 @@ export const dynamicSecretServiceFactory = ({
     return updatedDynamicCfg;
   };
 
-  const deleteByName = async ({
+  const deleteByName: TDynamicSecretServiceFactory["deleteByName"] = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -355,7 +343,7 @@ export const dynamicSecretServiceFactory = ({
     path,
     environmentSlug,
     isForced
-  }: TDeleteDynamicSecretDTO) => {
+  }) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -413,7 +401,7 @@ export const dynamicSecretServiceFactory = ({
     return deletedDynamicSecretCfg;
   };
 
-  const getDetails = async ({
+  const getDetails: TDynamicSecretServiceFactory["getDetails"] = async ({
     name,
     projectSlug,
     path,
@@ -422,7 +410,7 @@ export const dynamicSecretServiceFactory = ({
     actorOrgId,
     actorId,
     actor
-  }: TDetailsDynamicSecretDTO) => {
+  }) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -480,7 +468,7 @@ export const dynamicSecretServiceFactory = ({
   };
 
   // get unique dynamic secret count across multiple envs
-  const getCountMultiEnv = async ({
+  const getCountMultiEnv: TDynamicSecretServiceFactory["getCountMultiEnv"] = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -490,7 +478,7 @@ export const dynamicSecretServiceFactory = ({
     environmentSlugs,
     search,
     isInternal
-  }: TListDynamicSecretsMultiEnvDTO) => {
+  }) => {
     if (!isInternal) {
       const { permission } = await permissionService.getProjectPermission({
         actor,
@@ -526,7 +514,7 @@ export const dynamicSecretServiceFactory = ({
   };
 
   // get dynamic secret count for a single env
-  const getDynamicSecretCount = async ({
+  const getDynamicSecretCount: TDynamicSecretServiceFactory["getDynamicSecretCount"] = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -535,7 +523,7 @@ export const dynamicSecretServiceFactory = ({
     environmentSlug,
     search,
     projectId
-  }: TGetDynamicSecretsCountDTO) => {
+  }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -561,7 +549,7 @@ export const dynamicSecretServiceFactory = ({
     return Number(dynamicSecretCfg[0]?.count ?? 0);
   };
 
-  const listDynamicSecretsByEnv = async ({
+  const listDynamicSecretsByEnv: TDynamicSecretServiceFactory["listDynamicSecretsByEnv"] = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -575,7 +563,7 @@ export const dynamicSecretServiceFactory = ({
     orderDirection = OrderByDirection.ASC,
     search,
     ...params
-  }: TListDynamicSecretsDTO) => {
+  }) => {
     let { projectId } = params;
 
     if (!projectId) {
@@ -619,9 +607,9 @@ export const dynamicSecretServiceFactory = ({
     });
   };
 
-  const listDynamicSecretsByFolderIds = async (
-    { folderMappings, filters, projectId }: TListDynamicSecretsByFolderMappingsDTO,
-    actor: OrgServiceActor
+  const listDynamicSecretsByFolderIds: TDynamicSecretServiceFactory["listDynamicSecretsByFolderIds"] = async (
+    { folderMappings, filters, projectId },
+    actor
   ) => {
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -657,7 +645,7 @@ export const dynamicSecretServiceFactory = ({
   };
 
   // get dynamic secrets for multiple envs
-  const listDynamicSecretsByEnvs = async ({
+  const listDynamicSecretsByEnvs: TDynamicSecretServiceFactory["listDynamicSecretsByEnvs"] = async ({
     actorAuthMethod,
     actorOrgId,
     actorId,
@@ -667,7 +655,7 @@ export const dynamicSecretServiceFactory = ({
     projectId,
     isInternal,
     ...params
-  }: TListDynamicSecretsMultiEnvDTO) => {
+  }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -700,14 +688,10 @@ export const dynamicSecretServiceFactory = ({
     });
   };
 
-  const fetchAzureEntraIdUsers = async ({
+  const fetchAzureEntraIdUsers: TDynamicSecretServiceFactory["fetchAzureEntraIdUsers"] = async ({
     tenantId,
     applicationId,
     clientSecret
-  }: {
-    tenantId: string;
-    applicationId: string;
-    clientSecret: string;
   }) => {
     const azureEntraIdUsers = await AzureEntraIDProvider().fetchAzureEntraIdUsers(
       tenantId,
