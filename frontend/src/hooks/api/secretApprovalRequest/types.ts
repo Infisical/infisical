@@ -113,6 +113,7 @@ export type TGetSecretApprovalRequestList = {
   committer?: string;
   limit?: number;
   offset?: number;
+  search?: string;
 };
 
 export type TGetSecretApprovalRequestCount = {

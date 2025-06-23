@@ -25,8 +25,8 @@ const formSchema = z.object({
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
       tags: z
-      .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
-      .optional(),
+        .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+        .optional()
     }),
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
@@ -38,8 +38,8 @@ const formSchema = z.object({
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
       tags: z
-      .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
-      .optional()
+        .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+        .optional()
     })
   ]),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -97,7 +97,7 @@ export const EditDynamicSecretAwsIamForm = ({
       usernameTemplate: dynamicSecret?.usernameTemplate || "{{randomUsername}}",
       inputs: {
         ...(dynamicSecret.inputs as TForm["inputs"])
-      },
+      }
     }
   });
   const isAccessKeyMethod = watch("inputs.method") === DynamicSecretAwsIamAuth.AccessKey;
@@ -125,8 +125,7 @@ export const EditDynamicSecretAwsIamForm = ({
           defaultTTL,
           inputs,
           newName: newName === dynamicSecret.name ? undefined : newName,
-          usernameTemplate:
-            !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
+          usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
         }
       });
       onClose();

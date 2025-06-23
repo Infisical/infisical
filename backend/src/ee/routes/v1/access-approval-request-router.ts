@@ -89,7 +89,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     schema: {
       querystring: z.object({
         projectSlug: z.string().trim(),
-        authorProjectMembershipId: z.string().trim().optional(),
+        authorUserId: z.string().trim().optional(),
         envSlug: z.string().trim().optional()
       }),
       response: {
@@ -143,7 +143,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const { requests } = await server.services.accessApprovalRequest.listApprovalRequests({
         projectSlug: req.query.projectSlug,
-        authorProjectMembershipId: req.query.authorProjectMembershipId,
+        authorUserId: req.query.authorUserId,
         envSlug: req.query.envSlug,
         actor: req.permission.type,
         actorId: req.permission.id,

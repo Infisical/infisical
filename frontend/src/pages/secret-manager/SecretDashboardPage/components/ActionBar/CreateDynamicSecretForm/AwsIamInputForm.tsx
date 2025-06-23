@@ -36,10 +36,13 @@ const formSchema = z.object({
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
       tags: z
-      .array(
-        z.object({ key: z.string().trim().min(1).max(128), value: z.string().trim().min(1).max(256) })
-      )
-      .optional()
+        .array(
+          z.object({
+            key: z.string().trim().min(1).max(128),
+            value: z.string().trim().min(1).max(256)
+          })
+        )
+        .optional()
     }),
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
@@ -51,10 +54,13 @@ const formSchema = z.object({
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
       tags: z
-      .array(
-        z.object({ key: z.string().trim().min(1).max(128), value: z.string().trim().min(1).max(256) })
-      )
-      .optional()
+        .array(
+          z.object({
+            key: z.string().trim().min(1).max(128),
+            value: z.string().trim().min(1).max(256)
+          })
+        )
+        .optional()
     })
   ]),
   defaultTTL: z.string().superRefine((val, ctx) => {

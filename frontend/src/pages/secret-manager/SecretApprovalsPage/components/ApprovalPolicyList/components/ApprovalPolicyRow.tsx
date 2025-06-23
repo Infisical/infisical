@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -9,6 +9,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  GenericFieldLabel,
+  IconButton,
   Td,
   Tr
 } from "@app/components/v2";
@@ -80,11 +82,11 @@ export const ApprovalPolicyRow = ({
         userLabels: members
           ?.filter((member) => el.user.find((i) => i.id === member.user.id))
           .map((member) => getMemberLabel(member))
-          .join(","),
+          .join(", "),
         groupLabels: groups
           ?.filter(({ group }) => el.group.find((i) => i.id === group.id))
           .map(({ group }) => group.name)
-          .join(","),
+          .join(", "),
         approvals: el.approvals
       };
     });
@@ -102,36 +104,47 @@ export const ApprovalPolicyRow = ({
         }}
         onClick={() => setIsExpanded.toggle()}
       >
-        <Td>{policy.name}</Td>
-        <Td>{policy.environment.slug}</Td>
+        <Td>{policy.name || <span className="text-mineshaft-400">Unnamed Policy</span>}</Td>
+        <Td>{policy.environment.name}</Td>
         <Td>{policy.secretPath || "*"}</Td>
         <Td>
-          <Badge className={policyDetails[policy.policyType].className}>
-            {policyDetails[policy.policyType].name}
+          <Badge
+            className={twMerge(
+              policyDetails[policy.policyType].className,
+              "flex w-min items-center gap-1.5 whitespace-nowrap"
+            )}
+          >
+            <FontAwesomeIcon icon={policyDetails[policy.policyType].icon} />
+            <span>{policyDetails[policy.policyType].name}</span>
           </Badge>
         </Td>
         <Td>
           <DropdownMenu>
             <DropdownMenuTrigger asChild className="cursor-pointer rounded-lg">
-              <div className="flex items-center justify-center transition-transform duration-300 ease-in-out hover:scale-125 hover:text-primary-400 data-[state=open]:scale-125 data-[state=open]:text-primary-400">
-                <FontAwesomeIcon size="sm" icon={faEllipsis} />
-              </div>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  ariaLabel="Options"
+                  colorSchema="secondary"
+                  className="w-6"
+                  variant="plain"
+                >
+                  <FontAwesomeIcon icon={faEllipsisV} />
+                </IconButton>
+              </DropdownMenuTrigger>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="min-w-[100%] p-1">
+            <DropdownMenuContent sideOffset={2} align="end" className="min-w-[12rem] p-1">
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.SecretApproval}
               >
                 {(isAllowed) => (
                   <DropdownMenuItem
-                    className={twMerge(
-                      !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                    )}
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdit();
                     }}
-                    disabled={!isAllowed}
+                    isDisabled={!isAllowed}
+                    icon={<FontAwesomeIcon icon={faEdit} />}
                   >
                     Edit Policy
                   </DropdownMenuItem>
@@ -143,16 +156,12 @@ export const ApprovalPolicyRow = ({
               >
                 {(isAllowed) => (
                   <DropdownMenuItem
-                    className={twMerge(
-                      isAllowed
-                        ? "hover:!bg-red-500 hover:!text-white"
-                        : "pointer-events-none cursor-not-allowed opacity-50"
-                    )}
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete();
                     }}
-                    disabled={!isAllowed}
+                    isDisabled={!isAllowed}
+                    icon={<FontAwesomeIcon icon={faTrash} />}
                   >
                     Delete Policy
                   </DropdownMenuItem>
@@ -162,45 +171,41 @@ export const ApprovalPolicyRow = ({
           </DropdownMenu>
         </Td>
       </Tr>
-      {isExpanded && (
-        <Tr>
-          <Td colSpan={5} className="rounded bg-mineshaft-900">
-            <div className="mb-4 border-b-2 border-mineshaft-500 py-2 text-lg">Approvers</div>
-            {labels?.map((el, index) => (
-              <div
-                key={`approval-list-${index + 1}`}
-                className="relative mb-2 flex rounded border border-mineshaft-500 bg-mineshaft-700 p-4"
-              >
-                <div>
-                  <div className="mr-8 flex h-8 w-8 items-center justify-center border border-bunker-300 bg-bunker-800 text-white">
-                    <div className="text-lg">{index + 1}</div>
+      <Tr>
+        <Td colSpan={6} className="!border-none p-0">
+          <div
+            className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ease-in-out ${
+              isExpanded ? "thin-scrollbar max-h-[26rem] !overflow-y-auto opacity-100" : "max-h-0"
+            }`}
+          >
+            <div className="p-4">
+              <div className="mb-4 border-b-2 border-mineshaft-500 pb-2">Approvers</div>
+              {labels?.map((el, index) => (
+                <div
+                  key={`approval-list-${index + 1}`}
+                  className="relative mb-2 flex rounded border border-mineshaft-500 bg-mineshaft-800 p-4"
+                >
+                  <div className="my-auto mr-8 flex h-8 w-8 items-center justify-center rounded border border-mineshaft-400 bg-bunker-500/50 text-white">
+                    <div>{index + 1}</div>
                   </div>
                   {index !== labels.length - 1 && (
-                    <div className="absolute bottom-0 left-8 h-6 border-r border-gray-400" />
+                    <div className="absolute bottom-0 left-8 h-[1.25rem] border-r border-mineshaft-400" />
                   )}
                   {index !== 0 && (
-                    <div className="absolute left-8 top-0 h-4 border-r border-gray-400" />
+                    <div className="absolute left-8 top-0 h-[1.25rem] border-r border-mineshaft-400" />
                   )}
-                </div>
-                <div className="grid flex-grow grid-cols-3">
-                  <div>
-                    <div className="mb-1 text-xs font-semibold uppercase">Users</div>
-                    <div>{el.userLabels || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="mb-1 text-xs font-semibold uppercase">Groups</div>
-                    <div>{el.groupLabels || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="mb-1 text-xs font-semibold uppercase">Approvals Required</div>
-                    <div>{el.approvals || "-"}</div>
+
+                  <div className="grid flex-grow grid-cols-3">
+                    <GenericFieldLabel label="Users">{el.userLabels}</GenericFieldLabel>
+                    <GenericFieldLabel label="Groups">{el.groupLabels}</GenericFieldLabel>
+                    <GenericFieldLabel label="Approvals Required">{el.approvals}</GenericFieldLabel>
                   </div>
                 </div>
-              </div>
-            ))}
-          </Td>
-        </Tr>
-      )}
+              ))}
+            </div>
+          </div>
+        </Td>
+      </Tr>
     </>
   );
 };

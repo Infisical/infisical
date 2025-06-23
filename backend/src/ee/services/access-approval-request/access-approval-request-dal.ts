@@ -725,16 +725,17 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         )
 
         .where(`${TableName.Environment}.projectId`, projectId)
-        .where(`${TableName.AccessApprovalPolicy}.deletedAt`, null)
         .select(selectAllTableCols(TableName.AccessApprovalRequest))
         .select(db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus"))
-        .select(db.ref("reviewerUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerUserId"));
+        .select(db.ref("reviewerUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerUserId"))
+        .select(db.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt"));
 
       const formattedRequests = sqlNestRelationships({
         data: accessRequests,
         key: "id",
         parentMapper: (doc) => ({
-          ...AccessApprovalRequestsSchema.parse(doc)
+          ...AccessApprovalRequestsSchema.parse(doc),
+          isPolicyDeleted: Boolean(doc.policyDeletedAt)
         }),
         childrenMapper: [
           {
@@ -751,7 +752,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         (req) =>
           !req.privilegeId &&
           !req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED) &&
-          req.status === ApprovalStatus.PENDING
+          req.status === ApprovalStatus.PENDING &&
+          !req.isPolicyDeleted
       );
 
       // an approval is finalized if there are any rejections, a privilege ID is set or the number of approvals is equal to the number of approvals required.
@@ -759,7 +761,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         (req) =>
           req.privilegeId ||
           req.reviewers.some((r) => r.status === ApprovalStatus.REJECTED) ||
-          req.status !== ApprovalStatus.PENDING
+          req.status !== ApprovalStatus.PENDING ||
+          req.isPolicyDeleted
       );
 
       return { pendingCount: pendingApprovals.length, finalizedCount: finalizedApprovals.length };
