@@ -590,14 +590,9 @@ export const secretQueueFactory = ({
   };
 
   const replicateSecrets = async (dto: Omit<TSyncSecretsDTO, "deDupeQueue">) => {
-    await queueService.queue(QueueName.SecretReplication, QueueJobs.SecretReplication, dto, {
-      attempts: 5,
-      backoff: {
-        type: "exponential",
-        delay: 3000
-      },
-      removeOnComplete: true,
-      removeOnFail: true
+    await queueService.queuePg<QueueName.SecretReplication>(QueueJobs.SecretReplication, dto, {
+      retryLimit: 5,
+      retryBackoff: true
     });
   };
 
