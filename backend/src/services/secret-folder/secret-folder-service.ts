@@ -135,8 +135,7 @@ export const secretFolderServiceFactory = ({
           const newFolders: TSecretFoldersInsert[] = [];
 
           // process each segment sequentially
-          for (const segment of missingSegments) {
-            // eslint-disable-next-line no-await-in-loop
+          for await (const segment of missingSegments) {
             const existingSegment = await folderDAL.findOne(
               {
                 name: segment,
