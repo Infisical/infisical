@@ -84,7 +84,6 @@ Each region operates in a separate AWS account, providing strong isolation bound
 
 - **AWS Account**: Dedicated EU AWS account
 - **Infrastructure**: ECS-based containerized deployment
-- **Compliance**: GDPR compliant with data residency within EU
 - **Monitoring**: Integrated with Datadog for observability and security monitoring
 
 ## Configuration Management
@@ -105,7 +104,7 @@ Application configuration and secrets are managed through AWS SSM Parameter Stor
 
 ## Container Management
 
-- **Images**: `infisical/staging_infisical` and `infisical/license-server` from Docker Hub
+- **Images**: `infisical/staging_infisical` and `infisical/license-api` from Docker Hub
 - **Deployment**: Automated via GitHub Actions updating SSM parameter for image tags
 - **Registry Access**: Docker Hub credentials stored in AWS Secrets Manager
 - **Platform**: ECS Fargate serverless container platform
