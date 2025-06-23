@@ -120,10 +120,13 @@ Application configuration and secrets are managed through AWS SSM Parameter Stor
 
 ### Network Architecture
 
+- **VPC Design**: Dedicated VPC with public and private subnets across multiple Availability Zones
+- **NAT Gateway**: All outbound traffic from private subnets routes through NAT Gateway for external connectivity
 - **Load Balancing**: Application Load Balancer with SSL termination and health checks
 - **Service Communication**: AWS Service Connect for internal service discovery
 - **Security Groups**: Restrictive firewall rules (port 8080 for main server, 4000 for license API)
 - **High Availability**: Multi-AZ deployment with automatic failover
+- **Network Monitoring**: VPC Flow Logs with 365-day retention for traffic analysis
 
 ## Troubleshooting
 
