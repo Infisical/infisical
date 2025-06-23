@@ -13,7 +13,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     url: "/me/emails/code",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) ?? req.realIp
+        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) || req.realIp
       })
     },
     schema: {
@@ -35,7 +35,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     url: "/me/emails/verify",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) ?? req.realIp
+        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) || req.realIp
       })
     },
     schema: {
