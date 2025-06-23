@@ -22,9 +22,7 @@
               "documentation/getting-started/introduction",
               {
                 "group": "Quickstart",
-                "pages": [
-                  "documentation/guides/local-development"
-                ]
+                "pages": ["documentation/guides/local-development"]
               },
               {
                 "group": "Guides",
@@ -39,9 +37,7 @@
               },
               {
                 "group": "Setup",
-                "pages": [
-                  "documentation/setup/networking"
-                ]
+                "pages": ["documentation/setup/networking"]
               }
             ]
           },
@@ -405,9 +401,7 @@
               },
               {
                 "group": "Contributing to SDK",
-                "pages": [
-                  "contributing/sdk/developing"
-                ]
+                "pages": ["contributing/sdk/developing"]
               }
             ]
           }
@@ -469,6 +463,7 @@
                   "integrations/app-connections/azure-devops",
                   "integrations/app-connections/azure-key-vault",
                   "integrations/app-connections/camunda",
+                  "integrations/app-connections/cloudflare",
                   "integrations/app-connections/databricks",
                   "integrations/app-connections/flyio",
                   "integrations/app-connections/gcp",
@@ -506,6 +501,7 @@
                   "integrations/secret-syncs/azure-devops",
                   "integrations/secret-syncs/azure-key-vault",
                   "integrations/secret-syncs/camunda",
+                  "integrations/secret-syncs/cloudflare-pages",
                   "integrations/secret-syncs/databricks",
                   "integrations/secret-syncs/flyio",
                   "integrations/secret-syncs/gcp-secret-manager",
@@ -621,15 +617,11 @@
           },
           {
             "group": "Build Tool Integrations",
-            "pages": [
-              "integrations/build-tools/gradle"
-            ]
+            "pages": ["integrations/build-tools/gradle"]
           },
           {
             "group": "Others",
-            "pages": [
-              "integrations/external/backstage"
-            ]
+            "pages": ["integrations/external/backstage"]
           }
         ]
       },
@@ -685,9 +677,7 @@
               "api-reference/overview/authentication",
               {
                 "group": "Examples",
-                "pages": [
-                  "api-reference/overview/examples/integration"
-                ]
+                "pages": ["api-reference/overview/examples/integration"]
               }
             ]
           },
@@ -1262,6 +1252,18 @@
                     ]
                   },
                   {
+                    "group": "Cloudflare",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/cloudflare/list",
+                      "api-reference/endpoints/app-connections/cloudflare/available",
+                      "api-reference/endpoints/app-connections/cloudflare/get-by-id",
+                      "api-reference/endpoints/app-connections/cloudflare/get-by-name",
+                      "api-reference/endpoints/app-connections/cloudflare/create",
+                      "api-reference/endpoints/app-connections/cloudflare/update",
+                      "api-reference/endpoints/app-connections/cloudflare/delete"
+                    ]
+                  },
+                  {
                     "group": "Databricks",
                     "pages": [
                       "api-reference/endpoints/app-connections/databricks/list",
@@ -1594,6 +1596,19 @@
                     ]
                   },
                   {
+                    "group": "Cloudflare Pages",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/cloudflare-pages/list",
+                      "api-reference/endpoints/secret-syncs/cloudflare-pages/get-by-id",
+                      "api-reference/endpoints/secret-syncs/cloudflare-pages/get-by-name",
+                      "api-reference/endpoints/secret-syncs/cloudflare-pages/create",
+                      "api-reference/endpoints/secret-syncs/cloudflare-pages/update",
+                      "api-reference/endpoints/secret-syncs/cloudflare-pages/delete",
+                      "api-reference/endpoints/secret-syncs/cloudflare-pages/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/cloudflare-pages/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Databricks",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/databricks/list",
@@ -1787,15 +1802,11 @@
               },
               {
                 "group": "Service Tokens",
-                "pages": [
-                  "api-reference/endpoints/service-tokens/get"
-                ]
+                "pages": ["api-reference/endpoints/service-tokens/get"]
               },
               {
                 "group": "Audit Logs",
-                "pages": [
-                  "api-reference/endpoints/audit-logs/export-audit-log"
-                ]
+                "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
               }
             ]
           },
@@ -2002,9 +2013,7 @@
         "groups": [
           {
             "group": "",
-            "pages": [
-              "sdks/overview"
-            ]
+            "pages": ["sdks/overview"]
           },
           {
             "group": "SDK's",
@@ -2024,9 +2033,7 @@
         "groups": [
           {
             "group": "",
-            "pages": [
-              "changelog/overview"
-            ]
+            "pages": ["changelog/overview"]
           }
         ]
       }
@@ -2040,10 +2047,7 @@
   "api": {
     "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": [
-        "https://app.infisical.com",
-        "http://localhost:8080"
-      ]
+      "server": ["https://app.infisical.com", "http://localhost:8080"]
     }
   },
   "appearance": {
