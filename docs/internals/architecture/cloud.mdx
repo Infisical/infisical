@@ -45,8 +45,8 @@ A typical Infisical Cloud deployment consists of the following components:
 
 The Infisical application runs as multiple containerized services on ECS:
 
-- **Main Server**: 10-30 instances (2048 CPU, 4096 MB memory) with auto-scaling
-- **License API**: 2-4 instances (2048 CPU, 4096 MB memory) with dedicated infrastructure (shared globally)
+- **Main Server**: Auto-scaling containerized application services
+- **License API**: Dedicated service with separate infrastructure (shared globally)
 - **Monitoring**: AWS OTel Collector and Datadog Agent sidecars
 
 Container images are pulled from Docker Hub and managed via GitHub Actions for deployments.
@@ -77,17 +77,15 @@ Each region operates in a separate AWS account, providing strong isolation bound
 ### US Cloud (us.infisical.com or app.infisical.com)
 
 - **AWS Account**: Dedicated US AWS account
-- **Cluster**: `infisical-core-platform` ECS cluster
-- **Scaling**: 10-30 main server instances, 2-4 license server instances
-- **Monitoring**: Integrated with Datadog
+- **Infrastructure**: ECS-based containerized deployment
+- **Monitoring**: Integrated with Datadog for observability and security monitoring
 
 ### EU Cloud (eu.infisical.com)
 
 - **AWS Account**: Dedicated EU AWS account
-- **Cluster**: `infisical-core-platform` ECS cluster
-- **Scaling**: 15-30 main server instances, 2-4 license server instances
-- **Monitoring**: Integrated with Datadog
+- **Infrastructure**: ECS-based containerized deployment
 - **Compliance**: GDPR compliant with data residency within EU
+- **Monitoring**: Integrated with Datadog for observability and security monitoring
 
 ## Configuration Management
 
@@ -104,14 +102,13 @@ Application configuration and secrets are managed through AWS SSM Parameter Stor
 
 - **AWS OTel Collector**: Prometheus metrics collection
 - **Datadog Agent**: Application performance monitoring and infrastructure metrics
-- **Auto Scaling**: CPU and memory-based scaling triggers at 60% utilization
 
 ## Container Management
 
 - **Images**: `infisical/staging_infisical` and `infisical/license-server` from Docker Hub
 - **Deployment**: Automated via GitHub Actions updating SSM parameter for image tags
 - **Registry Access**: Docker Hub credentials stored in AWS Secrets Manager
-- **Platform**: ECS Fargate with 70% standard capacity, 30% Spot instances
+- **Platform**: ECS Fargate serverless container platform
 
 ## Security Overview
 
@@ -125,9 +122,8 @@ Application configuration and secrets are managed through AWS SSM Parameter Stor
 ### Network Architecture
 
 - **VPC Design**: Dedicated VPC with public and private subnets across multiple Availability Zones
-- **NAT Gateway**: All outbound traffic from private subnets routes through NAT Gateway for external connectivity
+- **NAT Gateway**: Controlled outbound connectivity from private subnets
 - **Load Balancing**: Application Load Balancer with SSL termination and health checks
-- **Service Communication**: AWS Service Connect for internal service discovery
-- **Security Groups**: Restrictive firewall rules (port 8080 for main server, 4000 for license API)
+- **Security Groups**: Restrictive firewall rules and controlled network access
 - **High Availability**: Multi-AZ deployment with automatic failover
 - **Network Monitoring**: VPC Flow Logs with 365-day retention for traffic analysis
