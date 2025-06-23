@@ -1,3 +1,7 @@
+* {
+  border-radius: 0 !important;
+}
+
 #navbar .max-w-8xl {
   max-width: 100%;
   border-bottom: 1px solid #ebebeb;
@@ -26,24 +30,20 @@
 }
 
 #sidebar li > div.mt-2 {
-  border-radius: 0;
   padding: 5px;
 }
 
 #sidebar li > a.text-primary {
-  border-radius: 0;
   background-color: #FBFFCC;
   border-left: 4px solid #EFFF33;
   padding: 5px;
 }
 
 #sidebar li > a.mt-2 {
-  border-radius: 0;
   padding: 5px;
 }
 
 #sidebar li > a.leading-6 {
-  border-radius: 0;
   padding: 0px;
 }
 
@@ -68,65 +68,26 @@
 }
 
 #content-area .mt-8 .block{
-  border-radius: 0;
   border-width: 1px;
   background-color: #FCFBFA;
   border-color: #ebebeb;
 }
 
 /* #content-area:hover .mt-8 .block:hover{
-  border-radius: 0;
+  
   border-width: 1px;
   background-color: #FDFFE5;
   border-color: #EFFF33;
 } */
 
-#content-area .mt-8 .rounded-xl{
-  border-radius: 0;
-}
-
-#content-area .mt-8 .rounded-lg{
-  border-radius: 0;
-}
-
-#content-area .mt-6 .rounded-xl{
-  border-radius: 0;
-}
-
-#content-area .mt-6 .rounded-lg{
-  border-radius: 0;
-}
-
-#content-area .mt-6 .rounded-md{
-  border-radius: 0;
-}
-
-#content-area .mt-8 .rounded-md{
-  border-radius: 0;
-}
-
 #content-area div.my-4{
-  border-radius: 0;
   border-width: 1px;
 }
 
-#content-area div.flex-1 {
-  /* text-transform: uppercase; */
+/* #content-area div.flex-1 {
   opacity: 0.8;
   font-weight: 400;
-}
-
-#content-area button {
-  border-radius: 0;
-}
-
-#content-area a {
-  border-radius: 0;
-}
-
-#content-area .not-prose {
-  border-radius: 0;
-}
+} */
 
 /* .eyebrow {
   text-transform: uppercase;
