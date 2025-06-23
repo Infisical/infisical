@@ -68,7 +68,7 @@ export const IntegrationsPageForm = () => {
   ];
 
   return (
-    <div className="mb-6 min-h-64 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 pt-4">
       <div className="mb-4">
         <div className="text-xl font-semibold text-mineshaft-100">Integrations</div>
         <div className="text-sm text-mineshaft-300">
