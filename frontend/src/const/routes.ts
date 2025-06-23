@@ -16,6 +16,12 @@ export const ROUTE_PATHS = Object.freeze({
     PasswordResetPage: setRoute("/password-reset", "/_restrict-login-signup/password-reset"),
     PasswordSetupPage: setRoute("/password-setup", "/_authenticate/password-setup")
   },
+  Admin: {
+    IntegrationsPage: setRoute(
+      "/admin/integrations",
+      "/_authenticate/_inject-org-details/admin/_admin-layout/integrations"
+    )
+  },
   Organization: {
     Settings: {
       OauthCallbackPage: setRoute(
