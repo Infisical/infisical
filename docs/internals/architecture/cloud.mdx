@@ -18,14 +18,14 @@ A typical Infisical Cloud deployment consists of the following components:
 ### Application Services
 
 - **Infisical Core**: Main application server running the Infisical backend API
-- **License API**: Dedicated API service for license management with separate database (shared between US/EU)
+- **License API**: Dedicated API service for license management with separate RDS instance (shared between US/EU)
 - **Application Load Balancer**: Routes incoming traffic to application containers with SSL termination and host-based routing
 
 ### Data Layer
 
 - **Amazon RDS (PostgreSQL)**:
-  - **Main Database**: Primary database for secrets, users, and metadata (Multi-AZ, encryption enabled)
-  - **License API Database**: Dedicated database for license management services
+  - **Main RDS Instance**: Primary database for secrets, users, and metadata (Multi-AZ, encryption enabled)
+  - **License API RDS Instance**: Dedicated database for license management services
 - **Amazon ElastiCache (Redis)**:
   - **Main Redis Cluster**: Multi-AZ replication group for core application caching and queuing
   - **License API Redis**: Dedicated cache for license services
@@ -66,8 +66,8 @@ Services are deployed in private subnets with the following connectivity:
 2. **Global Accelerator** optimizes routing to the nearest AWS region
 3. **Client requests** are routed through the Application Load Balancer to ECS containers
 4. **Application logic** processes requests in the Infisical Core service
-5. **Data persistence** occurs via encrypted connections to PostgreSQL
-6. **Caching** utilizes Redis for performance optimization
+5. **Data persistence** occurs via encrypted connections to RDS
+6. **Caching** utilizes ElastiCache for performance optimization
 7. **Configuration** is retrieved from AWS SSM Parameter Store
 
 ## Regional Deployments
