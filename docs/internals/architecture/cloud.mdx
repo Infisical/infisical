@@ -72,14 +72,18 @@ Services are deployed in private subnets with the following connectivity:
 
 ## Regional Deployments
 
+Each region operates in a separate AWS account, providing strong isolation boundaries for security, compliance, and operational independence.
+
 ### US Cloud (us.infisical.com or app.infisical.com)
 
+- **AWS Account**: Dedicated US AWS account
 - **Cluster**: `infisical-core-platform` ECS cluster
 - **Scaling**: 10-30 main server instances, 2-4 license server instances
 - **Monitoring**: Integrated with Datadog
 
 ### EU Cloud (eu.infisical.com)
 
+- **AWS Account**: Dedicated EU AWS account
 - **Cluster**: `infisical-core-platform` ECS cluster
 - **Scaling**: 15-30 main server instances, 2-4 license server instances
 - **Monitoring**: Integrated with Datadog
