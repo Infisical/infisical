@@ -18,8 +18,8 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
-import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
-import { SecretOperations } from "@app/services/secret/secret-types";
+import { uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
+import { SecretOperations, TSecretQueueFactory } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
