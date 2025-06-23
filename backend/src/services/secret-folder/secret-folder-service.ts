@@ -127,7 +127,6 @@ export const secretFolderServiceFactory = ({
         }
 
         let currentParentId = parentFolder.id;
-        let currentPath = parentFolder.path;
 
         // build the full path we need by processing each segment
         if (parentFolder.path !== secretPath) {
@@ -151,7 +150,6 @@ export const secretFolderServiceFactory = ({
             if (existingSegment) {
               // use existing folder and update the path / parent
               currentParentId = existingSegment.id;
-              currentPath = path.join(currentPath, segment);
             } else {
               const newFolder = {
                 name: segment,
@@ -162,7 +160,6 @@ export const secretFolderServiceFactory = ({
               };
 
               currentParentId = newFolder.id;
-              currentPath = path.join(currentPath, segment);
               newFolders.push(newFolder);
             }
           }
