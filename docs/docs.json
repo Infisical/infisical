@@ -375,15 +375,6 @@
                 ]
               },
               {
-                "group": "Permissions",
-                "pages": [
-                  "internals/permissions/overview",
-                  "internals/permissions/project-permissions",
-                  "internals/permissions/organization-permissions",
-                  "internals/permissions/migration"
-                ]
-              },
-              {
                 "group": "Architecture",
                 "pages": [
                   "internals/architecture/components",
