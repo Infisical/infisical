@@ -30,13 +30,13 @@ description: "Learn how to configure a GitLab Sync for Infisical."
         ![Configure Destination](/images/secret-syncs/gitlab/gitlab-secret-sync-destination.png)
 
             - **GitLab Connection**: The GitLab Connection to authenticate with.
-            - **Scope**: The GitLab secret scope to sync secrets to.
-                - **Individual**: Sync secrets to a specific project.
-                - **Group**: Sync secrets to a project within a group.
+            - **Scope**: The GitLab scope to sync secrets to.
+                - **Project**: Sync secrets to a GitLab project.
+                - **Group**: Sync secrets to a GitLab group.
             <p class="height:1px"  />
             The remaining fields are determined by the selected **Scope**:
             <AccordionGroup>
-                <Accordion title="Individual">
+                <Accordion title="Project">
                     - **GitLab Project**: The project to deploy secrets to.
                     - **GitLab Environment Scope**: The environment scope to deploy secrets to (optional, defaults to "*" for all environments).
                     - **Mark secrets as Protected**: If enabled, synced secrets will be marked as protected in GitLab.
@@ -44,14 +44,16 @@ description: "Learn how to configure a GitLab Sync for Infisical."
                     - **Mark secrets as Hidden**: If enabled, synced secrets will be hidden from the GitLab UI.
                 </Accordion>
                 <Accordion title="Group">
-                    - **GitLab Group**: The group containing the project.
-                    - **GitLab Project**: The project to deploy secrets to.
+                    - **GitLab Group**: The group to deploy secrets to.
                     - **GitLab Environment Scope**: The environment scope to deploy secrets to (optional, defaults to "*" for all environments).
                     - **Mark secrets as Protected**: If enabled, synced secrets will be marked as protected in GitLab.
                     - **Mark secrets as Masked**: If enabled, synced secrets will be masked in GitLab CI/CD logs.
                     - **Mark secrets as Hidden**: If enabled, synced secrets will be hidden from the GitLab UI.
                 </Accordion>
             </AccordionGroup>
+            <Note>
+                Be aware that GitLab only allows to mark secrets as hidden for new secrets. If you try to mark an existing secret as hidden, it produces an error.
+            </Note>
 
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
         ![Configure Options](/images/secret-syncs/gitlab/gitlab-secret-sync-options.png)
@@ -102,7 +104,7 @@ description: "Learn how to configure a GitLab Sync for Infisical."
                 "initialSyncBehavior": "overwrite-destination"
             },
             "destinationConfig": {
-                "scope": "individual",
+                "scope": "project",
                 "projectId": "70998370",
                 "projectName": "test",
                 "targetEnvironment": "*",
@@ -159,7 +161,7 @@ description: "Learn how to configure a GitLab Sync for Infisical."
                 },
                 "destination": "gitlab",
                 "destinationConfig": {
-                    "scope": "individual",
+                    "scope": "project",
                     "projectId": "70998370",
                     "projectName": "test",
                     "targetEnvironment": "*",
