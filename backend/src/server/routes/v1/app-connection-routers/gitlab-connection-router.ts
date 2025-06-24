@@ -34,9 +34,6 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       params: z.object({
         connectionId: z.string().uuid()
       }),
-      querystring: z.object({
-        group: z.string().optional()
-      }),
       response: {
         200: z
           .object({
@@ -52,8 +49,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
 
       const projects: TGitLabProject[] = await server.services.appConnection.gitlab.listProjects(
         connectionId,
-        req.permission,
-        req.query.group
+        req.permission
       );
 
       return projects;

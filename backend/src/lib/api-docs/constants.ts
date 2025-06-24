@@ -2409,10 +2409,11 @@ export const SecretSyncs = {
       appId: "The ID of the Fly.io app to sync secrets to."
     },
     GITLAB: {
-      projectId: "The GitLab project to sync secrets to.",
-      projectName: "The GitLab project name to sync secrets to.",
-      groupId: "The GitLab group to sync secrets to.",
-      scope: "The GitLab project scope that secrets should be synced to. (default: individual)",
+      projectId: "The GitLab Project ID to sync secrets to.",
+      projectName: "The GitLab Project Name to sync secrets to.",
+      groupId: "The GitLab Group ID to sync secrets to.",
+      groupName: "The GitLab Group Name to sync secrets to.",
+      scope: "The GitLab scope that secrets should be synced to. (default: project)",
       targetEnvironment: "The GitLab environment scope that secrets should be synced to. (default: *)",
       shouldProtectSecrets: "Whether variables should be protected",
       shouldMaskSecrets: "Whether variables should be masked in logs",

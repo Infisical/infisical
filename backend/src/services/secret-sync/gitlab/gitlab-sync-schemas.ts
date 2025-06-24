@@ -14,7 +14,7 @@ import { GitLabSyncScope } from "./gitlab-sync-enums";
 
 const GitLabSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
   z.object({
-    scope: z.literal(GitLabSyncScope.Individual).describe(SecretSyncs.DESTINATION_CONFIG.GITLAB.scope),
+    scope: z.literal(GitLabSyncScope.Project).describe(SecretSyncs.DESTINATION_CONFIG.GITLAB.scope),
     projectId: z.string().min(1, "Project ID is required").describe(SecretSyncs.DESTINATION_CONFIG.GITLAB.projectId),
     projectName: z
       .string()
@@ -44,11 +44,7 @@ const GitLabSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
   z.object({
     scope: z.literal(GitLabSyncScope.Group).describe(SecretSyncs.DESTINATION_CONFIG.GITLAB.scope),
     groupId: z.string().min(1, "Group ID is required").describe(SecretSyncs.DESTINATION_CONFIG.GITLAB.groupId),
-    projectId: z.string().min(1, "Project ID is required").describe(SecretSyncs.DESTINATION_CONFIG.GITLAB.projectId),
-    projectName: z
-      .string()
-      .min(1, "Project name is required")
-      .describe(SecretSyncs.DESTINATION_CONFIG.GITLAB.projectName),
+    groupName: z.string().min(1, "Group name is required").describe(SecretSyncs.DESTINATION_CONFIG.GITLAB.groupName),
     targetEnvironment: z
       .string()
       .optional()

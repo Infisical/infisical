@@ -145,7 +145,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
           oauthUrl.searchParams.set("client_id", oauthClientId);
           oauthUrl.searchParams.set(
             "redirect_uri",
-            `${window.location.origin}/integrations/gitlab/oauth2/callback`
+            `${window.location.origin}/organization/app-connections/gitlab/oauth/callback`
           );
           oauthUrl.searchParams.set("response_type", "code");
           oauthUrl.searchParams.set("state", state);

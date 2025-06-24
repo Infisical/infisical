@@ -15,13 +15,9 @@ export type TGitLabSyncWithCredentials = TGitLabSync & {
 export type TGitLabVariable = {
   key: string;
   value: string;
-  variable_type: "env_var" | "file";
   protected: boolean;
   masked: boolean;
-  hidden: boolean;
-  raw: boolean;
-  environment_scope: string;
-  description: string | null;
+  environmentScope?: string;
 };
 
 export type TGitLabVariableCreate = {

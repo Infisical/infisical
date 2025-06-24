@@ -1,5 +1,5 @@
 import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { TGitlabSync } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
+import { GitlabSyncScope, TGitlabSync } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 type Props = {
   secretSync: TGitlabSync;
@@ -8,8 +8,6 @@ type Props = {
 export const GitLabSyncDestinationSection = ({ secretSync }: Props) => {
   const {
     destinationConfig: {
-      projectName,
-      projectId,
       targetEnvironment,
       shouldProtectSecrets,
       shouldMaskSecrets,
@@ -19,8 +17,26 @@ export const GitLabSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Project Name">{projectName}</GenericFieldLabel>
-      <GenericFieldLabel label="Project ID">{projectId}</GenericFieldLabel>
+      {secretSync.destinationConfig.scope === GitlabSyncScope.Project && (
+        <>
+          <GenericFieldLabel label="Project Name">
+            {secretSync.destinationConfig.projectName}
+          </GenericFieldLabel>
+          <GenericFieldLabel label="Project ID">
+            {secretSync.destinationConfig.projectId}
+          </GenericFieldLabel>
+        </>
+      )}
+      {secretSync.destinationConfig.scope === GitlabSyncScope.Group && (
+        <>
+          <GenericFieldLabel label="Group Name">
+            {secretSync.destinationConfig.groupName}
+          </GenericFieldLabel>
+          <GenericFieldLabel label="Group ID">
+            {secretSync.destinationConfig.groupId}
+          </GenericFieldLabel>
+        </>
+      )}
       {targetEnvironment && (
         <GenericFieldLabel label="Environment">{targetEnvironment}</GenericFieldLabel>
       )}

@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
-import { AxiosError, AxiosResponse } from "axios";
+import { GitbeakerRequestError, Gitlab } from "@gitbeaker/rest";
+import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -13,7 +14,7 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
-import { GitLabConnectionMethod } from "./gitlab-connection-enums";
+import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
 import { TGitLabConnection, TGitLabConnectionConfig, TGitLabGroup, TGitLabProject } from "./gitlab-connection-types";
 
 interface GitLabOAuthTokenResponse {
@@ -26,7 +27,7 @@ interface GitLabOAuthTokenResponse {
 }
 
 export const getGitLabConnectionListItem = () => {
-  const { CLIENT_ID_GITLAB_LOGIN } = getConfig();
+  const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID } = getConfig();
 
   return {
     name: "GitLab" as const,
@@ -35,7 +36,7 @@ export const getGitLabConnectionListItem = () => {
       GitLabConnectionMethod.AccessToken,
       GitLabConnectionMethod.OAuth
     ],
-    oauthClientId: CLIENT_ID_GITLAB_LOGIN
+    oauthClientId: INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID
   };
 };
 
@@ -47,6 +48,18 @@ export const getGitLabInstanceUrl = async (instanceUrl?: string) => {
   return gitLabInstanceUrl;
 };
 
+export const getGitLabClient = async (accessToken: string, instanceUrl?: string, isOAuth = false) => {
+  const host = await getGitLabInstanceUrl(instanceUrl);
+
+  const client = new Gitlab<true>({
+    host,
+    ...(isOAuth ? { oauthToken: accessToken } : { token: accessToken }),
+    camelize: true
+  });
+
+  return client;
+};
+
 export const refreshGitLabToken = async (
   refreshToken: string,
   appId: string,
@@ -55,8 +68,9 @@ export const refreshGitLabToken = async (
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   instanceUrl?: string
 ): Promise<string> => {
-  const { CLIENT_ID_GITLAB_LOGIN, CLIENT_SECRET_GITLAB_LOGIN, SITE_URL } = getConfig();
-  if (!CLIENT_SECRET_GITLAB_LOGIN || !CLIENT_ID_GITLAB_LOGIN || !SITE_URL) {
+  const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET, SITE_URL } =
+    getConfig();
+  if (!INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET || !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID || !SITE_URL) {
     throw new InternalServerError({
       message: `GitLab environment variables have not been configured`
     });
@@ -65,9 +79,9 @@ export const refreshGitLabToken = async (
   const payload = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
-    client_id: CLIENT_ID_GITLAB_LOGIN,
-    client_secret: CLIENT_SECRET_GITLAB_LOGIN,
-    redirect_uri: `${SITE_URL}/integrations/gitlab/oauth2/callback`
+    client_id: INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID,
+    client_secret: INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET,
+    redirect_uri: `${SITE_URL}/organization/app-connections/gitlab/oauth/callback`
   });
 
   try {
@@ -95,7 +109,6 @@ export const refreshGitLabToken = async (
     });
 
     await appConnectionDAL.updateById(appId, { encryptedCredentials });
-
     return data.access_token;
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
@@ -113,8 +126,9 @@ export const exchangeGitLabOAuthCode = async (
   code: string,
   instanceUrl?: string
 ): Promise<GitLabOAuthTokenResponse> => {
-  const { CLIENT_ID_GITLAB_LOGIN, CLIENT_SECRET_GITLAB_LOGIN, SITE_URL } = getConfig();
-  if (!CLIENT_SECRET_GITLAB_LOGIN || !CLIENT_ID_GITLAB_LOGIN || !SITE_URL) {
+  const { INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET, SITE_URL } =
+    getConfig();
+  if (!INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET || !INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID || !SITE_URL) {
     throw new InternalServerError({
       message: `GitLab environment variables have not been configured`
     });
@@ -124,9 +138,9 @@ export const exchangeGitLabOAuthCode = async (
     const payload = new URLSearchParams({
       grant_type: "authorization_code",
       code,
-      client_id: CLIENT_ID_GITLAB_LOGIN,
-      client_secret: CLIENT_SECRET_GITLAB_LOGIN,
-      redirect_uri: `${SITE_URL}/integrations/gitlab/oauth2/callback`
+      client_id: INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID,
+      client_secret: INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET,
+      redirect_uri: `${SITE_URL}/organization/app-connections/gitlab/oauth/callback`
     });
     const url = await getGitLabInstanceUrl(instanceUrl);
 
@@ -173,30 +187,24 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
     });
   }
 
-  let response: AxiosResponse<TGitLabProject[]> | null = null;
-
   try {
-    const url = await getGitLabInstanceUrl(inputCredentials.instanceUrl);
-    response = await request.get<TGitLabProject[]>(`${url}/api/v4/user`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json"
-      }
-    });
+    const client = await getGitLabClient(
+      accessToken,
+      inputCredentials.instanceUrl,
+      method === GitLabConnectionMethod.OAuth
+    );
+    await client.Users.showCurrentUser();
   } catch (error: unknown) {
-    if (error instanceof AxiosError) {
+    logger.error(error, "Error validating GitLab connection credentials");
+
+    if (error instanceof GitbeakerRequestError) {
       throw new BadRequestError({
-        message: `Failed to validate credentials: ${error.message}`
+        message: `Failed to validate credentials: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
       });
     }
-    throw new BadRequestError({
-      message: "Unable to validate connection: verify credentials"
-    });
-  }
 
-  if (!response?.data) {
-    throw new InternalServerError({
-      message: "Failed to validate credentials: Response was empty"
+    throw new BadRequestError({
+      message: `Failed to validate credentials: ${(error as Error)?.message || "verify credentials"}`
     });
   }
 
@@ -217,20 +225,18 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,
-  kmsService,
-  teamId
+  kmsService
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  teamId?: string;
 }): Promise<TGitLabProject[]> => {
   let { accessToken } = appConnection.credentials;
 
   if (
     appConnection.method === GitLabConnectionMethod.OAuth &&
     appConnection.credentials.refreshToken &&
-    appConnection.credentials.expiresAt < new Date()
+    new Date(appConnection.credentials.expiresAt) < new Date()
   ) {
     accessToken = await refreshGitLabToken(
       appConnection.credentials.refreshToken,
@@ -242,160 +248,29 @@ export const listGitLabProjects = async ({
     );
   }
 
-  const url = await getGitLabInstanceUrl(appConnection.credentials.instanceUrl);
-  const gitLabApiUrl = `${url}/api/v4`;
-
-  const projects: TGitLabProject[] = [];
-  let page = 1;
-  const perPage = 100;
-  let hasMorePages = true;
-
   try {
-    if (teamId) {
-      while (hasMorePages) {
-        const { data } = await request.get<TGitLabProject[]>(`${gitLabApiUrl}/groups/${teamId}/projects`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json"
-          },
-          params: {
-            page: page.toString(),
-            per_page: perPage.toString(),
-            order_by: "updated_at",
-            sort: "desc",
-            include_subgroups: "true"
-          }
-        });
+    const client = await getGitLabClient(
+      accessToken,
+      appConnection.credentials.instanceUrl,
+      appConnection.method === GitLabConnectionMethod.OAuth
+    );
+    const projects = await client.Projects.all({
+      archived: false,
+      includePendingDelete: false,
+      membership: true,
+      includeHidden: false,
+      imported: false
+    });
 
-        if (!data) {
-          throw new InternalServerError({
-            message: "Failed to get group projects: Response was empty"
-          });
-        }
-
-        data.forEach((project) => {
-          projects.push({
-            name: project.name,
-            id: project.id.toString()
-          });
-        });
-
-        hasMorePages = data.length === perPage;
-        page += 1;
-      }
-    } else {
-      const { data: userData } = await request.get<{ id: string }>(`${gitLabApiUrl}/user`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        }
-      });
-
-      if (!userData?.id) {
-        throw new InternalServerError({
-          message: "Failed to get current user information"
-        });
-      }
-
-      while (hasMorePages) {
-        const { data } = await request.get<TGitLabProject[]>(`${gitLabApiUrl}/users/${userData.id}/projects`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json"
-          },
-          params: {
-            page: page.toString(),
-            per_page: perPage.toString(),
-            order_by: "updated_at",
-            sort: "desc"
-          }
-        });
-
-        if (!data) {
-          throw new InternalServerError({
-            message: "Failed to get user projects: Response was empty"
-          });
-        }
-
-        data.forEach((project) => {
-          projects.push({
-            name: project.name,
-            id: project.id.toString()
-          });
-        });
-
-        hasMorePages = data.length === perPage;
-        page += 1;
-      }
-
-      if (projects.length === 0 && appConnection.method === GitLabConnectionMethod.AccessToken) {
-        try {
-          const { data: tokenAssociations } = await request.get<{
-            projects?: TGitLabProject[];
-            groups?: Array<{ projects?: TGitLabProject[] }>;
-          }>(`${gitLabApiUrl}/personal_access_tokens/self/associations`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json"
-            },
-            params: {
-              min_access_level: "50"
-            }
-          });
-
-          if (tokenAssociations?.projects) {
-            tokenAssociations.projects.forEach((project) => {
-              projects.push({
-                name: project.name,
-                id: project.id.toString()
-              });
-            });
-          }
-
-          if (tokenAssociations?.groups) {
-            tokenAssociations.groups.forEach((group) => {
-              if (group.projects) {
-                group.projects.forEach((project) => {
-                  const existingProject = projects.find((p) => p.id === project.id.toString());
-                  if (!existingProject) {
-                    projects.push({
-                      name: project.name,
-                      id: project.id.toString()
-                    });
-                  }
-                });
-              }
-            });
-          }
-        } catch (error) {
-          logger.warn(error, "Failed to fetch projects via personal access token associations:");
-        }
-      }
-    }
-
-    return projects;
+    return projects.map((project) => ({
+      name: project.pathWithNamespace,
+      id: project.id.toString()
+    }));
   } catch (error: unknown) {
-    if (error instanceof AxiosError) {
-      const status = error.response?.status;
-      const { message } = error;
-
-      if (status === 401) {
-        throw new BadRequestError({
-          message: `GitLab authentication failed: ${message}`
-        });
-      } else if (status === 403) {
-        throw new BadRequestError({
-          message: `GitLab access forbidden: ${message}`
-        });
-      } else if (status === 404) {
-        throw new BadRequestError({
-          message: teamId ? `GitLab group not found or access denied: ${message}` : `GitLab user not found: ${message}`
-        });
-      } else {
-        throw new BadRequestError({
-          message: `Failed to fetch GitLab projects: ${message}`
-        });
-      }
+    if (error instanceof GitbeakerRequestError) {
+      throw new BadRequestError({
+        message: `Failed to fetch GitLab projects: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
+      });
     }
 
     if (error instanceof InternalServerError) {
@@ -411,22 +286,25 @@ export const listGitLabProjects = async ({
 export const listGitLabGroups = async ({
   appConnection,
   appConnectionDAL,
-  kmsService,
-  includeSubgroups = true,
-  owned = false
+  kmsService
 }: {
   appConnection: TGitLabConnection;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  includeSubgroups?: boolean;
-  owned?: boolean;
 }): Promise<TGitLabGroup[]> => {
   let { accessToken } = appConnection.credentials;
 
   if (
+    appConnection.method === GitLabConnectionMethod.AccessToken &&
+    appConnection.credentials.accessTokenType === GitLabAccessTokenType.Project
+  ) {
+    return [];
+  }
+
+  if (
     appConnection.method === GitLabConnectionMethod.OAuth &&
     appConnection.credentials.refreshToken &&
-    appConnection.credentials.expiresAt < new Date()
+    new Date(appConnection.credentials.expiresAt) < new Date()
   ) {
     accessToken = await refreshGitLabToken(
       appConnection.credentials.refreshToken,
@@ -438,69 +316,28 @@ export const listGitLabGroups = async ({
     );
   }
 
-  const url = await getGitLabInstanceUrl(appConnection.credentials.instanceUrl);
-  const gitLabApiUrl = `${url}/api/v4`;
-
-  const groups: TGitLabGroup[] = [];
-  let page = 1;
-  const perPage = 100;
-  let hasMorePages = true;
-
   try {
-    while (hasMorePages) {
-      const { data } = await request.get<TGitLabGroup[]>(`${gitLabApiUrl}/groups`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        },
-        params: {
-          page: page.toString(),
-          per_page: perPage.toString(),
-          order_by: "name",
-          sort: "asc",
-          all_available: (!owned).toString(),
-          owned: owned.toString(),
-          min_access_level: "10",
-          ...(includeSubgroups && { with_custom_attributes: "true" })
-        }
-      });
+    const client = await getGitLabClient(
+      accessToken,
+      appConnection.credentials.instanceUrl,
+      appConnection.method === GitLabConnectionMethod.OAuth
+    );
 
-      if (!data) {
-        throw new InternalServerError({
-          message: "Failed to get groups: Response was empty"
-        });
-      }
+    const groups = await client.Groups.all({
+      orderBy: "name",
+      sort: "asc",
+      minAccessLevel: 50
+    });
 
-      data.forEach((group) => {
-        groups.push({
-          id: group.id.toString(),
-          name: group.name
-        });
-      });
-
-      hasMorePages = data.length === perPage;
-      page += 1;
-    }
-
-    return groups;
+    return groups.map((group) => ({
+      id: group.id.toString(),
+      name: group.name
+    }));
   } catch (error: unknown) {
-    if (error instanceof AxiosError) {
-      const status = error.response?.status;
-      const { message } = error;
-
-      if (status === 401) {
-        throw new BadRequestError({
-          message: `GitLab authentication failed: ${message}`
-        });
-      } else if (status === 403) {
-        throw new BadRequestError({
-          message: `GitLab access forbidden: ${message}`
-        });
-      } else {
-        throw new BadRequestError({
-          message: `Failed to fetch GitLab groups: ${message}`
-        });
-      }
+    if (error instanceof GitbeakerRequestError) {
+      throw new BadRequestError({
+        message: `Failed to fetch GitLab groups: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
+      });
     }
 
     if (error instanceof InternalServerError) {

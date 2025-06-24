@@ -68,7 +68,6 @@ export const GitLabSyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
   const scope = useWatch({ name: "destinationConfig.scope", control });
-  const selectedGroup = useWatch({ name: "destinationConfig.groupId", control });
   const shouldMaskSecrets = useWatch({ name: "destinationConfig.shouldMaskSecrets", control });
 
   const { data: groups, isLoading: isGroupsLoading } = useGitlabConnectionListGroups(connectionId, {
@@ -77,7 +76,6 @@ export const GitLabSyncFields = () => {
 
   const { data: projects, isLoading: isProjectsLoading } = useGitlabConnectionListProjects(
     connectionId,
-    selectedGroup,
     {
       enabled: Boolean(connectionId)
     }
@@ -90,14 +88,15 @@ export const GitLabSyncFields = () => {
           setValue("destinationConfig.projectId", "");
           setValue("destinationConfig.projectName", "");
           setValue("destinationConfig.groupId", "");
-          setValue("destinationConfig.scope", GitlabSyncScope.Individual);
+          setValue("destinationConfig.groupName", "");
+          setValue("destinationConfig.scope", GitlabSyncScope.Project);
         }}
       />
 
       <Controller
         name="destinationConfig.scope"
         control={control}
-        defaultValue={GitlabSyncScope.Individual}
+        defaultValue={GitlabSyncScope.Project}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl errorText={error?.message} isError={Boolean(error?.message)} label="Scope">
             <Select
@@ -107,6 +106,7 @@ export const GitLabSyncFields = () => {
                 setValue("destinationConfig.projectId", "");
                 setValue("destinationConfig.projectName", "");
                 setValue("destinationConfig.groupId", "");
+                setValue("destinationConfig.groupName", "");
               }}
               className="w-full border border-mineshaft-500 capitalize"
               position="popper"
@@ -151,6 +151,10 @@ export const GitLabSyncFields = () => {
                 value={groups?.find((group) => group.id === value) ?? null}
                 onChange={(option) => {
                   onChange((option as SingleValue<TGitLabGroup>)?.id ?? "");
+                  setValue(
+                    "destinationConfig.groupName",
+                    (option as SingleValue<TGitLabGroup>)?.name ?? ""
+                  );
                 }}
                 options={groups}
                 placeholder="Select a group..."
@@ -162,46 +166,48 @@ export const GitLabSyncFields = () => {
         />
       )}
 
-      <Controller
-        name="destinationConfig.projectId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="GitLab Project"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content="Ensure the project exists in the connection's GitLab instance URL and the connection has access to it."
-              >
-                <div>
-                  <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
-              </Tooltip>
-            }
-          >
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isProjectsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId || (scope === GitlabSyncScope.Group && !selectedGroup)}
-              value={projects?.find((project) => project.id === value) ?? null}
-              onChange={(option) => {
-                onChange((option as SingleValue<TGitLabProject>)?.id ?? "");
-                setValue(
-                  "destinationConfig.projectName",
-                  (option as SingleValue<TGitLabProject>)?.name ?? ""
-                );
-              }}
-              options={projects}
-              placeholder="Select a project..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
-        )}
-      />
+      {scope === GitlabSyncScope.Project && (
+        <Controller
+          name="destinationConfig.projectId"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              isError={Boolean(error)}
+              errorText={error?.message}
+              label="GitLab Project"
+              helperText={
+                <Tooltip
+                  className="max-w-md"
+                  content="Ensure the project exists in the connection's GitLab instance URL and the connection has access to it."
+                >
+                  <div>
+                    <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
+                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                  </div>
+                </Tooltip>
+              }
+            >
+              <FilterableSelect
+                menuPlacement="top"
+                isLoading={isProjectsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={projects?.find((project) => project.id === value) ?? null}
+                onChange={(option) => {
+                  onChange((option as SingleValue<TGitLabProject>)?.id ?? "");
+                  setValue(
+                    "destinationConfig.projectName",
+                    (option as SingleValue<TGitLabProject>)?.name ?? ""
+                  );
+                }}
+                options={projects}
+                placeholder="Select a project..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+              />
+            </FormControl>
+          )}
+        />
+      )}
 
       <Controller
         control={control}

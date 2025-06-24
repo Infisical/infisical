@@ -7,15 +7,14 @@ import { TGitLabGroup, TGitLabProject } from "./types";
 
 const gitlabConnectionKeys = {
   all: [...appConnectionKeys.all, "gitlab"] as const,
-  listProjects: (connectionId: string, group?: string) =>
-    [...gitlabConnectionKeys.all, "projects", connectionId, group] as const,
+  listProjects: (connectionId: string) =>
+    [...gitlabConnectionKeys.all, "projects", connectionId] as const,
   listGroups: (connectionId: string) =>
     [...gitlabConnectionKeys.all, "groups", connectionId] as const
 };
 
 export const useGitlabConnectionListProjects = (
   connectionId: string,
-  group?: string,
   options?: Omit<
     UseQueryOptions<
       TGitLabProject[],
@@ -27,10 +26,10 @@ export const useGitlabConnectionListProjects = (
   >
 ) => {
   return useQuery({
-    queryKey: gitlabConnectionKeys.listProjects(connectionId, group),
+    queryKey: gitlabConnectionKeys.listProjects(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitLabProject[]>(
-        `/api/v1/app-connections/gitlab/${connectionId}/projects${group ? `?group=${group}` : ""}`
+        `/api/v1/app-connections/gitlab/${connectionId}/projects`
       );
 
       return data;

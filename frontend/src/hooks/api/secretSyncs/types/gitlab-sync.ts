@@ -3,7 +3,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
 export enum GitlabSyncScope {
-  Individual = "individual",
+  Project = "project",
   Group = "group"
 }
 
@@ -11,7 +11,7 @@ export type TGitlabSync = TRootSecretSync & {
   destination: SecretSync.GitLab;
   destinationConfig:
     | {
-        scope: GitlabSyncScope.Individual;
+        scope: GitlabSyncScope.Project;
         projectId: string;
         projectName: string;
         targetEnvironment?: string;
@@ -22,8 +22,7 @@ export type TGitlabSync = TRootSecretSync & {
     | {
         scope: GitlabSyncScope.Group;
         groupId: string;
-        projectId: string;
-        projectName: string;
+        groupName: string;
         targetEnvironment?: string;
         shouldProtectSecrets?: boolean;
         shouldMaskSecrets?: boolean;

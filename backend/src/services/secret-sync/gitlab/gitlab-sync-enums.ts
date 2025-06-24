@@ -1,4 +1,4 @@
 export enum GitLabSyncScope {
-  Individual = "individual",
+  Project = "project",
   Group = "group"
 }

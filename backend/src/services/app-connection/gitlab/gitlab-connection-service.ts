@@ -18,10 +18,10 @@ export const gitlabConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor, teamId?: string) => {
+  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      const projects = await listGitLabProjects({ appConnection, appConnectionDAL, kmsService, teamId });
+      const projects = await listGitLabProjects({ appConnection, appConnectionDAL, kmsService });
       return projects;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);
