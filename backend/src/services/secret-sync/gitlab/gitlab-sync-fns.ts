@@ -271,67 +271,84 @@ export const GitLabSyncFns = {
       const currentVariableMap = new Map(currentVariables.map((v) => [v.key, v]));
 
       for (const [key, { value }] of Object.entries(secretMap)) {
-        const existingVariable = currentVariableMap.get(key);
+        try {
+          const existingVariable = currentVariableMap.get(key);
 
-        if (existingVariable) {
-          if (existingVariable.value !== value) {
-            await updateGitLabVariable({
+          if (existingVariable) {
+            if (existingVariable.value !== value) {
+              await updateGitLabVariable({
+                accessToken,
+                connection,
+                projectId,
+                key,
+                variable: {
+                  value,
+                  variable_type: existingVariable.variable_type,
+                  environment_scope: targetEnvironment || existingVariable.environment_scope,
+                  protected: destinationConfig.shouldProtectSecrets ?? existingVariable.protected,
+                  ...(!existingVariable.masked && destinationConfig.shouldMaskSecrets && { masked: value?.length > 8 }),
+                  ...(!existingVariable.hidden &&
+                    destinationConfig.shouldHideSecrets && { masked_and_hidden: value?.length > 8 }),
+                  description: existingVariable.description ?? undefined
+                },
+                targetEnvironment
+              });
+            }
+          } else {
+            await createGitLabVariable({
               accessToken,
               connection,
               projectId,
-              key,
               variable: {
+                key,
                 value,
-                variable_type: existingVariable.variable_type,
-                environment_scope: targetEnvironment || existingVariable.environment_scope,
-                protected: destinationConfig.shouldProtectSecrets ?? existingVariable.protected,
-                ...(!existingVariable.masked && destinationConfig.shouldMaskSecrets && { masked: value?.length > 8 }),
-                ...(!existingVariable.hidden &&
-                  destinationConfig.shouldHideSecrets && { masked_and_hidden: value?.length > 8 }),
-                description: existingVariable.description ?? undefined
-              },
-              targetEnvironment
+                variable_type: "env_var",
+                environment_scope: targetEnvironment || "*",
+                protected: destinationConfig.shouldProtectSecrets || false,
+                masked: value?.length > 8 ? destinationConfig.shouldMaskSecrets || false : false,
+                masked_and_hidden: value?.length > 8 ? destinationConfig.shouldHideSecrets || false : false
+              }
             });
           }
-        } else {
-          await createGitLabVariable({
-            accessToken,
-            connection,
-            projectId,
-            variable: {
-              key,
-              value,
-              variable_type: "env_var",
-              environment_scope: targetEnvironment || "*",
-              protected: destinationConfig.shouldProtectSecrets || false,
-              masked: value?.length > 8 ? destinationConfig.shouldMaskSecrets || false : false,
-              masked_and_hidden: value?.length > 8 ? destinationConfig.shouldHideSecrets || false : false
-            }
+        } catch (error) {
+          throw new SecretSyncError({
+            error,
+            secretKey: key
           });
         }
       }
 
       if (!secretSync.syncOptions.disableSecretDeletion) {
         for (const variable of currentVariables) {
-          const shouldDelete =
-            matchesSchema(variable.key, environment?.slug || "", secretSync.syncOptions.keySchema) &&
-            !(variable.key in secretMap);
+          try {
+            const shouldDelete =
+              matchesSchema(variable.key, environment?.slug || "", secretSync.syncOptions.keySchema) &&
+              !(variable.key in secretMap);
 
-          if (shouldDelete) {
-            await deleteGitLabVariable({
-              accessToken,
-              connection,
-              projectId,
-              key: variable.key,
-              targetEnvironment
+            if (shouldDelete) {
+              await deleteGitLabVariable({
+                accessToken,
+                connection,
+                projectId,
+                key: variable.key,
+                targetEnvironment
+              });
+            }
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: variable.key
             });
           }
         }
       }
     } catch (error) {
+      if (error instanceof SecretSyncError) {
+        throw error;
+      }
       throw new SecretSyncError({
-        error,
-        secretKey: "batch_sync"
+        message: "Failed to sync secrets",
+        error
       });
     }
   },
@@ -347,8 +364,8 @@ export const GitLabSyncFns = {
 
     const accessToken = await getValidAccessToken(connection, appConnectionDAL, kmsService);
 
-    try {
-      for (const key of Object.keys(secretMap)) {
+    for (const key of Object.keys(secretMap)) {
+      try {
         await deleteGitLabVariable({
           accessToken,
           connection,
@@ -356,12 +373,12 @@ export const GitLabSyncFns = {
           key,
           targetEnvironment
         });
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
       }
-    } catch (error) {
-      throw new SecretSyncError({
-        error,
-        secretKey: "batch_remove"
-      });
     }
   },
 

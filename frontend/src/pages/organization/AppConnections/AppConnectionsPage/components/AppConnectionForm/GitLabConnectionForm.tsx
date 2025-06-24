@@ -20,6 +20,7 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { GitLabAccessTokenType } from "@app/hooks/api/appConnections/gitlab";
 import {
   GitlabConnectionMethod,
   TGitlabConnection
@@ -41,6 +42,7 @@ const formSchema = z.discriminatedUnion("method", [
     method: z.literal(GitlabConnectionMethod.AccessToken),
     credentials: z.object({
       accessToken: z.string().min(1, "Access token is required"),
+      accessTokenType: z.nativeEnum(GitLabAccessTokenType),
       instanceUrl: z
         .string()
         .trim()
@@ -90,6 +92,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
             method: GitlabConnectionMethod.AccessToken,
             credentials: {
               accessToken: "",
+              accessTokenType: GitLabAccessTokenType.Personal,
               instanceUrl: ""
             }
           } as FormData))
@@ -151,7 +154,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
           break;
 
         default:
-          throw new Error("Unhandled Gitlab Connection method");
+          throw new Error("Unhandled GitLab Connection method");
       }
     } catch (error) {
       console.error("Error handling form submission:", error);
@@ -169,7 +172,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
       isMissingConfig = false;
       break;
     default:
-      throw new Error(`Unhandled Gitlab Connection method: ${selectedMethod}`);
+      throw new Error(`Unhandled GitLab Connection method: ${selectedMethod}`);
   }
 
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
@@ -211,7 +214,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
                   ? `Environment variables have not been configured. ${
                       isInfisicalCloud()
                         ? "Please contact Infisical."
-                        : `See Docs to configure Gitlab ${methodDetails.name} Connections.`
+                        : `See Docs to configure GitLab ${methodDetails.name} Connections.`
                     }`
                   : error?.message
               }
@@ -245,24 +248,59 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
         />
 
         {selectedMethod === GitlabConnectionMethod.AccessToken && (
-          <Controller
-            name="credentials.accessToken"
-            control={control}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token"
-                errorText={error?.message}
-                isError={Boolean(error?.message)}
-                tooltipText="Your Gitlab Access Token"
-              >
-                <SecretInput
-                  containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                />
-              </FormControl>
-            )}
-          />
+          <>
+            <Controller
+              name="credentials.accessTokenType"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Access Token Type"
+                >
+                  <Select
+                    isDisabled={isUpdate}
+                    value={value}
+                    onValueChange={(val) => {
+                      onChange(val);
+                      if (val === GitlabConnectionMethod.OAuth) {
+                        setValue("credentials.code", "custom");
+                      }
+                    }}
+                    className="w-full border border-mineshaft-500"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
+                  >
+                    {Object.values(GitLabAccessTokenType).map((method) => {
+                      return (
+                        <SelectItem value={method} key={method}>
+                          {method.charAt(0).toUpperCase() + method.slice(1)} Access Token
+                        </SelectItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              )}
+            />
+            <Controller
+              name="credentials.accessToken"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Access Token"
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  tooltipText="Your GitLab Access Token"
+                >
+                  <SecretInput
+                    containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                </FormControl>
+              )}
+            />
+          </>
         )}
 
         <div className="mt-8 flex items-center">
@@ -280,10 +318,10 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
             }
           >
             {isRedirecting && selectedMethod === GitlabConnectionMethod.OAuth
-              ? "Redirecting to Gitlab..."
+              ? "Redirecting to GitLab..."
               : isUpdate
-                ? "Reconnect to Gitlab"
-                : "Connect to Gitlab"}
+                ? "Reconnect to GitLab"
+                : "Connect to GitLab"}
           </Button>
           <ModalClose asChild>
             <Button colorSchema="secondary" variant="plain">

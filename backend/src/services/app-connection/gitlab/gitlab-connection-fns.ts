@@ -79,10 +79,13 @@ export const refreshGitLabToken = async (
       }
     });
 
-    const expiresAt = new Date(Date.now() + data.expires_in * 1000 - 60000);
+    const expiresAt = new Date(Date.now() + data.expires_in * 1000 - 600000);
 
     const encryptedCredentials = await encryptAppConnectionCredentials({
       credentials: {
+        instanceUrl,
+        tokenType: data.token_type,
+        createdAt: new Date(data.created_at * 1000).toISOString(),
         refreshToken: data.refresh_token,
         accessToken: data.access_token,
         expiresAt
@@ -174,7 +177,7 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
 
   try {
     const url = await getGitLabInstanceUrl(inputCredentials.instanceUrl);
-    response = await request.get<TGitLabProject[]>(`${url}/api/v4/groups`, {
+    response = await request.get<TGitLabProject[]>(`${url}/api/v4/user`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
@@ -200,6 +203,7 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
   if (method === GitLabConnectionMethod.OAuth && oauthData) {
     return {
       accessToken,
+      instanceUrl: inputCredentials.instanceUrl,
       refreshToken: oauthData.refresh_token,
       expiresAt: new Date(Date.now() + oauthData.expires_in * 1000 - 60000),
       tokenType: oauthData.token_type,

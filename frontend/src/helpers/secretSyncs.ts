@@ -75,7 +75,7 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     image: "Flyio.svg"
   },
   [SecretSync.GitLab]: {
-    name: "Gitlab",
+    name: "GitLab",
     image: "GitLab.png"
   }
 };

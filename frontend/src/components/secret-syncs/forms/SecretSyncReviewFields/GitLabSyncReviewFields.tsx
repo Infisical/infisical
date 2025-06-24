@@ -6,7 +6,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const GitLabSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.GitLab }>();
-  const projectId = watch("destinationConfig.projectId");
+  const projectName = watch("destinationConfig.projectName");
   const targetEnvironment = watch("destinationConfig.targetEnvironment");
   const groupId = watch("destinationConfig.groupId");
   const scope = watch("destinationConfig.scope");
@@ -17,7 +17,7 @@ export const GitLabSyncReviewFields = () => {
   return (
     <>
       <GenericFieldLabel label="Scope">{scope}</GenericFieldLabel>
-      <GenericFieldLabel label="Project ID">{projectId}</GenericFieldLabel>
+      <GenericFieldLabel label="Project Name">{projectName}</GenericFieldLabel>
       {groupId && <GenericFieldLabel label="Group ID">{groupId}</GenericFieldLabel>}
       {targetEnvironment && (
         <GenericFieldLabel label="Environment">{targetEnvironment}</GenericFieldLabel>

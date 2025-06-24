@@ -1,6 +1,6 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { faCircleInfo, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -40,26 +40,24 @@ const SecretProtectionOption = ({
   tooltip?: string;
 }) => {
   return (
-    <div className="flex items-start justify-between rounded-lg border border-mineshaft-600 bg-mineshaft-800/50 p-4 transition-all duration-200 hover:border-mineshaft-500">
-      <div className="flex flex-1 items-start space-x-3">
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-2">
-            <h4 className="text-sm font-medium text-bunker-100">{title}</h4>
-            {tooltip && (
-              <Tooltip className="max-w-sm" content={tooltip}>
-                <FontAwesomeIcon
-                  icon={faCircleInfo}
-                  className="cursor-help text-xs text-mineshaft-400 hover:text-mineshaft-300"
-                />
-              </Tooltip>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="ml-4 flex-shrink-0">
-        <Switch id={id} onCheckedChange={onChange} isChecked={isEnabled} isDisabled={isDisabled} />
-      </div>
-    </div>
+    <Switch
+      className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+      id={id}
+      thumbClassName="bg-mineshaft-800"
+      onCheckedChange={onChange}
+      isChecked={isEnabled}
+      isDisabled={isDisabled}
+      containerClassName="w-full"
+    >
+      <p>
+        {title}{" "}
+        {tooltip && (
+          <Tooltip className="max-w-md" content={tooltip}>
+            <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+          </Tooltip>
+        )}
+      </p>
+    </Switch>
   );
 };
 
@@ -86,7 +84,7 @@ export const GitLabSyncFields = () => {
   );
 
   return (
-    <div className="h-[calc(100vh-20rem)] overflow-auto">
+    <div className="h-[calc(100vh-28rem)] overflow-auto">
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectId", "");
@@ -175,7 +173,7 @@ export const GitLabSyncFields = () => {
             helperText={
               <Tooltip
                 className="max-w-md"
-                content="Ensure the project exists in the connection's GitLab instance URL."
+                content="Ensure the project exists in the connection's GitLab instance URL and the connection has access to it."
               >
                 <div>
                   <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
@@ -229,7 +227,7 @@ export const GitLabSyncFields = () => {
             render={({ field: { onChange, value } }) => (
               <SecretProtectionOption
                 id="should-protect-secrets"
-                title="Mark Infisical secrets in GitLab as 'Protected' secrets"
+                title="Mark secrets as Protected"
                 isEnabled={value || false}
                 onChange={onChange}
               />
@@ -242,7 +240,7 @@ export const GitLabSyncFields = () => {
             render={({ field: { onChange, value } }) => (
               <SecretProtectionOption
                 id="should-mask-secrets"
-                title="Mark Infisical secrets in GitLab as 'Masked' secrets"
+                title="Mark secrets as Masked"
                 tooltip="GitLab has limitations for masked variables: secrets must be at least 8 characters long and not match existing CI/CD variable names. Secrets not meeting these criteria won't be masked."
                 isEnabled={value || false}
                 onChange={(checked) => {
@@ -262,7 +260,7 @@ export const GitLabSyncFields = () => {
               <div className="max-h-32 opacity-100 transition-all duration-300">
                 <SecretProtectionOption
                   id="should-hide-secrets"
-                  title="Mark Infisical secrets in GitLab as 'Hidden' secrets"
+                  title="Mark secrets as Hidden"
                   tooltip="Secrets can only be marked as hidden if they are also masked."
                   isEnabled={value || false}
                   onChange={onChange}

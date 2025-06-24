@@ -12,7 +12,6 @@ export type TGitLabSyncWithCredentials = TGitLabSync & {
   connection: TGitLabConnection;
 };
 
-// GitLab CI/CD Variable structure based on API documentation
 export type TGitLabVariable = {
   key: string;
   value: string;
@@ -25,7 +24,6 @@ export type TGitLabVariable = {
   description: string | null;
 };
 
-// Type for creating a new variable
 export type TGitLabVariableCreate = {
   key: string;
   value: string;
@@ -37,7 +35,6 @@ export type TGitLabVariableCreate = {
   description?: string;
 };
 
-// Type for updating an existing variable
 export type TGitLabVariableUpdate = {
   value: string;
   variable_type?: "env_var" | "file";

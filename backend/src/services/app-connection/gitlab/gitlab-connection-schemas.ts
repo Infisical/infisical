@@ -8,9 +8,8 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
-import { GitLabConnectionMethod } from "./gitlab-connection-enums";
+import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
 
-// Fixed: Use consistent accessToken naming throughout
 export const GitLabConnectionAccessTokenCredentialsSchema = z.object({
   accessToken: z
     .string()
@@ -22,7 +21,8 @@ export const GitLabConnectionAccessTokenCredentialsSchema = z.object({
     .trim()
     .url("Invalid Instance URL")
     .optional()
-    .describe(AppConnections.CREDENTIALS.GITLAB.instanceUrl)
+    .describe(AppConnections.CREDENTIALS.GITLAB.instanceUrl),
+  accessTokenType: z.nativeEnum(GitLabAccessTokenType).describe(AppConnections.CREDENTIALS.GITLAB.accessTokenType)
 });
 
 export const GitLabConnectionOAuthCredentialsSchema = z.object({
@@ -35,7 +35,6 @@ export const GitLabConnectionOAuthCredentialsSchema = z.object({
     .describe(AppConnections.CREDENTIALS.GITLAB.instanceUrl)
 });
 
-// Fixed: Updated schema to match GitLab's actual OAuth response structure
 export const GitLabConnectionOAuthOutputCredentialsSchema = z.object({
   accessToken: z.string().trim(),
   refreshToken: z.string().trim(),
@@ -50,7 +49,6 @@ export const GitLabConnectionOAuthOutputCredentialsSchema = z.object({
     .describe(AppConnections.CREDENTIALS.GITLAB.instanceUrl)
 });
 
-// Schema for refresh token input during initial setup
 export const GitLabConnectionRefreshTokenCredentialsSchema = z.object({
   refreshToken: z.string().trim().min(1, "Refresh token required"),
   instanceUrl: z
@@ -83,8 +81,9 @@ export const SanitizedGitLabConnectionSchema = z.discriminatedUnion("method", [
   BaseGitLabConnectionSchema.extend({
     method: z.literal(GitLabConnectionMethod.AccessToken),
     credentials: GitLabConnectionAccessTokenCredentialsSchema.pick({
-      instanceUrl: true
-    }) // Don't expose sensitive data
+      instanceUrl: true,
+      accessTokenType: true
+    })
   }),
   BaseGitLabConnectionSchema.extend({
     method: z.literal(GitLabConnectionMethod.OAuth),

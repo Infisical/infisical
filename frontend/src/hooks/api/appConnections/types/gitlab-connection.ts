@@ -1,6 +1,8 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-connection";
 
+import { GitLabAccessTokenType } from "../gitlab";
+
 export enum GitlabConnectionMethod {
   AccessToken = "access-token",
   OAuth = "oauth"
@@ -12,6 +14,7 @@ export type TGitlabConnection = TRootAppConnection & { app: AppConnection.Gitlab
         credentials: {
           instanceUrl?: string;
           accessToken: string;
+          accessTokenType: GitLabAccessTokenType;
         };
       }
     | {
