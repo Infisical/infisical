@@ -35,7 +35,7 @@ export const renderOperatorSelectItems = (type: string) => {
       return (
         <>
           <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
-          <SelectItem value={PermissionConditionOperators.$GLOB}>Glob</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$GLOB}>Glob Match</SelectItem>
           <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
         </>
       );
