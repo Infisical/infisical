@@ -16,6 +16,7 @@ export function providerSpecificPayload(url: string) {
     dataDogHostnames.some((hostname) => url.startsWith(`https://${hostname}`) || url.startsWith(`http://${hostname}`))
   ) {
     payload.ddsource = "infisical";
+    payload.service = "audit-logs";
   }
 
   return payload;
