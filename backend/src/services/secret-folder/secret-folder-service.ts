@@ -80,6 +80,10 @@ export const secretFolderServiceFactory = ({
     }
 
     const folder = await folderDAL.transaction(async (tx) => {
+      // the logic is simple we need to avoid creating same folder in same path multiple times
+      // that is this request must be idempotent
+      // so we do a tricky move. we try to find the to be created folder path if that is exactly match return that
+      // else we get some path before that then we will start creating remaining folder
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateFolder(env.id, env.projectId)]);
 
       const pathWithFolder = path.join(secretPath, name);
