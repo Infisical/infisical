@@ -21,8 +21,8 @@ infisical:
       # -- Infisical Infisical CLI image tag version
       tag: "0.41.86"
 
-    # -- Template for the data/stringData section of the Kubernetes secret. Available functions: b64enc
-    secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token | b64enc}}"}}'
+    # -- Template for the data/stringData section of the Kubernetes secret. Available functions: encodeBase64
+    secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token | encodeBase64}}"}}'
 
     secretDestination:
       # -- Name of the bootstrap secret to create in the Kubernetes cluster which will store the formatted root identity credentials

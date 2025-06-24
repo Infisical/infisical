@@ -43,7 +43,7 @@ func handleK8SecretOutput(bootstrapResponse api.BootstrapInstanceResponse, k8Sec
 
 	// Parse and execute the template to render only the data/stringData section
 	tmpl, err := template.New("k8-secret-template").Funcs(template.FuncMap{
-		"b64enc": func(s string) string {
+		"encodeBase64": func(s string) string {
 			return base64.StdEncoding.EncodeToString([]byte(s))
 		},
 	}).Parse(k8SecretTemplate)
@@ -291,8 +291,8 @@ func init() {
 	bootstrapCmd.Flags().String("organization", "", "The name of the organization to create for the instance")
 	bootstrapCmd.Flags().String("output", "", "The type of output to use for the bootstrap command (json or k8-secret)")
 	bootstrapCmd.Flags().Bool("ignore-if-bootstrapped", false, "Whether to continue on error if the instance has already been bootstrapped")
-	bootstrapCmd.Flags().String("k8-secret-template", "", "The template to use for rendering the Kubernetes secret (entire secret JSON)")
-	bootstrapCmd.Flags().String("k8-secret-namespace", "", "The namespace to use for the Kubernetes secret")
+	bootstrapCmd.Flags().String("k8-secret-template", "{\"data\":{\"token\":\"{{.Identity.Credentials.Token | encodeBase64}}\"}}", "The template to use for rendering the Kubernetes secret (entire secret JSON)")
+	bootstrapCmd.Flags().String("k8-secret-namespace", "", "The namespace to create the Kubernetes secret in")
 	bootstrapCmd.Flags().String("k8-secret-name", "", "The name of the Kubernetes secret to create")
 	rootCmd.AddCommand(bootstrapCmd)
 }

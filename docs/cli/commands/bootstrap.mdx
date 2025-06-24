@@ -104,7 +104,7 @@ When using `k8-secret`, the command will create or update a Kubernetes secret di
 
 ```bash
 # Example template that stores the token
-infisical bootstrap --k8-secret-template='{"data":{"token":"{{.Identity.Credentials.Token | b64enc}}"}}'
+infisical bootstrap --k8-secret-template='{"data":{"token":"{{.Identity.Credentials.Token | encodeBase64}}"}}'
 
 # Example template with multiple fields
 infisical bootstrap --k8-secret-template='{"stringData":{"token":"{{.Identity.Credentials.Token}}","org-id":"{{.Organization.ID}}","user-email":"{{.User.Email}}"}}'
@@ -112,7 +112,7 @@ infisical bootstrap --k8-secret-template='{"stringData":{"token":"{{.Identity.Cr
 
 Available template functions:
 
-- `b64enc`: Base64 encode a string
+- `encodeBase64`: Base64 encode a string
 
 Available data fields:
 
@@ -189,7 +189,7 @@ The command returns a JSON response with details about the created user, organiz
 
 ### Kubernetes Secret Output
 
-When using `--output=k8-secret`, the command creates or updates a Kubernetes secret in your cluster and logs the operation result.
+When using `--output=k8-secret`, the command creates or updates a Kubernetes secret in your cluster and logs the operation result. This is particularly useful for automated bootstrapping scenarios such as Kubernetes Jobs, GitOps workflows, or when you need to immediately store the admin credentials for use by other applications in your cluster.
 
 ## Kubernetes Integration
 

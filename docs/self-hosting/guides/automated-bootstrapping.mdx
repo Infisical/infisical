@@ -70,6 +70,8 @@ You can bootstrap an Infisical instance using either the API or the CLI.
 
 When deploying Infisical using the official Helm chart, you can enable automatic bootstrapping that runs as part of the deployment process. This eliminates the need to manually bootstrap the instance after deployment.
 
+The bootstrapping process automatically generates a Kubernetes secret containing the instance admin token, which can then be referenced by Crossplane providers, Terraform operators, or other automation systems for further infrastructure provisioning and configuration.
+
 ### Configuration
 
 Enable auto bootstrapping in your Helm values by setting `autoBootstrap.enabled: true` and providing the necessary configuration:
@@ -78,7 +80,7 @@ Enable auto bootstrapping in your Helm values by setting `autoBootstrap.enabled:
 autoBootstrap:
   enabled: true
   organization: "My Organization"
-  secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token | b64enc}}"}}'
+  secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token | encodeBase64}}"}}'
 
   secretDestination:
     name: "infisical-bootstrap-secret"
@@ -122,7 +124,7 @@ The `secretTemplate` field allows you to customize the data section of the creat
 - `{{ .User.FirstName }}`: The admin user first name
 - `{{ .User.LastName }}`: The admin user last name
 
-The template also supports the `b64enc` function for base64 encoding values.
+The template also supports the `encodeBase64` function for base64 encoding values.
 
 Example template for storing multiple values:
 
@@ -130,9 +132,9 @@ Example template for storing multiple values:
 secretTemplate: |
   {
     "data": {
-      "infisical_token": "{{ .Identity.Credentials.Token | b64enc }}",
-      "admin_email": "{{ .User.Email | b64enc }}",
-      "organization": "{{ .Organization.Name | b64enc }}"
+      "infisical_token": "{{ .Identity.Credentials.Token | encodeBase64 }}",
+      "admin_email": "{{ .User.Email | encodeBase64 }}",
+      "organization": "{{ .Organization.Name | encodeBase64 }}"
     }
   }
 ```
