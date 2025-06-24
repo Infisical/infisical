@@ -229,8 +229,7 @@ export type TGetASecretRawDTO = {
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
-  projectSlug?: string;
-  projectId?: string;
+  projectId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetASecretByIdRawDTO = {

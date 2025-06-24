@@ -42,7 +42,7 @@ import { TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
-import { ActorType } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
@@ -82,6 +82,7 @@ import { assignWorkspaceKeysToMembers, bootstrapSshProject, createProjectKey } f
 import { TProjectQueueFactory } from "./project-queue";
 import { TProjectSshConfigDALFactory } from "./project-ssh-config-dal";
 import {
+  ProjectFilterType,
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TDeleteProjectWorkflowIntegration,
@@ -864,6 +865,39 @@ export const projectServiceFactory = ({
         keyEncoding: encryptedPrivateKey.encoding
       }
     });
+  };
+
+  const extractProjectIdFromSlug = async ({
+    projectSlug,
+    projectId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: {
+    projectSlug?: string;
+    projectId?: string;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actor: ActorType;
+    actorOrgId: string;
+  }) => {
+    if (projectId) return projectId;
+    if (!projectSlug) throw new BadRequestError({ message: "You must provide projectSlug or workspaceId" });
+    const project = await getAProject({
+      filter: {
+        type: ProjectFilterType.SLUG,
+        orgId: actorOrgId,
+        slug: projectSlug
+      },
+      actorId,
+      actorAuthMethod,
+      actor,
+      actorOrgId
+    });
+
+    if (!project) throw new NotFoundError({ message: `No project found with slug ${projectSlug}` });
+    return project.id;
   };
 
   const getProjectUpgradeStatus = async ({
@@ -2006,6 +2040,7 @@ export const projectServiceFactory = ({
     getProjectSshConfig,
     updateProjectSshConfig,
     requestProjectAccess,
-    searchProjects
+    searchProjects,
+    extractProjectIdFromSlug
   };
 };
