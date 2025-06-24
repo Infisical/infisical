@@ -201,7 +201,8 @@ export const identityAccessTokenServiceFactory = ({
       [IdentityAuthMethod.OIDC_AUTH]: identityAccessToken.trustedIpsOidcAuth,
       [IdentityAuthMethod.TOKEN_AUTH]: identityAccessToken.trustedIpsAccessTokenAuth,
       [IdentityAuthMethod.JWT_AUTH]: identityAccessToken.trustedIpsAccessJwtAuth,
-      [IdentityAuthMethod.LDAP_AUTH]: identityAccessToken.trustedIpsAccessLdapAuth
+      [IdentityAuthMethod.LDAP_AUTH]: identityAccessToken.trustedIpsAccessLdapAuth,
+      [IdentityAuthMethod.TLS_CERT_AUTH]: identityAccessToken.trustedIpsAccessTlsCertAuth
     };
 
     const trustedIps = trustedIpsMap[identityAccessToken.authMethod as IdentityAuthMethod];

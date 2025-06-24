@@ -110,6 +110,7 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { TIdentityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-types";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {
@@ -218,6 +219,7 @@ declare module "fastify" {
       identityKubernetesAuth: TIdentityKubernetesAuthServiceFactory;
       identityGcpAuth: TIdentityGcpAuthServiceFactory;
       identityAliCloudAuth: TIdentityAliCloudAuthServiceFactory;
+      identityTlsCertAuth: TIdentityTlsCertAuthServiceFactory;
       identityAwsAuth: TIdentityAwsAuthServiceFactory;
       identityAzureAuth: TIdentityAzureAuthServiceFactory;
       identityOciAuth: TIdentityOciAuthServiceFactory;

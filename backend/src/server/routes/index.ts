@@ -301,6 +301,8 @@ import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
+import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -386,6 +388,7 @@ export const registerRoutes = async (
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAliCloudAuthDAL = identityAliCloudAuthDALFactory(db);
+  const identityTlsCertAuthDAL = identityTlsCertAuthDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
   const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
   const identityOciAuthDAL = identityOciAuthDALFactory(db);
@@ -1493,6 +1496,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
+    identityAccessTokenDAL,
+    identityTlsCertAuthDAL,
+    identityOrgMembershipDAL,
+    licenseService,
+    permissionService,
+    kmsService
+  });
+
   const identityAwsAuthService = identityAwsAuthServiceFactory({
     identityAccessTokenDAL,
     identityAwsAuthDAL,
@@ -1947,6 +1959,7 @@ export const registerRoutes = async (
     identityAwsAuth: identityAwsAuthService,
     identityAzureAuth: identityAzureAuthService,
     identityOciAuth: identityOciAuthService,
+    identityTlsCertAuth: identityTlsCertAuthService,
     identityOidcAuth: identityOidcAuthService,
     identityJwtAuth: identityJwtAuthService,
     identityLdapAuth: identityLdapAuthService,

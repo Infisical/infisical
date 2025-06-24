@@ -53,6 +53,7 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
+import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -66,6 +67,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityAccessTokenRouter);
       await authRouter.register(registerIdentityAliCloudAuthRouter);
       await authRouter.register(registerIdentityAwsAuthRouter);
+      await authRouter.register(registerIdentityTlsCertAuthRouter, { prefix: "/tls-cert-auth" });
       await authRouter.register(registerIdentityAzureAuthRouter);
       await authRouter.register(registerIdentityOciAuthRouter);
       await authRouter.register(registerIdentityOidcAuthRouter);
