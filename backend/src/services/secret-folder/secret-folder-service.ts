@@ -6,6 +6,7 @@ import { ActionProjectType, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
@@ -83,36 +84,75 @@ export const secretFolderServiceFactory = ({
       // that is this request must be idempotent
       // so we do a tricky move. we try to find the to be created folder path if that is exactly match return that
       // else we get some path before that then we will start creating remaining folder
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateFolder(env.id, env.projectId)]);
+
       const pathWithFolder = path.join(secretPath, name);
       const parentFolder = await folderDAL.findClosestFolder(projectId, environment, pathWithFolder, tx);
-      // no folder found is not possible root should be their
+
       if (!parentFolder) {
         throw new NotFoundError({
-          message: `Folder with path '${pathWithFolder}' in environment with slug '${environment}' not found`
+          message: `Parent folder for path '${pathWithFolder}' not found`
         });
       }
-      // exact folder
-      if (parentFolder.path === pathWithFolder) return parentFolder;
 
-      let parentFolderId = parentFolder.id;
+      // check if the exact folder already exists
+      const existingFolder = await folderDAL.findOne(
+        {
+          envId: env.id,
+          parentId: parentFolder.id,
+          name,
+          isReserved: false
+        },
+        tx
+      );
+
+      if (existingFolder) {
+        return existingFolder;
+      }
+
+      // exact folder case
+      if (parentFolder.path === pathWithFolder) {
+        return parentFolder;
+      }
+
+      let currentParentId = parentFolder.id;
+
+      // build the full path we need by processing each segment
       if (parentFolder.path !== secretPath) {
-        // this is upsert folder in a path
-        // we are not taking snapshots of this because
-        // snapshot will be removed from automatic for all commits to user click or cron based
-        const missingSegment = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
-        if (missingSegment.length) {
-          const newFolders: Array<TSecretFoldersInsert & { id: string }> = missingSegment.map((segment) => {
+        const missingSegments = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
+
+        const newFolders: TSecretFoldersInsert[] = [];
+
+        // process each segment sequentially
+        for await (const segment of missingSegments) {
+          const existingSegment = await folderDAL.findOne(
+            {
+              name: segment,
+              parentId: currentParentId,
+              envId: env.id,
+              isReserved: false
+            },
+            tx
+          );
+
+          if (existingSegment) {
+            // use existing folder and update the path / parent
+            currentParentId = existingSegment.id;
+          } else {
             const newFolder = {
               name: segment,
-              parentId: parentFolderId,
+              parentId: currentParentId,
               id: uuidv4(),
               envId: env.id,
               version: 1
             };
-            parentFolderId = newFolder.id;
-            return newFolder;
-          });
-          parentFolderId = newFolders.at(-1)?.id as string;
+
+            currentParentId = newFolder.id;
+            newFolders.push(newFolder);
+          }
+        }
+
+        if (newFolders.length) {
           const docs = await folderDAL.insertMany(newFolders, tx);
           const folderVersions = await folderVersionDAL.insertMany(
             docs.map((doc) => ({
@@ -133,7 +173,7 @@ export const secretFolderServiceFactory = ({
                 }
               },
               message: "Folder created",
-              folderId: parentFolderId,
+              folderId: currentParentId,
               changes: folderVersions.map((fv) => ({
                 type: CommitType.ADD,
                 folderVersionId: fv.id
@@ -145,9 +185,10 @@ export const secretFolderServiceFactory = ({
       }
 
       const doc = await folderDAL.create(
-        { name, envId: env.id, version: 1, parentId: parentFolderId, description },
+        { name, envId: env.id, version: 1, parentId: currentParentId, description },
         tx
       );
+
       const folderVersion = await folderVersionDAL.create(
         {
           name: doc.name,
@@ -158,6 +199,7 @@ export const secretFolderServiceFactory = ({
         },
         tx
       );
+
       await folderCommitService.createCommit(
         {
           actor: {
@@ -167,7 +209,7 @@ export const secretFolderServiceFactory = ({
             }
           },
           message: "Folder created",
-          folderId: parentFolderId,
+          folderId: doc.id,
           changes: [
             {
               type: CommitType.ADD,
@@ -177,6 +219,7 @@ export const secretFolderServiceFactory = ({
         },
         tx
       );
+
       return doc;
     });
 
