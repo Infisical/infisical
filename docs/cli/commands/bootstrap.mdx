@@ -95,7 +95,7 @@ This flag is optional and defaults to `false`.
 infisical bootstrap --output=k8-secret --k8-secret-template='{"data":{"token":"{{.Identity.Credentials.Token}}"}}' --k8-secret-name=infisical-bootstrap --k8-secret-namespace=default
 ```
 
-When using `k8-secret`, the command will create or update a Kubernetes secret directly in your cluster.
+When using `k8-secret`, the command will create or update a Kubernetes secret directly in your cluster. Note that this option requires the command to be executed from within a Kubernetes pod with appropriate service account permissions.
 
 </Accordion>
 
