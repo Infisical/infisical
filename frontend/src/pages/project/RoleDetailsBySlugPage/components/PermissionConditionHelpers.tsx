@@ -34,7 +34,7 @@ export const renderOperatorSelectItems = (type: string) => {
     case "name":
       return (
         <>
-          <SelectItem value={PermissionConditionOperators.$EQ}>Equals</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
           <SelectItem value={PermissionConditionOperators.$GLOB}>Glob</SelectItem>
           <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
         </>
