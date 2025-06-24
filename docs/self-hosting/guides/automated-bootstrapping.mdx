@@ -5,14 +5,13 @@ description: "Learn how to provision and configure Infisical instances programma
 
 Infisical's Automated Bootstrapping feature enables you to provision and configure an Infisical instance without using the UI, allowing for complete automation through static configuration files, API calls, or CLI commands. This is especially valuable for enterprise environments where automated deployment and infrastructure-as-code practices are essential.
 
-## Overview
+The bootstrapping workflow automates creating an admin user account, initializing an organization for the entire instance, establishing an **instance admin machine identity** with full administrative permissions, and returning the machine identity credentials for further automation.
 
-The Automated Bootstrapping workflow automates the following processes:
+## Prerequisites
 
-- Creating an admin user account
-- Initializing an organization for the entire instance
-- Establishing an **instance admin machine identity** with full administrative permissions
-- Returning the machine identity credentials for further automation
+- An Infisical instance launched with all required configuration variables
+- Access to the Infisical CLI or the ability to make API calls to the instance
+- Network connectivity to the Infisical instance
 
 ## Key Concepts
 
@@ -20,12 +19,6 @@ The Automated Bootstrapping workflow automates the following processes:
 - **Instance Admin Machine Identity**: The bootstrapping process creates a machine identity with instance-level admin privileges, which can be used to programmatically manage all aspects of the Infisical instance.
   ![Instance Admin Identity](/images/self-hosting/guides/automated-bootstrapping/identity-instance-admin.png)
 - **Token Auth**: The instance admin machine identity uses [Token Auth](/documentation/platform/identities/token-auth), providing a JWT token that can be used directly to make authenticated requests to the Infisical API.
-
-## Prerequisites
-
-- An Infisical instance launched with all required configuration variables
-- Access to the Infisical CLI or the ability to make API calls to the instance
-- Network connectivity to the Infisical instance
 
 ## Bootstrap Methods
 
@@ -53,6 +46,36 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
       http://your-infisical-instance.com/api/v1/admin/bootstrap
     ```
 
+    ### API Response Structure
+
+    The bootstrap process returns a JSON response with details about the created user, organization, and machine identity:
+
+    ```json
+    {
+      "identity": {
+        "credentials": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGl0eUlkIjoiZGIyMjQ3OTItZWQxOC00Mjc3LTlkYWUtNTdlNzUyMzE1ODU0IiwiaWRlbnRpdHlBY2Nlc3NUb2tlbklkIjoiZmVkZmZmMGEtYmU3Yy00NjViLWEwZWEtZjM5OTNjMTg4OGRlIiwiYXV0aFRva2VuVHlwZSI6ImlkZW50aXR5QWNjZXNzVG9rZW4iLCJpYXQiOjE3NDIzMjI0ODl9.mqcZZqIFqER1e9ubrQXp8FbzGYi8nqqZwfMvz09g-8Y"
+        },
+        "id": "db224792-ed18-4277-9dae-57e752315854",
+        "name": "Instance Admin Identity"
+      },
+      "message": "Successfully bootstrapped instance",
+      "organization": {
+        "id": "b56bece0-42f5-4262-b25e-be7bf5f84957",
+        "name": "dog",
+        "slug": "dog-v-e5l"
+      },
+      "user": {
+        "email": "admin@example.com",
+        "firstName": "Admin",
+        "id": "a418f355-c8da-453c-bbc8-6c07208eeb3c",
+        "lastName": "User",
+        "superAdmin": true,
+        "username": "admin@example.com"
+      }
+    }
+    ```
+
   </Tab>
   <Tab title="Using the CLI">
     Use the [Infisical CLI](/cli/commands/bootstrap) to bootstrap the instance and extract the token for immediate use in automation:
@@ -62,10 +85,39 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
     ```
 
     This example command pipes the output through `jq` to extract only the machine identity token, making it easy to capture and use directly in automation scripts or export as an environment variable for tools like Terraform.
+    
+    ### API Response Structure
 
+    The bootstrap process returns a JSON response with details about the created user, organization, and machine identity:
+
+    ```json
+    {
+      "identity": {
+        "credentials": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGl0eUlkIjoiZGIyMjQ3OTItZWQxOC00Mjc3LTlkYWUtNTdlNzUyMzE1ODU0IiwiaWRlbnRpdHlBY2Nlc3NUb2tlbklkIjoiZmVkZmZmMGEtYmU3Yy00NjViLWEwZWEtZjM5OTNjMTg4OGRlIiwiYXV0aFRva2VuVHlwZSI6ImlkZW50aXR5QWNjZXNzVG9rZW4iLCJpYXQiOjE3NDIzMjI0ODl9.mqcZZqIFqER1e9ubrQXp8FbzGYi8nqqZwfMvz09g-8Y"
+        },
+        "id": "db224792-ed18-4277-9dae-57e752315854",
+        "name": "Instance Admin Identity"
+      },
+      "message": "Successfully bootstrapped instance",
+      "organization": {
+        "id": "b56bece0-42f5-4262-b25e-be7bf5f84957",
+        "name": "dog",
+        "slug": "dog-v-e5l"
+      },
+      "user": {
+        "email": "admin@example.com",
+        "firstName": "Admin",
+        "id": "a418f355-c8da-453c-bbc8-6c07208eeb3c",
+        "lastName": "User",
+        "superAdmin": true,
+        "username": "admin@example.com"
+      }
+    }
+    ```
   </Tab>
-  <Tab title="Helm Chart Auto Bootstrap">
-    When deploying Infisical using the official Helm chart, you can enable automatic bootstrapping that runs as part of the deployment process. This eliminates the need to manually bootstrap the instance after deployment.
+  <Tab title="Helm Chart">
+    When deploying Infisical using the official [Helm chart](/self-hosting/deployment-options/kubernetes-helm#kubernetes-via-helm-chart), you can enable automatic bootstrapping that runs as part of the deployment process. This eliminates the need to manually bootstrap the instance after deployment.
 
     The bootstrapping process automatically generates a Kubernetes secret containing the instance admin token, which can then be referenced by Crossplane providers, Terraform operators, or other automation systems for further infrastructure provisioning and configuration.
 
@@ -152,36 +204,6 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
 
   </Tab>
 </Tabs>
-
-## API Response Structure
-
-The bootstrap process returns a JSON response with details about the created user, organization, and machine identity:
-
-```json
-{
-  "identity": {
-    "credentials": {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGl0eUlkIjoiZGIyMjQ3OTItZWQxOC00Mjc3LTlkYWUtNTdlNzUyMzE1ODU0IiwiaWRlbnRpdHlBY2Nlc3NUb2tlbklkIjoiZmVkZmZmMGEtYmU3Yy00NjViLWEwZWEtZjM5OTNjMTg4OGRlIiwiYXV0aFRva2VuVHlwZSI6ImlkZW50aXR5QWNjZXNzVG9rZW4iLCJpYXQiOjE3NDIzMjI0ODl9.mqcZZqIFqER1e9ubrQXp8FbzGYi8nqqZwfMvz09g-8Y"
-    },
-    "id": "db224792-ed18-4277-9dae-57e752315854",
-    "name": "Instance Admin Identity"
-  },
-  "message": "Successfully bootstrapped instance",
-  "organization": {
-    "id": "b56bece0-42f5-4262-b25e-be7bf5f84957",
-    "name": "dog",
-    "slug": "dog-v-e5l"
-  },
-  "user": {
-    "email": "admin@example.com",
-    "firstName": "Admin",
-    "id": "a418f355-c8da-453c-bbc8-6c07208eeb3c",
-    "lastName": "User",
-    "superAdmin": true,
-    "username": "admin@example.com"
-  }
-}
-```
 
 ## Using the Instance Admin Machine Identity Token
 
