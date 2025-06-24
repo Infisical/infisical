@@ -559,8 +559,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      let { workspaceId } = req.body;
-      workspaceId = await server.services.project.extractProjectIdFromSlug({
+      const workspaceId =  await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
         projectId: req.body.workspaceId,
         actorId: req.permission.id,
@@ -691,8 +690,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      let { workspaceId } = req.body;
-      workspaceId = await server.services.project.extractProjectIdFromSlug({
+      const workspaceId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
         projectId: req.body.workspaceId,
         actorId: req.permission.id,
@@ -803,8 +801,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      let { workspaceId } = req.body;
-      workspaceId = await server.services.project.extractProjectIdFromSlug({
+      const workspaceId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
         projectId: req.body.workspaceId,
         actorId: req.permission.id,
