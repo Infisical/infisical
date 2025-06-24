@@ -1187,8 +1187,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     snapshotService,
     projectDAL,
-    folderCommitService,
-    keyStore
+    folderCommitService
   });
 
   const secretImportService = secretImportServiceFactory({

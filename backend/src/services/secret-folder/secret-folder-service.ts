@@ -6,9 +6,8 @@ import { ActionProjectType, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
@@ -35,7 +34,6 @@ type TSecretFolderServiceFactoryDep = {
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -47,8 +45,7 @@ export const secretFolderServiceFactory = ({
   projectEnvDAL,
   folderVersionDAL,
   folderCommitService,
-  projectDAL,
-  keyStore
+  projectDAL
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -82,165 +79,148 @@ export const secretFolderServiceFactory = ({
       });
     }
 
-    const lock = await keyStore
-      .acquireLock([KeyStorePrefixes.CreateFolderLock(env.id, projectId)], 5000)
-      .catch(() => null);
+    const folder = await folderDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateFolder(env.id, env.projectId)]);
 
-    try {
-      if (!lock) {
-        await keyStore.waitTillReady({
-          key: KeyStorePrefixes.WaitUntilReadyCreateFolder(env.id, projectId),
-          keyCheckCb: (val) => val === "true",
-          waitingCb: () => logger.debug("CreateFolder: Waiting for key store lock."),
-          delay: 500
+      const pathWithFolder = path.join(secretPath, name);
+      const parentFolder = await folderDAL.findClosestFolder(projectId, environment, pathWithFolder, tx);
+
+      if (!parentFolder) {
+        throw new NotFoundError({
+          message: `Parent folder for path '${pathWithFolder}' not found`
         });
       }
 
-      const folder = await folderDAL.transaction(async (tx) => {
-        const pathWithFolder = path.join(secretPath, name);
-        const parentFolder = await folderDAL.findClosestFolder(projectId, environment, pathWithFolder, tx);
+      // check if the exact folder already exists
+      const existingFolder = await folderDAL.findOne(
+        {
+          envId: env.id,
+          parentId: parentFolder.id,
+          name,
+          isReserved: false
+        },
+        tx
+      );
 
-        if (!parentFolder) {
-          throw new NotFoundError({
-            message: `Parent folder for path '${pathWithFolder}' not found`
-          });
-        }
+      if (existingFolder) {
+        return existingFolder;
+      }
 
-        // check if the exact folder already exists
-        const existingFolder = await folderDAL.findOne(
-          {
-            envId: env.id,
-            parentId: parentFolder.id,
-            name,
-            isReserved: false
-          },
-          tx
-        );
+      // exact folder case
+      if (parentFolder.path === pathWithFolder) {
+        return parentFolder;
+      }
 
-        if (existingFolder) {
-          return existingFolder;
-        }
+      let currentParentId = parentFolder.id;
 
-        // exact folder case
-        if (parentFolder.path === pathWithFolder) {
-          return parentFolder;
-        }
+      // build the full path we need by processing each segment
+      if (parentFolder.path !== secretPath) {
+        const missingSegments = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
 
-        let currentParentId = parentFolder.id;
+        const newFolders: TSecretFoldersInsert[] = [];
 
-        // build the full path we need by processing each segment
-        if (parentFolder.path !== secretPath) {
-          const missingSegments = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
-
-          const newFolders: TSecretFoldersInsert[] = [];
-
-          // process each segment sequentially
-          for await (const segment of missingSegments) {
-            const existingSegment = await folderDAL.findOne(
-              {
-                name: segment,
-                parentId: currentParentId,
-                envId: env.id,
-                isReserved: false
-              },
-              tx
-            );
-
-            if (existingSegment) {
-              // use existing folder and update the path / parent
-              currentParentId = existingSegment.id;
-            } else {
-              const newFolder = {
-                name: segment,
-                parentId: currentParentId,
-                id: uuidv4(),
-                envId: env.id,
-                version: 1
-              };
-
-              currentParentId = newFolder.id;
-              newFolders.push(newFolder);
-            }
-          }
-
-          if (newFolders.length) {
-            const docs = await folderDAL.insertMany(newFolders, tx);
-            const folderVersions = await folderVersionDAL.insertMany(
-              docs.map((doc) => ({
-                name: doc.name,
-                envId: doc.envId,
-                version: doc.version,
-                folderId: doc.id,
-                description: doc.description
-              })),
-              tx
-            );
-            await folderCommitService.createCommit(
-              {
-                actor: {
-                  type: actor,
-                  metadata: {
-                    id: actorId
-                  }
-                },
-                message: "Folder created",
-                folderId: currentParentId,
-                changes: folderVersions.map((fv) => ({
-                  type: CommitType.ADD,
-                  folderVersionId: fv.id
-                }))
-              },
-              tx
-            );
-          }
-        }
-
-        const doc = await folderDAL.create(
-          { name, envId: env.id, version: 1, parentId: currentParentId, description },
-          tx
-        );
-
-        const folderVersion = await folderVersionDAL.create(
-          {
-            name: doc.name,
-            envId: doc.envId,
-            version: doc.version,
-            folderId: doc.id,
-            description: doc.description
-          },
-          tx
-        );
-
-        await folderCommitService.createCommit(
-          {
-            actor: {
-              type: actor,
-              metadata: {
-                id: actorId
-              }
+        // process each segment sequentially
+        for await (const segment of missingSegments) {
+          const existingSegment = await folderDAL.findOne(
+            {
+              name: segment,
+              parentId: currentParentId,
+              envId: env.id,
+              isReserved: false
             },
-            message: "Folder created",
-            folderId: doc.id,
-            changes: [
-              {
+            tx
+          );
+
+          if (existingSegment) {
+            // use existing folder and update the path / parent
+            currentParentId = existingSegment.id;
+          } else {
+            const newFolder = {
+              name: segment,
+              parentId: currentParentId,
+              id: uuidv4(),
+              envId: env.id,
+              version: 1
+            };
+
+            currentParentId = newFolder.id;
+            newFolders.push(newFolder);
+          }
+        }
+
+        if (newFolders.length) {
+          const docs = await folderDAL.insertMany(newFolders, tx);
+          const folderVersions = await folderVersionDAL.insertMany(
+            docs.map((doc) => ({
+              name: doc.name,
+              envId: doc.envId,
+              version: doc.version,
+              folderId: doc.id,
+              description: doc.description
+            })),
+            tx
+          );
+          await folderCommitService.createCommit(
+            {
+              actor: {
+                type: actor,
+                metadata: {
+                  id: actorId
+                }
+              },
+              message: "Folder created",
+              folderId: currentParentId,
+              changes: folderVersions.map((fv) => ({
                 type: CommitType.ADD,
-                folderVersionId: folderVersion.id
-              }
-            ]
+                folderVersionId: fv.id
+              }))
+            },
+            tx
+          );
+        }
+      }
+
+      const doc = await folderDAL.create(
+        { name, envId: env.id, version: 1, parentId: currentParentId, description },
+        tx
+      );
+
+      const folderVersion = await folderVersionDAL.create(
+        {
+          name: doc.name,
+          envId: doc.envId,
+          version: doc.version,
+          folderId: doc.id,
+          description: doc.description
+        },
+        tx
+      );
+
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: actor,
+            metadata: {
+              id: actorId
+            }
           },
-          tx
-        );
+          message: "Folder created",
+          folderId: doc.id,
+          changes: [
+            {
+              type: CommitType.ADD,
+              folderVersionId: folderVersion.id
+            }
+          ]
+        },
+        tx
+      );
 
-        return doc;
-      });
+      return doc;
+    });
 
-      await keyStore.setItemWithExpiry(KeyStorePrefixes.WaitUntilReadyCreateFolder(env.id, projectId), 10, "true");
-
-      await snapshotService.performSnapshot(folder.parentId as string);
-      return folder;
-    } finally {
-      await lock?.release();
-    }
+    await snapshotService.performSnapshot(folder.parentId as string);
+    return folder;
   };
 
   const updateManyFolders = async ({
