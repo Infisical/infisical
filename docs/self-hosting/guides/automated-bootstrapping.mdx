@@ -80,7 +80,7 @@ Enable auto bootstrapping in your Helm values by setting `autoBootstrap.enabled:
 autoBootstrap:
   enabled: true
   organization: "My Organization"
-  secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token | encodeBase64}}"}}'
+  secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
 
   secretDestination:
     name: "infisical-bootstrap-secret"
@@ -132,9 +132,9 @@ Example template for storing multiple values:
 secretTemplate: |
   {
     "data": {
-      "infisical_token": "{{ .Identity.Credentials.Token | encodeBase64 }}",
-      "admin_email": "{{ .User.Email | encodeBase64 }}",
-      "organization": "{{ .Organization.Name | encodeBase64 }}"
+      "infisical_token": "{{ .Identity.Credentials.Token }}",
+      "admin_email": "{{ .User.Email }}",
+      "organization": "{{ .Organization.Name }}"
     }
   }
 ```

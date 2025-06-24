@@ -104,7 +104,7 @@ When using `k8-secret`, the command will create or update a Kubernetes secret di
 
 ```bash
 # Example template that stores the token
-infisical bootstrap --k8-secret-template='{"data":{"token":"{{.Identity.Credentials.Token | encodeBase64}}"}}'
+infisical bootstrap --k8-secret-template='{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
 
 # Example template with multiple fields
 infisical bootstrap --k8-secret-template='{"stringData":{"token":"{{.Identity.Credentials.Token}}","org-id":"{{.Organization.ID}}","user-email":"{{.User.Email}}"}}'

@@ -5,8 +5,7 @@ package cmd
 
 import (
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -17,31 +16,28 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 // handleK8SecretOutput processes the k8-secret output type by creating a Kubernetes secret
 func handleK8SecretOutput(bootstrapResponse api.BootstrapInstanceResponse, k8SecretTemplate, k8SecretName, k8SecretNamespace string) error {
-	// Read Kubernetes service account credentials from the pod
-	k8sToken, err := os.ReadFile(util.KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH)
+	// Create in-cluster config
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		return fmt.Errorf("failed to read Kubernetes service account token: %v", err)
+		return fmt.Errorf("failed to create in-cluster config: %v", err)
 	}
 
-	k8sCaCert, err := os.ReadFile(util.KUBERNETES_SERVICE_ACCOUNT_CA_CERT_PATH)
+	// Create Kubernetes client
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to read Kubernetes CA certificate: %v", err)
+		return fmt.Errorf("failed to create Kubernetes client: %v", err)
 	}
 
-	// Get Kubernetes API server URL from environment variables
-	k8sHost := os.Getenv(util.KUBERNETES_SERVICE_HOST_ENV_NAME)
-	k8sPort := os.Getenv(util.KUBERNETES_SERVICE_PORT_HTTPS_ENV_NAME)
-	if k8sHost == "" || k8sPort == "" {
-		return fmt.Errorf("failed to get Kubernetes API server address from environment variables")
-	}
-
-	k8sApiUrl := fmt.Sprintf("https://%s:%s", k8sHost, k8sPort)
-
-	// Parse and execute the template to render only the data/stringData section
+	// Parse and execute the template to render the data/stringData section
 	tmpl, err := template.New("k8-secret-template").Funcs(template.FuncMap{
 		"encodeBase64": func(s string) string {
 			return base64.StdEncoding.EncodeToString([]byte(s))
@@ -64,83 +60,66 @@ func handleK8SecretOutput(bootstrapResponse api.BootstrapInstanceResponse, k8Sec
 		return fmt.Errorf("template output is not valid JSON: %v", err)
 	}
 
-	// Construct the complete Kubernetes secret object
-	k8sSecret := map[string]interface{}{
-		"apiVersion": "v1",
-		"kind":       "Secret",
-		"metadata": map[string]interface{}{
-			"name":      k8SecretName,
-			"namespace": k8SecretNamespace,
+	// Prepare the secret data and stringData maps
+	secretData := make(map[string][]byte)
+	secretStringData := make(map[string]string)
+
+	// Process the dataSection to separate data and stringData
+	if data, exists := dataSection["data"]; exists {
+		if dataMap, ok := data.(map[string]interface{}); ok {
+			for key, value := range dataMap {
+				if strValue, ok := value.(string); ok {
+					secretData[key] = []byte(strValue)
+				}
+			}
+		}
+	}
+
+	if stringData, exists := dataSection["stringData"]; exists {
+		if stringDataMap, ok := stringData.(map[string]interface{}); ok {
+			for key, value := range stringDataMap {
+				if strValue, ok := value.(string); ok {
+					secretStringData[key] = strValue
+				}
+			}
+		}
+	}
+
+	// Create the Kubernetes secret object
+	k8sSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      k8SecretName,
+			Namespace: k8SecretNamespace,
 		},
-		"type": "Opaque",
+		Type:       corev1.SecretTypeOpaque,
+		Data:       secretData,
+		StringData: secretStringData,
 	}
 
-	// Merge the rendered data section into the secret
-	for key, value := range dataSection {
-		k8sSecret[key] = value
-	}
+	ctx := context.Background()
+	secretsClient := clientset.CoreV1().Secrets(k8SecretNamespace)
 
-	// Prepare the HTTP client with TLS configuration
-	caCertPool := x509.NewCertPool()
-	if !caCertPool.AppendCertsFromPEM(k8sCaCert) {
-		return fmt.Errorf("failed to parse Kubernetes CA certificate")
-	}
-
-	tlsConfig := &tls.Config{
-		RootCAs: caCertPool,
-	}
-
-	// Create a new HTTP client for Kubernetes API
-	k8sHttpClient, err := util.GetRestyClientWithCustomHeaders()
+	// Check if secret already exists
+	existingSecret, err := secretsClient.Get(ctx, k8SecretName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to create Kubernetes HTTP client: %v", err)
-	}
-
-	k8sHttpClient.SetTLSClientConfig(tlsConfig)
-	k8sHttpClient.SetHeader("Authorization", fmt.Sprintf("Bearer %s", string(k8sToken)))
-	k8sHttpClient.SetHeader("Content-Type", "application/json")
-
-	// Check if secret already exists first
-	checkUrl := fmt.Sprintf("%s/api/v1/namespaces/%s/secrets/%s", k8sApiUrl, k8SecretNamespace, k8SecretName)
-	checkResponse, err := k8sHttpClient.R().Get(checkUrl)
-
-	if err != nil {
-		return fmt.Errorf("failed to check if Kubernetes secret exists: %v", err)
-	}
-
-	secretUrl := fmt.Sprintf("%s/api/v1/namespaces/%s/secrets", k8sApiUrl, k8SecretNamespace)
-
-	if checkResponse.StatusCode() == 200 {
+		if errors.IsNotFound(err) {
+			// Secret doesn't exist, create it
+			_, err = secretsClient.Create(ctx, k8sSecret, metav1.CreateOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to create Kubernetes secret: %v", err)
+			}
+			log.Info().Msgf("Successfully created Kubernetes secret '%s' in namespace '%s'", k8SecretName, k8SecretNamespace)
+		} else {
+			return fmt.Errorf("failed to check if Kubernetes secret exists: %v", err)
+		}
+	} else {
 		// Secret exists, update it
-		secretUrl = fmt.Sprintf("%s/%s", secretUrl, k8SecretName)
-		response, err := k8sHttpClient.R().
-			SetBody(k8sSecret).
-			Put(secretUrl)
-
+		k8sSecret.ObjectMeta.ResourceVersion = existingSecret.ObjectMeta.ResourceVersion
+		_, err = secretsClient.Update(ctx, k8sSecret, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to update Kubernetes secret: %v", err)
 		}
-
-		if response.IsError() {
-			return fmt.Errorf("kubernetes API returned error when updating secret: %s", response.String())
-		}
-
 		log.Info().Msgf("Successfully updated Kubernetes secret '%s' in namespace '%s'", k8SecretName, k8SecretNamespace)
-	} else {
-		// Secret doesn't exist, create it
-		response, err := k8sHttpClient.R().
-			SetBody(k8sSecret).
-			Post(secretUrl)
-
-		if err != nil {
-			return fmt.Errorf("failed to create Kubernetes secret: %v", err)
-		}
-
-		if response.IsError() {
-			return fmt.Errorf("kubernetes API returned error when creating secret: %s", response.String())
-		}
-
-		log.Info().Msgf("Successfully created Kubernetes secret '%s' in namespace '%s'", k8SecretName, k8SecretNamespace)
 	}
 
 	return nil
@@ -291,7 +270,7 @@ func init() {
 	bootstrapCmd.Flags().String("organization", "", "The name of the organization to create for the instance")
 	bootstrapCmd.Flags().String("output", "", "The type of output to use for the bootstrap command (json or k8-secret)")
 	bootstrapCmd.Flags().Bool("ignore-if-bootstrapped", false, "Whether to continue on error if the instance has already been bootstrapped")
-	bootstrapCmd.Flags().String("k8-secret-template", "{\"data\":{\"token\":\"{{.Identity.Credentials.Token | encodeBase64}}\"}}", "The template to use for rendering the Kubernetes secret (entire secret JSON)")
+	bootstrapCmd.Flags().String("k8-secret-template", "{\"data\":{\"token\":\"{{.Identity.Credentials.Token}}\"}}", "The template to use for rendering the Kubernetes secret (entire secret JSON)")
 	bootstrapCmd.Flags().String("k8-secret-namespace", "", "The namespace to create the Kubernetes secret in")
 	bootstrapCmd.Flags().String("k8-secret-name", "", "The name of the Kubernetes secret to create")
 	rootCmd.AddCommand(bootstrapCmd)
