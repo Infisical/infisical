@@ -51,11 +51,18 @@ jobs:
             --from-literal=ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218 \
             --from-literal=SITE_URL=http://localhost:8080
 
+      - name: Create bootstrap secret
+        run: |
+          kubectl create secret generic infisical-bootstrap-credentials \
+            --namespace infisical-standalone-postgres \
+            --from-literal=INFISICAL_ADMIN_EMAIL=admin@example.com \
+            --from-literal=INFISICAL_ADMIN_PASSWORD=admin-password
+
       - name: Run chart-testing (install)
         run: |
           ct install \
             --config ct.yaml \
             --charts helm-charts/infisical-standalone-postgres \
             --helm-extra-args="--timeout=300s" \
-            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.autoDatabaseSchemaMigration=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.132.2-postgres" \
+            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.autoDatabaseSchemaMigration=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.132.2-postgres --set infisical.autoBootstrap.enabled=true" \
             --namespace infisical-standalone-postgres
