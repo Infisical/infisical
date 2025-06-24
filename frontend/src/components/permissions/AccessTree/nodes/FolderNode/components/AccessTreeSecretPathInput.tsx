@@ -81,7 +81,7 @@ export const AccessTreeSecretPathInput = ({
             <FontAwesomeIcon icon={faSearch} />
           </div>
         ) : (
-          <Tooltip position="bottom" content="Search paths">
+          <Tooltip position="bottom" content="Search Paths">
             <div
               className="flex h-10 w-10 cursor-pointer items-center justify-center text-mineshaft-300 hover:text-white"
               onClick={toggleSearch}

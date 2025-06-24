@@ -39,16 +39,6 @@ export const positionElements = (nodes: Node[], edges: Edge[]) => {
   const positionedNodes = nodes.map((node) => {
     const { x, y } = dagre.node(node.id);
 
-    if (node.type === "role") {
-      return {
-        ...node,
-        position: {
-          x: x - (node.width ? node.width / 2 : 0),
-          y: y - 150
-        }
-      };
-    }
-
     return {
       ...node,
       position: {

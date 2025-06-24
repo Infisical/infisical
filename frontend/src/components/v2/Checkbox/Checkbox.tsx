@@ -40,9 +40,9 @@ export const Checkbox = ({
     <div className={twMerge("flex items-center font-inter text-bunker-300", containerClassName)}>
       <CheckboxPrimitive.Root
         className={twMerge(
-          "flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border border-mineshaft-400 bg-mineshaft-600 shadow transition-all hover:bg-mineshaft-500",
+          "flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border border-mineshaft-400/50 bg-mineshaft-600 shadow transition-all hover:bg-mineshaft-500",
           isDisabled && "bg-bunker-400 hover:bg-bunker-400",
-          isChecked && "bg-primary hover:bg-primary",
+          isChecked && "border-primary/30 bg-primary/10",
           Boolean(children) && "mr-3",
           className
         )}
@@ -53,7 +53,10 @@ export const Checkbox = ({
         id={id}
       >
         <CheckboxPrimitive.Indicator
-          className={twMerge(`${checkIndicatorBg || "text-bunker-800"}`, indicatorClassName)}
+          className={twMerge(
+            `${checkIndicatorBg || "mt-[0.1rem] text-mineshaft-200"}`,
+            indicatorClassName
+          )}
         >
           {isIndeterminate ? (
             <FontAwesomeIcon icon={faMinus} size="sm" />

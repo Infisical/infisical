@@ -352,19 +352,21 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
         <div className="p-4">
           <div className="mb-2 text-lg">Policies</div>
           {(isCreate || !isPending) && <PermissionEmptyState />}
-          {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
-            (permissionSubject) => (
-              <GeneralPermissionPolicies
-                subject={permissionSubject}
-                actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
-                title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
-                key={`project-permission-${permissionSubject}`}
-                isDisabled={isDisabled}
-              >
-                {renderConditionalComponents(permissionSubject, isDisabled)}
-              </GeneralPermissionPolicies>
-            )
-          )}
+          <div>
+            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
+              (permissionSubject) => (
+                <GeneralPermissionPolicies
+                  subject={permissionSubject}
+                  actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                  title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
+                  key={`project-permission-${permissionSubject}`}
+                  isDisabled={isDisabled}
+                >
+                  {renderConditionalComponents(permissionSubject, isDisabled)}
+                </GeneralPermissionPolicies>
+              )
+            )}
+          </div>
         </div>
       </FormProvider>
     </form>
