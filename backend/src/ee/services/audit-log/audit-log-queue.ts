@@ -143,13 +143,12 @@ export const auditLogQueueServiceFactory = async ({
                   }
                 );
                 logger.info(
-                  `Successfully streamed audit log to ${url} for org ${orgId}. Response body: ${JSON.stringify(response.data)}`
+                  `Successfully streamed audit log [url=${url}] for org [orgId=${orgId}] [response=${JSON.stringify(response.data)}]`
                 );
                 return response;
               } catch (error) {
                 logger.error(
-                  `Failed to stream audit log to ${url} for org ${orgId}. Error:`,
-                  (error as AxiosError).message
+                  `Failed to stream audit log [url=${url}] for org [orgId=${orgId}] [error=${(error as AxiosError).message}]`
                 );
                 return error;
               }
@@ -249,13 +248,12 @@ export const auditLogQueueServiceFactory = async ({
               }
             );
             logger.info(
-              `Successfully streamed audit log to ${url} for org ${orgId}. Response body: ${JSON.stringify(response.data)}`
+              `Successfully streamed audit log [url=${url}] for org [orgId=${orgId}] [response=${JSON.stringify(response.data)}]`
             );
             return response;
           } catch (error) {
             logger.error(
-              `Failed to stream audit log to ${url} for org ${orgId}. Error:`,
-              (error as AxiosError).message
+              `Failed to stream audit log [url=${url}] for org [orgId=${orgId}] [error=${(error as AxiosError).message}]`
             );
             return error;
           }
