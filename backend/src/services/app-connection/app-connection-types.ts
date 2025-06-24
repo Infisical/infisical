@@ -153,6 +153,12 @@ import {
   TWindmillConnectionConfig,
   TWindmillConnectionInput
 } from "./windmill";
+import {
+  TCloudflareConnection,
+  TCloudflareConnectionConfig,
+  TCloudflareConnectionInput,
+  TValidateCloudflareConnectionCredentialsSchema
+} from "./cloudflare/cloudflare-connection-types";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -182,6 +188,7 @@ export type TAppConnection = { id: string } & (
   | THerokuConnection
   | TRenderConnection
   | TFlyioConnection
+  | TCloudflareConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -216,6 +223,7 @@ export type TAppConnectionInput = { id: string } & (
   | THerokuConnectionInput
   | TRenderConnectionInput
   | TFlyioConnectionInput
+  | TCloudflareConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -257,7 +265,8 @@ export type TAppConnectionConfig =
   | TOnePassConnectionConfig
   | THerokuConnectionConfig
   | TRenderConnectionConfig
-  | TFlyioConnectionConfig;
+  | TFlyioConnectionConfig
+  | TCloudflareConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -286,7 +295,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOnePassConnectionCredentialsSchema
   | TValidateHerokuConnectionCredentialsSchema
   | TValidateRenderConnectionCredentialsSchema
-  | TValidateFlyioConnectionCredentialsSchema;
+  | TValidateFlyioConnectionCredentialsSchema
+  | TValidateCloudflareConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

@@ -58,6 +58,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Heroku:
     case SecretSync.Render:
     case SecretSync.Flyio:
+    case SecretSync.CloudflarePages:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

@@ -8,6 +8,7 @@ import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TCamundaConnection } from "./camunda-connection";
+import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
@@ -55,6 +56,7 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./cloudflare-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -83,7 +85,8 @@ export type TAppConnection =
   | TOnePassConnection
   | THerokuConnection
   | TRenderConnection
-  | TFlyioConnection;
+  | TFlyioConnection
+  | TCloudflareConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -138,4 +141,5 @@ export type TAppConnectionMap = {
   [AppConnection.Heroku]: THerokuConnection;
   [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
+  [AppConnection.Cloudflare]: TCloudflareConnection;
 };

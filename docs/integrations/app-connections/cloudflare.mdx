@@ -1,0 +1,94 @@
+---
+title: "Cloudflare Connection"
+description: "Learn how to configure a Cloudflare Connection for Infisical."
+---
+
+Infisical supports connecting to Cloudflare using API tokens and Account ID for secure access to your Cloudflare services.
+
+## Configure API Token and Account ID for Infisical
+
+<Steps>
+  <Step title="Create API Token">
+    Navigate to your Cloudflare dashboard and go to **Profile**.
+
+    ![Navigate Cloudflare Profile](/images/app-connections/cloudflare/cloudflare-navigate-profile.png)
+
+    Click **API Tokens > Create Token** to generate a new API token.
+
+    ![Create API Token](/images/app-connections/cloudflare/cloudflare-create-token.png)
+
+  </Step>
+  <Step title="Configure Token Permissions">
+    Configure your API token with the necessary permissions for your Cloudflare services.
+
+    Depending on your use case, add one or more of the following permission sets to your API token:
+
+    <Tabs>
+      <Tab title="Secret Sync">
+        <AccordionGroup>
+          <Accordion title="Cloudflare Pages">
+            Use the following permissions to grant Infisical access to sync secrets to Cloudflare Pages:
+
+            ![Configure Token](/images/app-connections/cloudflare/cloudflare-pages-configure-permissions.png)
+
+            **Required Permissions:**
+            - **Account** - **Cloudflare Pages** - **Edit**
+            - **Account** - **Account Settings** - **Read**
+
+            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+          </Accordion>
+        </AccordionGroup>
+      </Tab>
+    </Tabs>
+
+  </Step>
+  <Step title="Save Your API Token">
+    After creation, copy and securely store your API token as it will not be shown again.
+    
+    ![Generated API Token](/images/app-connections/cloudflare/cloudflare-generated-token.png)
+
+    <Warning>
+      Keep your API token secure and do not share it. Anyone with access to this token can manage your Cloudflare resources based on the permissions granted.
+    </Warning>
+
+  </Step>
+  <Step title="Get Account ID">
+    From your Cloudflare Account Home page, click on the account information dropdown and select **Copy account ID**.
+
+    ![Account ID](/images/app-connections/cloudflare/cloudflare-account-id.png)
+
+    Save your Account ID for use in the next step.
+
+  </Step>
+</Steps>
+
+## Setup Cloudflare Connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **App Connections** tab on the **Organization Settings**
+    page. ![App Connections
+    Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Cloudflare Connection** option from the connection options
+    modal. ![Select Cloudflare
+    Connection](/images/app-connections/cloudflare/cloudflare-app-connection-select.png)
+  </Step>
+  <Step title="Input Credentials">
+    Enter your Cloudflare API token and Account ID in the provided fields and
+    click **Connect to Cloudflare** to establish the connection. ![Connect to
+    Cloudflare](/images/app-connections/cloudflare/cloudflare-app-connection-form.png)
+  </Step>
+  <Step title="Connection Created">
+    Your **Cloudflare Connection** is now available for use in your Infisical
+    projects. ![Cloudflare Connection
+    Created](/images/app-connections/cloudflare/cloudflare-app-connection-created.png)
+  </Step>
+</Steps>
+
+<Info>
+  API token connections require manual token rotation when your Cloudflare API
+  token expires or is regenerated. Monitor your connection status and update the
+  token as needed.
+</Info>
