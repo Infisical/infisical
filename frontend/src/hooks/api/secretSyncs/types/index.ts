@@ -14,7 +14,7 @@ import { TDatabricksSync } from "./databricks-sync";
 import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
-import { TGitlabSync } from "./gitlab-sync";
+import { TGitLabSync } from "./gitlab-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
@@ -52,7 +52,7 @@ export type TSecretSync =
   | THerokuSync
   | TRenderSync
   | TFlyioSync
-  | TGitlabSync
+  | TGitLabSync
   | TCloudflarePagesSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };

@@ -22,8 +22,8 @@ import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { GitLabAccessTokenType } from "@app/hooks/api/appConnections/gitlab";
 import {
-  GitlabConnectionMethod,
-  TGitlabConnection
+  GitLabConnectionMethod,
+  TGitLabConnection
 } from "@app/hooks/api/appConnections/types/gitlab-connection";
 
 import {
@@ -32,14 +32,14 @@ import {
 } from "./GenericAppConnectionFields";
 
 type Props = {
-  appConnection?: TGitlabConnection;
+  appConnection?: TGitLabConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
 const formSchema = z.discriminatedUnion("method", [
   genericAppConnectionFieldsSchema.extend({
     app: z.literal(AppConnection.Gitlab),
-    method: z.literal(GitlabConnectionMethod.AccessToken),
+    method: z.literal(GitLabConnectionMethod.AccessToken),
     credentials: z.object({
       accessToken: z.string().min(1, "Access token is required"),
       accessTokenType: z.nativeEnum(GitLabAccessTokenType),
@@ -55,7 +55,7 @@ const formSchema = z.discriminatedUnion("method", [
   }),
   genericAppConnectionFieldsSchema.extend({
     app: z.literal(AppConnection.Gitlab),
-    method: z.literal(GitlabConnectionMethod.OAuth),
+    method: z.literal(GitLabConnectionMethod.OAuth),
     credentials: z.object({
       code: z.string().min(1, "Code is required"),
       instanceUrl: z
@@ -84,12 +84,12 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues:
-      appConnection?.method === GitlabConnectionMethod.OAuth
+      appConnection?.method === GitLabConnectionMethod.OAuth
         ? { ...appConnection, credentials: { code: "custom" } }
         : (appConnection ??
           ({
             app: AppConnection.Gitlab,
-            method: GitlabConnectionMethod.AccessToken,
+            method: GitLabConnectionMethod.AccessToken,
             credentials: {
               accessToken: "",
               accessTokenType: GitLabAccessTokenType.Personal,
@@ -112,11 +112,11 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
   const onSubmit = async (formData: FormData) => {
     try {
       switch (formData.method) {
-        case GitlabConnectionMethod.AccessToken:
+        case GitLabConnectionMethod.AccessToken:
           await formSubmit(formData);
           break;
 
-        case GitlabConnectionMethod.OAuth:
+        case GitLabConnectionMethod.OAuth:
           if (!oauthClientId) {
             return;
           }
@@ -165,10 +165,10 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
   let isMissingConfig: boolean;
 
   switch (selectedMethod) {
-    case GitlabConnectionMethod.OAuth:
+    case GitLabConnectionMethod.OAuth:
       isMissingConfig = !oauthClientId;
       break;
-    case GitlabConnectionMethod.AccessToken:
+    case GitLabConnectionMethod.AccessToken:
       isMissingConfig = false;
       break;
     default:
@@ -210,7 +210,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
                 APP_CONNECTION_MAP[AppConnection.Gitlab].name
               }. This field cannot be changed after creation.`}
               errorText={
-                !isLoading && isMissingConfig && selectedMethod === GitlabConnectionMethod.OAuth
+                !isLoading && isMissingConfig && selectedMethod === GitLabConnectionMethod.OAuth
                   ? `Environment variables have not been configured. ${
                       isInfisicalCloud()
                         ? "Please contact Infisical."
@@ -226,7 +226,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
                 value={value}
                 onValueChange={(val) => {
                   onChange(val);
-                  if (val === GitlabConnectionMethod.OAuth) {
+                  if (val === GitLabConnectionMethod.OAuth) {
                     setValue("credentials.code", "custom");
                   }
                 }}
@@ -234,11 +234,11 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >
-                {Object.values(GitlabConnectionMethod).map((method) => {
+                {Object.values(GitLabConnectionMethod).map((method) => {
                   return (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}{" "}
-                      {method === GitlabConnectionMethod.AccessToken ? " (Recommended)" : ""}
+                      {method === GitLabConnectionMethod.AccessToken ? " (Recommended)" : ""}
                     </SelectItem>
                   );
                 })}
@@ -247,7 +247,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
           )}
         />
 
-        {selectedMethod === GitlabConnectionMethod.AccessToken && (
+        {selectedMethod === GitLabConnectionMethod.AccessToken && (
           <>
             <Controller
               name="credentials.accessTokenType"
@@ -263,7 +263,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
                     value={value}
                     onValueChange={(val) => {
                       onChange(val);
-                      if (val === GitlabConnectionMethod.OAuth) {
+                      if (val === GitLabConnectionMethod.OAuth) {
                         setValue("credentials.code", "custom");
                       }
                     }}
@@ -313,11 +313,11 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
             isDisabled={
               isSubmitting ||
               (!isUpdate && !isDirty) ||
-              (isMissingConfig && selectedMethod === GitlabConnectionMethod.OAuth) ||
+              (isMissingConfig && selectedMethod === GitLabConnectionMethod.OAuth) ||
               isRedirecting
             }
           >
-            {isRedirecting && selectedMethod === GitlabConnectionMethod.OAuth
+            {isRedirecting && selectedMethod === GitLabConnectionMethod.OAuth
               ? "Redirecting to GitLab..."
               : isUpdate
                 ? "Reconnect to GitLab"

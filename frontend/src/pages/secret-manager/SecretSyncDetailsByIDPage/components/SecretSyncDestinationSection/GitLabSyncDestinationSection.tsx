@@ -1,8 +1,8 @@
 import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { GitlabSyncScope, TGitlabSync } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
+import { GitLabSyncScope, TGitLabSync } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 type Props = {
-  secretSync: TGitlabSync;
+  secretSync: TGitLabSync;
 };
 
 export const GitLabSyncDestinationSection = ({ secretSync }: Props) => {
@@ -17,7 +17,7 @@ export const GitLabSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      {secretSync.destinationConfig.scope === GitlabSyncScope.Project && (
+      {secretSync.destinationConfig.scope === GitLabSyncScope.Project && (
         <>
           <GenericFieldLabel label="Project Name">
             {secretSync.destinationConfig.projectName}
@@ -27,7 +27,7 @@ export const GitLabSyncDestinationSection = ({ secretSync }: Props) => {
           </GenericFieldLabel>
         </>
       )}
-      {secretSync.destinationConfig.scope === GitlabSyncScope.Group && (
+      {secretSync.destinationConfig.scope === GitLabSyncScope.Group && (
         <>
           <GenericFieldLabel label="Group Name">
             {secretSync.destinationConfig.groupName}

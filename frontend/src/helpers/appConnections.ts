@@ -24,7 +24,7 @@ import {
   GcpConnectionMethod,
   GitHubConnectionMethod,
   GitHubRadarConnectionMethod,
-  GitlabConnectionMethod,
+  GitLabConnectionMethod,
   HCVaultConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
@@ -102,7 +102,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureDevOpsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
-    case GitlabConnectionMethod.OAuth:
+    case GitLabConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:

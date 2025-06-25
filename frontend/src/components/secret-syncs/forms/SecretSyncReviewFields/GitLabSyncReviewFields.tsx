@@ -3,6 +3,7 @@ import { useFormContext } from "react-hook-form";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 export const GitLabSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.GitLab }>();
@@ -17,10 +18,10 @@ export const GitLabSyncReviewFields = () => {
   return (
     <>
       <GenericFieldLabel label="Scope">{scope}</GenericFieldLabel>
-      {scope === GitlabSyncScope.Project && (
+      {scope === GitLabSyncScope.Project && (
         <GenericFieldLabel label="Project Name">{projectName}</GenericFieldLabel>
       )}
-      {scope === GitlabSyncScope.Group && (
+      {scope === GitLabSyncScope.Group && (
         <GenericFieldLabel label="Group Name">{groupName}</GenericFieldLabel>
       )}
       {targetEnvironment && (

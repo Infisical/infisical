@@ -11,14 +11,14 @@ import {
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
-  GitlabConnectionMethod,
+  GitLabConnectionMethod,
   TAzureAppConfigurationConnection,
   TAzureClientSecretsConnection,
   TAzureDevOpsConnection,
   TAzureKeyVaultConnection,
   TGitHubConnection,
   TGitHubRadarConnection,
-  TGitlabConnection,
+  TGitLabConnection,
   useCreateAppConnection,
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
@@ -35,7 +35,7 @@ type GithubFormData = BaseFormData & Pick<TGitHubConnection, "name" | "method" |
 type GithubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
 
-type GitlabFormData = BaseFormData & Pick<TGitlabConnection, "name" | "method" | "description">;
+type GitLabFormData = BaseFormData & Pick<TGitLabConnection, "name" | "method" | "description">;
 
 type AzureKeyVaultFormData = BaseFormData &
   Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
@@ -65,7 +65,7 @@ type AzureDevOpsFormData = BaseFormData &
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
   [AppConnection.GitHubRadar]: GithubRadarFormData & { app: AppConnection.GitHubRadar };
-  [AppConnection.Gitlab]: GitlabFormData & { app: AppConnection.Gitlab };
+  [AppConnection.Gitlab]: GitLabFormData & { app: AppConnection.Gitlab };
   [AppConnection.AzureKeyVault]: AzureKeyVaultFormData & { app: AppConnection.AzureKeyVault };
   [AppConnection.AzureAppConfiguration]: AzureAppConfigurationFormData & {
     app: AppConnection.AzureAppConfiguration;
@@ -162,7 +162,7 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.Gitlab,
           name,
           description,
-          method: GitlabConnectionMethod.OAuth,
+          method: GitLabConnectionMethod.OAuth,
           credentials: {
             code: code as string
           }

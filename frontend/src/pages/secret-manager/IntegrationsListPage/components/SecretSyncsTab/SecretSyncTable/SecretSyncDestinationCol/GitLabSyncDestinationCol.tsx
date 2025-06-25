@@ -1,10 +1,10 @@
-import { TGitlabSync } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
+import { TGitLabSync } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 import { getSecretSyncDestinationColValues } from "../helpers";
 import { SecretSyncTableCell } from "../SecretSyncTableCell";
 
 type Props = {
-  secretSync: TGitlabSync;
+  secretSync: TGitLabSync;
 };
 
 export const GitLabSyncDestinationCol = ({ secretSync }: Props) => {

@@ -14,7 +14,7 @@ import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
-import { TGitlabConnection } from "./gitlab-connection";
+import { TGitLabConnection } from "./gitlab-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
@@ -88,7 +88,7 @@ export type TAppConnection =
   | THerokuConnection
   | TRenderConnection
   | TFlyioConnection
-  | TGitlabConnection
+  | TGitLabConnection
   | TCloudflareConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
@@ -144,6 +144,6 @@ export type TAppConnectionMap = {
   [AppConnection.Heroku]: THerokuConnection;
   [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
-  [AppConnection.Gitlab]: TGitlabConnection;
+  [AppConnection.Gitlab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
 };

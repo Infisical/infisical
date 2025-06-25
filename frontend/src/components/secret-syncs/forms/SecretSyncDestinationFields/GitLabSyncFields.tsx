@@ -20,7 +20,7 @@ import {
   useGitlabConnectionListProjects
 } from "@app/hooks/api/appConnections/gitlab";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
-import { GitlabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
+import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 import { TSecretSyncForm } from "../schemas";
 
@@ -71,7 +71,7 @@ export const GitLabSyncFields = () => {
   const shouldMaskSecrets = useWatch({ name: "destinationConfig.shouldMaskSecrets", control });
 
   const { data: groups, isLoading: isGroupsLoading } = useGitlabConnectionListGroups(connectionId, {
-    enabled: Boolean(connectionId) && scope === GitlabSyncScope.Group
+    enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
   });
 
   const { data: projects, isLoading: isProjectsLoading } = useGitlabConnectionListProjects(
@@ -82,21 +82,21 @@ export const GitLabSyncFields = () => {
   );
 
   return (
-    <div className="h-[calc(100vh-28rem)] overflow-auto">
+    <div className="h-full overflow-auto">
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectId", "");
           setValue("destinationConfig.projectName", "");
           setValue("destinationConfig.groupId", "");
           setValue("destinationConfig.groupName", "");
-          setValue("destinationConfig.scope", GitlabSyncScope.Project);
+          setValue("destinationConfig.scope", GitLabSyncScope.Project);
         }}
       />
 
       <Controller
         name="destinationConfig.scope"
         control={control}
-        defaultValue={GitlabSyncScope.Project}
+        defaultValue={GitLabSyncScope.Project}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl errorText={error?.message} isError={Boolean(error?.message)} label="Scope">
             <Select
@@ -113,7 +113,7 @@ export const GitLabSyncFields = () => {
               placeholder="Select a scope..."
               dropdownContainerClassName="max-w-none"
             >
-              {Object.values(GitlabSyncScope).map((projectScope) => (
+              {Object.values(GitLabSyncScope).map((projectScope) => (
                 <SelectItem className="capitalize" value={projectScope} key={projectScope}>
                   {projectScope.replace("-", " ")}
                 </SelectItem>
@@ -123,7 +123,7 @@ export const GitLabSyncFields = () => {
         )}
       />
 
-      {scope === GitlabSyncScope.Group && (
+      {scope === GitLabSyncScope.Group && (
         <Controller
           name="destinationConfig.groupId"
           control={control}
@@ -166,7 +166,7 @@ export const GitLabSyncFields = () => {
         />
       )}
 
-      {scope === GitlabSyncScope.Project && (
+      {scope === GitLabSyncScope.Project && (
         <Controller
           name="destinationConfig.projectId"
           control={control}

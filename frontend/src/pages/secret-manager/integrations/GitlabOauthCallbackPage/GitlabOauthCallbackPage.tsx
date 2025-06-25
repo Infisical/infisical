@@ -4,7 +4,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useWorkspace } from "@app/context";
 import { useCreateAppConnection, useUpdateAppConnection } from "@app/hooks/api/appConnections";
-import { GitlabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
+import { GitLabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
 
 export const GitLabOAuthCallbackPage = () => {
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export const GitLabOAuthCallbackPage = () => {
         // Prepare app connection data with OAuth credentials
         const connectionData = {
           ...formData,
-          method: GitlabConnectionMethod.OAuth,
+          method: GitLabConnectionMethod.OAuth,
           credentials: {
             code: code as string
           }
