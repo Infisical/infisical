@@ -2018,7 +2018,7 @@
         "tab": "SDKs",
         "groups": [
           {
-            "group": "",
+            "group": "Overview",
             "pages": ["sdks/overview"]
           },
           {
@@ -2038,7 +2038,7 @@
         "tab": "Changelog",
         "groups": [
           {
-            "group": "",
+            "group": "Overview",
             "pages": ["changelog/overview"]
           }
         ]
