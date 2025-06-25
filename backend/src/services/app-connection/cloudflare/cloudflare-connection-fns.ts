@@ -43,18 +43,19 @@ export const listCloudflarePagesProjects = async (
   }));
 };
 
-export const validateCloudflareConnectionCredentials = async (config: TCloudflareConnectionConfig) => {
+export const validateCloudflareConnectionCredentials = async (config: any) => {
   const { apiToken, accountId } = config.credentials;
 
   try {
-    const resp = await request.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
+    // Try to access zones instead of account info, which requires fewer permissions
+    const resp = await request.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         Accept: "application/json"
       }
     });
 
-    if (resp.data === null) {
+    if (!resp.data.success) {
       throw new BadRequestError({
         message: "Unable to validate connection: Invalid API token provided."
       });
