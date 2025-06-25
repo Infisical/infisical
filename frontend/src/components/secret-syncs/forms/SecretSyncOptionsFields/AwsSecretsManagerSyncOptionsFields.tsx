@@ -190,8 +190,8 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
           }
         }}
       >
-        <p className="w-[14rem]">
-          Set Secret Tags{" "}
+        <p className="w-fit">
+          Configure Secret Tags{" "}
           <Tooltip
             className="max-w-md"
             content={

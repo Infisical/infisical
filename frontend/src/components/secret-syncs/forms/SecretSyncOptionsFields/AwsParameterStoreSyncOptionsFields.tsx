@@ -185,8 +185,8 @@ export const AwsParameterStoreSyncOptionsFields = () => {
           }
         }}
       >
-        <p className="w-[14rem]">
-          Set Resource Tags{" "}
+        <p className="w-fit">
+          Configure Resource Tags{" "}
           <Tooltip
             className="max-w-md"
             content={
