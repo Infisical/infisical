@@ -131,6 +131,7 @@ export const auditLogQueueServiceFactory = async ({
                 });
 
               try {
+                logger.info(`Streaming audit log [url=${url}] for org [orgId=${orgId}]`);
                 const response = await request.post(
                   url,
                   { ...providerSpecificPayload(url), ...auditLog },
@@ -236,6 +237,7 @@ export const auditLogQueueServiceFactory = async ({
             });
 
           try {
+            logger.info(`Streaming audit log [url=${url}] for org [orgId=${orgId}]`);
             const response = await request.post(
               url,
               { ...providerSpecificPayload(url), ...auditLog },
