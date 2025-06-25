@@ -489,10 +489,10 @@ When set, all visits to the Infisical login page will automatically redirect use
 <Accordion title="Gitlab">
   Follow detailed guide to configure [GitLab SSO](/documentation/platform/sso/gitlab)
 
-  <ParamField query="INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID" type="string" default="none" optional>
+  <ParamField query="CLIENT_ID_GITLAB_LOGIN" type="string" default="none" optional>
     OAuth2 client ID for GitLab login
   </ParamField>
-  <ParamField query="INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
+  <ParamField query="CLIENT_SECRET_GITLAB_LOGIN" type="string" default="none" optional>
     OAuth2 client secret for GitLab login
   </ParamField>
   <ParamField query="URL_GITLAB_LOGIN" type="string" default="https://gitlab.com" optional>
@@ -591,11 +591,11 @@ You can configure third-party app connections for re-use across Infisical Projec
 </Accordion>
 
 <Accordion title="GitLab OAuth Connection">
-    <ParamField query="CLIENT_ID_GITLAB" type="string" default="none" optional>
+    <ParamField query="INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID" type="string" default="none" optional>
         The Application ID of your GitLab OAuth application.
     </ParamField>
 
-    <ParamField query="CLIENT_SECRET_GITLAB" type="string" default="none" optional>
+    <ParamField query="INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
         The Secret of your GitLab OAuth application.
     </ParamField>
 

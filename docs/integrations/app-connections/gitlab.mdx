@@ -97,8 +97,8 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
           </Step>
           <Step title="Configure Token">
             <Tabs>
-              <Tab title="Secret Rotation">
-              For Secret Rotations, your token will require the ability to access the API:
+              <Tab title="Secret Sync">
+              For Secret Syncs, your token will require the ability to access the API:
               Fill in the token details:
               - **Token name**: A descriptive name for the token (e.g., "connection-token")
               - **Expiration date**: Set an appropriate expiration date
@@ -107,6 +107,10 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
               ![GitLab Personal Token Form](/images/app-connections/gitlab/gitlab-personal-access-token-form.png)
               </Tab>
             </Tabs>
+
+            <Info>
+              Personal Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
+            </Info>
           </Step>
           <Step title="Copy Token">
             Copy the generated token immediately as it won't be shown again.
@@ -131,8 +135,8 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
           </Step>
           <Step title="Configure Token">
             <Tabs>
-            <Tab title="Secret Rotation">
-                  For Secret Rotations, your token will require the ability to access the API and be at least an **Owner**:
+            <Tab title="Secret Sync">
+                  For Secret Syncs, your token will require the ability to access the API and be at least an **Owner**:
                   Fill in the token details:
                   - **Token name**: A descriptive name for the token
                   - **Expiration date**: Set an appropriate expiration date
@@ -144,7 +148,7 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
             </Tabs>
 
             <Info>
-              Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
+              Project Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
             </Info>
           </Step>
           <Step title="Copy Token">
@@ -172,7 +176,7 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
         ![Select GitLab Connection](/images/app-connections/gitlab/select-gitlab-connection.png)
       </Step>
       <Step title="Configure Access Token">
-        Select the **Access Token** method and paste your GitLab access token in the provided field. And select the appropriate token type.
+        Select the **Access Token** method, paste your GitLab access token in the provided field, and select the appropriate token type.
 
         ![Configure Access Token](/images/app-connections/gitlab/create-gitlab-access-token-connection.png)
 

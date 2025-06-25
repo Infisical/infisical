@@ -516,7 +516,6 @@ export const OAuthCallbackPage = () => {
     (async () => {
       let data: { connectionId?: string; returnUrl?: string; appConnectionName?: string } | null =
         null;
-      console.log("appConnection", appConnection);
 
       if (appConnection === AppConnection.GitHub) {
         data = await handleGithub();
