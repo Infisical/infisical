@@ -24,7 +24,7 @@ import { TSecretSyncForm } from "../schemas";
 
 const AwsTagsSection = () => {
   const { control } = useFormContext<
-    TSecretSyncForm & { destination: SecretSync.AWSSecretsManager }
+    TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
 
   const tagFields = useFieldArray({
@@ -38,7 +38,7 @@ const AwsTagsSection = () => {
         label="Resource Tags"
         tooltipText="Add resource tags to parameters synced by Infisical"
       />
-      <div className="grid max-h-[20vh] grid-cols-12 flex-col items-end gap-2 overflow-y-auto">
+      <div className="grid max-h-[20vh] grid-cols-12 items-end gap-2 overflow-y-auto">
         {tagFields.fields.map(({ id: tagFieldId }, i) => (
           <Fragment key={tagFieldId}>
             <div className="col-span-5">

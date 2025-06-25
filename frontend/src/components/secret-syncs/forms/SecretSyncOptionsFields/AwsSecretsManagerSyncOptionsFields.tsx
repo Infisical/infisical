@@ -36,7 +36,7 @@ const AwsTagsSection = () => {
   return (
     <div className="mb-4 mt-2 flex flex-col pl-2">
       <FormLabel label="Tags" tooltipText="Add tags to secrets synced by Infisical" />
-      <div className="grid max-h-[20vh] grid-cols-12 flex-col items-end gap-2 overflow-y-auto">
+      <div className="grid max-h-[20vh] grid-cols-12 items-end gap-2 overflow-y-auto">
         {tagFields.fields.map(({ id: tagFieldId }, i) => (
           <Fragment key={tagFieldId}>
             <div className="col-span-5">
@@ -220,7 +220,7 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
             >
               <Switch
                 className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                id="overwrite-existing-secrets"
+                id="sync-metadata-as-tags"
                 thumbClassName="bg-mineshaft-800"
                 isChecked={value}
                 onCheckedChange={onChange}
