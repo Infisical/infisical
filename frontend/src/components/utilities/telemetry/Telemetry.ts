@@ -11,8 +11,7 @@ class Capturer {
   }
 
   capture(item: string) {
-    console.log("PostHog", item);
-    if ((envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true) || true) {
+    if ((envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true)) {
       try {
         const organizationId = String(localStorage.getItem("orgData.id"));
         this.api.capture(item, {
