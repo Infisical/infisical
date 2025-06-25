@@ -146,7 +146,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
             </Tag>
           </div>
         )}
-        {onShowAccessTree && (
+        {isOpen && onShowAccessTree && (
           <Button
             leftIcon={<FontAwesomeIcon icon={faDiagramProject} />}
             variant="outline_bg"

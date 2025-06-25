@@ -182,7 +182,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                   <Select
                     value={environment}
                     onValueChange={accessTreeData.setEnvironment}
-                    className="w-44"
+                    className="w-60"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
                     aria-label="Environment"
@@ -193,7 +193,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                         value={env.slug}
                         className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
                       >
-                        <div className="ml-3 font-medium">{env.name}</div>
+                        <div className="ml-3 truncate font-medium">{env.name}</div>
                       </SelectItem>
                     ))}
                   </Select>
