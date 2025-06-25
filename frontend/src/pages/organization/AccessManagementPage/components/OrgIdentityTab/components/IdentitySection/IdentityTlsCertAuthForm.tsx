@@ -210,7 +210,7 @@ export const IdentityTlsCertAuthForm = ({
                 isError={Boolean(error)}
                 isOptional
                 errorText={error?.message}
-                tooltipText="Comma seperated common names allowed to authenticate against the identity. Leave empty to allow any certificate."
+                tooltipText="Comma separated common names allowed to authenticate against the identity. Leave empty to allow any certificate."
               >
                 <Input {...field} placeholder="" type="text" />
               </FormControl>
