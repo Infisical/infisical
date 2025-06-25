@@ -331,6 +331,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IssueCert,
+        organizationId: req.permission.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           subscriberId: subscriber.id,
@@ -399,6 +400,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IssueCert,
         distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
         properties: {
           subscriberId: subscriber.id,
           commonName: subscriber.commonName,
@@ -471,6 +473,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignCert,
         distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
         properties: {
           subscriberId: subscriber.id,
           commonName: subscriber.commonName,

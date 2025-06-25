@@ -1,3 +1,13 @@
+import {
+  IdentityActor,
+  KmipClientActor,
+  PlatformActor,
+  ScimClientActor,
+  ServiceActor,
+  UnknownUserActor,
+  UserActor
+} from "@app/ee/services/audit-log/audit-log-types";
+
 export enum PostHogEventTypes {
   SecretPush = "secrets pushed",
   SecretPulled = "secrets pulled",
@@ -40,6 +50,14 @@ export type TSecretModifiedEvent = {
     secretPath: string;
     channel?: string;
     userAgent?: string;
+    actor?:
+      | UserActor
+      | IdentityActor
+      | ServiceActor
+      | ScimClientActor
+      | PlatformActor
+      | UnknownUserActor
+      | KmipClientActor;
   };
 };
 
@@ -214,7 +232,7 @@ export type TInvalidateCacheEvent = {
   };
 };
 
-export type TPostHogEvent = { distinctId: string } & (
+export type TPostHogEvent = { distinctId: string; organizationId?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent

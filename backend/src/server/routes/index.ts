@@ -278,6 +278,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
+import { posthogAggregatedEventsDALFactory } from "@app/services/telemetry/posthog-aggregated-events-dal";
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -398,6 +399,7 @@ export const registerRoutes = async (
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
+  const posthogAggregatedEventsDAL = posthogAggregatedEventsDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
 
@@ -681,12 +683,14 @@ export const registerRoutes = async (
 
   const telemetryService = telemetryServiceFactory({
     keyStore,
-    licenseService
+    licenseService,
+    posthogAggregatedEventsDAL
   });
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
-    queueService
+    queueService,
+    telemetryService
   });
 
   const invalidateCacheQueue = invalidateCacheQueueFactory({

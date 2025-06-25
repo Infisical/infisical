@@ -11,9 +11,17 @@ class Capturer {
   }
 
   capture(item: string) {
-    if (envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true) {
+    console.log("PostHog", item);
+    if ((envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true) || true) {
       try {
-        this.api.capture(item);
+        const organizationId = String(localStorage.getItem("orgData.id"));
+        this.api.capture(item, {
+          ...(organizationId && {
+            groups: {
+              organization: organizationId
+            }
+          })
+        });
       } catch (error) {
         console.error("PostHog", error);
       }
