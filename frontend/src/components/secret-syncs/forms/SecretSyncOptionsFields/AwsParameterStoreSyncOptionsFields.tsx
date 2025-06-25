@@ -22,22 +22,10 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 
-export const AwsParameterStoreSyncOptionsFields = () => {
-  const { control, watch } = useFormContext<
+const AwsTagsSection = () => {
+  const { control } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
-
-  const region = watch("destinationConfig.region");
-  const connectionId = useWatch({ name: "connection.id", control });
-
-  const { data: kmsKeys = [], isPending: isKmsKeysPending } = useListAwsConnectionKmsKeys(
-    {
-      connectionId,
-      region,
-      destination: SecretSync.AWSParameterStore
-    },
-    { enabled: Boolean(connectionId && region) }
-  );
 
   const tagFields = useFieldArray({
     control,
@@ -45,64 +33,8 @@ export const AwsParameterStoreSyncOptionsFields = () => {
   });
 
   return (
-    <>
-      <Controller
-        name="syncOptions.keyId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipText="The AWS KMS key to encrypt parameters with"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="KMS Key"
-          >
-            <FilterableSelect
-              isLoading={isKmsKeysPending && Boolean(connectionId && region)}
-              isDisabled={!connectionId}
-              value={kmsKeys.find((org) => org.alias === value) ?? null}
-              onChange={(option) =>
-                onChange((option as SingleValue<TAwsConnectionKmsKey>)?.alias ?? null)
-              }
-              // eslint-disable-next-line react/no-unstable-nested-components
-              noOptionsMessage={({ inputValue }) =>
-                inputValue ? undefined : (
-                  <p>
-                    To configure a KMS key, ensure the following permissions are present on the
-                    selected IAM role:{" "}
-                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
-                      &#34;kms:ListAliases&#34;
-                    </span>
-                    ,{" "}
-                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
-                      &#34;kms:DescribeKey&#34;
-                    </span>
-                    ,{" "}
-                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
-                      &#34;kms:Encrypt&#34;
-                    </span>
-                    ,{" "}
-                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
-                      &#34;kms:Decrypt&#34;
-                    </span>
-                    .
-                  </p>
-                )
-              }
-              options={kmsKeys}
-              placeholder="Leave blank to use default KMS key"
-              getOptionLabel={(option) =>
-                option.alias === "alias/aws/ssm" ? `${option.alias} (Default)` : option.alias
-              }
-              getOptionValue={(option) => option.alias}
-            />
-          </FormControl>
-        )}
-      />
-      <FormLabel
-        label="Resource Tags"
-        tooltipText="Add resource tags to parameters synced by Infisical"
-      />
-      <div className="mb-3 grid max-h-[20vh] grid-cols-12 flex-col items-end gap-2 overflow-y-auto">
+    <div className="mb-4 mt-2 flex flex-col pl-2">
+      <div className="grid max-h-[20vh] grid-cols-12 items-end gap-2 overflow-y-auto">
         {tagFields.fields.map(({ id: tagFieldId }, i) => (
           <Fragment key={tagFieldId}>
             <div className="col-span-5">
@@ -164,12 +96,118 @@ export const AwsParameterStoreSyncOptionsFields = () => {
           Add Tag
         </Button>
       </div>
+    </div>
+  );
+};
+
+export const AwsParameterStoreSyncOptionsFields = () => {
+  const { control, watch, setValue } = useFormContext<
+    TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
+  >();
+
+  const region = watch("destinationConfig.region");
+  const connectionId = useWatch({ name: "connection.id", control });
+  const watchedTags = watch("syncOptions.tags");
+
+  const { data: kmsKeys = [], isPending: isKmsKeysPending } = useListAwsConnectionKmsKeys(
+    {
+      connectionId,
+      region,
+      destination: SecretSync.AWSParameterStore
+    },
+    { enabled: Boolean(connectionId && region) }
+  );
+
+  return (
+    <>
+      <Controller
+        name="syncOptions.keyId"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            tooltipText="The AWS KMS key to encrypt parameters with"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            label="KMS Key"
+          >
+            <FilterableSelect
+              isLoading={isKmsKeysPending && Boolean(connectionId && region)}
+              isDisabled={!connectionId}
+              value={kmsKeys.find((org) => org.alias === value) ?? null}
+              onChange={(option) =>
+                onChange((option as SingleValue<TAwsConnectionKmsKey>)?.alias ?? null)
+              }
+              // eslint-disable-next-line react/no-unstable-nested-components
+              noOptionsMessage={({ inputValue }) =>
+                inputValue ? undefined : (
+                  <p>
+                    To configure a KMS key, ensure the following permissions are present on the
+                    selected IAM role:{" "}
+                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
+                      &#34;kms:ListAliases&#34;
+                    </span>
+                    ,{" "}
+                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
+                      &#34;kms:DescribeKey&#34;
+                    </span>
+                    ,{" "}
+                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
+                      &#34;kms:Encrypt&#34;
+                    </span>
+                    ,{" "}
+                    <span className="rounded bg-mineshaft-600 text-mineshaft-300">
+                      &#34;kms:Decrypt&#34;
+                    </span>
+                    .
+                  </p>
+                )
+              }
+              options={kmsKeys}
+              placeholder="Leave blank to use default KMS key"
+              getOptionLabel={(option) =>
+                option.alias === "alias/aws/ssm" ? `${option.alias} (Default)` : option.alias
+              }
+              getOptionValue={(option) => option.alias}
+            />
+          </FormControl>
+        )}
+      />
+      <Switch
+        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+        id="overwrite-tags"
+        thumbClassName="bg-mineshaft-800"
+        isChecked={Array.isArray(watchedTags)}
+        onCheckedChange={(isChecked) => {
+          if (isChecked) {
+            setValue("syncOptions.tags", []);
+          } else {
+            setValue("syncOptions.tags", undefined);
+          }
+        }}
+      >
+        <p className="w-fit">
+          Configure Resource Tags{" "}
+          <Tooltip
+            className="max-w-md"
+            content={
+              <p>
+                If enabled, AWS resource tags will be overwritten using static values defined below.
+              </p>
+            }
+          >
+            <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+          </Tooltip>
+        </p>
+      </Switch>
+
+      {Array.isArray(watchedTags) && <AwsTagsSection />}
+
       <Controller
         name="syncOptions.syncSecretMetadataAsTags"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
-            className="mt-6"
+            className="mt-4"
             isError={Boolean(error?.message)}
             errorText={error?.message}
           >
