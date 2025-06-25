@@ -164,7 +164,7 @@ export const MinimizedOrgSidebar = () => {
   const handleCopyToken = async () => {
     try {
       await window.navigator.clipboard.writeText(getAuthToken());
-      createNotification({ type: "success", text: "Copied user organization token to clipboard" });
+      createNotification({ type: "success", text: "Copied current login session token to clipboard" });
     } catch (error) {
       console.log(error);
       createNotification({ type: "error", text: "Failed to copy user token to clipboard" });
@@ -610,7 +610,7 @@ export const MinimizedOrgSidebar = () => {
                 <DropdownMenuItem onClick={handleCopyToken}>
                   Copy Token
                   <Tooltip
-                    content="This token is scoped to your organization and can only access resources within it."
+                    content="This token is linked to your current login session and can only access resources within the organization you're currently logged into."
                     className="max-w-3xl"
                   >
                     <FontAwesomeIcon icon={faInfoCircle} className="mb-[0.06rem] pl-1.5 text-xs" />
