@@ -267,7 +267,7 @@ export const GitLabSyncFields = () => {
                 <SecretProtectionOption
                   id="should-hide-secrets"
                   title="Mark secrets as Hidden"
-                  tooltip="Secrets can only be marked as hidden if they are also masked."
+                  tooltip="Secrets can only be marked as hidden if they are also masked. If this is enabled, Infisical will not be able to unhide/unmask secrets from the sync destination if you disable the option later."
                   isEnabled={value || false}
                   onChange={onChange}
                   isDisabled={!shouldMaskSecrets}
