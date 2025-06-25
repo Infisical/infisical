@@ -155,7 +155,6 @@ const createGitLabVariable = async ({
         environmentScope: payload.environmentScope,
         protected: payload.protected,
         masked: payload.masked,
-        // @ts-expect-error type
         ...(payload.masked_and_hidden && { masked_and_hidden: payload.masked_and_hidden }),
         raw: false
       });
