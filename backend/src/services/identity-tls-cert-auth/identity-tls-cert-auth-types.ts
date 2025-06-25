@@ -9,7 +9,7 @@ export type TLoginTlsCertAuthDTO = {
 export type TAttachTlsCertAuthDTO = {
   identityId: string;
   caCertificate: string;
-  allowedCommonNames?: string;
+  allowedCommonNames?: string | null;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -20,7 +20,7 @@ export type TAttachTlsCertAuthDTO = {
 export type TUpdateTlsCertAuthDTO = {
   identityId: string;
   caCertificate?: string;
-  allowedCommonNames?: string;
+  allowedCommonNames?: string | null;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

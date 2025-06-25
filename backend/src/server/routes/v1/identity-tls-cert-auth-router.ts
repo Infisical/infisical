@@ -1,14 +1,17 @@
+import crypto from "node:crypto";
+
 import { z } from "zod";
 
-// import { TLSSocket } from "tls";
+import { IdentityTlsCertAuthsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
-import { IdentityTlsCertAuthsSchema } from "@app/db/schemas";
-import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const validateCommonNames = z
   .string()
@@ -21,44 +24,74 @@ const validateCommonNames = z
       .join(",")
   );
 
+const validateCaCertificate = (caCert: string) => {
+  if (!caCert) return true;
+  try {
+    // eslint-disable-next-line no-new
+    new crypto.X509Certificate(caCert);
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
 export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvider) => {
-  // server.route({
-  //   method: "GET",
-  //   url: "/",
-  //   config: {
-  //     rateLimit: readLimit
-  //   },
-  //   schema: {
-  //     params: z.object({}),
-  //     response: {
-  //       200: z.object({})
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT]),
-  //   handler: async (req) => {
-  //     const { socket } = req;
-  //     if (socket instanceof TLSSocket && socket.encrypted) {
-  //       // Inside this block, TypeScript now knows `socket` is a TlsSocket
-  //       const certificate = socket.getPeerCertificate();
-  //
-  //       if (Object.keys(certificate).length === 0) {
-  //         return reply.send({ message: "Client did not provide a certificate." });
-  //       }
-  //
-  //       return reply.send({
-  //         message: "Certificate received!",
-  //         subject: certificate.subject,
-  //         issuer: certificate.issuer,
-  //         fingerprint: certificate.fingerprint
-  //       });
-  //     } else {
-  //       // This will handle plain HTTP requests gracefully
-  //       return reply
-  //         .status(400)
-  //         .send({ error: "This endpoint requires an HTTPS connection with a client certificate." });
-  //     }
-  //   }
-  // });
+  server.route({
+    method: "POST",
+    url: "/login",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.TlsCertAuth],
+      description: "Login with TLS Certificate Auth",
+      body: z.object({
+        identityId: z.string().trim().describe(TLS_CERT_AUTH.LOGIN.identityId)
+      }),
+      response: {
+        200: z.object({
+          accessToken: z.string(),
+          expiresIn: z.coerce.number(),
+          accessTokenMaxTTL: z.coerce.number(),
+          tokenType: z.literal("Bearer")
+        })
+      }
+    },
+    handler: async (req) => {
+      const appCfg = getConfig();
+      const clientCertificate = req.headers[appCfg.IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY];
+      if (!clientCertificate) {
+        throw new BadRequestError({ message: "Missing TLS certificate in header" });
+      }
+
+      const { identityTlsCertAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+        await server.services.identityTlsCertAuth.login({
+          identityId: req.body.identityId,
+          clientCertificate: clientCertificate as string
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityMembershipOrg?.orgId,
+        event: {
+          type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH,
+          metadata: {
+            identityId: identityTlsCertAuth.identityId,
+            identityAccessTokenId: identityAccessToken.id,
+            identityTlsCertAuthId: identityTlsCertAuth.id
+          }
+        }
+      });
+
+      return {
+        accessToken,
+        tokenType: "Bearer" as const,
+        expiresIn: identityTlsCertAuth.accessTokenTTL,
+        accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL
+      };
+    }
+  });
 
   server.route({
     method: "POST",
@@ -81,8 +114,16 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       }),
       body: z
         .object({
-          allowedCommonNames: validateCommonNames.describe(TLS_CERT_AUTH.ATTACH.allowedCommonNames),
-          caCertificate: z.string().min(1).describe(TLS_CERT_AUTH.ATTACH.caCertificate),
+          allowedCommonNames: validateCommonNames
+            .optional()
+            .nullable()
+            .describe(TLS_CERT_AUTH.ATTACH.allowedCommonNames),
+          caCertificate: z
+            .string()
+            .min(1)
+            .max(10240)
+            .refine(validateCaCertificate, "Invalid CA Certificate.")
+            .describe(TLS_CERT_AUTH.ATTACH.caCertificate),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -118,7 +159,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          identityTlsCloudAuth: IdentityTlsCertAuthsSchema
+          identityTlsCertAuth: IdentityTlsCertAuthsSchema
         })
       }
     },
@@ -174,7 +215,17 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       }),
       body: z
         .object({
-          allowedCommonNames: validateCommonNames.describe(TLS_CERT_AUTH.UPDATE.allowedCommonNames),
+          caCertificate: z
+            .string()
+            .min(1)
+            .max(10240)
+            .refine(validateCaCertificate, "Invalid CA Certificate.")
+            .optional()
+            .describe(TLS_CERT_AUTH.ATTACH.caCertificate),
+          allowedCommonNames: validateCommonNames
+            .optional()
+            .nullable()
+            .describe(TLS_CERT_AUTH.UPDATE.allowedCommonNames),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -210,7 +261,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          identityTlsCloudAuth: IdentityTlsCertAuthsSchema
+          identityTlsCertAuth: IdentityTlsCertAuthsSchema
         })
       }
     },
@@ -265,7 +316,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          identityTlsCloudAuth: IdentityTlsCertAuthsSchema.extend({
+          identityTlsCertAuth: IdentityTlsCertAuthsSchema.extend({
             caCertificate: z.string()
           })
         })
@@ -315,7 +366,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          identityTlsCloudAuth: IdentityTlsCertAuthsSchema
+          identityTlsCertAuth: IdentityTlsCertAuthsSchema
         })
       }
     },

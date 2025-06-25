@@ -11,6 +11,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
@@ -81,7 +82,12 @@ export const identityTlsCertAuthServiceFactory = ({
       cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
     }).toString();
 
-    const clientCertificateX509 = new crypto.X509Certificate(Buffer.from(clientCertificate));
+    const leafCertificate = extractX509CertFromChain(decodeURIComponent(clientCertificate))?.[0];
+    if (!leafCertificate) {
+      throw new BadRequestError({ message: "Missing client certificate" });
+    }
+
+    const clientCertificateX509 = new crypto.X509Certificate(leafCertificate);
     const caCertificateX509 = new crypto.X509Certificate(caCertificate);
 
     const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);

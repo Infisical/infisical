@@ -17,6 +17,7 @@ import { IdentityKubernetesAuthForm } from "./IdentityKubernetesAuthForm";
 import { IdentityLdapAuthForm } from "./IdentityLdapAuthForm";
 import { IdentityOciAuthForm } from "./IdentityOciAuthForm";
 import { IdentityOidcAuthForm } from "./IdentityOidcAuthForm";
+import { IdentityTlsCertAuthForm } from "./IdentityTlsCertAuthForm";
 import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
@@ -52,6 +53,7 @@ const identityAuthMethods = [
   { label: "OCI Auth", value: IdentityAuthMethod.OCI_AUTH },
   { label: "OIDC Auth", value: IdentityAuthMethod.OIDC_AUTH },
   { label: "LDAP Auth", value: IdentityAuthMethod.LDAP_AUTH },
+  { label: "TLS Certificate Auth", value: IdentityAuthMethod.TLS_CERT_AUTH },
   {
     label: "JWT Auth",
     value: IdentityAuthMethod.JWT_AUTH
@@ -117,6 +119,15 @@ export const IdentityAuthMethodModalContent = ({
     [IdentityAuthMethod.UNIVERSAL_AUTH]: {
       render: () => (
         <IdentityUniversalAuthForm
+          identityId={identityAuthMethodData.identityId}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+      )
+    },
+    [IdentityAuthMethod.TLS_CERT_AUTH]: {
+      render: () => (
+        <IdentityTlsCertAuthForm
           identityId={identityAuthMethodData.identityId}
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}

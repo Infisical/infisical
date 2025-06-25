@@ -193,6 +193,8 @@ import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
+import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
 import { identityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
@@ -301,8 +303,6 @@ import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
-import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
-import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();

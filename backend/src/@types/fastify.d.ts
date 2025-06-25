@@ -74,6 +74,7 @@ import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-a
 import { TIdentityOciAuthServiceFactory } from "@app/services/identity-oci-auth/identity-oci-auth-service";
 import { TIdentityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { TIdentityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-types";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
@@ -110,7 +111,6 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
-import { TIdentityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-types";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {
