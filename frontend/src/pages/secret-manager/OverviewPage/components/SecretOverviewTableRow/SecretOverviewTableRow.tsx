@@ -1,8 +1,8 @@
 import { subject } from "@casl/ability";
-import { faCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faCheck,
+  faCircle,
   faCodeBranch,
   faEye,
   faEyeSlash,
@@ -145,14 +145,14 @@ export const SecretOverviewTableRow = ({
             <Td
               key={`sec-overview-${slug}-${i + 1}-value`}
               className={twMerge(
-                "px-0 py-0 group-hover:bg-mineshaft-700",
+                "border-r border-mineshaft-600 px-0 py-3 group-hover:bg-mineshaft-700",
                 isFormExpanded && "border-t-2 border-mineshaft-500",
                 (isSecretPresent && !isSecretEmpty) || isSecretImported ? "text-green-600" : "",
                 isSecretPresent && isSecretEmpty && !isSecretImported ? "text-yellow" : "",
                 !isSecretPresent && !isSecretEmpty && !isSecretImported ? "text-red-600" : ""
               )}
             >
-              <div className="h-full w-full border-r border-mineshaft-600 px-5 py-[0.85rem]">
+              <div className="mx-auto flex w-[0.03rem] justify-center">
                 <div className="flex justify-center">
                   {!isSecretEmpty && (
                     <Tooltip

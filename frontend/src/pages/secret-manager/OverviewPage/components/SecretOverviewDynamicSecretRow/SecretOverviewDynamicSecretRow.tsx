@@ -36,7 +36,7 @@ export const SecretOverviewDynamicSecretRow = ({
               isPresent ? "text-green-600" : "text-red-600"
             )}
           >
-            <div className="flex justify-center">
+            <div className="mx-auto flex w-[0.03rem] justify-center">
               <FontAwesomeIcon
                 // eslint-disable-next-line no-nested-ternary
                 icon={isPresent ? faCheck : faXmark}
