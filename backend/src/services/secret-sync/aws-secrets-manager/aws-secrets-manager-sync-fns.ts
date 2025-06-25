@@ -366,37 +366,39 @@ export const AwsSecretsManagerSyncFns = {
           }
         }
 
-        const { tagsToAdd, tagKeysToRemove } = processTags({
-          syncTagsRecord: {
-            // configured sync tags take preference over secret metadata
-            ...(syncOptions.syncSecretMetadataAsTags &&
-              Object.fromEntries(secretMetadata?.map((tag) => [tag.key, tag.value]) ?? [])),
-            ...syncTagsRecord
-          },
-          awsTagsRecord: Object.fromEntries(
-            awsDescriptionsRecord[key]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
-          )
-        });
+        if (syncOptions.tags !== undefined || syncOptions.syncSecretMetadataAsTags) {
+          const { tagsToAdd, tagKeysToRemove } = processTags({
+            syncTagsRecord: {
+              // configured sync tags take preference over secret metadata
+              ...(syncOptions.syncSecretMetadataAsTags &&
+                Object.fromEntries(secretMetadata?.map((tag) => [tag.key, tag.value]) ?? [])),
+              ...(syncOptions.tags !== undefined && syncTagsRecord)
+            },
+            awsTagsRecord: Object.fromEntries(
+              awsDescriptionsRecord[key]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
+            )
+          });
 
-        if (tagsToAdd.length) {
-          try {
-            await addTags(client, key, tagsToAdd);
-          } catch (error) {
-            throw new SecretSyncError({
-              error,
-              secretKey: key
-            });
+          if (tagsToAdd.length) {
+            try {
+              await addTags(client, key, tagsToAdd);
+            } catch (error) {
+              throw new SecretSyncError({
+                error,
+                secretKey: key
+              });
+            }
           }
-        }
 
-        if (tagKeysToRemove.length) {
-          try {
-            await removeTags(client, key, tagKeysToRemove);
-          } catch (error) {
-            throw new SecretSyncError({
-              error,
-              secretKey: key
-            });
+          if (tagKeysToRemove.length) {
+            try {
+              await removeTags(client, key, tagKeysToRemove);
+            } catch (error) {
+              throw new SecretSyncError({
+                error,
+                secretKey: key
+              });
+            }
           }
         }
       }
@@ -439,32 +441,34 @@ export const AwsSecretsManagerSyncFns = {
         });
       }
 
-      const { tagsToAdd, tagKeysToRemove } = processTags({
-        syncTagsRecord,
-        awsTagsRecord: Object.fromEntries(
-          awsDescriptionsRecord[destinationConfig.secretName]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
-        )
-      });
+      if (syncOptions.tags !== undefined) {
+        const { tagsToAdd, tagKeysToRemove } = processTags({
+          syncTagsRecord,
+          awsTagsRecord: Object.fromEntries(
+            awsDescriptionsRecord[destinationConfig.secretName]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
+          )
+        });
 
-      if (tagsToAdd.length) {
-        try {
-          await addTags(client, destinationConfig.secretName, tagsToAdd);
-        } catch (error) {
-          throw new SecretSyncError({
-            error,
-            secretKey: destinationConfig.secretName
-          });
+        if (tagsToAdd.length) {
+          try {
+            await addTags(client, destinationConfig.secretName, tagsToAdd);
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: destinationConfig.secretName
+            });
+          }
         }
-      }
 
-      if (tagKeysToRemove.length) {
-        try {
-          await removeTags(client, destinationConfig.secretName, tagKeysToRemove);
-        } catch (error) {
-          throw new SecretSyncError({
-            error,
-            secretKey: destinationConfig.secretName
-          });
+        if (tagKeysToRemove.length) {
+          try {
+            await removeTags(client, destinationConfig.secretName, tagKeysToRemove);
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: destinationConfig.secretName
+            });
+          }
         }
       }
     }
