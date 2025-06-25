@@ -23,6 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, linkOptions, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
+import { createNotification } from "@app/components/notifications";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
@@ -49,6 +50,7 @@ import {
 } from "@app/hooks/api";
 import { authKeys } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -156,6 +158,16 @@ export const MinimizedOrgSidebar = () => {
       navigate({ to: "/login" });
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleCopyToken = async () => {
+    try {
+      await window.navigator.clipboard.writeText(getAuthToken());
+      createNotification({ type: "success", text: "Copied current login session token to clipboard" });
+    } catch (error) {
+      console.log(error);
+      createNotification({ type: "error", text: "Failed to copy user token to clipboard" });
     }
   };
 
@@ -594,6 +606,16 @@ export const MinimizedOrgSidebar = () => {
                     />
                   </DropdownMenuItem>
                 </a>
+                <div className="mt-1 h-1 border-t border-mineshaft-600" />
+                <DropdownMenuItem onClick={handleCopyToken}>
+                  Copy Token
+                  <Tooltip
+                    content="This token is linked to your current login session and can only access resources within the organization you're currently logged into."
+                    className="max-w-3xl"
+                  >
+                    <FontAwesomeIcon icon={faInfoCircle} className="mb-[0.06rem] pl-1.5 text-xs" />
+                  </Tooltip>
+                </DropdownMenuItem>
                 <div className="mt-1 h-1 border-t border-mineshaft-600" />
                 <DropdownMenuItem onClick={logOutUser} icon={<FontAwesomeIcon icon={faSignOut} />}>
                   Log Out
