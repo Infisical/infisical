@@ -33,7 +33,7 @@ At a high level, Infisical authenticates the client's TLS Certificate by verifyi
 
 To be more specific:
 
-1. The client sends a TLS request with the client certificate to Infisical at the `/api/v1/auth/tls-cert-auth/login endpoint.`
+1. The client sends a TLS request with the client certificate to Infisical at the `/api/v1/auth/tls-cert-auth/login` endpoint.
 2. Infisical verifies the incoming request using the provided CA certificate.
 3. Infisical checks the user's properties against set criteria such as Allowed Common Names.
 4. If all checks pass, Infisical returns a short-lived access token that the client can use to make authenticated requests to the Infisical API.
