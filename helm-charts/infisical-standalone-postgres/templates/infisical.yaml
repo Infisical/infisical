@@ -63,6 +63,27 @@ spec:
           periodSeconds: 5
         ports: 
         - containerPort: 8080
+        {{- $usePostgresSecret := and .Values.postgresql.enabled .Values.postgresql.auth.existingSecret (ne .Values.postgresql.auth.existingSecret "") }}
+        {{- $useRedisSecret := and .Values.redis.enabled .Values.redis.auth.existingSecret (ne .Values.redis.auth.existingSecret "") }}
+        {{- if or $usePostgresSecret $useRedisSecret }}
+        # Use shell to build connection string when using existing secrets
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            {{- if $usePostgresSecret }}
+            export DB_CONNECTION_URI="postgresql://{{ .Values.postgresql.auth.username }}:${DB_PASSWORD}@{{ include "infisical.postgresService" . }}:5432/{{ .Values.postgresql.auth.database }}"
+            {{- end }}
+            {{- if and .Values.redis.enabled $useRedisSecret }}
+            export REDIS_URL="redis://default:${REDIS_PASSWORD}@{{ include "infisical.redisServiceName" . }}:6379"
+            {{- end }}
+            # Execute the original container entrypoint/command
+            {{- if $infisicalValues.startupCommand }}
+            exec {{ $infisicalValues.startupCommand }}
+            {{- else }}
+            exec npm start
+            {{- end }}
+        {{- end }}
         env:
         {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
         - name: DB_CONNECTION_URI
@@ -70,12 +91,28 @@ spec:
             secretKeyRef:
               name: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.name }}
               key: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.key }}
-        {{- end }}
-        {{- if .Values.postgresql.enabled }}
+        {{- else if not $usePostgresSecret }}
+        # Only set static connection string when NOT using existing secret
         - name: DB_CONNECTION_URI
           value: {{ include "infisical.postgresDBConnectionString" . }}
         {{- end }}
-        {{- if .Values.redis.enabled }}
+        {{- if $usePostgresSecret }}
+        # Set DB_PASSWORD from existing secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.auth.existingSecret }}
+              key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey }}
+        {{- end }}
+        {{- if $useRedisSecret }}
+        # Set REDIS_PASSWORD from existing secret
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.auth.existingSecret }}
+              key: {{ .Values.redis.auth.existingSecretPasswordKey }}
+        {{- end }}
+        {{- if and .Values.redis.enabled (not $useRedisSecret) }}
         - name: REDIS_URL
           value: {{ include "infisical.redisConnectionString" . }}
         {{- end }}

@@ -112,13 +112,12 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- if .Values.redis.fullnameOverride -}}
 {{- printf "%s-master" .Values.redis.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{- printf "%s-master" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-redis-master" .Release.Name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
-
 
 {{- define "infisical.redisConnectionString" -}}
 {{- $password := .Values.redis.auth.password -}}
 {{- $serviceName := include "infisical.redisServiceName" . -}}
-{{- printf "redis://default:%s@%s:6379" $password "redis-master" -}}
+{{- printf "redis://default:%s@%s:6379" $password $serviceName -}}
 {{- end -}}
