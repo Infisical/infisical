@@ -693,7 +693,7 @@ export const useAddIdentityTlsCertAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+        queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
       });
     }
   });
@@ -733,7 +733,7 @@ export const useUpdateIdentityTlsCertAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+        queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
       });
     }
   });
@@ -754,7 +754,7 @@ export const useDeleteIdentityTlsCertAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+        queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
       });
     }
   });
