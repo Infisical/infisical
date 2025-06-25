@@ -43,7 +43,7 @@ def hello_world():
 This example demonstrates how to use the Infisical Python SDK with a Flask application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
 
 <Warning>
-	We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
+  We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
 </Warning>
 
 ## Installation
@@ -314,32 +314,32 @@ By default, `getSecret()` fetches and returns a shared secret. If not found, it 
 #### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-	<Expandable title="properties">
-		<ParamField query="secret_name" type="string" required>
-			The key of the secret to retrieve
-		</ParamField>
+  <Expandable title="properties">
+    <ParamField query="secret_name" type="string" required>
+      The key of the secret to retrieve
+    </ParamField>
     <ParamField query="include_imports" type="boolean">
           Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
     </ParamField>
-		<ParamField query="environment" type="string" required>
-			The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-		</ParamField>
-		<ParamField query="project_id" type="string" required>
-			The project ID where the secret lives in.
-		</ParamField>
-		<ParamField query="path" type="string" optional>
-			The path from where secret should be fetched from.
-		</ParamField>
-		<ParamField query="type" type="string" optional>
-			The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "personal".
-		</ParamField>
-		<ParamField query="include_imports" type="boolean" default="false" optional>
-			Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
-		</ParamField>
+    <ParamField query="environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+    </ParamField>
+    <ParamField query="project_id" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="path" type="string" optional>
+      The path from where secret should be fetched from.
+    </ParamField>
+    <ParamField query="type" type="string" optional>
+      The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "personal".
+    </ParamField>
+    <ParamField query="include_imports" type="boolean" default="false" optional>
+      Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
+    </ParamField>
     <ParamField query="expand_secret_references" type="boolean" default="true" optional>
       Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
     </ParamField>
-	</Expandable>
+  </Expandable>
 </ParamField>
 
 ### client.createSecret(options)
@@ -358,26 +358,26 @@ Create a new secret in Infisical.
 #### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-	<Expandable title="properties">
-		<ParamField query="secret_name" type="string" required>
-			The key of the secret to create.
-		</ParamField>
-		<ParamField query="secret_value" type="string" required>
-			The value of the secret.
-		</ParamField>
-		<ParamField query="project_id" type="string" required>
-			The project ID where the secret lives in.
-		</ParamField>
-		<ParamField query="environment" type="string" required>
-			The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-		</ParamField>
-		<ParamField query="path" type="string" optional>
-			The path from where secret should be created.
-		</ParamField>
-		<ParamField query="type" type="string" optional>
-			The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-		</ParamField>
-	</Expandable>
+  <Expandable title="properties">
+    <ParamField query="secret_name" type="string" required>
+      The key of the secret to create.
+    </ParamField>
+    <ParamField query="secret_value" type="string" required>
+      The value of the secret.
+    </ParamField>
+    <ParamField query="project_id" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+    </ParamField>
+    <ParamField query="path" type="string" optional>
+      The path from where secret should be created.
+    </ParamField>
+    <ParamField query="type" type="string" optional>
+      The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ### client.updateSecret(options)
@@ -396,26 +396,26 @@ Update an existing secret in Infisical.
 #### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-	<Expandable title="properties">
-		<ParamField query="secret_name" type="string" required>
-			The key of the secret to update.
-		</ParamField>
-		<ParamField query="secret_value" type="string" required>
-			The new value of the secret.
-		</ParamField>
-		<ParamField query="project_id" type="string" required>
-			The project ID where the secret lives in.
-		</ParamField>
-		<ParamField query="environment" type="string" required>
-			The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-		</ParamField>
-		<ParamField query="path" type="string" optional>
-			The path from where secret should be updated.
-		</ParamField>
-		<ParamField query="type" type="string" optional>
-			The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-		</ParamField>
-	</Expandable>
+  <Expandable title="properties">
+    <ParamField query="secret_name" type="string" required>
+      The key of the secret to update.
+    </ParamField>
+    <ParamField query="secret_value" type="string" required>
+      The new value of the secret.
+    </ParamField>
+    <ParamField query="project_id" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+    </ParamField>
+    <ParamField query="path" type="string" optional>
+      The path from where secret should be updated.
+    </ParamField>
+    <ParamField query="type" type="string" optional>
+      The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ### client.deleteSecret(options)
@@ -433,23 +433,23 @@ Delete a secret in Infisical.
 #### Parameters
 
 <ParamField query="Parameters" type="object" optional>
-	<Expandable title="properties">
-		<ParamField query="secret_name" type="string">
-			The key of the secret to update.
-		</ParamField>
-		<ParamField query="project_id" type="string" required>
-			The project ID where the secret lives in.
-		</ParamField>
-		<ParamField query="environment" type="string" required>
-			The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-		</ParamField>
-		<ParamField query="path" type="string" optional>
-			The path from where secret should be deleted.
-		</ParamField>
-		<ParamField query="type" type="string" optional>
-			The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-		</ParamField>
-	</Expandable>
+  <Expandable title="properties">
+    <ParamField query="secret_name" type="string">
+      The key of the secret to update.
+    </ParamField>
+    <ParamField query="project_id" type="string" required>
+      The project ID where the secret lives in.
+    </ParamField>
+    <ParamField query="environment" type="string" required>
+      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+    </ParamField>
+    <ParamField query="path" type="string" optional>
+      The path from where secret should be deleted.
+    </ParamField>
+    <ParamField query="type" type="string" optional>
+      The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 ## Cryptography
@@ -480,14 +480,14 @@ encryptedData = client.encryptSymmetric(encryptOptions)
 #### Parameters
 
 <ParamField query="Parameters" type="object" required>
-	<Expandable title="properties">
-		<ParamField query="plaintext" type="string">
-			The plaintext you want to encrypt.
-		</ParamField>
-		<ParamField query="key" type="string" required>
-			The symmetric key to use for encryption.
-		</ParamField>
-	</Expandable>
+  <Expandable title="properties">
+    <ParamField query="plaintext" type="string">
+      The plaintext you want to encrypt.
+    </ParamField>
+    <ParamField query="key" type="string" required>
+      The symmetric key to use for encryption.
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 #### Returns (object)
@@ -512,20 +512,20 @@ decryptedString = client.decryptSymmetric(decryptOptions)
 #### Parameters
 
 <ParamField query="Parameters" type="object" required>
-	<Expandable title="properties">
-		<ParamField query="ciphertext" type="string">
-			The ciphertext you want to decrypt.
-		</ParamField>
-		<ParamField query="key" type="string" required>
-			The symmetric key to use for encryption.
-		</ParamField>
-		<ParamField query="iv" type="string" required>
-			The initialization vector to use for decryption.
-		</ParamField>
-		<ParamField query="tag" type="string" required>
-			The authentication tag to use for decryption.
-		</ParamField>
-	</Expandable>
+  <Expandable title="properties">
+    <ParamField query="ciphertext" type="string">
+      The ciphertext you want to decrypt.
+    </ParamField>
+    <ParamField query="key" type="string" required>
+      The symmetric key to use for encryption.
+    </ParamField>
+    <ParamField query="iv" type="string" required>
+      The initialization vector to use for decryption.
+    </ParamField>
+    <ParamField query="tag" type="string" required>
+      The authentication tag to use for decryption.
+    </ParamField>
+  </Expandable>
 </ParamField>
 
 #### Returns (string)
