@@ -10,6 +10,7 @@ import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFiel
 import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
+import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
@@ -73,6 +74,8 @@ export const SecretSyncDestinationFields = () => {
       return <FlyioSyncFields />;
     case SecretSync.GitLab:
       return <GitLabSyncFields />;
+    case SecretSync.CloudflarePages:
+      return <CloudflarePagesSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

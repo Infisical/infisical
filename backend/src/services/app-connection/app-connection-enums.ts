@@ -26,7 +26,8 @@ export enum AppConnection {
   Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
-  GitLab = "gitlab"
+  GitLab = "gitlab",
+  Cloudflare = "cloudflare"
 }
 
 export enum AWSRegion {

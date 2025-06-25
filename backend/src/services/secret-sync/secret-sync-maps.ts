@@ -22,7 +22,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Heroku]: "Heroku",
   [SecretSync.Render]: "Render",
   [SecretSync.Flyio]: "Fly.io",
-  [SecretSync.GitLab]: "GitLab"
+  [SecretSync.GitLab]: "GitLab",
+  [SecretSync.CloudflarePages]: "Cloudflare Pages"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -46,7 +47,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
   [SecretSync.Flyio]: AppConnection.Flyio,
-  [SecretSync.GitLab]: AppConnection.GitLab
+  [SecretSync.GitLab]: AppConnection.GitLab,
+  [SecretSync.CloudflarePages]: AppConnection.Cloudflare
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -70,5 +72,6 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Heroku]: SecretSyncPlanType.Regular,
   [SecretSync.Render]: SecretSyncPlanType.Regular,
   [SecretSync.Flyio]: SecretSyncPlanType.Regular,
-  [SecretSync.GitLab]: SecretSyncPlanType.Regular
+  [SecretSync.GitLab]: SecretSyncPlanType.Regular,
+  [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular
 };

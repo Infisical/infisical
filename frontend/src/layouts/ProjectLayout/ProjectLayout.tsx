@@ -352,9 +352,9 @@ export const ProjectLayout = () => {
                                 secretApprovalReqCount?.open ||
                                   accessApprovalRequestCount?.pendingCount
                               ) && (
-                                <span className="ml-2 rounded border border-primary-400 bg-primary-600 px-1 py-0.5 text-xs font-semibold text-black">
+                                <Badge variant="primary" className="ml-1.5">
                                   {pendingRequestsCount}
-                                </span>
+                                </Badge>
                               )}
                             </MenuItem>
                           )}

@@ -12,9 +12,10 @@ export type TDynamicSecret = {
   defaultTTL: string;
   status?: DynamicSecretStatus;
   statusDetails?: string;
-  maxTTL: string;
+  maxTTL?: string;
   usernameTemplate?: string | null;
   metadata?: { key: string; value: string }[];
+  tags?: { key: string; value: string }[];
 };
 
 export enum DynamicSecretProviders {
@@ -35,7 +36,8 @@ export enum DynamicSecretProviders {
   SapAse = "sap-ase",
   Kubernetes = "kubernetes",
   Vertica = "vertica",
-  GcpIam = "gcp-iam"
+  GcpIam = "gcp-iam",
+  Github = "github"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -89,6 +91,7 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.AwsIam;
+      tags?: { key: string; value: string }[];
       inputs:
         | {
             method: DynamicSecretAwsIamAuth.AccessKey;
@@ -333,6 +336,14 @@ export type TDynamicSecretProvider =
       inputs: {
         serviceAccountEmail: string;
       };
+    }
+  | {
+      type: DynamicSecretProviders.Github;
+      inputs: {
+        appId: number;
+        installationId: number;
+        privateKey: string;
+      };
     };
 
 export type TCreateDynamicSecretDTO = {
@@ -345,6 +356,7 @@ export type TCreateDynamicSecretDTO = {
   name: string;
   metadata?: { key: string; value: string }[];
   usernameTemplate?: string;
+  tags?: { key: string; value: string }[];
 };
 
 export type TUpdateDynamicSecretDTO = {
@@ -359,6 +371,7 @@ export type TUpdateDynamicSecretDTO = {
     maxTTL?: string | null;
     inputs?: unknown;
     usernameTemplate?: string | null;
+    tags?: { key: string; value: string }[];
   };
 };
 

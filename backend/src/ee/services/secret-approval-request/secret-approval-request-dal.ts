@@ -24,6 +24,7 @@ type TFindQueryFilter = {
   committer?: string;
   limit?: number;
   offset?: number;
+  search?: string;
 };
 
 export const secretApprovalRequestDALFactory = (db: TDbClient) => {
@@ -314,7 +315,6 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                   .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
                   .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
             )
-            .andWhere((bd) => void bd.where(`${TableName.SecretApprovalPolicy}.deletedAt`, null))
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
             .count("status")
@@ -340,13 +340,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   };
 
   const findByProjectId = async (
-    { status, limit = 20, offset = 0, projectId, committer, environment, userId }: TFindQueryFilter,
+    { status, limit = 20, offset = 0, projectId, committer, environment, userId, search }: TFindQueryFilter,
     tx?: Knex
   ) => {
     try {
       // akhilmhdh: If ever u wanted a 1 to so many relationship connected with pagination
       // this is the place u wanna look at.
-      const query = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
+      const innerQuery = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(
@@ -435,7 +435,30 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
           db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
         )
-        .orderBy("createdAt", "desc");
+        .distinctOn(`${TableName.SecretApprovalRequest}.id`)
+        .as("inner");
+
+      const query = (tx || db)
+        .select("*")
+        .select(db.raw("count(*) OVER() as total_count"))
+        .from(innerQuery)
+        .orderBy("createdAt", "desc") as typeof innerQuery;
+
+      if (search) {
+        void query.where((qb) => {
+          void qb
+            .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
+              db.ref("firstName").withSchema("committerUser"),
+              db.ref("lastName").withSchema("committerUser"),
+              `%${search}%`
+            ])
+            .orWhereRaw(`?? ilike ?`, [db.ref("username").withSchema("committerUser"), `%${search}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("email").withSchema("committerUser"), `%${search}%`])
+            .orWhereILike(`${TableName.Environment}.name`, `%${search}%`)
+            .orWhereILike(`${TableName.Environment}.slug`, `%${search}%`)
+            .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${search}%`);
+        });
+      }
 
       const docs = await (tx || db)
         .with("w", query)
@@ -443,6 +466,10 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .from<Awaited<typeof query>[number]>("w")
         .where("w.rank", ">=", offset)
         .andWhere("w.rank", "<", offset + limit);
+
+      // @ts-expect-error knex does not infer
+      const totalCount = Number(docs[0]?.total_count || 0);
+
       const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
@@ -504,23 +531,26 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return formattedDoc.map((el) => ({
-        ...el,
-        policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
-      }));
+      return {
+        approvals: formattedDoc.map((el) => ({
+          ...el,
+          policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
+        })),
+        totalCount
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSAR" });
     }
   };
 
   const findByProjectIdBridgeSecretV2 = async (
-    { status, limit = 20, offset = 0, projectId, committer, environment, userId }: TFindQueryFilter,
+    { status, limit = 20, offset = 0, projectId, committer, environment, userId, search }: TFindQueryFilter,
     tx?: Knex
   ) => {
     try {
       // akhilmhdh: If ever u wanted a 1 to so many relationship connected with pagination
       // this is the place u wanna look at.
-      const query = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
+      const innerQuery = (tx || db.replicaNode())(TableName.SecretApprovalRequest)
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(
@@ -609,14 +639,42 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
           db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
         )
-        .orderBy("createdAt", "desc");
+        .distinctOn(`${TableName.SecretApprovalRequest}.id`)
+        .as("inner");
 
+      const query = (tx || db)
+        .select("*")
+        .select(db.raw("count(*) OVER() as total_count"))
+        .from(innerQuery)
+        .orderBy("createdAt", "desc") as typeof innerQuery;
+
+      if (search) {
+        void query.where((qb) => {
+          void qb
+            .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
+              db.ref("firstName").withSchema("committerUser"),
+              db.ref("lastName").withSchema("committerUser"),
+              `%${search}%`
+            ])
+            .orWhereRaw(`?? ilike ?`, [db.ref("username").withSchema("committerUser"), `%${search}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("email").withSchema("committerUser"), `%${search}%`])
+            .orWhereILike(`${TableName.Environment}.name`, `%${search}%`)
+            .orWhereILike(`${TableName.Environment}.slug`, `%${search}%`)
+            .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${search}%`);
+        });
+      }
+
+      const rankOffset = offset + 1;
       const docs = await (tx || db)
         .with("w", query)
         .select("*")
         .from<Awaited<typeof query>[number]>("w")
-        .where("w.rank", ">=", offset)
-        .andWhere("w.rank", "<", offset + limit);
+        .where("w.rank", ">=", rankOffset)
+        .andWhere("w.rank", "<", rankOffset + limit);
+
+      // @ts-expect-error knex does not infer
+      const totalCount = Number(docs[0]?.total_count || 0);
+
       const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
@@ -682,10 +740,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return formattedDoc.map((el) => ({
-        ...el,
-        policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
-      }));
+      return {
+        approvals: formattedDoc.map((el) => ({
+          ...el,
+          policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
+        })),
+        totalCount
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSAR" });
     }

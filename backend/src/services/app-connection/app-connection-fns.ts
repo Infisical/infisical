@@ -51,6 +51,11 @@ import {
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
+import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
+import {
+  getCloudflareConnectionListItem,
+  validateCloudflareConnectionCredentials
+} from "./cloudflare/cloudflare-connection-fns";
 import {
   DatabricksConnectionMethod,
   getDatabricksConnectionListItem,
@@ -130,7 +135,8 @@ export const listAppConnectionOptions = () => {
     getHerokuConnectionListItem(),
     getRenderConnectionListItem(),
     getFlyioConnectionListItem(),
-    getGitLabConnectionListItem()
+    getGitLabConnectionListItem(),
+    getCloudflareConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -209,7 +215,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -245,6 +252,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
+    case CloudflareConnectionMethod.APIToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -323,7 +331,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
-  [AppConnection.GitLab]: platformManagedCredentialsNotSupported
+  [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
+  [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

@@ -19,7 +19,8 @@ export enum SecretSync {
   Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
-  GitLab = "gitlab"
+  GitLab = "gitlab",
+  CloudflarePages = "cloudflare-pages"
 }
 
 export enum SecretSyncInitialSyncBehavior {

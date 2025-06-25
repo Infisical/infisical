@@ -52,9 +52,8 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       gatewayId: string;
       targetHost: string;
       targetPort: number;
-      caCert?: string;
+      httpsAgent?: https.Agent;
       reviewTokenThroughGateway: boolean;
-      enableSsl: boolean;
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
@@ -85,10 +84,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           key: relayDetails.privateKey.toString()
         },
         // we always pass this, because its needed for both tcp and http protocol
-        httpsAgent: new https.Agent({
-          ca: inputs.caCert,
-          rejectUnauthorized: inputs.enableSsl
-        })
+        httpsAgent: inputs.httpsAgent
       }
     );
 
@@ -311,6 +307,14 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     const k8sHost = `${url.protocol}//${url.hostname}`;
 
     try {
+      const httpsAgent =
+        providerInputs.ca && providerInputs.sslEnabled
+          ? new https.Agent({
+              ca: providerInputs.ca,
+              rejectUnauthorized: true
+            })
+          : undefined;
+
       if (providerInputs.gatewayId) {
         if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
           await $gatewayProxyWrapper(
@@ -318,8 +322,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               gatewayId: providerInputs.gatewayId,
               targetHost: k8sHost,
               targetPort: k8sPort,
-              enableSsl: providerInputs.sslEnabled,
-              caCert: providerInputs.ca,
+              httpsAgent,
               reviewTokenThroughGateway: true
             },
             providerInputs.credentialType === KubernetesCredentialType.Static
@@ -332,8 +335,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               gatewayId: providerInputs.gatewayId,
               targetHost: k8sGatewayHost,
               targetPort: k8sPort,
-              enableSsl: providerInputs.sslEnabled,
-              caCert: providerInputs.ca,
+              httpsAgent,
               reviewTokenThroughGateway: false
             },
             providerInputs.credentialType === KubernetesCredentialType.Static
@@ -342,9 +344,9 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
           );
         }
       } else if (providerInputs.credentialType === KubernetesCredentialType.Static) {
-        await serviceAccountStaticCallback(k8sHost, k8sPort);
+        await serviceAccountStaticCallback(k8sHost, k8sPort, httpsAgent);
       } else {
-        await serviceAccountDynamicCallback(k8sHost, k8sPort);
+        await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent);
       }
 
       return true;
@@ -546,6 +548,15 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
 
     try {
       let tokenData;
+
+      const httpsAgent =
+        providerInputs.ca && providerInputs.sslEnabled
+          ? new https.Agent({
+              ca: providerInputs.ca,
+              rejectUnauthorized: true
+            })
+          : undefined;
+
       if (providerInputs.gatewayId) {
         if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
           tokenData = await $gatewayProxyWrapper(
@@ -553,8 +564,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               gatewayId: providerInputs.gatewayId,
               targetHost: k8sHost,
               targetPort: k8sPort,
-              enableSsl: providerInputs.sslEnabled,
-              caCert: providerInputs.ca,
+              httpsAgent,
               reviewTokenThroughGateway: true
             },
             providerInputs.credentialType === KubernetesCredentialType.Static
@@ -567,8 +577,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               gatewayId: providerInputs.gatewayId,
               targetHost: k8sGatewayHost,
               targetPort: k8sPort,
-              enableSsl: providerInputs.sslEnabled,
-              caCert: providerInputs.ca,
+              httpsAgent,
               reviewTokenThroughGateway: false
             },
             providerInputs.credentialType === KubernetesCredentialType.Static
@@ -579,8 +588,8 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       } else {
         tokenData =
           providerInputs.credentialType === KubernetesCredentialType.Static
-            ? await tokenRequestStaticCallback(k8sHost, k8sPort)
-            : await serviceAccountDynamicCallback(k8sHost, k8sPort);
+            ? await tokenRequestStaticCallback(k8sHost, k8sPort, httpsAgent)
+            : await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent);
       }
 
       return {
@@ -684,6 +693,14 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
       const k8sPort = url.port ? Number(url.port) : 443;
       const k8sHost = `${url.protocol}//${url.hostname}`;
 
+      const httpsAgent =
+        providerInputs.ca && providerInputs.sslEnabled
+          ? new https.Agent({
+              ca: providerInputs.ca,
+              rejectUnauthorized: true
+            })
+          : undefined;
+
       if (providerInputs.gatewayId) {
         if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
           await $gatewayProxyWrapper(
@@ -691,8 +708,7 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               gatewayId: providerInputs.gatewayId,
               targetHost: k8sHost,
               targetPort: k8sPort,
-              enableSsl: providerInputs.sslEnabled,
-              caCert: providerInputs.ca,
+              httpsAgent,
               reviewTokenThroughGateway: true
             },
             serviceAccountDynamicCallback
@@ -703,15 +719,14 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
               gatewayId: providerInputs.gatewayId,
               targetHost: k8sGatewayHost,
               targetPort: k8sPort,
-              enableSsl: providerInputs.sslEnabled,
-              caCert: providerInputs.ca,
+              httpsAgent,
               reviewTokenThroughGateway: false
             },
             serviceAccountDynamicCallback
           );
         }
       } else {
-        await serviceAccountDynamicCallback(k8sHost, k8sPort);
+        await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent);
       }
     }
 

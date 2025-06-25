@@ -50,6 +50,8 @@ export const initDbConnection = ({
           }
         : false
     },
+    // https://knexjs.org/guide/#pool
+    pool: { min: 0, max: 10 },
     migrations: {
       tableName: "infisical_migrations"
     }
@@ -70,7 +72,8 @@ export const initDbConnection = ({
       },
       migrations: {
         tableName: "infisical_migrations"
-      }
+      },
+      pool: { min: 0, max: 10 }
     });
   });
 

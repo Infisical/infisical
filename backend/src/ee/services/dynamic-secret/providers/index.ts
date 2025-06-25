@@ -7,6 +7,7 @@ import { AzureEntraIDProvider } from "./azure-entra-id";
 import { CassandraProvider } from "./cassandra";
 import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
+import { GithubProvider } from "./github";
 import { KubernetesProvider } from "./kubernetes";
 import { LdapProvider } from "./ldap";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./models";
@@ -44,5 +45,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
   [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService }),
   [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService }),
-  [DynamicSecretProviders.GcpIam]: GcpIamProvider()
+  [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
+  [DynamicSecretProviders.Github]: GithubProvider()
 });

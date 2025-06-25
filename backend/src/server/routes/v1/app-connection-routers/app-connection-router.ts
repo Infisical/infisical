@@ -36,6 +36,10 @@ import {
   SanitizedCamundaConnectionSchema
 } from "@app/services/app-connection/camunda";
 import {
+  CloudflareConnectionListItemSchema,
+  SanitizedCloudflareConnectionSchema
+} from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
+import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
@@ -111,7 +115,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedHerokuConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
-  ...SanitizedGitLabConnectionSchema.options
+  ...SanitizedGitLabConnectionSchema.options,
+  ...SanitizedCloudflareConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -142,7 +147,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   HerokuConnectionListItemSchema,
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
-  GitLabConnectionListItemSchema
+  GitLabConnectionListItemSchema,
+  CloudflareConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

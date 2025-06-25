@@ -3,9 +3,43 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { DynamicSecretLeasesSchema, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 
-export type TDynamicSecretLeaseDALFactory = ReturnType<typeof dynamicSecretLeaseDALFactory>;
+export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.DynamicSecretLease>, "findById"> {
+  countLeasesForDynamicSecret: (dynamicSecretId: string, tx?: Knex) => Promise<number>;
+  findById: (
+    id: string,
+    tx?: Knex
+  ) => Promise<
+    | {
+        dynamicSecret: {
+          id: string;
+          name: string;
+          version: number;
+          type: string;
+          defaultTTL: string;
+          maxTTL: string | null | undefined;
+          encryptedInput: Buffer;
+          folderId: string;
+          status: string | null | undefined;
+          statusDetails: string | null | undefined;
+          createdAt: Date;
+          updatedAt: Date;
+        };
+        version: number;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        externalEntityId: string;
+        expireAt: Date;
+        dynamicSecretId: string;
+        status?: string | null | undefined;
+        config?: unknown;
+        statusDetails?: string | null | undefined;
+      }
+    | undefined
+  >;
+}
 
 export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.DynamicSecretLease);

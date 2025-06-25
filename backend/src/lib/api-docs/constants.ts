@@ -2418,6 +2418,10 @@ export const SecretSyncs = {
       shouldProtectSecrets: "Whether variables should be protected",
       shouldMaskSecrets: "Whether variables should be masked in logs",
       shouldHideSecrets: "Whether variables should be hidden"
+    },
+    CLOUDFLARE_PAGES: {
+      projectName: "The name of the Cloudflare Pages project to sync secrets to.",
+      environment: "The environment of the Cloudflare Pages project to sync secrets to."
     }
   }
 };

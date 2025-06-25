@@ -245,7 +245,7 @@ var secretsSetCmd = &cobra.Command{
 
 			secretOperations, err = util.SetRawSecrets(processedArgs, secretType, environmentName, secretsPath, projectId, &models.TokenDetails{
 				Type:  "",
-				Token: loggedInUserDetails.UserCredentials.JWTToken,
+				Token: loggedInUserDetails.UserCredentials.JTWToken,
 			}, file)
 		}
 
@@ -330,7 +330,7 @@ var secretsDeleteCmd = &cobra.Command{
 				loggedInUserDetails = util.EstablishUserLoginSession()
 			}
 
-			httpClient.SetAuthToken(loggedInUserDetails.UserCredentials.JWTToken)
+			httpClient.SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken)
 		}
 
 		for _, secretName := range args {

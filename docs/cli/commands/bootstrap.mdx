@@ -75,7 +75,89 @@ This flag is required.
 
 </Accordion>
 
+<Accordion title="--ignore-if-bootstrapped">
+  Whether to continue without error if the instance has already been bootstrapped. Useful for idempotent automation scripts.
+
+```bash
+# Example
+infisical bootstrap --ignore-if-bootstrapped
+```
+
+This flag is optional and defaults to `false`.
+
+</Accordion>
+
+<Accordion title="--output">
+  The type of output format for the bootstrap command. Supports `k8-secret` for Kubernetes secret integration. This flag is optional and defaults to "".
+
+```bash
+# Kubernetes secret output
+infisical bootstrap --output=k8-secret --k8-secret-template='{"data":{"token":"{{.Identity.Credentials.Token}}"}}' --k8-secret-name=infisical-bootstrap --k8-secret-namespace=default
+```
+
+When using `k8-secret`, the command will create or update a Kubernetes secret directly in your cluster. Note that this option requires the command to be executed from within a Kubernetes pod with appropriate service account permissions.
+
+</Accordion>
+
+<Accordion title="--k8-secret-template">
+  The template to use for rendering the Kubernetes secret data/stringData section. Required when using `--output=k8-secret`. The template uses Go template syntax and has access to the bootstrap response data.
+
+```bash
+# Example template that stores the token
+infisical bootstrap --k8-secret-template='{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
+
+# Example template with multiple fields
+infisical bootstrap --k8-secret-template='{"stringData":{"token":"{{.Identity.Credentials.Token}}","org-id":"{{.Organization.ID}}","user-email":"{{.User.Email}}"}}'
+```
+
+Available template functions:
+
+- `encodeBase64`: Base64 encode a string
+
+Available data fields:
+
+- `.Identity.Credentials.Token`: The machine identity token
+- `.Identity.ID`: The identity ID
+- `.Identity.Name`: The identity name
+- `.Organization.ID`: The organization ID
+- `.Organization.Name`: The organization name
+- `.Organization.Slug`: The organization slug
+- `.User.Email`: The admin user email
+- `.User.ID`: The admin user ID
+- `.User.FirstName`: The admin user first name
+- `.User.LastName`: The admin user last name
+
+This flag is required when using `k8-secret` output.
+
+</Accordion>
+
+<Accordion title="--k8-secret-name">
+  The name of the Kubernetes secret to create or update. Required when using `--output=k8-secret`.
+
+```bash
+# Example
+infisical bootstrap --k8-secret-name=infisical-bootstrap-credentials
+```
+
+This flag is required when using `k8-secret` output.
+
+</Accordion>
+
+<Accordion title="--k8-secret-namespace">
+  The namespace where the Kubernetes secret should be created or updated. Required when using `--output=k8-secret`.
+
+```bash
+# Example
+infisical bootstrap --k8-secret-namespace=infisical-system
+```
+
+This flag is required when using `k8-secret` output.
+
+</Accordion>
+
 ## Response
+
+### JSON Output (Default)
 
 The command returns a JSON response with details about the created user, organization, and machine identity:
 
@@ -105,6 +187,47 @@ The command returns a JSON response with details about the created user, organiz
 }
 ```
 
+### Kubernetes Secret Output
+
+When using `--output=k8-secret`, the command creates or updates a Kubernetes secret in your cluster and logs the operation result. This is particularly useful for automated bootstrapping scenarios such as Kubernetes Jobs, GitOps workflows, or when you need to immediately store the admin credentials for use by other applications in your cluster.
+
+## Kubernetes Integration
+
+### Prerequisites for k8-secret Output
+
+When running with `--output=k8-secret`, the command must be executed from within a Kubernetes pod with proper service account permissions. The command automatically:
+
+1. Reads the service account token from `/var/run/secrets/kubernetes.io/serviceaccount/token`
+2. Reads the CA certificate from `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`
+3. Gets the Kubernetes API server URL from environment variables (`KUBERNETES_SERVICE_HOST` and `KUBERNETES_SERVICE_PORT_HTTPS`)
+
+### Required RBAC Permissions
+
+Your service account needs the following permissions:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: infisical-bootstrap
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: infisical-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: your-service-account
+roleRef:
+  kind: Role
+  name: infisical-bootstrap
+  apiGroup: rbac.authorization.k8s.io
+```
+
 ## Usage with Automation
 
 For automation purposes, you can extract just the machine identity token from the response:
@@ -127,6 +250,8 @@ echo "Token has been captured and can be used for authentication"
 ## Notes
 
 - The bootstrap process can only be performed once on a fresh Infisical instance
-- All flags are required for the bootstrap process to complete successfully
+- All core flags (domain, email, password, organization) are required for the bootstrap process to complete successfully
 - Security controls prevent privilege escalation: instance admin identities cannot be managed by non-instance admin users and identities
 - The generated admin user account can be used to log in via the UI if needed
+- When using `k8-secret` output, the command must run within a Kubernetes pod with proper service account permissions
+- The `--ignore-if-bootstrapped` flag is useful for making bootstrap scripts idempotent

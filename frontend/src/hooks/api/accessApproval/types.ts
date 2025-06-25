@@ -35,7 +35,7 @@ export type Approver = {
   id: string;
   type: ApproverType;
   sequence?: number;
-  approvals?: number;
+  approvalsRequired?: number;
 };
 
 export type Bypasser = {
@@ -148,7 +148,7 @@ export type TCreateAccessRequestDTO = {
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
   envSlug?: string;
-  authorProjectMembershipId?: string;
+  authorUserId?: string;
 };
 
 export type TGetAccessPolicyApprovalCountDTO = {

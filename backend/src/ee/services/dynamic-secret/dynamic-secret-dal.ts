@@ -10,17 +10,35 @@ import {
   selectAllTableCols,
   sqlNestRelationships,
   TFindFilter,
-  TFindOpt
+  TFindOpt,
+  TOrmify
 } from "@app/lib/knex";
-import { OrderByDirection } from "@app/lib/types";
+import { OrderByDirection, TDynamicSecretWithMetadata } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
-export type TDynamicSecretDALFactory = ReturnType<typeof dynamicSecretDALFactory>;
+export interface TDynamicSecretDALFactory extends Omit<TOrmify<TableName.DynamicSecret>, "findOne"> {
+  findOne: (filter: TFindFilter<TDynamicSecrets>, tx?: Knex) => Promise<TDynamicSecretWithMetadata>;
+  listDynamicSecretsByFolderIds: (
+    arg: {
+      folderIds: string[];
+      search?: string | undefined;
+      limit?: number | undefined;
+      offset?: number | undefined;
+      orderBy?: SecretsOrderBy | undefined;
+      orderDirection?: OrderByDirection | undefined;
+    },
+    tx?: Knex
+  ) => Promise<Array<TDynamicSecretWithMetadata & { environment: string }>>;
+  findWithMetadata: (
+    filter: TFindFilter<TDynamicSecrets>,
+    arg?: TFindOpt<TDynamicSecrets>
+  ) => Promise<TDynamicSecretWithMetadata[]>;
+}
 
-export const dynamicSecretDALFactory = (db: TDbClient) => {
+export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory => {
   const orm = ormify(db, TableName.DynamicSecret);
 
-  const findOne = async (filter: TFindFilter<TDynamicSecrets>, tx?: Knex) => {
+  const findOne: TDynamicSecretDALFactory["findOne"] = async (filter, tx) => {
     const query = (tx || db.replicaNode())(TableName.DynamicSecret)
       .leftJoin(
         TableName.ResourceMetadata,
@@ -55,9 +73,9 @@ export const dynamicSecretDALFactory = (db: TDbClient) => {
     return docs[0];
   };
 
-  const findWithMetadata = async (
-    filter: TFindFilter<TDynamicSecrets>,
-    { offset, limit, sort, tx }: TFindOpt<TDynamicSecrets> = {}
+  const findWithMetadata: TDynamicSecretDALFactory["findWithMetadata"] = async (
+    filter,
+    { offset, limit, sort, tx } = {}
   ) => {
     const query = (tx || db.replicaNode())(TableName.DynamicSecret)
       .leftJoin(
@@ -101,23 +119,9 @@ export const dynamicSecretDALFactory = (db: TDbClient) => {
   };
 
   // find dynamic secrets for multiple environments (folder IDs are cross env, thus need to rank for pagination)
-  const listDynamicSecretsByFolderIds = async (
-    {
-      folderIds,
-      search,
-      limit,
-      offset = 0,
-      orderBy = SecretsOrderBy.Name,
-      orderDirection = OrderByDirection.ASC
-    }: {
-      folderIds: string[];
-      search?: string;
-      limit?: number;
-      offset?: number;
-      orderBy?: SecretsOrderBy;
-      orderDirection?: OrderByDirection;
-    },
-    tx?: Knex
+  const listDynamicSecretsByFolderIds: TDynamicSecretDALFactory["listDynamicSecretsByFolderIds"] = async (
+    { folderIds, search, limit, offset = 0, orderBy = SecretsOrderBy.Name, orderDirection = OrderByDirection.ASC },
+    tx
   ) => {
     try {
       const query = (tx || db.replicaNode())(TableName.DynamicSecret)

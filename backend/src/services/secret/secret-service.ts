@@ -1543,9 +1543,8 @@ export const secretServiceFactory = ({
     actor,
     environment,
     viewSecretValue,
-    projectId: workspaceId,
+    projectId,
     expandSecretReferences,
-    projectSlug,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1553,7 +1552,6 @@ export const secretServiceFactory = ({
     includeImports,
     version
   }: TGetASecretRawDTO) => {
-    const projectId = workspaceId || (await projectDAL.findProjectBySlug(projectSlug as string, actorOrgId)).id;
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const secret = await secretV2BridgeService.getSecretByName({

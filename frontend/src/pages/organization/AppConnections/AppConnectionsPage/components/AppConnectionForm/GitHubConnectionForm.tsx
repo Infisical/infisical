@@ -111,10 +111,10 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
               }. This field cannot be changed after creation.`}
               errorText={
                 !isLoading && isMissingConfig
-                  ? `Environment variables have not been configured. ${
+                  ? `Credentials have not been configured. ${
                       isInfisicalCloud()
                         ? "Please contact Infisical."
-                        : `See Docs to configure GitHub ${methodDetails.name} Connections.`
+                        : `See Docs to configure Github ${methodDetails.name} Connections.`
                     }`
                   : error?.message
               }

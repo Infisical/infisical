@@ -8,6 +8,7 @@ import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TCamundaConnection } from "./camunda-connection";
+import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
@@ -37,6 +38,7 @@ export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
 export * from "./camunda-connection";
+export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
@@ -86,7 +88,8 @@ export type TAppConnection =
   | THerokuConnection
   | TRenderConnection
   | TFlyioConnection
-  | TGitlabConnection;
+  | TGitlabConnection
+  | TCloudflareConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -142,4 +145,5 @@ export type TAppConnectionMap = {
   [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
   [AppConnection.Gitlab]: TGitlabConnection;
+  [AppConnection.Cloudflare]: TCloudflareConnection;
 };

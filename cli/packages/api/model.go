@@ -21,7 +21,7 @@ type LoginTwoRequest struct {
 }
 
 type LoginTwoResponse struct {
-	JWTToken            string `json:"token"`
+	JTWToken            string `json:"token"`
 	RefreshToken        string `json:"refreshToken"`
 	PublicKey           string `json:"publicKey"`
 	EncryptedPrivateKey string `json:"encryptedPrivateKey"`
@@ -267,7 +267,7 @@ type GetLoginTwoV2Response struct {
 	ProtectedKey        string `json:"protectedKey"`
 	ProtectedKeyIV      string `json:"protectedKeyIV"`
 	ProtectedKeyTag     string `json:"protectedKeyTag"`
-	RefreshToken        string `json:"refreshToken"`
+	RefreshToken        string `json:"RefreshToken"`
 }
 
 type VerifyMfaTokenRequest struct {
@@ -654,4 +654,36 @@ type BootstrapInstanceRequest struct {
 	Password     string `json:"password"`
 	Organization string `json:"organization"`
 	Domain       string `json:"domain"`
+}
+
+type BootstrapInstanceResponse struct {
+	Message      string                `json:"message"`
+	Identity     BootstrapIdentity     `json:"identity"`
+	Organization BootstrapOrganization `json:"organization"`
+	User         BootstrapUser         `json:"user"`
+}
+
+type BootstrapIdentity struct {
+	ID          string                       `json:"id"`
+	Name        string                       `json:"name"`
+	Credentials BootstrapIdentityCredentials `json:"credentials"`
+}
+
+type BootstrapIdentityCredentials struct {
+	Token string `json:"token"`
+}
+
+type BootstrapOrganization struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+type BootstrapUser struct {
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	FirstName  string `json:"firstName"`
+	LastName   string `json:"lastName"`
+	Username   string `json:"username"`
+	SuperAdmin bool   `json:"superAdmin"`
 }

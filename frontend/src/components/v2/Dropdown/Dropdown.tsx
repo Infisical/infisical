@@ -94,7 +94,7 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
     className={twMerge(
       "block cursor-pointer rounded-sm px-4 py-2 font-inter text-xs text-mineshaft-200 outline-none data-[highlighted]:bg-mineshaft-700",
       className,
-      isDisabled ? "pointer-events-none opacity-50" : ""
+      isDisabled ? "pointer-events-none cursor-not-allowed opacity-50" : ""
     )}
   >
     <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>

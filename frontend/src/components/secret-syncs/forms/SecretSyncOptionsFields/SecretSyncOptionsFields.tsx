@@ -56,6 +56,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Render:
     case SecretSync.Flyio:
     case SecretSync.GitLab:
+    case SecretSync.CloudflarePages:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

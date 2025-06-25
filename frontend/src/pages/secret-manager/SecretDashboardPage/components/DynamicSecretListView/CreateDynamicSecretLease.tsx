@@ -368,6 +368,22 @@ const renderOutputForm = (
     );
   }
 
+  if (provider === DynamicSecretProviders.Github) {
+    const { TOKEN } = data as {
+      TOKEN: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay
+          label="Token"
+          value={TOKEN}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 
@@ -608,6 +624,9 @@ export const CreateDynamicSecretLease = ({
     return <Spinner className="mx-auto h-40 text-mineshaft-700" />;
   }
 
+  // Github tokens are fixed to 1 hour
+  const fixedTtl = provider === DynamicSecretProviders.Github;
+
   return (
     <div>
       <AnimatePresence>
@@ -629,8 +648,11 @@ export const CreateDynamicSecretLease = ({
                     label={<TtlFormLabel label="Default TTL" />}
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
+                    helperText={
+                      fixedTtl ? `This provider has a fixed TTL of ${field.value}` : undefined
+                    }
                   >
-                    <Input {...field} />
+                    <Input {...field} isDisabled={fixedTtl} />
                   </FormControl>
                 )}
               />

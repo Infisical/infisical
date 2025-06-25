@@ -47,6 +47,8 @@ import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-servic
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
+import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
+import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
@@ -116,7 +118,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema,
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
-  [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema
+  [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
+  [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -525,6 +528,7 @@ export const appConnectionServiceFactory = ({
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById),
-    gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
+    gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    cloudflare: cloudflareConnectionService(connectAppConnectionById)
   };
 };

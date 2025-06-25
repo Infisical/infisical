@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { AuthTokenSessionsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
-import { authRateLimit, readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
@@ -13,7 +13,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     url: "/me/emails/code",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) ?? req.realIp
+        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) || req.realIp
       })
     },
     schema: {
@@ -34,7 +34,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/me/emails/verify",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => (req.body as { username?: string })?.username?.trim().substring(0, 100) || req.realIp
+      })
     },
     schema: {
       body: z.object({

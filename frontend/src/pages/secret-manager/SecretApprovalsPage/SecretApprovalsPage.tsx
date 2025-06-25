@@ -1,7 +1,5 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
@@ -45,21 +43,7 @@ export const SecretApprovalsPage = () => {
         <PageHeader
           title="Approval Workflows"
           description="Create approval policies for any modifications to secrets in sensitive environments and folders."
-        >
-          <a
-            href="https://infisical.com/docs/documentation/platform/pr-workflows"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
-              Documentation
-              <FontAwesomeIcon
-                icon={faArrowUpRightFromSquare}
-                className="mb-[0.06rem] ml-1 text-xs"
-              />
-            </span>
-          </a>
-        </PageHeader>
+        />
         <Tabs defaultValue={defaultTab}>
           <TabList>
             <Tab value={TabSection.SecretApprovalRequests}>

@@ -83,7 +83,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: smtpRateLimit({
         keyGenerator: (req) =>
-          (req.body as { membershipId?: string })?.membershipId?.trim().substring(0, 100) ?? req.realIp
+          (req.body as { membershipId?: string })?.membershipId?.trim().substring(0, 100) || req.realIp
       })
     },
     method: "POST",

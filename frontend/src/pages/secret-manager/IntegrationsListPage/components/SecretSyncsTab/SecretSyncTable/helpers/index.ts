@@ -140,6 +140,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         throw new Error(`Unhandled GitLab Scope Destination Col Values ${destination}`);
       }
       break;
+    case SecretSync.CloudflarePages:
+      primaryText = destinationConfig.projectName;
+      secondaryText = destinationConfig.environment;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

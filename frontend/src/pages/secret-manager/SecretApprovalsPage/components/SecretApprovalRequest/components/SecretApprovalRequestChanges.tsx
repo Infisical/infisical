@@ -56,27 +56,24 @@ export const generateCommitText = (commits: { op: CommitType }[] = [], isReplica
   if (score[CommitType.CREATE])
     text.push(
       <span key="created-commit">
-        {score[CommitType.CREATE]} secret{score[CommitType.CREATE] !== 1 && "s"}
-        <span style={{ color: "#60DD00" }}> created</span>
+        {score[CommitType.CREATE]} Secret{score[CommitType.CREATE] !== 1 && "s"}
+        <span className="text-green-600"> Created</span>
       </span>
     );
   if (score[CommitType.UPDATE])
     text.push(
       <span key="updated-commit">
-        {Boolean(text.length) && ","}
-        {score[CommitType.UPDATE]} secret{score[CommitType.UPDATE] !== 1 && "s"}
-        <span style={{ color: "#F8EB30" }} className="text-orange-600">
-          {" "}
-          updated
-        </span>
+        {Boolean(text.length) && ", "}
+        {score[CommitType.UPDATE]} Secret{score[CommitType.UPDATE] !== 1 && "s"}
+        <span className="text-yellow-600"> Updated</span>
       </span>
     );
   if (score[CommitType.DELETE])
     text.push(
       <span className="deleted-commit">
         {Boolean(text.length) && "and"}
-        {score[CommitType.DELETE]} secret{score[CommitType.UPDATE] !== 1 && "s"}
-        <span style={{ color: "#F83030" }}> deleted</span>
+        {score[CommitType.DELETE]} Secret{score[CommitType.DELETE] !== 1 && "s"}
+        <span className="text-red-600"> Deleted</span>
       </span>
     );
   return text;

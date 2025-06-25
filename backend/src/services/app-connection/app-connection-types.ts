@@ -63,6 +63,12 @@ import {
   TValidateCamundaConnectionCredentialsSchema
 } from "./camunda";
 import {
+  TCloudflareConnection,
+  TCloudflareConnectionConfig,
+  TCloudflareConnectionInput,
+  TValidateCloudflareConnectionCredentialsSchema
+} from "./cloudflare/cloudflare-connection-types";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -189,6 +195,7 @@ export type TAppConnection = { id: string } & (
   | TRenderConnection
   | TFlyioConnection
   | TGitLabConnection
+  | TCloudflareConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -224,6 +231,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRenderConnectionInput
   | TFlyioConnectionInput
   | TGitLabConnectionInput
+  | TCloudflareConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -266,7 +274,8 @@ export type TAppConnectionConfig =
   | THerokuConnectionConfig
   | TRenderConnectionConfig
   | TFlyioConnectionConfig
-  | TGitLabConnectionConfig;
+  | TGitLabConnectionConfig
+  | TCloudflareConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -296,7 +305,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHerokuConnectionCredentialsSchema
   | TValidateRenderConnectionCredentialsSchema
   | TValidateFlyioConnectionCredentialsSchema
-  | TValidateGitLabConnectionCredentialsSchema;
+  | TValidateGitLabConnectionCredentialsSchema
+  | TValidateCloudflareConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
