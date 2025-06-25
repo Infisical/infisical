@@ -223,7 +223,7 @@ export const IdentityTlsCertAuthForm = ({
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Access Token TTL (seconds)"
-                tooltipText="The lifetime for an acccess token in seconds. This value will be referenced at renewal time."
+                tooltipText="The lifetime for an access token in seconds. This value will be referenced at renewal time."
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
