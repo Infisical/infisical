@@ -155,6 +155,8 @@ const createGitLabVariable = async ({
         environmentScope: payload.environmentScope,
         protected: payload.protected,
         masked: payload.masked,
+        // @ts-expect-error type
+        masked_and_hidden: payload.masked_and_hidden,
         raw: false
       });
     }
@@ -323,7 +325,12 @@ export const GitLabSyncFns = {
           const existingVariable = currentVariableMap.get(key);
 
           if (existingVariable) {
-            if (existingVariable.value !== value) {
+            if (
+              existingVariable.value !== value ||
+              existingVariable.environmentScope !== targetEnvironment ||
+              existingVariable.protected !== destinationConfig.shouldProtectSecrets ||
+              existingVariable.masked !== destinationConfig.shouldMaskSecrets
+            ) {
               await updateGitLabVariable({
                 accessToken,
                 connection,
@@ -369,7 +376,7 @@ export const GitLabSyncFns = {
           try {
             const shouldDelete =
               matchesSchema(variable.key, environment?.slug || "", secretSync.syncOptions.keySchema) &&
-              variable.key in secretMap;
+              !(variable.key in secretMap);
 
             if (shouldDelete) {
               await deleteGitLabVariable({
