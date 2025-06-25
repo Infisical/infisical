@@ -54,6 +54,9 @@ description: "Learn how to configure a GitLab Sync for Infisical."
             <Note>
                 Be aware that GitLab only allows to mark secrets as hidden for new secrets. If you try to mark an existing secret as hidden, it produces an error.
             </Note>
+            <Warning>
+                If you enable **Mark secrets as Hidden**, Infisical will not be able to unhide/unmask secrets from the sync destination if you disable the option later. This is because GitLab does not allow to unhide/unmask existing secrets.
+            </Warning>
 
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
         ![Configure Options](/images/secret-syncs/gitlab/gitlab-secret-sync-options.png)
