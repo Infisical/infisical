@@ -339,8 +339,8 @@ export const GitLabSyncFns = {
                 variable: {
                   value,
                   environment_scope: targetEnvironment,
-                  protected: destinationConfig.shouldProtectSecrets ?? existingVariable.protected,
-                  masked: existingVariable.masked || destinationConfig.shouldMaskSecrets
+                  protected: destinationConfig.shouldProtectSecrets,
+                  masked: destinationConfig.shouldMaskSecrets || existingVariable.hidden
                 },
                 targetEnvironment
               });

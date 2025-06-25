@@ -18,6 +18,7 @@ export type TGitLabVariable = {
   protected: boolean;
   masked: boolean;
   environmentScope?: string;
+  hidden?: boolean;
 };
 
 export type TGitLabVariableCreate = {
