@@ -28,6 +28,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Heroku]: "Heroku",
   [AppConnection.Render]: "Render",
   [AppConnection.Flyio]: "Fly.io",
+  [AppConnection.GitLab]: "GitLab",
   [AppConnection.Cloudflare]: "Cloudflare"
 };
 
@@ -59,5 +60,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Heroku]: AppConnectionPlanType.Regular,
   [AppConnection.Render]: AppConnectionPlanType.Regular,
   [AppConnection.Flyio]: AppConnectionPlanType.Regular,
+  [AppConnection.GitLab]: AppConnectionPlanType.Regular,
   [AppConnection.Cloudflare]: AppConnectionPlanType.Regular
 };

@@ -72,8 +72,15 @@ import {
   TAzureKeyVaultSyncListItem,
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
+import {
+  TCloudflarePagesSync,
+  TCloudflarePagesSyncInput,
+  TCloudflarePagesSyncListItem,
+  TCloudflarePagesSyncWithCredentials
+} from "./cloudflare-pages/cloudflare-pages-types";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
+import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
 import {
   THCVaultSync,
   THCVaultSyncInput,
@@ -106,12 +113,6 @@ import {
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
-import {
-  TCloudflarePagesSync,
-  TCloudflarePagesSyncInput,
-  TCloudflarePagesSyncListItem,
-  TCloudflarePagesSyncWithCredentials
-} from "./cloudflare-pages/cloudflare-pages-types";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -134,6 +135,7 @@ export type TSecretSync =
   | THerokuSync
   | TRenderSync
   | TFlyioSync
+  | TGitLabSync
   | TCloudflarePagesSync;
 
 export type TSecretSyncWithCredentials =
@@ -157,6 +159,7 @@ export type TSecretSyncWithCredentials =
   | THerokuSyncWithCredentials
   | TRenderSyncWithCredentials
   | TFlyioSyncWithCredentials
+  | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials;
 
 export type TSecretSyncInput =
@@ -180,6 +183,7 @@ export type TSecretSyncInput =
   | THerokuSyncInput
   | TRenderSyncInput
   | TFlyioSyncInput
+  | TGitLabSyncInput
   | TCloudflarePagesSyncInput;
 
 export type TSecretSyncListItem =
@@ -203,6 +207,7 @@ export type TSecretSyncListItem =
   | THerokuSyncListItem
   | TRenderSyncListItem
   | TFlyioSyncListItem
+  | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem;
 
 export type TSyncOptionsConfig = {

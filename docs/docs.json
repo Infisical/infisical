@@ -475,6 +475,7 @@
                   "integrations/app-connections/gcp",
                   "integrations/app-connections/github",
                   "integrations/app-connections/github-radar",
+                  "integrations/app-connections/gitlab",
                   "integrations/app-connections/hashicorp-vault",
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/humanitec",
@@ -512,6 +513,7 @@
                   "integrations/secret-syncs/flyio",
                   "integrations/secret-syncs/gcp-secret-manager",
                   "integrations/secret-syncs/github",
+                  "integrations/secret-syncs/gitlab",
                   "integrations/secret-syncs/hashicorp-vault",
                   "integrations/secret-syncs/heroku",
                   "integrations/secret-syncs/humanitec",
@@ -1318,6 +1320,18 @@
                     ]
                   },
                   {
+                    "group": "GitLab",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/gitlab/list",
+                      "api-reference/endpoints/app-connections/gitlab/available",
+                      "api-reference/endpoints/app-connections/gitlab/get-by-id",
+                      "api-reference/endpoints/app-connections/gitlab/get-by-name",
+                      "api-reference/endpoints/app-connections/gitlab/create",
+                      "api-reference/endpoints/app-connections/gitlab/update",
+                      "api-reference/endpoints/app-connections/gitlab/delete"
+                    ]
+                  },
+                  {
                     "group": "GitHub Radar",
                     "pages": [
                       "api-reference/endpoints/app-connections/github-radar/list",
@@ -1665,6 +1679,19 @@
                       "api-reference/endpoints/secret-syncs/github/delete",
                       "api-reference/endpoints/secret-syncs/github/sync-secrets",
                       "api-reference/endpoints/secret-syncs/github/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "GitLab",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/gitlab/list",
+                      "api-reference/endpoints/secret-syncs/gitlab/get-by-id",
+                      "api-reference/endpoints/secret-syncs/gitlab/get-by-name",
+                      "api-reference/endpoints/secret-syncs/gitlab/create",
+                      "api-reference/endpoints/secret-syncs/gitlab/update",
+                      "api-reference/endpoints/secret-syncs/gitlab/delete",
+                      "api-reference/endpoints/secret-syncs/gitlab/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/gitlab/remove-secrets"
                     ]
                   },
                   {

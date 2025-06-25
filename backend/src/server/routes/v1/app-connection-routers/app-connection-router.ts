@@ -36,6 +36,10 @@ import {
   SanitizedCamundaConnectionSchema
 } from "@app/services/app-connection/camunda";
 import {
+  CloudflareConnectionListItemSchema,
+  SanitizedCloudflareConnectionSchema
+} from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
+import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
@@ -46,6 +50,7 @@ import {
   GitHubRadarConnectionListItemSchema,
   SanitizedGitHubRadarConnectionSchema
 } from "@app/services/app-connection/github-radar";
+import { GitLabConnectionListItemSchema, SanitizedGitLabConnectionSchema } from "@app/services/app-connection/gitlab";
 import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
@@ -80,10 +85,6 @@ import {
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
 import { AuthMode } from "@app/services/auth/auth-type";
-import {
-  CloudflareConnectionListItemSchema,
-  SanitizedCloudflareConnectionSchema
-} from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
 
 // can't use discriminated due to multiple schemas for certain apps
 const SanitizedAppConnectionSchema = z.union([
@@ -114,6 +115,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedHerokuConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
+  ...SanitizedGitLabConnectionSchema.options,
   ...SanitizedCloudflareConnectionSchema.options
 ]);
 
@@ -145,6 +147,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   HerokuConnectionListItemSchema,
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
+  GitLabConnectionListItemSchema,
   CloudflareConnectionListItemSchema
 ]);
 

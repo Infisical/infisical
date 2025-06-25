@@ -63,6 +63,12 @@ import {
   TValidateCamundaConnectionCredentialsSchema
 } from "./camunda";
 import {
+  TCloudflareConnection,
+  TCloudflareConnectionConfig,
+  TCloudflareConnectionInput,
+  TValidateCloudflareConnectionCredentialsSchema
+} from "./cloudflare/cloudflare-connection-types";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -92,6 +98,12 @@ import {
   TGitHubRadarConnectionInput,
   TValidateGitHubRadarConnectionCredentialsSchema
 } from "./github-radar";
+import {
+  TGitLabConnection,
+  TGitLabConnectionConfig,
+  TGitLabConnectionInput,
+  TValidateGitLabConnectionCredentialsSchema
+} from "./gitlab";
 import {
   THCVaultConnection,
   THCVaultConnectionConfig,
@@ -153,12 +165,6 @@ import {
   TWindmillConnectionConfig,
   TWindmillConnectionInput
 } from "./windmill";
-import {
-  TCloudflareConnection,
-  TCloudflareConnectionConfig,
-  TCloudflareConnectionInput,
-  TValidateCloudflareConnectionCredentialsSchema
-} from "./cloudflare/cloudflare-connection-types";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -188,6 +194,7 @@ export type TAppConnection = { id: string } & (
   | THerokuConnection
   | TRenderConnection
   | TFlyioConnection
+  | TGitLabConnection
   | TCloudflareConnection
 );
 
@@ -223,6 +230,7 @@ export type TAppConnectionInput = { id: string } & (
   | THerokuConnectionInput
   | TRenderConnectionInput
   | TFlyioConnectionInput
+  | TGitLabConnectionInput
   | TCloudflareConnectionInput
 );
 
@@ -266,6 +274,7 @@ export type TAppConnectionConfig =
   | THerokuConnectionConfig
   | TRenderConnectionConfig
   | TFlyioConnectionConfig
+  | TGitLabConnectionConfig
   | TCloudflareConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -296,6 +305,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHerokuConnectionCredentialsSchema
   | TValidateRenderConnectionCredentialsSchema
   | TValidateFlyioConnectionCredentialsSchema
+  | TValidateGitLabConnectionCredentialsSchema
   | TValidateCloudflareConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

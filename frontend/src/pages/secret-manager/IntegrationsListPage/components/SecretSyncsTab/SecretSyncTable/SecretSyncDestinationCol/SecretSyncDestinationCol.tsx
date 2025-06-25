@@ -12,6 +12,7 @@ import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
+import { GitLabSyncDestinationCol } from "./GitLabSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
@@ -68,6 +69,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <RenderSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Flyio:
       return <FlyioSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.GitLab:
+      return <GitLabSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.CloudflarePages:
       return <CloudflarePagesSyncDestinationCol secretSync={secretSync} />;
     default:

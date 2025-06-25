@@ -123,6 +123,11 @@ export type TFlyioConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Flyio;
 };
 
+export type TGitlabConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Gitlab;
+  oauthClientId?: string;
+};
+
 export type TCloudflareConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Cloudflare;
 };
@@ -153,6 +158,7 @@ export type TAppConnectionOption =
   | THerokuConnectionOption
   | TRenderConnectionOption
   | TFlyioConnectionOption
+  | TGitlabConnectionOption
   | TCloudflareConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -183,5 +189,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Heroku]: THerokuConnectionOption;
   [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
+  [AppConnection.Gitlab]: TGitlabConnectionOption;
   [AppConnection.Cloudflare]: TCloudflareConnectionOption;
 };

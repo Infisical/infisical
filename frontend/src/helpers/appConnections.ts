@@ -24,6 +24,7 @@ import {
   GcpConnectionMethod,
   GitHubConnectionMethod,
   GitHubRadarConnectionMethod,
+  GitLabConnectionMethod,
   HCVaultConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
@@ -86,6 +87,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" },
   [AppConnection.Render]: { name: "Render", image: "Render.png" },
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
+  [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" }
 };
 
@@ -100,6 +102,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureDevOpsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
+    case GitLabConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:

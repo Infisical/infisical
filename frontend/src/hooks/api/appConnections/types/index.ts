@@ -14,6 +14,7 @@ import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
+import { TGitLabConnection } from "./gitlab-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
@@ -37,11 +38,13 @@ export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
 export * from "./camunda-connection";
+export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./github-radar-connection";
+export * from "./gitlab-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./humanitec-connection";
@@ -56,7 +59,6 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
-export * from "./cloudflare-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -86,6 +88,7 @@ export type TAppConnection =
   | THerokuConnection
   | TRenderConnection
   | TFlyioConnection
+  | TGitLabConnection
   | TCloudflareConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
@@ -141,5 +144,6 @@ export type TAppConnectionMap = {
   [AppConnection.Heroku]: THerokuConnection;
   [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
+  [AppConnection.Gitlab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
 };

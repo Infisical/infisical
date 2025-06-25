@@ -590,6 +590,17 @@ You can configure third-party app connections for re-use across Infisical Projec
 
 </Accordion>
 
+<Accordion title="GitLab OAuth Connection">
+    <ParamField query="INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID" type="string" default="none" optional>
+        The Application ID of your GitLab OAuth application.
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
+        The Secret of your GitLab OAuth application.
+    </ParamField>
+
+</Accordion>
+
 ## Native Secret Integrations
 
 To help you sync secrets from Infisical to services such as Github and Gitlab, Infisical provides native integrations out of the box.

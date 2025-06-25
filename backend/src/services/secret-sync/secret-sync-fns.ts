@@ -34,6 +34,7 @@ import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns"
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
+import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
 import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
@@ -66,6 +67,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Heroku]: HEROKU_SYNC_LIST_OPTION,
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
+  [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION
 };
 
@@ -230,6 +232,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.GitLab:
+        return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
@@ -318,6 +322,9 @@ export const SecretSyncFns = {
       case SecretSync.Flyio:
         secretMap = await FlyioSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.GitLab:
+        secretMap = await GitLabSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.CloudflarePages:
         secretMap = await CloudflarePagesSyncFns.getSecrets(secretSync);
         break;
@@ -394,6 +401,8 @@ export const SecretSyncFns = {
         return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Flyio:
         return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.GitLab:
+        return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:

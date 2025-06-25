@@ -19,6 +19,7 @@ export enum SecretSync {
   Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
+  GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages"
 }
 

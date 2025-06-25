@@ -5,6 +5,7 @@ import {
   GitHubSyncScope,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
+import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
 // This functional ensures parity across what is displayed in the destination column
@@ -127,6 +128,17 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Flyio:
       primaryText = destinationConfig.appId;
       secondaryText = "App ID";
+      break;
+    case SecretSync.GitLab:
+      if (destinationConfig.scope === GitLabSyncScope.Project) {
+        primaryText = destinationConfig.projectName;
+        secondaryText = destinationConfig.projectId;
+      } else if (destinationConfig.scope === GitLabSyncScope.Group) {
+        primaryText = destinationConfig.groupName;
+        secondaryText = destinationConfig.groupId;
+      } else {
+        throw new Error(`Unhandled GitLab Scope Destination Col Values ${destination}`);
+      }
       break;
     case SecretSync.CloudflarePages:
       primaryText = destinationConfig.projectName;

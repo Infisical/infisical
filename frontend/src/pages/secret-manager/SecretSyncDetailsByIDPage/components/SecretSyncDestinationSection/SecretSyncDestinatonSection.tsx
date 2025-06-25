@@ -23,6 +23,7 @@ import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSec
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
+import { GitLabSyncDestinationSection } from "./GitLabSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
@@ -106,6 +107,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Flyio:
       DestinationComponents = <FlyioSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.GitLab:
+      DestinationComponents = <GitLabSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.CloudflarePages:
       DestinationComponents = <CloudflarePagesSyncDestinationSection secretSync={secretSync} />;
