@@ -221,7 +221,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .max(10240)
             .refine(validateCaCertificate, "Invalid CA Certificate.")
             .optional()
-            .describe(TLS_CERT_AUTH.ATTACH.caCertificate),
+            .describe(TLS_CERT_AUTH.UPDATE.caCertificate),
           allowedCommonNames: validateCommonNames
             .optional()
             .nullable()
