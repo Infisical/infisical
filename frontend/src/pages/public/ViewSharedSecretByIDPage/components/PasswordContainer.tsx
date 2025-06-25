@@ -70,7 +70,7 @@ export const PasswordContainer = ({
         colorSchema="primary"
         variant="outline_bg"
         size="sm"
-        onClick={() => window.open("https://app.infisical.com/share-secret", "_blank")}
+        onClick={() => window.open("/share-secret", "_blank", "noopener")}
         rightIcon={<FontAwesomeIcon icon={faArrowRight} className="pl-2" />}
       >
         Share Your Own Secret
