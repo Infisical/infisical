@@ -34,10 +34,6 @@ const AwsTagsSection = () => {
 
   return (
     <div className="mb-4 mt-2 flex flex-col pl-2">
-      <FormLabel
-        label="Resource Tags"
-        tooltipText="Add resource tags to parameters synced by Infisical"
-      />
       <div className="grid max-h-[20vh] grid-cols-12 items-end gap-2 overflow-y-auto">
         {tagFields.fields.map(({ id: tagFieldId }, i) => (
           <Fragment key={tagFieldId}>
@@ -190,7 +186,7 @@ export const AwsParameterStoreSyncOptionsFields = () => {
         }}
       >
         <p className="w-[14rem]">
-          Override Resource Tags{" "}
+          Set Resource Tags{" "}
           <Tooltip
             className="max-w-md"
             content={
