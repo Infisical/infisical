@@ -3,9 +3,11 @@ import { Knex } from "knex";
 
 import { chunkArray } from "@app/lib/fn";
 import { selectAllTableCols } from "@app/lib/knex";
-import { logger } from "@app/lib/logger";
+import { logger, initLogger } from "@app/lib/logger";
 
 import { SecretType, TableName } from "../schemas";
+
+initLogger();
 
 export async function up(knex: Knex): Promise<void> {
   logger.info("Starting secret version fix migration");
