@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { TooltipProps as RootProps } from "@radix-ui/react-tooltip";
 import { twMerge } from "tailwind-merge";
 
 export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "content"> & {
@@ -14,6 +15,7 @@ export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "
   isDisabled?: boolean;
   center?: boolean;
   size?: "sm" | "md";
+  rootProps?: RootProps;
 };
 
 export const Tooltip = ({
@@ -28,12 +30,14 @@ export const Tooltip = ({
   isDisabled,
   position = "top",
   size = "md",
+  rootProps,
   ...props
 }: TooltipProps) =>
   // just render children if tooltip content is empty
   content ? (
     <TooltipPrimitive.Root
       delayDuration={50}
+      {...rootProps}
       open={isOpen}
       defaultOpen={defaultOpen}
       onOpenChange={onOpenChange}
