@@ -18,7 +18,6 @@ import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -207,7 +206,7 @@ export const UserInfoSSOStep = ({
 
                   localStorage.setItem("orgData.id", orgId);
                   navigate({
-                    to: `/organization/${ProjectType.SecretManager}/overview` as const
+                    to: "/organization/projects"
                   });
                 } catch (error) {
                   setIsLoading(false);

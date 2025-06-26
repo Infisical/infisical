@@ -140,7 +140,7 @@ export const Navbar = () => {
   return (
     <div className="z-10 flex h-12 items-center gap-1 border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
       <div>
-        <Link to="/organization/secret-manager/overview">
+        <Link to="/organization/projects">
           <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
         </Link>
       </div>

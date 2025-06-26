@@ -29,10 +29,9 @@ import { useGetUserWorkspaces } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { Workspace } from "@app/hooks/api/workspace/types";
 
 type Props = {
-  type: ProjectType;
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
@@ -48,7 +47,6 @@ enum ProjectsViewMode {
 }
 
 export const MyProjectView = ({
-  type,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
@@ -56,9 +54,7 @@ export const MyProjectView = ({
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
-  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserWorkspaces({
-    type
-  });
+  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserWorkspaces();
   const {
     setPage,
     perPage,
@@ -202,11 +198,6 @@ export const MyProjectView = ({
       </div>
 
       <div className="flex w-full flex-row items-end justify-between place-self-end">
-        {type === ProjectType.SecretManager && (
-          <div className="mt-0 text-xs text-mineshaft-400">
-            {workspace.environments?.length || 0} environments
-          </div>
-        )}
         <button type="button">
           <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 px-4 py-2 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
             Explore{" "}
@@ -239,11 +230,6 @@ export const MyProjectView = ({
         <div className="truncate text-sm text-mineshaft-100">{workspace.name}</div>
       </div>
       <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
-        {type === ProjectType.SecretManager && (
-          <div className="text-center text-sm text-mineshaft-300">
-            {workspace.environments?.length || 0} environments
-          </div>
-        )}
         {isFavorite ? (
           <FontAwesomeIcon
             icon={faSolidStar}

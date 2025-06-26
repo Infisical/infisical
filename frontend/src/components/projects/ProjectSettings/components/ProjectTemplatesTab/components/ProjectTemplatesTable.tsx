@@ -38,8 +38,8 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
 
   const projectType = useGetProjectTypeFromRoute();
 
-  const { isPending, data: projectTemplates = [] } = useListProjectTemplates(projectType, {
-    enabled: subscription?.projectTemplates && Boolean(projectType)
+  const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
+    enabled: subscription?.projectTemplates
   });
 
   const [search, setSearch] = useState("");

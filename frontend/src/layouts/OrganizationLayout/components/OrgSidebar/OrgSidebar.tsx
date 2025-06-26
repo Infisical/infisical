@@ -38,7 +38,7 @@ export const OrgSidebar = () => {
         <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
           <Menu>
             <MenuGroup title="Overview">
-              <Link to="/organization/secret-manager/overview">
+              <Link to="/organization/projects">
                 {({ isActive }) => (
                   <MenuItem isSelected={isActive} icon="notification-bell">
                     Projects

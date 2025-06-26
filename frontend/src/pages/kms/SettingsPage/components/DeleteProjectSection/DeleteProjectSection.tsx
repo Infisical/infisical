@@ -64,7 +64,7 @@ export const DeleteProjectSection = () => {
       });
 
       navigate({
-        to: `/organization/${ProjectType.SecretManager}/overview` as const
+        to: "/organization/projects"
       });
       handlePopUpClose("deleteWorkspace");
     } catch (err) {
