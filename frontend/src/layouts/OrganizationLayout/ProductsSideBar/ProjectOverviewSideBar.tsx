@@ -13,7 +13,7 @@ export const ProjectOverviewSideBar = ({ type }: TProjectOverviewSideBarProps) =
   const matchRoute = useMatchRoute();
 
   const isOverviewActive = !!matchRoute({
-    to: `/organization/${type}/overview`,
+    to: "/organization/projects",
     fuzzy: false
   });
 

@@ -10,31 +10,25 @@ import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
 import { MyProjectView } from "./components/MyProjectView";
 import { ProjectListToggle, ProjectListView } from "./components/ProjectListToggle";
 
-const formatDescription = (type: ProjectType) => {
-  if (type === ProjectType.SecretManager)
-    return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
-  if (type === ProjectType.CertificateManager)
-    return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
-  if (type === ProjectType.KMS)
-    return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
-  if (type === ProjectType.SecretScanning)
-    return "Connect and monitor data sources to prevent secret leaks.";
-  return "Infisical SSH lets you issue SSH credentials to users for short-lived, secure SSH access to infrastructure.";
-};
+// const formatDescription = (type: ProjectType) => {
+//   if (type === ProjectType.SecretManager)
+//     return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
+//   if (type === ProjectType.CertificateManager)
+//     return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
+//   if (type === ProjectType.KMS)
+//     return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
+//   if (type === ProjectType.SecretScanning)
+//     return "Connect and monitor data sources to prevent secret leaks.";
+//   return "Infisical SSH lets you issue SSH credentials to users for short-lived, secure SSH access to infrastructure.";
+// };
 
-type Props = {
-  type: ProjectType;
-};
-
-// #TODO: Update all the workspaceIds
-export const ProductOverviewPage = ({ type }: Props) => {
+export const ProjectsPage = () => {
   const { t } = useTranslation();
 
   const [projectListView, setProjectListView] = useState(ProjectListView.MyProjects);
@@ -87,19 +81,17 @@ export const ProductOverviewPage = ({ type }: Props) => {
               <ProjectListToggle value={projectListView} onChange={setProjectListView} />
             </div>
           }
-          description={formatDescription(type)}
+          description="Your team's complete security toolkit - organized and ready when you need them."
         />
       </div>
       {projectListView === ProjectListView.MyProjects ? (
         <MyProjectView
-          type={type}
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
         />
       ) : (
         <AllProjectView
-          type={type}
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
@@ -108,7 +100,6 @@ export const ProductOverviewPage = ({ type }: Props) => {
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
-        projectType={type}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
@@ -118,7 +109,3 @@ export const ProductOverviewPage = ({ type }: Props) => {
     </div>
   );
 };
-
-export const SecretManagerOverviewPage = () => (
-  <ProductOverviewPage type={ProjectType.SecretManager} />
-);

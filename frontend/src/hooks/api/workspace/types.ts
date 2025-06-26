@@ -71,7 +71,6 @@ export type CreateWorkspaceDTO = {
   projectDescription?: string;
   kmsKeyId?: string;
   template?: string;
-  type: ProjectType;
 };
 
 export type UpdateProjectDTO = {
@@ -181,7 +180,6 @@ export enum ProjectIdentityOrderBy {
   Name = "name"
 }
 export type TSearchProjectsDTO = {
-  type?: ProjectType;
   name?: string;
   limit?: number;
   offset?: number;

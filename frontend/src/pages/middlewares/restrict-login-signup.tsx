@@ -112,7 +112,7 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       throw redirect({ to: "/login/select-organization" });
     }
     throw redirect({
-      to: `/organization/${ProjectType.SecretManager}/overview` as const
+      to: "/organization/projects"
     });
   },
   component: AuthConsentWrapper

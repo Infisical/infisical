@@ -71,7 +71,7 @@ export default function NavHeader({
         {currentOrg?.name?.charAt(0)}
       </div>
       <Link
-        to="/organization/secret-manager/overview"
+        to="/organization/projects"
         className="truncate pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary"
       >
         {currentOrg?.name}

@@ -59,10 +59,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
       });
 
       navigate({
-        to: `/organization/${ProjectType.SecretManager}/overview` as const,
-        params: {
-          organizationId: organization.id
-        }
+        to: "/organization/projects"
       });
 
       localStorage.setItem("orgData.id", organization.id);

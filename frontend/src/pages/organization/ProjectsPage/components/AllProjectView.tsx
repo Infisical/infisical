@@ -35,10 +35,9 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { Workspace } from "@app/hooks/api/workspace/types";
 
 type Props = {
-  type: ProjectType;
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
@@ -92,7 +91,6 @@ const RequestAccessModal = ({ projectId, onPopUpToggle }: RequestAccessModalProp
 };
 
 export const AllProjectView = ({
-  type,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
@@ -125,7 +123,6 @@ export const AllProjectView = ({
   const { data: searchedProjects, isPending: isProjectLoading } = useSearchProjects({
     limit,
     offset,
-    type,
     name: debouncedSearch || undefined,
     orderDirection
   });

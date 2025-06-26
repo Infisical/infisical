@@ -1,11 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import {
-  faCaretDown,
-  faChevronRight,
-  faEllipsis,
-  faSlash
-} from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faEllipsis, faSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, ReactNode } from "@tanstack/react-router";
 import { LinkComponentProps } from "node_modules/@tanstack/react-router/dist/esm/link";

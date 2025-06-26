@@ -22,7 +22,7 @@ import { usePopUp } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { Workspace } from "@app/hooks/api/workspace/types";
 
 type TWorkspaceWithFaveProp = Workspace & { isFavorite: boolean };
 
@@ -126,7 +126,7 @@ const ProjectOption = ({
 export const ProjectSelect = () => {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
-  const { data: workspaces = [] } = useGetUserWorkspaces({ type: currentWorkspace.type });
+  const { data: workspaces = [] } = useGetUserWorkspaces();
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id!);
 
   const { subscription } = useSubscription();
@@ -211,7 +211,6 @@ export const ProjectSelect = () => {
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
-        projectType={currentWorkspace?.type || ProjectType.SecretManager}
       />
     </div>
   );
