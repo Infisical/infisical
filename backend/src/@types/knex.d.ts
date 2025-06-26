@@ -497,6 +497,11 @@ import {
   TMicrosoftTeamsIntegrationsUpdate
 } from "@app/db/schemas/microsoft-teams-integrations";
 import {
+  TPosthogAggregatedEvents,
+  TPosthogAggregatedEventsInsert,
+  TPosthogAggregatedEventsUpdate
+} from "@app/db/schemas/posthog-aggregated-events";
+import {
   TProjectMicrosoftTeamsConfigs,
   TProjectMicrosoftTeamsConfigsInsert,
   TProjectMicrosoftTeamsConfigsUpdate
@@ -1202,6 +1207,11 @@ declare module "knex/types/tables" {
       TSecretScanningConfigs,
       TSecretScanningConfigsInsert,
       TSecretScanningConfigsUpdate
+    >;
+    [TableName.PosthogAggregatedEvents]: KnexOriginal.CompositeTableType<
+      TPosthogAggregatedEvents,
+      TPosthogAggregatedEventsInsert,
+      TPosthogAggregatedEventsUpdate
     >;
   }
 }
