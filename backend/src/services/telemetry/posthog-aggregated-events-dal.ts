@@ -25,7 +25,10 @@ export const posthogAggregatedEventsDALFactory = (db: TDbClient) => {
         .first();
       return doc;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Get last hour aggregated events" });
+      throw new DatabaseError({
+        error,
+        name: `Get aggregated events for event: ${event} with distinctId: ${distinctId}`
+      });
     }
   };
 
@@ -49,7 +52,7 @@ export const posthogAggregatedEventsDALFactory = (db: TDbClient) => {
 
       return grouped;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Get last hour aggregated events" });
+      throw new DatabaseError({ error, name: `Get aggregated events for event: ${event}` });
     }
   };
 
