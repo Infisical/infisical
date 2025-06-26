@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -107,8 +107,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -290,8 +289,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -337,8 +335,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: accessApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     if (!membership) {
@@ -578,8 +575,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });

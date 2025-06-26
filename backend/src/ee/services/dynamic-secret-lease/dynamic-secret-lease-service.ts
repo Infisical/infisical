@@ -1,7 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import RE2 from "re2";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -85,8 +84,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -202,8 +200,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -300,8 +297,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -389,8 +385,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -437,8 +432,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);

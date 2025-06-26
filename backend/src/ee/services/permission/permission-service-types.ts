@@ -1,7 +1,6 @@
 import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
@@ -21,7 +20,6 @@ export type TGetUserProjectPermissionArg = {
   userId: string;
   projectId: string;
   authMethod: ActorAuthMethod;
-  actionProjectType: ActionProjectType;
   userOrgId?: string;
 };
 
@@ -29,14 +27,12 @@ export type TGetIdentityProjectPermissionArg = {
   identityId: string;
   projectId: string;
   identityOrgId?: string;
-  actionProjectType: ActionProjectType;
 };
 
 export type TGetServiceTokenProjectPermissionArg = {
   serviceTokenId: string;
   projectId: string;
   actorOrgId?: string;
-  actionProjectType: ActionProjectType;
 };
 
 export type TGetProjectPermissionArg = {
@@ -45,7 +41,6 @@ export type TGetProjectPermissionArg = {
   projectId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId?: string;
-  actionProjectType: ActionProjectType;
 };
 
 export type TPermissionServiceFactory = {
@@ -143,13 +138,7 @@ export type TPermissionServiceFactory = {
         };
       }
   >;
-  getUserProjectPermission: ({
-    userId,
-    projectId,
-    authMethod,
-    userOrgId,
-    actionProjectType
-  }: TGetUserProjectPermissionArg) => Promise<{
+  getUserProjectPermission: ({ userId, projectId, authMethod, userOrgId }: TGetUserProjectPermissionArg) => Promise<{
     permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
     membership: {
       id: string;

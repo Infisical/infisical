@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -59,8 +58,7 @@ export const sshCertificateTemplateServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -132,8 +130,7 @@ export const sshCertificateTemplateServiceFactory = ({
       actorId,
       projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -201,8 +198,7 @@ export const sshCertificateTemplateServiceFactory = ({
       actorId,
       projectId: certificateTemplate.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -228,8 +224,7 @@ export const sshCertificateTemplateServiceFactory = ({
       actorId,
       projectId: certTemplate.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
