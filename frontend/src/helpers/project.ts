@@ -59,14 +59,14 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
 
   return project;
 };
-export const getProjectHomePage = (workspace: Workspace) => {
-  switch (workspace.type) {
+export const getProjectHomePage = (type: ProjectType) => {
+  switch (type) {
     case ProjectType.CertificateManager:
-      return `/${workspace.type}/$projectId/subscribers` as const;
+      return `/projects/$projectId/${type}/subscribers` as const;
     case ProjectType.SecretScanning:
-      return `/${workspace.type}/$projectId/data-sources` as const;
+      return `/projects/$projectId/${type}/data-sources` as const;
     default:
-      return `/${workspace.type}/$projectId/overview` as const;
+      return `/projects/$projectId/${type}/overview` as const;
   }
 };
 
@@ -79,4 +79,9 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.SecretScanning]: "Secret Scanning"
   };
   return titleConvert[type];
+};
+
+export const getCurrentProductFromUrl = (location: string) => {
+  const type = Object.values(ProjectType).find((el) => location.includes(`/${el}`));
+  return type;
 };

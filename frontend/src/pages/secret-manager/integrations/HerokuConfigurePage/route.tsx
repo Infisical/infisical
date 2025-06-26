@@ -1,17 +1,17 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
 
-import { IntegrationsListPageTabs } from "@app/types/integrations";
+import { IntegrationsListPageTabs } from '@app/types/integrations'
 
-import { HerokuConfigurePage } from "./HerokuConfigurePage";
+import { HerokuConfigurePage } from './HerokuConfigurePage'
 
 const HerokuConfigurePageQueryParamsSchema = z.object({
-  integrationAuthId: z.string()
-});
+  integrationAuthId: z.string(),
+})
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/create"
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/heroku/create',
 )({
   component: HerokuConfigurePage,
   validateSearch: zodValidator(HerokuConfigurePageQueryParamsSchema),
@@ -20,19 +20,19 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: 'Integrations',
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
+            to: '/secret-manager/$projectId/integrations',
             params,
             search: {
-              selectedTab: IntegrationsListPageTabs.NativeIntegrations
-            }
-          })
+              selectedTab: IntegrationsListPageTabs.NativeIntegrations,
+            },
+          }),
         },
         {
-          label: "Heroku Cloud"
-        }
-      ]
-    };
-  }
-});
+          label: 'Heroku Cloud',
+        },
+      ],
+    }
+  },
+})

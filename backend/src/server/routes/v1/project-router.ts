@@ -158,17 +158,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         includeRoles: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true"),
-        type: z
-          .enum([
-            ProjectType.SecretManager,
-            ProjectType.KMS,
-            ProjectType.CertificateManager,
-            ProjectType.SSH,
-            ProjectType.SecretScanning,
-            "all"
-          ])
-          .optional()
+          .transform((value) => value === "true")
       }),
       response: {
         200: z.object({
@@ -187,8 +177,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        type: req.query.type
+        actorOrgId: req.permission.orgId
       });
       return { workspaces };
     }

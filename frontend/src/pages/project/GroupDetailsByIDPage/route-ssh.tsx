@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { GroupDetailsByIDPage } from "./GroupDetailsByIDPage";
+import { GroupDetailsByIDPage } from './GroupDetailsByIDPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/groups/$groupId"
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/ssh/_ssh-layout/groups/$groupId',
 )({
   component: GroupDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -11,18 +11,18 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Access Control",
+          label: 'Access Control',
           link: linkOptions({
-            to: "/ssh/$projectId/access-management",
+            to: '/ssh/$projectId/access-management',
             params: {
-              projectId: params.projectId
-            }
-          })
+              projectId: params.projectId,
+            },
+          }),
         },
         {
-          label: "Groups"
-        }
-      ]
-    };
-  }
-});
+          label: 'Groups',
+        },
+      ],
+    }
+  },
+})

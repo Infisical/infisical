@@ -571,8 +571,8 @@ export const projectServiceFactory = ({
   const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId }: TListProjectsDTO) => {
     const workspaces =
       actor === ActorType.IDENTITY
-        ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
-        : await projectDAL.findUserProjects(actorId, actorOrgId, type);
+        ? await projectDAL.findIdentityProjects(actorId, actorOrgId)
+        : await projectDAL.findUserProjects(actorId, actorOrgId);
 
     if (includeRoles) {
       const { permission } = await permissionService.getUserOrgPermission(

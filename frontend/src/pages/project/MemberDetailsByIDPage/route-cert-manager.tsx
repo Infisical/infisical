@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { MemberDetailsByIDPage } from "./MemberDetailsByIDPage";
+import { MemberDetailsByIDPage } from './MemberDetailsByIDPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/members/$membershipId"
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/members/$membershipId',
 )({
   component: MemberDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -11,18 +11,18 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Access Control",
+          label: 'Access Control',
           link: linkOptions({
-            to: "/cert-manager/$projectId/access-management",
+            to: '/cert-manager/$projectId/access-management',
             params: {
-              projectId: params.projectId
-            }
-          })
+              projectId: params.projectId,
+            },
+          }),
         },
         {
-          label: "Users"
-        }
-      ]
-    };
-  }
-});
+          label: 'Users',
+        },
+      ],
+    }
+  },
+})

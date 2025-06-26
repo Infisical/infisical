@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { PkiSubscriberDetailsByIDPage } from "./PkiSubscriberDetailsByIDPage";
+import { PkiSubscriberDetailsByIDPage } from './PkiSubscriberDetailsByIDPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName"
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/subscribers/$subscriberName',
 )({
   component: PkiSubscriberDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -11,15 +11,15 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Subscribers",
+          label: 'Subscribers',
           link: linkOptions({
-            to: "/cert-manager/$projectId/subscribers",
+            to: '/cert-manager/$projectId/subscribers',
             params: {
-              projectId: params.projectId
-            }
-          })
-        }
-      ]
-    };
-  }
-});
+              projectId: params.projectId,
+            },
+          }),
+        },
+      ],
+    }
+  },
+})

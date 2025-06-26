@@ -46,7 +46,7 @@ const organizationRoutes = route("/organization", [
   route("/gateways", [index("organization/Gateways/GatewayListPage/route.tsx")])
 ]);
 
-const secretManagerRoutes = route("/secret-manager/$projectId", [
+const secretManagerRoutes = route("/secret-manager", [
   layout("secret-manager-layout", "secret-manager/layout.tsx", [
     route("/overview", "secret-manager/OverviewPage/route.tsx"),
     route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
@@ -300,7 +300,7 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
   )
 ]);
 
-const certManagerRoutes = route("/cert-manager/$projectId", [
+const certManagerRoutes = route("/cert-manager", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
     route("/subscribers", [
       index("cert-manager/PkiSubscribersPage/route.tsx"),
@@ -321,7 +321,7 @@ const certManagerRoutes = route("/cert-manager/$projectId", [
   ])
 ]);
 
-const kmsRoutes = route("/kms/$projectId", [
+const kmsRoutes = route("/kms", [
   layout("kms-layout", "kms/layout.tsx", [
     route("/overview", "kms/OverviewPage/route.tsx"),
     route("/kmip", "kms/KmipPage/route.tsx"),
@@ -334,7 +334,7 @@ const kmsRoutes = route("/kms/$projectId", [
   ])
 ]);
 
-const sshRoutes = route("/ssh/$projectId", [
+const sshRoutes = route("/ssh", [
   layout("ssh-layout", "ssh/layout.tsx", [
     route("/overview", "ssh/SshHostsPage/route.tsx"),
     route("/certificates", "ssh/SshCertsPage/route.tsx"),
@@ -350,7 +350,7 @@ const sshRoutes = route("/ssh/$projectId", [
   ])
 ]);
 
-const secretScanningRoutes = route("/secret-scanning/$projectId", [
+const secretScanningRoutes = route("/secret-scanning", [
   layout("secret-scanning-layout", "secret-scanning/layout.tsx", [
     route("/data-sources", [
       index("secret-scanning/SecretScanningDataSourcesPage/route.tsx"),
@@ -403,12 +403,16 @@ export const routes = rootRoute("root.tsx", [
       adminRoute,
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
-        secretManagerRoutes,
-        secretManagerIntegrationsRedirect,
-        certManagerRoutes,
-        kmsRoutes,
-        sshRoutes,
-        secretScanningRoutes
+        route("/projects/$projectId", [
+          layout("project-layout", "project/layout.tsx", [
+            secretManagerRoutes,
+            secretManagerIntegrationsRedirect,
+            certManagerRoutes,
+            kmsRoutes,
+            sshRoutes,
+            secretScanningRoutes
+          ])
+        ])
       ])
     ])
   ])

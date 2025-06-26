@@ -4,6 +4,7 @@ import {
   faArrowUpRightFromSquare,
   faBook,
   faCheck,
+  faCubes,
   faEnvelope,
   faInfo,
   faSignOut,
@@ -26,6 +27,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Lottie,
   TBreadcrumbFormat
 } from "@app/components/v2";
@@ -151,13 +153,28 @@ export const Navbar = () => {
           style={{ fontSize: "10px" }}
         />
         <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
+          <Link to="/organization/projects">
             <div className="flex cursor-pointer items-center gap-2 text-sm text-white">
+              <div>
+                <FontAwesomeIcon icon={faCubes} className="text-xs" />
+              </div>
+
               <div className="max-w-32 overflow-hidden text-ellipsis">{currentOrg?.name}</div>
               <div className="rounded border border-mineshaft-500 p-1 text-xs text-bunker-300">
                 {getPlan(subscription)}
               </div>
-              <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
+            </div>
+          </Link>
+          <DropdownMenuTrigger asChild>
+            <div>
+              <IconButton
+                variant="plain"
+                colorSchema="secondary"
+                ariaLabel="switch-org"
+                className="px-2 py-1"
+              >
+                <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
+              </IconButton>
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent
