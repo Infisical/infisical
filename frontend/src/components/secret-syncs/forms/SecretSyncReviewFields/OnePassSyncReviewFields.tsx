@@ -7,6 +7,12 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 export const OnePassSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.OnePass }>();
   const vaultId = watch("destinationConfig.vaultId");
+  const valueLabel = watch("destinationConfig.valueLabel");
 
-  return <GenericFieldLabel label="Vault ID">{vaultId}</GenericFieldLabel>;
+  return (
+    <>
+      <GenericFieldLabel label="Vault ID">{vaultId}</GenericFieldLabel>
+      <GenericFieldLabel label="Value Key">{valueLabel || "value"}</GenericFieldLabel>
+    </>
+  );
 };

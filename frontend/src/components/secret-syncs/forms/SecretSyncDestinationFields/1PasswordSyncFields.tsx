@@ -4,7 +4,7 @@ import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
+import { FilterableSelect, FormControl, Input, Tooltip } from "@app/components/v2";
 import {
   TOnePassVault,
   useOnePassConnectionListVaults
@@ -32,6 +32,7 @@ export const OnePassSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.vaultId", "");
+          setValue("destinationConfig.valueLabel", "");
         }}
       />
 
@@ -68,6 +69,22 @@ export const OnePassSyncFields = () => {
             />
           </FormControl>
         )}
+      />
+
+      <Controller
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            isError={Boolean(error)}
+            errorText={error?.message}
+            isOptional
+            label="Value Label"
+            tooltipText="The label of the item entry which will hold your secret value. For example, if you were to sync secret 'foo: bar', the 1Password item equivalent would have an item title 'foo', and an entry on that item called 'value: bar'. The entry label 'value' is what gets changed by this option."
+          >
+            <Input value={value} onChange={onChange} placeholder="value" />
+          </FormControl>
+        )}
+        control={control}
+        name="destinationConfig.valueLabel"
       />
     </>
   );
