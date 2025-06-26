@@ -93,7 +93,7 @@ export const INFISICAL_SUPPORT_OPTIONS = [
   ]
 ];
 
-export const MinimizedOrgSidebar = () => {
+export const OrgSidebar = () => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
