@@ -163,7 +163,7 @@ const PasswordGeneratorModal = ({
           <div className="mb-6 flex flex-row justify-between gap-2">
             <Checkbox
               id="useUppercase"
-              className="mr-2 data-[state=checked]:bg-primary"
+              className="mr-2"
               isChecked={passwordOptions.useUppercase}
               onCheckedChange={(checked) =>
                 setPasswordOptions({ ...passwordOptions, useUppercase: checked as boolean })
@@ -174,7 +174,7 @@ const PasswordGeneratorModal = ({
 
             <Checkbox
               id="useLowercase"
-              className="mr-2 data-[state=checked]:bg-primary"
+              className="mr-2"
               isChecked={passwordOptions.useLowercase}
               onCheckedChange={(checked) =>
                 setPasswordOptions({ ...passwordOptions, useLowercase: checked as boolean })
@@ -185,7 +185,7 @@ const PasswordGeneratorModal = ({
 
             <Checkbox
               id="useNumbers"
-              className="mr-2 data-[state=checked]:bg-primary"
+              className="mr-2"
               isChecked={passwordOptions.useNumbers}
               onCheckedChange={(checked) =>
                 setPasswordOptions({ ...passwordOptions, useNumbers: checked as boolean })
@@ -196,7 +196,7 @@ const PasswordGeneratorModal = ({
 
             <Checkbox
               id="useSpecialChars"
-              className="mr-2 data-[state=checked]:bg-primary"
+              className="mr-2"
               isChecked={passwordOptions.useSpecialChars}
               onCheckedChange={(checked) =>
                 setPasswordOptions({ ...passwordOptions, useSpecialChars: checked as boolean })

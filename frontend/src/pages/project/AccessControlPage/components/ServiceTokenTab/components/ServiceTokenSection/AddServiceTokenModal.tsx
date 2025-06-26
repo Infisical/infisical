@@ -284,7 +284,6 @@ const ServiceTokenForm = () => {
                     <Checkbox
                       id={String(value[optionValue])}
                       key={optionValue}
-                      className="data-[state=checked]:bg-primary"
                       isChecked={value[optionValue]}
                       isDisabled={optionValue === "read"}
                       onCheckedChange={(state) => {

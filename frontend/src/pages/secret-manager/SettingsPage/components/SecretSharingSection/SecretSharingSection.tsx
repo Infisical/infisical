@@ -48,7 +48,6 @@ export const SecretSharingSection = () => {
         {(isAllowed) => (
           <div className="w-max">
             <Checkbox
-              className="data-[state=checked]:bg-primary"
               id="secretSharing"
               isDisabled={!isAllowed || isLoading}
               isChecked={currentWorkspace?.secretSharing ?? true}

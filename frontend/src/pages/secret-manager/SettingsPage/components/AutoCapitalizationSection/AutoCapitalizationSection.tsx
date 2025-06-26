@@ -42,7 +42,6 @@ export const AutoCapitalizationSection = () => {
         {(isAllowed) => (
           <div className="w-max">
             <Checkbox
-              className="data-[state=checked]:bg-primary"
               id="autoCapitalization"
               isDisabled={!isAllowed}
               isChecked={currentWorkspace?.autoCapitalization ?? false}
