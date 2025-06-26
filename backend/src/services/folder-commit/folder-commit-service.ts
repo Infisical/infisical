@@ -2,13 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  ActionProjectType,
-  TSecretFolders,
-  TSecretFolderVersions,
-  TSecretV2TagJunctionInsert,
-  TSecretVersionsV2
-} from "@app/db/schemas";
+import { TSecretFolders, TSecretFolderVersions, TSecretV2TagJunctionInsert, TSecretVersionsV2 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -223,8 +217,7 @@ export const folderCommitServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
@@ -2067,8 +2060,7 @@ export const folderCommitServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

@@ -3,13 +3,13 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   ProjectsSchema,
-  ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
   SortDirection,
   TableName,
   TProjects,
-  TProjectsUpdate
+  TProjectsUpdate,
+  ProjectType
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
@@ -22,17 +22,12 @@ export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
-  const findIdentityProjects = async (identityId: string, orgId: string, projectType: ProjectType | "all") => {
+  const findIdentityProjects = async (identityId: string, orgId: string) => {
     try {
       const workspaces = await db(TableName.IdentityProjectMembership)
         .where({ identityId })
         .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .andWhere((qb) => {
-          if (projectType !== "all") {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
@@ -72,18 +67,13 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserProjects = async (userId: string, orgId: string, projectType: ProjectType | "all") => {
+  const findUserProjects = async (userId: string, orgId: string) => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.ProjectMembership)
         .where({ userId })
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .andWhere((qb) => {
-          if (projectType !== "all") {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
@@ -103,11 +93,6 @@ export const projectDALFactory = (db: TDbClient) => {
         .whereIn("groupId", groups)
         .join(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .andWhere((qb) => {
-          if (projectType !== "all") {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
         .whereNotIn(
           `${TableName.Project}.id`,
           workspaces.map(({ id }) => id)
@@ -177,17 +162,12 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findAllProjectsByIdentity = async (identityId: string, projectType?: ProjectType) => {
+  const findAllProjectsByIdentity = async (identityId: string) => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.IdentityProjectMembership)
         .where({ identityId })
         .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .andWhere((qb) => {
-          if (projectType) {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
@@ -409,7 +389,6 @@ export const projectDALFactory = (db: TDbClient) => {
     orgId: string;
     actor: ActorType;
     actorId: string;
-    type?: ProjectType;
     limit?: number;
     offset?: number;
     name?: string;
@@ -464,9 +443,6 @@ export const projectDALFactory = (db: TDbClient) => {
       void query.orderBy([{ column: `${TableName.Project}.name`, order: sortDir }]);
     }
 
-    if (dto.type) {
-      void query.where(`${TableName.Project}.type`, dto.type);
-    }
     if (dto.name) {
       void query.whereILike(`${TableName.Project}.name`, `%${dto.name}%`);
     }

@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import isEqual from "lodash.isequal";
 
-import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
@@ -218,7 +218,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -269,7 +269,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -315,7 +315,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -380,7 +380,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -424,7 +424,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -625,7 +625,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -775,7 +775,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -1105,7 +1105,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -1152,7 +1152,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -1204,7 +1204,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -1320,8 +1320,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId: actor.orgId
     });
 
     const permissiveFolderMappings = folderMappings.filter(({ path, environment }) =>

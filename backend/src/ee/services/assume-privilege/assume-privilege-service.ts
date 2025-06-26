@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -38,8 +37,7 @@ export const assumePrivilegeServiceFactory = ({
       actorId: actorPermissionDetails.id,
       projectId,
       actorAuthMethod: actorPermissionDetails.authMethod,
-      actorOrgId: actorPermissionDetails.orgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId: actorPermissionDetails.orgId
     });
 
     if (targetActorType === ActorType.USER) {
@@ -60,8 +58,7 @@ export const assumePrivilegeServiceFactory = ({
       actorId: targetActorId,
       projectId,
       actorAuthMethod: actorPermissionDetails.authMethod,
-      actorOrgId: actorPermissionDetails.orgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId: actorPermissionDetails.orgId
     });
 
     const appCfg = getConfig();

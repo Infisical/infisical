@@ -2,7 +2,6 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import crypto, { KeyObject } from "crypto";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
 import { ms } from "@app/lib/ms";
@@ -73,8 +72,7 @@ export const kmipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -127,8 +125,7 @@ export const kmipServiceFactory = ({
       actorId,
       projectId: kmipClient.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -159,8 +156,7 @@ export const kmipServiceFactory = ({
       actorId,
       projectId: kmipClient.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -193,8 +189,7 @@ export const kmipServiceFactory = ({
       actorId,
       projectId: kmipClient.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionKmipActions.ReadClients, ProjectPermissionSub.Kmip);
@@ -215,8 +210,7 @@ export const kmipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionKmipActions.ReadClients, ProjectPermissionSub.Kmip);
@@ -252,8 +246,7 @@ export const kmipServiceFactory = ({
       actorId,
       projectId: kmipClient.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

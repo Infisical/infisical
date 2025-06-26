@@ -2,14 +2,7 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import {
-  ActionProjectType,
-  ProjectMembershipRole,
-  SecretsV2Schema,
-  SecretType,
-  TableName,
-  TSecretsV2
-} from "@app/db/schemas";
+import { ProjectMembershipRole, SecretsV2Schema, SecretType, TableName, TSecretsV2 } from "@app/db/schemas";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -243,8 +236,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -387,8 +379,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     if (inputSecret.newSecretName === "") {
@@ -615,8 +606,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -752,8 +742,7 @@ export const secretV2BridgeServiceFactory = ({
         actorId,
         projectId,
         actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.SecretManager
+        actorOrgId
       });
       throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
     }
@@ -798,8 +787,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
@@ -898,8 +886,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (!isInternal) {
       throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
@@ -952,8 +939,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
@@ -1221,8 +1207,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId: secret.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1285,8 +1270,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
@@ -1497,8 +1481,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -1665,8 +1648,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const secretsToUpdateGroupByPath = groupBy(inputSecrets, (el) => el.secretPath || defaultSecretPath);
@@ -2016,8 +1998,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -2173,8 +2154,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId: folder.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const canRead =
@@ -2239,8 +2219,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     if (!hasRole(ProjectMembershipRole.Admin))
@@ -2287,8 +2266,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourceSecretPath);
@@ -2674,8 +2652,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
@@ -2767,8 +2744,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment,
@@ -2892,8 +2868,7 @@ export const secretV2BridgeServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const canRead =
