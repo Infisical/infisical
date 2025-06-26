@@ -15,28 +15,25 @@ import {
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
+  BreadcrumbContainer,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Lottie
+  Lottie,
+  TBreadcrumbFormat
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
-import {
-  useGetOrganizations,
-  useGetOrgTrialUrl,
-  useLogoutUser,
-  workspaceKeys
-} from "@app/hooks/api";
+import { useGetOrganizations, useLogoutUser, workspaceKeys } from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { SubscriptionPlan } from "@app/hooks/api/types";
@@ -83,8 +80,6 @@ export const Navbar = () => {
   const { currentOrg } = useOrganization();
   const [openSupport, setOpenSupport] = useState(false);
   const [openUser, setOpenUser] = useState(false);
-  const [showAdminsModal, setShowAdminsModal] = useState(false);
-  const { mutateAsync } = useGetOrgTrialUrl();
 
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
@@ -93,6 +88,9 @@ export const Navbar = () => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
+  const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const handleOrgChange = async (orgId: string) => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
@@ -140,7 +138,7 @@ export const Navbar = () => {
   }
 
   return (
-    <div className="dark z-10 flex h-12 items-center gap-1 border-b border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 px-4 py-2">
+    <div className="z-10 flex h-12 items-center gap-1 border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
       <div>
         <Link to="/organization/secret-manager/overview">
           <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
@@ -159,9 +157,7 @@ export const Navbar = () => {
               <div className="rounded border border-mineshaft-500 p-1 text-xs text-bunker-300">
                 {getPlan(subscription)}
               </div>
-              <div>
-                <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
-              </div>
+              <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -217,6 +213,16 @@ export const Navbar = () => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <FontAwesomeIcon
+          icon={faSlash}
+          className="mr-1 rotate-90 font-medium text-bunker-300"
+          style={{ fontSize: "10px" }}
+        />
+      </div>
+      <div>
+        {breadcrumbs ? (
+          <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
+        ) : null}
       </div>
       <div className="flex-grow" />
       <DropdownMenu modal={false} open={openSupport} onOpenChange={setOpenSupport}>

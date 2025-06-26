@@ -86,7 +86,7 @@ export type MenuGroupProps = {
 
 export const MenuGroup = ({ children, title }: MenuGroupProps): JSX.Element => (
   <>
-    <li className="px-2 pt-3 text-xs uppercase text-gray-400">{title}</li>
+    <li className="px-2 pt-3 text-xs font-medium uppercase text-gray-400">{title}</li>
     {children}
   </>
 );
