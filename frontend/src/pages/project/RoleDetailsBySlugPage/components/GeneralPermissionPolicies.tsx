@@ -268,7 +268,21 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   </div>
                 )}
                 <div className="flex flex-col text-gray-300">
-                  <div className="mb-2">Actions</div>
+                  <div className="flex w-full justify-between">
+                    <div className="mb-2">Actions</div>
+                    {!isDisabled && !isConditionalSubjects(subject) && (
+                      <Button
+                        leftIcon={<FontAwesomeIcon icon={faTrash} />}
+                        variant="outline_bg"
+                        size="xs"
+                        className="ml-auto"
+                        onClick={() => remove(rootIndex)}
+                        isDisabled={isDisabled}
+                      >
+                        Remove Rule
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex flex-grow flex-wrap justify-start gap-x-8 gap-y-4">
                     {actions.map(({ label, value }, index) => {
                       if (typeof value !== "string") return undefined;
