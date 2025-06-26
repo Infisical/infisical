@@ -165,6 +165,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretRequestDeleted,
         distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
         properties: {
           secretRequestId: req.params.id,
           organizationId: req.permission.orgId,
@@ -256,6 +257,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretRequestCreated,
         distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
         properties: {
           secretRequestId: shareRequest.id,
           organizationId: req.permission.orgId,

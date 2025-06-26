@@ -62,7 +62,8 @@ export enum QueueName {
   SecretRotationV2 = "secret-rotation-v2",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
-  SecretScanningV2 = "secret-scanning-v2"
+  SecretScanningV2 = "secret-scanning-v2",
+  TelemetryAggregatedEvents = "telemetry-aggregated-events"
 }
 
 export enum QueueJobs {
@@ -101,7 +102,8 @@ export enum QueueJobs {
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
-  PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal"
+  PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
+  TelemetryAggregatedEvents = "telemetry-aggregated-events"
 }
 
 export type TQueueJobTypes = {
@@ -290,6 +292,10 @@ export type TQueueJobTypes = {
   };
   [QueueName.PkiSubscriber]: {
     name: QueueJobs.PkiSubscriberDailyAutoRenewal;
+    payload: undefined;
+  };
+  [QueueName.TelemetryAggregatedEvents]: {
+    name: QueueJobs.TelemetryAggregatedEvents;
     payload: undefined;
   };
 };

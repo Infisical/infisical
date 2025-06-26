@@ -80,6 +80,7 @@ export const registerSshCertRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignSshKey,
         distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
         properties: {
           certificateTemplateId: req.body.certificateTemplateId,
           principals: req.body.principals,
@@ -171,6 +172,7 @@ export const registerSshCertRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IssueSshCreds,
         distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
         properties: {
           certificateTemplateId: req.body.certificateTemplateId,
           principals: req.body.principals,

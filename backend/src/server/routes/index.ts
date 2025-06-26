@@ -686,7 +686,8 @@ export const registerRoutes = async (
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
-    queueService
+    queueService,
+    telemetryService
   });
 
   const invalidateCacheQueue = invalidateCacheQueueFactory({

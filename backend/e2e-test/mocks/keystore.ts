@@ -53,6 +53,27 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     incrementBy: async () => {
       return 1;
     },
+    getItems: async (keys) => {
+      const values = keys.map((key) => {
+        const value = store[key];
+        if (typeof value === "string") {
+          return value;
+        }
+        return null;
+      });
+      return values;
+    },
+    getKeysByPattern: async (pattern) => {
+      const regex = new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
+      const keys = Object.keys(store);
+      return keys.filter((key) => regex.test(key));
+    },
+    deleteItemsByKeyIn: async (keys) => {
+      for (const key of keys) {
+        delete store[key];
+      }
+      return keys.length;
+    },
     acquireLock: () => {
       return Promise.resolve({
         release: () => {}
