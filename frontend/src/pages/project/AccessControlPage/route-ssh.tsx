@@ -1,17 +1,19 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
 
-import { ProjectAccessControlTabs } from "@app/types/project";
+import { ProjectAccessControlTabs } from '@app/types/project'
 
-import { AccessControlPage } from "./AccessControlPage";
+import { AccessControlPage } from './AccessControlPage'
 
 const AccessControlPageQuerySchema = z.object({
-  selectedTab: z.nativeEnum(ProjectAccessControlTabs).catch(ProjectAccessControlTabs.Member)
-});
+  selectedTab: z
+    .nativeEnum(ProjectAccessControlTabs)
+    .catch(ProjectAccessControlTabs.Member),
+})
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/access-management"
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/ssh/_ssh-layout/access-management',
 )({
   component: AccessControlPage,
   validateSearch: zodValidator(AccessControlPageQuerySchema),
@@ -20,15 +22,15 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Access Control",
+          label: 'Access Control',
           link: linkOptions({
-            to: "/ssh/$projectId/access-management",
+            to: '/ssh/$projectId/access-management',
             params: {
-              projectId: params.projectId
-            }
-          })
-        }
-      ]
-    };
-  }
-});
+              projectId: params.projectId,
+            },
+          }),
+        },
+      ],
+    }
+  },
+})

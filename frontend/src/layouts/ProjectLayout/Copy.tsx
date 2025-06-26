@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -36,6 +36,8 @@ import { ProjectSelect } from "./components/ProjectSelect";
 // If the product layout differs significantly, create a new layout as needed.
 export const ProjectLayout = () => {
   const { currentWorkspace } = useWorkspace();
+  const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
+  const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const { permission } = useProjectPermission();
 
@@ -390,7 +392,10 @@ export const ProjectLayout = () => {
               </div>
             </nav>
           </motion.div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 py-4 dark:[color-scheme:dark]">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 dark:[color-scheme:dark]">
+            {breadcrumbs ? (
+              <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
+            ) : null}
             <Outlet />
           </div>
         </div>

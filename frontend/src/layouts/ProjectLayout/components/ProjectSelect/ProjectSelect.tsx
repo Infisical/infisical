@@ -1,15 +1,26 @@
 import { useMemo } from "react";
-import { components, MenuProps, OptionProps } from "react-select";
 import { faStar } from "@fortawesome/free-regular-svg-icons";
-import { faChevronRight, faPlus, faStar as faSolidStar } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faCube,
+  faPlus,
+  faStar as faSolidStar,
+  faSort
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
-import { Button, FilterableSelect } from "@app/components/v2";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton
+} from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -17,48 +28,38 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
-import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { Link, linkOptions } from "@tanstack/react-router";
+import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 
-type TWorkspaceWithFaveProp = Workspace & { isFavorite: boolean };
-
-const ProjectsMenu = ({ children, ...props }: MenuProps<TWorkspaceWithFaveProp>) => {
-  return (
-    <components.Menu {...props}>
-      {children}
-      <hr className="mb-2 h-px border-0 bg-mineshaft-500" />
-      <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
-        {(isAllowed) => (
-          <Button
-            className="w-full bg-mineshaft-700 pt-2 text-bunker-200"
-            colorSchema="primary"
-            variant="outline_bg"
-            size="xs"
-            isDisabled={!isAllowed}
-            onClick={() => props.clearValue()}
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          >
-            Add Project
-          </Button>
-        )}
-      </OrgPermissionCan>
-    </components.Menu>
-  );
-};
-
-const ProjectOption = ({
-  isSelected,
-  children,
-  data,
-  ...props
-}: OptionProps<TWorkspaceWithFaveProp>) => {
+// TODO(pta): add search to project select
+export const ProjectSelect = () => {
+  const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
-  const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
+  const { data: workspaces = [] } = useGetUserWorkspaces();
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id);
+
+  const { subscription } = useSubscription();
+
+  const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
+
+  const addProjectToFavorites = async (projectId: string) => {
+    try {
+      await updateUserProjectFavorites({
+        orgId: currentOrg!.id,
+        projectFavorites: [...(projectFavorites || []), projectId]
+      });
+    } catch {
+      createNotification({
+        text: "Failed to add project to favorites.",
+        type: "error"
+      });
+    }
+  };
 
   const removeProjectFromFavorites = async (projectId: string) => {
     try {
@@ -74,63 +75,6 @@ const ProjectOption = ({
     }
   };
 
-  const addProjectToFavorites = async (projectId: string) => {
-    try {
-      await updateUserProjectFavorites({
-        orgId: currentOrg!.id,
-        projectFavorites: [...(projectFavorites || []), projectId]
-      });
-    } catch {
-      createNotification({
-        text: "Failed to add project to favorites.",
-        type: "error"
-      });
-    }
-  };
-  return (
-    <components.Option
-      isSelected={isSelected}
-      data={data}
-      {...props}
-      className={twMerge(props.className, isSelected && "bg-mineshaft-500")}
-    >
-      <div className="flex w-full items-center">
-        {isSelected && (
-          <FontAwesomeIcon className="mr-2 text-primary" icon={faChevronRight} size="xs" />
-        )}
-        <p className="truncate">{children}</p>
-        {data.isFavorite ? (
-          <FontAwesomeIcon
-            icon={faSolidStar}
-            className="ml-auto text-sm text-yellow-600 hover:text-mineshaft-400"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await removeProjectFromFavorites(data.id);
-            }}
-          />
-        ) : (
-          <FontAwesomeIcon
-            icon={faStar}
-            className="ml-auto text-sm text-mineshaft-400 hover:text-mineshaft-300"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await addProjectToFavorites(data.id);
-            }}
-          />
-        )}
-      </div>
-    </components.Option>
-  );
-};
-
-export const ProjectSelect = () => {
-  const { currentWorkspace } = useWorkspace();
-  const { currentOrg } = useOrganization();
-  const { data: workspaces = [] } = useGetUserWorkspaces();
-  const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id!);
-
-  const { subscription } = useSubscription();
-
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
@@ -140,7 +84,7 @@ export const ProjectSelect = () => {
     "upgradePlan"
   ] as const);
 
-  const { options, value } = useMemo(() => {
+  const projects = useMemo(() => {
     const projectOptions = workspaces
       .map((w): Workspace & { isFavorite: boolean } => ({
         ...w,
@@ -148,66 +92,107 @@ export const ProjectSelect = () => {
       }))
       .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
 
-    const currentOption = projectOptions.find((option) => option.id === currentWorkspace?.id);
-
-    if (!currentOption) {
-      return {
-        options: projectOptions,
-        value: null
-      };
-    }
-
-    return {
-      options: [
-        currentOption,
-        ...projectOptions.filter((option) => option.id !== currentOption.id)
-      ],
-      value: currentOption
-    };
+    return projectOptions;
   }, [workspaces, projectFavorites, currentWorkspace]);
 
   return (
-    <div className="mt-2 w-full p-3">
-      <p className="mb-1 ml-1.5 text-xs font-semibold uppercase text-gray-400">
-        {currentWorkspace?.type ? getProjectTitle(currentWorkspace?.type) : "Project"}
-      </p>
-      <FilterableSelect
-        className="text-sm"
-        value={value}
-        filterOption={(option, inputValue) =>
-          option.data.name.toLowerCase().includes(inputValue.toLowerCase())
-        }
-        getOptionLabel={(option) => option.name}
-        getOptionValue={(option) => option.id}
-        onChange={(newValue) => {
-          // hacky use of null as indication to create project
-          if (!newValue) {
-            if (isAddingProjectsAllowed) {
-              handlePopUpOpen("addNewWs");
-            } else {
-              handlePopUpOpen("upgradePlan");
-            }
-            return;
-          }
-
-          const project = newValue as TWorkspaceWithFaveProp;
-          // todo(akhi): this is not using react query because react query in overview is throwing error when envs are not exact same count
-          // to reproduce change this back to router.push and switch between two projects with different env count
-          // look into this on dashboard revamp
-          window.location.assign(`/${project.type}/${project.id}/overview`);
-        }}
-        options={options}
-        components={{
-          Option: ProjectOption,
-          Menu: ProjectsMenu
-        }}
-      />
+    <div className="flex w-full items-center gap-2">
+      <DropdownMenu modal={false}>
+        <Link
+          to={getProjectHomePage(
+            getCurrentProductFromUrl(window.location.href) || ProjectType.SecretManager
+          )}
+          params={{
+            projectId: currentWorkspace.id
+          }}
+        >
+          <div className="flex cursor-pointer items-center gap-2 text-sm text-white">
+            <div>
+              <FontAwesomeIcon icon={faCube} className="text-xs" />
+            </div>
+            <div className="max-w-32 overflow-hidden text-ellipsis">{currentWorkspace?.name}</div>
+          </div>
+        </Link>
+        <DropdownMenuTrigger asChild>
+          <div>
+            <IconButton
+              variant="plain"
+              colorSchema="secondary"
+              ariaLabel="switch-org"
+              className="px-2 py-1"
+            >
+              <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
+            </IconButton>
+          </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          side="bottom"
+          className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
+          style={{ minWidth: "220px" }}
+        >
+          <div className="px-2 py-1 text-xs capitalize text-mineshaft-400">Projects</div>
+          {projects?.map((workspace) => {
+            return (
+              <DropdownMenuItem
+                key={workspace.id}
+                onClick={async () => {
+                  // todo(akhi): this is not using react query because react query in overview is throwing error when envs are not exact same count
+                  // to reproduce change this back to router.push and switch between two projects with different env count
+                  // look into this on dashboard revamp
+                  const url = linkOptions({
+                    to: getProjectHomePage(workspace.defaultType),
+                    params: {
+                      projectId: workspace.id
+                    }
+                  });
+                  window.location.assign(url.to.replaceAll("$projectId", workspace.id));
+                }}
+                icon={
+                  currentWorkspace?.id === workspace.id && (
+                    <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
+                  )
+                }
+              >
+                <div className="flex items-center">
+                  <div className="flex max-w-[150px] flex-grow items-center justify-between truncate">
+                    {workspace.name}
+                  </div>
+                  <FontAwesomeIcon
+                    icon={workspace.isFavorite ? faSolidStar : faStar}
+                    className="text-sm text-yellow-600 hover:text-mineshaft-400"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await (
+                        workspace.isFavorite ? removeProjectFromFavorites : addProjectToFavorites
+                      )(workspace.id);
+                    }}
+                  />
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
+          <div className="mt-1 h-1 border-t border-mineshaft-600" />
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
+            {(isAllowed) => (
+              <DropdownMenuItem
+                isDisabled={!isAllowed}
+                icon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() =>
+                  handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
+                }
+              >
+                New Project
+              </DropdownMenuItem>
+            )}
+          </OrgPermissionCan>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have exceeded the number of projects allowed on the free plan."
       />
-
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}

@@ -1,11 +1,11 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { IntegrationsListPageTabs } from "@app/types/integrations";
+import { IntegrationsListPageTabs } from '@app/types/integrations'
 
-import { HasuraCloudAuthorizePage } from "./HasuraCloudAuthorizePage";
+import { HasuraCloudAuthorizePage } from './HasuraCloudAuthorizePage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/authorize"
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/hasura-cloud/authorize',
 )({
   component: HasuraCloudAuthorizePage,
   beforeLoad: ({ context, params }) => {
@@ -13,19 +13,19 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: 'Integrations',
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
+            to: '/secret-manager/$projectId/integrations',
             params,
             search: {
-              selectedTab: IntegrationsListPageTabs.NativeIntegrations
-            }
-          })
+              selectedTab: IntegrationsListPageTabs.NativeIntegrations,
+            },
+          }),
         },
         {
-          label: "Hasura Cloud"
-        }
-      ]
-    };
-  }
-});
+          label: 'Hasura Cloud',
+        },
+      ],
+    }
+  },
+})

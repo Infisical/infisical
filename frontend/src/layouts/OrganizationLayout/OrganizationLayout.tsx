@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useLocation, useParams, useSearch } from "@tanstack/react-router";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
@@ -12,10 +12,17 @@ import { usePopUp } from "@app/hooks";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
 import { OrgSidebar } from "./components/OrgSidebar";
 import { Navbar } from "./components/NavBar";
+import { twMerge } from "tailwind-merge";
 
 export const OrganizationLayout = () => {
   const { config } = useServerConfig();
   const { permission } = useOrgPermission();
+  const projectId = useParams({
+    strict: false,
+    select: (el) => el?.projectId
+  });
+  const isInsideProject = Boolean(projectId);
+  console.log(isInsideProject);
 
   const shouldShowProductsSidebar = permission.can(
     OrgPermissionSecretShareAction.ManageSettings,
@@ -37,8 +44,13 @@ export const OrganizationLayout = () => {
         <Navbar />
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
-          <OrgSidebar />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 py-4 dark:[color-scheme:dark]">
+          <OrgSidebar isHidden={isInsideProject} />
+          <main
+            className={twMerge(
+              "flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 py-4 dark:[color-scheme:dark]",
+              isInsideProject && "p-0"
+            )}
+          >
             <Outlet />
           </main>
         </div>

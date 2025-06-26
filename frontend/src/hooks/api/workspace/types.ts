@@ -24,7 +24,7 @@ export type Workspace = {
   __v: number;
   id: string;
   name: string;
-  type: ProjectType;
+  defaultType: ProjectType;
   description?: string;
   orgId: string;
   version: ProjectVersion;

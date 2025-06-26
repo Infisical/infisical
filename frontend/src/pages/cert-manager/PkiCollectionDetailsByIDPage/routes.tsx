@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { PkiCollectionDetailsByIDPage } from "./PkiCollectionDetailsByIDPage";
+import { PkiCollectionDetailsByIDPage } from './PkiCollectionDetailsByIDPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/pki-collections/$collectionId',
 )({
   component: PkiCollectionDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -11,15 +11,15 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Certificate Collections",
+          label: 'Certificate Collections',
           link: linkOptions({
-            to: "/cert-manager/$projectId/certificates",
+            to: '/cert-manager/$projectId/certificates',
             params: {
-              projectId: params.projectId
-            }
-          })
-        }
-      ]
-    };
-  }
-});
+              projectId: params.projectId,
+            },
+          }),
+        },
+      ],
+    }
+  },
+})
