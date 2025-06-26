@@ -1280,10 +1280,17 @@ export const OverviewPage = () => {
                         key={`secret-overview-${name}-${index + 1}`}
                       >
                         <Tooltip
-                          content={collapseEnvironments ? name : ""}
+                          content={
+                            collapseEnvironments ? (
+                              <p className="whitespace-break-spaces">{name}</p>
+                            ) : (
+                              ""
+                            )
+                          }
                           side="bottom"
                           sideOffset={-1}
-                          className="text-xs normal-case"
+                          align="end"
+                          className="max-w-xl text-xs normal-case"
                         >
                           <div
                             className={twMerge(
