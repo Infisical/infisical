@@ -17,17 +17,36 @@ export const getConditionOperatorHelperInfo = (type: PermissionConditionOperator
   }
 };
 
+// scott: we may need to pass the subject in the future to further refine returned items
 export const renderOperatorSelectItems = (type: string) => {
-  if (type === "secretTags") {
-    return <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>;
+  switch (type) {
+    case "secretTags":
+      return <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>;
+    case "identityId":
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+        </>
+      );
+    case "hostname":
+    case "name":
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$GLOB}>Glob Match</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+        </>
+      );
+    default:
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$GLOB}>Glob Match</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+        </>
+      );
   }
-
-  return (
-    <>
-      <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
-      <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
-      <SelectItem value={PermissionConditionOperators.$GLOB}>Glob Match</SelectItem>
-      <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
-    </>
-  );
 };

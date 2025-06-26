@@ -33,7 +33,8 @@ type LevelFolderMap = Record<
 
 export const useAccessTree = (
   permissions: MongoAbility<ProjectPermissionSet, MongoQuery>,
-  searchPath: string
+  searchPath: string,
+  subject: ProjectPermissionSub
 ) => {
   const { currentWorkspace } = useWorkspace();
   const { secretName, setSecretName, setViewMode, viewMode } = useAccessTreeContext();
@@ -41,7 +42,6 @@ export const useAccessTree = (
   const metadata = useWatch({ control, name: "metadata" });
   const [nodes, setNodes] = useNodesState<Node>([]);
   const [edges, setEdges] = useEdgesState<Edge>([]);
-  const [subject, setSubject] = useState(ProjectPermissionSub.Secrets);
   const [environment, setEnvironment] = useState(currentWorkspace.environments[0]?.slug ?? "");
   const { data: environmentsFolders, isPending } = useListProjectEnvironmentsFolders(
     currentWorkspace.id
@@ -147,9 +147,7 @@ export const useAccessTree = (
     const roleNode = createRoleNode({
       subject,
       environment: slug,
-      environments: environmentsFolders,
-      onSubjectChange: setSubject,
-      onEnvironmentChange: setEnvironment
+      environments: environmentsFolders
     });
 
     const actionRuleMap = getSubjectActionRuleMap(subject, permissions);
@@ -280,7 +278,6 @@ export const useAccessTree = (
     subject,
     environment,
     setEnvironment,
-    setSubject,
     isLoading: isPending,
     environments: currentWorkspace.environments,
     secretName,

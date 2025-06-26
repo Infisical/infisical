@@ -29,7 +29,7 @@ export type AccessTreeForm = { metadata: { key: string; value: string }[] };
 export const AccessTreeProvider: React.FC<AccessTreeProviderProps> = ({ children }) => {
   const [secretName, setSecretName] = useState("");
   const formMethods = useForm<AccessTreeForm>({ defaultValues: { metadata: [] } });
-  const [viewMode, setViewMode] = useState(ViewMode.Docked);
+  const [viewMode, setViewMode] = useState(ViewMode.Modal);
 
   const value = useMemo(
     () => ({
