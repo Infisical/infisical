@@ -14,7 +14,7 @@ import {
 import { envConfig } from "@app/config/env";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
-import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/MinimizedOrgSidebar/MinimizedOrgSidebar";
+import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/NavBar/Navbar";
 
 const generalTabs = [
   {
