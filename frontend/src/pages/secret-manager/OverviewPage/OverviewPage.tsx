@@ -1291,6 +1291,9 @@ export const OverviewPage = () => {
                           sideOffset={-1}
                           align="end"
                           className="max-w-xl text-xs normal-case"
+                          rootProps={{
+                            disableHoverableContent: true
+                          }}
                         >
                           <div
                             className={twMerge(
