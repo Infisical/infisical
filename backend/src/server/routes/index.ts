@@ -297,7 +297,6 @@ import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
-import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
@@ -326,7 +325,6 @@ export const registerRoutes = async (
   }
 ) => {
   const appCfg = getConfig();
-  await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
   await server.register(registerSecretScanningV2Webhooks, {
     prefix: "/secret-scanning/webhooks"
   });
