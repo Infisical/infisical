@@ -446,7 +446,6 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                                 <Checkbox
                                   id={optionValue}
                                   key={optionValue}
-                                  className="data-[state=checked]:bg-primary"
                                   isDisabled={Boolean(cert)}
                                   isChecked={value[optionValue]}
                                   onCheckedChange={(state) => {
@@ -481,7 +480,6 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                                 <Checkbox
                                   id={optionValue}
                                   key={optionValue}
-                                  className="data-[state=checked]:bg-primary"
                                   isDisabled={Boolean(cert)}
                                   isChecked={value[optionValue]}
                                   onCheckedChange={(state) => {

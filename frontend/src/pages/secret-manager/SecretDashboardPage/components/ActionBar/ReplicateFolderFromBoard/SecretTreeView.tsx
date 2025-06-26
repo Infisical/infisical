@@ -133,7 +133,6 @@ const Folder: React.FC<FolderProps> = ({
           {!isDisabled && (
             <Checkbox
               id="folder-root"
-              className="data-[state=indeterminate]:bg-secondary data-[state=checked]:bg-primary"
               isChecked={allSelected || someSelected}
               onCheckedChange={handleFolderSelect}
               isIndeterminate={someSelected && !allSelected}
@@ -167,7 +166,6 @@ const Folder: React.FC<FolderProps> = ({
                 {!isDisabled && (
                   <Checkbox
                     id={`folder-${item.id}`}
-                    className="data-[state=indeterminate]:bg-secondary data-[state=checked]:bg-primary"
                     isChecked={selectedItemIds.includes(item.id)}
                     onCheckedChange={(checked) => onItemSelect(item, !!checked)}
                     isDisabled={isDisabled}
