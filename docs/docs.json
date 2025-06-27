@@ -287,9 +287,9 @@
                   "documentation/platform/identities/kubernetes-auth",
                   "documentation/platform/identities/oci-auth",
                   "documentation/platform/identities/token-auth",
+                  "documentation/platform/identities/tls-cert-auth",
                   "documentation/platform/identities/universal-auth",
                   "documentation/platform/identities/alicloud-auth",
-                  "documentation/platform/identities/tls-cert-auth",
                   {
                     "group": "OIDC Auth",
                     "pages": [

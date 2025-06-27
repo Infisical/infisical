@@ -51,6 +51,13 @@ To be more specific:
 In the following steps, we explore how to create and use identities for your workloads and applications on TLS Certificate to
 access the Infisical API using request signing.
 
+<Warning>
+  **Self-Hosted Users:** Before using TLS Certificate Auth, please review the
+  [Security Requirements for Self-Hosted
+  Deployments](#security-requirements-for-self-hosted-deployments) section below
+  to ensure proper configuration and avoid security vulnerabilities.
+</Warning>
+
 ### Creating an identity
 
 To create an identity, head to your Organization Settings > Access Control > [Identities](https://app.infisical.com/organization/access-management?selectedTab=identities) and press **Create identity**.
@@ -132,7 +139,7 @@ try {
     },
     {
       httpsAgent: httpsAgent, // Pass the HTTPS agent with client cert
-    },
+    }
   );
 
   console.log("result data: ", data); // access token here
@@ -146,4 +153,24 @@ try {
 
     If an identity access token expires, it can no longer access the Infisical API. A new access token should be obtained by performing another login operation.
 
+</Note>
+
+## Security Requirements for Self-Hosted Deployments
+
+ALL TLS cert [login](/api-reference/endpoints/tls-cert-auth/login) requests **MUST** go through a load balancer/proxy that verifies certificate ownership:
+
+- **REQUIRED:** Configure your load balancer/proxy to **require a proper TLS handshake with client certificate presentation**
+- **REQUIRED:** Ensure the load balancer **verifies the client possesses the private key** corresponding to the certificate (standard TLS behavior)
+- **NEVER** allow direct connections to Infisical for TLS cert auth - this enables header injection attacks
+- **NEVER** forward certificate headers without requiring proper TLS certificate presentation
+
+### Load Balancer Configuration Examples
+
+- **AWS ALB:** Use mTLS listeners which require client certificate presentation during the TLS handshake
+- **NGINX/HAProxy:** Configure SSL client certificate requirement with proper TLS handshake verification
+
+<Note>
+  Infisical will handle the actual certificate validation against the configured
+  CA certificate and determine authentication permissions. The load balancer's
+  role is to ensure certificate ownership, not certificate trust validation.
 </Note>
