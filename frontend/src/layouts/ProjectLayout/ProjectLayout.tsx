@@ -192,11 +192,37 @@ export const ProjectLayout = () => {
                 <ShouldWrap
                   wrapper={Tooltip}
                   isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="Access Control"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/access-management"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem
+                        className="relative flex items-center gap-2 overflow-hidden"
+                        isSelected={isActive}
+                        leftIcon={
+                          <Lottie className="inline-block h-6 w-6 shrink-0" icon="groups" />
+                        }
+                      >
+                        {isActive && (
+                          <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
+                        )}
+                        Access Control
+                      </MenuItem>
+                    )}
+                  </Link>
+                </ShouldWrap>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
                   content="Project Settings"
                   position="right"
                 >
                   <Link
-                    to="/projects/$projectId/secret-manager/overview"
+                    to="/projects/$projectId/settings"
                     params={{ projectId: currentWorkspace.id }}
                   >
                     {({ isActive }) => (

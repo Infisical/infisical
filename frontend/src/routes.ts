@@ -267,12 +267,7 @@ const secretManagerRoutes = route("/secret-manager", [
         "secret-manager/integrations/HerokuOauthCallbackPage/route.tsx"
       ),
       route("/heroku/create", "secret-manager/integrations/HerokuConfigurePage/route.tsx")
-    ]),
-    route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
-    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-manager.tsx"),
-    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-secret-manager.tsx"),
-    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-manager.tsx"),
-    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-secret-manager.tsx")
+    ])
   ])
 ]);
 
@@ -312,12 +307,7 @@ const certManagerRoutes = route("/cert-manager", [
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
     route("/ca/$caName", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
-    route("/settings", "cert-manager/SettingsPage/route.tsx"),
-    route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),
-    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-cert-manager.tsx"),
-    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-cert-manager.tsx"),
-    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-cert-manager.tsx"),
-    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-cert-manager.tsx")
+    route("/settings", "cert-manager/SettingsPage/route.tsx")
   ])
 ]);
 
@@ -325,12 +315,7 @@ const kmsRoutes = route("/kms", [
   layout("kms-layout", "kms/layout.tsx", [
     route("/overview", "kms/OverviewPage/route.tsx"),
     route("/kmip", "kms/KmipPage/route.tsx"),
-    route("/settings", "kms/SettingsPage/route.tsx"),
-    route("/access-management", "project/AccessControlPage/route-kms.tsx"),
-    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-kms.tsx"),
-    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-kms.tsx"),
-    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-kms.tsx"),
-    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-kms.tsx")
+    route("/settings", "kms/SettingsPage/route.tsx")
   ])
 ]);
 
@@ -341,12 +326,7 @@ const sshRoutes = route("/ssh", [
     route("/cas", "ssh/SshCasPage/route.tsx"),
     route("/ca/$caId", "ssh/SshCaByIDPage/route.tsx"),
     route("/ssh-host-groups/$sshHostGroupId", "ssh/SshHostGroupDetailsByIDPage/route.tsx"),
-    route("/settings", "ssh/SettingsPage/route.tsx"),
-    route("/access-management", "project/AccessControlPage/route-ssh.tsx"),
-    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ssh.tsx"),
-    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ssh.tsx"),
-    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-ssh.tsx"),
-    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-ssh.tsx")
+    route("/settings", "ssh/SettingsPage/route.tsx")
   ])
 ]);
 
@@ -357,13 +337,17 @@ const secretScanningRoutes = route("/secret-scanning", [
       route("/$type/$dataSourceId", "secret-scanning/SecretScanningDataSourceByIdPage/route.tsx")
     ]),
     route("/findings", "secret-scanning/SecretScanningFindingsPage/route.tsx"),
-    route("/settings", "secret-scanning/SettingsPage/route.tsx"),
-    route("/access-management", "project/AccessControlPage/route-secret-scanning.tsx"),
-    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-scanning.tsx"),
-    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-secret-scanning.tsx"),
-    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-scanning.tsx"),
-    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-secret-scanning.tsx")
+    route("/settings", "secret-scanning/SettingsPage/route.tsx")
   ])
+]);
+
+const projectGeneralRoutes = layout("project-general-layout", "project/layout-general.tsx", [
+  route("/access-management", "project/AccessControlPage/route.tsx"),
+  route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route.tsx"),
+  route("/identities/$identityId", "project/IdentityDetailsByIDPage/route.tsx"),
+  route("/members/$membershipId", "project/MemberDetailsByIDPage/route.tsx"),
+  route("/groups/$groupId", "project/GroupDetailsByIDPage/route.tsx"),
+  route("/settings", "project/SettingsPage/route.tsx")
 ]);
 
 export const routes = rootRoute("root.tsx", [
@@ -405,6 +389,7 @@ export const routes = rootRoute("root.tsx", [
         organizationRoutes,
         route("/projects/$projectId", [
           layout("project-layout", "project/layout.tsx", [
+            projectGeneralRoutes,
             secretManagerRoutes,
             secretManagerIntegrationsRedirect,
             certManagerRoutes,
