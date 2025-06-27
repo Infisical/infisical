@@ -18,6 +18,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
   DeleteActionModal,
   DropdownMenu,
@@ -39,6 +40,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { isCustomProjectRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -53,7 +55,8 @@ import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/R
 
 enum RolesOrderBy {
   Name = "name",
-  Slug = "slug"
+  Slug = "slug",
+  Type = "type"
 }
 
 export const ProjectRoleList = () => {
@@ -98,7 +101,7 @@ export const ProjectRoleList = () => {
     setPerPage,
     setPage,
     offset
-  } = usePagination<RolesOrderBy>(RolesOrderBy.Name, {
+  } = usePagination<RolesOrderBy>(RolesOrderBy.Type, {
     initPerPage: getUserTablePreference("projectRolesTable", PreferenceKey.PerPage, 20)
   });
 
@@ -125,6 +128,12 @@ export const ProjectRoleList = () => {
           switch (orderBy) {
             case RolesOrderBy.Slug:
               return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
+            case RolesOrderBy.Type: {
+              const roleOneValue = isCustomProjectRole(roleOne.slug) ? -1 : 1;
+              const roleTwoValue = isCustomProjectRole(roleTwo.slug) ? -1 : 1;
+
+              return roleTwoValue - roleOneValue;
+            }
             case RolesOrderBy.Name:
             default:
               return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
@@ -210,6 +219,19 @@ export const ProjectRoleList = () => {
                   </IconButton>
                 </div>
               </Th>
+              <Th>
+                <div className="flex items-center">
+                  Type
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(RolesOrderBy.Type)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(RolesOrderBy.Type)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Type)} />
+                  </IconButton>
+                </div>
+              </Th>
               <Th aria-label="actions" className="w-5" />
             </Tr>
           </THead>
@@ -237,6 +259,11 @@ export const ProjectRoleList = () => {
                 >
                   <Td>{name}</Td>
                   <Td>{slug}</Td>
+                  <Td>
+                    <Badge className="w-min whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
+                      {isCustomProjectRole(slug) ? "Custom" : "Default"}
+                    </Badge>
+                  </Td>
                   <Td>
                     <Tooltip className="max-w-sm text-center" content="Options">
                       <DropdownMenu>
