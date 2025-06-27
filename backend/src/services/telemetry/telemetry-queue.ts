@@ -55,11 +55,7 @@ export const telemetryQueueServiceFactory = ({
   });
 
   queueService.start(QueueName.TelemetryAggregatedEvents, async () => {
-    try {
-      await telemetryService.processAggregatedEvents();
-    } catch (error) {
-      logger.error(error, "Failed to process aggregated telemetry events");
-    }
+    await telemetryService.processAggregatedEvents();
   });
 
   // every day at midnight a telemetry job executes on self-hosted instances

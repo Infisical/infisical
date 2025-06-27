@@ -13,7 +13,7 @@ import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./teleme
 export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
-export const HOURLY_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled];
+export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled];
 const TELEMETRY_AGGREGATED_KEY_EXP = 600; // 10mins
 
 // Bucket configuration
@@ -109,7 +109,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             logger.error(error, "Failed to identify PostHog organization");
           }
         }
-        if (HOURLY_AGGREGATED_EVENTS.includes(event.event)) {
+        if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
           const eventKey = createTelemetryEventKey(event.event, event.distinctId);
           await keyStore.setItemWithExpiry(
             eventKey,
@@ -283,7 +283,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   const processAggregatedEvents = async () => {
     if (!postHog) return;
 
-    for (const eventType of HOURLY_AGGREGATED_EVENTS) {
+    for (const eventType of POSTHOG_AGGREGATED_EVENTS) {
       let totalProcessed = 0;
 
       logger.info(`Starting bucket processing for ${eventType}`);
