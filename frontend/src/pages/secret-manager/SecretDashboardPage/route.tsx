@@ -26,6 +26,13 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
+          label: "Secrets",
+          link: linkOptions({
+            to: "/projects/$projectId/secret-manager/overview",
+            params
+          })
+        },
+        {
           type: BreadcrumbTypes.Dropdown,
           label: context.project.environments.find((el) => el.slug === params.envSlug)?.name || "",
           dropdownTitle: "Environments",

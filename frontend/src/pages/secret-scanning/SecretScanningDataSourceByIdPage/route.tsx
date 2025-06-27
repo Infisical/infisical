@@ -13,12 +13,12 @@ export const Route = createFileRoute(
         {
           label: "Data Sources",
           link: linkOptions({
-            to: "/secret-scanning/$projectId/data-sources",
+            to: "/projects/$projectId/secret-scanning/data-sources",
             params
           })
         },
         {
-          label: "Data Source"
+          label: "Details"
         }
       ]
     };

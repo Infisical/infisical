@@ -40,14 +40,16 @@ export const KmsLayout = () => {
                 >
                   {({ isActive }) => <MenuItem isSelected={isActive}>KMIP</MenuItem>}
                 </Link>
-                <Link
-                  to="/projects/$projectId/cert-manager/settings"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>Settings</MenuItem>}
-                </Link>
+                {
+                  // <Link
+                  //   to="/projects/$projectId/kms/settings"
+                  //   params={{
+                  //     projectId: currentWorkspace.id
+                  //   }}
+                  // >
+                  //   {({ isActive }) => <MenuItem isSelected={isActive}>Settings</MenuItem>}
+                  // </Link>
+                }
               </Menu>
             </div>
           </nav>

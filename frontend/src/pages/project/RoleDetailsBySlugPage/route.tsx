@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
 import { RoleDetailsBySlugPage } from "./RoleDetailsBySlugPage";
 
@@ -6,9 +6,23 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout/roles/$roleSlug"
 )({
   component: RoleDetailsBySlugPage,
-  beforeLoad: ({}) => {
+  beforeLoad: ({ context, params }) => {
     return {
-      breadcrumbs: []
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Access Control",
+          link: linkOptions({
+            to: "/projects/$projectId/access-management",
+            params: {
+              projectId: params.projectId
+            }
+          })
+        },
+        {
+          label: "Roles"
+        }
+      ]
     };
   }
 });

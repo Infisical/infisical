@@ -21,7 +21,12 @@ export const Route = createFileRoute(
   },
   beforeLoad: ({ context }) => {
     return {
-      breadcrumbs: []
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Access Control"
+        }
+      ]
     };
   }
 });

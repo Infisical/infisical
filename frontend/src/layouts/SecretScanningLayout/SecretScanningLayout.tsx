@@ -41,7 +41,7 @@ export const SecretScanningLayout = () => {
                   {({ isActive }) => <MenuItem isSelected={isActive}>Findings</MenuItem>}
                 </Link>
                 <Link
-                  to="/projects/$projectId/cert-manager/settings"
+                  to="/projects/$projectId/secret-scanning/settings"
                   params={{
                     projectId: currentWorkspace.id
                   }}

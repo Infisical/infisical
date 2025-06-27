@@ -18,6 +18,9 @@ export const Route = createFileRoute(
               projectId: params.projectId
             }
           })
+        },
+        {
+          label: params.subscriberName
         }
       ]
     };
