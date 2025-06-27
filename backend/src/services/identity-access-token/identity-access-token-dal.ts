@@ -45,6 +45,11 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.IdentityOidcAuth, `${TableName.Identity}.id`, `${TableName.IdentityOidcAuth}.identityId`)
         .leftJoin(TableName.IdentityTokenAuth, `${TableName.Identity}.id`, `${TableName.IdentityTokenAuth}.identityId`)
         .leftJoin(TableName.IdentityJwtAuth, `${TableName.Identity}.id`, `${TableName.IdentityJwtAuth}.identityId`)
+        .leftJoin(
+          TableName.IdentityTlsCertAuth,
+          `${TableName.Identity}.id`,
+          `${TableName.IdentityTlsCertAuth}.identityId`
+        )
         .select(selectAllTableCols(TableName.IdentityAccessToken))
         .select(
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
@@ -61,6 +66,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityTokenAuth).as("accessTokenTrustedIpsToken"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityJwtAuth).as("accessTokenTrustedIpsJwt"),
           db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityLdapAuth).as("accessTokenTrustedIpsLdap"),
+          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityTlsCertAuth).as("accessTokenTrustedIpsTlsCert"),
           db.ref("name").withSchema(TableName.Identity)
         )
         .first();
@@ -79,7 +85,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         trustedIpsOidcAuth: doc.accessTokenTrustedIpsOidc,
         trustedIpsAccessTokenAuth: doc.accessTokenTrustedIpsToken,
         trustedIpsAccessJwtAuth: doc.accessTokenTrustedIpsJwt,
-        trustedIpsAccessLdapAuth: doc.accessTokenTrustedIpsLdap
+        trustedIpsAccessLdapAuth: doc.accessTokenTrustedIpsLdap,
+        trustedIpsAccessTlsCertAuth: doc.accessTokenTrustedIpsTlsCert
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "IdAccessTokenFindOne" });
