@@ -4,38 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Badge, Menu, MenuItem } from "@app/components/v2";
+import { Menu, MenuItem } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import {
-  useGetAccessRequestsCount,
-  useGetSecretApprovalRequestCount,
-  useGetSecretRotations
-} from "@app/hooks/api";
 
-export const SecretManagerLayout = () => {
+export const PkiManagerLayout = () => {
   const { currentWorkspace } = useWorkspace();
-
   const { t } = useTranslation();
-  const workspaceId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
-
-  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
-    workspaceId
-  });
-  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
-    projectSlug
-  });
-
-  // we only show the secret rotations v1 tab if they have existing rotations
-  const { data: secretRotations } = useGetSecretRotations({
-    workspaceId,
-    options: {
-      refetchOnMount: false
-    }
-  });
-
-  const pendingRequestsCount =
-    (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
 
   return (
     <>
@@ -51,68 +25,61 @@ export const SecretManagerLayout = () => {
           >
             <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
               <div className="border-b border-mineshaft-600 px-4 pb-2 pt-3 text-lg text-white">
-                Secret Manager
+                PKI Manager
               </div>
               <div className="mt-2 flex-grow">
                 <Menu>
                   <Link
-                    to="/projects/$projectId/secret-manager/overview"
+                    to="/projects/$projectId/cert-manager/subscribers"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => <MenuItem isSelected={isActive}>Subscribers</MenuItem>}
+                  </Link>
+                  <Link
+                    to="/projects/$projectId/cert-manager/certificate-templates"
                     params={{
                       projectId: currentWorkspace.id
                     }}
                   >
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>{t("nav.menu.secrets")}</MenuItem>
+                      <MenuItem isSelected={isActive}> Certificate Templates</MenuItem>
                     )}
                   </Link>
                   <Link
-                    to="/projects/$projectId/secret-manager/integrations"
+                    to="/projects/$projectId/cert-manager/certificates"
                     params={{
                       projectId: currentWorkspace.id
                     }}
                   >
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>{t("nav.menu.integrations")}</MenuItem>
-                    )}
+                    {({ isActive }) => <MenuItem isSelected={isActive}> Certificates</MenuItem>}
                   </Link>
-                  {Boolean(secretRotations?.length) && (
-                    <Link
-                      to="/projects/$projectId/secret-manager/secret-rotation"
-                      params={{
-                        projectId: currentWorkspace.id
-                      }}
-                    >
-                      {({ isActive }) => <MenuItem isSelected={isActive}>Secret Rotation</MenuItem>}
-                    </Link>
-                  )}
                   <Link
-                    to="/projects/$projectId/secret-manager/approval"
+                    to="/projects/$projectId/cert-manager/certificate-authorities"
                     params={{
                       projectId: currentWorkspace.id
                     }}
                   >
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
-                        Approvals
-                        {Boolean(
-                          secretApprovalReqCount?.open || accessApprovalRequestCount?.pendingCount
-                        ) && (
-                          <Badge variant="primary" className="ml-1.5">
-                            {pendingRequestsCount}
-                          </Badge>
-                        )}
-                      </MenuItem>
+                      <MenuItem isSelected={isActive}> Certificates Authorities</MenuItem>
                     )}
                   </Link>
                   <Link
-                    to={`/${currentWorkspace.type}/$projectId/settings` as const}
+                    to="/projects/$projectId/cert-manager/alerting"
                     params={{
                       projectId: currentWorkspace.id
                     }}
                   >
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>{t("nav.menu.project-settings")}</MenuItem>
-                    )}
+                    {({ isActive }) => <MenuItem isSelected={isActive}>Alerting</MenuItem>}
+                  </Link>
+                  <Link
+                    to="/projects/$projectId/cert-manager/settings"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => <MenuItem isSelected={isActive}>Settings</MenuItem>}
                   </Link>
                 </Menu>
               </div>
@@ -132,3 +99,4 @@ export const SecretManagerLayout = () => {
     </>
   );
 };
+
