@@ -23,9 +23,8 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
-import { useGetProjectTypeFromRoute, usePopUp } from "@app/hooks";
+import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
 
@@ -35,8 +34,6 @@ type Props = {
 
 export const ProjectTemplatesTable = ({ onEdit }: Props) => {
   const { subscription } = useSubscription();
-
-  const projectType = useGetProjectTypeFromRoute();
 
   const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
     enabled: subscription?.projectTemplates
@@ -54,9 +51,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     [search, projectTemplates]
   );
 
-  const isSecretManagerTemplates = projectType === ProjectType.SecretManager;
-
-  const colSpan = isSecretManagerTemplates ? 4 : 3;
+  const colSpan = 4;
 
   return (
     <div>
@@ -72,7 +67,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
             <Tr>
               <Th>Name</Th>
               <Th>Roles</Th>
-              {isSecretManagerTemplates && <Th>Environments</Th>}
+              <Th>Environments</Th>
               <Th />
             </Tr>
           </THead>
@@ -124,30 +119,26 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       </Tooltip>
                     )}
                   </Td>
-                  {isSecretManagerTemplates && environments && (
-                    <Td className="pl-14">
-                      {environments.length}
-                      {environments.length > 0 && (
-                        <Tooltip
-                          content={
-                            <ul className="ml-2 list-disc">
-                              {environments
-                                .sort((a, b) => (a.position > b.position ? 1 : -1))
-                                .map((env) => (
-                                  <li key={env.slug}>{env.name}</li>
-                                ))}
-                            </ul>
-                          }
-                        >
-                          <FontAwesomeIcon
-                            size="sm"
-                            className="ml-2 text-mineshaft-400"
-                            icon={faCircleInfo}
-                          />
-                        </Tooltip>
-                      )}
-                    </Td>
-                  )}
+                  <Td className="pl-14">
+                    {environments?.length || 0}
+                    {environments?.length && (
+                      <Tooltip
+                        content={
+                          <ul className="ml-2 list-disc">
+                            {environments
+                              ?.sort((a, b) => (a.position > b.position ? 1 : -1))
+                              .map((env) => <li key={env.slug}>{env.name}</li>)}
+                          </ul>
+                        }
+                      >
+                        <FontAwesomeIcon
+                          size="sm"
+                          className="ml-2 text-mineshaft-400"
+                          icon={faCircleInfo}
+                        />
+                      </Tooltip>
+                    )}
+                  </Td>
                   <Td className="w-5">
                     {name !== "default" && (
                       <OrgPermissionCan

@@ -60,11 +60,14 @@ MenuItem.displayName = "MenuItem";
 export type MenuGroupProps = {
   children: ReactNode;
   title: ReactNode;
+  className?: string;
 };
 
-export const MenuGroup = ({ children, title }: MenuGroupProps): JSX.Element => (
+export const MenuGroup = ({ children, title, className }: MenuGroupProps): JSX.Element => (
   <>
-    <li className="px-2 pt-3 text-xs font-medium uppercase text-gray-400">{title}</li>
+    <li className={twMerge("px-2 pt-3 text-xs font-medium uppercase text-gray-400", className)}>
+      {title}
+    </li>
     {children}
   </>
 );

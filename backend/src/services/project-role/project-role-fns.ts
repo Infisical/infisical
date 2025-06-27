@@ -11,7 +11,7 @@ import {
 } from "@app/ee/services/permission/default-roles";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
-export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetPredefinedRolesDTO) => {
+export const getPredefinedRoles = ({ projectId, roleFilter }: TGetPredefinedRolesDTO) => {
   return [
     {
       id: uuidv4(),
@@ -75,5 +75,5 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
       createdAt: new Date(),
       updatedAt: new Date()
     }
-  ].filter(({ slug, type }) => (type ? type === projectType : true) && (!roleFilter || roleFilter === slug));
+  ].filter(({ slug }) => !roleFilter || roleFilter === slug);
 };

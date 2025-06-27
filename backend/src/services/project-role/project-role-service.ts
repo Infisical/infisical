@@ -2,7 +2,7 @@ import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { ProjectMembershipRole, ProjectType, TableName, TProjects } from "@app/db/schemas";
+import { ProjectMembershipRole, TableName, TProjects } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -117,7 +117,6 @@ export const projectRoleServiceFactory = ({
     if (roleSlug !== "custom" && Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
       const [predefinedRole] = getPredefinedRoles({
         projectId: project.id,
-        projectType: project.type as ProjectType,
         roleFilter: roleSlug as ProjectMembershipRole
       });
 
@@ -218,10 +217,7 @@ export const projectRoleServiceFactory = ({
       { projectId: project.id },
       { sort: [[`${TableName.ProjectRoles}.slug` as "slug", "asc"]] }
     );
-    const roles = [
-      ...getPredefinedRoles({ projectId: project.id, projectType: project.type as ProjectType }),
-      ...(customRoles || [])
-    ];
+    const roles = [...getPredefinedRoles({ projectId: project.id }), ...(customRoles || [])];
 
     return roles;
   };

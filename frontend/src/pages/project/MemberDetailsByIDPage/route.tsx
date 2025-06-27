@@ -1,7 +1,8 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { MemberDetailsByIDPage } from "./MemberDetailsByIDPage";
 import { ProjectAccessControlTabs } from "@app/types/project";
+
+import { MemberDetailsByIDPage } from "./MemberDetailsByIDPage";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout/members/$membershipId"

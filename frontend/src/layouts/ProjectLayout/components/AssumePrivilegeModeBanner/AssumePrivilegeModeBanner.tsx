@@ -3,10 +3,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "@app/components/v2";
 import { useProjectPermission, useWorkspace } from "@app/context";
+import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 import { useRemoveAssumeProjectPrivilege } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 
 export const AssumePrivilegeModeBanner = () => {
   const { currentWorkspace } = useWorkspace();

@@ -165,7 +165,7 @@ export const Navbar = () => {
               </div>
 
               <div className="max-w-32 overflow-hidden text-ellipsis">{currentOrg?.name}</div>
-              <div className="rounded border border-mineshaft-500 p-1 text-xs text-bunker-300">
+              <div className="rounded border border-mineshaft-500 px-1 text-xs text-bunker-300">
                 {getPlan(subscription)}
               </div>
             </div>

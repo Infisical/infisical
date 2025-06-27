@@ -39,7 +39,7 @@ export const OrganizationLayout = () => {
           <OrgSidebar isHidden={isInsideProject} />
           <main
             className={twMerge(
-              "flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 py-4 dark:[color-scheme:dark]",
+              "flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 pt-8 dark:[color-scheme:dark]",
               isInsideProject && "p-0"
             )}
           >

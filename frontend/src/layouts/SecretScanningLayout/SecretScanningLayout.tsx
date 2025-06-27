@@ -19,10 +19,10 @@ export const SecretScanningLayout = () => {
           className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
         >
           <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
-            <div className="border-b border-mineshaft-600 px-4 pb-2 pt-3 text-lg text-white">
+            <div className="border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
               Secret Scanning
             </div>
-            <div className="mt-2 flex-grow">
+            <div className="flex-1">
               <Menu>
                 <Link
                   to="/projects/$projectId/secret-scanning/data-sources"
