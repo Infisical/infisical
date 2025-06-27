@@ -133,6 +133,15 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                     )}
                   </Link>
                 </MenuGroup>
+                <MenuGroup title="Others">
+                  <Link to="/organization/secret-sharing">
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive} icon="lock-closed">
+                        Share Secret
+                      </MenuItem>
+                    )}
+                  </Link>
+                </MenuGroup>
                 <MenuGroup title="Admin Panels">
                   {user?.superAdmin && (
                     <Link to="/admin">
@@ -153,15 +162,6 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                           <FontAwesomeIcon icon={faCog} className="mr-4" />
                           Org Admin Console
                         </div>
-                      </MenuItem>
-                    )}
-                  </Link>
-                </MenuGroup>
-                <MenuGroup title="Others">
-                  <Link to="/organization/secret-sharing">
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive} icon="lock-closed">
-                        Share Secret
                       </MenuItem>
                     )}
                   </Link>
