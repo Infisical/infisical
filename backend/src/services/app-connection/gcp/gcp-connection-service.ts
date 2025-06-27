@@ -1,3 +1,4 @@
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
@@ -19,6 +20,7 @@ export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
 
       return projects;
     } catch (error) {
+      logger.error(error, "Error listing GCP secret manager projects");
       return [];
     }
   };
