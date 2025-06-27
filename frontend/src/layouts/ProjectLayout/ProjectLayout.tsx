@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { faDotCircle, faHome, faMobile, faWindowMaximize } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import {
@@ -20,6 +20,8 @@ import { useProjectPermission, useWorkspace } from "@app/context";
 import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
 import { useLocalStorageState } from "@app/hooks";
 import { ShouldWrap } from "@app/components/utilities/ShouldWrapComponent";
+import { getCurrentProductFromUrl } from "@app/helpers/project";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 enum SidebarStyle {
   Expanded = "expanded",
@@ -31,6 +33,7 @@ const MAX_SIDEBAR_SIZE = "220px";
 // This is a generic layout shared by all types of projects.
 // If the product layout differs significantly, create a new layout as needed.
 export const ProjectLayout = () => {
+  const location = useLocation();
   const { currentWorkspace } = useWorkspace();
   const [sidebarStyle, setSidebarStyle] = useLocalStorageState(
     "project-sidebar-style",
@@ -44,6 +47,13 @@ export const ProjectLayout = () => {
     sidebarStyle === SidebarStyle.Expanded ? MAX_SIDEBAR_SIZE : MIN_SIDEBAR_SIZE;
   const maxSidebarWidth =
     sidebarStyle === SidebarStyle.Collapsed ? MIN_SIDEBAR_SIZE : MAX_SIDEBAR_SIZE;
+
+  const currentProductType = getCurrentProductFromUrl(location.pathname);
+  const isSecretManager = currentProductType === ProjectType.SecretManager;
+  const isPki = currentProductType === ProjectType.CertificateManager;
+  const isKms = currentProductType === ProjectType.KMS;
+  const isSsh = currentProductType === ProjectType.SSH;
+  const isSecretScanning = currentProductType === ProjectType.SecretScanning;
 
   return (
     <>
@@ -76,23 +86,18 @@ export const ProjectLayout = () => {
                     to="/projects/$projectId/secret-manager/overview"
                     params={{ projectId: currentWorkspace.id }}
                   >
-                    {({ isActive }) => (
-                      <MenuItem
-                        className="relative flex items-center gap-2 overflow-hidden"
-                        isSelected={isActive}
-                        leftIcon={
-                          <Lottie
-                            className="inline-block h-6 w-6 shrink-0"
-                            icon="sliding-carousel"
-                          />
-                        }
-                      >
-                        {isActive && (
-                          <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
-                        )}
-                        Secret Manager
-                      </MenuItem>
-                    )}
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden"
+                      isSelected={isSecretManager}
+                      leftIcon={
+                        <Lottie className="inline-block h-6 w-6 shrink-0" icon="sliding-carousel" />
+                      }
+                    >
+                      {isSecretManager && (
+                        <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
+                      )}
+                      Secret Manager
+                    </MenuItem>
                   </Link>
                 </ShouldWrap>
                 <ShouldWrap
@@ -105,18 +110,14 @@ export const ProjectLayout = () => {
                     to="/projects/$projectId/cert-manager/subscribers"
                     params={{ projectId: currentWorkspace.id }}
                   >
-                    {({ isActive }) => (
-                      <MenuItem
-                        className="relative flex items-center gap-2 overflow-hidden"
-                        isSelected={isActive}
-                        leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="note" />}
-                      >
-                        {isActive && (
-                          <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
-                        )}
-                        PKI Manager
-                      </MenuItem>
-                    )}
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden"
+                      isSelected={isPki}
+                      leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="note" />}
+                    >
+                      {isPki && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
+                      PKI Manager
+                    </MenuItem>
                   </Link>
                 </ShouldWrap>
                 <ShouldWrap
@@ -129,20 +130,14 @@ export const ProjectLayout = () => {
                     to="/projects/$projectId/kms/overview"
                     params={{ projectId: currentWorkspace.id }}
                   >
-                    {({ isActive }) => (
-                      <MenuItem
-                        className="relative flex items-center gap-2 overflow-hidden"
-                        isSelected={isActive}
-                        leftIcon={
-                          <Lottie className="inline-block h-6 w-6 shrink-0" icon="unlock" />
-                        }
-                      >
-                        {isActive && (
-                          <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
-                        )}
-                        KMS
-                      </MenuItem>
-                    )}
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden"
+                      isSelected={isKms}
+                      leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="unlock" />}
+                    >
+                      {isKms && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
+                      KMS
+                    </MenuItem>
                   </Link>
                 </ShouldWrap>
                 <ShouldWrap
@@ -155,20 +150,16 @@ export const ProjectLayout = () => {
                     to="/projects/$projectId/ssh/overview"
                     params={{ projectId: currentWorkspace.id }}
                   >
-                    {({ isActive }) => (
-                      <MenuItem
-                        className="relative flex items-center gap-2 overflow-hidden"
-                        isSelected={isActive}
-                        leftIcon={
-                          <Lottie className="inline-block h-6 w-6 shrink-0" icon="verified" />
-                        }
-                      >
-                        {isActive && (
-                          <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
-                        )}
-                        SSH
-                      </MenuItem>
-                    )}
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden"
+                      isSelected={isSsh}
+                      leftIcon={
+                        <Lottie className="inline-block h-6 w-6 shrink-0" icon="verified" />
+                      }
+                    >
+                      {isSsh && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
+                      SSH
+                    </MenuItem>
                   </Link>
                 </ShouldWrap>
                 <ShouldWrap
@@ -178,23 +169,21 @@ export const ProjectLayout = () => {
                   position="right"
                 >
                   <Link
-                    to="/projects/$projectId/secret-scanning/findings"
+                    to="/projects/$projectId/secret-scanning/data-sources"
                     params={{ projectId: currentWorkspace.id }}
                   >
-                    {({ isActive }) => (
-                      <MenuItem
-                        className="relative flex items-center gap-2 overflow-hidden"
-                        isSelected={isActive}
-                        leftIcon={
-                          <Lottie className="inline-block h-6 w-6 shrink-0" icon="secret-scan" />
-                        }
-                      >
-                        {isActive && (
-                          <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
-                        )}
-                        Secret Scanning
-                      </MenuItem>
-                    )}
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden"
+                      isSelected={isSecretScanning}
+                      leftIcon={
+                        <Lottie className="inline-block h-6 w-6 shrink-0" icon="secret-scan" />
+                      }
+                    >
+                      {isSecretScanning && (
+                        <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
+                      )}
+                      Secret Scanning
+                    </MenuItem>
                   </Link>
                 </ShouldWrap>
               </Menu>

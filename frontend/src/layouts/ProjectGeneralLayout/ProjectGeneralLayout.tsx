@@ -11,8 +11,11 @@ import {
   useGetSecretApprovalRequestCount,
   useGetSecretRotations
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
-export const SecretManagerLayout = () => {
+// This is a generic layout shared by all types of projects.
+// If the product layout differs significantly, create a new layout as needed.
+export const ProjectGeneralLayout = () => {
   const { currentWorkspace } = useWorkspace();
 
   const { t } = useTranslation();
@@ -51,12 +54,12 @@ export const SecretManagerLayout = () => {
           >
             <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
               <div className="border-b border-mineshaft-600 px-4 pb-2 pt-3 text-lg text-white">
-                Secret Manager
+                Project General
               </div>
               <div className="mt-2 flex-grow">
                 <Menu>
                   <Link
-                    to="/projects/$projectId/secret-manager/overview"
+                    to={`/projects/$projectId/${ProjectType.SecretManager}/overview` as const}
                     params={{
                       projectId: currentWorkspace.id
                     }}
@@ -66,7 +69,7 @@ export const SecretManagerLayout = () => {
                     )}
                   </Link>
                   <Link
-                    to="/projects/$projectId/secret-manager/integrations"
+                    to={`/projects/$projectId/${ProjectType.SecretManager}/integrations` as const}
                     params={{
                       projectId: currentWorkspace.id
                     }}
@@ -77,7 +80,7 @@ export const SecretManagerLayout = () => {
                   </Link>
                   {Boolean(secretRotations?.length) && (
                     <Link
-                      to="/projects/$projectId/secret-manager/secret-rotation"
+                      to={`/${ProjectType.SecretManager}/$projectId/secret-rotation` as const}
                       params={{
                         projectId: currentWorkspace.id
                       }}
@@ -86,7 +89,7 @@ export const SecretManagerLayout = () => {
                     </Link>
                   )}
                   <Link
-                    to="/projects/$projectId/secret-manager/approval"
+                    to={`/projects/$projectId/${ProjectType.SecretManager}/approval` as const}
                     params={{
                       projectId: currentWorkspace.id
                     }}
