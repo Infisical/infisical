@@ -271,7 +271,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                           colorSchema="danger"
                           variant="plain"
                           ariaLabel="Remove environment"
-                          isDisabled={!isAllowed || environments.length === 1}
+                          isDisabled={!isAllowed}
                         >
                           <FontAwesomeIcon icon={faTrash} />
                         </IconButton>

@@ -8,7 +8,6 @@ import {
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
   ProjectSshConfigsSchema,
-  ProjectType,
   SecretFoldersSchema,
   SortDirection,
   UserEncryptionKeysSchema,

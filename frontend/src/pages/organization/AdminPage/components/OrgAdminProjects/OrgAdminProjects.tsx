@@ -29,11 +29,11 @@ import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { getProjectHomePage } from "@app/helpers/project";
 import { withPermission } from "@app/hoc";
 import { useDebounce } from "@app/hooks";
 import { useOrgAdminAccessProject, useOrgAdminGetProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { getProjectHomePage } from "@app/helpers/project";
 
 export const OrgAdminProjects = withPermission(
   () => {

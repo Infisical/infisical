@@ -3,13 +3,13 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   ProjectsSchema,
+  ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
   SortDirection,
   TableName,
   TProjects,
-  TProjectsUpdate,
-  ProjectType
+  TProjectsUpdate
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";

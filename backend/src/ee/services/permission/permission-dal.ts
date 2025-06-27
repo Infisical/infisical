@@ -91,7 +91,7 @@ export interface TPermissionDALFactory {
         userId: string;
         projectId: string;
         username: string;
-        projectType: string;
+        projectType?: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -163,7 +163,7 @@ export interface TPermissionDALFactory {
         createdAt: Date;
         updatedAt: Date;
         orgId: string;
-        projectType: string;
+        projectType?: string | null;
         shouldUseNewPrivilegeSystem: boolean;
         orgAuthEnforced: boolean;
         metadata: {
@@ -201,7 +201,7 @@ export interface TPermissionDALFactory {
       userId: string;
       projectId: string;
       username: string;
-      projectType: string;
+      projectType?: string | null;
       id: string;
       createdAt: Date;
       updatedAt: Date;
@@ -267,7 +267,7 @@ export interface TPermissionDALFactory {
       createdAt: Date;
       updatedAt: Date;
       orgId: string;
-      projectType: string;
+      projectType?: string | null;
       orgAuthEnforced: boolean;
       metadata: {
         id: string;

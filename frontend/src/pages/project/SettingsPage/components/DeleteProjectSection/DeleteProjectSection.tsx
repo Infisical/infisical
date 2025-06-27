@@ -14,7 +14,6 @@ import {
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useGetWorkspaceUsers, useLeaveProject } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const DeleteProjectSection = () => {
@@ -64,7 +63,7 @@ export const DeleteProjectSection = () => {
       });
 
       navigate({
-        to: `/organization/${ProjectType.SecretManager}/overview` as const
+        to: "/organization/projects"
       });
       handlePopUpClose("deleteWorkspace");
     } catch (err) {
@@ -115,7 +114,7 @@ export const DeleteProjectSection = () => {
       });
 
       navigate({
-        to: `/organization/${ProjectType.SecretManager}/overview` as const
+        to: "/organization/projects"
       });
     } catch (err) {
       console.error(err);

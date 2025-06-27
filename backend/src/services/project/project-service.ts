@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { ProjectMembershipRole, ProjectVersion, TableName, TProjectEnvironments, ProjectType } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType, ProjectVersion, TableName, TProjectEnvironments } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
@@ -596,10 +596,7 @@ export const projectServiceFactory = ({
         workspaces.map(async (workspace) => {
           return {
             ...workspace,
-            roles: [
-              ...(workspaceMappedToRoles[workspace.id] || []),
-              ...getPredefinedRoles({ projectId: workspace.id, projectType: workspace.type as ProjectType })
-            ]
+            roles: [...(workspaceMappedToRoles[workspace.id] || []), ...getPredefinedRoles({ projectId: workspace.id })]
           };
         })
       );

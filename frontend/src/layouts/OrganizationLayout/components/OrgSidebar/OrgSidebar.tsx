@@ -17,7 +17,7 @@ import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
-import { Button, Menu, MenuGroup, MenuItem, Tooltip } from "@app/components/v2";
+import { Menu, MenuGroup, MenuItem, Tooltip } from "@app/components/v2";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetOrgTrialUrl } from "@app/hooks/api";
@@ -47,7 +47,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: -240 }}
             layout
-            className="dark z-10 w-60 border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 pb-4"
+            className="dark z-10 w-60 border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-800 to-mineshaft-900"
           >
             <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
               <Menu>
@@ -137,14 +137,19 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                 </MenuGroup>
               </Menu>
               <div className="flex-grow" />
-              <div>
+              <Menu>
                 {subscription &&
                   subscription.slug === "starter" &&
                   !subscription.has_used_trial && (
                     <Tooltip content="Start Free Pro Trial">
-                      <Button
-                        variant="outline_bg"
-                        className="w-full"
+                      <MenuItem
+                        className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                        leftIcon={
+                          <FontAwesomeIcon
+                            className="mx-1 inline-block shrink-0"
+                            icon={faInfinity}
+                          />
+                        }
                         onClick={async () => {
                           if (!subscription || !currentOrg) return;
 
@@ -156,63 +161,44 @@ export const OrgSidebar = ({ isHidden }: Props) => {
 
                           window.location.href = url;
                         }}
-                        leftIcon={
-                          <FontAwesomeIcon
-                            icon={faInfinity}
-                            className="py-2 text-lg text-primary"
-                          />
-                        }
                       >
                         Pro Trial
-                      </Button>
+                      </MenuItem>
                     </Tooltip>
                   )}
-              </div>
-              <div className="w-full p-2">
                 <Link to="/organization/secret-sharing">
-                  <Button
-                    variant="outline_bg"
-                    className="w-full"
-                    leftIcon={<FontAwesomeIcon icon={faShare} />}
+                  <MenuItem
+                    className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                    leftIcon={
+                      <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faShare} />
+                    }
                   >
                     Share Secret
-                  </Button>
+                  </MenuItem>
                 </Link>
-              </div>
-              <div className="flex gap-2 px-2">
-                <div className="flex-1">
-                  {user.superAdmin ? (
-                    <Tooltip content="Organization Admin" sideOffset={16}>
-                      <Link to="/organization/admin">
-                        <Button variant="outline_bg" className="w-full py-3">
-                          <FontAwesomeIcon icon={faUserCog} size="lg" />
-                        </Button>
-                      </Link>
-                    </Tooltip>
-                  ) : (
-                    <Link to="/organization/admin">
-                      <Button
-                        variant="outline_bg"
-                        className="w-full"
-                        leftIcon={<FontAwesomeIcon icon={faUserCog} />}
-                      >
-                        Org Admin
-                      </Button>
-                    </Link>
-                  )}
-                </div>
+                <Link to="/organization/admin">
+                  <MenuItem
+                    className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                    leftIcon={
+                      <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faUserCog} />
+                    }
+                  >
+                    Organization Admin
+                  </MenuItem>
+                </Link>
                 {user.superAdmin && (
-                  <div className="flex-1">
-                    <Tooltip content="Server Console Admin" sideOffset={16}>
-                      <Link to="/admin">
-                        <Button variant="outline_bg" className="w-full py-3">
-                          <FontAwesomeIcon icon={faUserTie} size="lg" />
-                        </Button>
-                      </Link>
-                    </Tooltip>
-                  </div>
+                  <Link to="/admin">
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                      leftIcon={
+                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faUserTie} />
+                      }
+                    >
+                      Server Console
+                    </MenuItem>
+                  </Link>
                 )}
-              </div>
+              </Menu>
             </nav>
           </motion.aside>
         )}

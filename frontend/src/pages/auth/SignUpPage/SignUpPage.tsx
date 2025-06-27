@@ -13,7 +13,6 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useServerConfig } from "@app/context";
 import { useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const SignUpPage = () => {
   const [email, setEmail] = useState("");
@@ -73,7 +72,7 @@ export const SignUpPage = () => {
 
       if (!serverDetails?.emailConfigured && step === 4) {
         navigate({
-          to: `/organization/${ProjectType.SecretManager}/overview` as const
+          to: "/organization/projects"
         });
       }
     })();

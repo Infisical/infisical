@@ -1,5 +1,6 @@
 import { Knex } from "knex";
-import { TableName, ProjectType } from "../schemas";
+
+import { ProjectType, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const hasTypeColumn = await knex.schema.hasColumn(TableName.Project, "type");
@@ -13,7 +14,19 @@ export async function up(knex: Knex): Promise<void> {
     await knex(TableName.Project).update({
       // eslint-disable-next-line
       // @ts-ignore this is because this field is created later
-      defaultType: knex.raw("type")
+      defaultType: knex.raw(`
+    CASE 
+      WHEN "type" IS NULL OR "type" = '' THEN 'secret-manager' 
+      ELSE "type" 
+    END
+  `)
+    });
+  }
+
+  const hasTemplateTypeColumn = await knex.schema.hasColumn(TableName.ProjectTemplates, "type");
+  if (hasTemplateTypeColumn) {
+    await knex.schema.alterTable(TableName.ProjectTemplates, (t) => {
+      t.string("type").nullable().alter();
     });
   }
 }
