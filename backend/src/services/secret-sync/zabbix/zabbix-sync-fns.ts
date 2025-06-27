@@ -1,4 +1,5 @@
 import { request } from "@app/lib/config/request";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -184,6 +185,8 @@ export const ZabbixSyncFns = {
   syncSecrets: async (secretSync: TZabbixSyncWithCredentials, secretMap: TSecretMap) => {
     const { connection, environment, destinationConfig } = secretSync;
     const { apiToken, instanceUrl } = connection.credentials;
+    await blockLocalAndPrivateIpAddresses(instanceUrl);
+
     const hostId = destinationConfig.scope === ZabbixSyncScope.Host ? destinationConfig.hostId : undefined;
     let secrets: TZabbixSecret[] = [];
     try {
@@ -226,6 +229,8 @@ export const ZabbixSyncFns = {
   removeSecrets: async (secretSync: TZabbixSyncWithCredentials, secretMap: TSecretMap) => {
     const { connection, destinationConfig } = secretSync;
     const { apiToken, instanceUrl } = connection.credentials;
+    await blockLocalAndPrivateIpAddresses(instanceUrl);
+
     const hostId = destinationConfig.scope === ZabbixSyncScope.Host ? destinationConfig.hostId : undefined;
 
     try {
@@ -247,6 +252,7 @@ export const ZabbixSyncFns = {
   getSecrets: async (secretSync: TZabbixSyncWithCredentials) => {
     const { connection, destinationConfig } = secretSync;
     const { apiToken, instanceUrl } = connection.credentials;
+    await blockLocalAndPrivateIpAddresses(instanceUrl);
     const hostId = destinationConfig.scope === ZabbixSyncScope.Host ? destinationConfig.hostId : undefined;
 
     try {
