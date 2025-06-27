@@ -114,7 +114,10 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
 
   const deleteItem = async (key: string) => redis.del(key);
 
-  const deleteItemsByKeyIn = async (keys: string[]) => redis.del(keys);
+  const deleteItemsByKeyIn = async (keys: string[]) => {
+    if (keys.length === 0) return 0;
+    return redis.del(keys);
+  };
 
   const deleteItems = async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }: TDeleteItems) => {
     let cursor = "0";

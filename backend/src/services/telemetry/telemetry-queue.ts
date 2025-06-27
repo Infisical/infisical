@@ -79,7 +79,7 @@ export const telemetryQueueServiceFactory = ({
     await queueService.stopRepeatableJob(
       QueueName.TelemetryAggregatedEvents,
       QueueJobs.TelemetryAggregatedEvents,
-      { pattern: "*/2 * * * *", utc: true },
+      { pattern: "*/5 * * * *", utc: true },
       QueueName.TelemetryAggregatedEvents // just a job id
     );
 
@@ -92,7 +92,7 @@ export const telemetryQueueServiceFactory = ({
       // Start aggregated events job (runs every five minutes)
       await queueService.queue(QueueName.TelemetryAggregatedEvents, QueueJobs.TelemetryAggregatedEvents, undefined, {
         jobId: QueueName.TelemetryAggregatedEvents,
-        repeat: { pattern: "*/2 * * * *", utc: true }
+        repeat: { pattern: "*/5 * * * *", utc: true }
       });
     }
   };

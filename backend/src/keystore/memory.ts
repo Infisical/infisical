@@ -8,6 +8,8 @@ import { TKeyStoreFactory } from "./keystore";
 
 export const inMemoryKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
+  const getRegex = (pattern: string) =>
+    new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
 
   return {
     setItem: async (key, value) => {
@@ -24,7 +26,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       return 1;
     },
     deleteItems: async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }) => {
-      const regex = new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
+      const regex = getRegex(pattern);
       let totalDeleted = 0;
       const keys = Object.keys(store);
 
@@ -61,7 +63,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     },
     waitTillReady: async () => {},
     getKeysByPattern: async (pattern) => {
-      const regex = new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
+      const regex = getRegex(pattern);
       const keys = Object.keys(store);
       return keys.filter((key) => regex.test(key));
     },
