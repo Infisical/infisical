@@ -1,14 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { SettingsPage } from "./SettingsPage";
+import { createFileRoute } from '@tanstack/react-router'
+import { SettingsPage } from './SettingsPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/ssh/_ssh-layout/access-management"
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout/settings',
 )({
   component: SettingsPage,
   beforeLoad: ({ context, params }) => {
     return {
       breadcrumbs: [
-        ...context.breadcrumbs
+        ...context.breadcrumbs,
         // {
         //   label: "Access Control",
         //   link: linkOptions({
@@ -18,7 +18,7 @@ export const Route = createFileRoute(
         //     }
         //   })
         // }
-      ]
-    };
-  }
-});
+      ],
+    }
+  },
+})
