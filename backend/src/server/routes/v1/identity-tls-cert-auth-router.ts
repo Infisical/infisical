@@ -204,7 +204,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.TlsCertAuth],
-      description: "Update Tls Certificate Auth configuration on identity",
+      description: "Update TLS Certificate Auth configuration on identity",
       security: [
         {
           bearerAuth: []
@@ -305,7 +305,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.TlsCertAuth],
-      description: "Retrieve Tls Certificate Auth configuration on identity",
+      description: "Retrieve TLS Certificate Auth configuration on identity",
       security: [
         {
           bearerAuth: []
@@ -355,7 +355,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.TlsCertAuth],
-      description: "Delete Tls Certificate Auth configuration on identity",
+      description: "Delete TLS Certificate Auth configuration on identity",
       security: [
         {
           bearerAuth: []
