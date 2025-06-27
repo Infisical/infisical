@@ -19,14 +19,11 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import { useGetProjectTypeFromRoute } from "@app/hooks";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import {
   EXCLUDED_PERMISSION_SUBS,
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
-  ProjectTypePermissionSubjects,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
 
@@ -58,15 +55,8 @@ const Content = ({ onClose }: ContentProps) => {
     }
   });
 
-  const projectType = useGetProjectTypeFromRoute();
-
   const filteredPolicies = Object.entries(PROJECT_PERMISSION_OBJECT)
-    .filter(
-      ([subject, { title }]) =>
-        ProjectTypePermissionSubjects[projectType ?? ProjectType.SecretManager][
-          subject as ProjectPermissionSub
-        ] && (search ? title.toLowerCase().includes(search.toLowerCase()) : true)
-    )
+    .filter(([, { title }]) => (search ? title.toLowerCase().includes(search.toLowerCase()) : true))
     .filter(([subject]) => !EXCLUDED_PERMISSION_SUBS.includes(subject as ProjectPermissionSub))
     .sort((a, b) => a[1].title.localeCompare(b[1].title))
     .map(([subject]) => subject);

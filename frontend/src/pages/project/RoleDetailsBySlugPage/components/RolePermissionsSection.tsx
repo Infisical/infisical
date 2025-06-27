@@ -14,7 +14,6 @@ import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
@@ -30,7 +29,6 @@ import {
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
-  ProjectTypePermissionSubjects,
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
@@ -135,8 +133,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     [JSON.stringify(permissions)]
   );
 
-  const isSecretManagerProject = currentWorkspace.type === ProjectType.SecretManager;
-
   return (
     <div className="w-full">
       <form
@@ -185,7 +181,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
                 .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
-                .filter((subject) => ProjectTypePermissionSubjects[currentWorkspace.type][subject])
                 .map((subject) => (
                   <GeneralPermissionPolicies
                     subject={subject}
@@ -194,7 +189,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     key={`project-permission-${subject}`}
                     isDisabled={isDisabled}
                     onShowAccessTree={
-                      isSecretManagerProject &&
                       [
                         ProjectPermissionSub.Secrets,
                         ProjectPermissionSub.SecretFolders,
@@ -212,7 +206,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           </div>
         </FormProvider>
       </form>
-      {isSecretManagerProject && showAccessTree && (
+      {showAccessTree && (
         <AccessTree
           permissions={formattedPermissions}
           subject={showAccessTree}
