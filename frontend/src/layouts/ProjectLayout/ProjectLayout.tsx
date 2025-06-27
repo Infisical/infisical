@@ -322,7 +322,7 @@ export const ProjectLayout = () => {
               </Menu>
             </nav>
           </motion.div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800">
             {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
             <Outlet />
           </div>

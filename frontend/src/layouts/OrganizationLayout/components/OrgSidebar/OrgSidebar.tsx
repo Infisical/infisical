@@ -9,14 +9,15 @@ import {
   faPlug,
   faShare,
   faUserCog,
-  faUsers
+  faUsers,
+  faUserTie
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
-import { Menu, MenuGroup, MenuItem, Tooltip } from "@app/components/v2";
+import { Button, Menu, MenuGroup, MenuItem, Tooltip } from "@app/components/v2";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetOrgTrialUrl } from "@app/hooks/api";
@@ -46,9 +47,9 @@ export const OrgSidebar = ({ isHidden }: Props) => {
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: -240 }}
             layout
-            className="dark z-10 w-60 border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900"
+            className="dark z-10 w-60 border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 pb-4"
           >
-            <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
+            <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
               <Menu>
                 <MenuGroup title="Overview">
                   <Link to="/organization/projects">
@@ -134,56 +135,16 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                     )}
                   </Link>
                 </MenuGroup>
-                <MenuGroup title="Others">
-                  <Link to="/organization/secret-sharing">
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
-                        <div className="mx-1">
-                          <FontAwesomeIcon icon={faShare} className="mr-4" />
-                          Share Secret
-                        </div>
-                      </MenuItem>
-                    )}
-                  </Link>
-                </MenuGroup>
-                <MenuGroup title="Admin Panels">
-                  {user?.superAdmin && (
-                    <Link to="/admin">
-                      {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
-                          <div className="mx-1">
-                            <FontAwesomeIcon icon={faUserCog} className="mr-4" />
-                            Server Admin Console
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                  )}
-                  <Link to="/organization/admin">
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
-                        <div className="mx-1">
-                          <FontAwesomeIcon icon={faCog} className="mr-4" />
-                          Org Admin Console
-                        </div>
-                      </MenuItem>
-                    )}
-                  </Link>
-                </MenuGroup>
               </Menu>
-              <div
-                className={`relative mt-10 ${
-                  subscription && subscription.slug === "starter" && !subscription.has_used_trial
-                    ? "mb-2"
-                    : "mb-4"
-                } flex w-full cursor-default flex-col items-center px-1 text-sm text-mineshaft-400`}
-              >
+              <div className="flex-grow" />
+              <div>
                 {subscription &&
                   subscription.slug === "starter" &&
                   !subscription.has_used_trial && (
-                    <Tooltip content="Start Free Pro Trial" side="right">
-                      <button
-                        type="button"
+                    <Tooltip content="Start Free Pro Trial">
+                      <Button
+                        variant="outline_bg"
+                        className="w-full"
                         onClick={async () => {
                           if (!subscription || !currentOrg) return;
 
@@ -195,24 +156,67 @@ export const OrgSidebar = ({ isHidden }: Props) => {
 
                           window.location.href = url;
                         }}
-                        className="mt-1.5 w-full"
-                      >
-                        <div className="justify-left mb-1.5 mt-1.5 flex w-full flex-col items-center rounded-md p-1 text-xs text-mineshaft-300 transition-all duration-150 hover:bg-mineshaft-500 hover:text-primary-400">
+                        leftIcon={
                           <FontAwesomeIcon
                             icon={faInfinity}
                             className="py-2 text-lg text-primary"
                           />
-                          Pro Trial
-                        </div>
-                      </button>
+                        }
+                      >
+                        Pro Trial
+                      </Button>
                     </Tooltip>
                   )}
+              </div>
+              <div className="w-full p-2">
+                <Link to="/organization/secret-sharing">
+                  <Button
+                    variant="outline_bg"
+                    className="w-full"
+                    leftIcon={<FontAwesomeIcon icon={faShare} />}
+                  >
+                    Share Secret
+                  </Button>
+                </Link>
+              </div>
+              <div className="flex gap-2 px-2">
+                <div className="flex-1">
+                  {user.superAdmin ? (
+                    <Tooltip content="Organization Admin" sideOffset={16}>
+                      <Link to="/organization/admin">
+                        <Button variant="outline_bg" className="w-full py-3">
+                          <FontAwesomeIcon icon={faUserCog} size="lg" />
+                        </Button>
+                      </Link>
+                    </Tooltip>
+                  ) : (
+                    <Link to="/organization/admin">
+                      <Button
+                        variant="outline_bg"
+                        className="w-full"
+                        leftIcon={<FontAwesomeIcon icon={faUserCog} />}
+                      >
+                        Org Admin
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+                {user.superAdmin && (
+                  <div className="flex-1">
+                    <Tooltip content="Server Console Admin" sideOffset={16}>
+                      <Link to="/admin">
+                        <Button variant="outline_bg" className="w-full py-3">
+                          <FontAwesomeIcon icon={faUserTie} size="lg" />
+                        </Button>
+                      </Link>
+                    </Tooltip>
+                  </div>
+                )}
               </div>
             </nav>
           </motion.aside>
         )}
       </AnimatePresence>
-
       <CreateOrgModal
         isOpen={popUp?.createOrg?.isOpen}
         onClose={() => handlePopUpToggle("createOrg", false)}
