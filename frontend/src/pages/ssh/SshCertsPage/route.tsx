@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { SshCertsPage } from './SshCertsPage'
+import { SshCertsPage } from "./SshCertsPage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/ssh/_ssh-layout/certificates',
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/ssh/_ssh-layout/certificates"
 )({
-  component: SshCertsPage,
-})
+  component: SshCertsPage
+});

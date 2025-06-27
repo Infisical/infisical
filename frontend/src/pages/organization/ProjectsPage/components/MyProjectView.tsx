@@ -215,7 +215,7 @@ export const MyProjectView = ({
     <div
       onClick={() => {
         navigate({
-          to: getProjectHomePage(workspace),
+          to: getProjectHomePage(workspace.defaultType),
           params: {
             projectId: workspace.id
           }

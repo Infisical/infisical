@@ -284,7 +284,7 @@ export const OrgSidebar = () => {
             </div>
             <div className="space-y-1">
               {currentOrg.secretsProductEnabled && (
-                <Link to="/organization/secret-manager/overview">
+                <Link to="/organization/projects">
                   {({ isActive }) => (
                     <MenuIconButton
                       isSelected={

@@ -33,7 +33,7 @@ export const RailwayAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/railway/create",
+        to: "/projects/$projectId/secret-manager/integrations/railway/create",
         params: {
           projectId: currentWorkspace.id
         },

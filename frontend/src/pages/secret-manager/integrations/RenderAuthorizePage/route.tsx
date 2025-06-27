@@ -1,11 +1,11 @@
-import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { IntegrationsListPageTabs } from '@app/types/integrations'
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
-import { RenderAuthorizePage } from './RenderAuthorizePage'
+import { RenderAuthorizePage } from "./RenderAuthorizePage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/render/authorize',
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/render/authorize"
 )({
   component: RenderAuthorizePage,
   beforeLoad: ({ context, params }) => {
@@ -13,19 +13,19 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Integrations',
+          label: "Integrations",
           link: linkOptions({
-            to: '/secret-manager/$projectId/integrations',
+            to: "/projects/$projectId/secret-manager/integrations",
             params,
             search: {
-              selectedTab: IntegrationsListPageTabs.NativeIntegrations,
-            },
-          }),
+              selectedTab: IntegrationsListPageTabs.NativeIntegrations
+            }
+          })
         },
         {
-          label: 'Render',
-        },
-      ],
-    }
-  },
-})
+          label: "Render"
+        }
+      ]
+    };
+  }
+});

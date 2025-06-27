@@ -1,9 +1,9 @@
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { Menu, MenuItem } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { ProjectPermissionCan } from "@app/components/permissions";
 
 export const SshLayout = () => {
   const { currentWorkspace } = useWorkspace();
@@ -97,4 +97,3 @@ export const SshLayout = () => {
     </div>
   );
 };
-

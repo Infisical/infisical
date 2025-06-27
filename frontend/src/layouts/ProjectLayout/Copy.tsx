@@ -225,7 +225,7 @@ export const ProjectLayout = () => {
                       {isSSH && (
                         <>
                           <Link
-                            to={`/${ProjectType.SSH}/$projectId/overview` as const}
+                            to={`/projects/$projectId/${ProjectType.SSH}/overview` as const}
                             params={{
                               projectId: currentWorkspace.id
                             }}
@@ -237,7 +237,7 @@ export const ProjectLayout = () => {
                             )}
                           </Link>
                           {/* <Link
-                            to={`/${ProjectType.SSH}/$projectId/certificates` as const}
+                            to={`/projects/$projectId/${ProjectType.SSH}/certificates` as const}
                             params={{
                               projectId: currentWorkspace.id
                             }}
@@ -255,7 +255,7 @@ export const ProjectLayout = () => {
                             {(isAllowed) =>
                               isAllowed && (
                                 <Link
-                                  to={`/${ProjectType.SSH}/$projectId/cas` as const}
+                                  to={`/projects/$projectId/${ProjectType.SSH}/cas` as const}
                                   params={{
                                     projectId: currentWorkspace.id
                                   }}

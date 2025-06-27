@@ -105,7 +105,7 @@ export const SecretManagerLayout = () => {
                     )}
                   </Link>
                   <Link
-                    to={`/${currentWorkspace.type}/$projectId/settings` as const}
+                    to="/projects/$projectId/secret-manager/settings"
                     params={{
                       projectId: currentWorkspace.id
                     }}

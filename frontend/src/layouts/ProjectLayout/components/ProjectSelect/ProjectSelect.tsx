@@ -4,17 +4,17 @@ import {
   faCheck,
   faCube,
   faPlus,
-  faStar as faSolidStar,
-  faSort
+  faSort,
+  faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, linkOptions } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -28,13 +28,12 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
+import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
-import { Link, linkOptions } from "@tanstack/react-router";
-import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 
 // TODO(pta): add search to project select
 export const ProjectSelect = () => {

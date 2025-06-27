@@ -1,33 +1,25 @@
 import { useTranslation } from "react-i18next";
 import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Outlet, useLocation, useParams, useSearch } from "@tanstack/react-router";
+import { Outlet, useParams } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
-import { OrgPermissionSubjects, useOrgPermission, useServerConfig } from "@app/context";
-import { OrgPermissionSecretShareAction } from "@app/context/OrgPermissionContext/types";
+import { useServerConfig } from "@app/context";
 import { usePopUp } from "@app/hooks";
 
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
-import { OrgSidebar } from "./components/OrgSidebar";
 import { Navbar } from "./components/NavBar";
-import { twMerge } from "tailwind-merge";
+import { OrgSidebar } from "./components/OrgSidebar";
 
 export const OrganizationLayout = () => {
   const { config } = useServerConfig();
-  const { permission } = useOrgPermission();
   const projectId = useParams({
     strict: false,
     select: (el) => el?.projectId
   });
   const isInsideProject = Boolean(projectId);
-  console.log(isInsideProject);
-
-  const shouldShowProductsSidebar = permission.can(
-    OrgPermissionSecretShareAction.ManageSettings,
-    OrgPermissionSubjects.SecretShare
-  );
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
