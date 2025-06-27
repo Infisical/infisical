@@ -5,5 +5,15 @@ import { PkiTemplateListPage } from "./PkiTemplateListPage";
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/certificate-templates/"
 )({
-  component: PkiTemplateListPage
+  component: PkiTemplateListPage,
+  beforeLoad: ({ context }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Certificate Templates"
+        }
+      ]
+    };
+  }
 });

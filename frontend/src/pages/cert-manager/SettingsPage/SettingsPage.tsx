@@ -3,9 +3,13 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 
-import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
-
-const tabs = [{ name: "General", key: "tab-project-general", Component: ProjectGeneralTab }];
+const tabs = [
+  {
+    name: "General",
+    key: "tab-project-general",
+    Component: () => <div className="text-white">Coming soon</div>
+  }
+];
 
 export const SettingsPage = () => {
   const { t } = useTranslation();

@@ -11,13 +11,14 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "SSH Certificate Authorities",
+          label: "Certificate Authorities",
           link: linkOptions({
-            to: "/ssh/$projectId/overview",
-            params: {
-              projectId: params.projectId
-            }
+            to: "/projects/$projectId/ssh/cas",
+            params
           })
+        },
+        {
+          label: "Details"
         }
       ]
     };

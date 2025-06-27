@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { faCaretDown, faEllipsis, faSlash } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faSlash, faSort } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, ReactNode } from "@tanstack/react-router";
 import { LinkComponentProps } from "node_modules/@tanstack/react-router/dist/esm/link";
@@ -141,11 +141,11 @@ const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[]
                   <DropdownMenuTrigger>
                     <BreadcrumbItem>
                       <BreadcrumbSegment>
-                        {el.label} <FontAwesomeIcon icon={faCaretDown} size="sm" />
+                        {el.label} <FontAwesomeIcon icon={faSort} size="sm" />
                       </BreadcrumbSegment>
                     </BreadcrumbItem>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent side="right" align="start">
                     {el?.dropdownTitle && <DropdownMenuLabel>{el.dropdownTitle}</DropdownMenuLabel>}
                     {el.links.map((i, dropIndex) => (
                       <Link

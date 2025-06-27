@@ -46,40 +46,14 @@ export const SshLayout = () => {
                         }}
                       >
                         {({ isActive }) => (
-                          <MenuItem isSelected={isActive}> Certificate Templates</MenuItem>
+                          <MenuItem isSelected={isActive}> Certificate Authorities</MenuItem>
                         )}
                       </Link>
                     )
                   }
                 </ProjectPermissionCan>
                 <Link
-                  to="/projects/$projectId/cert-manager/certificates"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}> Certificates</MenuItem>}
-                </Link>
-                <Link
-                  to="/projects/$projectId/cert-manager/certificate-authorities"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => (
-                    <MenuItem isSelected={isActive}> Certificates Authorities</MenuItem>
-                  )}
-                </Link>
-                <Link
-                  to="/projects/$projectId/cert-manager/alerting"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>Alerting</MenuItem>}
-                </Link>
-                <Link
-                  to="/projects/$projectId/cert-manager/settings"
+                  to="/projects/$projectId/ssh/settings"
                   params={{
                     projectId: currentWorkspace.id
                   }}

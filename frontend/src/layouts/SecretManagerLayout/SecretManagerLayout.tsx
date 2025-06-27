@@ -51,7 +51,7 @@ export const SecretManagerLayout = () => {
           >
             <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
               <div className="border-b border-mineshaft-600 px-4 pb-2 pt-3 text-lg text-white">
-                Project Overview
+                Secret Manager
               </div>
               <div className="mt-2 flex-grow">
                 <Menu>
@@ -110,9 +110,7 @@ export const SecretManagerLayout = () => {
                       projectId: currentWorkspace.id
                     }}
                   >
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>{t("nav.menu.project-settings")}</MenuItem>
-                    )}
+                    {({ isActive }) => <MenuItem isSelected={isActive}>Settings</MenuItem>}
                   </Link>
                 </Menu>
               </div>
