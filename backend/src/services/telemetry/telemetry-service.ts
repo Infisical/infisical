@@ -14,7 +14,7 @@ export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
 export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled];
-const TELEMETRY_AGGREGATED_KEY_EXP = 600; // 10mins
+const TELEMETRY_AGGREGATED_KEY_EXP = 900; // 15mins
 
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
