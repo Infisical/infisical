@@ -8,6 +8,7 @@ export * from "./Card";
 export * from "./Checkbox";
 export * from "./ConfirmActionModal";
 export * from "./ContentLoader";
+export * from "./Divider";
 export * from "./DatePicker";
 export * from "./DeleteActionModal";
 export * from "./Drawer";
