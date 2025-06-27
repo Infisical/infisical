@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import RE2 from "re2";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -13,6 +14,8 @@ import {
   TZabbixHostListResponse
 } from "./zabbix-connection-types";
 
+const TRAILING_SLASH_REGEX = new RE2("/+$");
+
 export const getZabbixConnectionListItem = () => {
   return {
     name: "Zabbix" as const,
@@ -26,7 +29,7 @@ export const validateZabbixConnectionCredentials = async (config: TZabbixConnect
   await blockLocalAndPrivateIpAddresses(instanceUrl);
 
   try {
-    const apiUrl = `${instanceUrl.replace(/\/$/, "")}/api_jsonrpc.php`;
+    const apiUrl = `${instanceUrl.replace(TRAILING_SLASH_REGEX, "")}/api_jsonrpc.php`;
 
     const payload = {
       jsonrpc: "2.0",
@@ -66,7 +69,7 @@ export const listZabbixHosts = async (appConnection: TZabbixConnection): Promise
   await blockLocalAndPrivateIpAddresses(instanceUrl);
 
   try {
-    const apiUrl = `${instanceUrl.replace(/\/$/, "")}/api_jsonrpc.php`;
+    const apiUrl = `${instanceUrl.replace(TRAILING_SLASH_REGEX, "")}/api_jsonrpc.php`;
 
     const payload = {
       jsonrpc: "2.0",

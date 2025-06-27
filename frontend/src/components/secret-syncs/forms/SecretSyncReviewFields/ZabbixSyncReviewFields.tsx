@@ -5,6 +5,8 @@ import { GenericFieldLabel } from "@app/components/v2";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
+const isTextMacro = (macroType: number) => macroType === 0;
+
 export const ZabbixSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Zabbix }>();
   const scope = watch("destinationConfig.scope");
@@ -22,7 +24,7 @@ export const ZabbixSyncReviewFields = () => {
         </>
       )}
       <GenericFieldLabel label="Macro Type">
-        {macroType === 0 ? "Text" : "Secret"}
+        {isTextMacro(macroType) ? "Text" : "Secret"}
       </GenericFieldLabel>
     </>
   );

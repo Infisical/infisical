@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { request } from "@app/lib/config/request";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -12,6 +14,14 @@ import {
 } from "@app/services/secret-sync/zabbix/zabbix-sync-types";
 
 import { ZabbixSyncScope } from "./zabbix-sync-enums";
+
+const TRAILING_SLASH_REGEX = new RE2("/+$");
+const MACRO_START_REGEX = new RE2("^\\{\\$");
+const MACRO_END_REGEX = new RE2("\\}$");
+
+const extractMacroKey = (macro: string): string => {
+  return macro.replace(MACRO_START_REGEX, "").replace(MACRO_END_REGEX, "");
+};
 
 // Helper function to handle Zabbix API responses and errors
 const handleZabbixResponse = <T>(response: ZabbixApiResponse<T>): T => {
@@ -34,7 +44,7 @@ const handleZabbixResponse = <T>(response: ZabbixApiResponse<T>): T => {
 };
 
 const listZabbixSecrets = async (apiToken: string, instanceUrl: string, hostId?: string): Promise<TZabbixSecret[]> => {
-  const apiUrl = `${instanceUrl.replace(/\/$/, "")}/api_jsonrpc.php`;
+  const apiUrl = `${instanceUrl.replace(TRAILING_SLASH_REGEX, "")}/api_jsonrpc.php`;
 
   const payload = {
     jsonrpc: "2.0" as const,
@@ -66,7 +76,7 @@ const putZabbixSecrets = async (
   destinationConfig: TZabbixSyncWithCredentials["destinationConfig"],
   existingSecrets: TZabbixSecret[]
 ): Promise<void> => {
-  const apiUrl = `${instanceUrl.replace(/\/$/, "")}/api_jsonrpc.php`;
+  const apiUrl = `${instanceUrl.replace(TRAILING_SLASH_REGEX, "")}/api_jsonrpc.php`;
   const hostId = destinationConfig.scope === ZabbixSyncScope.Host ? destinationConfig.hostId : undefined;
 
   const existingMacroMap = new Map(existingSecrets.map((secret) => [secret.macro, secret]));
@@ -147,7 +157,7 @@ const deleteZabbixSecrets = async (
 ): Promise<void> => {
   if (keys.length === 0) return;
 
-  const apiUrl = `${instanceUrl.replace(/\/$/, "")}/api_jsonrpc.php`;
+  const apiUrl = `${instanceUrl.replace(TRAILING_SLASH_REGEX, "")}/api_jsonrpc.php`;
 
   try {
     // Get existing macros to find their IDs
@@ -214,7 +224,7 @@ export const ZabbixSyncFns = {
         .filter(
           (secret) =>
             matchesSchema(secret.macro, environment?.slug || "", secretSync.syncOptions.keySchema) &&
-            !shapedSecretMapKeys.includes(secret.macro.replace(/^\{\$/, "").replace(/\}$/, ""))
+            !shapedSecretMapKeys.includes(extractMacroKey(secret.macro))
         )
         .map((secret) => secret.macro);
 
@@ -238,7 +248,7 @@ export const ZabbixSyncFns = {
 
       const shapedSecretMapKeys = Object.keys(secretMap).map((key) => key.toUpperCase());
       const keys = secrets
-        .filter((secret) => shapedSecretMapKeys.includes(secret.macro.replace(/^\{\$/, "").replace(/\}$/, "")))
+        .filter((secret) => shapedSecretMapKeys.includes(extractMacroKey(secret.macro)))
         .map((secret) => secret.macro);
 
       await deleteZabbixSecrets(apiToken, instanceUrl, keys, hostId);
@@ -259,7 +269,7 @@ export const ZabbixSyncFns = {
       const secrets = await listZabbixSecrets(apiToken, instanceUrl, hostId);
       return Object.fromEntries(
         secrets.map((secret) => [
-          secret.macro.replace(/^\{\$/, "").replace(/\}$/, ""),
+          extractMacroKey(secret.macro),
           { value: secret.value ?? "", comment: secret.description }
         ])
       );

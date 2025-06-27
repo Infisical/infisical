@@ -6,6 +6,8 @@ type Props = {
   secretSync: TZabbixSync;
 };
 
+const isTextMacro = (macroType: number) => macroType === 0;
+
 export const ZabbixSyncDestinationSection = ({ secretSync }: Props) => {
   const {
     destinationConfig: { macroType }
@@ -24,7 +26,7 @@ export const ZabbixSyncDestinationSection = ({ secretSync }: Props) => {
         </>
       )}
       <GenericFieldLabel label="Macro Type">
-        {macroType === 0 ? "Text" : "Secret"}
+        {isTextMacro(macroType) ? "Text" : "Secret"}
       </GenericFieldLabel>
     </>
   );
