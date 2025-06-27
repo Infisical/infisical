@@ -1,11 +1,11 @@
-import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { IntegrationsListPageTabs } from '@app/types/integrations'
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
-import { AWSSecretManagerAuthorizePage } from './AwsSecretManagerAuthorizePage'
+import { AWSSecretManagerAuthorizePage } from "./AwsSecretManagerAuthorizePage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/aws-secret-manager/authorize',
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/aws-secret-manager/authorize"
 )({
   component: AWSSecretManagerAuthorizePage,
   beforeLoad: ({ context, params }) => {
@@ -13,19 +13,19 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Integrations',
+          label: "Integrations",
           link: linkOptions({
-            to: '/secret-manager/$projectId/integrations',
+            to: "/projects/$projectId/secret-manager/integrations",
             params,
             search: {
-              selectedTab: IntegrationsListPageTabs.NativeIntegrations,
-            },
-          }),
+              selectedTab: IntegrationsListPageTabs.NativeIntegrations
+            }
+          })
         },
         {
-          label: 'AWS Secret Manager',
-        },
-      ],
-    }
-  },
-})
+          label: "AWS Secret Manager"
+        }
+      ]
+    };
+  }
+});

@@ -82,7 +82,7 @@ export const GithubAuthorizePage = () => {
               onClick={() => {
                 if (selectedAuthMethod === AuthMethod.APP) {
                   navigate({
-                    to: "/secret-manager/$projectId/integrations/select-integration-auth",
+                    to: "/projects/$projectId/secret-manager/integrations/select-integration-auth",
                     params: {
                       projectId: currentWorkspace.id
                     },

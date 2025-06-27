@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
+import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowUpRightFromSquare,
   faBook,
@@ -13,7 +14,6 @@ import {
   faUser,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
-import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
@@ -29,6 +29,8 @@ import {
   DropdownMenuTrigger,
   IconButton,
   Lottie,
+  Modal,
+  ModalContent,
   TBreadcrumbFormat
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
@@ -41,6 +43,8 @@ import { MfaMethod } from "@app/hooks/api/auth/types";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
+
+import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -82,6 +86,7 @@ export const Navbar = () => {
   const { currentOrg } = useOrganization();
   const [openSupport, setOpenSupport] = useState(false);
   const [openUser, setOpenUser] = useState(false);
+  const [showAdminsModal, setShowAdminsModal] = useState(false);
 
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
@@ -366,6 +371,13 @@ export const Navbar = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
+        <ModalContent title="Server Administrators" subTitle="View all server administrators">
+          <div className="mb-2">
+            <ServerAdminsPanel />
+          </div>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

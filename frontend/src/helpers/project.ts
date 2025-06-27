@@ -1,6 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const secretsToBeAdded = [
   {

@@ -88,7 +88,7 @@ import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
-import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
@@ -655,7 +655,7 @@ export const OverviewPage = () => {
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({
-        to: `/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const,
+        to: "/projects/$projectId/secret-manager/secrets/$envSlug",
         params: {
           projectId: workspaceId,
           envSlug: slug
@@ -1371,7 +1371,7 @@ export const OverviewPage = () => {
                         iconSize="3x"
                       >
                         <Link
-                          to={`/${ProjectType.SecretManager}/$projectId/settings` as const}
+                          to="/projects/$projectId/secret-manager/settings"
                           params={{
                             projectId: workspaceId
                           }}

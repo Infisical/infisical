@@ -36,7 +36,7 @@ export const GithubOauthCallbackPage = () => {
         });
 
         navigate({
-          to: "/secret-manager/$projectId/integrations/github/create",
+          to: "/projects/$projectId/secret-manager/integrations/github/create",
           params: {
             projectId: currentWorkspace.id
           },

@@ -27,7 +27,7 @@ export const BitbucketOauthCallbackPage = () => {
         });
 
         navigate({
-          to: "/secret-manager/$projectId/integrations/bitbucket/create",
+          to: "/projects/$projectId/secret-manager/integrations/bitbucket/create",
           params: {
             projectId: currentWorkspace.id
           },

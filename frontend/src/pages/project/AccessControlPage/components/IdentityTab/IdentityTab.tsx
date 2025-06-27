@@ -260,7 +260,7 @@ export const IdentityTab = withProjectPermission(
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
                             navigate({
-                              to: `/${currentWorkspace?.type}/$projectId/identities/$identityId` as const,
+                              to: "/projects/$projectId/identities/$identityId",
                               params: {
                                 projectId: currentWorkspace.id,
                                 identityId: id
@@ -270,7 +270,7 @@ export const IdentityTab = withProjectPermission(
                         }}
                         onClick={() =>
                           navigate({
-                            to: `/${currentWorkspace?.type}/$projectId/identities/$identityId` as const,
+                            to: "/projects/$projectId/identities/$identityId",
                             params: {
                               projectId: currentWorkspace.id,
                               identityId: id

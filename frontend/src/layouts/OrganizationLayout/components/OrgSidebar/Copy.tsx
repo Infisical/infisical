@@ -164,7 +164,10 @@ export const OrgSidebar = () => {
   const handleCopyToken = async () => {
     try {
       await window.navigator.clipboard.writeText(getAuthToken());
-      createNotification({ type: "success", text: "Copied current login session token to clipboard" });
+      createNotification({
+        type: "success",
+        text: "Copied current login session token to clipboard"
+      });
     } catch (error) {
       console.log(error);
       createNotification({ type: "error", text: "Failed to copy user token to clipboard" });
@@ -281,7 +284,7 @@ export const OrgSidebar = () => {
             </div>
             <div className="space-y-1">
               {currentOrg.secretsProductEnabled && (
-                <Link to="/organization/secret-manager/overview">
+                <Link to="/organization/projects">
                   {({ isActive }) => (
                     <MenuIconButton
                       isSelected={

@@ -1,26 +1,25 @@
-import { useState } from "react";
 import {
   faBook,
   faCheckCircle,
   faCog,
+  faCubes,
   faDoorClosed,
   faInfinity,
   faMoneyBill,
   faPlug,
+  faShare,
   faUserCog,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
-import { Menu, MenuGroup, MenuItem, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { Menu, MenuGroup, MenuItem, Tooltip } from "@app/components/v2";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetOrgTrialUrl } from "@app/hooks/api";
-
-import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
-import { AnimatePresence, motion } from "framer-motion";
 
 type Props = {
   isHidden?: boolean;
@@ -28,7 +27,6 @@ type Props = {
 
 export const OrgSidebar = ({ isHidden }: Props) => {
   const { subscription } = useSubscription();
-  const [showAdminsModal, setShowAdminsModal] = useState(false);
 
   const { user } = useUser();
   const { mutateAsync } = useGetOrgTrialUrl();
@@ -55,8 +53,11 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                 <MenuGroup title="Overview">
                   <Link to="/organization/projects">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive} icon="notification-bell">
-                        Projects
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1">
+                          <FontAwesomeIcon icon={faCubes} className="mr-4" />
+                          Projects
+                        </div>
                       </MenuItem>
                     )}
                   </Link>
@@ -136,8 +137,11 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                 <MenuGroup title="Others">
                   <Link to="/organization/secret-sharing">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive} icon="lock-closed">
-                        Share Secret
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1">
+                          <FontAwesomeIcon icon={faShare} className="mr-4" />
+                          Share Secret
+                        </div>
                       </MenuItem>
                     )}
                   </Link>
@@ -208,13 +212,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
           </motion.aside>
         )}
       </AnimatePresence>
-      <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
-        <ModalContent title="Server Administrators" subTitle="View all server administrators">
-          <div className="mb-2">
-            <ServerAdminsPanel />
-          </div>
-        </ModalContent>
-      </Modal>
+
       <CreateOrgModal
         isOpen={popUp?.createOrg?.isOpen}
         onClose={() => handlePopUpToggle("createOrg", false)}

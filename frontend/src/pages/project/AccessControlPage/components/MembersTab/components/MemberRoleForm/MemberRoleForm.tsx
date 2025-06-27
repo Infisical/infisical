@@ -21,7 +21,7 @@ export const MemberRoleForm = ({ projectMember, onOpenUpgradeModal }: Props) => 
       >
         <AlertDescription>
           <Link
-            to={`/${currentWorkspace.type}/$projectId/members/$membershipId` as const}
+            to="/projects/$projectId/members/$membershipId"
             params={{
               projectId: currentWorkspace.id,
               membershipId: projectMember.id

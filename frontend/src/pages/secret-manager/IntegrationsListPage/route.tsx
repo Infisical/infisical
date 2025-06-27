@@ -36,7 +36,7 @@ export const Route = createFileRoute(
         });
       } catch {
         throw redirect({
-          to: "/secret-manager/$projectId/integrations",
+          to: "/projects/$projectId/secret-manager/integrations",
           params: {
             projectId
           },
@@ -46,7 +46,7 @@ export const Route = createFileRoute(
 
       if (secretSyncs.length) {
         throw redirect({
-          to: "/secret-manager/$projectId/integrations",
+          to: "/projects/$projectId/secret-manager/integrations",
           params: {
             projectId
           },
@@ -62,7 +62,7 @@ export const Route = createFileRoute(
         });
       } catch {
         throw redirect({
-          to: "/secret-manager/$projectId/integrations",
+          to: "/projects/$projectId/secret-manager/integrations",
           params: {
             projectId
           },
@@ -72,7 +72,7 @@ export const Route = createFileRoute(
 
       if (integrations.length) {
         throw redirect({
-          to: "/secret-manager/$projectId/integrations",
+          to: "/projects/$projectId/secret-manager/integrations",
           params: {
             projectId
           },
@@ -81,7 +81,7 @@ export const Route = createFileRoute(
       }
 
       throw redirect({
-        to: "/secret-manager/$projectId/integrations",
+        to: "/projects/$projectId/secret-manager/integrations",
         params: {
           projectId
         },

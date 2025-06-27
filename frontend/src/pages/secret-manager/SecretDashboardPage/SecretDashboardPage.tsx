@@ -46,7 +46,6 @@ import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { SecretRotationListView } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView";
 
@@ -191,7 +190,7 @@ const Page = () => {
         type: "error"
       });
       navigate({
-        to: `/${ProjectType.SecretManager}/$projectId/overview` as const,
+        to: "/projects/$projectId/secret-manager/overview",
         params: {
           projectId: workspaceId
         }
@@ -317,7 +316,7 @@ const Page = () => {
   const handleOnClickRollbackMode = () => {
     if (isPITEnabled) {
       navigate({
-        to: `/${ProjectType.SecretManager}/$projectId/commits/$environment/$folderId` as const,
+        to: "/projects/$projectId/secret-manager/commits/$environment/$folderId",
         params: {
           projectId: workspaceId,
           folderId,

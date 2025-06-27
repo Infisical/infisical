@@ -60,7 +60,7 @@ const Page = () => {
       });
       handlePopUpClose("deleteRole");
       navigate({
-        to: `/${currentWorkspace?.type}/$projectId/access-management` as const,
+        to: "/projects/$projectId/access-management",
         params: {
           projectId
         },

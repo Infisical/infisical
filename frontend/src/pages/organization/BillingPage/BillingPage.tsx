@@ -2,10 +2,10 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { OrgPermissionCan } from "@app/components/permissions";
+import { PageHeader } from "@app/components/v2";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "@app/context";
 
 import { BillingTabGroup } from "./components";
-import { PageHeader } from "@app/components/v2";
 
 export const BillingPage = () => {
   const { t } = useTranslation();

@@ -135,7 +135,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
             <Badge
               onClick={() =>
                 navigate({
-                  to: "/secret-scanning/$projectId/findings",
+                  to: "/projects/$projectId/secret-scanning/findings",
                   params: {
                     projectId: dataSource.projectId
                   },

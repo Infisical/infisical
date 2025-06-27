@@ -28,7 +28,7 @@ export const AzureKeyVaultOauthCallbackPage = () => {
         });
 
         navigate({
-          to: "/secret-manager/$projectId/integrations/azure-key-vault/create",
+          to: "/projects/$projectId/secret-manager/integrations/azure-key-vault/create",
           params: {
             projectId: currentWorkspace.id
           },

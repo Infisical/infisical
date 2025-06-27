@@ -28,7 +28,7 @@ export const NetlifyOauthCallbackPage = () => {
         });
 
         navigate({
-          to: "/secret-manager/$projectId/integrations/netlify/create",
+          to: "/projects/$projectId/secret-manager/integrations/netlify/create",
           params: {
             projectId: currentWorkspace.id
           },

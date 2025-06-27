@@ -1,15 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { createFileRoute } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { SecretApprovalsPage } from './SecretApprovalsPage'
+import { SecretApprovalsPage } from "./SecretApprovalsPage";
 
 const SecretApprovalPageQueryParams = z.object({
-  requestId: z.string().catch(''),
-})
+  requestId: z.string().catch("")
+});
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/approval',
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/approval"
 )({
   component: SecretApprovalsPage,
   validateSearch: zodValidator(SecretApprovalPageQueryParams),
@@ -18,9 +18,9 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Approvals',
-        },
-      ],
-    }
-  },
-})
+          label: "Approvals"
+        }
+      ]
+    };
+  }
+});

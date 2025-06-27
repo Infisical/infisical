@@ -80,9 +80,7 @@ export const AdminSidebar = () => {
                 const isActive = matchRoute({ to: tab.link, fuzzy: false });
                 return (
                   <Link key={tab.link} to={tab.link}>
-                    <MenuItem isSelected={Boolean(isActive)} icon={tab.icon}>
-                      {tab.label}
-                    </MenuItem>
+                    <MenuItem isSelected={Boolean(isActive)}>{tab.label}</MenuItem>
                   </Link>
                 );
               })}
@@ -92,9 +90,7 @@ export const AdminSidebar = () => {
                 const isActive = matchRoute({ to: tab.link, fuzzy: false });
                 return (
                   <Link key={tab.link} to={tab.link}>
-                    <MenuItem isSelected={Boolean(isActive)} icon={tab.icon}>
-                      {tab.label}
-                    </MenuItem>
+                    <MenuItem isSelected={Boolean(isActive)}>{tab.label}</MenuItem>
                   </Link>
                 );
               })}

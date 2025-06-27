@@ -10,7 +10,7 @@ export const Route = createFileRoute(
     breadcrumbs: [
       {
         label: "Secret Management",
-        link: linkOptions({ to: "/organization/secret-manager/overview" })
+        link: linkOptions({ to: "/organization/projects" })
       },
       {
         label: "Settings"

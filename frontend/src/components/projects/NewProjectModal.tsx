@@ -120,7 +120,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
       createNotification({ text: "Project created", type: "success" });
       reset();
       onOpenChange(false);
-      navigate({ to: getProjectHomePage(project), params: { projectId: project.id } });
+      navigate({ to: getProjectHomePage(project.defaultType), params: { projectId: project.id } });
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create project", type: "error" });

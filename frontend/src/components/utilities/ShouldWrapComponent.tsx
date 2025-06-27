@@ -1,4 +1,4 @@
-import { ReactNode, ComponentType } from "react";
+import { ComponentType, ReactNode } from "react";
 
 type ShouldWrapProps<T extends Record<string, any>> = {
   children: ReactNode;

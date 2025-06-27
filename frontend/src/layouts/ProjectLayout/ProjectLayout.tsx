@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
+import { ShouldWrap } from "@app/components/utilities/ShouldWrapComponent";
 import {
   Divider,
   DropdownMenu,
@@ -16,12 +17,11 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useProjectPermission, useWorkspace } from "@app/context";
+import { getCurrentProductFromUrl } from "@app/helpers/project";
+import { useLocalStorageState } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
-import { useLocalStorageState } from "@app/hooks";
-import { ShouldWrap } from "@app/components/utilities/ShouldWrapComponent";
-import { getCurrentProductFromUrl } from "@app/helpers/project";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 enum SidebarStyle {
   Expanded = "expanded",

@@ -77,7 +77,7 @@ export const WindmillAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/windmill/create",
+        to: "/projects/$projectId/secret-manager/integrations/windmill/create",
         params: {
           projectId: currentWorkspace.id
         },

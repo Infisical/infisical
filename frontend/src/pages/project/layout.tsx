@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+
+import { BreadcrumbTypes } from "@app/components/v2";
 import { workspaceKeys } from "@app/hooks/api";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
-
 import { ProjectLayout } from "@app/layouts/ProjectLayout";
-import { BreadcrumbTypes } from "@app/components/v2";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 
 export const Route = createFileRoute(
