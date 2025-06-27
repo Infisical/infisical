@@ -13,8 +13,6 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import { useGetProjectTypeFromRoute } from "@app/hooks";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import {
   PROJECT_PERMISSION_OBJECT,
@@ -34,13 +32,10 @@ type ContentProps = {
 
 const Content = ({ onClose }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
-  const projectType = useGetProjectTypeFromRoute();
 
   const [selectedTemplate, setSelectedTemplate] = useState<RoleTemplate>();
   const [conflictingSubjects, setConflictingSubjects] = useState<ProjectPermissionSub[]>([]);
   const [showConflictingSubjects, setShowConflictingSubjects] = useState(false);
-
-  const templates = RoleTemplates[projectType ?? ProjectType.SecretManager];
 
   const onSubmit = (skipConflicting = false) => {
     if (!selectedTemplate) {
@@ -126,12 +121,12 @@ const Content = ({ onClose }: ContentProps) => {
         type="single"
         value={selectedTemplate?.id}
         onValueChange={(value) =>
-          setSelectedTemplate(templates.find((template) => template.id === value))
+          setSelectedTemplate(RoleTemplates.find((template) => template.id === value))
         }
         collapsible
         className="w-full border-collapse"
       >
-        {templates.map(({ name, description, permissions, id }) => (
+        {RoleTemplates.map(({ name, description, permissions, id }) => (
           <AccordionItem
             key={id}
             value={id}
