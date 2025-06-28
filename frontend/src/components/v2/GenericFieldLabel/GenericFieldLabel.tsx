@@ -1,4 +1,6 @@
 import { ReactNode } from "react";
+import { IconDefinition } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 type Props = {
@@ -7,6 +9,7 @@ type Props = {
   className?: string;
   labelClassName?: string;
   truncate?: boolean;
+  icon?: IconDefinition;
 };
 
 export const GenericFieldLabel = ({
@@ -14,11 +17,15 @@ export const GenericFieldLabel = ({
   children,
   className,
   labelClassName,
-  truncate
+  truncate,
+  icon
 }: Props) => {
   return (
     <div className={twMerge("min-w-0", className)}>
-      <p className={twMerge("text-xs font-medium text-mineshaft-400", labelClassName)}>{label}</p>
+      <div className="flex items-center gap-1.5">
+        {icon && <FontAwesomeIcon icon={icon} className="text-mineshaft-400" size="sm" />}
+        <p className={twMerge("text-xs font-medium text-mineshaft-400", labelClassName)}>{label}</p>
+      </div>
       {children ? (
         <p className={twMerge("text-sm text-mineshaft-100", truncate && "truncate")}>{children}</p>
       ) : (
