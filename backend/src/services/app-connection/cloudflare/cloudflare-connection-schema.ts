@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -9,7 +10,6 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { CloudflareConnectionMethod } from "./cloudflare-connection-enum";
-import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 const accountIdCharacterValidator = characterValidator([
   CharacterType.AlphaNumeric,

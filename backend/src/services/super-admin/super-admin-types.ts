@@ -1,3 +1,5 @@
+import { TEnvConfig } from "@app/lib/config/env";
+
 export type TAdminSignUpDTO = {
   email: string;
   password: string;
@@ -78,6 +80,6 @@ export type TAdminIntegrationConfig = {
 export interface EnvOverrides {
   [key: string]: {
     name: string;
-    fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[];
+    fields: { key: keyof TEnvConfig; value: string; hasEnvEntry: boolean; description?: string }[];
   };
 }

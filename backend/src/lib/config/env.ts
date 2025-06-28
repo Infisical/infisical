@@ -366,7 +366,7 @@ export const initEnvConfig = (logger?: CustomLogger) => {
 export const overwriteSchema: {
   [key: string]: {
     name: string;
-    fields: { key: keyof z.input<typeof envSchema>; description?: string }[];
+    fields: { key: keyof TEnvConfig; description?: string }[];
   };
 } = {
   google_sso: {
@@ -395,7 +395,7 @@ export const overwriteSchema: {
       }
     ]
   },
-  github: {
+  gitlab_sso: {
     name: "GitLab SSO",
     fields: [
       {
@@ -415,7 +415,9 @@ export const overwriteSchema: {
   }
 };
 
-const overridableKeys = new Set(Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key)));
+export const overridableKeys = new Set(
+  Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
+);
 
 export const overrideEnvConfig = (config: Record<string, string>) => {
   const allowedOverrides = Object.fromEntries(

@@ -8,7 +8,7 @@ import {
   SuperAdminSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -112,11 +112,13 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             message: "Page frame content contains unsafe HTML."
           })
           .optional(),
-        envOverrides: z.record(z.string(), z.string()).optional()
+        envOverrides: z.record(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string()).optional()
       }),
       response: {
         200: z.object({
-          config: SuperAdminSchema.extend({
+          config: SuperAdminSchema.omit({
+            encryptedEnvOverrides: true
+          }).extend({
             defaultAuthOrgSlug: z.string().nullable()
           })
         })
