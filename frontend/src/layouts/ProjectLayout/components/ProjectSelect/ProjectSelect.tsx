@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faCheck,
   faCube,
+  faMagnifyingGlass,
   faPlus,
   faSort,
   faStar as faSolidStar
@@ -19,7 +20,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton
+  IconButton,
+  Input
 } from "@app/components/v2";
 import {
   OrgPermissionActions,
@@ -37,6 +39,7 @@ import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 // TODO(pta): add search to project select
 export const ProjectSelect = () => {
+  const [searchProject, setSearchProject] = useState("");
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
   const { data: workspaces = [] } = useGetUserWorkspaces();
@@ -131,46 +134,62 @@ export const ProjectSelect = () => {
           style={{ minWidth: "220px" }}
         >
           <div className="px-2 py-1 text-xs capitalize text-mineshaft-400">Projects</div>
-          {projects?.map((workspace) => {
-            return (
-              <DropdownMenuItem
-                key={workspace.id}
-                onClick={async () => {
-                  // todo(akhi): this is not using react query because react query in overview is throwing error when envs are not exact same count
-                  // to reproduce change this back to router.push and switch between two projects with different env count
-                  // look into this on dashboard revamp
-                  const url = linkOptions({
-                    to: getProjectHomePage(workspace.defaultType),
-                    params: {
-                      projectId: workspace.id
-                    }
-                  });
-                  window.location.assign(url.to.replaceAll("$projectId", workspace.id));
-                }}
-                icon={
-                  currentWorkspace?.id === workspace.id && (
-                    <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
-                  )
-                }
-              >
-                <div className="flex items-center">
-                  <div className="flex max-w-[150px] flex-grow items-center justify-between truncate">
-                    {workspace.name}
-                  </div>
-                  <FontAwesomeIcon
-                    icon={workspace.isFavorite ? faSolidStar : faStar}
-                    className="text-sm text-yellow-600 hover:text-mineshaft-400"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      await (
-                        workspace.isFavorite ? removeProjectFromFavorites : addProjectToFavorites
-                      )(workspace.id);
+          <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
+            <Input
+              value={searchProject}
+              onChange={(evt) => setSearchProject(evt.target.value || "")}
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+              size="xs"
+              variant="plain"
+              placeholder="Search projects"
+            />
+          </div>
+          <div className="thin-scrollbar max-h-80 overflow-auto">
+            {projects
+              ?.filter((el) => el.name?.toLowerCase().includes(searchProject.toLowerCase()))
+              ?.map((workspace) => {
+                return (
+                  <DropdownMenuItem
+                    key={workspace.id}
+                    onClick={async () => {
+                      // todo(akhi): this is not using react query because react query in overview is throwing error when envs are not exact same count
+                      // to reproduce change this back to router.push and switch between two projects with different env count
+                      // look into this on dashboard revamp
+                      const url = linkOptions({
+                        to: getProjectHomePage(workspace.defaultType),
+                        params: {
+                          projectId: workspace.id
+                        }
+                      });
+                      window.location.assign(url.to.replaceAll("$projectId", workspace.id));
                     }}
-                  />
-                </div>
-              </DropdownMenuItem>
-            );
-          })}
+                    icon={
+                      currentWorkspace?.id === workspace.id && (
+                        <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
+                      )
+                    }
+                  >
+                    <div className="flex items-center">
+                      <div className="flex max-w-[150px] flex-grow items-center justify-between truncate">
+                        {workspace.name}
+                      </div>
+                      <FontAwesomeIcon
+                        icon={workspace.isFavorite ? faSolidStar : faStar}
+                        className="text-sm text-yellow-600 hover:text-mineshaft-400"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await (
+                            workspace.isFavorite
+                              ? removeProjectFromFavorites
+                              : addProjectToFavorites
+                          )(workspace.id);
+                        }}
+                      />
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+          </div>
           <div className="mt-1 h-1 border-t border-mineshaft-600" />
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
             {(isAllowed) => (

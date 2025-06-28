@@ -8,6 +8,7 @@ import {
   faCubes,
   faEnvelope,
   faInfo,
+  faInfoCircle,
   faSignOut,
   faSlash,
   faSort,
@@ -19,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 
 import { Mfa } from "@app/components/auth/Mfa";
+import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   BreadcrumbContainer,
@@ -30,7 +32,8 @@ import {
   IconButton,
   Modal,
   ModalContent,
-  TBreadcrumbFormat
+  TBreadcrumbFormat,
+  Tooltip
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
@@ -39,6 +42,7 @@ import { useToggle } from "@app/hooks";
 import { useGetOrganizations, useLogoutUser, workspaceKeys } from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
@@ -127,6 +131,19 @@ export const Navbar = () => {
       navigate({ to: "/login" });
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleCopyToken = async () => {
+    try {
+      await window.navigator.clipboard.writeText(getAuthToken());
+      createNotification({
+        type: "success",
+        text: "Copied current login session token to clipboard"
+      });
+    } catch (error) {
+      console.log(error);
+      createNotification({ type: "error", text: "Failed to copy user token to clipboard" });
     }
   };
 
@@ -364,6 +381,16 @@ export const Navbar = () => {
               />
             </DropdownMenuItem>
           </a>
+          <div className="mt-1 h-1 border-t border-mineshaft-600" />
+          <DropdownMenuItem onClick={handleCopyToken}>
+            Copy Token
+            <Tooltip
+              content="This token is linked to your current login session and can only access resources within the organization you're currently logged into."
+              className="max-w-3xl"
+            >
+              <FontAwesomeIcon icon={faInfoCircle} className="mb-[0.06rem] pl-1.5 text-xs" />
+            </Tooltip>
+          </DropdownMenuItem>
           <div className="mt-1 h-1 border-t border-mineshaft-600" />
           <DropdownMenuItem onClick={logOutUser} icon={<FontAwesomeIcon icon={faSignOut} />}>
             Log Out
