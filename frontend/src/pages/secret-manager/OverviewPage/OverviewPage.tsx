@@ -42,6 +42,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
+  Lottie,
   Modal,
   ModalContent,
   PageHeader,
@@ -863,14 +864,7 @@ export const OverviewPage = () => {
   if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
-        <img
-          src="/images/loading/loading.gif"
-          height={70}
-          width={120}
-          alt="loading animation"
-          decoding="async"
-          loading="lazy"
-        />
+        <Lottie icon="infisical_loading" className="h-32 w-32" />
       </div>
     );
   }

@@ -7,10 +7,11 @@ export type LottieProps = {
   icon?: string;
   iconMode?: Mode;
   className?: string;
+  isAutoPlay?: boolean;
 };
 
 export const Lottie = forwardRef<HTMLDivElement, LottieProps>(
-  ({ children, icon, iconMode, ...props }, ref): JSX.Element => {
+  ({ children, icon, iconMode, isAutoPlay, ...props }, ref): JSX.Element => {
     const iconRef = useRef<DotLottie | null>(null);
     return (
       <div
@@ -26,6 +27,7 @@ export const Lottie = forwardRef<HTMLDivElement, LottieProps>(
           mode={iconMode}
           src={`/lotties/${icon}.json`}
           loop
+          autoplay={isAutoPlay}
           className="h-full w-full"
         />
         {children}

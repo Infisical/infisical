@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { faDotCircle, faHome, faMobile, faWindowMaximize } from "@fortawesome/free-solid-svg-icons";
+import { faDotCircle, faMobile, faWindowMaximize } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -89,9 +89,7 @@ export const ProjectLayout = () => {
                     <MenuItem
                       className="relative flex items-center gap-2 overflow-hidden"
                       isSelected={isSecretManager}
-                      leftIcon={
-                        <Lottie className="inline-block h-6 w-6 shrink-0" icon="sliding-carousel" />
-                      }
+                      leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="vault" />}
                     >
                       {isSecretManager && (
                         <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
@@ -154,7 +152,7 @@ export const ProjectLayout = () => {
                       className="relative flex items-center gap-2 overflow-hidden"
                       isSelected={isSsh}
                       leftIcon={
-                        <Lottie className="inline-block h-6 w-6 shrink-0" icon="verified" />
+                        <Lottie className="inline-block h-6 w-6 shrink-0" icon="terminal" />
                       }
                     >
                       {isSsh && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
@@ -244,23 +242,6 @@ export const ProjectLayout = () => {
               </Menu>
               <div className="flex-grow" />
               <Menu>
-                <ShouldWrap
-                  wrapper={Tooltip}
-                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
-                  content="Organization Home"
-                  position="right"
-                >
-                  <Link to="/organization/projects">
-                    <MenuItem
-                      className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
-                      leftIcon={
-                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
-                      }
-                    >
-                      Organization
-                    </MenuItem>
-                  </Link>
-                </ShouldWrap>
                 <DropdownMenu>
                   <ShouldWrap
                     wrapper={Tooltip}
