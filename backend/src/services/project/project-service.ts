@@ -305,7 +305,6 @@ export const projectServiceFactory = ({
         tx
       );
 
-      // TODO(pta: check this again)
       await bootstrapSshProject({
         projectId: project.id,
         sshCertificateAuthorityDAL,
