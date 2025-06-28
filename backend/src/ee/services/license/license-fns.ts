@@ -52,11 +52,11 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   },
   pkiEst: false,
   enforceMfa: false,
-  projectTemplates: true,
+  projectTemplates: false,
   kmip: false,
   gateway: false,
-  sshHostGroups: true,
-  secretScanning: true,
+  sshHostGroups: false,
+  secretScanning: false,
   enterpriseSecretSyncs: false,
   enterpriseAppConnections: false
 });
