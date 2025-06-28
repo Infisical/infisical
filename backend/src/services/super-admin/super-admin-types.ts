@@ -74,3 +74,10 @@ export type TAdminIntegrationConfig = {
     privateKey: string;
   };
 };
+
+export interface EnvOverrides {
+  [key: string]: {
+    name: string;
+    fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[];
+  };
+}

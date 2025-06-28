@@ -338,8 +338,11 @@ const envSchema = z
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
 let envCfg: TEnvConfig;
+let originalEnvConfig: TEnvConfig;
 
 export const getConfig = () => envCfg;
+export const getOriginalConfig = () => originalEnvConfig;
+
 // cannot import singleton logger directly as it needs config to load various transport
 export const initEnvConfig = (logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
@@ -349,8 +352,82 @@ export const initEnvConfig = (logger?: CustomLogger) => {
     process.exit(-1);
   }
 
-  envCfg = Object.freeze(parsedEnv.data);
+  const config = Object.freeze(parsedEnv.data);
+  envCfg = config;
+
+  if (!originalEnvConfig) {
+    originalEnvConfig = config;
+  }
+
   return envCfg;
+};
+
+// A list of environment variables that can be overwritten
+export const overwriteSchema: {
+  [key: string]: {
+    name: string;
+    fields: { key: keyof z.input<typeof envSchema>; description?: string }[];
+  };
+} = {
+  google_sso: {
+    name: "Google SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GOOGLE_LOGIN",
+        description: "The Client ID of your GCP OAuth2 application."
+      },
+      {
+        key: "CLIENT_SECRET_GOOGLE_LOGIN",
+        description: "The Client Secret of your GCP OAuth2 application."
+      }
+    ]
+  },
+  github_sso: {
+    name: "GitHub SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GITHUB_LOGIN",
+        description: "The Client ID of your GitHub OAuth application."
+      },
+      {
+        key: "CLIENT_SECRET_GITHUB_LOGIN",
+        description: "The Client Secret of your GitHub OAuth application."
+      }
+    ]
+  },
+  github: {
+    name: "GitLab SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GITLAB_LOGIN",
+        description: "The Client ID of your GitLab application."
+      },
+      {
+        key: "CLIENT_SECRET_GITLAB_LOGIN",
+        description: "The Secret of your GitLab application."
+      },
+      {
+        key: "CLIENT_GITLAB_LOGIN_URL",
+        description:
+          "The URL of your self-hosted instance of GitLab where the OAuth application is registered. If no URL is passed in, this will default to https://gitlab.com."
+      }
+    ]
+  }
+};
+
+const overridableKeys = new Set(Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key)));
+
+export const overrideEnvConfig = (config: Record<string, string>) => {
+  const allowedOverrides = Object.fromEntries(
+    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
+  );
+
+  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
+  const parsedResult = envSchema.safeParse(tempEnv);
+
+  if (parsedResult.success) {
+    envCfg = Object.freeze(parsedResult.data);
+  }
 };
 
 export const formatSmtpConfig = () => {

@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import { IdentityAuthMethod, OrgMembershipRole, TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, getOriginalConfig, overrideEnvConfig, overwriteSchema } from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -33,6 +33,7 @@ import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
   CacheType,
+  EnvOverrides,
   LoginMethod,
   TAdminBootstrapInstanceDTO,
   TAdminGetIdentitiesDTO,
@@ -234,6 +235,45 @@ export const superAdminServiceFactory = ({
     adminIntegrationsConfig = config;
   };
 
+  const getEnvOverrides = async () => {
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+
+    if (!serverCfg || !serverCfg.encryptedEnvOverrides) {
+      return {};
+    }
+
+    const decrypt = kmsService.decryptWithRootKey();
+
+    const overrides = JSON.parse(decrypt(serverCfg.encryptedEnvOverrides).toString()) as Record<string, string>;
+
+    return overrides;
+  };
+
+  const getEnvOverridesOrganized = async (): Promise<EnvOverrides> => {
+    const overrides = await getEnvOverrides();
+    const ogConfig = getOriginalConfig();
+
+    return Object.fromEntries(
+      Object.entries(overwriteSchema).map(([groupKey, groupDef]) => [
+        groupKey,
+        {
+          name: groupDef.name,
+          fields: groupDef.fields.map(({ key, description }) => ({
+            key,
+            description,
+            value: overrides[key] || "",
+            hasEnvEntry: !!(ogConfig as unknown as Record<string, string | undefined>)[key]
+          }))
+        }
+      ])
+    );
+  };
+
+  const $syncEnvConfig = async () => {
+    const config = await getEnvOverrides();
+    overrideEnvConfig(config);
+  };
+
   const updateServerCfg = async (
     data: TSuperAdminUpdate & {
       slackClientId?: string;
@@ -246,6 +286,7 @@ export const superAdminServiceFactory = ({
       gitHubAppConnectionSlug?: string;
       gitHubAppConnectionId?: string;
       gitHubAppConnectionPrivateKey?: string;
+      envOverrides?: Record<string, string>;
     },
     userId: string
   ) => {
@@ -374,12 +415,24 @@ export const superAdminServiceFactory = ({
       gitHubAppConnectionSettingsUpdated = true;
     }
 
+    let envOverridesUpdated = false;
+    if (data.envOverrides !== undefined) {
+      const encryptedEnvOverrides = encryptWithRoot(Buffer.from(JSON.stringify(data.envOverrides)));
+      updatedData.encryptedEnvOverrides = encryptedEnvOverrides;
+      updatedData.envOverrides = undefined;
+      envOverridesUpdated = true;
+    }
+
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
     await keyStore.setItemWithExpiry(ADMIN_CONFIG_KEY, ADMIN_CONFIG_KEY_EXP, JSON.stringify(updatedServerCfg));
 
     if (gitHubAppConnectionSettingsUpdated) {
       await $syncAdminIntegrationConfig();
+    }
+
+    if (envOverridesUpdated) {
+      await $syncEnvConfig();
     }
 
     if (
@@ -814,6 +867,18 @@ export const superAdminServiceFactory = ({
     return job;
   };
 
+  const initializeEnvConfigSync = async () => {
+    logger.info("Setting up background sync process for environment overrides");
+
+    await $syncEnvConfig();
+
+    // sync every 5 minutes
+    const job = new CronJob("*/5 * * * *", $syncEnvConfig);
+    job.start();
+
+    return job;
+  };
+
   return {
     initServerCfg,
     updateServerCfg,
@@ -833,6 +898,9 @@ export const superAdminServiceFactory = ({
     getOrganizations,
     deleteOrganization,
     deleteOrganizationMembership,
-    initializeAdminIntegrationConfigSync
+    initializeAdminIntegrationConfigSync,
+    initializeEnvConfigSync,
+    getEnvOverrides,
+    getEnvOverridesOrganized
   };
 };

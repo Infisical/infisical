@@ -8,6 +8,7 @@ const adminRoute = route("/admin", [
     index("admin/GeneralPage/route.tsx"),
     route("/encryption", "admin/EncryptionPage/route.tsx"),
     route("/authentication", "admin/AuthenticationPage/route.tsx"),
+    route("/environment", "admin/EnvironmentPage/route.tsx"),
     route("/integrations", "admin/IntegrationsPage/route.tsx"),
     route("/caching", "admin/CachingPage/route.tsx"),
     route("/resources/organizations", "admin/OrganizationResourcesPage/route.tsx"),
