@@ -78,7 +78,7 @@ export const OnePassSyncFields = () => {
             errorText={error?.message}
             isOptional
             label="Value Label"
-            tooltipText="The label of the item entry which will hold your secret value. For example, if you were to sync secret 'foo: bar', the 1Password item equivalent would have an item title 'foo', and an entry on that item called 'value: bar'. The entry label 'value' is what gets changed by this option."
+            tooltipText="It's the label of the 1Password item field which will hold your secret value. For example, if you were to sync Infisical secret 'foo: bar', the 1Password item equivalent would have an item title of 'foo', and a field on that item 'value: bar'. The field label 'value' is what gets changed by this option."
           >
             <Input value={value} onChange={onChange} placeholder="value" />
           </FormControl>
