@@ -80,6 +80,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         trustedIpsAccessTokenAuth: doc.accessTokenTrustedIpsToken,
         trustedIpsAccessJwtAuth: doc.accessTokenTrustedIpsJwt,
         trustedIpsAccessLdapAuth: doc.accessTokenTrustedIpsLdap,
+        trustedIpsAccessTlsCertAuth: []
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "IdAccessTokenFindOne" });
