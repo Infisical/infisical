@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
+import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowUpRightFromSquare,
   faBook,
@@ -28,7 +28,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Lottie,
   Modal,
   ModalContent,
   TBreadcrumbFormat
@@ -252,8 +251,8 @@ export const Navbar = () => {
           onMouseEnter={() => setOpenSupport(true)}
           onMouseLeave={() => setOpenSupport(false)}
         >
-          <div>
-            <FontAwesomeIcon icon={faCircleQuestion} size="xl" className="text-white" />
+          <div className="mr-2">
+            <FontAwesomeIcon icon={faCircleQuestion} size="lg" className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -311,7 +310,7 @@ export const Navbar = () => {
           onMouseLeave={() => setOpenUser(false)}
         >
           <div>
-            <Lottie icon="user" className="w-14" />
+            <FontAwesomeIcon icon={faUserCircle} size="lg" className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
