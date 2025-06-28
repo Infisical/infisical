@@ -439,39 +439,35 @@ export const ReviewAccessRequestModal = ({
             </div>
           ) : (
             <>
-              {isSoftEnforcement &&
-                request.isRequestedByCurrentUser &&
-                !(request.isApprover && request.isSelfApproveAllowed) &&
-                canBypass && (
-                  <div className="mt-2 flex flex-col space-y-2">
-                    <Checkbox
-                      onCheckedChange={(checked) => setBypassApproval(checked === true)}
-                      isChecked={bypassApproval}
-                      id="byPassApproval"
-                      className={twMerge("mr-2", bypassApproval ? "border-red/30 bg-red/10" : "")}
+              {isSoftEnforcement && request.isRequestedByCurrentUser && canBypass && (
+                <div className="mt-2 flex flex-col space-y-2">
+                  <Checkbox
+                    onCheckedChange={(checked) => setBypassApproval(checked === true)}
+                    isChecked={bypassApproval}
+                    id="byPassApproval"
+                    className={twMerge("mr-2", bypassApproval ? "border-red/30 bg-red/10" : "")}
+                  >
+                    <span className="text-xs text-red">
+                      Approve without waiting for requirements to be met (bypass policy protection)
+                    </span>
+                  </Checkbox>
+                  {bypassApproval && (
+                    <FormControl
+                      label="Reason for bypass"
+                      className="mt-2"
+                      isRequired
+                      tooltipText="Enter a reason for bypassing the policy"
                     >
-                      <span className="text-xs text-red">
-                        Approve without waiting for requirements to be met (bypass policy
-                        protection)
-                      </span>
-                    </Checkbox>
-                    {bypassApproval && (
-                      <FormControl
-                        label="Reason for bypass"
-                        className="mt-2"
-                        isRequired
-                        tooltipText="Enter a reason for bypassing the secret change policy"
-                      >
-                        <Input
-                          value={bypassReason}
-                          onChange={(e) => setBypassReason(e.currentTarget.value)}
-                          placeholder="Enter reason for bypass (min 10 chars)"
-                          leftIcon={<FontAwesomeIcon icon={faTriangleExclamation} />}
-                        />
-                      </FormControl>
-                    )}
-                  </div>
-                )}
+                      <Input
+                        value={bypassReason}
+                        onChange={(e) => setBypassReason(e.currentTarget.value)}
+                        placeholder="Enter reason for bypass (min 10 chars)"
+                        leftIcon={<FontAwesomeIcon icon={faTriangleExclamation} />}
+                      />
+                    </FormControl>
+                  )}
+                </div>
+              )}
               <div className="space-x-2">
                 <Button
                   isLoading={isLoading === "approved"}
