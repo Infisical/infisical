@@ -280,6 +280,13 @@ export const OnePassSyncFns = {
     const instanceUrl = await getOnePassInstanceUrl(connection);
     const { apiToken } = connection.credentials;
 
-    return listOnePassItems({ instanceUrl, apiToken, vaultId, valueLabel: valueLabel || VALUE_LABEL_DEFAULT });
+    const res = await listOnePassItems({
+      instanceUrl,
+      apiToken,
+      vaultId,
+      valueLabel: valueLabel || VALUE_LABEL_DEFAULT
+    });
+
+    return Object.fromEntries(Object.entries(res.items).map(([key, item]) => [key, { value: item.value }]));
   }
 };
