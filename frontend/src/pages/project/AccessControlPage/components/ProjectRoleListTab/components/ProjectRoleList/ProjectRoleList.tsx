@@ -236,7 +236,7 @@ export const ProjectRoleList = () => {
             </Tr>
           </THead>
           <TBody>
-            {isRolesLoading && <TableSkeleton columns={3} innerKey="project-roles" />}
+            {isRolesLoading && <TableSkeleton columns={4} innerKey="project-roles" />}
             {filteredRoles?.slice(offset, perPage * page).map((role) => {
               const { id, name, slug } = role;
               const isNonMutatable = Object.values(ProjectMembershipRole).includes(

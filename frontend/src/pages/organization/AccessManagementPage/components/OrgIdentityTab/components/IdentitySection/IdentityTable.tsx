@@ -1,12 +1,15 @@
-import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useCallback, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
-  faEllipsis,
+  faCheckCircle,
+  faChevronRight,
+  faEdit,
+  faEllipsisV,
   faFilter,
   faMagnifyingGlass,
-  faServer
+  faServer,
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
@@ -15,19 +18,18 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownSubMenu,
+  DropdownSubMenuContent,
+  DropdownSubMenuTrigger,
   EmptyState,
-  FormControl,
   IconButton,
   Input,
   Pagination,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Select,
   SelectItem,
   Spinner,
@@ -38,7 +40,6 @@ import {
   Td,
   Th,
   THead,
-  Tooltip,
   Tr
 } from "@app/components/v2";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -61,6 +62,10 @@ type Props = {
       name: string;
     }
   ) => void;
+};
+
+type Filter = {
+  roles: string[];
 };
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
@@ -90,7 +95,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     setUserTablePreference("identityTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const [filteredRoles, setFilteredRoles] = useState<string[]>([]);
+  const [filter, setFilter] = useState<Filter>({
+    roles: []
+  });
 
   const organizationId = currentOrg?.id || "";
 
@@ -103,7 +110,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     orderBy,
     search: {
       name: debouncedSearch ? { $contains: debouncedSearch } : undefined,
-      role: filteredRoles?.length ? { $in: filteredRoles } : undefined
+      role: filter.roles?.length ? { $in: filter.roles } : undefined
     }
   });
 
@@ -113,7 +120,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     offset,
     setPage
   });
-  const filterForm = useForm<{ roles: string }>();
 
   const { data: roles } = useGetOrgRoles(organizationId);
 
@@ -153,79 +159,80 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     }
   };
 
+  const handleRoleToggle = useCallback(
+    (roleSlug: string) =>
+      setFilter((state) => {
+        const currentRoles = state.roles || [];
+
+        if (currentRoles.includes(roleSlug)) {
+          return { ...state, roles: currentRoles.filter((role) => role !== roleSlug) };
+        }
+        return { ...state, roles: [...currentRoles, roleSlug] };
+      }),
+    []
+  );
+
+  const isTableFiltered = Boolean(filter.roles.length);
+
   return (
     <div>
       <div className="mb-4 flex items-center space-x-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              ariaLabel="Filter Identities"
+              variant="plain"
+              size="sm"
+              className={twMerge(
+                "flex h-[2.375rem] w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                isTableFiltered && "border-primary/50 text-primary"
+              )}
+            >
+              <FontAwesomeIcon icon={faFilter} />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="p-0">
+            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
+            <DropdownSubMenu>
+              <DropdownSubMenuTrigger
+                iconPos="right"
+                icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
+              >
+                Roles
+              </DropdownSubMenuTrigger>
+              <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                  Apply Roles to Filter Identities
+                </DropdownMenuLabel>
+                {roles?.map(({ id, slug, name }) => (
+                  <DropdownMenuItem
+                    onClick={(evt) => {
+                      evt.preventDefault();
+                      handleRoleToggle(slug);
+                    }}
+                    key={id}
+                    icon={filter.roles.includes(slug) && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center">
+                      <div
+                        className="mr-2 h-2 w-2 rounded-full"
+                        style={{ background: "#bec2c8" }}
+                      />
+                      {name}
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownSubMenuContent>
+            </DropdownSubMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
           placeholder="Search identities by name..."
         />
-        <div>
-          <Popover>
-            <PopoverTrigger>
-              <IconButton
-                ariaLabel="filter"
-                variant="outline_bg"
-                className={filteredRoles?.length ? "border-primary" : ""}
-              >
-                <Tooltip content="Advance Filter">
-                  <FontAwesomeIcon icon={faFilter} />
-                </Tooltip>
-              </IconButton>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl">
-              <div className="mb-4 border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
-                Advance Filter
-              </div>
-              <form
-                onSubmit={filterForm.handleSubmit((el) => {
-                  setFilteredRoles(el.roles?.split(",")?.filter(Boolean) || []);
-                })}
-              >
-                <Controller
-                  control={filterForm.control}
-                  name="roles"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Roles"
-                      helperText="Eg: admin,viewer"
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <Input {...field} />
-                    </FormControl>
-                  )}
-                />
-                <div className="flex items-center space-x-2">
-                  <Button
-                    type="submit"
-                    size="xs"
-                    colorSchema="primary"
-                    variant="outline_bg"
-                    className="mt-4"
-                  >
-                    Apply Filter
-                  </Button>
-                  {Boolean(filteredRoles.length) && (
-                    <Button
-                      size="xs"
-                      variant="link"
-                      className="ml-4 mt-4"
-                      onClick={() => {
-                        filterForm.reset({ roles: "" });
-                        setFilteredRoles([]);
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </form>
-            </PopoverContent>
-          </Popover>
-        </div>
       </div>
       <TableContainer>
         <Table>
@@ -251,8 +258,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th>Role</Th>
-              {/* <Th>
+              <Th>
                 <div className="flex items-center">
                   Role
                   <IconButton
@@ -271,7 +277,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     />
                   </IconButton>
                 </div>
-              </Th> */}
+              </Th>
               <Th className="w-16">{isFetching ? <Spinner size="xs" /> : null}</Th>
             </Tr>
           </THead>
@@ -303,7 +309,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                             <Select
                               value={role === "custom" ? (customRole?.slug as string) : role}
                               isDisabled={!isAllowed}
-                              className="w-48 bg-mineshaft-600"
+                              className="h-8 w-48 bg-mineshaft-700"
+                              position="popper"
                               dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                               onValueChange={(selectedRole) =>
                                 handleChangeRole({
@@ -324,21 +331,24 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     </Td>
                     <Td>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="flex justify-center hover:text-primary-400 data-[state=open]:text-primary-400">
-                            <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                          </div>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            ariaLabel="Options"
+                            className="w-6"
+                            colorSchema="secondary"
+                            variant="plain"
+                          >
+                            <FontAwesomeIcon icon={faEllipsisV} />
+                          </IconButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="mt-3 p-1">
+                        <DropdownMenuContent sideOffset={2} align="end">
                           <OrgPermissionCan
                             I={OrgPermissionIdentityActions.Edit}
                             a={OrgPermissionSubjects.Identity}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
+                                icon={<FontAwesomeIcon icon={faEdit} />}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
@@ -348,7 +358,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                     }
                                   });
                                 }}
-                                disabled={!isAllowed}
+                                isDisabled={!isAllowed}
                               >
                                 Edit Identity
                               </DropdownMenuItem>
@@ -360,11 +370,6 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
-                                className={twMerge(
-                                  isAllowed
-                                    ? "hover:!bg-red-500 hover:!text-white"
-                                    : "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteIdentity", {
@@ -372,7 +377,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                     name
                                   });
                                 }}
-                                disabled={!isAllowed}
+                                isDisabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faTrash} />}
                               >
                                 Delete Identity
                               </DropdownMenuItem>
@@ -398,7 +404,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
         {!isPending && data && data?.identities.length === 0 && (
           <EmptyState
             title={
-              debouncedSearch.trim().length > 0 || filteredRoles?.length > 0
+              debouncedSearch.trim().length > 0 || filter.roles?.length > 0
                 ? "No identities match search filter"
                 : "No identities have been created in this organization"
             }

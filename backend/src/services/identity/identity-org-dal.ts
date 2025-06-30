@@ -392,7 +392,12 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityOrgMembership}.identityId`)
         .where(`${TableName.IdentityOrgMembership}.orgId`, orgId)
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
-        .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection)
+        .orderBy(
+          orderBy === OrgIdentityOrderBy.Role
+            ? `${TableName.IdentityOrgMembership}.${orderBy}`
+            : `${TableName.Identity}.${orderBy}`,
+          orderDirection
+        )
         .select(`${TableName.IdentityOrgMembership}.id`)
         .select<{ id: string; total_count: string }>(
           db.raw(
@@ -523,6 +528,23 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       if (orderBy === OrgIdentityOrderBy.Name) {
         void query.orderBy("identityName", orderDirection);
+      } else if (orderBy === OrgIdentityOrderBy.Role) {
+        void query.orderByRaw(
+          `
+          CASE 
+            WHEN ??.role = ? 
+            THEN ??.slug 
+            ELSE ??.role 
+          END ?
+          `,
+          [
+            TableName.IdentityOrgMembership,
+            "custom",
+            TableName.OrgRoles,
+            TableName.IdentityOrgMembership,
+            db.raw(orderDirection)
+          ]
+        );
       }
 
       const docs = await query;

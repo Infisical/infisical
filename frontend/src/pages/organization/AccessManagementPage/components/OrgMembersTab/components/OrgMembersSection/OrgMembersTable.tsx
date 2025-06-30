@@ -4,11 +4,14 @@ import {
   faArrowUp,
   faCheckCircle,
   faChevronRight,
-  faEllipsis,
+  faEdit,
+  faEllipsisV,
   faFilter,
   faMagnifyingGlass,
   faSearch,
-  faUsers
+  faUsers,
+  faUserSlash,
+  faUserXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
@@ -79,7 +82,8 @@ type Props = {
 
 enum OrgMembersOrderBy {
   Name = "firstName",
-  Email = "email"
+  Email = "email",
+  Role = "role"
 }
 
 type Filter = {
@@ -99,8 +103,10 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   const { data: serverDetails } = useFetchServerStatus();
   const { data: members = [], isPending: isMembersLoading } = useGetOrgUsers(orgId);
 
-  const { mutateAsync: resendOrgMemberInvitation } = useResendOrgMemberInvitation();
+  const { mutateAsync: resendOrgMemberInvitation, isPending: isResendInvitePending } =
+    useResendOrgMemberInvitation();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
+  const [resendInviteId, setResendInviteId] = useState<string | null>(null);
 
   const onRoleChange = async (membershipId: string, role: string) => {
     if (!currentOrg?.id) return;
@@ -136,6 +142,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   };
 
   const onResendInvite = async (membershipId: string) => {
+    setResendInviteId(membershipId);
     try {
       const signupToken = await resendOrgMemberInvitation({
         membershipId
@@ -156,6 +163,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
         text: "Failed to resend org invitation",
         type: "error"
       });
+    } finally {
+      setResendInviteId(null);
     }
   };
 
@@ -229,6 +238,16 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
               valueOne = memberOne.user.email || memberOne.inviteEmail;
               valueTwo = memberTwo.user.email || memberTwo.inviteEmail;
               break;
+            case OrgMembersOrderBy.Role:
+              valueOne =
+                memberOne.role === "custom"
+                  ? findRoleFromId(memberOne.roleId)!.slug
+                  : memberOne.role;
+              valueTwo =
+                memberTwo.role === "custom"
+                  ? findRoleFromId(memberTwo.roleId)!.slug
+                  : memberTwo.role;
+              break;
             case OrgMembersOrderBy.Name:
             default:
               valueOne = memberOne.user.firstName;
@@ -284,7 +303,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "flex h-[2.375rem] w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
@@ -378,7 +397,26 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                   </IconButton>
                 </div>
               </Th>
-              <Th>Role</Th>
+              <Th className="w-1/3">
+                <div className="flex items-center">
+                  Role
+                  <IconButton
+                    variant="plain"
+                    className={`ml-2 ${orderBy === OrgMembersOrderBy.Role ? "" : "opacity-30"}`}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(OrgMembersOrderBy.Role)}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        orderDirection === OrderByDirection.DESC &&
+                        orderBy === OrgMembersOrderBy.Role
+                          ? faArrowUp
+                          : faArrowDown
+                      }
+                    />
+                  </IconButton>
+                </div>
+              </Th>
               <Th className="w-5" />
             </Tr>
           </THead>
@@ -398,7 +436,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                     isActive
                   }) => {
                     const name =
-                      u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : "-";
+                      u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : null;
                     const email = u?.email || inviteEmail;
                     const username = u?.username ?? inviteEmail ?? "-";
                     return (
@@ -415,7 +453,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                         }
                       >
                         <Td className={isActive ? "" : "text-mineshaft-400"}>
-                          {name}
+                          {name ?? <span className="text-mineshaft-400">Not Set</span>}
                           {u.superAdmin && (
                             <Badge variant="primary" className="ml-2">
                               Server Admin
@@ -429,79 +467,77 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                             a={OrgPermissionSubjects.Member}
                           >
                             {(isAllowed) => (
-                              <>
-                                {!isActive && (
-                                  <Button
-                                    isDisabled
-                                    className="w-40"
-                                    colorSchema="primary"
-                                    variant="outline_bg"
-                                    onClick={() => {}}
-                                  >
-                                    Suspended
-                                  </Button>
-                                )}
-                                {isActive && status === "accepted" && (
-                                  <Select
-                                    value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
-                                    isDisabled={userId === u?.id || !isAllowed}
-                                    className="w-48 bg-mineshaft-600"
-                                    dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
-                                    onValueChange={(selectedRole) =>
-                                      onRoleChange(orgMembershipId, selectedRole)
-                                    }
-                                  >
-                                    {(roles || [])
-                                      .filter(({ slug }) =>
-                                        slug === "owner" ? isIamOwner || role === "owner" : true
-                                      )
-                                      .map(({ slug, name: roleName }) => (
-                                        <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                          {roleName}
-                                        </SelectItem>
-                                      ))}
-                                  </Select>
-                                )}
-                                {isActive &&
-                                  (status === "invited" || status === "verified") &&
-                                  email &&
-                                  serverDetails?.emailConfigured && (
+                              <Select
+                                value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
+                                isDisabled={userId === u?.id || !isAllowed}
+                                className="h-8 w-48 bg-mineshaft-700"
+                                position="popper"
+                                dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                                onValueChange={(selectedRole) =>
+                                  onRoleChange(orgMembershipId, selectedRole)
+                                }
+                              >
+                                {(roles || [])
+                                  .filter(({ slug }) =>
+                                    slug === "owner" ? isIamOwner || role === "owner" : true
+                                  )
+                                  .map(({ slug, name: roleName }) => (
+                                    <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                      {roleName}
+                                    </SelectItem>
+                                  ))}
+                              </Select>
+                            )}
+                          </OrgPermissionCan>
+                        </Td>
+                        <Td>
+                          <div className="flex items-center justify-end gap-6">
+                            {isActive &&
+                              (status === "invited" || status === "verified") &&
+                              email &&
+                              serverDetails?.emailConfigured && (
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  a={OrgPermissionSubjects.Member}
+                                >
+                                  {(isAllowed) => (
                                     <Button
-                                      isDisabled={!isAllowed}
-                                      className="w-48"
+                                      isDisabled={!isAllowed || isResendInvitePending}
+                                      className="h-8 border-mineshaft-600 bg-mineshaft-700 font-normal"
                                       colorSchema="primary"
                                       variant="outline_bg"
+                                      isLoading={
+                                        isResendInvitePending && resendInviteId === orgMembershipId
+                                      }
                                       onClick={(e) => {
                                         onResendInvite(orgMembershipId);
                                         e.stopPropagation();
                                       }}
                                     >
-                                      Resend invite
+                                      Resend Invite
                                     </Button>
                                   )}
-                              </>
-                            )}
-                          </OrgPermissionCan>
-                        </Td>
-                        <Td>
-                          {userId !== u?.id && (
+                                </OrgPermissionCan>
+                              )}
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild className="rounded-lg">
-                                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                                  <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                                </div>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  ariaLabel="Options"
+                                  colorSchema="secondary"
+                                  className={twMerge("w-6", userId === u?.id && "opacity-50")}
+                                  variant="plain"
+                                  isDisabled={userId === u?.id}
+                                >
+                                  <FontAwesomeIcon icon={faEllipsisV} />
+                                </IconButton>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="p-1">
+                              <DropdownMenuContent sideOffset={2} align="end">
                                 <OrgPermissionCan
                                   I={OrgPermissionActions.Edit}
                                   a={OrgPermissionSubjects.Member}
                                 >
                                   {(isAllowed) => (
                                     <DropdownMenuItem
-                                      className={twMerge(
-                                        !isAllowed &&
-                                          "pointer-events-none cursor-not-allowed opacity-50"
-                                      )}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         navigate({
@@ -511,7 +547,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                           }
                                         });
                                       }}
-                                      disabled={!isAllowed}
+                                      isDisabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faEdit} />}
                                     >
                                       Edit User
                                     </DropdownMenuItem>
@@ -523,15 +560,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                 >
                                   {(isAllowed) => (
                                     <DropdownMenuItem
-                                      className={
-                                        isActive
-                                          ? twMerge(
-                                              isAllowed
-                                                ? "hover:!bg-red-500 hover:!text-white"
-                                                : "pointer-events-none cursor-not-allowed opacity-50"
-                                            )
-                                          : ""
-                                      }
+                                      icon={<FontAwesomeIcon icon={faUserSlash} />}
                                       onClick={async (e) => {
                                         e.stopPropagation();
 
@@ -560,7 +589,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                           username
                                         });
                                       }}
-                                      disabled={!isAllowed}
+                                      isDisabled={!isAllowed}
                                     >
                                       {`${isActive ? "Deactivate" : "Activate"} User`}
                                     </DropdownMenuItem>
@@ -572,11 +601,6 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                 >
                                   {(isAllowed) => (
                                     <DropdownMenuItem
-                                      className={twMerge(
-                                        isAllowed
-                                          ? "hover:!bg-red-500 hover:!text-white"
-                                          : "pointer-events-none cursor-not-allowed opacity-50"
-                                      )}
                                       onClick={(e) => {
                                         e.stopPropagation();
 
@@ -593,7 +617,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                           username
                                         });
                                       }}
-                                      disabled={!isAllowed}
+                                      isDisabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faUserXmark} />}
                                     >
                                       Remove User
                                     </DropdownMenuItem>
@@ -601,7 +626,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                 </OrgPermissionCan>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          )}
+                          </div>
                         </Td>
                       </Tr>
                     );
