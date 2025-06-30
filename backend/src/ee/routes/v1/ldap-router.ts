@@ -17,6 +17,7 @@ import { z } from "zod";
 import { LdapGroupMapsSchema } from "@app/db/schemas";
 import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
 import { isValidLdapFilter, searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
+import { ApiDocsTags, LdapSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -132,10 +133,18 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.LdapSso],
+      description: "Get LDAP config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
-        organizationId: z.string().trim()
+        organizationId: z.string().trim().describe(LdapSso.GET_CONFIG.organizationId)
       }),
       response: {
         200: z.object({
@@ -172,23 +181,32 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.LdapSso],
+      description: "Create LDAP config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
-        organizationId: z.string().trim(),
-        isActive: z.boolean(),
-        url: z.string().trim(),
-        bindDN: z.string().trim(),
-        bindPass: z.string().trim(),
-        uniqueUserAttribute: z.string().trim().default("uidNumber"),
-        searchBase: z.string().trim(),
-        searchFilter: z.string().trim().default("(uid={{username}})"),
-        groupSearchBase: z.string().trim(),
+        organizationId: z.string().trim().describe(LdapSso.CREATE_CONFIG.organizationId),
+        isActive: z.boolean().describe(LdapSso.CREATE_CONFIG.isActive),
+        url: z.string().trim().describe(LdapSso.CREATE_CONFIG.url),
+        bindDN: z.string().trim().describe(LdapSso.CREATE_CONFIG.bindDN),
+        bindPass: z.string().trim().describe(LdapSso.CREATE_CONFIG.bindPass),
+        uniqueUserAttribute: z.string().trim().default("uidNumber").describe(LdapSso.CREATE_CONFIG.uniqueUserAttribute),
+        searchBase: z.string().trim().describe(LdapSso.CREATE_CONFIG.searchBase),
+        searchFilter: z.string().trim().default("(uid={{username}})").describe(LdapSso.CREATE_CONFIG.searchFilter),
+        groupSearchBase: z.string().trim().describe(LdapSso.CREATE_CONFIG.groupSearchBase),
         groupSearchFilter: z
           .string()
           .trim()
-          .default("(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))"),
-        caCert: z.string().trim().default("")
+          .default("(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))")
+          .describe(LdapSso.CREATE_CONFIG.groupSearchFilter),
+        caCert: z.string().trim().default("").describe(LdapSso.CREATE_CONFIG.caCert)
       }),
       response: {
         200: SanitizedLdapConfigSchema
@@ -214,23 +232,31 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.LdapSso],
+      description: "Update LDAP config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z
         .object({
-          isActive: z.boolean(),
-          url: z.string().trim(),
-          bindDN: z.string().trim(),
-          bindPass: z.string().trim(),
-          uniqueUserAttribute: z.string().trim(),
-          searchBase: z.string().trim(),
-          searchFilter: z.string().trim(),
-          groupSearchBase: z.string().trim(),
-          groupSearchFilter: z.string().trim(),
-          caCert: z.string().trim()
+          isActive: z.boolean().describe(LdapSso.UPDATE_CONFIG.isActive),
+          url: z.string().trim().describe(LdapSso.UPDATE_CONFIG.url),
+          bindDN: z.string().trim().describe(LdapSso.UPDATE_CONFIG.bindDN),
+          bindPass: z.string().trim().describe(LdapSso.UPDATE_CONFIG.bindPass),
+          uniqueUserAttribute: z.string().trim().describe(LdapSso.UPDATE_CONFIG.uniqueUserAttribute),
+          searchBase: z.string().trim().describe(LdapSso.UPDATE_CONFIG.searchBase),
+          searchFilter: z.string().trim().describe(LdapSso.UPDATE_CONFIG.searchFilter),
+          groupSearchBase: z.string().trim().describe(LdapSso.UPDATE_CONFIG.groupSearchBase),
+          groupSearchFilter: z.string().trim().describe(LdapSso.UPDATE_CONFIG.groupSearchFilter),
+          caCert: z.string().trim().describe(LdapSso.UPDATE_CONFIG.caCert)
         })
         .partial()
-        .merge(z.object({ organizationId: z.string() })),
+        .merge(z.object({ organizationId: z.string().trim().describe(LdapSso.UPDATE_CONFIG.organizationId) })),
       response: {
         200: SanitizedLdapConfigSchema
       }

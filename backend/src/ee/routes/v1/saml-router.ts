@@ -13,6 +13,7 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
+import { ApiDocsTags, SamlSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -262,10 +263,18 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SamlSso],
+      description: "Get SAML config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
-        organizationId: z.string().trim()
+        organizationId: z.string().trim().describe(SamlSso.GET_CONFIG.organizationId)
       }),
       response: {
         200: z
@@ -302,15 +311,23 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SamlSso],
+      description: "Create SAML config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
-        organizationId: z.string(),
-        authProvider: z.nativeEnum(SamlProviders),
-        isActive: z.boolean(),
-        entryPoint: z.string(),
-        issuer: z.string(),
-        cert: z.string()
+        organizationId: z.string().trim().describe(SamlSso.CREATE_CONFIG.organizationId),
+        authProvider: z.nativeEnum(SamlProviders).describe(SamlSso.CREATE_CONFIG.authProvider),
+        isActive: z.boolean().describe(SamlSso.CREATE_CONFIG.isActive),
+        entryPoint: z.string().trim().describe(SamlSso.CREATE_CONFIG.entryPoint),
+        issuer: z.string().trim().describe(SamlSso.CREATE_CONFIG.issuer),
+        cert: z.string().trim().describe(SamlSso.CREATE_CONFIG.cert)
       }),
       response: {
         200: SanitizedSamlConfigSchema
@@ -341,18 +358,26 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.SamlSso],
+      description: "Update SAML config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z
         .object({
-          authProvider: z.nativeEnum(SamlProviders),
-          isActive: z.boolean(),
-          entryPoint: z.string(),
-          issuer: z.string(),
-          cert: z.string()
+          authProvider: z.nativeEnum(SamlProviders).describe(SamlSso.UPDATE_CONFIG.authProvider),
+          isActive: z.boolean().describe(SamlSso.UPDATE_CONFIG.isActive),
+          entryPoint: z.string().trim().describe(SamlSso.UPDATE_CONFIG.entryPoint),
+          issuer: z.string().trim().describe(SamlSso.UPDATE_CONFIG.issuer),
+          cert: z.string().trim().describe(SamlSso.UPDATE_CONFIG.cert)
         })
         .partial()
-        .merge(z.object({ organizationId: z.string() })),
+        .merge(z.object({ organizationId: z.string().trim().describe(SamlSso.UPDATE_CONFIG.organizationId) })),
       response: {
         200: SanitizedSamlConfigSchema
       }
