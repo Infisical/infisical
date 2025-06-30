@@ -4,12 +4,12 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.raw(`
-        CREATE INDEX IF NOT EXISTS ${TableName.IdentityAccessToken}_identityid_index 
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS ${TableName.IdentityAccessToken}_identityid_index 
         ON ${TableName.IdentityAccessToken} ("identityId")
       `);
 
   await knex.raw(`
-        CREATE INDEX IF NOT EXISTS ${TableName.IdentityAccessToken}_identityuaclientsecretid_index 
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS ${TableName.IdentityAccessToken}_identityuaclientsecretid_index 
         ON ${TableName.IdentityAccessToken} ("identityUAClientSecretId")
       `);
 }
@@ -23,3 +23,7 @@ export async function down(knex: Knex): Promise<void> {
         DROP INDEX IF EXISTS ${TableName.IdentityAccessToken}_identityuaclientsecretid_index
       `);
 }
+
+const config = { transaction: false };
+
+export { config };
