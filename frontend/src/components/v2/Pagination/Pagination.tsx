@@ -64,7 +64,7 @@ export const Pagination = ({
               <FontAwesomeIcon className="text-xs" icon={faCaretDown} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-fit">
+          <DropdownMenuContent sideOffset={2} className="min-w-fit">
             {perPageList.map((perPageOption) => (
               <DropdownMenuItem
                 key={`pagination-per-page-options-${perPageOption}`}

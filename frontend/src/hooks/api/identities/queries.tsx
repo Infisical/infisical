@@ -81,7 +81,8 @@ export const useSearchIdentities = (dto: TSearchIdentitiesDTO) => {
         search
       });
       return data;
-    }
+    },
+    placeholderData: (previousData) => previousData
   });
 };
 

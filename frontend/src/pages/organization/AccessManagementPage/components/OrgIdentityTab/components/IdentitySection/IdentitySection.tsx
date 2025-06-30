@@ -1,4 +1,4 @@
-import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -71,20 +71,22 @@ export const IdentitySection = withPermission(
 
     return (
       <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex justify-between">
-          <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
-          <div className="flex w-full justify-end pr-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
             <a
+              href="https://infisical.com/docs/documentation/platform/identities/overview"
               target="_blank"
               rel="noopener noreferrer"
-              href="https://infisical.com/docs/documentation/platform/identities/overview"
-              className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white"
             >
-              Documentation{" "}
-              <FontAwesomeIcon
-                icon={faArrowUpRightFromSquare}
-                className="mb-[0.06rem] ml-1 text-xs"
-              />
+              <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                <span>Docs</span>
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="mb-[0.07rem] ml-1.5 text-[10px]"
+                />
+              </div>
             </a>
           </div>
           <OrgPermissionCan
@@ -93,7 +95,7 @@ export const IdentitySection = withPermission(
           >
             {(isAllowed) => (
               <Button
-                colorSchema="primary"
+                colorSchema="secondary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
