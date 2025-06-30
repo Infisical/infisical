@@ -2113,9 +2113,9 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://db056ef4a0a9.ngrok.app/api/docs/json",
+    "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["http://localhost:8080"]
+      "server": ["https://app.infisical.com", "http://localhost:8080"]
     }
   },
   "appearance": {
