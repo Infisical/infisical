@@ -3,6 +3,7 @@ import { faDotCircle, faMobile, faWindowMaximize } from "@fortawesome/free-solid
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
 
 import { ShouldWrap } from "@app/components/utilities/ShouldWrapComponent";
 import {
@@ -58,8 +59,11 @@ export const ProjectLayout = () => {
   return (
     <>
       <div
-        className="dark hidden w-full flex-col overflow-x-hidden md:flex"
-        style={{ height: "calc(100vh - 3rem)" }}
+        className="dark relative hidden w-full flex-col overflow-x-hidden md:flex"
+        style={{
+          height: "calc(100vh - 3rem)",
+          paddingLeft: !(sidebarStyle === SidebarStyle.Expanded) ? MIN_SIDEBAR_SIZE : "0px"
+        }}
       >
         <div className="flex flex-grow flex-col overflow-y-auto overflow-x-hidden md:flex-row">
           <motion.div
@@ -68,11 +72,14 @@ export const ProjectLayout = () => {
             animate={{ x: 0 }}
             exit={{ x: -150 }}
             transition={{ duration: 0.2 }}
-            style={{ width: minSidebarWidth }}
+            style={{ width: minSidebarWidth, height: "calc(100vh - 3rem)" }}
             whileHover={{
               width: maxSidebarWidth
             }}
-            className="dark group w-full overflow-hidden border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
+            className={twMerge(
+              "dark group z-10 w-full overflow-hidden border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60",
+              !(sidebarStyle === SidebarStyle.Expanded) && "absolute bottom-0 left-0"
+            )}
           >
             <nav className="items-between flex h-full flex-col justify-between">
               <Menu>
