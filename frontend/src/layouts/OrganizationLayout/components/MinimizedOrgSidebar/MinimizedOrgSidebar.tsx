@@ -164,7 +164,10 @@ export const MinimizedOrgSidebar = () => {
   const handleCopyToken = async () => {
     try {
       await window.navigator.clipboard.writeText(getAuthToken());
-      createNotification({ type: "success", text: "Copied current login session token to clipboard" });
+      createNotification({
+        type: "success",
+        text: "Copied current login session token to clipboard"
+      });
     } catch (error) {
       console.log(error);
       createNotification({ type: "error", text: "Failed to copy user token to clipboard" });

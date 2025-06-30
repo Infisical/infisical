@@ -6,7 +6,6 @@ import {
   TOnePassListVariablesResponse,
   TOnePassSyncWithCredentials,
   TOnePassVariable,
-  TOnePassVariableDetails,
   TPostOnePassVariable,
   TPutOnePassVariable
 } from "@app/services/secret-sync/1password/1password-sync-types";
@@ -14,7 +13,10 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
-const listOnePassItems = async ({ instanceUrl, apiToken, vaultId }: TOnePassListVariables) => {
+// This should not be changed or it may break existing logic
+const VALUE_LABEL_DEFAULT = "value";
+
+const listOnePassItems = async ({ instanceUrl, apiToken, vaultId, valueLabel }: TOnePassListVariables) => {
   const { data } = await request.get<TOnePassListVariablesResponse>(`${instanceUrl}/v1/vaults/${vaultId}/items`, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
@@ -22,36 +24,49 @@ const listOnePassItems = async ({ instanceUrl, apiToken, vaultId }: TOnePassList
     }
   });
 
-  const result: Record<string, TOnePassVariable & { value: string; fieldId: string }> = {};
+  const items: Record<string, TOnePassVariable & { value: string; fieldId: string }> = {};
+  const duplicates: Record<string, string> = {};
 
   for await (const s of data) {
-    const { data: secret } = await request.get<TOnePassVariableDetails>(
-      `${instanceUrl}/v1/vaults/${vaultId}/items/${s.id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          Accept: "application/json"
-        }
-      }
-    );
+    // eslint-disable-next-line no-continue
+    if (s.category !== "API_CREDENTIAL") continue;
 
-    const value = secret.fields.find((f) => f.label === "value")?.value;
-    const fieldId = secret.fields.find((f) => f.label === "value")?.id;
+    if (items[s.title]) {
+      duplicates[s.id] = s.title;
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    const { data: secret } = await request.get<TOnePassVariable>(`${instanceUrl}/v1/vaults/${vaultId}/items/${s.id}`, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
+      }
+    });
+
+    const valueField = secret.fields.find((f) => f.label === valueLabel);
 
     // eslint-disable-next-line no-continue
-    if (!value || !fieldId) continue;
+    if (!valueField || !valueField.value || !valueField.id) continue;
 
-    result[s.title] = {
+    items[s.title] = {
       ...secret,
-      value,
-      fieldId
+      value: valueField.value,
+      fieldId: valueField.id
     };
   }
 
-  return result;
+  return { items, duplicates };
 };
 
-const createOnePassItem = async ({ instanceUrl, apiToken, vaultId, itemTitle, itemValue }: TPostOnePassVariable) => {
+const createOnePassItem = async ({
+  instanceUrl,
+  apiToken,
+  vaultId,
+  itemTitle,
+  itemValue,
+  valueLabel
+}: TPostOnePassVariable) => {
   return request.post(
     `${instanceUrl}/v1/vaults/${vaultId}/items`,
     {
@@ -63,7 +78,7 @@ const createOnePassItem = async ({ instanceUrl, apiToken, vaultId, itemTitle, it
       tags: ["synced-from-infisical"],
       fields: [
         {
-          label: "value",
+          label: valueLabel,
           value: itemValue,
           type: "CONCEALED"
         }
@@ -85,7 +100,9 @@ const updateOnePassItem = async ({
   itemId,
   fieldId,
   itemTitle,
-  itemValue
+  itemValue,
+  valueLabel,
+  otherFields
 }: TPutOnePassVariable) => {
   return request.put(
     `${instanceUrl}/v1/vaults/${vaultId}/items/${itemId}`,
@@ -98,9 +115,10 @@ const updateOnePassItem = async ({
       },
       tags: ["synced-from-infisical"],
       fields: [
+        ...otherFields,
         {
           id: fieldId,
-          label: "value",
+          label: valueLabel,
           value: itemValue,
           type: "CONCEALED"
         }
@@ -128,13 +146,18 @@ export const OnePassSyncFns = {
     const {
       connection,
       environment,
-      destinationConfig: { vaultId }
+      destinationConfig: { vaultId, valueLabel }
     } = secretSync;
 
     const instanceUrl = await getOnePassInstanceUrl(connection);
     const { apiToken } = connection.credentials;
 
-    const items = await listOnePassItems({ instanceUrl, apiToken, vaultId });
+    const { items, duplicates } = await listOnePassItems({
+      instanceUrl,
+      apiToken,
+      vaultId,
+      valueLabel: valueLabel || VALUE_LABEL_DEFAULT
+    });
 
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
@@ -148,10 +171,19 @@ export const OnePassSyncFns = {
             itemTitle: key,
             itemValue: value,
             itemId: items[key].id,
-            fieldId: items[key].fieldId
+            fieldId: items[key].fieldId,
+            valueLabel: valueLabel || VALUE_LABEL_DEFAULT,
+            otherFields: items[key].fields.filter((field) => field.label !== (valueLabel || VALUE_LABEL_DEFAULT))
           });
         } else {
-          await createOnePassItem({ instanceUrl, apiToken, vaultId, itemTitle: key, itemValue: value });
+          await createOnePassItem({
+            instanceUrl,
+            apiToken,
+            vaultId,
+            itemTitle: key,
+            itemValue: value,
+            valueLabel: valueLabel || VALUE_LABEL_DEFAULT
+          });
         }
       } catch (error) {
         throw new SecretSyncError({
@@ -163,7 +195,28 @@ export const OnePassSyncFns = {
 
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
-    for await (const [key, variable] of Object.entries(items)) {
+    // Delete duplicate item entries
+    for await (const [itemId, key] of Object.entries(duplicates)) {
+      // eslint-disable-next-line no-continue
+      if (!matchesSchema(key, environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
+
+      try {
+        await deleteOnePassItem({
+          instanceUrl,
+          apiToken,
+          vaultId,
+          itemId
+        });
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
+      }
+    }
+
+    // Delete item entries that are not in secretMap
+    for await (const [key, item] of Object.entries(items)) {
       // eslint-disable-next-line no-continue
       if (!matchesSchema(key, environment?.slug || "", secretSync.syncOptions.keySchema)) continue;
 
@@ -173,7 +226,7 @@ export const OnePassSyncFns = {
             instanceUrl,
             apiToken,
             vaultId,
-            itemId: variable.id
+            itemId: item.id
           });
         } catch (error) {
           throw new SecretSyncError({
@@ -187,13 +240,18 @@ export const OnePassSyncFns = {
   removeSecrets: async (secretSync: TOnePassSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
-      destinationConfig: { vaultId }
+      destinationConfig: { vaultId, valueLabel }
     } = secretSync;
 
     const instanceUrl = await getOnePassInstanceUrl(connection);
     const { apiToken } = connection.credentials;
 
-    const items = await listOnePassItems({ instanceUrl, apiToken, vaultId });
+    const { items } = await listOnePassItems({
+      instanceUrl,
+      apiToken,
+      vaultId,
+      valueLabel: valueLabel || VALUE_LABEL_DEFAULT
+    });
 
     for await (const [key, item] of Object.entries(items)) {
       if (key in secretMap) {
@@ -216,12 +274,19 @@ export const OnePassSyncFns = {
   getSecrets: async (secretSync: TOnePassSyncWithCredentials) => {
     const {
       connection,
-      destinationConfig: { vaultId }
+      destinationConfig: { vaultId, valueLabel }
     } = secretSync;
 
     const instanceUrl = await getOnePassInstanceUrl(connection);
     const { apiToken } = connection.credentials;
 
-    return listOnePassItems({ instanceUrl, apiToken, vaultId });
+    const res = await listOnePassItems({
+      instanceUrl,
+      apiToken,
+      vaultId,
+      valueLabel: valueLabel || VALUE_LABEL_DEFAULT
+    });
+
+    return Object.fromEntries(Object.entries(res.items).map(([key, item]) => [key, { value: item.value }]));
   }
 };

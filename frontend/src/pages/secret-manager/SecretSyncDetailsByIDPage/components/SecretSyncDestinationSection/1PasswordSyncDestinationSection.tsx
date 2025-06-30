@@ -7,8 +7,13 @@ type Props = {
 
 export const OnePassSyncDestinationSection = ({ secretSync }: Props) => {
   const {
-    destinationConfig: { vaultId }
+    destinationConfig: { vaultId, valueLabel }
   } = secretSync;
 
-  return <GenericFieldLabel label="Vault ID">{vaultId}</GenericFieldLabel>;
+  return (
+    <>
+      <GenericFieldLabel label="Vault ID">{vaultId}</GenericFieldLabel>
+      <GenericFieldLabel label="Value Key">{valueLabel || "value"}</GenericFieldLabel>
+    </>
+  );
 };

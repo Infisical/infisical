@@ -14,27 +14,30 @@ export type TOnePassSyncWithCredentials = TOnePassSync & {
   connection: TOnePassConnection;
 };
 
+type Field = {
+  id: string;
+  type: string; // CONCEALED, STRING
+  label: string;
+  value: string;
+};
+
 export type TOnePassVariable = {
   id: string;
   title: string;
   category: string; // API_CREDENTIAL, SECURE_NOTE, LOGIN, etc
-};
-
-export type TOnePassVariableDetails = TOnePassVariable & {
-  fields: {
-    id: string;
-    type: string; // CONCEALED, STRING
-    label: string;
-    value: string;
-  }[];
+  fields: Field[];
 };
 
 export type TOnePassListVariablesResponse = TOnePassVariable[];
 
-export type TOnePassListVariables = {
+type TOnePassBase = {
   apiToken: string;
   instanceUrl: string;
   vaultId: string;
+};
+
+export type TOnePassListVariables = TOnePassBase & {
+  valueLabel: string;
 };
 
 export type TPostOnePassVariable = TOnePassListVariables & {
@@ -47,8 +50,9 @@ export type TPutOnePassVariable = TOnePassListVariables & {
   fieldId: string;
   itemTitle: string;
   itemValue: string;
+  otherFields: Field[];
 };
 
-export type TDeleteOnePassVariable = TOnePassListVariables & {
+export type TDeleteOnePassVariable = TOnePassBase & {
   itemId: string;
 };
