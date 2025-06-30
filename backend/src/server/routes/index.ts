@@ -1419,7 +1419,8 @@ export const registerRoutes = async (
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
     identityOrgMembershipDAL,
-    accessTokenQueue
+    accessTokenQueue,
+    identityDAL
   });
 
   const identityProjectService = identityProjectServiceFactory({
