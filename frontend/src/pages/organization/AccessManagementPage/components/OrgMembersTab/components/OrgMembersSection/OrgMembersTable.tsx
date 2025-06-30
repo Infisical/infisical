@@ -103,8 +103,10 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   const { data: serverDetails } = useFetchServerStatus();
   const { data: members = [], isPending: isMembersLoading } = useGetOrgUsers(orgId);
 
-  const { mutateAsync: resendOrgMemberInvitation } = useResendOrgMemberInvitation();
+  const { mutateAsync: resendOrgMemberInvitation, isPending: isResendInvitePending } =
+    useResendOrgMemberInvitation();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
+  const [resendInviteId, setResendInviteId] = useState<string | null>(null);
 
   const onRoleChange = async (membershipId: string, role: string) => {
     if (!currentOrg?.id) return;
@@ -140,6 +142,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   };
 
   const onResendInvite = async (membershipId: string) => {
+    setResendInviteId(membershipId);
     try {
       const signupToken = await resendOrgMemberInvitation({
         membershipId
@@ -160,6 +163,8 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
         text: "Failed to resend org invitation",
         type: "error"
       });
+    } finally {
+      setResendInviteId(null);
     }
   };
 
@@ -497,10 +502,13 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
                                 >
                                   {(isAllowed) => (
                                     <Button
-                                      isDisabled={!isAllowed}
+                                      isDisabled={!isAllowed || isResendInvitePending}
                                       className="h-8 border-mineshaft-600 bg-mineshaft-700 font-normal"
                                       colorSchema="primary"
                                       variant="outline_bg"
+                                      isLoading={
+                                        isResendInvitePending && resendInviteId === orgMembershipId
+                                      }
                                       onClick={(e) => {
                                         onResendInvite(orgMembershipId);
                                         e.stopPropagation();
