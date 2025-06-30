@@ -16,7 +16,7 @@ export const SettingsPage = () => {
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
       <div className="w-full max-w-7xl">
-        <PageHeader title={t("settings.project.title")} />
+        <PageHeader title="Settings" description="Configure your SSH product's configurations." />
         <Tabs defaultValue="tab-project-general">
           <TabList>
             <Tab value="tab-project-general">General</Tab>
