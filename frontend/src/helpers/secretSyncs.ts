@@ -81,6 +81,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.CloudflarePages]: {
     name: "Cloudflare Pages",
     image: "Cloudflare.png"
+  },
+  [SecretSync.Zabbix]: {
+    name: "Zabbix",
+    image: "Zabbix.png"
   }
 };
 
@@ -106,7 +110,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Render]: AppConnection.Render,
   [SecretSync.Flyio]: AppConnection.Flyio,
   [SecretSync.GitLab]: AppConnection.Gitlab,
-  [SecretSync.CloudflarePages]: AppConnection.Cloudflare
+  [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
+  [SecretSync.Zabbix]: AppConnection.Zabbix
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

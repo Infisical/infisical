@@ -25,6 +25,7 @@ import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
 import { WindmillSyncFields } from "./WindmillSyncFields";
+import { ZabbixSyncFields } from "./ZabbixSyncFields";
 
 export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -76,6 +77,8 @@ export const SecretSyncDestinationFields = () => {
       return <GitLabSyncFields />;
     case SecretSync.CloudflarePages:
       return <CloudflarePagesSyncFields />;
+    case SecretSync.Zabbix:
+      return <ZabbixSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

@@ -45,6 +45,7 @@ import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
+import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -68,7 +69,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Render]: RENDER_SYNC_LIST_OPTION,
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
-  [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION
+  [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
+  [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -236,6 +238,8 @@ export const SecretSyncFns = {
         return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Zabbix:
+        return ZabbixSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -328,6 +332,9 @@ export const SecretSyncFns = {
       case SecretSync.CloudflarePages:
         secretMap = await CloudflarePagesSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Zabbix:
+        secretMap = await ZabbixSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -405,6 +412,8 @@ export const SecretSyncFns = {
         return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Zabbix:
+        return ZabbixSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

@@ -29,6 +29,7 @@ import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
+import { TZabbixConnection } from "./zabbix-connection";
 
 export * from "./1password-connection";
 export * from "./auth0-connection";
@@ -59,6 +60,7 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./zabbix-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -89,7 +91,8 @@ export type TAppConnection =
   | TRenderConnection
   | TFlyioConnection
   | TGitLabConnection
-  | TCloudflareConnection;
+  | TCloudflareConnection
+  | TZabbixConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -146,4 +149,5 @@ export type TAppConnectionMap = {
   [AppConnection.Flyio]: TFlyioConnection;
   [AppConnection.Gitlab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
+  [AppConnection.Zabbix]: TZabbixConnection;
 };

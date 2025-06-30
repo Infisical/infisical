@@ -113,6 +113,7 @@ import {
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
+import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -136,7 +137,8 @@ export type TSecretSync =
   | TRenderSync
   | TFlyioSync
   | TGitLabSync
-  | TCloudflarePagesSync;
+  | TCloudflarePagesSync
+  | TZabbixSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -160,7 +162,8 @@ export type TSecretSyncWithCredentials =
   | TRenderSyncWithCredentials
   | TFlyioSyncWithCredentials
   | TGitLabSyncWithCredentials
-  | TCloudflarePagesSyncWithCredentials;
+  | TCloudflarePagesSyncWithCredentials
+  | TZabbixSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -184,7 +187,8 @@ export type TSecretSyncInput =
   | TRenderSyncInput
   | TFlyioSyncInput
   | TGitLabSyncInput
-  | TCloudflarePagesSyncInput;
+  | TCloudflarePagesSyncInput
+  | TZabbixSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -208,7 +212,8 @@ export type TSecretSyncListItem =
   | TRenderSyncListItem
   | TFlyioSyncListItem
   | TGitLabSyncListItem
-  | TCloudflarePagesSyncListItem;
+  | TCloudflarePagesSyncListItem
+  | TZabbixSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
