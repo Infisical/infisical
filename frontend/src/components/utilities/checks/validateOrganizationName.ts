@@ -3,8 +3,8 @@ export const validateOrganizationName = (name: string) => {
     return "Please enter your organization name";
   }
 
-  if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
-    return "Organization name can only contain alphanumeric characters, dashes, and spaces";
+  if (!/^[a-zA-Z0-9\s\-_\s]+$/.test(name)) {
+    return "Organization name can only contain alphanumeric characters, underscores, dashes and spaces";
   }
 
   return null
