@@ -106,9 +106,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const dnsProvider = watch("configuration.dnsProviderConfig.provider");
 
   const { data: availableConnections, isPending } = useListAvailableAppConnections(
-    AppConnection.AWS,
+    dnsProvider === AcmeDnsProvider.ROUTE53 ? AppConnection.AWS : AppConnection.Cloudflare,
     {
-      enabled: dnsProvider === AcmeDnsProvider.ROUTE53
+      enabled: dnsProvider === AcmeDnsProvider.ROUTE53 || dnsProvider === AcmeDnsProvider.CLOUDFLARE
     }
   );
 
@@ -290,6 +290,12 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       >
                         Route53
                       </SelectItem>
+                      <SelectItem
+                        value={String(AcmeDnsProvider.CLOUDFLARE)}
+                        key={AcmeDnsProvider.CLOUDFLARE}
+                      >
+                        Cloudflare
+                      </SelectItem>
                     </Select>
                   </FormControl>
                 )}
@@ -297,7 +303,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Controller
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
-                    tooltipText={`${dnsProvider === AcmeDnsProvider.ROUTE53 ? "Route53" : ""} requires an AWS App Connection. This can be created from the Organization Settings page.`}
+                    tooltipText={`${dnsProvider === AcmeDnsProvider.ROUTE53 ? "Route53" : dnsProvider === AcmeDnsProvider.CLOUDFLARE ? "Cloudflare" : ""} requires a ${dnsProvider === AcmeDnsProvider.ROUTE53 ? "AWS" : "Cloudflare"} App Connection. This can be created from the Organization Settings page.`}
                     isError={Boolean(error)}
                     errorText={error?.message}
                     label="DNS App Connection"
