@@ -10,7 +10,6 @@ import {
   faInfo,
   faInfoCircle,
   faSignOut,
-  faSlash,
   faSort,
   faUser,
   faUsers
@@ -161,27 +160,23 @@ export const Navbar = () => {
   }
 
   return (
-    <div className="z-10 flex h-12 items-center gap-1 border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
+    <div className="z-10 flex h-12 items-center border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
       <div>
         <Link to="/organization/projects">
           <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
         </Link>
       </div>
-      <div className="flex items-center gap-2">
-        <FontAwesomeIcon
-          icon={faSlash}
-          className="rotate-90 font-medium text-bunker-300"
-          style={{ fontSize: "10px" }}
-        />
+      <div className="flex items-center">
+        <p className="text-lg text-mineshaft-400/70 pl-2 pr-3">/</p>
         <DropdownMenu modal={false}>
           <Link to="/organization/projects">
             <div className="flex cursor-pointer items-center gap-2 text-sm text-white">
               <div>
-                <FontAwesomeIcon icon={faCubes} className="text-xs" />
+                <FontAwesomeIcon icon={faCubes} className="text-xs pr-1" />
               </div>
 
               <div className="max-w-32 overflow-hidden text-ellipsis">{currentOrg?.name}</div>
-              <div className="rounded border border-mineshaft-500 px-1 text-xs text-bunker-300">
+              <div className="rounded border border-mineshaft-500 px-1 mr-2 text-xs text-bunker-300">
                 {getPlan(subscription)}
               </div>
             </div>
@@ -192,7 +187,7 @@ export const Navbar = () => {
                 variant="plain"
                 colorSchema="secondary"
                 ariaLabel="switch-org"
-                className="px-2 py-1"
+                className="px-2 rounded-md py-2 hover:bg-mineshaft-600"
               >
                 <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
               </IconButton>
@@ -251,13 +246,9 @@ export const Navbar = () => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <FontAwesomeIcon
-          icon={faSlash}
-          className="mr-1 rotate-90 font-medium text-bunker-300"
-          style={{ fontSize: "10px" }}
-        />
+        <p className="text-lg text-mineshaft-400/70 px-2">/</p>
       </div>
-      <div>
+      <div className="pl-2">
         {breadcrumbs ? (
           <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
         ) : null}
@@ -268,14 +259,14 @@ export const Navbar = () => {
           onMouseEnter={() => setOpenSupport(true)}
           onMouseLeave={() => setOpenSupport(false)}
         >
-          <div className="mr-2">
-            <FontAwesomeIcon icon={faCircleQuestion} size="lg" className="text-mineshaft-200" />
+          <div className="border border-mineshaft-500 border-r-0 rounded-l-md px-2 py-1 hover:bg-mineshaft-600">
+            <FontAwesomeIcon icon={faCircleQuestion} className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
           side="bottom"
-          className="p-1"
+          className="p-1 mt-3"
           onMouseEnter={() => setOpenSupport(true)}
           onMouseLeave={() => setOpenSupport(false)}
         >
@@ -326,14 +317,14 @@ export const Navbar = () => {
           onMouseEnter={() => setOpenUser(true)}
           onMouseLeave={() => setOpenUser(false)}
         >
-          <div>
-            <FontAwesomeIcon icon={faUserCircle} size="lg" className="text-mineshaft-200" />
+          <div className="border border-mineshaft-500 rounded-r-md px-2 py-1 hover:bg-mineshaft-600">
+            <FontAwesomeIcon icon={faUserCircle} className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           side="bottom"
           align="end"
-          className="p-1"
+          className="p-1 mt-3"
           onMouseEnter={() => setOpenUser(true)}
           onMouseLeave={() => setOpenUser(false)}
         >
@@ -388,7 +379,7 @@ export const Navbar = () => {
               content="This token is linked to your current login session and can only access resources within the organization you're currently logged into."
               className="max-w-3xl"
             >
-              <FontAwesomeIcon icon={faInfoCircle} className="mb-[0.06rem] pl-1.5 text-xs" />
+              <FontAwesomeIcon icon={faInfoCircle} className="pl-1.5 text-xs" />
             </Tooltip>
           </DropdownMenuItem>
           <div className="mt-1 h-1 border-t border-mineshaft-600" />

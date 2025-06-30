@@ -94,7 +94,7 @@ export const ProjectLayout = () => {
                     params={{ projectId: currentWorkspace.id }}
                   >
                     <MenuItem
-                      className="relative flex items-center gap-2 overflow-hidden"
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
                       isSelected={isSecretManager}
                       leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="vault" />}
                     >
@@ -116,7 +116,7 @@ export const ProjectLayout = () => {
                     params={{ projectId: currentWorkspace.id }}
                   >
                     <MenuItem
-                      className="relative flex items-center gap-2 overflow-hidden"
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
                       isSelected={isPki}
                       leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="note" />}
                     >
@@ -136,7 +136,7 @@ export const ProjectLayout = () => {
                     params={{ projectId: currentWorkspace.id }}
                   >
                     <MenuItem
-                      className="relative flex items-center gap-2 overflow-hidden"
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
                       isSelected={isKms}
                       leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="unlock" />}
                     >
@@ -156,7 +156,7 @@ export const ProjectLayout = () => {
                     params={{ projectId: currentWorkspace.id }}
                   >
                     <MenuItem
-                      className="relative flex items-center gap-2 overflow-hidden"
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
                       isSelected={isSsh}
                       leftIcon={
                         <Lottie className="inline-block h-6 w-6 shrink-0" icon="terminal" />
@@ -178,7 +178,7 @@ export const ProjectLayout = () => {
                     params={{ projectId: currentWorkspace.id }}
                   >
                     <MenuItem
-                      className="relative flex items-center gap-2 overflow-hidden"
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
                       isSelected={isSecretScanning}
                       leftIcon={
                         <Lottie className="inline-block h-6 w-6 shrink-0" icon="secret-scan" />
@@ -206,7 +206,7 @@ export const ProjectLayout = () => {
                   >
                     {({ isActive }) => (
                       <MenuItem
-                        className="relative flex items-center gap-2 overflow-hidden"
+                        className="relative flex items-center gap-2 overflow-hidden rounded-none"
                         isSelected={isActive}
                         leftIcon={
                           <Lottie className="inline-block h-6 w-6 shrink-0" icon="groups" />
@@ -232,7 +232,7 @@ export const ProjectLayout = () => {
                   >
                     {({ isActive }) => (
                       <MenuItem
-                        className="relative flex items-center gap-2 overflow-hidden"
+                        className="relative flex items-center gap-2 overflow-hidden rounded-none"
                         isSelected={isActive}
                         leftIcon={
                           <Lottie className="inline-block h-6 w-6 shrink-0" icon="settings-cog" />

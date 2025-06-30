@@ -40,7 +40,7 @@ const BreadcrumbItem = React.forwardRef<HTMLLIElement, React.ComponentPropsWitho
   ({ className, ...props }, ref) => (
     <li
       ref={ref}
-      className={twMerge("inline-flex items-center gap-1.5 font-medium", className)}
+      className={twMerge("inline-flex text-sm items-center gap-1.5", className)}
       {...props}
     />
   )
@@ -80,11 +80,7 @@ BreadcrumbPage.displayName = "BreadcrumbPage";
 const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentProps<"li">) => (
   <li role="presentation" aria-hidden="true" className={twMerge("", className)} {...props}>
     {children ?? (
-      <FontAwesomeIcon
-        icon={faSlash}
-        className="rotate-90 font-medium text-bunker-300"
-        style={{ fontSize: "10px" }}
-      />
+      <p className="text-lg text-mineshaft-400/70 px-2">/</p>
     )}
   </li>
 );
@@ -140,7 +136,7 @@ const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[]
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <BreadcrumbItem>
-                      <BreadcrumbSegment>
+                      <BreadcrumbSegment className="px-2 py-1 rounded-md py-2 hover:bg-mineshaft-600">
                         {el.label} <FontAwesomeIcon icon={faSort} size="sm" />
                       </BreadcrumbSegment>
                     </BreadcrumbItem>
