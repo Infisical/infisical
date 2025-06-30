@@ -2044,6 +2044,10 @@ export const registerRoutes = async (
       cronJobs.push(adminIntegrationsSyncJob);
     }
   }
+  const configSyncJob = await superAdminService.initializeEnvConfigSync();
+  if (configSyncJob) {
+    cronJobs.push(configSyncJob);
+  }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
     user: userDAL,
