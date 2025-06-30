@@ -8,7 +8,7 @@ import {
   faExclamationTriangle,
   faEye,
   faEyeSlash,
-  faInfo,
+  faInfoCircle,
   faKey
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -69,15 +69,15 @@ export const SecretApprovalRequestChangeItem = ({
       <div className="flex items-center px-1 py-1">
         <div className="flex-grow">{generateItemTitle(op)}</div>
         {!hasMerged && isStale && (
-          <div className="flex items-center">
-            <FontAwesomeIcon icon={faInfo} className="text-sm text-primary-600" />
-            <span className="ml-2 text-xs">Secret has been changed(stale)</span>
+          <div className="flex items-center text-mineshaft-300">
+            <FontAwesomeIcon icon={faInfoCircle} className="text-xs" />
+            <span className="ml-1 text-xs">Secret has been changed (stale)</span>
           </div>
         )}
         {hasMerged && hasConflict && (
-          <div className="flex items-center space-x-2 text-sm text-bunker-300">
+          <div className="flex items-center space-x-1 text-xs text-bunker-300">
             <Tooltip content="Merge Conflict">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-700" />
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-xs text-red" />
             </Tooltip>
             <div>{generateConflictText(op)}</div>
           </div>
