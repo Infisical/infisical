@@ -350,6 +350,12 @@ export const accessApprovalRequestServiceFactory = ({
     const canBypass = !policy.bypassers.length || policy.bypassers.some((bypasser) => bypasser.userId === actorId);
     const cannotBypassUnderSoftEnforcement = !(isSoftEnforcement && canBypass);
 
+    // Calculate break glass attempt before sequence checks
+    const isBreakGlassApprovalAttempt =
+      policy.enforcementLevel === EnforcementLevel.Soft &&
+      actorId === accessApprovalRequest.requestedByUserId &&
+      status === ApprovalStatus.APPROVED;
+
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
     // If user is (not an approver OR cant self approve) AND can't bypass policy
     if ((!isApprover || (!policy.allowedSelfApprovals && isSelfApproval)) && cannotBypassUnderSoftEnforcement) {
@@ -409,15 +415,14 @@ export const accessApprovalRequestServiceFactory = ({
       const isApproverOfTheSequence = policy.approvers.find(
         (el) => el.sequence === presentSequence.step && el.userId === actorId
       );
-      if (!isApproverOfTheSequence) throw new BadRequestError({ message: "You are not reviewer in this step" });
+
+      // Only throw if actor is not the approver and not bypassing
+      if (!isApproverOfTheSequence && !isBreakGlassApprovalAttempt) {
+        throw new BadRequestError({ message: "You are not a reviewer in this step" });
+      }
     }
 
     const reviewStatus = await accessApprovalRequestReviewerDAL.transaction(async (tx) => {
-      const isBreakGlassApprovalAttempt =
-        policy.enforcementLevel === EnforcementLevel.Soft &&
-        actorId === accessApprovalRequest.requestedByUserId &&
-        status === ApprovalStatus.APPROVED;
-
       let reviewForThisActorProcessing: {
         id: string;
         requestId: string;
