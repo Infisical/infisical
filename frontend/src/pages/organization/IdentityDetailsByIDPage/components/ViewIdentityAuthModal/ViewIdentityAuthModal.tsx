@@ -15,6 +15,7 @@ import {
   useDeleteIdentityLdapAuth,
   useDeleteIdentityOciAuth,
   useDeleteIdentityOidcAuth,
+  useDeleteIdentityTlsCertAuth,
   useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth
 } from "@app/hooks/api";
@@ -29,6 +30,7 @@ import { ViewIdentityKubernetesAuthContent } from "./ViewIdentityKubernetesAuthC
 import { ViewIdentityLdapAuthContent } from "./ViewIdentityLdapAuthContent";
 import { ViewIdentityOciAuthContent } from "./ViewIdentityOciAuthContent";
 import { ViewIdentityOidcAuthContent } from "./ViewIdentityOidcAuthContent";
+import { ViewIdentityTlsCertAuthContent } from "./ViewIdentityTlsCertAuthContent";
 import { ViewIdentityTokenAuthContent } from "./ViewIdentityTokenAuthContent";
 import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthContent";
 
@@ -63,6 +65,7 @@ export const Content = ({
   const { mutateAsync: revokeTokenAuth } = useDeleteIdentityTokenAuth();
   const { mutateAsync: revokeKubernetesAuth } = useDeleteIdentityKubernetesAuth();
   const { mutateAsync: revokeGcpAuth } = useDeleteIdentityGcpAuth();
+  const { mutateAsync: revokeTlsCertAuth } = useDeleteIdentityTlsCertAuth();
   const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
   const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
   const { mutateAsync: revokeAliCloudAuth } = useDeleteIdentityAliCloudAuth();
@@ -92,6 +95,10 @@ export const Content = ({
     case IdentityAuthMethod.GCP_AUTH:
       revokeMethod = revokeGcpAuth;
       Component = ViewIdentityGcpAuthContent;
+      break;
+    case IdentityAuthMethod.TLS_CERT_AUTH:
+      revokeMethod = revokeTlsCertAuth;
+      Component = ViewIdentityTlsCertAuthContent;
       break;
     case IdentityAuthMethod.AWS_AUTH:
       revokeMethod = revokeAwsAuth;

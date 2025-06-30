@@ -9,7 +9,8 @@ export enum IdentityAuthMethod {
   OCI_AUTH = "oci-auth",
   OIDC_AUTH = "oidc-auth",
   LDAP_AUTH = "ldap-auth",
-  JWT_AUTH = "jwt-auth"
+  JWT_AUTH = "jwt-auth",
+  TLS_CERT_AUTH = "tls-cert-auth"
 }
 
 export enum IdentityJwtConfigurationType {

@@ -475,6 +475,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               await server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.SecretPulled,
                 distinctId: getTelemetryDistinctId(req),
+                organizationId: req.permission.orgId,
                 properties: {
                   numberOfSecrets: secretCountFromEnv,
                   workspaceId: projectId,
@@ -979,6 +980,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           await server.services.telemetry.sendPostHogEvents({
             event: PostHogEventTypes.SecretPulled,
             distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
             properties: {
               numberOfSecrets: secretCount,
               workspaceId: projectId,
@@ -1144,6 +1146,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             await server.services.telemetry.sendPostHogEvents({
               event: PostHogEventTypes.SecretPulled,
               distinctId: getTelemetryDistinctId(req),
+              organizationId: req.permission.orgId,
               properties: {
                 numberOfSecrets: secretCountForEnv,
                 workspaceId: projectId,
@@ -1336,6 +1339,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPulled,
           distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
           properties: {
             numberOfSecrets: secrets.length,
             workspaceId: projectId,

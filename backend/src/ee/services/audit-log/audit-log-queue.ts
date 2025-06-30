@@ -131,7 +131,6 @@ export const auditLogQueueServiceFactory = async ({
                 });
 
               try {
-                logger.info(`Streaming audit log [url=${url}] for org [orgId=${orgId}]`);
                 const response = await request.post(
                   url,
                   { ...providerSpecificPayload(url), ...auditLog },
@@ -142,9 +141,6 @@ export const auditLogQueueServiceFactory = async ({
                     // connection timeout
                     signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
                   }
-                );
-                logger.info(
-                  `Successfully streamed audit log [url=${url}] for org [orgId=${orgId}] [response=${JSON.stringify(response.data)}]`
                 );
                 return response;
               } catch (error) {
@@ -237,7 +233,6 @@ export const auditLogQueueServiceFactory = async ({
             });
 
           try {
-            logger.info(`Streaming audit log [url=${url}] for org [orgId=${orgId}]`);
             const response = await request.post(
               url,
               { ...providerSpecificPayload(url), ...auditLog },
@@ -248,9 +243,6 @@ export const auditLogQueueServiceFactory = async ({
                 // connection timeout
                 signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
               }
-            );
-            logger.info(
-              `Successfully streamed audit log [url=${url}] for org [orgId=${orgId}] [response=${JSON.stringify(response.data)}]`
             );
             return response;
           } catch (error) {

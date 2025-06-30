@@ -408,7 +408,6 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                                     <Checkbox
                                       id={optionValue}
                                       key={optionValue}
-                                      className="data-[state=checked]:bg-primary"
                                       isChecked={value[optionValue]}
                                       onCheckedChange={(state) => {
                                         onChange({
@@ -443,7 +442,6 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                                       <Checkbox
                                         id={optionValue}
                                         key={optionValue}
-                                        className="data-[state=checked]:bg-primary"
                                         isChecked={value[optionValue]}
                                         onCheckedChange={(state) => {
                                           onChange({
@@ -477,12 +475,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     errorText={error?.message}
                     tooltipText="If enabled, a new certificate will be issued automatically X days before the current certificate expires."
                   >
-                    <Checkbox
-                      id="enableAutoRenewal"
-                      isChecked={value}
-                      onCheckedChange={onChange}
-                      className="data-[state=checked]:bg-primary"
-                    >
+                    <Checkbox id="enableAutoRenewal" isChecked={value} onCheckedChange={onChange}>
                       Enable Certificate Auto Renewal
                     </Checkbox>
                   </FormControl>

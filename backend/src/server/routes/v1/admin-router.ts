@@ -761,6 +761,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.InvalidateCache,
+        organizationId: req.permission.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           ...req.auditLogInfo

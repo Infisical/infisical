@@ -38,7 +38,6 @@ export const DeleteProjectProtection = () => {
         {(isAllowed) => (
           <div className="w-max">
             <Checkbox
-              className="data-[state=checked]:bg-primary"
               id="hasDeleteProtection"
               isDisabled={!isAllowed}
               isChecked={currentWorkspace?.hasDeleteProtection ?? false}

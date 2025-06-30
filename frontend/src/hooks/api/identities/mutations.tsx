@@ -14,6 +14,7 @@ import {
   AddIdentityLdapAuthDTO,
   AddIdentityOciAuthDTO,
   AddIdentityOidcAuthDTO,
+  AddIdentityTlsCertAuthDTO,
   AddIdentityTokenAuthDTO,
   AddIdentityUniversalAuthDTO,
   ClientSecretData,
@@ -32,6 +33,7 @@ import {
   DeleteIdentityLdapAuthDTO,
   DeleteIdentityOciAuthDTO,
   DeleteIdentityOidcAuthDTO,
+  DeleteIdentityTlsCertAuthDTO,
   DeleteIdentityTokenAuthDTO,
   DeleteIdentityUniversalAuthClientSecretDTO,
   DeleteIdentityUniversalAuthDTO,
@@ -46,6 +48,7 @@ import {
   IdentityLdapAuth,
   IdentityOciAuth,
   IdentityOidcAuth,
+  IdentityTlsCertAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
   RevokeTokenDTO,
@@ -60,6 +63,7 @@ import {
   UpdateIdentityLdapAuthDTO,
   UpdateIdentityOciAuthDTO,
   UpdateIdentityOidcAuthDTO,
+  UpdateIdentityTlsCertAuthDTO,
   UpdateIdentityTokenAuthDTO,
   UpdateIdentityUniversalAuthDTO,
   UpdateTokenIdentityTokenAuthDTO
@@ -650,6 +654,107 @@ export const useDeleteIdentityAliCloudAuth = () => {
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useAddIdentityTlsCertAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityTlsCertAuth, object, AddIdentityTlsCertAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedCommonNames,
+      caCertificate,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityTlsCertAuth }
+      } = await apiRequest.post<{ identityTlsCertAuth: IdentityTlsCertAuth }>(
+        `/api/v1/auth/tls-cert-auth/identities/${identityId}`,
+        {
+          allowedCommonNames,
+          caCertificate,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityTlsCertAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useUpdateIdentityTlsCertAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityTlsCertAuth, object, UpdateIdentityTlsCertAuthDTO>({
+    mutationFn: async ({
+      identityId,
+      allowedCommonNames,
+      caCertificate,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps
+    }) => {
+      const {
+        data: { identityTlsCertAuth }
+      } = await apiRequest.patch<{ identityTlsCertAuth: IdentityTlsCertAuth }>(
+        `/api/v1/auth/tls-cert-auth/identities/${identityId}`,
+        {
+          caCertificate,
+          allowedCommonNames,
+          accessTokenTTL,
+          accessTokenMaxTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps
+        }
+      );
+
+      return identityTlsCertAuth;
+    },
+    onSuccess: (_, { identityId, organizationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useDeleteIdentityTlsCertAuth = () => {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityTlsCertAuth, object, DeleteIdentityTlsCertAuthDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { identityTlsCertAuth }
+      } = await apiRequest.delete(`/api/v1/auth/tls-cert-auth/identities/${identityId}`);
+      return identityTlsCertAuth;
+    },
+    onSuccess: (_, { organizationId, identityId }) => {
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
+      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
       });
     }
   });

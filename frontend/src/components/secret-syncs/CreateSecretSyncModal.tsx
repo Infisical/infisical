@@ -58,6 +58,7 @@ export const CreateSecretSyncModal = ({ onOpenChange, selectSync = null, ...prop
         }
         onPointerDownOutside={(e) => e.preventDefault()}
         className="max-w-2xl"
+        bodyClassName="overflow-visible"
         subTitle={selectedSync ? undefined : "Select a third-party service to sync secrets to."}
       >
         <Content

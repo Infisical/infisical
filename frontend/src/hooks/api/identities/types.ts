@@ -485,6 +485,47 @@ export type DeleteIdentityKubernetesAuthDTO = {
   identityId: string;
 };
 
+export type IdentityTlsCertAuth = {
+  identityId: string;
+  caCertificate: string;
+  allowedCommonNames: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityTlsCertAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  caCertificate: string;
+  allowedCommonNames?: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityTlsCertAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  caCertificate: string;
+  allowedCommonNames?: string | null;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityTlsCertAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
 export type CreateIdentityUniversalAuthClientSecretDTO = {
   identityId: string;
   description?: string;

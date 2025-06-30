@@ -692,6 +692,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IssueCert,
+        organizationId: req.permission.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           caId: ca.id,
@@ -786,6 +787,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignCert,
+        organizationId: req.permission.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           caId: ca.id,

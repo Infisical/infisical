@@ -7,12 +7,14 @@ import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
+  identityDAL: Pick<TIdentityDALFactory, "getTrustedIpsByAuthMethod">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   accessTokenQueue: Pick<
     TAccessTokenQueueServiceFactory,
@@ -25,7 +27,8 @@ export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAcces
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL,
   identityOrgMembershipDAL,
-  accessTokenQueue
+  accessTokenQueue,
+  identityDAL
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
@@ -190,23 +193,11 @@ export const identityAccessTokenServiceFactory = ({
         message: "Failed to authorize revoked access token, access token is revoked"
       });
 
-    const trustedIpsMap: Record<IdentityAuthMethod, unknown> = {
-      [IdentityAuthMethod.UNIVERSAL_AUTH]: identityAccessToken.trustedIpsUniversalAuth,
-      [IdentityAuthMethod.GCP_AUTH]: identityAccessToken.trustedIpsGcpAuth,
-      [IdentityAuthMethod.ALICLOUD_AUTH]: identityAccessToken.trustedIpsAliCloudAuth,
-      [IdentityAuthMethod.AWS_AUTH]: identityAccessToken.trustedIpsAwsAuth,
-      [IdentityAuthMethod.OCI_AUTH]: identityAccessToken.trustedIpsOciAuth,
-      [IdentityAuthMethod.AZURE_AUTH]: identityAccessToken.trustedIpsAzureAuth,
-      [IdentityAuthMethod.KUBERNETES_AUTH]: identityAccessToken.trustedIpsKubernetesAuth,
-      [IdentityAuthMethod.OIDC_AUTH]: identityAccessToken.trustedIpsOidcAuth,
-      [IdentityAuthMethod.TOKEN_AUTH]: identityAccessToken.trustedIpsAccessTokenAuth,
-      [IdentityAuthMethod.JWT_AUTH]: identityAccessToken.trustedIpsAccessJwtAuth,
-      [IdentityAuthMethod.LDAP_AUTH]: identityAccessToken.trustedIpsAccessLdapAuth
-    };
-
-    const trustedIps = trustedIpsMap[identityAccessToken.authMethod as IdentityAuthMethod];
-
-    if (ipAddress) {
+    const trustedIps = await identityDAL.getTrustedIpsByAuthMethod(
+      identityAccessToken.identityId,
+      identityAccessToken.authMethod as IdentityAuthMethod
+    );
+    if (ipAddress && trustedIps) {
       checkIPAgainstBlocklist({
         ipAddress,
         trustedIps: trustedIps as TIp[]

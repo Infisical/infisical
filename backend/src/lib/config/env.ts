@@ -193,6 +193,9 @@ const envSchema = z
     PYLON_API_KEY: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
     SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
+    IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default(
+      "x-identity-tls-cert-auth-client-cert"
+    ),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
