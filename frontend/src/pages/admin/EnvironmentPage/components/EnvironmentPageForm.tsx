@@ -1,15 +1,115 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
-import { faExclamationTriangle, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { Control, Controller, useForm, useWatch } from "react-hook-form";
+import {
+  faChevronRight,
+  faExclamationTriangle,
+  faMagnifyingGlass
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, SecretInput, Tooltip } from "@app/components/v2";
+import { HighlightText } from "@app/components/v2/HighlightText";
 import { useGetEnvOverrides, useUpdateServerConfig } from "@app/hooks/api";
 
 type TForm = Record<string, string>;
+
+export const GroupContainer = ({
+  group,
+  control,
+  search
+}: {
+  group: {
+    fields: {
+      key: string;
+      value: string;
+      hasEnvEntry: boolean;
+      description?: string;
+    }[];
+    name: string;
+  };
+  control: Control<TForm, any, TForm>;
+  search: string;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      key={group.name}
+      className="overflow-clip border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md last:border-b"
+    >
+      <div
+        className="flex h-14 cursor-pointer items-center px-5 py-4 text-sm text-gray-300"
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            setOpen((o) => !o);
+          }
+        }}
+      >
+        <FontAwesomeIcon
+          className={`mr-8 transition-transform duration-100 ${open || search ? "rotate-90" : ""}`}
+          icon={faChevronRight}
+        />
+
+        <div className="flex-grow select-none text-base">{group.name}</div>
+      </div>
+
+      {(open || search) && (
+        <div className="flex flex-col">
+          {group.fields.map((field) => (
+            <div
+              key={field.key}
+              className="flex items-center justify-between gap-4 border-t border-mineshaft-500 bg-mineshaft-700/50 p-4"
+            >
+              <div className="flex max-w-lg flex-col">
+                <span className="text-sm">
+                  <HighlightText text={field.key} highlight={search} />
+                </span>
+                <span className="text-sm text-mineshaft-400">
+                  <HighlightText text={field.description} highlight={search} />
+                </span>
+              </div>
+
+              <div className="flex grow items-center justify-end gap-2">
+                {field.hasEnvEntry && (
+                  <Tooltip
+                    content="Setting this value will override an existing environment variable"
+                    className="text-center"
+                  >
+                    <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow" />
+                  </Tooltip>
+                )}
+
+                <Controller
+                  control={control}
+                  name={field.key}
+                  render={({ field: formGenField, fieldState: { error } }) => (
+                    <FormControl
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      className="mb-0 w-full max-w-sm"
+                    >
+                      <SecretInput
+                        {...formGenField}
+                        autoComplete="off"
+                        containerClassName="text-bunker-300 hover:border-mineshaft-400 border border-mineshaft-600 bg-bunker-600 px-2 py-1.5"
+                      />
+                    </FormControl>
+                  )}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const EnvironmentPageForm = () => {
   const { data: envOverrides } = useGetEnvOverrides();
@@ -130,57 +230,9 @@ export const EnvironmentPageForm = () => {
         placeholder="Search for keys, descriptions, and values..."
         className="flex-1"
       />
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col">
         {filteredData.map((group) => (
-          <div key={group!.name}>
-            <span className="mb-2 text-sm text-mineshaft-300">{group!.name}</span>
-            <div className="rounded-lg border border-mineshaft-700 bg-mineshaft-800">
-              <div className="flex flex-col">
-                {group!.fields.map((field, i) => (
-                  <div
-                    key={field.key}
-                    className={`flex items-center justify-between gap-4 border-mineshaft-500 p-4 ${
-                      i === 0 ? "" : "border-t"
-                    }`}
-                  >
-                    <div className="flex max-w-lg flex-col">
-                      <span className="text-sm">{field.key}</span>
-                      <span className="text-sm text-mineshaft-400">{field.description}</span>
-                    </div>
-
-                    <div className="flex grow items-center justify-end gap-2">
-                      {field.hasEnvEntry && (
-                        <Tooltip
-                          content="Setting this value will override an existing environment variable"
-                          className="text-center"
-                        >
-                          <FontAwesomeIcon icon={faExclamationTriangle} className="text-red" />
-                        </Tooltip>
-                      )}
-
-                      <Controller
-                        control={control}
-                        name={field.key}
-                        render={({ field: formGenField, fieldState: { error } }) => (
-                          <FormControl
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                            className="mb-0 w-full max-w-sm"
-                          >
-                            <SecretInput
-                              {...formGenField}
-                              autoComplete="off"
-                              containerClassName="text-bunker-300 hover:border-mineshaft-400 border border-mineshaft-600 bg-bunker-600 px-2 py-1.5"
-                            />
-                          </FormControl>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <GroupContainer group={group!} control={control} search={search} />
         ))}
       </div>
     </form>
