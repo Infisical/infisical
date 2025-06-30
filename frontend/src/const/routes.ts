@@ -74,276 +74,276 @@ export const ROUTE_PATHS = Object.freeze({
   },
   SecretManager: {
     ApprovalPage: setRoute(
-      "/secret-manager/$projectId/approval",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/approval"
+      "/projects/$projectId/secret-manager/approval",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/approval"
     ),
     SecretDashboardPage: setRoute(
-      "/secret-manager/$projectId/secrets/$envSlug",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug"
+      "/projects/$projectId/secret-manager/secrets/$envSlug",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/secrets/$envSlug"
     ),
     RollbackPreviewPage: setRoute(
-      "/secret-manager/$projectId/commits/$environment/$folderId/$commitId/restore",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"
+      "/projects/$projectId/secret-manager/commits/$environment/$folderId/$commitId/restore",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"
     ),
     CommitDetailsPage: setRoute(
-      "/secret-manager/$projectId/commits/$environment/$folderId/$commitId",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
+      "/projects/$projectId/secret-manager/commits/$environment/$folderId/$commitId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/commits/$environment/$folderId/$commitId"
     ),
     CommitsPage: setRoute(
-      "/secret-manager/$projectId/commits/$environment/$folderId",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/commits/$environment/$folderId"
+      "/projects/$projectId/secret-manager/commits/$environment/$folderId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/commits/$environment/$folderId"
     ),
     OverviewPage: setRoute(
-      "/secret-manager/$projectId/overview",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/overview"
+      "/projects/$projectId/secret-manager/overview",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/overview"
     ),
     IntegrationsListPage: setRoute(
-      "/secret-manager/$projectId/integrations",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/"
+      "/projects/$projectId/secret-manager/integrations",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/"
     ),
     IntegrationDetailsByIDPage: setRoute(
-      "/secret-manager/$projectId/integrations/$integrationId",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/$integrationId"
+      "/projects/$projectId/secret-manager/integrations/$integrationId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/$integrationId"
     ),
     SecretSyncDetailsByIDPage: setRoute(
-      "/secret-manager/$projectId/integrations/secret-syncs/$destination/$syncId",
-      "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId"
+      "/projects/$projectId/secret-manager/integrations/secret-syncs/$destination/$syncId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId"
     ),
     Integratons: {
       SelectIntegrationAuth: setRoute(
-        "/secret-manager/$projectId/integrations/select-integration-auth",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/select-integration-auth"
+        "/projects/$projectId/secret-manager/integrations/select-integration-auth",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/select-integration-auth"
       ),
       HerokuOauthCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/heroku/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/heroku/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/heroku/oauth2/callback"
       ),
       HerokuConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/heroku/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/heroku/create"
+        "/projects/$projectId/secret-manager/integrations/heroku/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/heroku/create"
       ),
       AwsParameterStoreConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/aws-parameter-store/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create"
+        "/projects/$projectId/secret-manager/integrations/aws-parameter-store/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/aws-parameter-store/create"
       ),
       AwsSecretManagerConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/aws-secret-manager/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/aws-secret-manager/create"
+        "/projects/$projectId/secret-manager/integrations/aws-secret-manager/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/aws-secret-manager/create"
       ),
       AzureAppConfigurationsOauthCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/azure-app-configuration/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/azure-app-configuration/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-app-configuration/oauth2/callback"
       ),
       AzureAppConfigurationsConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/azure-app-configuration/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-app-configuration/create"
+        "/projects/$projectId/secret-manager/integrations/azure-app-configuration/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-app-configuration/create"
       ),
       AzureDevopsConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/azure-devops/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-devops/create"
+        "/projects/$projectId/secret-manager/integrations/azure-devops/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-devops/create"
       ),
       AzureKeyVaultAuthorizePage: setRoute(
-        "/secret-manager/$projectId/integrations/azure-key-vault/authorize",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/authorize"
+        "/projects/$projectId/secret-manager/integrations/azure-key-vault/authorize",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-key-vault/authorize"
       ),
       AzureKeyVaultOauthCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/azure-key-vault/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback"
       ),
       AzureKeyVaultConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/azure-key-vault/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create"
+        "/projects/$projectId/secret-manager/integrations/azure-key-vault/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-key-vault/create"
       ),
       BitbucketOauthCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/bitbucket/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/bitbucket/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/bitbucket/oauth2/callback"
       ),
       BitbucketConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/bitbucket/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/bitbucket/create"
+        "/projects/$projectId/secret-manager/integrations/bitbucket/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/bitbucket/create"
       ),
       ChecklyConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/checkly/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/checkly/create"
+        "/projects/$projectId/secret-manager/integrations/checkly/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/checkly/create"
       ),
       CircleConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/circleci/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/circleci/create"
+        "/projects/$projectId/secret-manager/integrations/circleci/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/circleci/create"
       ),
       CloudflarePagesConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/cloudflare-pages/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-pages/create"
+        "/projects/$projectId/secret-manager/integrations/cloudflare-pages/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/cloudflare-pages/create"
       ),
       DigitalOceanAppPlatformConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/digital-ocean-app-platform/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/digital-ocean-app-platform/create"
+        "/projects/$projectId/secret-manager/integrations/digital-ocean-app-platform/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/digital-ocean-app-platform/create"
       ),
       CloudflareWorkersConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/cloudflare-workers/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/cloudflare-workers/create"
+        "/projects/$projectId/secret-manager/integrations/cloudflare-workers/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/cloudflare-workers/create"
       ),
       CodefreshConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/codefresh/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/codefresh/create"
+        "/projects/$projectId/secret-manager/integrations/codefresh/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/codefresh/create"
       ),
       GcpSecretManagerConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/gcp-secret-manager/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/create"
+        "/projects/$projectId/secret-manager/integrations/gcp-secret-manager/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/gcp-secret-manager/create"
       ),
       GcpSecretManagerOauthCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/gcp-secret-manager/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/gcp-secret-manager/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback"
       ),
       GithubConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/github/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/github/create"
+        "/projects/$projectId/secret-manager/integrations/github/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/github/create"
       ),
       GithubOauthCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/github/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/github/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/github/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/github/oauth2/callback"
       ),
       GitlabConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/gitlab/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/create"
+        "/projects/$projectId/secret-manager/integrations/gitlab/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/gitlab/create"
       ),
       GitlabOauthCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/gitlab/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gitlab/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/gitlab/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/gitlab/oauth2/callback"
       ),
       VercelOauthCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/vercel/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/vercel/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/vercel/oauth2/callback"
       ),
       VercelConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/vercel/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/vercel/create"
+        "/projects/$projectId/secret-manager/integrations/vercel/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/vercel/create"
       ),
       FlyioConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/flyio/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/flyio/create"
+        "/projects/$projectId/secret-manager/integrations/flyio/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/flyio/create"
       ),
       HashicorpVaultConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/hashicorp-vault/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/hashicorp-vault/create"
+        "/projects/$projectId/secret-manager/integrations/hashicorp-vault/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/hashicorp-vault/create"
       ),
       HasuraCloudConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/hasura-cloud/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/hasura-cloud/create"
+        "/projects/$projectId/secret-manager/integrations/hasura-cloud/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/hasura-cloud/create"
       ),
       LaravelForgeConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/laravel-forge/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/laravel-forge/create"
+        "/projects/$projectId/secret-manager/integrations/laravel-forge/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/laravel-forge/create"
       ),
       NorthflankConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/northflank/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/northflank/create"
+        "/projects/$projectId/secret-manager/integrations/northflank/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/northflank/create"
       ),
       RailwayConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/railway/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/railway/create"
+        "/projects/$projectId/secret-manager/integrations/railway/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/railway/create"
       ),
       RenderConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/render/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/render/create"
+        "/projects/$projectId/secret-manager/integrations/render/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/render/create"
       ),
       RundeckConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/rundeck/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/rundeck/create"
+        "/projects/$projectId/secret-manager/integrations/rundeck/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/rundeck/create"
       ),
       WindmillConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/windmill/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/windmill/create"
+        "/projects/$projectId/secret-manager/integrations/windmill/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/windmill/create"
       ),
       TravisCIConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/travisci/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/travisci/create"
+        "/projects/$projectId/secret-manager/integrations/travisci/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/travisci/create"
       ),
       TerraformCloudConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/terraform-cloud/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/terraform-cloud/create"
+        "/projects/$projectId/secret-manager/integrations/terraform-cloud/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/terraform-cloud/create"
       ),
       TeamcityConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/teamcity/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/teamcity/create"
+        "/projects/$projectId/secret-manager/integrations/teamcity/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/teamcity/create"
       ),
       SupabaseConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/supabase/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/supabase/create"
+        "/projects/$projectId/secret-manager/integrations/supabase/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/supabase/create"
       ),
       OctopusDeployCloudConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/octopus-deploy/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/octopus-deploy/create"
+        "/projects/$projectId/secret-manager/integrations/octopus-deploy/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/octopus-deploy/create"
       ),
       DatabricksConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/databricks/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/databricks/create"
+        "/projects/$projectId/secret-manager/integrations/databricks/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/databricks/create"
       ),
       QoveryConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/qovery/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/qovery/create"
+        "/projects/$projectId/secret-manager/integrations/qovery/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/qovery/create"
       ),
       Cloud66ConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/cloud-66/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/cloud-66/create"
+        "/projects/$projectId/secret-manager/integrations/cloud-66/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/cloud-66/create"
       ),
       NetlifyConfigurePage: setRoute(
-        "/secret-manager/$projectId/integrations/netlify/create",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/create"
+        "/projects/$projectId/secret-manager/integrations/netlify/create",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/netlify/create"
       ),
       NetlifyOuathCallbackPage: setRoute(
-        "/secret-manager/$projectId/integrations/netlify/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/netlify/oauth2/callback"
+        "/projects/$projectId/secret-manager/integrations/netlify/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/netlify/oauth2/callback"
       )
     }
   },
   CertManager: {
     CertAuthDetailsByIDPage: setRoute(
-      "/cert-manager/$projectId/ca/$caName",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/ca/$caName"
+      "/projects/$projectId/cert-manager/ca/$caName",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/ca/$caName"
     ),
     SubscribersPage: setRoute(
-      "/cert-manager/$projectId/subscribers",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers"
+      "/projects/$projectId/cert-manager/subscribers",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/subscribers"
     ),
     CertificatesPage: setRoute(
-      "/cert-manager/$projectId/certificates",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificates"
+      "/projects/$projectId/cert-manager/certificates",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/certificates"
     ),
     CertificateAuthoritiesPage: setRoute(
-      "/cert-manager/$projectId/certificate-authorities",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/certificate-authorities"
+      "/projects/$projectId/cert-manager/certificate-authorities",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/certificate-authorities"
     ),
     AlertingPage: setRoute(
-      "/cert-manager/$projectId/alerting",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/alerting"
+      "/projects/$projectId/cert-manager/alerting",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/alerting"
     ),
     PkiCollectionDetailsByIDPage: setRoute(
-      "/cert-manager/$projectId/pki-collections/$collectionId",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
+      "/projects/$projectId/cert-manager/pki-collections/$collectionId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/pki-collections/$collectionId"
     ),
     PkiSubscriberDetailsByIDPage: setRoute(
-      "/cert-manager/$projectId/subscribers/$subscriberName",
-      "/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName"
+      "/projects/$projectId/cert-manager/subscribers/$subscriberName",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager/_cert-manager-layout/subscribers/$subscriberName"
     )
   },
   Ssh: {
     SshCaByIDPage: setRoute(
-      "/ssh/$projectId/ca/$caId",
-      "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ca/$caId"
+      "/projects/$projectId/ssh/ca/$caId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/ssh/_ssh-layout/ca/$caId"
     ),
     SshHostGroupDetailsByIDPage: setRoute(
-      "/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
-      "/_authenticate/_inject-org-details/_org-layout/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId"
+      "/projects/$projectId/ssh/ssh-host-groups/$sshHostGroupId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/ssh/_ssh-layout/ssh-host-groups/$sshHostGroupId"
     )
   },
   SecretScanning: {
     DataSourceByIdPage: setRoute(
-      "/secret-scanning/$projectId/data-sources/$type/$dataSourceId",
-      "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/data-sources/$type/$dataSourceId"
+      "/projects/$projectId/secret-scanning/data-sources/$type/$dataSourceId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-scanning/_secret-scanning-layout/data-sources/$type/$dataSourceId"
     ),
     FindingsPage: setRoute(
-      "/secret-scanning/$projectId/findings",
-      "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings"
+      "/projects/$projectId/secret-scanning/findings",
+      "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-scanning/_secret-scanning-layout/findings"
     )
   },
   Public: {

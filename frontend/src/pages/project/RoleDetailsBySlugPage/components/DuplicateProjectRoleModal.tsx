@@ -80,7 +80,7 @@ const Content = ({ role, onClose }: ContentProps) => {
     });
 
     navigate({
-      to: `/${currentWorkspace.type}/$projectId/roles/$roleSlug` as const,
+      to: "/projects/$projectId/roles/$roleSlug",
       params: {
         roleSlug: newRole.slug,
         projectId: currentWorkspace.id

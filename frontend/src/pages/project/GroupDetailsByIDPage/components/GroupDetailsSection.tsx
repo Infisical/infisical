@@ -46,7 +46,13 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
       });
 
       navigate({
-        to: `/${currentWorkspace.type}/${currentWorkspace.id}/access-management?selectedTab=groups`
+        to: "/projects/$projectId/access-management",
+        params: {
+          projectId: currentWorkspace.id
+        },
+        search: {
+          selectedTab: "groups"
+        }
       });
 
       handlePopUpClose("deleteGroup");

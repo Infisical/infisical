@@ -3,7 +3,6 @@ import crypto from "node:crypto";
 import { ForbiddenError, subject } from "@casl/ability";
 import bcrypt from "bcrypt";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -68,8 +67,7 @@ export const serviceTokenServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
 
@@ -124,8 +122,7 @@ export const serviceTokenServiceFactory = ({
       actorId,
       projectId: serviceToken.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
 
@@ -159,8 +156,7 @@ export const serviceTokenServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
 

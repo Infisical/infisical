@@ -1,1 +1,0 @@
-export { MinimizedOrgSidebar } from "./MinimizedOrgSidebar";

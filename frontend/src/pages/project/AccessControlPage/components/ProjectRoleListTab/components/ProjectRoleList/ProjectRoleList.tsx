@@ -249,7 +249,7 @@ export const ProjectRoleList = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
-                      to: `/${currentWorkspace?.type}/$projectId/roles/$roleSlug` as const,
+                      to: "/projects/$projectId/roles/$roleSlug",
                       params: {
                         projectId: currentWorkspace.id,
                         roleSlug: slug
@@ -291,7 +291,7 @@ export const ProjectRoleList = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: `/${currentWorkspace?.type}/$projectId/roles/$roleSlug` as const,
+                                    to: "/projects/$projectId/roles/$roleSlug",
                                     params: {
                                       projectId: currentWorkspace.id,
                                       roleSlug: slug

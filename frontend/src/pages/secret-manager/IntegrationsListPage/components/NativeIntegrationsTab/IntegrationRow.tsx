@@ -59,7 +59,7 @@ export const IntegrationRow = ({
     <Tr
       onClick={() =>
         navigate({
-          to: "/secret-manager/$projectId/integrations/$integrationId",
+          to: "/projects/$projectId/secret-manager/integrations/$integrationId",
           params: {
             integrationId: integration.id,
             projectId: currentWorkspace.id

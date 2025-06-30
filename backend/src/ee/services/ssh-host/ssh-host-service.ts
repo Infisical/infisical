@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, ProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -111,8 +111,7 @@ export const sshHostServiceFactory = ({
           actorId,
           projectId: project.id,
           actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.SSH
+          actorOrgId
         });
 
         const projectHosts = await sshHostDAL.findUserAccessibleSshHosts([project.id], actorId);
@@ -145,8 +144,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -257,8 +255,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -319,8 +316,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -348,8 +344,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -388,8 +383,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     const internalPrincipals = await convertActorToPrincipals({
@@ -508,8 +502,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

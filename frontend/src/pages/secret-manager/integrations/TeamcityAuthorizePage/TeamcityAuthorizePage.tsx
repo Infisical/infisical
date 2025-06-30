@@ -46,7 +46,7 @@ export const TeamcityAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/teamcity/create",
+        to: "/projects/$projectId/secret-manager/integrations/teamcity/create",
         params: {
           projectId: currentWorkspace.id
         },

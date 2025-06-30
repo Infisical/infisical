@@ -4,7 +4,6 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import {
@@ -25,7 +24,7 @@ const Page = () => {
 
   const updateSelectedTab = (tab: string) => {
     navigate({
-      to: `/${currentWorkspace.type}/$projectId/access-management` as const,
+      to: "/projects/$projectId/access-management",
       search: (prev) => ({ ...prev, selectedTab: tab }),
       params: {
         projectId: currentWorkspace.id
@@ -49,9 +48,7 @@ const Page = () => {
                 <p>Machine Identities</p>
               </div>
             </Tab>
-            {currentWorkspace?.type === ProjectType.SecretManager && (
-              <Tab value={ProjectAccessControlTabs.ServiceTokens}>Service Tokens</Tab>
-            )}
+            <Tab value={ProjectAccessControlTabs.ServiceTokens}>Service Tokens</Tab>
             <Tab value={ProjectAccessControlTabs.Roles}>Project Roles</Tab>
           </TabList>
           <TabPanel value={ProjectAccessControlTabs.Member}>
@@ -63,11 +60,9 @@ const Page = () => {
           <TabPanel value={ProjectAccessControlTabs.Identities}>
             <IdentityTab />
           </TabPanel>
-          {currentWorkspace?.type === ProjectType.SecretManager && (
-            <TabPanel value={ProjectAccessControlTabs.ServiceTokens}>
-              <ServiceTokenTab />
-            </TabPanel>
-          )}
+          <TabPanel value={ProjectAccessControlTabs.ServiceTokens}>
+            <ServiceTokenTab />
+          </TabPanel>
           <TabPanel value={ProjectAccessControlTabs.Roles}>
             <ProjectRoleListTab />
           </TabPanel>

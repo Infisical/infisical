@@ -156,7 +156,7 @@ export const AWSParameterStoreConfigurePage = () => {
       setPathErrorText("");
 
       navigate({
-        to: "/secret-manager/$projectId/integrations",
+        to: "/projects/$projectId/secret-manager/integrations",
         params: {
           projectId: currentWorkspace.id
         },

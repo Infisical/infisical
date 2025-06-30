@@ -5,13 +5,7 @@ import slugify from "@sindresorhus/slugify";
 import crypto, { KeyObject } from "crypto";
 import { z } from "zod";
 
-import {
-  ActionProjectType,
-  ProjectType,
-  TableName,
-  TCertificateAuthorities,
-  TCertificateTemplates
-} from "@app/db/schemas";
+import { ProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -167,8 +161,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         actorId: dto.actorId,
         projectId,
         actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        actorOrgId: dto.actorOrgId
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
@@ -351,8 +344,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -376,8 +368,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         actorId: dto.actorId,
         projectId: ca.projectId,
         actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        actorOrgId: dto.actorOrgId
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
@@ -409,8 +400,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -435,8 +425,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -499,8 +488,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -786,8 +774,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -823,8 +810,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -904,8 +890,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -1052,8 +1037,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -1224,8 +1208,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -1581,8 +1564,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         actorId: dto.actorId,
         projectId: ca.projectId,
         actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        actorOrgId: dto.actorOrgId
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
@@ -1949,8 +1931,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     const certificateTemplates = await certificateTemplateDAL.find({ caId });

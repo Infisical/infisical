@@ -1,6 +1,4 @@
-import { faHome } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { GatewayListPage } from "./GatewayListPage";
 
@@ -10,11 +8,6 @@ export const Route = createFileRoute(
   component: GatewayListPage,
   context: () => ({
     breadcrumbs: [
-      {
-        label: "Home",
-        icon: () => <FontAwesomeIcon icon={faHome} />,
-        link: linkOptions({ to: "/organization/secret-manager/overview" })
-      },
       {
         label: "Gateways"
       }

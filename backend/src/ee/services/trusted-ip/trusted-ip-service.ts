@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -36,8 +35,7 @@ export const trustedIpServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
     const trustedIps = await trustedIpDAL.find({
@@ -61,8 +59,7 @@ export const trustedIpServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
@@ -107,8 +104,7 @@ export const trustedIpServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 
@@ -153,8 +149,7 @@ export const trustedIpServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
 

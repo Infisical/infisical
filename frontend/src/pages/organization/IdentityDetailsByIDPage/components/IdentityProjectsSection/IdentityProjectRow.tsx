@@ -5,7 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
-import { IconButton, Tag, Td, Tooltip, Tr } from "@app/components/v2";
+import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
@@ -50,7 +50,7 @@ export const IdentityProjectRow = ({
       onClick={() => {
         if (isAccessible) {
           navigate({
-            to: `/${project?.type}/$projectId/access-management` as const,
+            to: "/projects/$projectId/access-management",
             params: {
               projectId: project.id
             },
@@ -68,9 +68,6 @@ export const IdentityProjectRow = ({
       }}
     >
       <Td className="max-w-0 truncate">{project.name}</Td>
-      <Td>
-        <Tag size="xs">{project.type}</Tag>
-      </Td>
       <Td>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</Td>

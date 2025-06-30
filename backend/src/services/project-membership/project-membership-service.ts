@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   constructPermissionErrorMessage,
@@ -90,8 +90,7 @@ export const projectMembershipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
@@ -134,8 +133,7 @@ export const projectMembershipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
@@ -157,8 +155,7 @@ export const projectMembershipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
@@ -184,8 +181,7 @@ export const projectMembershipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
     const orgMembers = await orgDAL.findMembership({
@@ -265,8 +261,7 @@ export const projectMembershipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
@@ -375,8 +370,7 @@ export const projectMembershipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
 
@@ -418,8 +412,7 @@ export const projectMembershipServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
 

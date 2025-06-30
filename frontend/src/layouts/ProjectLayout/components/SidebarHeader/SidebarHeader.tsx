@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v2";
-import { useOrganization, useUser, useWorkspace } from "@app/context";
+import { useOrganization, useUser } from "@app/context";
 import { useGetOrganizations, useLogoutUser } from "@app/hooks/api";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
@@ -24,7 +24,6 @@ type Prop = {
 
 export const SidebarHeader = ({ onChangeOrg }: Prop) => {
   const { currentOrg } = useOrganization();
-  const { currentWorkspace } = useWorkspace();
   const { user } = useUser();
   const navigate = useNavigate();
   const { data: orgs } = useGetOrganizations();
@@ -42,7 +41,7 @@ export const SidebarHeader = ({ onChangeOrg }: Prop) => {
 
   return (
     <div className="flex h-12 cursor-default items-center px-3 pt-6">
-      <Link to={`/organization/${currentWorkspace.type}/overview` as const}>
+      <Link to="/organization/projects">
         <div className="pl-1 pr-2 text-mineshaft-400 duration-200 hover:text-mineshaft-100">
           <FontAwesomeIcon icon={faArrowLeft} />
         </div>

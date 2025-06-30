@@ -2,7 +2,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -120,8 +119,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -183,8 +181,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId: subscriber.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -237,8 +234,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId: subscriber.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -300,8 +296,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId: subscriber.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -337,8 +332,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId: subscriber.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -393,8 +387,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId: subscriber.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -440,8 +433,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -699,8 +691,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId: subscriber.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -747,8 +738,7 @@ export const pkiSubscriberServiceFactory = ({
       actorId,
       projectId: subscriber.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

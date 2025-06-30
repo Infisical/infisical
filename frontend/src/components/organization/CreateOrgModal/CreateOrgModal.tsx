@@ -7,7 +7,6 @@ import z from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useCreateOrg, useSelectOrganization } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 const schema = z
@@ -59,10 +58,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
       });
 
       navigate({
-        to: `/organization/${ProjectType.SecretManager}/overview` as const,
-        params: {
-          organizationId: organization.id
-        }
+        to: "/organization/projects"
       });
 
       localStorage.setItem("orgData.id", organization.id);

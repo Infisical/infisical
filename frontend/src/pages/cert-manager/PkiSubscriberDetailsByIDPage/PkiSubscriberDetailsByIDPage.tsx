@@ -61,7 +61,7 @@ const Page = () => {
 
       handlePopUpClose("deletePkiSubscriber");
       navigate({
-        to: `/${ProjectType.CertificateManager}/$projectId/subscribers` as const,
+        to: `/projects/$projectId/${ProjectType.CertificateManager}/subscribers` as const,
         params: {
           projectId
         }

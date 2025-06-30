@@ -76,7 +76,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                     key={`pki-subscriber-${subscriber.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/${ProjectType.CertificateManager}/$projectId/subscribers/$subscriberName` as const,
+                        to: `/projects/$projectId/${ProjectType.CertificateManager}/subscribers/$subscriberName` as const,
                         params: {
                           projectId: currentWorkspace.id,
                           subscriberName: subscriber.name

@@ -310,7 +310,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     onKeyDown={(evt) => {
                       if (evt.key === "Enter") {
                         navigate({
-                          to: `/${currentWorkspace.type}/$projectId/members/$membershipId` as const,
+                          to: "/projects/$projectId/members/$membershipId",
                           params: {
                             projectId: workspaceId,
                             membershipId
@@ -320,7 +320,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     }}
                     onClick={() =>
                       navigate({
-                        to: `/${currentWorkspace.type}/$projectId/members/$membershipId` as const,
+                        to: "/projects/$projectId/members/$membershipId",
                         params: {
                           projectId: workspaceId,
                           membershipId

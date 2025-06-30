@@ -33,7 +33,7 @@ export const TravisCIAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/travisci/create",
+        to: "/projects/$projectId/secret-manager/integrations/travisci/create",
         params: {
           projectId: currentWorkspace.id
         },

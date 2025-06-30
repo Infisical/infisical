@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { faCaretDown, faChevronRight, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faSlash, faSort } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, ReactNode } from "@tanstack/react-router";
 import { LinkComponentProps } from "node_modules/@tanstack/react-router/dist/esm/link";
@@ -78,13 +78,14 @@ const BreadcrumbPage = React.forwardRef<HTMLSpanElement, React.ComponentPropsWit
 BreadcrumbPage.displayName = "BreadcrumbPage";
 
 const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentProps<"li">) => (
-  <li
-    role="presentation"
-    aria-hidden="true"
-    className={twMerge("[&>svg]:h-3.5 [&>svg]:w-3.5", className)}
-    {...props}
-  >
-    {children ?? <FontAwesomeIcon icon={faChevronRight} />}
+  <li role="presentation" aria-hidden="true" className={twMerge("", className)} {...props}>
+    {children ?? (
+      <FontAwesomeIcon
+        icon={faSlash}
+        className="rotate-90 font-medium text-bunker-300"
+        style={{ fontSize: "10px" }}
+      />
+    )}
   </li>
 );
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator";
@@ -140,11 +141,11 @@ const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[]
                   <DropdownMenuTrigger>
                     <BreadcrumbItem>
                       <BreadcrumbSegment>
-                        {el.label} <FontAwesomeIcon icon={faCaretDown} size="sm" />
+                        {el.label} <FontAwesomeIcon icon={faSort} size="sm" />
                       </BreadcrumbSegment>
                     </BreadcrumbItem>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent side="right" align="start">
                     {el?.dropdownTitle && <DropdownMenuLabel>{el.dropdownTitle}</DropdownMenuLabel>}
                     {el.links.map((i, dropIndex) => (
                       <Link

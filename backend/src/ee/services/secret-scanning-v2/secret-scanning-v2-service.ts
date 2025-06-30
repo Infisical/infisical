@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -92,7 +91,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -154,7 +153,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -199,7 +198,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -233,7 +232,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: payload.projectId
     });
 
@@ -346,7 +345,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -399,7 +398,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -444,7 +443,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -508,7 +507,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -553,7 +552,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -596,7 +595,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -639,7 +638,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -672,7 +671,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -706,7 +705,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -746,7 +745,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: finding.projectId
     });
 
@@ -777,7 +776,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -812,7 +811,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 

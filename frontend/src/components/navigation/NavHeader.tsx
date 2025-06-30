@@ -71,7 +71,7 @@ export default function NavHeader({
         {currentOrg?.name?.charAt(0)}
       </div>
       <Link
-        to="/organization/secret-manager/overview"
+        to="/organization/projects"
         className="truncate pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary"
       >
         {currentOrg?.name}
@@ -93,7 +93,7 @@ export default function NavHeader({
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
       {pageName === "Secrets" ? (
         <Link
-          to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
+          to="/projects/$projectId/secret-manager/overview"
           params={{ projectId: currentWorkspace.id }}
           className="text-sm font-semibold text-primary/80 hover:text-primary"
         >
@@ -129,7 +129,7 @@ export default function NavHeader({
         <div className="flex items-center space-x-3">
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <Link
-            to={`/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const}
+            to={`/projects/$projectId/${ProjectType.SecretManager}/secrets/$envSlug` as const}
             params={{ projectId: currentWorkspace.id, envSlug: routerEnvSlug }}
             className="text-sm font-semibold text-primary/80 hover:text-primary"
           >
@@ -191,7 +191,7 @@ export default function NavHeader({
                 </div>
               ) : (
                 <Link
-                  to={`/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const}
+                  to={`/projects/$projectId/${ProjectType.SecretManager}/secrets/$envSlug` as const}
                   params={{
                     projectId: currentWorkspace.id,
                     envSlug: routerEnvSlug || ""

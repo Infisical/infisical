@@ -17,7 +17,7 @@ export const QuickSearchDynamicSecretItem = ({
   onClose
 }: Props) => {
   const navigate = useNavigate({
-    from: "/secret-manager/$projectId/overview"
+    from: "/projects/$projectId/secret-manager/overview"
   });
 
   const [groupDynamicSecret] = dynamicSecretGroup;

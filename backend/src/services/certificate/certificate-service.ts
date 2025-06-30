@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { createPrivateKey, createPublicKey, sign, verify } from "crypto";
 
-import { ActionProjectType, ProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -83,8 +83,7 @@ export const certificateServiceFactory = ({
       actorId,
       projectId: cert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -114,8 +113,7 @@ export const certificateServiceFactory = ({
       actorId,
       projectId: cert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -148,8 +146,7 @@ export const certificateServiceFactory = ({
       actorId,
       projectId: cert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -198,8 +195,7 @@ export const certificateServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -247,8 +243,7 @@ export const certificateServiceFactory = ({
       actorId,
       projectId: cert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -336,8 +331,7 @@ export const certificateServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -541,8 +535,7 @@ export const certificateServiceFactory = ({
       actorId,
       projectId: cert.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

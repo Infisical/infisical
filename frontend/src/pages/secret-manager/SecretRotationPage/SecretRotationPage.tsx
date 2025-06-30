@@ -53,7 +53,6 @@ import {
   useRestartSecretRotation
 } from "@app/hooks/api";
 import { TSecretRotationProviderTemplate } from "@app/hooks/api/secretRotation/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { CreateRotationForm } from "@app/pages/secret-manager/SecretRotationPage/components/CreateRotationForm";
 
 const Page = () => {
@@ -173,7 +172,7 @@ const Page = () => {
           PostgreSQL and Microsoft SQL Server Rotations can now be created from the{" "}
           <Link
             className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
-            to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
+            to="/projects/$projectId/secret-manager/overview"
             params={{ projectId: currentWorkspace.id }}
           >
             Secret Manager Dashboard
@@ -408,7 +407,7 @@ const Page = () => {
               Infisical is revamping its Secret Rotation experience. Navigate to the{" "}
               <Link
                 className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
-                to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
+                to="/projects/$projectId/secret-manager/overview"
                 params={{ projectId: currentWorkspace.id }}
               >
                 Secret Manager Dashboard
@@ -425,7 +424,7 @@ const Page = () => {
               <Button
                 onClick={() =>
                   navigate({
-                    to: `/${ProjectType.SecretManager}/$projectId/overview` as const,
+                    to: "/projects/$projectId/secret-manager/overview",
                     params: { projectId: currentWorkspace.id }
                   })
                 }

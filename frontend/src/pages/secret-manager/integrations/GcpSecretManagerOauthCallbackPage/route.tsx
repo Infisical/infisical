@@ -12,7 +12,7 @@ export const GcpSecretManagerOAuthCallbackPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/gcp-secret-manager/oauth2/callback"
 )({
   component: GcpSecretManagerOauthCallbackPage,
   validateSearch: zodValidator(GcpSecretManagerOAuthCallbackPageQueryParamsSchema),
@@ -23,7 +23,7 @@ export const Route = createFileRoute(
         {
           label: "Integrations",
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
+            to: "/projects/$projectId/secret-manager/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.NativeIntegrations

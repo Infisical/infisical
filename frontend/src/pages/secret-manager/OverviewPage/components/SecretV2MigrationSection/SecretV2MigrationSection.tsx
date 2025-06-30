@@ -12,7 +12,7 @@ import { useProjectPermission, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetWorkspaceById, useMigrateProjectToV3, workspaceKeys } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 enum ProjectUpgradeStatus {
   InProgress = "IN_PROGRESS",
@@ -54,7 +54,7 @@ export const SecretV2MigrationSection = () => {
       createNotification({ type: "success", text: "Project upgrade completed successfully" });
       migrateProjectToV3.reset();
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace(ProjectType.SecretManager)
+        queryKey: workspaceKeys.getAllUserWorkspace()
       });
     }
   }, [isProjectUpgraded, Boolean(migrateProjectToV3.data)]);

@@ -68,7 +68,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
       });
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/aws-parameter-store/create",
+        to: "/projects/$projectId/secret-manager/integrations/aws-parameter-store/create",
         params: {
           projectId: currentWorkspace.id
         },

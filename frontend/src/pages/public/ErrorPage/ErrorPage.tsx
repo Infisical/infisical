@@ -31,7 +31,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
           </a>{" "}
           if the issue persists.
         </p>
-        <Link to="/organization/secret-manager/overview">
+        <Link to="/organization/projects">
           <Button className="mt-4" size="xs">
             <FontAwesomeIcon icon={faHome} className="mr-2" />
             Back To Home

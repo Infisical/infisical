@@ -21,6 +21,7 @@ import {
   useOrganization,
   useWorkspace
 } from "@app/context";
+import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useAssumeProjectPrivileges,
@@ -72,20 +73,10 @@ export const Page = () => {
             text: "User privilege assumption has started"
           });
 
-          let page: string;
-
-          switch (currentWorkspace.type) {
-            case ProjectType.SecretScanning:
-              page = "data-sources";
-              break;
-            case ProjectType.CertificateManager:
-              page = "subscribers";
-              break;
-            default:
-              page = "overview";
-          }
-
-          window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/${page}`;
+          const url = getProjectHomePage(
+            getCurrentProductFromUrl(window.location.href) || ProjectType.SecretManager
+          );
+          window.location.href = url.replace("$projectId", currentWorkspace.id);
         }
       }
     );
@@ -105,7 +96,7 @@ export const Page = () => {
         type: "success"
       });
       navigate({
-        to: `/${currentWorkspace.type}/$projectId/access-management` as const,
+        to: "/projects/$projectId/access-management",
         params: {
           projectId: currentWorkspace.id
         }

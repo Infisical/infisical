@@ -63,7 +63,7 @@ const PageContent = () => {
           leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
           onClick={() => {
             navigate({
-              to: "/secret-scanning/$projectId/data-sources",
+              to: "/projects/$projectId/secret-scanning/data-sources",
               params: {
                 projectId
               }

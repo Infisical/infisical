@@ -33,7 +33,7 @@ export const DigitalOceanAppPlatformAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/digital-ocean-app-platform/create",
+        to: "/projects/$projectId/secret-manager/integrations/digital-ocean-app-platform/create",
         params: {
           projectId: currentWorkspace.id
         },
