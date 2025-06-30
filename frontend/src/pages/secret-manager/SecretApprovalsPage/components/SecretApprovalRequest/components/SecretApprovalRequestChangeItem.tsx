@@ -3,6 +3,7 @@
 /* eslint-disable no-nested-ternary */
 import { useState } from "react";
 import {
+  faCircleCheck,
   faCircleXmark,
   faExclamationTriangle,
   faEye,
@@ -29,14 +30,14 @@ export type Props = {
 };
 
 const generateItemTitle = (op: CommitType) => {
-  let text = { label: "", color: "" };
-  if (op === CommitType.CREATE) text = { label: "create", color: "#60DD00" };
-  else if (op === CommitType.UPDATE) text = { label: "change", color: "#F8EB30" };
-  else text = { label: "deletion", color: "#F83030" };
+  let text = { label: "", className: "" };
+  if (op === CommitType.CREATE) text = { label: "create", className: "text-green-600" };
+  else if (op === CommitType.UPDATE) text = { label: "change", className: "text-yellow-600" };
+  else text = { label: "deletion", className: "text-red-600" };
 
   return (
     <div className="text-md pb-2 font-medium">
-      Request for <span style={{ color: text.color }}>secret {text.label}</span>
+      Request for <span className={text.className}>secret {text.label}</span>
     </div>
   );
 };
@@ -215,7 +216,7 @@ export const SecretApprovalRequestChangeItem = ({
               <div className="mb-4 flex flex-row justify-between">
                 <span className="text-md font-medium">New Secret</span>
                 <div className="rounded-full bg-green-600 px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
-                  <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
+                  <FontAwesomeIcon icon={faCircleCheck} className="pr-1 text-white" />
                   New
                 </div>
               </div>
@@ -281,15 +282,15 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Tags</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-y-2">
                   {(newVersion?.tags?.length ?? 0) ? (
                     newVersion?.tags?.map(({ slug, id: tagId, color }) => (
                       <Tag
-                        className="flex w-min items-center space-x-2"
+                        className="flex w-min items-center space-x-1.5 border border-mineshaft-500 bg-mineshaft-800"
                         key={`${newVersion.id}-${tagId}`}
                       >
                         <div
-                          className="h-3 w-3 rounded-full"
+                          className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: color || "#bec2c8" }}
                         />
                         <div className="text-sm">{slug}</div>
