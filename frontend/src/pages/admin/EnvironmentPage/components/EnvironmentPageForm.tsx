@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Control, Controller, useForm, useWatch } from "react-hook-form";
 import {
+  faArrowUpRightFromSquare,
+  faBookOpen,
   faChevronRight,
   faExclamationTriangle,
   faMagnifyingGlass
@@ -213,6 +215,20 @@ export const EnvironmentPageForm = () => {
         <div>
           <div className="flex items-start gap-1">
             <p className="text-xl font-semibold text-mineshaft-100">Overrides</p>
+            <a
+              href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <div className="ml-1 mt-[0.32rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                <span>Docs</span>
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="mb-[0.07rem] ml-1.5 text-[10px]"
+                />
+              </div>
+            </a>
           </div>
           <p className="text-sm text-bunker-300">
             Override specific environment variables. After saving, it may take up to 5 minutes for
