@@ -2,9 +2,10 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { ActionProjectType, TSecretFoldersInsert } from "@app/db/schemas";
+import { ActionProjectType, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -14,6 +15,7 @@ import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 import { ChangeType, CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   TCreateFolderDTO,
@@ -34,6 +36,8 @@ type TSecretFolderServiceFactoryDep = {
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
+  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -45,7 +49,9 @@ export const secretFolderServiceFactory = ({
   projectEnvDAL,
   folderVersionDAL,
   folderCommitService,
-  projectDAL
+  projectDAL,
+  secretApprovalPolicyService,
+  secretV2BridgeDAL
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -464,6 +470,66 @@ export const secretFolderServiceFactory = ({
     return { folder: newFolder, old: folder };
   };
 
+  const $checkFolderPolicy = async ({
+    projectId,
+    environment,
+    parentId
+  }: {
+    projectId: string;
+    environment: string;
+    parentId: string;
+  }) => {
+    // get environment root folder (as it's needed to get all folders under it)
+    const rootFolder = await folderDAL.findBySecretPath(projectId, environment, "/");
+    if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
+    // get all folders under environment root folder
+    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] });
+
+    // create a map of folders by parent id
+    const normalizeKey = (key: string | null | undefined): string => key ?? "root";
+    const folderMap = new Map<string, (TSecretFolders & { path: string; depth: number; environment: string })[]>();
+    for (const folder of folderPaths) {
+      if (!folderMap.has(normalizeKey(folder.parentId))) {
+        folderMap.set(normalizeKey(folder.parentId), []);
+      }
+      folderMap.get(normalizeKey(folder.parentId))?.push(folder);
+    }
+
+    // Recursively collect all folders under the given parentId
+    const collectDescendants = (
+      id: string
+    ): (TSecretFolders & { path: string; depth: number; environment: string })[] => {
+      const children = folderMap.get(normalizeKey(id)) || [];
+      return [...children, ...children.flatMap((child) => collectDescendants(child.id))];
+    };
+
+    const foldersUnderParent = collectDescendants(parentId);
+
+    const folderPolicyPaths = foldersUnderParent.map((folder) => ({
+      path: folder.path,
+      id: folder.id
+    }));
+
+    // get secrets under the given folders
+    const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: folderPolicyPaths.map((p) => p.id) });
+    for await (const folderPolicyPath of folderPolicyPaths) {
+      // eslint-disable-next-line no-continue
+      if (!secrets.some((s) => s.folderId === folderPolicyPath.id)) continue;
+      const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+        projectId,
+        environment,
+        folderPolicyPath.path
+      );
+      // if there is a policy and there are secrets under the given folder, throw error
+      if (policy) {
+        throw new BadRequestError({
+          message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secrets at folder path "${folderPolicyPath.path}" and try again.`,
+          name: "DeleteFolderProtectedByPolicy"
+        });
+      }
+    }
+  };
+
   const deleteFolder = async ({
     projectId,
     actor,
@@ -497,6 +563,8 @@ export const secretFolderServiceFactory = ({
         throw new NotFoundError({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
+
+      await $checkFolderPolicy({ projectId, environment, parentId: parentFolder.id });
 
       const [doc] = await folderDAL.delete(
         {
