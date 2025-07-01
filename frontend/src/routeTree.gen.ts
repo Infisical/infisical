@@ -43,7 +43,6 @@ import { Route as authProviderSuccessPageRouteImport } from './pages/auth/Provid
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
 import { Route as adminIntegrationsPageRouteImport } from './pages/admin/IntegrationsPage/route'
-import { Route as adminEnvironmentPageRouteImport } from './pages/admin/EnvironmentPage/route'
 import { Route as adminEncryptionPageRouteImport } from './pages/admin/EncryptionPage/route'
 import { Route as adminCachingPageRouteImport } from './pages/admin/CachingPage/route'
 import { Route as adminAuthenticationPageRouteImport } from './pages/admin/AuthenticationPage/route'
@@ -607,12 +606,6 @@ const adminIntegrationsPageRouteRoute = adminIntegrationsPageRouteImport.update(
     getParentRoute: () => adminLayoutRoute,
   } as any,
 )
-
-const adminEnvironmentPageRouteRoute = adminEnvironmentPageRouteImport.update({
-  id: '/environment',
-  path: '/environment',
-  getParentRoute: () => adminLayoutRoute,
-} as any)
 
 const adminEncryptionPageRouteRoute = adminEncryptionPageRouteImport.update({
   id: '/encryption',
@@ -2358,13 +2351,6 @@ declare module '@tanstack/react-router' {
       path: '/encryption'
       fullPath: '/admin/encryption'
       preLoaderRoute: typeof adminEncryptionPageRouteImport
-      parentRoute: typeof adminLayoutImport
-    }
-    '/_authenticate/_inject-org-details/admin/_admin-layout/environment': {
-      id: '/_authenticate/_inject-org-details/admin/_admin-layout/environment'
-      path: '/environment'
-      fullPath: '/admin/environment'
-      preLoaderRoute: typeof adminEnvironmentPageRouteImport
       parentRoute: typeof adminLayoutImport
     }
     '/_authenticate/_inject-org-details/admin/_admin-layout/integrations': {
@@ -4498,7 +4484,6 @@ interface adminLayoutRouteChildren {
   adminAuthenticationPageRouteRoute: typeof adminAuthenticationPageRouteRoute
   adminCachingPageRouteRoute: typeof adminCachingPageRouteRoute
   adminEncryptionPageRouteRoute: typeof adminEncryptionPageRouteRoute
-  adminEnvironmentPageRouteRoute: typeof adminEnvironmentPageRouteRoute
   adminIntegrationsPageRouteRoute: typeof adminIntegrationsPageRouteRoute
   adminMachineIdentitiesResourcesPageRouteRoute: typeof adminMachineIdentitiesResourcesPageRouteRoute
   adminOrganizationResourcesPageRouteRoute: typeof adminOrganizationResourcesPageRouteRoute
@@ -4510,7 +4495,6 @@ const adminLayoutRouteChildren: adminLayoutRouteChildren = {
   adminAuthenticationPageRouteRoute: adminAuthenticationPageRouteRoute,
   adminCachingPageRouteRoute: adminCachingPageRouteRoute,
   adminEncryptionPageRouteRoute: adminEncryptionPageRouteRoute,
-  adminEnvironmentPageRouteRoute: adminEnvironmentPageRouteRoute,
   adminIntegrationsPageRouteRoute: adminIntegrationsPageRouteRoute,
   adminMachineIdentitiesResourcesPageRouteRoute:
     adminMachineIdentitiesResourcesPageRouteRoute,
@@ -4713,7 +4697,6 @@ export interface FileRoutesByFullPath {
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
   '/admin/encryption': typeof adminEncryptionPageRouteRoute
-  '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/cert-manager/$projectId': typeof certManagerLayoutRouteWithChildren
   '/kms/$projectId': typeof kmsLayoutRouteWithChildren
@@ -4935,7 +4918,6 @@ export interface FileRoutesByTo {
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
   '/admin/encryption': typeof adminEncryptionPageRouteRoute
-  '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/cert-manager/$projectId': typeof certManagerLayoutRouteWithChildren
   '/kms/$projectId': typeof kmsLayoutRouteWithChildren
@@ -5157,7 +5139,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': typeof adminAuthenticationPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/caching': typeof adminCachingPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/encryption': typeof adminEncryptionPageRouteRoute
-  '/_authenticate/_inject-org-details/admin/_admin-layout/environment': typeof adminEnvironmentPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/integrations': typeof adminIntegrationsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutCertManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/kms/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutKmsProjectIdRouteWithChildren
@@ -5390,7 +5371,6 @@ export interface FileRouteTypes {
     | '/admin/authentication'
     | '/admin/caching'
     | '/admin/encryption'
-    | '/admin/environment'
     | '/admin/integrations'
     | '/cert-manager/$projectId'
     | '/kms/$projectId'
@@ -5611,7 +5591,6 @@ export interface FileRouteTypes {
     | '/admin/authentication'
     | '/admin/caching'
     | '/admin/encryption'
-    | '/admin/environment'
     | '/admin/integrations'
     | '/cert-manager/$projectId'
     | '/kms/$projectId'
@@ -5831,7 +5810,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/caching'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/encryption'
-    | '/_authenticate/_inject-org-details/admin/_admin-layout/environment'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/integrations'
     | '/_authenticate/_inject-org-details/_org-layout/cert-manager/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/kms/$projectId'
@@ -6289,7 +6267,6 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/admin/_admin-layout/authentication",
         "/_authenticate/_inject-org-details/admin/_admin-layout/caching",
         "/_authenticate/_inject-org-details/admin/_admin-layout/encryption",
-        "/_authenticate/_inject-org-details/admin/_admin-layout/environment",
         "/_authenticate/_inject-org-details/admin/_admin-layout/integrations",
         "/_authenticate/_inject-org-details/admin/_admin-layout/resources/machine-identities",
         "/_authenticate/_inject-org-details/admin/_admin-layout/resources/organizations",
@@ -6330,10 +6307,6 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/encryption": {
       "filePath": "admin/EncryptionPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
-    },
-    "/_authenticate/_inject-org-details/admin/_admin-layout/environment": {
-      "filePath": "admin/EnvironmentPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/integrations": {
