@@ -67,7 +67,6 @@ export const IdentityProjectRow = ({
         });
       }}
     >
-      <Td className="max-w-0 truncate">{project.name}</Td>
       <Td>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</Td>

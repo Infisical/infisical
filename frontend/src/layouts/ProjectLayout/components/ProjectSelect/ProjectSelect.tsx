@@ -21,7 +21,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Input
+  Input,
+  Tooltip
 } from "@app/components/v2";
 import {
   OrgPermissionActions,
@@ -112,7 +113,11 @@ export const ProjectSelect = () => {
             <div>
               <FontAwesomeIcon icon={faCube} className="text-xs" />
             </div>
-            <div className="max-w-32 overflow-hidden text-ellipsis">{currentWorkspace?.name}</div>
+            <Tooltip content={currentWorkspace.name}>
+              <div className="max-w-32 overflow-hidden text-ellipsis whitespace-nowrap">
+                {currentWorkspace?.name}
+              </div>
+            </Tooltip>
           </div>
         </Link>
         <DropdownMenuTrigger asChild>
@@ -170,8 +175,12 @@ export const ProjectSelect = () => {
                     }
                   >
                     <div className="flex items-center">
-                      <div className="flex max-w-[165px] flex-1 items-center justify-between truncate">
-                        {workspace.name}
+                      <div className="flex flex-1 items-center justify-between overflow-hidden">
+                        <Tooltip content={workspace.name}>
+                          <div className="max-w-40 overflow-hidden truncate whitespace-nowrap">
+                            {workspace.name}
+                          </div>
+                        </Tooltip>
                       </div>
                       <div>
                         <FontAwesomeIcon
