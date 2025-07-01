@@ -10,7 +10,6 @@ import {
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
   OrganizationWithProjects,
-  TGetEnvOverrides,
   TGetInvalidatingCacheStatus,
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
@@ -32,8 +31,7 @@ export const adminQueryKeys = {
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
   getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
   getInvalidateCache: () => ["admin-invalidate-cache"] as const,
-  getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const,
-  getEnvOverrides: () => ["env-overrides"] as const
+  getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const
 };
 
 export const fetchServerConfig = async () => {
@@ -163,15 +161,5 @@ export const useGetInvalidatingCacheStatus = (enabled = true) => {
     },
     enabled,
     refetchInterval: (data) => (data ? 3000 : false)
-  });
-};
-
-export const useGetEnvOverrides = () => {
-  return useQuery({
-    queryKey: adminQueryKeys.getEnvOverrides(),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TGetEnvOverrides>("/api/v1/admin/env-overrides");
-      return data;
-    }
   });
 };
