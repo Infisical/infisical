@@ -212,7 +212,7 @@ export const serviceTokenServiceFactory = ({
               substitutions: {
                 tokenName: token.name,
                 projectName: token.projectName,
-                url: `${appCfg.SITE_URL}/secret-manager/${token.projectId}/access-management?selectedTab=service-tokens`
+                url: `${appCfg.SITE_URL}/projects/${token.projectId}/secret-manager/access-management?selectedTab=service-tokens`
               }
             });
             await serviceTokenDAL.update({ id: token.id }, { expiryNotificationSent: true });

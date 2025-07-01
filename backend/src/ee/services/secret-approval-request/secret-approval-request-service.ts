@@ -944,7 +944,7 @@ export const secretApprovalRequestServiceFactory = ({
           bypassReason,
           secretPath: policy.secretPath,
           environment: env.name,
-          approvalUrl: `${cfg.SITE_URL}/secret-manager/${project.id}/approval`
+          approvalUrl: `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`
         },
         template: SmtpTemplates.AccessSecretRequestBypassed
       });

@@ -50,7 +50,7 @@ const buildSlackPayload = (notification: TNotification) => {
 *Secret path*: ${payload.secretPath || "/"}
 *Secret Key${payload.secretKeys.length > 1 ? "s" : ""}*: ${payload.secretKeys.join(", ")}
 
-View the complete details <${appCfg.SITE_URL}/secret-manager/${payload.projectId}/approval?requestId=${
+View the complete details <${appCfg.SITE_URL}/projects/${payload.projectId}/secret-manager/approval?requestId=${
         payload.requestId
       }|here>.`;
 
