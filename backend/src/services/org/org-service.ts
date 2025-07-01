@@ -1434,14 +1434,21 @@ export const orgServiceFactory = ({
     const invitedUsers = await orgMembershipDAL.findRecentInvitedMemberships();
     const appCfg = getConfig();
 
+    const orgCache: Record<string, { name: string; id: string } | undefined> = {};
+
     await Promise.all(
       invitedUsers.map(async (invitedUser) => {
-        const org = await orgDAL.findById(invitedUser.orgId);
-        if (!org) return;
+        let org = orgCache[invitedUser.orgId];
+        if (!org) {
+          org = await orgDAL.findById(invitedUser.orgId);
+          orgCache[invitedUser.orgId] = org;
+        }
+
+        if (!org || !invitedUser.userId) return;
 
         const token = await tokenService.createTokenForUser({
           type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-          userId: invitedUser.id,
+          userId: invitedUser.userId,
           orgId: org.id
         });
 
