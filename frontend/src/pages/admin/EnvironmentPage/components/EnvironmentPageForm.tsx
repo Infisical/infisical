@@ -185,7 +185,7 @@ export const EnvironmentPageForm = () => {
 
         createNotification({
           type: "success",
-          text: "Environment overrides updated successfully"
+          text: "Environment overrides updated successfully. It can take up to 5 minutes to take effect."
         });
 
         reset(formData);
