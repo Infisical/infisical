@@ -8,13 +8,13 @@ export async function up(knex: Knex): Promise<void> {
   if (hasTypeColumn && !hasDefaultTypeColumn) {
     await knex.schema.alterTable(TableName.Project, (t) => {
       t.string("type").nullable().alter();
-      t.string("defaultType").notNullable().defaultTo(ProjectType.SecretManager);
+      t.string("defaultProduct").notNullable().defaultTo(ProjectType.SecretManager);
     });
 
     await knex(TableName.Project).update({
       // eslint-disable-next-line
       // @ts-ignore this is because this field is created later
-      defaultType: knex.raw(`
+      defaultProduct: knex.raw(`
     CASE 
       WHEN "type" IS NULL OR "type" = '' THEN 'secret-manager' 
       ELSE "type" 
@@ -32,10 +32,10 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasDefaultTypeColumn = await knex.schema.hasColumn(TableName.Project, "defaultType");
+  const hasDefaultTypeColumn = await knex.schema.hasColumn(TableName.Project, "defaultProduct");
   if (hasDefaultTypeColumn) {
     await knex.schema.alterTable(TableName.Project, (t) => {
-      t.dropColumn("defaultType");
+      t.dropColumn("defaultProduct");
     });
   }
 }

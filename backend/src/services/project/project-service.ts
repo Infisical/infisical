@@ -651,6 +651,7 @@ export const projectServiceFactory = ({
       hasDeleteProtection: update.hasDeleteProtection,
       slug: update.slug,
       secretSharing: update.secretSharing,
+      defaultProduct: update.defaultProduct,
       showSnapshotsLegacy: update.showSnapshotsLegacy
     });
 

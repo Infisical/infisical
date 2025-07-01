@@ -11,7 +11,8 @@ import {
   SecretFoldersSchema,
   SortDirection,
   UserEncryptionKeysSchema,
-  UsersSchema
+  UsersSchema,
+  ProjectType
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -365,7 +366,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(PROJECTS.UPDATE.slug),
         secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing),
-        showSnapshotsLegacy: z.boolean().optional().describe(PROJECTS.UPDATE.showSnapshotsLegacy)
+        showSnapshotsLegacy: z.boolean().optional().describe(PROJECTS.UPDATE.showSnapshotsLegacy),
+        defaultProduct: z.nativeEnum(ProjectType).optional().describe(PROJECTS.UPDATE.defaultProduct)
       }),
       response: {
         200: z.object({
@@ -384,6 +386,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           name: req.body.name,
           description: req.body.description,
           autoCapitalization: req.body.autoCapitalization,
+          defaultProduct: req.body.defaultProduct,
           hasDeleteProtection: req.body.hasDeleteProtection,
           slug: req.body.slug,
           secretSharing: req.body.secretSharing,
