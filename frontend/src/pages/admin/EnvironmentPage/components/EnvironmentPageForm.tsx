@@ -189,10 +189,15 @@ export const EnvironmentPageForm = () => {
         });
 
         reset(formData);
-      } catch {
+      } catch (error) {
+        const errorMessage =
+          (error as any)?.response?.data?.message ||
+          (error as any)?.message ||
+          "An unknown error occurred";
         createNotification({
           type: "error",
-          text: "Failed to update environment overrides"
+          title: "Failed to update environment overrides",
+          text: errorMessage
         });
       }
     },

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { QueueWorkerProfile } from "@app/lib/types";
 
+import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
@@ -434,6 +435,22 @@ export const overwriteSchema: {
 export const overridableKeys = new Set(
   Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
 );
+
+export const validateOverrides = (config: Record<string, string>) => {
+  const allowedOverrides = Object.fromEntries(
+    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
+  );
+
+  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
+  const parsedResult = envSchema.safeParse(tempEnv);
+
+  if (!parsedResult.success) {
+    const errorDetails = parsedResult.error.issues
+      .map((issue) => `Key: "${issue.path.join(".")}", Error: ${issue.message}`)
+      .join("\n");
+    throw new BadRequestError({ message: errorDetails });
+  }
+};
 
 export const overrideEnvConfig = (config: Record<string, string>) => {
   const allowedOverrides = Object.fromEntries(

@@ -5,7 +5,13 @@ import jwt from "jsonwebtoken";
 import { IdentityAuthMethod, OrgMembershipRole, TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig, getOriginalConfig, overrideEnvConfig, overwriteSchema } from "@app/lib/config/env";
+import {
+  getConfig,
+  getOriginalConfig,
+  overrideEnvConfig,
+  overwriteSchema,
+  validateOverrides
+} from "@app/lib/config/env";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -417,6 +423,9 @@ export const superAdminServiceFactory = ({
 
     let envOverridesUpdated = false;
     if (data.envOverrides !== undefined) {
+      // Verify input format
+      validateOverrides(data.envOverrides);
+
       const encryptedEnvOverrides = encryptWithRoot(Buffer.from(JSON.stringify(data.envOverrides)));
       updatedData.encryptedEnvOverrides = encryptedEnvOverrides;
       updatedData.envOverrides = undefined;
