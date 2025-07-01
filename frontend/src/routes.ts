@@ -388,9 +388,7 @@ export const routes = rootRoute("root.tsx", [
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
         route("/secret-manager/$projectId", [
-          layout("project-layout-fallback-approval", "project/layout.tsx", [
-            route("/approval", "secret-manager/redirects/redirect-approval-page.tsx")
-          ])
+          route("/approval", "secret-manager/redirects/redirect-approval-page.tsx")
         ]),
         route("/projects/$projectId", [
           layout("project-layout", "project/layout.tsx", [

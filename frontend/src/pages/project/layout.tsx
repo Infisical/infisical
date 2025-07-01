@@ -11,7 +11,7 @@ import { ProjectLayout } from '@app/layouts/ProjectLayout'
 import { ProjectSelect } from '@app/layouts/ProjectLayout/components/ProjectSelect'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_project-layout-fallback-approval',
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout',
 )({
   component: ProjectLayout,
   beforeLoad: async ({ params, context }) => {

@@ -4,7 +4,7 @@ import { ProjectType, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const hasTypeColumn = await knex.schema.hasColumn(TableName.Project, "type");
-  const hasDefaultTypeColumn = await knex.schema.hasColumn(TableName.Project, "defaultType");
+  const hasDefaultTypeColumn = await knex.schema.hasColumn(TableName.Project, "defaultProduct");
   if (hasTypeColumn && !hasDefaultTypeColumn) {
     await knex.schema.alterTable(TableName.Project, (t) => {
       t.string("type").nullable().alter();

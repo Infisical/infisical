@@ -182,22 +182,25 @@ export const sshHostServiceFactory = ({
       return ca.id;
     };
 
-    const projectSshConfig = await projectSshConfigDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SshInit(projectId)]);
+    let projectSshConfig = await projectSshConfigDAL.findOne({ projectId });
+    if (!projectSshConfig) {
+      projectSshConfig = await projectSshConfigDAL.transaction(async (tx) => {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SshInit(projectId)]);
 
-      let sshConfig = await projectSshConfigDAL.findOne({ projectId });
-      if (sshConfig) return sshConfig;
+        let sshConfig = await projectSshConfigDAL.findOne({ projectId }, tx);
+        if (sshConfig) return sshConfig;
 
-      sshConfig = await bootstrapSshProject({
-        projectId,
-        sshCertificateAuthorityDAL,
-        sshCertificateAuthoritySecretDAL,
-        kmsService,
-        projectSshConfigDAL,
-        tx
+        sshConfig = await bootstrapSshProject({
+          projectId,
+          sshCertificateAuthorityDAL,
+          sshCertificateAuthoritySecretDAL,
+          kmsService,
+          projectSshConfigDAL,
+          tx
+        });
+        return sshConfig;
       });
-      return sshConfig;
-    });
+    }
 
     const userSshCaId = await resolveSshCaId({
       requestedId: requestedUserSshCaId,
