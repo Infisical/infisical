@@ -224,7 +224,7 @@ export const EnvironmentPageForm = () => {
             isLoading={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
           >
-            Save Overrides
+            Save
           </Button>
         </div>
       </div>
