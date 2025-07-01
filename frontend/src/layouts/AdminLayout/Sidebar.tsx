@@ -43,7 +43,7 @@ const generalTabs = [
     link: "/admin/caching"
   },
   {
-    label: "Environment Variables",
+    label: "Environment",
     icon: "unlock",
     link: "/admin/environment"
   }
