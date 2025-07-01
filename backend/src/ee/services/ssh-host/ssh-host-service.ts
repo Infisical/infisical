@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ProjectType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -100,8 +99,7 @@ export const sshHostServiceFactory = ({
     }
 
     const sshProjects = await projectDAL.find({
-      orgId: actorOrgId,
-      type: ProjectType.SSH
+      orgId: actorOrgId
     });
 
     const allowedHosts = [];
