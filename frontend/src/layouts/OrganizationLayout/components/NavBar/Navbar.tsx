@@ -168,11 +168,10 @@ export const Navbar = () => {
         <p className="pl-2 pr-3 text-lg text-mineshaft-400/70">/</p>
         <DropdownMenu modal={false}>
           <Link to="/organization/projects">
-            <div className="flex cursor-pointer items-center gap-2 text-sm text-white">
+            <div className="flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary-400">
               <div>
                 <FontAwesomeIcon icon={faCubes} className="pr-1 text-xs" />
               </div>
-
               <div className="max-w-32 overflow-hidden text-ellipsis">{currentOrg?.name}</div>
               <div className="mr-2 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300">
                 {getPlan(subscription)}

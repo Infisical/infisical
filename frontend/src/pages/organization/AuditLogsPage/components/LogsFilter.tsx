@@ -418,10 +418,10 @@ export const LogsFilter = ({
                               onChange(e);
                             }}
                             placeholder="All projects"
-                            options={workspacesInOrg.map(({ name, id, defaultType }) => ({
+                            options={workspacesInOrg.map(({ name, id, defaultProduct }) => ({
                               name,
                               id,
-                              type: defaultType
+                              type: defaultProduct
                             }))}
                             getOptionValue={(option) => option.id}
                             getOptionLabel={(option) => option.name}

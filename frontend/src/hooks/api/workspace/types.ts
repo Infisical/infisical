@@ -24,7 +24,7 @@ export type Workspace = {
   __v: number;
   id: string;
   name: string;
-  defaultType: ProjectType;
+  defaultProduct: ProjectType;
   description?: string;
   orgId: string;
   version: ProjectVersion;
@@ -80,6 +80,7 @@ export type UpdateProjectDTO = {
   newSlug?: string;
   secretSharing?: boolean;
   showSnapshotsLegacy?: boolean;
+  defaultProduct?: ProjectType;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };

@@ -102,13 +102,13 @@ export const ProjectSelect = () => {
       <DropdownMenu modal={false}>
         <Link
           to={getProjectHomePage(
-            getCurrentProductFromUrl(window.location.href) || ProjectType.SecretManager
+            getCurrentProductFromUrl(window.location.href) || currentWorkspace.defaultProduct
           )}
           params={{
             projectId: currentWorkspace.id
           }}
         >
-          <div className="flex cursor-pointer items-center gap-2 text-sm text-white">
+          <div className="flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary-400">
             <div>
               <FontAwesomeIcon icon={faCube} className="text-xs" />
             </div>
@@ -156,7 +156,7 @@ export const ProjectSelect = () => {
                       // to reproduce change this back to router.push and switch between two projects with different env count
                       // look into this on dashboard revamp
                       const url = linkOptions({
-                        to: getProjectHomePage(workspace.defaultType),
+                        to: getProjectHomePage(workspace.defaultProduct),
                         params: {
                           projectId: workspace.id
                         }

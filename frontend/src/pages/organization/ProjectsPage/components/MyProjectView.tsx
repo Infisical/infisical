@@ -153,7 +153,7 @@ export const MyProjectView = ({
     <div
       onClick={() => {
         navigate({
-          to: getProjectHomePage(workspace.defaultType),
+          to: getProjectHomePage(workspace.defaultProduct),
           params: {
             projectId: workspace.id
           }
@@ -215,7 +215,7 @@ export const MyProjectView = ({
     <div
       onClick={() => {
         navigate({
-          to: getProjectHomePage(workspace.defaultType),
+          to: getProjectHomePage(workspace.defaultProduct),
           params: {
             projectId: workspace.id
           }

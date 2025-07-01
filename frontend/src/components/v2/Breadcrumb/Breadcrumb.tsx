@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { faEllipsis, faSlash, faSort } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faSort } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, ReactNode } from "@tanstack/react-router";
 import { LinkComponentProps } from "node_modules/@tanstack/react-router/dist/esm/link";
@@ -40,7 +40,7 @@ const BreadcrumbItem = React.forwardRef<HTMLLIElement, React.ComponentPropsWitho
   ({ className, ...props }, ref) => (
     <li
       ref={ref}
-      className={twMerge("inline-flex text-sm items-center gap-1.5", className)}
+      className={twMerge("inline-flex items-center gap-1.5 text-sm", className)}
       {...props}
     />
   )
@@ -79,9 +79,7 @@ BreadcrumbPage.displayName = "BreadcrumbPage";
 
 const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentProps<"li">) => (
   <li role="presentation" aria-hidden="true" className={twMerge("", className)} {...props}>
-    {children ?? (
-      <p className="text-lg text-mineshaft-400/70 px-2">/</p>
-    )}
+    {children ?? <p className="px-2 text-lg text-mineshaft-400/70">/</p>}
   </li>
 );
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator";
@@ -136,7 +134,7 @@ const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[]
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <BreadcrumbItem>
-                      <BreadcrumbSegment className="px-2 py-1 rounded-md py-2 hover:bg-mineshaft-600">
+                      <BreadcrumbSegment className="rounded-md px-2 py-1 py-2 hover:bg-mineshaft-600">
                         {el.label} <FontAwesomeIcon icon={faSort} size="sm" />
                       </BreadcrumbSegment>
                     </BreadcrumbItem>
