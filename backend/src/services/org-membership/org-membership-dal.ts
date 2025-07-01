@@ -115,11 +115,15 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
         .where("status", "invited")
         .where((qb) => {
           // lastInvitedAt is null AND createdAt is between 1 week and 3 months ago
-          void qb.whereNull("lastInvitedAt").whereBetween("createdAt", [threeMonthsAgo, oneWeekAgo]);
+          void qb
+            .whereNull(`${TableName.OrgMembership}.lastInvitedAt`)
+            .whereBetween(`${TableName.OrgMembership}.createdAt`, [threeMonthsAgo, oneWeekAgo]);
         })
         .orWhere((qb) => {
           // lastInvitedAt is older than 1 week ago AND createdAt is younger than 1 month ago
-          void qb.where("lastInvitedAt", "<", oneWeekAgo).where("createdAt", ">", oneMonthAgo);
+          void qb
+            .where(`${TableName.OrgMembership}.lastInvitedAt`, "<", oneMonthAgo)
+            .where(`${TableName.OrgMembership}.createdAt`, ">", oneWeekAgo);
         });
 
       return memberships;
