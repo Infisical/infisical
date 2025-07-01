@@ -108,7 +108,10 @@ type TOrgServiceFactoryDep = {
     "findProjectMembershipsByUserId" | "delete" | "create" | "find" | "insertMany" | "transaction"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey" | "create">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne" | "findById">;
+  orgMembershipDAL: Pick<
+    TOrgMembershipDALFactory,
+    "findOrgMembershipById" | "findOne" | "findById" | "findRecentInvitedMemberships" | "updateById"
+  >;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -1424,6 +1427,46 @@ export const orgServiceFactory = ({
     return incidentContact;
   };
 
+  /**
+   * Re-send emails to users who haven't accepted an invite yet
+   */
+  const notifyInvitedUsers = async () => {
+    const invitedUsers = await orgMembershipDAL.findRecentInvitedMemberships();
+    const appCfg = getConfig();
+
+    await Promise.all(
+      invitedUsers.map(async (invitedUser) => {
+        const org = await orgDAL.findById(invitedUser.orgId);
+        if (!org) return;
+
+        const token = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+          userId: invitedUser.id,
+          orgId: org.id
+        });
+
+        if (invitedUser.inviteEmail) {
+          await smtpService.sendMail({
+            template: SmtpTemplates.OrgInvite,
+            subjectLine: `Reminder: You have been invited to ${org.name} on Infisical`,
+            recipients: [invitedUser.inviteEmail],
+            substitutions: {
+              organizationName: org.name,
+              email: invitedUser.inviteEmail,
+              organizationId: org.id.toString(),
+              token,
+              callback_url: `${appCfg.SITE_URL}/signupinvite`
+            }
+          });
+        }
+
+        await orgMembershipDAL.updateById(invitedUser.id, {
+          lastInvitedAt: new Date()
+        });
+      })
+    );
+  };
+
   return {
     findOrganizationById,
     findAllOrgMembers,
@@ -1447,6 +1490,7 @@ export const orgServiceFactory = ({
     listProjectMembershipsByOrgMembershipId,
     findOrgBySlug,
     resendOrgMemberInvitation,
-    upgradePrivilegeSystem
+    upgradePrivilegeSystem,
+    notifyInvitedUsers
   };
 };

@@ -103,8 +103,37 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findRecentInvitedMemberships = async () => {
+    try {
+      const now = new Date();
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+      const memberships = await db
+        .replicaNode()(TableName.OrgMembership)
+        .where("status", "invited")
+        .where((qb) => {
+          // lastInvitedAt is null AND createdAt is between 1 week and 3 months ago
+          void qb.whereNull("lastInvitedAt").whereBetween("createdAt", [threeMonthsAgo, oneWeekAgo]);
+        })
+        .orWhere((qb) => {
+          // lastInvitedAt is older than 1 week ago AND createdAt is younger than 1 month ago
+          void qb.where("lastInvitedAt", "<", oneWeekAgo).where("createdAt", ">", oneMonthAgo);
+        });
+
+      return memberships;
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Find recent invited memberships"
+      });
+    }
+  };
+
   return {
     ...orgMembershipOrm,
-    findOrgMembershipById
+    findOrgMembershipById,
+    findRecentInvitedMemberships
   };
 };
