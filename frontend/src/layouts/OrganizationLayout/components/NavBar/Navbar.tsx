@@ -86,8 +86,6 @@ export const Navbar = () => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
-  const [openSupport, setOpenSupport] = useState(false);
-  const [openUser, setOpenUser] = useState(false);
   const [showAdminsModal, setShowAdminsModal] = useState(false);
 
   const { data: orgs } = useGetOrganizations();
@@ -167,16 +165,16 @@ export const Navbar = () => {
         </Link>
       </div>
       <div className="flex items-center">
-        <p className="text-lg text-mineshaft-400/70 pl-2 pr-3">/</p>
+        <p className="pl-2 pr-3 text-lg text-mineshaft-400/70">/</p>
         <DropdownMenu modal={false}>
           <Link to="/organization/projects">
             <div className="flex cursor-pointer items-center gap-2 text-sm text-white">
               <div>
-                <FontAwesomeIcon icon={faCubes} className="text-xs pr-1" />
+                <FontAwesomeIcon icon={faCubes} className="pr-1 text-xs" />
               </div>
 
               <div className="max-w-32 overflow-hidden text-ellipsis">{currentOrg?.name}</div>
-              <div className="rounded border border-mineshaft-500 px-1 mr-2 text-xs text-bunker-300">
+              <div className="mr-2 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300">
                 {getPlan(subscription)}
               </div>
             </div>
@@ -187,7 +185,7 @@ export const Navbar = () => {
                 variant="plain"
                 colorSchema="secondary"
                 ariaLabel="switch-org"
-                className="px-2 rounded-md py-2 hover:bg-mineshaft-600"
+                className="rounded-md px-2 py-2 hover:bg-mineshaft-600"
               >
                 <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
               </IconButton>
@@ -246,7 +244,7 @@ export const Navbar = () => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <p className="text-lg text-mineshaft-400/70 px-2">/</p>
+        <p className="px-2 text-lg text-mineshaft-400/70">/</p>
       </div>
       <div className="pl-2">
         {breadcrumbs ? (
@@ -254,22 +252,13 @@ export const Navbar = () => {
         ) : null}
       </div>
       <div className="flex-grow" />
-      <DropdownMenu modal={false} open={openSupport} onOpenChange={setOpenSupport}>
-        <DropdownMenuTrigger
-          onMouseEnter={() => setOpenSupport(true)}
-          onMouseLeave={() => setOpenSupport(false)}
-        >
-          <div className="border border-mineshaft-500 border-r-0 rounded-l-md px-2 py-1 hover:bg-mineshaft-600">
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger>
+          <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2 py-1 hover:bg-mineshaft-600">
             <FontAwesomeIcon icon={faCircleQuestion} className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          side="bottom"
-          className="p-1 mt-3"
-          onMouseEnter={() => setOpenSupport(true)}
-          onMouseLeave={() => setOpenSupport(false)}
-        >
+        <DropdownMenuContent align="end" side="bottom" className="mt-3 p-1">
           {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => {
             if (url === "server-admins" && isInfisicalCloud()) {
               return null;
@@ -311,23 +300,13 @@ export const Navbar = () => {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <DropdownMenu modal={false} open={openUser} onOpenChange={setOpenUser}>
-        <DropdownMenuTrigger
-          asChild
-          onMouseEnter={() => setOpenUser(true)}
-          onMouseLeave={() => setOpenUser(false)}
-        >
-          <div className="border border-mineshaft-500 rounded-r-md px-2 py-1 hover:bg-mineshaft-600">
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <div className="rounded-r-md border border-mineshaft-500 px-2 py-1 hover:bg-mineshaft-600">
             <FontAwesomeIcon icon={faUserCircle} className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          side="bottom"
-          align="end"
-          className="p-1 mt-3"
-          onMouseEnter={() => setOpenUser(true)}
-          onMouseLeave={() => setOpenUser(false)}
-        >
+        <DropdownMenuContent side="bottom" align="end" className="mt-3 p-1">
           <div className="cursor-default px-1 py-1">
             <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-gradient-to-tr from-primary-500/10 to-mineshaft-800 p-1 px-2 transition-all duration-150">
               <div className="p-1 pr-3">
