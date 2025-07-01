@@ -114,6 +114,11 @@ var userGetTokenCmd = &cobra.Command{
 			loggedInUserDetails = util.EstablishUserLoginSession()
 		}
 
+		plain, err := cmd.Flags().GetBool("plain")
+		if err != nil {
+			util.HandleError(err, "[infisical user get token]: Unable to get plain flag")
+		}
+
 		if err != nil {
 			util.HandleError(err, "[infisical user get token]: Unable to get logged in user token")
 		}
@@ -135,8 +140,12 @@ var userGetTokenCmd = &cobra.Command{
 			util.HandleError(err, "[infisical user get token]: Unable to parse token payload")
 		}
 
-		fmt.Println("Session ID:", tokenPayload.TokenVersionId)
-		fmt.Println("Token:", loggedInUserDetails.UserCredentials.JTWToken)
+		if plain {
+			fmt.Println(loggedInUserDetails.UserCredentials.JTWToken)
+		} else {
+			fmt.Println("Session ID:", tokenPayload.TokenVersionId)
+			fmt.Println("Token:", loggedInUserDetails.UserCredentials.JTWToken)
+		}
 	},
 }
 
@@ -240,7 +249,10 @@ var domainCmd = &cobra.Command{
 func init() {
 	updateCmd.AddCommand(domainCmd)
 	userCmd.AddCommand(updateCmd)
+
+	userGetTokenCmd.Flags().Bool("plain", false, "print token without formatting")
 	userGetCmd.AddCommand(userGetTokenCmd)
+
 	userCmd.AddCommand(userGetCmd)
 	userCmd.AddCommand(switchCmd)
 	rootCmd.AddCommand(userCmd)
