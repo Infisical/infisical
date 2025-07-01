@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -9,7 +8,6 @@ import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-colle
 import { pkiItemTypeToNameMap } from "@app/services/pki-collection/pki-collection-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { TProjectDALFactory } from "../project/project-dal";
 import { TPkiAlertDALFactory } from "./pki-alert-dal";
 import { TCreateAlertDTO, TDeleteAlertDTO, TGetAlertByIdDTO, TUpdateAlertDTO } from "./pki-alert-types";
 
@@ -21,7 +19,6 @@ type TPkiAlertServiceFactoryDep = {
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  projectDAL: Pick<TProjectDALFactory, "getProjectFromSplitId">;
 };
 
 export type TPkiAlertServiceFactory = ReturnType<typeof pkiAlertServiceFactory>;
@@ -30,8 +27,7 @@ export const pkiAlertServiceFactory = ({
   pkiAlertDAL,
   pkiCollectionDAL,
   permissionService,
-  smtpService,
-  projectDAL
+  smtpService
 }: TPkiAlertServiceFactoryDep) => {
   const sendPkiItemExpiryNotices = async () => {
     const allAlertItems = await pkiAlertDAL.getExpiringPkiCollectionItemsForAlerting();
@@ -67,7 +63,7 @@ export const pkiAlertServiceFactory = ({
   };
 
   const createPkiAlert = async ({
-    projectId: preSplitProjectId,
+    projectId,
     name,
     pkiCollectionId,
     alertBeforeDays,
@@ -77,15 +73,6 @@ export const pkiAlertServiceFactory = ({
     actor,
     actorOrgId
   }: TCreateAlertDTO) => {
-    let projectId = preSplitProjectId;
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-    if (certManagerProjectFromSplit) {
-      projectId = certManagerProjectFromSplit.id;
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectType, TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -50,10 +50,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
-  projectDAL: Pick<
-    TProjectDALFactory,
-    "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction" | "getProjectFromSplitId"
-  >;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
@@ -98,20 +95,10 @@ export const certificateAuthorityServiceFactory = ({
     { type, projectId, name, enableDirectIssuance, configuration, status }: TCreateCertificateAuthorityDTO,
     actor: OrgServiceActor
   ) => {
-    let finalProjectId: string = projectId;
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-
-    if (certManagerProjectFromSplit) {
-      finalProjectId = certManagerProjectFromSplit.id;
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
-      projectId: finalProjectId,
+      projectId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId
     });
@@ -125,7 +112,7 @@ export const certificateAuthorityServiceFactory = ({
       const ca = await internalCertificateAuthorityService.createCa({
         ...(configuration as TCreateInternalCertificateAuthorityDTO["configuration"]),
         isInternal: true,
-        projectId: finalProjectId,
+        projectId,
         enableDirectIssuance,
         name
       });
@@ -141,7 +128,7 @@ export const certificateAuthorityServiceFactory = ({
         type,
         enableDirectIssuance: ca.enableDirectIssuance,
         name: ca.name,
-        projectId: finalProjectId,
+        projectId,
         status,
         configuration: ca.internalCa
       } as TCertificateAuthority;
@@ -150,7 +137,7 @@ export const certificateAuthorityServiceFactory = ({
     if (type === CaType.ACME) {
       return acmeFns.createCertificateAuthority({
         name,
-        projectId: finalProjectId,
+        projectId,
         configuration: configuration as TCreateAcmeCertificateAuthorityDTO["configuration"],
         enableDirectIssuance,
         status,
@@ -223,20 +210,10 @@ export const certificateAuthorityServiceFactory = ({
     { projectId, type }: { projectId: string; type: CaType },
     actor: OrgServiceActor
   ) => {
-    let finalProjectId: string = projectId;
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-
-    if (certManagerProjectFromSplit) {
-      finalProjectId = certManagerProjectFromSplit.id;
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
-      projectId: finalProjectId,
+      projectId,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId
     });
@@ -248,7 +225,7 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.INTERNAL) {
       const cas = await certificateAuthorityDAL.findWithAssociatedCa({
-        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: finalProjectId,
+        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
         $notNull: [`${TableName.InternalCertificateAuthority}.id` as "id"]
       });
 
@@ -266,7 +243,7 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (type === CaType.ACME) {
-      return acmeFns.listCertificateAuthorities({ projectId: finalProjectId });
+      return acmeFns.listCertificateAuthorities({ projectId });
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });

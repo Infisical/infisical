@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { ProjectMembershipRole, ProjectType, ProjectVersion, TableName, TProjectEnvironments } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectVersion, TableName, TProjectEnvironments } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
@@ -910,14 +910,7 @@ export const projectServiceFactory = ({
     actor
   }: TListProjectCasDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
-    let projectId = project.id;
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-    if (certManagerProjectFromSplit) {
-      projectId = certManagerProjectFromSplit.id;
-    }
+    const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -963,14 +956,7 @@ export const projectServiceFactory = ({
     actor
   }: TListProjectCertsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
-    let projectId = project.id;
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-    if (certManagerProjectFromSplit) {
-      projectId = certManagerProjectFromSplit.id;
-    }
+    const projectId = project.id;
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1010,21 +996,12 @@ export const projectServiceFactory = ({
    * Return list of (PKI) alerts configured for project
    */
   const listProjectAlerts = async ({
-    projectId: preSplitProjectId,
+    projectId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TListProjectAlertsDTO) => {
-    let projectId = preSplitProjectId;
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-    if (certManagerProjectFromSplit) {
-      projectId = certManagerProjectFromSplit.id;
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1046,20 +1023,12 @@ export const projectServiceFactory = ({
    * Return list of PKI collections for project
    */
   const listProjectPkiCollections = async ({
-    projectId: preSplitProjectId,
+    projectId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TListProjectAlertsDTO) => {
-    let projectId = preSplitProjectId;
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-    if (certManagerProjectFromSplit) {
-      projectId = certManagerProjectFromSplit.id;
-    }
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1119,21 +1088,12 @@ export const projectServiceFactory = ({
    * Return list of certificate templates for project
    */
   const listProjectCertificateTemplates = async ({
-    projectId: preSplitProjectId,
+    projectId,
     actorId,
     actorOrgId,
     actorAuthMethod,
     actor
   }: TListProjectCertificateTemplatesDTO) => {
-    let projectId = preSplitProjectId;
-    const certManagerProjectFromSplit = await projectDAL.getProjectFromSplitId(
-      projectId,
-      ProjectType.CertificateManager
-    );
-    if (certManagerProjectFromSplit) {
-      projectId = certManagerProjectFromSplit.id;
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

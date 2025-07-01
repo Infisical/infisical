@@ -8,11 +8,11 @@ import {
   ProjectRolesSchema,
   ProjectSlackConfigsSchema,
   ProjectSshConfigsSchema,
+  ProjectType,
   SecretFoldersSchema,
   SortDirection,
   UserEncryptionKeysSchema,
-  UsersSchema,
-  ProjectType
+  UsersSchema
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
