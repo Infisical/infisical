@@ -51,7 +51,7 @@ export const SecretManagerLayout = () => {
           >
             <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
               <div className="border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
-                Secret Manager
+                Secrets Manager
               </div>
               <div className="flex-1">
                 <Menu>
