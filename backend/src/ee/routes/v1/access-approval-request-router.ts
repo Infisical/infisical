@@ -60,7 +60,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     method: "GET",
     schema: {
       querystring: z.object({
-        projectSlug: z.string().trim()
+        projectSlug: z.string().trim(),
+        policyId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -73,6 +74,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const { count } = await server.services.accessApprovalRequest.getCount({
         projectSlug: req.query.projectSlug,
+        policyId: req.query.policyId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,

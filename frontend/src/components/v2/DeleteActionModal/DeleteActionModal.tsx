@@ -20,6 +20,7 @@ type Props = {
   children?: ReactNode;
   deletionMessage?: ReactNode;
   buttonColorSchema?: "danger" | "primary" | "secondary" | "gray" | null;
+  isDisabled?: boolean;
 };
 
 export const DeleteActionModal = ({
@@ -34,6 +35,7 @@ export const DeleteActionModal = ({
   formContent,
   deletionMessage,
   buttonColorSchema = "danger",
+  isDisabled,
   children
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
@@ -70,7 +72,7 @@ export const DeleteActionModal = ({
             <Button
               className="mr-4"
               colorSchema={buttonColorSchema}
-              isDisabled={!(deleteKey === inputData) || isLoading}
+              isDisabled={!(deleteKey === inputData) || isLoading || isDisabled}
               onClick={onDelete}
               isLoading={isLoading}
             >

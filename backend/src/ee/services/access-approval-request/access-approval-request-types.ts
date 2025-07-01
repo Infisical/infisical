@@ -12,6 +12,7 @@ export type TVerifyPermission = {
 
 export type TGetAccessRequestCountDTO = {
   projectSlug: string;
+  policyId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TReviewAccessRequestDTO = {

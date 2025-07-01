@@ -168,7 +168,14 @@ export const secretApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   folderCommitService
 }: TSecretApprovalRequestServiceFactoryDep) => {
-  const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
+  const requestCount = async ({
+    projectId,
+    policyId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     await permissionService.getProjectPermission({
@@ -180,7 +187,7 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId);
+    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId, policyId);
     return count;
   };
 
