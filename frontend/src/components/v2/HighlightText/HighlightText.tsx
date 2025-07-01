@@ -18,19 +18,21 @@ export const HighlightText = ({
   const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(escapedSearchTerm, "gi");
 
-  for (const match of text.matchAll(regex)) {
-    if (match.index > lastIndex) {
-      parts.push(<span key={`pre-${lastIndex}`}>{text.substring(lastIndex, match.index)}</span>);
+  text.replace(regex, (match: string, offset: number) => {
+    if (offset > lastIndex) {
+      parts.push(<span key={`pre-${lastIndex}`}>{text.substring(lastIndex, offset)}</span>);
     }
 
     parts.push(
-      <span key={`match-${match.index}`} className={highlightClassName || "bg-yellow/30"}>
-        {match[0]}
+      <span key={`match-${offset}`} className={highlightClassName || "bg-yellow/30"}>
+        {match}
       </span>
     );
 
-    lastIndex = match.index + match[0].length;
-  }
+    lastIndex = offset + match.length;
+
+    return match;
+  });
 
   if (lastIndex < text.length) {
     parts.push(<span key={`post-${lastIndex}`}>{text.substring(lastIndex)}</span>);
