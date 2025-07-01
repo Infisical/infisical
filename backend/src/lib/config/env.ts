@@ -372,6 +372,19 @@ export const overwriteSchema: {
     fields: { key: keyof TEnvConfig; description?: string }[];
   };
 } = {
+  azure: {
+    name: "Azure",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      }
+    ]
+  },
   google_sso: {
     name: "Google SSO",
     fields: [
