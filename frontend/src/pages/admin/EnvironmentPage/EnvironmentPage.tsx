@@ -17,7 +17,7 @@ export const EnvironmentPage = () => {
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader
             title="Environment"
-            description="Manage the environment for your Infisical instance."
+            description="Manage the environment variables for your Infisical instance."
           />
           <EnvironmentPageForm />
         </div>
