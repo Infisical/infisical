@@ -224,8 +224,8 @@ export const SecretApprovalRequestChanges = ({
   const hasMerged = secretApprovalRequestDetails?.hasMerged;
 
   return (
-    <div className="flex space-x-6">
-      <div className="max-w-[calc(100%-17rem)] flex-1">
+    <div className="flex flex-col space-x-6 lg:flex-row">
+      <div className="flex-1 lg:max-w-[calc(100%-17rem)]">
         <div className="sticky top-0 z-20 flex items-center space-x-4 bg-bunker-800 pb-6 pt-2">
           <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
             <FontAwesomeIcon icon={faArrowLeft} />

@@ -103,7 +103,7 @@ export const SecretApprovalRequestAction = ({
   if (!hasMerged && status === "open") {
     return (
       <div className="flex w-full flex-col items-start justify-between py-4 text-mineshaft-100 transition-all">
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-full flex-col justify-between xl:flex-row xl:items-center">
           <div className="mr-auto flex items-center space-x-4 px-4">
             <div
               className={`flex items-center justify-center rounded-full ${isMergable ? "h-8 w-8 bg-green" : "h-10 w-10 bg-red-600"}`}
@@ -126,7 +126,7 @@ export const SecretApprovalRequestAction = ({
               )}
             </span>
           </div>
-          <div className="flex items-center justify-end space-x-2 px-4">
+          <div className="mt-4 flex items-center justify-end space-x-2 px-4 xl:mt-0">
             {canApprove || isSoftEnforcement ? (
               <div className="flex items-center space-x-4">
                 <Button
