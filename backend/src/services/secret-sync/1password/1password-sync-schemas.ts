@@ -11,7 +11,8 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const OnePassSyncDestinationConfigSchema = z.object({
-  vaultId: z.string().trim().min(1, "Vault required").describe(SecretSyncs.DESTINATION_CONFIG.ONEPASS.vaultId)
+  vaultId: z.string().trim().min(1, "Vault required").describe(SecretSyncs.DESTINATION_CONFIG.ONEPASS.vaultId),
+  valueLabel: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.ONEPASS.valueLabel)
 });
 
 const OnePassSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

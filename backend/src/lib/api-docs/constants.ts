@@ -2427,7 +2427,8 @@ export const SecretSyncs = {
       keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
     },
     ONEPASS: {
-      vaultId: "The ID of the 1Password vault to sync secrets to."
+      vaultId: "The ID of the 1Password vault to sync secrets to.",
+      valueLabel: "The label of the entry that holds the secret value."
     },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",
