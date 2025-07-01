@@ -96,7 +96,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Key</div>
-                <div className="text-sm">{secretVersion?.secretKey} </div>
+                <p className="max-w-lg break-words text-sm">{secretVersion?.secretKey}</p>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Value</div>
@@ -148,7 +148,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="max-h-[5rem] overflow-y-auto text-sm">
+                <div className="thin-scrollbar max-h-[5rem] max-w-[34rem] overflow-y-auto break-words text-sm xl:max-w-[28rem]">
                   {secretVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -187,15 +187,27 @@ export const SecretApprovalRequestChangeItem = ({
                             className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
                           >
                             <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
-                            <div>{el.key}</div>
+                            <Tooltip
+                              className="max-w-lg whitespace-normal break-words"
+                              content={el.key}
+                            >
+                              <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                                {el.key}
+                              </div>
+                            </Tooltip>
                           </Tag>
                           <Tag
                             size="xs"
                             className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                           >
-                            <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
-                              {el.value}
-                            </div>
+                            <Tooltip
+                              className="max-w-lg whitespace-normal break-words"
+                              content={el.value}
+                            >
+                              <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                                {el.value}
+                              </div>
+                            </Tooltip>
                           </Tag>
                         </div>
                       ))}
@@ -222,7 +234,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Key</div>
-                <div className="text-sm">{newVersion?.secretKey} </div>
+                <div className="max-w-md break-words text-sm">{newVersion?.secretKey} </div>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Value</div>
@@ -274,7 +286,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="max-h-[5rem] overflow-y-auto text-sm">
+                <div className="thin-scrollbar max-h-[5rem] max-w-[34rem] overflow-y-auto break-words text-sm xl:max-w-[28rem]">
                   {newVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -312,15 +324,27 @@ export const SecretApprovalRequestChangeItem = ({
                           className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
                         >
                           <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
-                          <div>{el.key}</div>
+                          <Tooltip
+                            className="max-w-lg whitespace-normal break-words"
+                            content={el.key}
+                          >
+                            <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                              {el.key}
+                            </div>
+                          </Tooltip>
                         </Tag>
                         <Tag
                           size="xs"
                           className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                         >
-                          <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
-                            {el.value}
-                          </div>
+                          <Tooltip
+                            className="max-w-lg whitespace-normal break-words"
+                            content={el.value}
+                          >
+                            <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                              {el.value}
+                            </div>
+                          </Tooltip>
                         </Tag>
                       </div>
                     ))}

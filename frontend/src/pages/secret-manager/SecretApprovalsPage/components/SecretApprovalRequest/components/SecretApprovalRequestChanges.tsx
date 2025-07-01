@@ -225,7 +225,7 @@ export const SecretApprovalRequestChanges = ({
 
   return (
     <div className="flex space-x-6">
-      <div className="flex-grow">
+      <div className="max-w-[calc(100%-17rem)] flex-1">
         <div className="sticky top-0 z-20 flex items-center space-x-4 bg-bunker-800 pb-6 pt-2">
           <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
             <FontAwesomeIcon icon={faArrowLeft} />
@@ -493,7 +493,7 @@ export const SecretApprovalRequestChanges = ({
                     .
                   </div>
                   {reviewer?.comment && (
-                    <GenericFieldLabel label="Comment" className="mt-2">
+                    <GenericFieldLabel label="Comment" className="mt-2 max-w-4xl break-words">
                       {reviewer?.comment && reviewer.comment}
                     </GenericFieldLabel>
                   )}
@@ -516,7 +516,7 @@ export const SecretApprovalRequestChanges = ({
           />
         </div>
       </div>
-      <div className="sticky top-0 w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
+      <div className="sticky top-0 z-[51] w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
         <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
           {secretApprovalRequestDetails?.policy?.approvers
@@ -537,17 +537,17 @@ export const SecretApprovalRequestChanges = ({
                         requiredApprover.lastName || ""
                       }`}
                     >
-                      <span>{requiredApprover?.email} </span>
+                      <span>{requiredApprover?.email}</span>
                     </Tooltip>
                     <span className="text-red">*</span>
                   </div>
                   <div>
                     {reviewer?.comment && (
-                      <Tooltip content={reviewer.comment}>
+                      <Tooltip className="max-w-lg break-words" content={reviewer.comment}>
                         <FontAwesomeIcon
                           icon={faComment}
                           size="xs"
-                          className="mr-1 text-mineshaft-300"
+                          className="mr-1.5 text-mineshaft-300"
                         />
                       </Tooltip>
                     )}
