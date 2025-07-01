@@ -214,7 +214,10 @@ export const EnvironmentPageForm = () => {
           <div className="flex items-start gap-1">
             <p className="text-xl font-semibold text-mineshaft-100">Overrides</p>
           </div>
-          <p className="text-sm text-bunker-300">Override specific environment variables.</p>
+          <p className="text-sm text-bunker-300">
+            Override specific environment variables. After saving, it may take up to 5 minutes for
+            variables to propagate throughout every container.
+          </p>
         </div>
 
         <div className="flex flex-row gap-2">
