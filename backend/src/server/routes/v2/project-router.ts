@@ -457,6 +457,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -487,6 +489,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -549,6 +553,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         projectId: z.string().trim()
       }),
