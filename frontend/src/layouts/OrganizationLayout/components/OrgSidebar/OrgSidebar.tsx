@@ -186,7 +186,9 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   <MenuItem
                     className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                     leftIcon={
-                      <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faShare} />
+                      <div className="w-6">
+                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faShare} />
+                      </div>
                     }
                   >
                     Share Secret
@@ -196,7 +198,9 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   <MenuItem
                     className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                     leftIcon={
-                      <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faUserCog} />
+                      <div className="w-6">
+                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faUserCog} />
+                      </div>
                     }
                   >
                     Organization Admin
@@ -207,7 +211,12 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                     <MenuItem
                       className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                       leftIcon={
-                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faUserTie} />
+                        <div className="w-6">
+                          <FontAwesomeIcon
+                            className="mx-1 inline-block shrink-0"
+                            icon={faUserTie}
+                          />
+                        </div>
                       }
                     >
                       Server Console

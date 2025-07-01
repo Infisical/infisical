@@ -44,7 +44,7 @@ export const SshLayout = () => {
                         }}
                       >
                         {({ isActive }) => (
-                          <MenuItem isSelected={isActive}> Certificate Authorities</MenuItem>
+                          <MenuItem isSelected={isActive}>Certificate Authorities</MenuItem>
                         )}
                       </Link>
                     )

@@ -1,6 +1,7 @@
 import { ProjectOverviewChangeSection } from "@app/components/project/ProjectOverviewChangeSection";
 
 import { AuditLogsRetentionSection } from "../AuditLogsRetentionSection";
+import { DeleteProjectProtection } from "../DeleteProjectProtection";
 import { DeleteProjectSection } from "../DeleteProjectSection";
 
 export const ProjectGeneralTab = () => {
@@ -8,6 +9,7 @@ export const ProjectGeneralTab = () => {
     <div>
       <ProjectOverviewChangeSection showSlugField />
       <AuditLogsRetentionSection />
+      <DeleteProjectProtection />
       <DeleteProjectSection />
     </div>
   );

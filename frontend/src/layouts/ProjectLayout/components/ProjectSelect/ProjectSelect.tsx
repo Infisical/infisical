@@ -35,7 +35,7 @@ import { usePopUp } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { Workspace } from "@app/hooks/api/workspace/types";
 
 // TODO(pta): add search to project select
 export const ProjectSelect = () => {
@@ -170,21 +170,23 @@ export const ProjectSelect = () => {
                     }
                   >
                     <div className="flex items-center">
-                      <div className="flex max-w-[150px] flex-grow items-center justify-between truncate">
+                      <div className="flex max-w-[165px] flex-1 items-center justify-between truncate">
                         {workspace.name}
                       </div>
-                      <FontAwesomeIcon
-                        icon={workspace.isFavorite ? faSolidStar : faStar}
-                        className="text-sm text-yellow-600 hover:text-mineshaft-400"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          await (
-                            workspace.isFavorite
-                              ? removeProjectFromFavorites
-                              : addProjectToFavorites
-                          )(workspace.id);
-                        }}
-                      />
+                      <div>
+                        <FontAwesomeIcon
+                          icon={workspace.isFavorite ? faSolidStar : faStar}
+                          className="text-sm text-yellow-600 hover:text-mineshaft-400"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await (
+                              workspace.isFavorite
+                                ? removeProjectFromFavorites
+                                : addProjectToFavorites
+                            )(workspace.id);
+                          }}
+                        />
+                      </div>
                     </div>
                   </DropdownMenuItem>
                 );

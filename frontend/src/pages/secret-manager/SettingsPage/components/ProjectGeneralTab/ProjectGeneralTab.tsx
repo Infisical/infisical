@@ -3,7 +3,6 @@ import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { AutoCapitalizationSection } from "../AutoCapitalizationSection";
 import { BackfillSecretReferenceSecretion } from "../BackfillSecretReferenceSection";
-import { DeleteProjectProtection } from "../DeleteProjectProtection";
 import { EnvironmentSection } from "../EnvironmentSection";
 import { PointInTimeVersionLimitSection } from "../PointInTimeVersionLimitSection";
 import { RebuildSecretIndicesSection } from "../RebuildSecretIndicesSection/RebuildSecretIndicesSection";
@@ -24,7 +23,6 @@ export const ProjectGeneralTab = () => {
       <PointInTimeVersionLimitSection />
       <BackfillSecretReferenceSecretion />
       {currentWorkspace?.version !== ProjectVersion.V3 && <RebuildSecretIndicesSection />}
-      <DeleteProjectProtection />
     </div>
   );
 };
