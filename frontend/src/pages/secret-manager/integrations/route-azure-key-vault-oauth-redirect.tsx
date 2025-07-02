@@ -7,7 +7,7 @@ import { localStorageService } from "@app/helpers/localStorage";
 import { AzureKeyVaultOauthCallbackQueryParamsSchema } from "./AzureKeyVaultOauthCallbackPage/route";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/integrations/azure-key-vault/oauth2/callback"
 )({
   validateSearch: zodValidator(AzureKeyVaultOauthCallbackQueryParamsSchema),
   beforeLoad: ({ search }) => {
@@ -18,10 +18,10 @@ export const Route = createFileRoute(
         title: "Missing project id",
         text: "Please retry integration"
       });
-      throw redirect({ to: "/organization/secret-manager/overview" });
+      throw redirect({ to: "/organization/projects" });
     }
     throw redirect({
-      to: "/secret-manager/$projectId/integrations/azure-key-vault/oauth2/callback",
+      to: "/projects/$projectId/secret-manager/integrations/azure-key-vault/oauth2/callback",
       params: { projectId },
       search
     });

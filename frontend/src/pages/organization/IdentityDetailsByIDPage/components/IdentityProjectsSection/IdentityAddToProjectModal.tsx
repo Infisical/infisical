@@ -44,7 +44,7 @@ type Props = {
 
 const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
   const { currentOrg } = useOrganization();
-  const { data: workspaces = [] } = useGetUserWorkspaces({ type: "all" });
+  const { data: workspaces = [] } = useGetUserWorkspaces();
   const { mutateAsync: addIdentityToWorkspace } = useAddIdentityToWorkspace();
 
   const {

@@ -51,7 +51,7 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
-  project: Pick<Workspace, "id" | "name" | "type">;
+  project: Pick<Workspace, "id" | "name" | "defaultProduct">;
   roles: Array<
     {
       id: string;

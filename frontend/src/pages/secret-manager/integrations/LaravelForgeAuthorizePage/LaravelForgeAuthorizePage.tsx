@@ -42,7 +42,7 @@ export const LaravelForgeAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/laravel-forge/create",
+        to: "/projects/$projectId/secret-manager/integrations/laravel-forge/create",
         params: {
           projectId: currentWorkspace.id
         },

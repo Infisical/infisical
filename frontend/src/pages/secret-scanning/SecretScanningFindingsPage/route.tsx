@@ -7,7 +7,7 @@ import { SecretScanningFindingStatus } from "@app/hooks/api/secretScanningV2";
 import { SecretScanningFindingsPage } from "./SecretScanningFindingsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-scanning/$projectId/_secret-scanning-layout/findings"
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-scanning/_secret-scanning-layout/findings"
 )({
   validateSearch: zodValidator(
     z.object({

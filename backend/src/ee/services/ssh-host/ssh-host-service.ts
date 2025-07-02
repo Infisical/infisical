@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -12,11 +11,13 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-user-mapping-dal";
 import { TSshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { bootstrapSshProject } from "@app/services/project/project-fns";
 import { TProjectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -43,9 +44,9 @@ type TSshHostServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "findGroupsByProjectId">;
   projectDAL: Pick<TProjectDALFactory, "find">;
-  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "findOne">;
-  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "findOne">;
-  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "findOne">;
+  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "findOne" | "transaction" | "create">;
+  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "findOne" | "transaction" | "create">;
+  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "findOne" | "create">;
   sshCertificateDAL: Pick<TSshCertificateDALFactory, "create" | "transaction">;
   sshCertificateBodyDAL: Pick<TSshCertificateBodyDALFactory, "create">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg">;
@@ -98,8 +99,7 @@ export const sshHostServiceFactory = ({
     }
 
     const sshProjects = await projectDAL.find({
-      orgId: actorOrgId,
-      type: ProjectType.SSH
+      orgId: actorOrgId
     });
 
     const allowedHosts = [];
@@ -111,8 +111,7 @@ export const sshHostServiceFactory = ({
           actorId,
           projectId: project.id,
           actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.SSH
+          actorOrgId
         });
 
         const projectHosts = await sshHostDAL.findUserAccessibleSshHosts([project.id], actorId);
@@ -145,8 +144,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -184,7 +182,25 @@ export const sshHostServiceFactory = ({
       return ca.id;
     };
 
-    const projectSshConfig = await projectSshConfigDAL.findOne({ projectId });
+    let projectSshConfig = await projectSshConfigDAL.findOne({ projectId });
+    if (!projectSshConfig) {
+      projectSshConfig = await projectSshConfigDAL.transaction(async (tx) => {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SshInit(projectId)]);
+
+        let sshConfig = await projectSshConfigDAL.findOne({ projectId }, tx);
+        if (sshConfig) return sshConfig;
+
+        sshConfig = await bootstrapSshProject({
+          projectId,
+          sshCertificateAuthorityDAL,
+          sshCertificateAuthoritySecretDAL,
+          kmsService,
+          projectSshConfigDAL,
+          tx
+        });
+        return sshConfig;
+      });
+    }
 
     const userSshCaId = await resolveSshCaId({
       requestedId: requestedUserSshCaId,
@@ -257,8 +273,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -319,8 +334,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -348,8 +362,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -388,8 +401,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     const internalPrincipals = await convertActorToPrincipals({
@@ -508,8 +520,7 @@ export const sshHostServiceFactory = ({
       actorId,
       projectId: host.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

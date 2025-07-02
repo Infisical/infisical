@@ -20,6 +20,7 @@ import {
   ProjectPermissionSub,
   useWorkspace
 } from "@app/context";
+import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useAssumeProjectPrivileges,
@@ -27,6 +28,7 @@ import {
   useGetWorkspaceIdentityMembershipDetails
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
@@ -66,7 +68,10 @@ const Page = () => {
             type: "success",
             text: "Identity privilege assumption has started"
           });
-          window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/overview`;
+          const url = getProjectHomePage(
+            getCurrentProductFromUrl(window.location.href) || ProjectType.SecretManager
+          );
+          window.location.href = url.replace("$projectId", currentWorkspace.id);
         }
       }
     );
@@ -84,7 +89,7 @@ const Page = () => {
       });
       handlePopUpClose("deleteIdentity");
       navigate({
-        to: `/${currentWorkspace.type}/$projectId/access-management` as const,
+        to: "/projects/$projectId/access-management",
         params: {
           projectId: workspaceId
         },

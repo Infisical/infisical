@@ -126,7 +126,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         navigate({
-          to: `/${ProjectType.SSH}/$projectId/ca/$caId` as const,
+          to: `/projects/$projectId/${ProjectType.SSH}/ca/$caId` as const,
           params: {
             projectId,
             caId: newCaId

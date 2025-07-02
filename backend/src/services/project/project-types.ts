@@ -92,6 +92,7 @@ export type TUpdateProjectDTO = {
     description?: string;
     autoCapitalization?: boolean;
     hasDeleteProtection?: boolean;
+    defaultProduct?: ProjectType;
     slug?: string;
     secretSharing?: boolean;
     showSnapshotsLegacy?: boolean;
