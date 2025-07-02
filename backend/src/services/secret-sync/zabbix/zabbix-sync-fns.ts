@@ -46,6 +46,9 @@ const handleZabbixResponse = <T>(response: ZabbixApiResponse<T>): T => {
 const listZabbixSecrets = async (apiToken: string, instanceUrl: string, hostId?: string): Promise<TZabbixSecret[]> => {
   const apiUrl = `${instanceUrl.replace(TRAILING_SLASH_REGEX, "")}/api_jsonrpc.php`;
 
+  // - jsonrpc: Specifies the JSON-RPC protocol version.
+  // - method: The API method to call, in this case "usermacro.get" for retrieving user macros.
+  // - id: A unique identifier for the request. Required by JSON-RPC but not used by the API for logic. Typically set to any integer.
   const payload = {
     jsonrpc: "2.0" as const,
     method: "usermacro.get",

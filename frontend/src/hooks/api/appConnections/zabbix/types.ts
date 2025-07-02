@@ -8,6 +8,11 @@ export enum ZabbixSyncScope {
   Global = "global"
 }
 
+export enum ZabbixMacroType {
+  Text = 0,
+  Secret = 1
+}
+
 export const ZABBIX_SYNC_SCOPES = {
   [ZabbixSyncScope.Host]: {
     name: "Host",

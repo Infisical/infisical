@@ -7,6 +7,7 @@ import {
   TZabbixHost,
   useZabbixConnectionListHosts,
   ZABBIX_SYNC_SCOPES,
+  ZabbixMacroType,
   ZabbixSyncScope
 } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -120,7 +121,7 @@ export const ZabbixSyncFields = () => {
       <Controller
         control={control}
         name="destinationConfig.macroType"
-        defaultValue={0}
+        defaultValue={ZabbixMacroType.Secret}
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <FormControl isError={Boolean(error)} errorText={error?.message} label="Macro Type">
             <Select
@@ -131,10 +132,10 @@ export const ZabbixSyncFields = () => {
               placeholder="Select a macro type..."
               dropdownContainerClassName="max-w-none"
             >
-              <SelectItem value="0" key="text">
+              <SelectItem value={String(ZabbixMacroType.Text)} key="text">
                 Text
               </SelectItem>
-              <SelectItem value="1" key="secret">
+              <SelectItem value={String(ZabbixMacroType.Secret)} key="secret">
                 Secret
               </SelectItem>
             </Select>

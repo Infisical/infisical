@@ -2,15 +2,7 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import {
-  Button,
-  FormControl,
-  Input,
-  ModalClose,
-  SecretInput,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { TZabbixConnection, ZabbixConnectionMethod } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -94,6 +86,20 @@ export const ZabbixConnectionForm = ({ appConnection, onSubmit }: Props) => {
           )}
         />
         <Controller
+          name="credentials.apiToken"
+          control={control}
+          shouldUnregister
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="API Token"
+            >
+              <Input {...field} type="password" placeholder="Enter your API Token" />
+            </FormControl>
+          )}
+        />
+        <Controller
           name="credentials.instanceUrl"
           control={control}
           shouldUnregister
@@ -105,24 +111,6 @@ export const ZabbixConnectionForm = ({ appConnection, onSubmit }: Props) => {
               tooltipClassName="max-w-sm"
             >
               <Input {...field} placeholder="https://your-zabbix-instance.com" />
-            </FormControl>
-          )}
-        />
-        <Controller
-          name="credentials.apiToken"
-          control={control}
-          shouldUnregister
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Access Token"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
             </FormControl>
           )}
         />
