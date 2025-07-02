@@ -11,10 +11,9 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
-import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/MinimizedOrgSidebar/MinimizedOrgSidebar";
+import { INFISICAL_SUPPORT_OPTIONS } from "../OrganizationLayout/components/NavBar/Navbar";
 
 export const PersonalSettingsLayout = () => {
   const { t } = useTranslation();
@@ -27,7 +26,7 @@ export const PersonalSettingsLayout = () => {
           <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div className="flex-grow">
-                <Link to={`/organization/${ProjectType.SecretManager}/overview` as const}>
+                <Link to="/organization/projects">
                   <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
                     <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
                     Back to organization

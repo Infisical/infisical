@@ -4,7 +4,7 @@
 import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ProjectType, TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
+import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
@@ -433,8 +433,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCommitDAL.findCommitsToRecreate.mockResolvedValue([]);
       mockProjectDAL.findProjectByEnvId.mockResolvedValue({
         id: "project-id",
-        name: "test-project",
-        type: ProjectType.SecretManager
+        name: "test-project"
       });
 
       // Act

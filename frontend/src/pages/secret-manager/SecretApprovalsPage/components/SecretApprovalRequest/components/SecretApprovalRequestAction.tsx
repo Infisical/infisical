@@ -102,43 +102,73 @@ export const SecretApprovalRequestAction = ({
 
   if (!hasMerged && status === "open") {
     return (
-      <div className="flex w-full flex-col items-start justify-between py-4 transition-all">
-        <div className="flex items-center space-x-4 px-4">
-          <div
-            className={`flex items-center justify-center rounded-full ${isMergable ? "h-10 w-10 bg-green" : "h-11 w-11 bg-red-600"}`}
-          >
-            <FontAwesomeIcon
-              icon={isMergable ? faCheck : faXmark}
-              className={isMergable ? "text-lg text-black" : "text-2xl text-white"}
-            />
+      <div className="flex w-full flex-col items-start justify-between py-4 text-mineshaft-100 transition-all">
+        <div className="flex w-full flex-col justify-between xl:flex-row xl:items-center">
+          <div className="mr-auto flex items-center space-x-4 px-4">
+            <div
+              className={`flex items-center justify-center rounded-full ${isMergable ? "h-8 w-8 bg-green" : "h-10 w-10 bg-red-600"}`}
+            >
+              <FontAwesomeIcon
+                icon={isMergable ? faCheck : faXmark}
+                className={isMergable ? "text-lg text-white" : "text-2xl text-white"}
+              />
+            </div>
+            <span className="flex flex-col">
+              <p className={`text-md font-medium ${isMergable && "text-lg"}`}>
+                {isMergable ? "Good to merge" : "Merging is blocked"}
+              </p>
+              {!isMergable && (
+                <span className="inline-block text-xs text-mineshaft-300">
+                  At least {approvals} approving review{`${approvals > 1 ? "s" : ""}`} required by
+                  eligible reviewers.
+                  {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
+                </span>
+              )}
+            </span>
           </div>
-          <span className="flex flex-col">
-            <p className={`text-md font-medium ${isMergable && "text-lg"}`}>
-              {isMergable ? "Good to merge" : "Merging is blocked"}
-            </p>
-            {!isMergable && (
-              <span className="inline-block text-xs text-bunker-200">
-                At least {approvals} approving review{`${approvals > 1 ? "s" : ""}`} required by
-                eligible reviewers.
-                {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
-              </span>
+          <div className="mt-4 flex items-center justify-end space-x-2 px-4 xl:mt-0">
+            {canApprove || isSoftEnforcement ? (
+              <div className="flex items-center space-x-4">
+                <Button
+                  onClick={() => handleSecretApprovalStatusChange("close")}
+                  isLoading={isStatusChanging}
+                  variant="outline_bg"
+                  colorSchema="primary"
+                  leftIcon={<FontAwesomeIcon icon={faClose} />}
+                  className="hover:border-red/60 hover:bg-red/10"
+                >
+                  Close request
+                </Button>
+                <Button
+                  leftIcon={<FontAwesomeIcon icon={!canApprove ? faLandMineOn : faCheck} />}
+                  isDisabled={
+                    !(
+                      (isMergable && canApprove) ||
+                      (isSoftEnforcement && byPassApproval && isValidBypassReason(bypassReason))
+                    )
+                  }
+                  isLoading={isMerging}
+                  onClick={handleSecretApprovalRequestMerge}
+                  colorSchema={isSoftEnforcement && !canApprove ? "danger" : "primary"}
+                  variant="outline_bg"
+                >
+                  Merge
+                </Button>
+              </div>
+            ) : (
+              <div className="text-sm text-mineshaft-400">Only approvers can merge</div>
             )}
-          </span>
+          </div>
         </div>
         {isSoftEnforcement && !isMergable && isBypasser && (
-          <div
-            className={`mt-4 w-full border-mineshaft-600 px-5 ${isMergable ? "border-t pb-2" : "border-y pb-4"}`}
-          >
+          <div className="mt-4 w-full border-t border-mineshaft-600 px-5">
             <div className="mt-2 flex flex-col space-y-2 pt-2">
               <Checkbox
                 onCheckedChange={(checked) => setByPassApproval(checked === true)}
                 isChecked={byPassApproval}
                 id="byPassApproval"
                 checkIndicatorBg="text-white"
-                className={twMerge(
-                  "mr-2",
-                  byPassApproval ? "border-red bg-red hover:bg-red-600" : ""
-                )}
+                className={twMerge("mr-2", byPassApproval ? "!border-red/30 !bg-red/10" : "")}
               >
                 <span className="text-sm">
                   Merge without waiting for approval (bypass secret change policy)
@@ -162,51 +192,18 @@ export const SecretApprovalRequestAction = ({
             </div>
           </div>
         )}
-        <div className="mt-2 flex w-full items-center justify-end space-x-2 px-4">
-          {canApprove || isSoftEnforcement ? (
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => handleSecretApprovalStatusChange("close")}
-                isLoading={isStatusChanging}
-                variant="outline_bg"
-                colorSchema="primary"
-                leftIcon={<FontAwesomeIcon icon={faClose} />}
-                className="hover:border-red/60 hover:bg-red/10"
-              >
-                Close request
-              </Button>
-              <Button
-                leftIcon={<FontAwesomeIcon icon={!canApprove ? faLandMineOn : faCheck} />}
-                isDisabled={
-                  !(
-                    (isMergable && canApprove) ||
-                    (isSoftEnforcement && byPassApproval && isValidBypassReason(bypassReason))
-                  )
-                }
-                isLoading={isMerging}
-                onClick={handleSecretApprovalRequestMerge}
-                colorSchema={isSoftEnforcement && !canApprove ? "danger" : "primary"}
-                variant="solid"
-              >
-                Merge
-              </Button>
-            </div>
-          ) : (
-            <div>Only approvers can merge</div>
-          )}
-        </div>
       </div>
     );
   }
 
   if (hasMerged && status === "close")
     return (
-      <div className="flex w-full items-center justify-between rounded-md border border-primary/60 bg-primary/10">
-        <div className="flex items-start space-x-4 p-4">
-          <FontAwesomeIcon icon={faCheck} className="pt-1 text-2xl text-primary" />
+      <div className="flex w-full items-center justify-between rounded-md border border-green/60 bg-green/10">
+        <div className="flex items-start space-x-2 p-4">
+          <FontAwesomeIcon icon={faCheck} className="mt-0.5 text-xl text-green" />
           <span className="flex flex-col">
             Change request merged
-            <span className="inline-block text-xs text-bunker-200">
+            <span className="inline-block text-xs text-mineshaft-300">
               Merged by {statusChangeByEmail}.
             </span>
           </span>
@@ -215,26 +212,26 @@ export const SecretApprovalRequestAction = ({
     );
 
   return (
-    <div className="flex w-full items-center justify-between">
-      <div className="flex items-start space-x-4">
-        <FontAwesomeIcon icon={faUserLock} className="pt-1 text-2xl text-primary" />
+    <div className="flex w-full items-center justify-between rounded-md border border-yellow/60 bg-yellow/10">
+      <div className="flex items-start space-x-2 p-4">
+        <FontAwesomeIcon icon={faUserLock} className="mt-0.5 text-xl text-yellow" />
         <span className="flex flex-col">
           Secret approval has been closed
-          <span className="inline-block text-xs text-bunker-200">
+          <span className="inline-block text-xs text-mineshaft-300">
             Closed by {statusChangeByEmail}
           </span>
         </span>
       </div>
-      <div className="flex items-center space-x-6">
-        <Button
-          onClick={() => handleSecretApprovalStatusChange("open")}
-          isLoading={isStatusChanging}
-          variant="outline_bg"
-          leftIcon={<FontAwesomeIcon icon={faLockOpen} />}
-        >
-          Reopen request
-        </Button>
-      </div>
+      <Button
+        onClick={() => handleSecretApprovalStatusChange("open")}
+        isLoading={isStatusChanging}
+        variant="plain"
+        colorSchema="secondary"
+        className="mr-4 text-yellow/60 hover:text-yellow"
+        leftIcon={<FontAwesomeIcon icon={faLockOpen} />}
+      >
+        Reopen request
+      </Button>
     </div>
   );
 };

@@ -175,7 +175,7 @@ export const GitlabConfigurePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/secret-manager/$projectId/integrations",
+        to: "/projects/$projectId/secret-manager/integrations",
         params: {
           projectId: currentWorkspace.id
         },

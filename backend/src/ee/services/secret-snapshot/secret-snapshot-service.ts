@@ -2,7 +2,7 @@
 // akhilmhdh: I did this, quite strange bug with eslint. Everything do have a type stil has this error
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
+import { TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -103,8 +103,7 @@ export const secretSnapshotServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
@@ -140,8 +139,7 @@ export const secretSnapshotServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
 
@@ -169,8 +167,7 @@ export const secretSnapshotServiceFactory = ({
       actorId,
       projectId: snapshot.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
@@ -390,8 +387,7 @@ export const secretSnapshotServiceFactory = ({
       actorId,
       projectId: snapshot.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,

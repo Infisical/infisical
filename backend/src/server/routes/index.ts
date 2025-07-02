@@ -995,8 +995,7 @@ export const registerRoutes = async (
     pkiAlertDAL,
     pkiCollectionDAL,
     permissionService,
-    smtpService,
-    projectDAL
+    smtpService
   });
 
   const pkiCollectionService = pkiCollectionServiceFactory({
@@ -1004,8 +1003,7 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateAuthorityDAL,
     certificateDAL,
-    permissionService,
-    projectDAL
+    permissionService
   });
 
   const projectTemplateService = projectTemplateServiceFactory({
@@ -1189,7 +1187,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     snapshotService,
     projectDAL,
-    folderCommitService
+    folderCommitService,
+    secretApprovalPolicyService,
+    secretV2BridgeDAL
   });
 
   const secretImportService = secretImportServiceFactory({
@@ -1664,8 +1664,7 @@ export const registerRoutes = async (
   const cmekService = cmekServiceFactory({
     kmsDAL,
     kmsService,
-    permissionService,
-    projectDAL
+    permissionService
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
@@ -1807,7 +1806,6 @@ export const registerRoutes = async (
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
-    projectDAL,
     permissionService,
     appConnectionDAL,
     appConnectionService,
@@ -1817,7 +1815,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     kmsService,
-    pkiSubscriberDAL
+    pkiSubscriberDAL,
+    projectDAL
   });
 
   const internalCaFns = InternalCertificateAuthorityFns({

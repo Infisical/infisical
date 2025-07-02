@@ -51,7 +51,7 @@ export const HashicorpVaultAuthorizePage = () => {
         namespace: formData.vaultNamespace
       });
       navigate({
-        to: "/secret-manager/$projectId/integrations/hashicorp-vault/create",
+        to: "/projects/$projectId/secret-manager/integrations/hashicorp-vault/create",
         params: {
           projectId: currentWorkspace.id
         },

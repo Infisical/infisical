@@ -290,7 +290,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectRequestCount = async (projectId: string, userId: string, tx?: Knex) => {
+  const findProjectRequestCount = async (projectId: string, userId: string, policyId?: string, tx?: Knex) => {
     try {
       const docs = await (tx || db)
         .with(
@@ -309,6 +309,9 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               `${TableName.SecretApprovalPolicy}.id`
             )
             .where({ projectId })
+            .where((qb) => {
+              if (policyId) void qb.where(`${TableName.SecretApprovalPolicy}.id`, policyId);
+            })
             .andWhere(
               (bd) =>
                 void bd

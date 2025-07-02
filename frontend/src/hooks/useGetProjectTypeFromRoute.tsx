@@ -8,15 +8,10 @@ export const useGetProjectTypeFromRoute = () => {
 
   return useMemo(() => {
     const segments = location.pathname.split("/");
+    const type = segments?.[2];
+    if (!type) return ProjectType.SecretManager;
 
-    let type: ProjectType | undefined;
-
-    // location of project type can vary in router path, so we need to check all possible values
-    segments.forEach((segment) => {
-      if (Object.values(ProjectType).includes(segment as ProjectType))
-        type = segment as ProjectType;
-    });
-
-    return type;
+    // second element would be /projects/$projectId/<type>
+    return Object.values(ProjectType).find((el) => el === type) || ProjectType.SecretManager;
   }, [location]);
 };

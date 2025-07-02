@@ -700,7 +700,8 @@ export const PROJECTS = {
     slug: "An optional slug for the project. (must be unique within the organization)",
     hasDeleteProtection: "Enable or disable delete protection for the project.",
     secretSharing: "Enable or disable secret sharing for the project.",
-    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project."
+    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
+    defaultProduct: "The default product in which the project will open"
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -2427,7 +2428,8 @@ export const SecretSyncs = {
       keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
     },
     ONEPASS: {
-      vaultId: "The ID of the 1Password vault to sync secrets to."
+      vaultId: "The ID of the 1Password vault to sync secrets to.",
+      valueLabel: "The label of the entry that holds the secret value."
     },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",

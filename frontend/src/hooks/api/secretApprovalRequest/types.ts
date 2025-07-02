@@ -118,6 +118,7 @@ export type TGetSecretApprovalRequestList = {
 
 export type TGetSecretApprovalRequestCount = {
   workspaceId: string;
+  policyId?: string;
 };
 
 export type TGetSecretApprovalRequestDetails = {

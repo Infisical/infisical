@@ -70,7 +70,7 @@ export const SecretDashboardPathBreadcrumb = ({
         </div>
       ) : (
         <Link
-          to={`/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const}
+          to={`/projects/$projectId/${ProjectType.SecretManager}/secrets/$envSlug` as const}
           params={{
             projectId,
             envSlug: environmentSlug

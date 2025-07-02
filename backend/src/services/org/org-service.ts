@@ -5,7 +5,6 @@ import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import {
-  ActionProjectType,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
@@ -238,14 +237,14 @@ export const orgServiceFactory = ({
     return org;
   };
 
-  const findAllWorkspaces = async ({ actor, actorId, orgId, type }: TFindAllWorkspacesDTO) => {
+  const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
     if (actor === ActorType.USER) {
-      const workspaces = await projectDAL.findUserProjects(actorId, orgId, type || "all");
+      const workspaces = await projectDAL.findUserProjects(actorId, orgId);
       return workspaces;
     }
 
     if (actor === ActorType.IDENTITY) {
-      const workspaces = await projectDAL.findAllProjectsByIdentity(actorId, type);
+      const workspaces = await projectDAL.findAllProjectsByIdentity(actorId);
       return workspaces;
     }
 
@@ -975,8 +974,7 @@ export const orgServiceFactory = ({
           actorId,
           projectId,
           actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.Any
+          actorOrgId
         });
         ForbiddenError.from(projectPermission).throwUnlessCan(
           ProjectPermissionMemberActions.Create,

@@ -24,7 +24,7 @@ type TKmipOperationServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   kmsDAL: TKmsKeyDALFactory;
   kmipClientDAL: TKmipClientDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "getProjectFromSplitId" | "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 

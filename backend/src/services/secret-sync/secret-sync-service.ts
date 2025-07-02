@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -75,7 +74,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -111,7 +110,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -154,7 +153,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId: secretSync.projectId
     });
 
@@ -196,7 +195,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId: secretSync.projectId
     });
 
@@ -234,7 +233,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId
     });
 
@@ -314,7 +313,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId: secretSync.projectId
     });
 
@@ -430,7 +429,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId: secretSync.projectId
     });
 
@@ -507,7 +506,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId: secretSync.projectId
     });
 
@@ -579,7 +578,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId: secretSync.projectId
     });
 
@@ -645,7 +644,7 @@ export const secretSyncServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+
       projectId: secretSync.projectId
     });
 
