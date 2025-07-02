@@ -565,6 +565,7 @@ export const accessApprovalRequestServiceFactory = ({
 
   const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({
     projectSlug,
+    policyId,
     actor,
     actorAuthMethod,
     actorId,
@@ -585,7 +586,7 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
 
-    const count = await accessApprovalRequestDAL.getCount({ projectId: project.id });
+    const count = await accessApprovalRequestDAL.getCount({ projectId: project.id, policyId });
 
     return { count };
   };

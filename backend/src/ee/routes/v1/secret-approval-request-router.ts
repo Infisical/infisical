@@ -94,7 +94,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     schema: {
       querystring: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim(),
+        policyId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -112,7 +113,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.query.workspaceId
+        projectId: req.query.workspaceId,
+        policyId: req.query.policyId
       });
       return { approvals };
     }

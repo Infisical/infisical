@@ -84,7 +84,7 @@ export type TReviewRequestDTO = {
   comment?: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TApprovalRequestCountDTO = TProjectPermission;
+export type TApprovalRequestCountDTO = TProjectPermission & { policyId?: string };
 
 export type TListApprovalsDTO = {
   projectId: string;
