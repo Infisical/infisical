@@ -519,7 +519,7 @@ export const secretFolderServiceFactory = ({
     }
 
     // Find the target folder in the folderPaths to get its full details
-    const targetFolderWithPath = folderPaths.find((f) => f.id === targetFolder.id);
+    const targetFolderWithPath = folderPaths.find((f) => f.id === targetFolder!.id);
     if (!targetFolderWithPath) {
       throw new NotFoundError({ message: `Target folder path not found` });
     }
