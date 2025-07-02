@@ -209,7 +209,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
           ...req.query,
-          endDate: req.query.endDatea || new Date().toISOString(),
+          endDate: req.query.endDate || new Date().toISOString(),
           projectId: req.query.projectId,
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
