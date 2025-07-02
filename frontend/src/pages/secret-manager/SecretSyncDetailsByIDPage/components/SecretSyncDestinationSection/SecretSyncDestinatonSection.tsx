@@ -33,6 +33,7 @@ import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
+import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -113,6 +114,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.CloudflarePages:
       DestinationComponents = <CloudflarePagesSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Zabbix:
+      DestinationComponents = <ZabbixSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

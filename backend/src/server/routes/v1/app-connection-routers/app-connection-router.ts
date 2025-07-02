@@ -84,6 +84,7 @@ import {
   SanitizedWindmillConnectionSchema,
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
+import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -116,7 +117,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
   ...SanitizedGitLabConnectionSchema.options,
-  ...SanitizedCloudflareConnectionSchema.options
+  ...SanitizedCloudflareConnectionSchema.options,
+  ...SanitizedZabbixConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -148,7 +150,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
   GitLabConnectionListItemSchema,
-  CloudflareConnectionListItemSchema
+  CloudflareConnectionListItemSchema,
+  ZabbixConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
