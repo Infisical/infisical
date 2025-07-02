@@ -1187,7 +1187,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     snapshotService,
     projectDAL,
-    folderCommitService
+    folderCommitService,
+    secretApprovalPolicyService,
+    secretV2BridgeDAL
   });
 
   const secretImportService = secretImportServiceFactory({
@@ -2041,10 +2043,6 @@ export const registerRoutes = async (
     if (adminIntegrationsSyncJob) {
       cronJobs.push(adminIntegrationsSyncJob);
     }
-  }
-  const configSyncJob = await superAdminService.initializeEnvConfigSync();
-  if (configSyncJob) {
-    cronJobs.push(configSyncJob);
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {

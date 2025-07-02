@@ -29,11 +29,6 @@ const generalTabs = [
     label: "Caching",
     icon: "note",
     link: "/admin/caching"
-  },
-  {
-    label: "Environment",
-    icon: "unlock",
-    link: "/admin/environment"
   }
 ];
 
