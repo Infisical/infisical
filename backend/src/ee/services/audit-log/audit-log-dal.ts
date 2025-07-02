@@ -61,7 +61,6 @@ export const auditLogDALFactory = (db: TDbClient) => {
     },
     tx
   ) => {
-
     try {
       // Find statements
       const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)

@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { useMemo } from "react";
-import { Controller, useForm, UseFormGetValues } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { faCaretDown, faCheckCircle, faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
