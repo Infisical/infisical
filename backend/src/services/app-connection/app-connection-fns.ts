@@ -50,6 +50,11 @@ import {
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
+import {
+  BitBucketConnectionMethod,
+  getBitBucketConnectionListItem,
+  validateBitBucketConnectionCredentials
+} from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
@@ -136,7 +141,8 @@ export const listAppConnectionOptions = () => {
     getRenderConnectionListItem(),
     getFlyioConnectionListItem(),
     getGitLabConnectionListItem(),
-    getCloudflareConnectionListItem()
+    getCloudflareConnectionListItem(),
+    getBitBucketConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -216,7 +222,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.BitBucket]: validateBitBucketConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -253,6 +260,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
     case CloudflareConnectionMethod.APIToken:
+    case BitBucketConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -332,7 +340,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
-  [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported
+  [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
+  [AppConnection.BitBucket]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

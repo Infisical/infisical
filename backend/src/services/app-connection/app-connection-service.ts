@@ -45,6 +45,8 @@ import { azureClientSecretsConnectionService } from "./azure-client-secrets/azur
 import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/azure-devops-schemas";
 import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
+import { ValidateBitBucketConnectionCredentialsSchema } from "./bitbucket";
+import { bitBucketConnectionService } from "./bitbucket/bitbucket-connection-service";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
@@ -119,7 +121,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
-  [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema
+  [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
+  [AppConnection.BitBucket]: ValidateBitBucketConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -529,6 +532,7 @@ export const appConnectionServiceFactory = ({
     render: renderConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    cloudflare: cloudflareConnectionService(connectAppConnectionById)
+    cloudflare: cloudflareConnectionService(connectAppConnectionById),
+    bitbucket: bitBucketConnectionService(connectAppConnectionById)
   };
 };

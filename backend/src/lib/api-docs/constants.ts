@@ -2268,6 +2268,10 @@ export const AppConnections = {
       accessToken: "The Access Token used to access GitLab.",
       code: "The OAuth code to use to connect with GitLab.",
       accessTokenType: "The type of token used to connect with GitLab."
+    },
+    BITBUCKET: {
+      email: "The email used to access BitBucket.",
+      apiToken: "The API token used to access BitBucket."
     }
   }
 };

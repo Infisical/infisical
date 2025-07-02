@@ -32,6 +32,10 @@ import {
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
 import {
+  BitBucketConnectionListItemSchema,
+  SanitizedBitBucketConnectionSchema
+} from "@app/services/app-connection/bitbucket";
+import {
   CamundaConnectionListItemSchema,
   SanitizedCamundaConnectionSchema
 } from "@app/services/app-connection/camunda";
@@ -116,7 +120,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
   ...SanitizedGitLabConnectionSchema.options,
-  ...SanitizedCloudflareConnectionSchema.options
+  ...SanitizedCloudflareConnectionSchema.options,
+  ...SanitizedBitBucketConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -148,7 +153,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
   GitLabConnectionListItemSchema,
-  CloudflareConnectionListItemSchema
+  CloudflareConnectionListItemSchema,
+  BitBucketConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

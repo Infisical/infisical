@@ -7,6 +7,7 @@ import { TAzureAppConfigurationConnection } from "./azure-app-configuration-conn
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
+import { TBitBucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
@@ -59,6 +60,7 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./bitbucket-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -89,7 +91,8 @@ export type TAppConnection =
   | TRenderConnection
   | TFlyioConnection
   | TGitLabConnection
-  | TCloudflareConnection;
+  | TCloudflareConnection
+  | TBitBucketConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -146,4 +149,5 @@ export type TAppConnectionMap = {
   [AppConnection.Flyio]: TFlyioConnection;
   [AppConnection.Gitlab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
+  [AppConnection.BitBucket]: TBitBucketConnection;
 };
