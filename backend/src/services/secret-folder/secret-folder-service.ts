@@ -487,7 +487,7 @@ export const secretFolderServiceFactory = ({
       })
       .catch(() => null);
 
-    if (!targetFolder) {
+    if (!targetFolder && uuidValidate(idOrName)) {
       targetFolder = await folderDAL
         .findOne({
           envId: env.id,
@@ -611,7 +611,7 @@ export const secretFolderServiceFactory = ({
         })
         .catch(() => null);
 
-      if (!folderToDelete) {
+      if (!folderToDelete && uuidValidate(idOrName)) {
         folderToDelete = await folderDAL
           .findOne({
             envId: env.id,
