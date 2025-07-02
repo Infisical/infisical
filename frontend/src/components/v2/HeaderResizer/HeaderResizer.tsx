@@ -23,7 +23,7 @@ export const HeaderResizer = ({
         }}
       />
       <div
-        style={{ left: `calc(39.5% + ${scrollOffset}px)` }}
+        style={{ left: `calc(43% + ${scrollOffset}px)` }}
         className="pointer-events-none absolute -bottom-[0.1rem] z-30 -translate-x-1/2"
       >
         <div className="h-1 w-8 rounded bg-gray-400 opacity-50" />
