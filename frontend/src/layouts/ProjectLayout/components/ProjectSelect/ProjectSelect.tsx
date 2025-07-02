@@ -176,7 +176,7 @@ export const ProjectSelect = () => {
                   >
                     <div className="flex items-center">
                       <div className="flex flex-1 items-center justify-between overflow-hidden">
-                        <Tooltip className="text-ellipsiss" content={workspace.name}>
+                        <Tooltip side="right" className="break-words" content={workspace.name}>
                           <div className="max-w-40 overflow-hidden truncate whitespace-nowrap">
                             {workspace.name}
                           </div>
