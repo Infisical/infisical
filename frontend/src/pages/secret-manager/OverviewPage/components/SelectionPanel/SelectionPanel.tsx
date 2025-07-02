@@ -166,22 +166,35 @@ export const SelectionPanel = ({
           secrets: secretsToDelete
         });
       }
+
+      return {
+        environment: env.slug
+      };
     });
 
     const results = await Promise.allSettled(promises);
-    const areEntriesDeleted = results.some((result) => result.status === "fulfilled");
+    const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");
+    const areSomeEntriesDeleted = results.some((result) => result.status === "fulfilled");
     if (processedEntries === 0) {
       handlePopUpClose("bulkDeleteEntries");
       createNotification({
         type: "info",
         text: "You don't have access to delete selected items"
       });
-    } else if (areEntriesDeleted) {
+    } else if (areAllEntriesDeleted) {
       handlePopUpClose("bulkDeleteEntries");
       resetSelectedEntries();
       createNotification({
         type: "success",
         text: "Successfully deleted selected secrets and folders"
+      });
+    } else if (areSomeEntriesDeleted) {
+      createNotification({
+        type: "warning",
+        text: `Successfully deleted selected secrets and folders on environments: ${results
+          .filter((result) => result.status === "fulfilled")
+          .map((result) => result.value.environment)
+          .join(", ")} but failed on the other environments`
       });
     } else {
       createNotification({
