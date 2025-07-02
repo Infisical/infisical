@@ -2,10 +2,12 @@ import { MouseEventHandler } from "react";
 
 export const HeaderResizer = ({
   onMouseDown,
-  isActive
+  isActive,
+  scrollOffset
 }: {
   onMouseDown: MouseEventHandler<HTMLDivElement>;
   isActive: boolean;
+  scrollOffset: number;
 }) => {
   return (
     <>
@@ -20,7 +22,10 @@ export const HeaderResizer = ({
           transform: "translateY(50%)"
         }}
       />
-      <div className="pointer-events-none absolute -bottom-[0.1rem] left-1/2 z-30 -translate-x-1/2">
+      <div
+        style={{ left: `calc(39.5% + ${scrollOffset}px)` }}
+        className="pointer-events-none absolute -bottom-[0.1rem] z-30 -translate-x-1/2"
+      >
         <div className="h-1 w-8 rounded bg-gray-400 opacity-50" />
       </div>
     </>
