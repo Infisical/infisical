@@ -1615,7 +1615,8 @@ export const registerRoutes = async (
     secretSharingDAL,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
-    serviceTokenService
+    serviceTokenService,
+    orgService
   });
 
   const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
