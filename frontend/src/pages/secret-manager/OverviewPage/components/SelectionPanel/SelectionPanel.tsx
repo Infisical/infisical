@@ -183,7 +183,7 @@ export const SelectionPanel = ({
             (result) => result.status === "fulfilled" && result.value.environment === env.slug
           )
       )
-      .map((env) => env.slug);
+      .map((env) => env.name);
     if (processedEntries === 0) {
       handlePopUpClose("bulkDeleteEntries");
       createNotification({
