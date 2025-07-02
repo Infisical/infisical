@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
@@ -169,17 +169,15 @@ export const EnterPasswordStep = ({
   return (
     <form
       onSubmit={handleSubmit(resetPasswordHandler)}
-      className="mx-1 my-32 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pb-3 pt-6 drop-shadow-xl md:max-w-lg md:px-6"
+      className="mx-auto flex w-full flex-col items-center justify-center"
     >
-      <p className="mx-auto flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
+      <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Enter new password
+      </h1>
+      <p className="w-max justify-center text-center text-sm text-gray-400">
+        Make sure you save it somewhere safe.
       </p>
-      <div className="mt-1 flex flex-row items-center justify-center md:mx-2 md:pb-4">
-        <p className="flex w-max max-w-md justify-center text-sm text-gray-400">
-          Make sure you save it somewhere safe.
-        </p>
-      </div>
-      <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
+      <div className="mt-8 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Controller
           control={control}
           name="password"
@@ -202,6 +200,20 @@ export const EnterPasswordStep = ({
           )}
         />
       </div>
+      <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+        <Button
+          type="submit"
+          size="sm"
+          isFullWidth
+          className="h-10"
+          colorSchema="primary"
+          variant="solid"
+          isLoading={isSubmitting || isLoading || isLoadingV2}
+          isDisabled={isSubmitting || isLoading || isLoadingV2}
+        >
+          Change Password
+        </Button>
+      </div>
       {passwordErrorTooShort ||
       passwordErrorTooLong ||
       passwordErrorNoLetterChar ||
@@ -210,33 +222,33 @@ export const EnterPasswordStep = ({
       passwordErrorEscapeChar ||
       passwordErrorLowEntropy ||
       passwordErrorBreached ? (
-        <div className="mx-2 mb-2 mt-3 flex w-full max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
-          <div className="mb-1 text-sm text-gray-400">Password should contain:</div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+        <div className="mt-4 rounded border border-mineshaft-600 bg-mineshaft-800 p-4 drop-shadow">
+          <div className="mb-1 ml-2 text-sm text-gray-300">Password should contain:</div>
+          <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorTooShort ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div className={`${passwordErrorTooShort ? "text-gray-400" : "text-gray-600"} text-sm`}>
               at least 14 characters
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorTooLong ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div className={`${passwordErrorTooLong ? "text-gray-400" : "text-gray-600"} text-sm`}>
               at most 100 characters
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorNoLetterChar ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${passwordErrorNoLetterChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -244,11 +256,11 @@ export const EnterPasswordStep = ({
               at least 1 letter character
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorNoNumOrSpecialChar ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${
@@ -258,11 +270,11 @@ export const EnterPasswordStep = ({
               at least 1 number or special character
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorRepeatedChar ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${passwordErrorRepeatedChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -270,11 +282,11 @@ export const EnterPasswordStep = ({
               at most 3 repeated, consecutive characters
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorEscapeChar ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${passwordErrorEscapeChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -282,11 +294,11 @@ export const EnterPasswordStep = ({
               No escape characters allowed.
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorLowEntropy ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${passwordErrorLowEntropy ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -294,32 +306,18 @@ export const EnterPasswordStep = ({
               Password contains personal info.
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorBreached ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div className={`${passwordErrorBreached ? "text-gray-400" : "text-gray-600"} text-sm`}>
               Password was found in a data breach.
             </div>
           </div>
         </div>
-      ) : (
-        <div className="py-2" />
-      )}
-      <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
-        <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
-          <Button
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting || isLoading || isLoadingV2}
-            isDisabled={isSubmitting || isLoading || isLoadingV2}
-          >
-            Change Password
-          </Button>
-        </div>
-      </div>
+      ) : null}
     </form>
   );
 };
