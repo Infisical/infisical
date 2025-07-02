@@ -57,6 +57,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { HeaderResizer } from "@app/components/v2/HeaderResizer/HeaderResizer";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -72,7 +73,14 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useDebounce, usePagination, usePopUp, useResetPageHelper, useToggle } from "@app/hooks";
+import {
+  useDebounce,
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useResizableHeaderHeight,
+  useToggle
+} from "@app/hooks";
 import {
   useCreateFolder,
   useCreateSecretV3,
@@ -860,6 +868,19 @@ export const OverviewPage = () => {
     );
   }, [importedByEnvs, selectedEntries, selectedKeysCount]);
 
+  const storedHeight = Number.parseInt(localStorage.getItem("overview-header-height") ?? "96");
+  const { headerHeight, handleMouseDown, isResizing } = useResizableHeaderHeight({
+    initialHeight: Number.isNaN(storedHeight) ? 96 : storedHeight,
+    minHeight: 96,
+    maxHeight: 192
+  });
+
+  const debouncedHeaderHeight = useDebounce(headerHeight);
+
+  useEffect(() => {
+    localStorage.setItem("overview-header-height", debouncedHeaderHeight.toString());
+  }, [debouncedHeaderHeight]);
+
   if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -1188,15 +1209,17 @@ export const OverviewPage = () => {
             className="thin-scrollbar rounded-b-none"
           >
             <Table>
-              <THead className={collapseEnvironments ? "h-24" : ""}>
+              <THead
+                className="relative"
+                style={{ height: collapseEnvironments ? headerHeight : undefined }}
+              >
                 <Tr
-                  className={twMerge("sticky top-0 z-20 border-0", collapseEnvironments && "h-24")}
+                  className="sticky top-0 z-20 border-0"
+                  style={{ height: collapseEnvironments ? headerHeight : undefined }}
                 >
                   <Th
-                    className={twMerge(
-                      "sticky left-0 z-20 min-w-[20rem] border-b-0 p-0",
-                      collapseEnvironments && "h-24"
-                    )}
+                    className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0"
+                    style={{ height: collapseEnvironments ? headerHeight : undefined }}
                   >
                     <div
                       className={twMerge(
@@ -1270,13 +1293,21 @@ export const OverviewPage = () => {
                     const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
                     const missingKeyCount = secKeys.length - envSecKeyCount - importedSecKeyCount;
 
+                    const isLast = index === visibleEnvs.length - 1;
+
                     return (
                       <Th
                         className={twMerge(
                           "min-table-row border-b-0 p-0 text-xs",
                           collapseEnvironments && index === visibleEnvs.length - 1 && "mr-8",
-                          collapseEnvironments ? "h-24 w-[1rem]" : "min-w-[11rem] text-center"
+                          // eslint-disable-next-line no-nested-ternary
+                          collapseEnvironments
+                            ? isLast
+                              ? "!w-[3.8rem]"
+                              : "w-[1rem]"
+                            : "min-w-[11rem] text-center"
                         )}
+                        style={{ height: collapseEnvironments ? headerHeight : undefined }}
                         key={`secret-overview-${name}-${index + 1}`}
                       >
                         <Tooltip
@@ -1299,33 +1330,48 @@ export const OverviewPage = () => {
                             className={twMerge(
                               "border-b border-mineshaft-600",
                               collapseEnvironments
-                                ? "relative h-24 w-[2.9rem]"
+                                ? "relative min-w-[2.9rem]"
                                 : "flex items-center justify-center px-5 pb-[0.82rem] pt-3.5",
-                              collapseEnvironments &&
-                                index === visibleEnvs.length - 1 &&
-                                "overflow-clip"
+                              collapseEnvironments && isLast && "overflow-clip"
                             )}
+                            style={{ height: collapseEnvironments ? headerHeight : undefined }}
                           >
                             <div
                               className={twMerge(
                                 "border-mineshaft-600",
                                 collapseEnvironments
-                                  ? "ml-[0.85rem] h-24 -skew-x-[16rad] transform border-l text-xs"
+                                  ? "-skew-x-[16rad] transform border-l text-xs"
                                   : "flex items-center justify-center"
                               )}
+                              style={{
+                                height: collapseEnvironments ? headerHeight : undefined,
+                                marginLeft: collapseEnvironments ? headerHeight * 0.145 : undefined
+                              }}
                             />
                             <button
                               type="button"
                               className={twMerge(
                                 "duration-100 hover:text-mineshaft-100",
-                                collapseEnvironments &&
-                                  (index === visibleEnvs.length - 1
-                                    ? "bottom-[1.75rem] w-14"
-                                    : "bottom-10 w-20"),
                                 collapseEnvironments
                                   ? "absolute -rotate-[72.25deg] text-left !text-[12px] font-normal"
                                   : "flex items-center text-center text-sm font-medium"
                               )}
+                              style={
+                                // eslint-disable-next-line no-nested-ternary
+                                collapseEnvironments
+                                  ? isLast
+                                    ? {
+                                        bottom: 42,
+                                        left: 0,
+                                        width: 86
+                                      }
+                                    : {
+                                        width: headerHeight * 0.9,
+                                        bottom: headerHeight * 0.45,
+                                        left: 24 - (headerHeight * 0.9) / 3.05
+                                      }
+                                  : undefined
+                              }
                               onClick={() => handleExploreEnvClick(slug)}
                             >
                               <p className="truncate font-medium">{name}</p>
@@ -1346,6 +1392,9 @@ export const OverviewPage = () => {
                     );
                   })}
                 </Tr>
+                {collapseEnvironments && (
+                  <HeaderResizer onMouseDown={handleMouseDown} isActive={isResizing} />
+                )}
               </THead>
               <TBody>
                 {canViewOverviewPage && isOverviewLoading && (
