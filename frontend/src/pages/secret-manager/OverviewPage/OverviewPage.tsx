@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
@@ -169,7 +169,7 @@ export const OverviewPage = () => {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const { permission } = useProjectPermission();
-
+  const tableRef = useRef<HTMLDivElement>(null);
   const { currentWorkspace } = useWorkspace();
   const isProjectV3 = currentWorkspace?.version === ProjectVersion.V3;
   const workspaceId = currentWorkspace?.id as string;
@@ -925,7 +925,7 @@ export const OverviewPage = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="relative mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             title="Secrets Overview"
@@ -1212,16 +1212,13 @@ export const OverviewPage = () => {
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
         />
-        <div className="thin-scrollbar mt-4">
+        <div ref={tableRef} className="thin-scrollbar mt-4">
           <TableContainer
             onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
             className="thin-scrollbar rounded-b-none"
           >
             <Table>
-              <THead
-                className="relative"
-                style={{ height: collapseEnvironments ? headerHeight : undefined }}
-              >
+              <THead style={{ height: collapseEnvironments ? headerHeight : undefined }}>
                 <Tr
                   className="sticky top-0 z-20 border-0"
                   style={{ height: collapseEnvironments ? headerHeight : undefined }}
@@ -1401,6 +1398,7 @@ export const OverviewPage = () => {
                     onMouseDown={handleMouseDown}
                     isActive={isResizing}
                     scrollOffset={scrollOffset}
+                    heightOffset={(tableRef.current?.clientTop ?? 0) + headerHeight - 2.5}
                   />
                 )}
               </THead>
