@@ -24,7 +24,7 @@ export const ConfirmEmailStep = ({ onComplete }: Props) => {
         Confirm your email
       </h1>
       <p className="mb-8 w-max justify-center text-center text-sm text-gray-400">
-        Reset password for <span className="italic">{email}</span>
+        Reset password for <span className="italic">{email}</span>.
       </p>
       <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
