@@ -478,12 +478,25 @@ export const secretFolderServiceFactory = ({
     parentId: string;
     idOrName: string;
   }) => {
-    const targetFolder = await folderDAL.findOne({
-      envId: env.id,
-      [uuidValidate(idOrName) ? "id" : "name"]: idOrName,
-      parentId,
-      isReserved: false
-    });
+    let targetFolder = await folderDAL
+      .findOne({
+        envId: env.id,
+        name: idOrName,
+        parentId,
+        isReserved: false
+      })
+      .catch(() => null);
+
+    if (!targetFolder) {
+      targetFolder = await folderDAL
+        .findOne({
+          envId: env.id,
+          id: idOrName,
+          parentId,
+          isReserved: false
+        })
+        .catch(() => null);
+    }
 
     if (!targetFolder) {
       throw new NotFoundError({ message: `Target folder not found` });
@@ -589,17 +602,39 @@ export const secretFolderServiceFactory = ({
 
       await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName });
 
+      let folderToDelete = await folderDAL
+        .findOne({
+          envId: env.id,
+          name: idOrName,
+          parentId: parentFolder.id,
+          isReserved: false
+        })
+        .catch(() => null);
+
+      if (!folderToDelete) {
+        folderToDelete = await folderDAL
+          .findOne({
+            envId: env.id,
+            id: idOrName,
+            parentId: parentFolder.id,
+            isReserved: false
+          })
+          .catch(() => null);
+      }
+
+      if (!folderToDelete) {
+        throw new NotFoundError({ message: `Folder with ID '${idOrName}' not found` });
+      }
+
       const [doc] = await folderDAL.delete(
         {
           envId: env.id,
-          [uuidValidate(idOrName) ? "id" : "name"]: idOrName,
+          id: folderToDelete.id,
           parentId: parentFolder.id,
           isReserved: false
         },
         tx
       );
-
-      if (!doc) throw new NotFoundError({ message: `Failed to delete folder with ID '${idOrName}', not found` });
 
       const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id], tx);
 
