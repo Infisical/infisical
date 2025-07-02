@@ -864,7 +864,7 @@ export const OverviewPage = () => {
   if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
-        <Lottie icon="infisical_loading" className="h-32 w-32" />
+        <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
       </div>
     );
   }
