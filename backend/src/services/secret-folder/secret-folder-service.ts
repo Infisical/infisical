@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { ActionProjectType, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
