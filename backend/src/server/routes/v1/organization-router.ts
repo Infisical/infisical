@@ -153,12 +153,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           })
           .describe(AUDIT_LOGS.EXPORT.eventMetadata),
         startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
-        endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
+        endDate: z.string().datetime().default(new Date().toISOString()).describe(AUDIT_LOGS.EXPORT.endDate),
         offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
         limit: z.coerce.number().default(20).describe(AUDIT_LOGS.EXPORT.limit),
         actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
       }),
-
       response: {
         200: z.object({
           auditLogs: AuditLogsSchema.omit({
@@ -195,7 +194,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           actorType: req.query.actorType,
           eventType: req.query.eventType as EventType[] | undefined
         },
-
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,

@@ -44,17 +44,17 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
           });
         }
       }
-      if (auditLogDb) {
-        const hasMigrationTableInAuditLog = await auditLogDb.schema.hasTable(migrationTable);
-        if (hasMigrationTableInAuditLog) {
-          const firstFile = (await auditLogDb(migrationTable).where({}).first()) as { name: string };
-          if (firstFile?.name?.includes(".ts")) {
-            await auditLogDb(migrationTable).update({
-              name: auditLogDb.raw("REPLACE(name, '.ts', '.mjs')")
-            });
-          }
-        }
-      }
+      // if (auditLogDb) {
+      //   const hasMigrationTableInAuditLog = await auditLogDb.schema.hasTable(migrationTable);
+      //   if (hasMigrationTableInAuditLog) {
+      //     const firstFile = (await auditLogDb(migrationTable).where({}).first()) as { name: string };
+      //     if (firstFile?.name?.includes(".ts")) {
+      //       await auditLogDb(migrationTable).update({
+      //         name: auditLogDb.raw("REPLACE(name, '.ts', '.mjs')")
+      //       });
+      //     }
+      //   }
+      // }
     }
 
     const shouldRunMigration = Boolean(
@@ -65,23 +65,23 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
       return;
     }
 
-    if (auditLogDb) {
-      await auditLogDb.transaction(async (tx) => {
-        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.BootUpMigration]);
-        logger.info("Running audit log migrations.");
-
-        const didPreviousInstanceRunMigration = !(await auditLogDb.migrate
-          .status(migrationConfig)
-          .catch(migrationStatusCheckErrorHandler));
-        if (didPreviousInstanceRunMigration) {
-          logger.info("No audit log migrations pending: Applied by previous instance. Skipping migration process.");
-          return;
-        }
-
-        await auditLogDb.migrate.latest(migrationConfig);
-        logger.info("Finished audit log migrations.");
-      });
-    }
+    // if (auditLogDb) {
+    //   await auditLogDb.transaction(async (tx) => {
+    //     await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.BootUpMigration]);
+    //     logger.info("Running audit log migrations.");
+    //
+    //     const didPreviousInstanceRunMigration = !(await auditLogDb.migrate
+    //       .status(migrationConfig)
+    //       .catch(migrationStatusCheckErrorHandler));
+    //     if (didPreviousInstanceRunMigration) {
+    //       logger.info("No audit log migrations pending: Applied by previous instance. Skipping migration process.");
+    //       return;
+    //     }
+    //
+    //     await auditLogDb.migrate.latest(migrationConfig);
+    //     logger.info("Finished audit log migrations.");
+    //   });
+    // }
 
     await applicationDb.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.BootUpMigration]);
