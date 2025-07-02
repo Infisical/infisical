@@ -12,7 +12,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button, Checkbox, Select, SelectItem, Tag, Tooltip } from "@app/components/v2";
+import { Button, Checkbox, IconButton, Select, SelectItem, Tag, Tooltip } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
@@ -241,16 +241,19 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                         />
                       </Tooltip>
                       {!isDisabled && (
-                        <Button
-                          leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                          variant="outline_bg"
-                          size="xs"
-                          className="ml-auto mr-3"
-                          onClick={() => remove(rootIndex)}
-                          isDisabled={isDisabled}
-                        >
-                          Remove Rule
-                        </Button>
+                        <Tooltip content="Remove Rule">
+                          <IconButton
+                            ariaLabel="Remove rule"
+                            colorSchema="danger"
+                            variant="plain"
+                            size="xs"
+                            className="ml-auto mr-3 rounded"
+                            onClick={() => remove(rootIndex)}
+                            isDisabled={isDisabled}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </Tooltip>
                       )}
                       {!isDisabled && (
                         <Tooltip position="left" content="Drag to reorder permission">
@@ -271,16 +274,19 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   <div className="flex w-full justify-between">
                     <div className="mb-2">Actions</div>
                     {!isDisabled && !isConditionalSubjects(subject) && (
-                      <Button
-                        leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                        variant="outline_bg"
-                        size="xs"
-                        className="ml-auto"
-                        onClick={() => remove(rootIndex)}
-                        isDisabled={isDisabled}
-                      >
-                        Remove Rule
-                      </Button>
+                      <Tooltip content="Remove Rule">
+                        <IconButton
+                          ariaLabel="Remove rule"
+                          colorSchema="danger"
+                          variant="plain"
+                          size="xs"
+                          className="ml-auto rounded"
+                          onClick={() => remove(rootIndex)}
+                          isDisabled={isDisabled}
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                        </IconButton>
+                      </Tooltip>
                     )}
                   </div>
                   <div className="flex flex-grow flex-wrap justify-start gap-x-8 gap-y-4">

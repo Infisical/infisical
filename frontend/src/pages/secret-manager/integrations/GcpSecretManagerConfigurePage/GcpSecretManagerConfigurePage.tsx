@@ -151,7 +151,7 @@ export const GcpSecretManagerConfigurePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/secret-manager/$projectId/integrations",
+        to: "/projects/$projectId/secret-manager/integrations",
         params: {
           projectId: currentWorkspace.id
         },
@@ -411,8 +411,8 @@ export const GcpSecretManagerConfigurePage = () => {
           <span className="ml-3 text-md text-mineshaft-100">Pro Tip</span>
         </div>
         <span className="text-mineshaft-300 text-sm mt-4">
-          After creating an integration, your secrets will start syncing immediately. 
-          
+          After creating an integration, your secrets will start syncing immediately.
+
           To avoid overwriting existing secrets in GCP Secret Manager, you may consider adding a secret prefix/suffix and/or enabling labeling in the options tab.
         </span>
       </div> */}

@@ -22,6 +22,7 @@ export enum ApiDocsTags {
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
   AliCloudAuth = "Alibaba Cloud Auth",
+  TlsCertAuth = "TLS Certificate Auth",
   AwsAuth = "AWS Auth",
   OciAuth = "OCI Auth",
   AzureAuth = "Azure Auth",
@@ -270,6 +271,38 @@ export const ALICLOUD_AUTH = {
   UPDATE: {
     identityId: "The ID of the identity to update the auth method for.",
     allowedArns: "The comma-separated list of trusted ARNs that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
+export const TLS_CERT_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    allowedCommonNames:
+      "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    allowedCommonNames:
+      "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
@@ -667,7 +700,8 @@ export const PROJECTS = {
     slug: "An optional slug for the project. (must be unique within the organization)",
     hasDeleteProtection: "Enable or disable delete protection for the project.",
     secretSharing: "Enable or disable secret sharing for the project.",
-    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project."
+    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
+    defaultProduct: "The default product in which the project will open"
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -2398,7 +2432,8 @@ export const SecretSyncs = {
       keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
     },
     ONEPASS: {
-      vaultId: "The ID of the 1Password vault to sync secrets to."
+      vaultId: "The ID of the 1Password vault to sync secrets to.",
+      valueLabel: "The label of the entry that holds the secret value."
     },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",

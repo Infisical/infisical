@@ -44,8 +44,11 @@ Currently, the Infisical CSI provider only supports static secrets.
 
 ### Install Secrets Store CSI Driver
 
-In order to use the Infisical CSI provider, you will first have to install the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation) to your cluster. It is important that you define
-the audience value for token requests as demonstrated below. The Infisical CSI provider will **NOT WORK** if this is not set.
+In order to use the Infisical CSI provider, you will first have to install the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation) to your cluster.
+
+#### Standard Installation
+
+For most Kubernetes clusters, use the following installation:
 
 ```bash
 helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
@@ -62,7 +65,7 @@ helm install csi secrets-store-csi-driver/secrets-store-csi-driver \
 
 The flags configure the following:
 
-- `tokenRequests[0].audience=infisical`: Sets the audience value for service account token authentication (required)
+- `tokenRequests[0].audience=infisical`: Sets the audience value for service account token authentication (recommended for environments that support custom audiences)
 - `enableSecretRotation=true`: Enables automatic secret updates from Infisical
 - `rotationPollInterval=2m`: Checks for secret updates every 2 minutes
 - `syncSecret.enabled=true`: Enables syncing secrets to Kubernetes secrets
@@ -75,6 +78,25 @@ The flags configure the following:
   Infisical, they will not propagate to the pods unless auto-syncing is enabled
   for the CSI driver.
 </Info>
+
+#### Installation for Environments Without Custom Audience Support
+
+Some Kubernetes environments (such as AWS EKS) don't support custom audiences and will reject tokens with non-default audiences. For these environments, use this installation instead:
+
+```bash
+helm install csi secrets-store-csi-driver/secrets-store-csi-driver \
+--namespace=kube-system \
+--set enableSecretRotation=true \
+--set rotationPollInterval=2m \
+--set "syncSecret.enabled=true" \
+```
+
+<Warning>
+  **Environments without custom audience support**: Do not set a custom audience
+  when installing the CSI driver in environments that reject custom audiences.
+  Instead, use the installation above and set `useDefaultAudience: "true"` in
+  your SecretProviderClass configuration.
+</Warning>
 
 ### Install Infisical CSI Provider
 
@@ -107,15 +129,20 @@ a machine identity with [Kubernetes authentication](https://infisical.com/docs/d
 You can refer to the documentation for setting it up [here](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth#guide).
 
 <Warning>
-  The allowed audience field of the Kubernetes authentication settings should
-  match the audience specified for the Secrets Store CSI driver during
-  installation.
+  **Important**: The "Allowed Audience" field in your machine identity's
+  Kubernetes authentication settings must match your CSI driver installation. If
+  you used the standard installation with `tokenRequests[0].audience=infisical`,
+  set the "Allowed Audience" field to `infisical`. If you used the installation
+  for environments without custom audience support, leave the "Allowed Audience"
+  field empty.
 </Warning>
 
 ### Creating Secret Provider Class
 
 With the Secrets Store CSI driver and the Infisical CSI provider installed, create a Kubernetes [SecretProviderClass](https://secrets-store-csi-driver.sigs.k8s.io/concepts.html#secretproviderclass) resource to establish
 the connection between the CSI driver and the Infisical CSI provider for secret retrieval. You can create as many Secret Provider Classes as needed for your cluster.
+
+#### Standard Configuration
 
 ```yaml
 apiVersion: secrets-store.csi.x-k8s.io/v1
@@ -138,6 +165,41 @@ spec:
         fileName: "appSecret"
         secretKey: "APP_SECRET"
 ```
+
+#### Configuration for Environments Without Custom Audience Support
+
+For environments that don't support custom audiences (such as AWS EKS), use this configuration instead:
+
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: my-infisical-app-csi-provider
+spec:
+  provider: infisical
+  parameters:
+    infisicalUrl: "https://app.infisical.com"
+    authMethod: "kubernetes"
+    useDefaultAudience: "true"
+    identityId: "ad2f8c67-cbe2-417a-b5eb-1339776ec0b3"
+    projectId: "09eda1f8-85a3-47a9-8a6f-e27f133b2a36"
+    envSlug: "prod"
+    secrets: |
+      - secretPath: "/"
+        fileName: "dbPassword"
+        secretKey: "DB_PASSWORD"
+      - secretPath: "/app"
+        fileName: "appSecret"
+        secretKey: "APP_SECRET"
+```
+
+<Note>
+  **Key difference**: The only change from the standard configuration is the
+  addition of `useDefaultAudience: "true"`. This parameter tells the CSI
+  provider to use the default Kubernetes audience instead of a custom
+  "infisical" audience, which is required for environments that reject custom
+  audiences.
+</Note>
 
 <Note>
   The SecretProviderClass should be provisioned in the same namespace as the pod
@@ -187,6 +249,19 @@ spec:
 <Accordion title="audience">
   The custom audience value configured for the CSI driver. This defaults to
   `infisical`.
+</Accordion>
+
+<Accordion title="useDefaultAudience">
+  When set to `"true"`, the Infisical CSI provider will use the default
+  Kubernetes audience instead of a custom audience. This is required for
+  environments that don't support custom audiences (such as AWS EKS), which
+  reject tokens with non-default audiences. When using this option, do not set a
+  custom audience in the CSI driver installation. This defaults to `false`.
+  <Note>
+    When enabled, the CSI provider will dynamically create service account
+    tokens on-demand using the default Kubernetes audience, rather than using
+    pre-existing tokens from the CSI driver.
+  </Note>
 </Accordion>
 
 ### Using Secret Provider Class
@@ -251,6 +326,11 @@ kubectl logs csi-secrets-store-csi-driver-7h4jp -n=kube-system
 - SecretProviderClass in the wrong namespace
 - Invalid machine identity configuration
 - Incorrect secret paths or keys
+
+**Issues in environments without custom audience support:**
+
+- **Token authentication failed with custom audience**: If you're seeing authentication errors in environments that don't support custom audiences (such as AWS EKS), ensure you're using the installation without custom audience and have set `useDefaultAudience: "true"` in your SecretProviderClass
+- **Audience not allowed errors**: Make sure the "Allowed Audience" field is left empty in your machine identity's Kubernetes authentication configuration when using environments that don't support custom audiences
 
 ## Best Practices
 

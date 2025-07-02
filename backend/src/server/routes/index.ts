@@ -193,6 +193,8 @@ import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
+import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
 import { identityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
@@ -384,6 +386,7 @@ export const registerRoutes = async (
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAliCloudAuthDAL = identityAliCloudAuthDALFactory(db);
+  const identityTlsCertAuthDAL = identityTlsCertAuthDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
   const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
   const identityOciAuthDAL = identityOciAuthDALFactory(db);
@@ -684,7 +687,8 @@ export const registerRoutes = async (
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
-    queueService
+    queueService,
+    telemetryService
   });
 
   const invalidateCacheQueue = invalidateCacheQueueFactory({
@@ -991,8 +995,7 @@ export const registerRoutes = async (
     pkiAlertDAL,
     pkiCollectionDAL,
     permissionService,
-    smtpService,
-    projectDAL
+    smtpService
   });
 
   const pkiCollectionService = pkiCollectionServiceFactory({
@@ -1000,8 +1003,7 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateAuthorityDAL,
     certificateDAL,
-    permissionService,
-    projectDAL
+    permissionService
   });
 
   const projectTemplateService = projectTemplateServiceFactory({
@@ -1185,7 +1187,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     snapshotService,
     projectDAL,
-    folderCommitService
+    folderCommitService,
+    secretApprovalPolicyService,
+    secretV2BridgeDAL
   });
 
   const secretImportService = secretImportServiceFactory({
@@ -1415,7 +1419,8 @@ export const registerRoutes = async (
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
     identityOrgMembershipDAL,
-    accessTokenQueue
+    accessTokenQueue,
+    identityDAL
   });
 
   const identityProjectService = identityProjectServiceFactory({
@@ -1489,6 +1494,15 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     licenseService,
     permissionService
+  });
+
+  const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
+    identityAccessTokenDAL,
+    identityTlsCertAuthDAL,
+    identityOrgMembershipDAL,
+    licenseService,
+    permissionService,
+    kmsService
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
@@ -1649,8 +1663,7 @@ export const registerRoutes = async (
   const cmekService = cmekServiceFactory({
     kmsDAL,
     kmsService,
-    permissionService,
-    projectDAL
+    permissionService
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
@@ -1792,7 +1805,6 @@ export const registerRoutes = async (
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
-    projectDAL,
     permissionService,
     appConnectionDAL,
     appConnectionService,
@@ -1802,7 +1814,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     kmsService,
-    pkiSubscriberDAL
+    pkiSubscriberDAL,
+    projectDAL
   });
 
   const internalCaFns = InternalCertificateAuthorityFns({
@@ -1945,6 +1958,7 @@ export const registerRoutes = async (
     identityAwsAuth: identityAwsAuthService,
     identityAzureAuth: identityAzureAuthService,
     identityOciAuth: identityOciAuthService,
+    identityTlsCertAuth: identityTlsCertAuthService,
     identityOidcAuth: identityOidcAuthService,
     identityJwtAuth: identityJwtAuthService,
     identityLdapAuth: identityLdapAuthService,

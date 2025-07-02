@@ -251,6 +251,7 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   name: true,
   description: true,
   type: true,
+  defaultProduct: true,
   slug: true,
   autoCapitalization: true,
   orgId: true,

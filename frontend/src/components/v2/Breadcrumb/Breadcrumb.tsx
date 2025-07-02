@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { faCaretDown, faChevronRight, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis, faSort } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, ReactNode } from "@tanstack/react-router";
 import { LinkComponentProps } from "node_modules/@tanstack/react-router/dist/esm/link";
@@ -40,7 +40,7 @@ const BreadcrumbItem = React.forwardRef<HTMLLIElement, React.ComponentPropsWitho
   ({ className, ...props }, ref) => (
     <li
       ref={ref}
-      className={twMerge("inline-flex items-center gap-1.5 font-medium", className)}
+      className={twMerge("inline-flex items-center gap-1.5 text-sm", className)}
       {...props}
     />
   )
@@ -78,13 +78,8 @@ const BreadcrumbPage = React.forwardRef<HTMLSpanElement, React.ComponentPropsWit
 BreadcrumbPage.displayName = "BreadcrumbPage";
 
 const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentProps<"li">) => (
-  <li
-    role="presentation"
-    aria-hidden="true"
-    className={twMerge("[&>svg]:h-3.5 [&>svg]:w-3.5", className)}
-    {...props}
-  >
-    {children ?? <FontAwesomeIcon icon={faChevronRight} />}
+  <li role="presentation" aria-hidden="true" className={twMerge("", className)} {...props}>
+    {children ?? <p className="px-2 text-lg text-mineshaft-400/70">/</p>}
   </li>
 );
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator";
@@ -139,12 +134,12 @@ const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[]
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <BreadcrumbItem>
-                      <BreadcrumbSegment>
-                        {el.label} <FontAwesomeIcon icon={faCaretDown} size="sm" />
+                      <BreadcrumbSegment className="rounded-md px-2 py-1 py-2 hover:bg-mineshaft-600">
+                        {el.label} <FontAwesomeIcon icon={faSort} size="sm" />
                       </BreadcrumbSegment>
                     </BreadcrumbItem>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent side="right" align="start">
                     {el?.dropdownTitle && <DropdownMenuLabel>{el.dropdownTitle}</DropdownMenuLabel>}
                     {el.links.map((i, dropIndex) => (
                       <Link

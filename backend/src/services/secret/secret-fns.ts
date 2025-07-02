@@ -3,7 +3,6 @@ import path from "path";
 import RE2 from "re2";
 
 import {
-  ActionProjectType,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
@@ -185,8 +184,7 @@ export const recursivelyGetSecretPaths = ({
       actorId: auth.actorId,
       projectId,
       actorAuthMethod: auth.actorAuthMethod,
-      actorOrgId: auth.actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId: auth.actorOrgId
     });
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path

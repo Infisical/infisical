@@ -86,6 +86,7 @@ export enum TableName {
   IdentityOidcAuth = "identity_oidc_auths",
   IdentityJwtAuth = "identity_jwt_auths",
   IdentityLdapAuth = "identity_ldap_auths",
+  IdentityTlsCertAuth = "identity_tls_cert_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
   IdentityProjectMembershipRole = "identity_project_membership_role",
@@ -251,6 +252,7 @@ export enum IdentityAuthMethod {
   ALICLOUD_AUTH = "alicloud-auth",
   AWS_AUTH = "aws-auth",
   AZURE_AUTH = "azure-auth",
+  TLS_CERT_AUTH = "tls-cert-auth",
   OCI_AUTH = "oci-auth",
   OIDC_AUTH = "oidc-auth",
   JWT_AUTH = "jwt-auth",
@@ -263,16 +265,6 @@ export enum ProjectType {
   KMS = "kms",
   SSH = "ssh",
   SecretScanning = "secret-scanning"
-}
-
-export enum ActionProjectType {
-  SecretManager = ProjectType.SecretManager,
-  CertificateManager = ProjectType.CertificateManager,
-  KMS = ProjectType.KMS,
-  SSH = ProjectType.SSH,
-  SecretScanning = ProjectType.SecretScanning,
-  // project operations that happen on all types
-  Any = "any"
 }
 
 export enum SortDirection {

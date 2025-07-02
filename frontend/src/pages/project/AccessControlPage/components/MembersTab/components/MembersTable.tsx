@@ -197,7 +197,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "flex h-[2.375rem] w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
@@ -298,7 +298,8 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
             {!isMembersLoading &&
               filteredUsers.slice(offset, perPage * page).map((projectMember) => {
                 const { user: u, inviteEmail, id: membershipId, roles } = projectMember;
-                const name = u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : "-";
+                const name =
+                  u.firstName || u.lastName ? `${u.firstName} ${u.lastName || ""}` : null;
                 const email = u?.email || inviteEmail;
 
                 return (
@@ -310,7 +311,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     onKeyDown={(evt) => {
                       if (evt.key === "Enter") {
                         navigate({
-                          to: `/${currentWorkspace.type}/$projectId/members/$membershipId` as const,
+                          to: "/projects/$projectId/members/$membershipId",
                           params: {
                             projectId: workspaceId,
                             membershipId
@@ -320,7 +321,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     }}
                     onClick={() =>
                       navigate({
-                        to: `/${currentWorkspace.type}/$projectId/members/$membershipId` as const,
+                        to: "/projects/$projectId/members/$membershipId",
                         params: {
                           projectId: workspaceId,
                           membershipId
@@ -328,7 +329,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                       })
                     }
                   >
-                    <Td>{name}</Td>
+                    <Td>{name ?? <span className="text-mineshaft-400">Not Set</span>}</Td>
                     <Td>{email}</Td>
                     <Td>
                       <div className="flex items-center space-x-2">

@@ -288,6 +288,7 @@
                   "documentation/platform/identities/kubernetes-auth",
                   "documentation/platform/identities/oci-auth",
                   "documentation/platform/identities/token-auth",
+                  "documentation/platform/identities/tls-cert-auth",
                   "documentation/platform/identities/universal-auth",
                   {
                     "group": "OIDC Auth",
@@ -752,6 +753,16 @@
                   "api-reference/endpoints/alicloud-auth/retrieve",
                   "api-reference/endpoints/alicloud-auth/update",
                   "api-reference/endpoints/alicloud-auth/revoke"
+                ]
+              },
+              {
+                "group": "TLS Certificate Auth",
+                "pages": [
+                  "api-reference/endpoints/tls-cert-auth/login",
+                  "api-reference/endpoints/tls-cert-auth/attach",
+                  "api-reference/endpoints/tls-cert-auth/retrieve",
+                  "api-reference/endpoints/tls-cert-auth/update",
+                  "api-reference/endpoints/tls-cert-auth/revoke"
                 ]
               },
               {

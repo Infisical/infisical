@@ -13,7 +13,7 @@ const SecretDashboardPageQueryParamsSchema = z.object({
   tags: z.string().catch("")
 });
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/secrets/$envSlug"
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/secrets/$envSlug"
 )({
   component: SecretDashboardPage,
   validateSearch: zodValidator(SecretDashboardPageQueryParamsSchema),
@@ -26,13 +26,20 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
+          label: "Secrets",
+          link: linkOptions({
+            to: "/projects/$projectId/secret-manager/overview",
+            params
+          })
+        },
+        {
           type: BreadcrumbTypes.Dropdown,
           label: context.project.environments.find((el) => el.slug === params.envSlug)?.name || "",
           dropdownTitle: "Environments",
           links: context.project.environments.map((el) => ({
             label: el.name,
             link: linkOptions({
-              to: "/secret-manager/$projectId/secrets/$envSlug",
+              to: "/projects/$projectId/secret-manager/secrets/$envSlug",
               params: {
                 projectId: params.projectId,
                 envSlug: el.slug

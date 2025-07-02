@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import picomatch from "picomatch";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -91,8 +90,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -267,8 +265,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actorId,
       projectId: secretApprovalPolicy.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
@@ -423,8 +420,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actorId,
       projectId: sapPolicy.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -463,8 +459,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
@@ -508,8 +503,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     return getSecretApprovalPolicy(projectId, environment, secretPath);
@@ -535,8 +529,7 @@ export const secretApprovalPolicyServiceFactory = ({
       actorId,
       projectId: sapPolicy.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);

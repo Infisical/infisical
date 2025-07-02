@@ -3,11 +3,12 @@
 /* eslint-disable no-nested-ternary */
 import { useState } from "react";
 import {
+  faCircleCheck,
   faCircleXmark,
   faExclamationTriangle,
   faEye,
   faEyeSlash,
-  faInfo,
+  faInfoCircle,
   faKey
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -29,14 +30,14 @@ export type Props = {
 };
 
 const generateItemTitle = (op: CommitType) => {
-  let text = { label: "", color: "" };
-  if (op === CommitType.CREATE) text = { label: "create", color: "#60DD00" };
-  else if (op === CommitType.UPDATE) text = { label: "change", color: "#F8EB30" };
-  else text = { label: "deletion", color: "#F83030" };
+  let text = { label: "", className: "" };
+  if (op === CommitType.CREATE) text = { label: "create", className: "text-green-600" };
+  else if (op === CommitType.UPDATE) text = { label: "change", className: "text-yellow-600" };
+  else text = { label: "deletion", className: "text-red-600" };
 
   return (
     <div className="text-md pb-2 font-medium">
-      Request for <span style={{ color: text.color }}>secret {text.label}</span>
+      Request for <span className={text.className}>secret {text.label}</span>
     </div>
   );
 };
@@ -68,15 +69,15 @@ export const SecretApprovalRequestChangeItem = ({
       <div className="flex items-center px-1 py-1">
         <div className="flex-grow">{generateItemTitle(op)}</div>
         {!hasMerged && isStale && (
-          <div className="flex items-center">
-            <FontAwesomeIcon icon={faInfo} className="text-sm text-primary-600" />
-            <span className="ml-2 text-xs">Secret has been changed(stale)</span>
+          <div className="flex items-center text-mineshaft-300">
+            <FontAwesomeIcon icon={faInfoCircle} className="text-xs" />
+            <span className="ml-1 text-xs">Secret has been changed (stale)</span>
           </div>
         )}
         {hasMerged && hasConflict && (
-          <div className="flex items-center space-x-2 text-sm text-bunker-300">
+          <div className="flex items-center space-x-1 text-xs text-bunker-300">
             <Tooltip content="Merge Conflict">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-700" />
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-xs text-red" />
             </Tooltip>
             <div>{generateConflictText(op)}</div>
           </div>
@@ -95,7 +96,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Key</div>
-                <div className="text-sm">{secretVersion?.secretKey} </div>
+                <p className="max-w-lg break-words text-sm">{secretVersion?.secretKey}</p>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Value</div>
@@ -147,7 +148,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="max-h-[5rem] overflow-y-auto text-sm">
+                <div className="thin-scrollbar max-h-[5rem] max-w-[34rem] overflow-y-auto break-words text-sm xl:max-w-[28rem]">
                   {secretVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -186,15 +187,27 @@ export const SecretApprovalRequestChangeItem = ({
                             className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
                           >
                             <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
-                            <div>{el.key}</div>
+                            <Tooltip
+                              className="max-w-lg whitespace-normal break-words"
+                              content={el.key}
+                            >
+                              <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                                {el.key}
+                              </div>
+                            </Tooltip>
                           </Tag>
                           <Tag
                             size="xs"
                             className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                           >
-                            <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
-                              {el.value}
-                            </div>
+                            <Tooltip
+                              className="max-w-lg whitespace-normal break-words"
+                              content={el.value}
+                            >
+                              <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                                {el.value}
+                              </div>
+                            </Tooltip>
                           </Tag>
                         </div>
                       ))}
@@ -215,13 +228,13 @@ export const SecretApprovalRequestChangeItem = ({
               <div className="mb-4 flex flex-row justify-between">
                 <span className="text-md font-medium">New Secret</span>
                 <div className="rounded-full bg-green-600 px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
-                  <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
+                  <FontAwesomeIcon icon={faCircleCheck} className="pr-1 text-white" />
                   New
                 </div>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Key</div>
-                <div className="text-sm">{newVersion?.secretKey} </div>
+                <div className="max-w-md break-words text-sm">{newVersion?.secretKey} </div>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Value</div>
@@ -273,7 +286,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="max-h-[5rem] overflow-y-auto text-sm">
+                <div className="thin-scrollbar max-h-[5rem] max-w-[34rem] overflow-y-auto break-words text-sm xl:max-w-[28rem]">
                   {newVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -281,15 +294,15 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Tags</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-y-2">
                   {(newVersion?.tags?.length ?? 0) ? (
                     newVersion?.tags?.map(({ slug, id: tagId, color }) => (
                       <Tag
-                        className="flex w-min items-center space-x-2"
+                        className="flex w-min items-center space-x-1.5 border border-mineshaft-500 bg-mineshaft-800"
                         key={`${newVersion.id}-${tagId}`}
                       >
                         <div
-                          className="h-3 w-3 rounded-full"
+                          className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: color || "#bec2c8" }}
                         />
                         <div className="text-sm">{slug}</div>
@@ -311,15 +324,27 @@ export const SecretApprovalRequestChangeItem = ({
                           className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
                         >
                           <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
-                          <div>{el.key}</div>
+                          <Tooltip
+                            className="max-w-lg whitespace-normal break-words"
+                            content={el.key}
+                          >
+                            <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                              {el.key}
+                            </div>
+                          </Tooltip>
                         </Tag>
                         <Tag
                           size="xs"
                           className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                         >
-                          <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
-                            {el.value}
-                          </div>
+                          <Tooltip
+                            className="max-w-lg whitespace-normal break-words"
+                            content={el.value}
+                          >
+                            <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
+                              {el.value}
+                            </div>
+                          </Tooltip>
                         </Tag>
                       </div>
                     ))}

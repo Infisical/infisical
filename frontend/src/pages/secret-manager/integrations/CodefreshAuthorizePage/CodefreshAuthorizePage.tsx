@@ -33,7 +33,7 @@ export const CodefreshAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/codefresh/create",
+        to: "/projects/$projectId/secret-manager/integrations/codefresh/create",
         params: {
           projectId: currentWorkspace.id
         },

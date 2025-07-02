@@ -12,8 +12,7 @@ export const workspaceKeys = {
   getWorkspaceMemberships: (orgId: string) => [{ orgId }, "workspace-memberships"],
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
-  getAllUserWorkspace: (type?: string) =>
-    type ? ["workspaces", { type }] : (["workspaces"] as const),
+  getAllUserWorkspace: () => ["workspaces"] as const,
   getWorkspaceAuditLogs: (workspaceId: string) =>
     [{ workspaceId }, "workspace-audit-logs"] as const,
   getWorkspaceUsers: (

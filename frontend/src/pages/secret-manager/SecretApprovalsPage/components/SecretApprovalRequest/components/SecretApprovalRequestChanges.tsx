@@ -3,12 +3,12 @@ import { Controller, useForm } from "react-hook-form";
 import {
   faAngleDown,
   faArrowLeft,
-  faCheckCircle,
-  faCircle,
+  faBan,
+  faCheck,
   faCodeBranch,
   faComment,
   faFolder,
-  faXmarkCircle
+  faHourglass
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   FormControl,
+  GenericFieldLabel,
   IconButton,
   TextArea,
   Tooltip
@@ -81,10 +82,10 @@ export const generateCommitText = (commits: { op: CommitType }[] = [], isReplica
 
 const getReviewedStatusSymbol = (status?: ApprovalStatus) => {
   if (status === ApprovalStatus.APPROVED)
-    return <FontAwesomeIcon icon={faCheckCircle} size="xs" style={{ color: "#15803d" }} />;
+    return <FontAwesomeIcon icon={faCheck} size="xs" className="text-green" />;
   if (status === ApprovalStatus.REJECTED)
-    return <FontAwesomeIcon icon={faXmarkCircle} size="xs" style={{ color: "#b91c1c" }} />;
-  return <FontAwesomeIcon icon={faCircle} size="xs" style={{ color: "#c2410c" }} />;
+    return <FontAwesomeIcon icon={faBan} size="xs" className="text-red" />;
+  return <FontAwesomeIcon icon={faHourglass} size="xs" className="text-yellow" />;
 };
 
 type Props = {
@@ -223,8 +224,8 @@ export const SecretApprovalRequestChanges = ({
   const hasMerged = secretApprovalRequestDetails?.hasMerged;
 
   return (
-    <div className="flex space-x-6">
-      <div className="flex-grow">
+    <div className="flex flex-col space-x-6 lg:flex-row">
+      <div className="flex-1 lg:max-w-[calc(100%-17rem)]">
         <div className="sticky top-0 z-20 flex items-center space-x-4 bg-bunker-800 pb-6 pt-2">
           <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
             <FontAwesomeIcon icon={faArrowLeft} />
@@ -242,17 +243,17 @@ export const SecretApprovalRequestChanges = ({
                 : secretApprovalRequestDetails.status}
             </span>
           </div>
-          <div className="flex-grow flex-col">
+          <div className="-mt-0.5 flex-grow flex-col">
             <div className="text-xl">
               {generateCommitText(
                 secretApprovalRequestDetails.commits,
                 secretApprovalRequestDetails.isReplicated
               )}
             </div>
-            <div className="flex items-center space-x-2 text-xs text-gray-400">
+            <span className="-mt-1 flex items-center space-x-2 text-xs text-gray-400">
               By {secretApprovalRequestDetails?.committerUser?.firstName} (
               {secretApprovalRequestDetails?.committerUser?.email})
-            </div>
+            </span>
           </div>
           {!hasMerged &&
             secretApprovalRequestDetails.status === "open" &&
@@ -262,7 +263,10 @@ export const SecretApprovalRequestChanges = ({
                 onOpenChange={(isOpen) => handlePopUpToggle("reviewChanges", isOpen)}
               >
                 <DropdownMenuTrigger asChild>
-                  <Button rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}>
+                  <Button
+                    colorSchema="secondary"
+                    rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}
+                  >
                     Review
                   </Button>
                 </DropdownMenuTrigger>
@@ -279,82 +283,87 @@ export const SecretApprovalRequestChanges = ({
                               {...field}
                               placeholder="Leave a comment..."
                               reSize="none"
-                              className="text-md mt-2 h-40 border border-mineshaft-600 bg-bunker-800"
+                              className="text-md mt-2 h-40 border border-mineshaft-600 bg-mineshaft-800 placeholder:text-mineshaft-400"
                             />
                           </FormControl>
                         )}
                       />
-                      <Controller
-                        control={control}
-                        name="status"
-                        defaultValue={ApprovalStatus.APPROVED}
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl errorText={error?.message} isError={Boolean(error)}>
-                            <RadioGroup
-                              value={field.value}
-                              onValueChange={field.onChange}
-                              className="mb-4 space-y-2"
-                              aria-label="Status"
+                      <div className="flex justify-between">
+                        <Controller
+                          control={control}
+                          name="status"
+                          defaultValue={ApprovalStatus.APPROVED}
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              className="mb-0"
+                              errorText={error?.message}
+                              isError={Boolean(error)}
                             >
-                              <div className="flex items-center gap-2">
-                                <RadioGroupItem
-                                  id="approve"
-                                  className="h-4 w-4 rounded-full border border-gray-300 text-primary focus:ring-2 focus:ring-mineshaft-500"
-                                  value={ApprovalStatus.APPROVED}
-                                  aria-labelledby="approve-label"
-                                >
-                                  <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
-                                </RadioGroupItem>
-                                <span
-                                  id="approve-label"
-                                  className="cursor-pointer"
-                                  onClick={() => field.onChange(ApprovalStatus.APPROVED)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      field.onChange(ApprovalStatus.APPROVED);
-                                    }
-                                  }}
-                                  tabIndex={0}
-                                  role="button"
-                                >
-                                  Approve
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <RadioGroupItem
-                                  id="reject"
-                                  className="h-4 w-4 rounded-full border border-gray-300 text-red focus:ring-2 focus:ring-mineshaft-500"
-                                  value={ApprovalStatus.REJECTED}
-                                  aria-labelledby="reject-label"
-                                >
-                                  <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
-                                </RadioGroupItem>
-                                <span
-                                  id="reject-label"
-                                  className="cursor-pointer"
-                                  onClick={() => field.onChange(ApprovalStatus.REJECTED)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      field.onChange(ApprovalStatus.REJECTED);
-                                    }
-                                  }}
-                                  tabIndex={0}
-                                  role="button"
-                                >
-                                  Reject
-                                </span>
-                              </div>
-                            </RadioGroup>
-                          </FormControl>
-                        )}
-                      />
-                      <div className="flex justify-end">
+                              <RadioGroup
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                className="space-y-2"
+                                aria-label="Status"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <RadioGroupItem
+                                    id="approve"
+                                    className="h-4 w-4 rounded-full border border-gray-400 text-green focus:ring-2 focus:ring-mineshaft-500"
+                                    value={ApprovalStatus.APPROVED}
+                                    aria-labelledby="approve-label"
+                                  >
+                                    <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
+                                  </RadioGroupItem>
+                                  <span
+                                    id="approve-label"
+                                    className="cursor-pointer"
+                                    onClick={() => field.onChange(ApprovalStatus.APPROVED)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        field.onChange(ApprovalStatus.APPROVED);
+                                      }
+                                    }}
+                                    tabIndex={0}
+                                    role="button"
+                                  >
+                                    Approve
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <RadioGroupItem
+                                    id="reject"
+                                    className="h-4 w-4 rounded-full border border-gray-400 text-red focus:ring-2 focus:ring-mineshaft-500"
+                                    value={ApprovalStatus.REJECTED}
+                                    aria-labelledby="reject-label"
+                                  >
+                                    <RadioGroupIndicator className="flex h-full w-full items-center justify-center after:h-2 after:w-2 after:rounded-full after:bg-current" />
+                                  </RadioGroupItem>
+                                  <span
+                                    id="reject-label"
+                                    className="cursor-pointer"
+                                    onClick={() => field.onChange(ApprovalStatus.REJECTED)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        field.onChange(ApprovalStatus.REJECTED);
+                                      }
+                                    }}
+                                    tabIndex={0}
+                                    role="button"
+                                  >
+                                    Reject
+                                  </span>
+                                </div>
+                              </RadioGroup>
+                            </FormControl>
+                          )}
+                        />
                         <Button
                           type="submit"
                           isLoading={isApproving || isRejecting || isSubmitting}
                           variant="outline_bg"
+                          className="mt-auto h-min"
                         >
                           Submit Review
                         </Button>
@@ -371,14 +380,14 @@ export const SecretApprovalRequestChanges = ({
               <div className="text-sm text-bunker-300">
                 A secret import in
                 <p
-                  className="mx-1 inline rounded bg-primary-600/40 text-primary-300"
+                  className="mx-1 inline rounded bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {secretApprovalRequestDetails?.environment}
                 </p>
-                <div className="mr-2 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
-                  <p className="cursor-default border-r border-mineshaft-500 pr-1">
-                    <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
+                <div className="mr-1 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1.5 pr-2">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
+                    <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
                   <Tooltip content={approvalSecretPath}>
                     <p
@@ -391,14 +400,14 @@ export const SecretApprovalRequestChanges = ({
                 </div>
                 has pending changes to be accepted from its source at{" "}
                 <p
-                  className="mx-1 inline rounded bg-primary-600/40 text-primary-300"
+                  className="mx-1 inline rounded bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {replicatedImport?.importEnv?.slug}
                 </p>
-                <div className="inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
-                  <p className="cursor-default border-r border-mineshaft-500 pr-1">
-                    <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
+                <div className="mr-1 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1.5 pr-2">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
+                    <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
                   <Tooltip content={replicatedImport?.importPath}>
                     <p
@@ -415,14 +424,14 @@ export const SecretApprovalRequestChanges = ({
               <div className="text-sm text-bunker-300">
                 <p className="inline">Secret(s) in</p>
                 <p
-                  className="mx-1 inline rounded bg-primary-600/40 text-primary-300"
+                  className="mx-1 inline rounded bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {secretApprovalRequestDetails?.environment}
                 </p>
-                <div className="mr-1 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
-                  <p className="cursor-default border-r border-mineshaft-500 pr-1">
-                    <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
+                <div className="mr-1 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1.5 pr-2">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
+                    <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
                   <Tooltip content={formatReservedPaths(secretApprovalRequestDetails.secretPath)}>
                     <p
@@ -463,7 +472,7 @@ export const SecretApprovalRequestChanges = ({
               const reviewer = reviewedUsers?.[requiredApprover.userId];
               return (
                 <div
-                  className="flex w-full flex-col rounded-md bg-mineshaft-800 p-4"
+                  className="flex w-full flex-col rounded-md bg-mineshaft-800 p-4 text-sm text-mineshaft-100"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
                   <div>
@@ -477,14 +486,16 @@ export const SecretApprovalRequestChanges = ({
                       {reviewer?.status === ApprovalStatus.APPROVED ? "approved" : "rejected"}
                     </span>{" "}
                     the request on{" "}
-                    {format(new Date(secretApprovalRequestDetails.createdAt), "PPpp zzz")}.
+                    {format(
+                      new Date(secretApprovalRequestDetails.createdAt),
+                      "MM/dd/yyyy h:mm:ss aa"
+                    )}
+                    .
                   </div>
                   {reviewer?.comment && (
-                    <FormControl label="Comment" className="mb-0 mt-4">
-                      <TextArea value={reviewer.comment} isDisabled reSize="none">
-                        {reviewer?.comment && reviewer.comment}
-                      </TextArea>
-                    </FormControl>
+                    <GenericFieldLabel label="Comment" className="mt-2 max-w-4xl break-words">
+                      {reviewer?.comment && reviewer.comment}
+                    </GenericFieldLabel>
                   )}
                 </div>
               );
@@ -505,7 +516,7 @@ export const SecretApprovalRequestChanges = ({
           />
         </div>
       </div>
-      <div className="sticky top-0 w-1/5 cursor-default pt-4" style={{ minWidth: "240px" }}>
+      <div className="sticky top-0 z-[51] w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
         <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
           {secretApprovalRequestDetails?.policy?.approvers
@@ -526,17 +537,17 @@ export const SecretApprovalRequestChanges = ({
                         requiredApprover.lastName || ""
                       }`}
                     >
-                      <span>{requiredApprover?.email} </span>
+                      <span>{requiredApprover?.email}</span>
                     </Tooltip>
                     <span className="text-red">*</span>
                   </div>
                   <div>
                     {reviewer?.comment && (
-                      <Tooltip content={reviewer.comment}>
+                      <Tooltip className="max-w-lg break-words" content={reviewer.comment}>
                         <FontAwesomeIcon
                           icon={faComment}
                           size="xs"
-                          className="mr-1 text-mineshaft-300"
+                          className="mr-1.5 text-mineshaft-300"
                         />
                       </Tooltip>
                     )}

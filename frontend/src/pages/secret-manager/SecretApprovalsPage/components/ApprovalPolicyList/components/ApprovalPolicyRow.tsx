@@ -1,5 +1,12 @@
 import { useMemo } from "react";
-import { faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faClipboardCheck,
+  faEdit,
+  faEllipsisV,
+  faTrash,
+  faUser,
+  faUserGroup
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -179,26 +186,40 @@ export const ApprovalPolicyRow = ({
             }`}
           >
             <div className="p-4">
-              <div className="mb-4 border-b-2 border-mineshaft-500 pb-2">Approvers</div>
+              <div className="border-b-2 border-mineshaft-500 pb-2">Approvers</div>
               {labels?.map((el, index) => (
-                <div
-                  key={`approval-list-${index + 1}`}
-                  className="relative mb-2 flex rounded border border-mineshaft-500 bg-mineshaft-800 p-4"
-                >
-                  <div className="my-auto mr-8 flex h-8 w-8 items-center justify-center rounded border border-mineshaft-400 bg-bunker-500/50 text-white">
-                    <div>{index + 1}</div>
-                  </div>
-                  {index !== labels.length - 1 && (
-                    <div className="absolute bottom-0 left-8 h-[1.25rem] border-r border-mineshaft-400" />
+                <div key={`approval-list-${index + 1}`} className="flex">
+                  {labels.length > 1 && (
+                    <div className="flex w-12 flex-col items-center gap-2 pr-4">
+                      <div
+                        className={twMerge(
+                          "flex-grow border-mineshaft-600",
+                          index !== 0 && "border-r"
+                        )}
+                      />
+                      {labels.length > 1 && (
+                        <Badge className="my-auto flex h-5 w-min min-w-5 items-center justify-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-center text-bunker-200">
+                          <span>{index + 1}</span>
+                        </Badge>
+                      )}
+                      <div
+                        className={twMerge(
+                          "flex-grow border-mineshaft-600",
+                          index < labels.length - 1 && "border-r"
+                        )}
+                      />
+                    </div>
                   )}
-                  {index !== 0 && (
-                    <div className="absolute left-8 top-0 h-[1.25rem] border-r border-mineshaft-400" />
-                  )}
-
-                  <div className="grid flex-grow grid-cols-3">
-                    <GenericFieldLabel label="Users">{el.userLabels}</GenericFieldLabel>
-                    <GenericFieldLabel label="Groups">{el.groupLabels}</GenericFieldLabel>
-                    <GenericFieldLabel label="Approvals Required">{el.approvals}</GenericFieldLabel>
+                  <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
+                    <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
+                      {el.userLabels}
+                    </GenericFieldLabel>
+                    <GenericFieldLabel className="col-span-2" icon={faUserGroup} label="Groups">
+                      {el.groupLabels}
+                    </GenericFieldLabel>
+                    <GenericFieldLabel icon={faClipboardCheck} label="Approvals Required">
+                      {el.approvals}
+                    </GenericFieldLabel>
                   </div>
                 </div>
               ))}

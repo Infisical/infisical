@@ -1,6 +1,4 @@
-import { faHome } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -21,11 +19,6 @@ export const Route = createFileRoute(
   },
   context: () => ({
     breadcrumbs: [
-      {
-        label: "Home",
-        icon: () => <FontAwesomeIcon icon={faHome} />,
-        link: linkOptions({ to: "/" })
-      },
       {
         label: "Secret Sharing"
       }

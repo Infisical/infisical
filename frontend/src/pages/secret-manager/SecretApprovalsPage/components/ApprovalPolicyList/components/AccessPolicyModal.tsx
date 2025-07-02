@@ -400,7 +400,7 @@ const Form = ({
                 isError={Boolean(error)}
                 tooltipText="Change policies govern secret changes within a given environment and secret path. Access policies allow underprivileged user to request access to environment/secret path."
                 errorText={error?.message}
-                className="flex-grow"
+                className="flex-1"
               >
                 <Select
                   isDisabled={isEditMode}
@@ -419,6 +419,20 @@ const Form = ({
               </FormControl>
             )}
           />
+          <Controller
+            control={control}
+            name="name"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Policy Name"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                className="flex-1"
+              >
+                <Input {...field} value={field.value || ""} />
+              </FormControl>
+            )}
+          />
           {!isAccessPolicyType && (
             <Controller
               control={control}
@@ -429,7 +443,7 @@ const Form = ({
                   label="Min. Approvals Required"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="flex-grow"
+                  className="flex-shrink"
                 >
                   <Input
                     {...field}
@@ -445,20 +459,6 @@ const Form = ({
         <div className="flex items-center gap-x-3">
           <Controller
             control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Policy Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                className="flex-grow"
-              >
-                <Input {...field} value={field.value || ""} />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
             name="secretPath"
             defaultValue="/"
             render={({ field, fieldState: { error } }) => (
@@ -467,35 +467,36 @@ const Form = ({
                 label="Secret Path"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                className="flex-grow"
+                className="flex-1"
               >
                 <Input {...field} value={field.value || ""} />
               </FormControl>
             )}
           />
+          <Controller
+            control={control}
+            name="environment"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                label="Environment"
+                isRequired
+                isError={Boolean(error)}
+                errorText={error?.message}
+                className="flex-1"
+              >
+                <FilterableSelect
+                  isDisabled={isEditMode}
+                  value={value}
+                  onChange={onChange}
+                  placeholder="Select environment..."
+                  options={environments}
+                  getOptionValue={(option) => option.slug}
+                  getOptionLabel={(option) => option.name}
+                />
+              </FormControl>
+            )}
+          />
         </div>
-        <Controller
-          control={control}
-          name="environment"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              label="Environment"
-              isRequired
-              isError={Boolean(error)}
-              errorText={error?.message}
-            >
-              <FilterableSelect
-                isDisabled={isEditMode}
-                value={value}
-                onChange={onChange}
-                placeholder="Select environment..."
-                options={environments}
-                getOptionValue={(option) => option.slug}
-                getOptionLabel={(option) => option.name}
-              />
-            </FormControl>
-          )}
-        />
         <div className="mb-2">
           <p>Approvers</p>
           <p className="font-inter text-xs text-mineshaft-300 opacity-90">
@@ -504,11 +505,11 @@ const Form = ({
         </div>
         {isAccessPolicyType ? (
           <>
-            <div className="thin-scrollbar max-h-64 space-y-2 overflow-y-auto rounded">
+            <div className="thin-scrollbar max-h-64 space-y-2 overflow-y-auto rounded border border-mineshaft-600 bg-mineshaft-900 p-2">
               {sequenceApproversFieldArray.fields.map((el, index) => (
                 <div
                   className={twMerge(
-                    "rounded border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0",
+                    "rounded border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0 shadow-inner",
                     dragOverItem === index ? "border-2 border-blue-400" : "",
                     draggedItem === index ? "opacity-50" : ""
                   )}
@@ -567,7 +568,7 @@ const Form = ({
                           label="User Approvers"
                           isError={Boolean(error)}
                           errorText={error?.message}
-                          className="flex-grow"
+                          className="flex-1"
                         >
                           <FilterableSelect
                             menuPortalTarget={modalContainer.current}
@@ -597,7 +598,7 @@ const Form = ({
                           label="Group Approvers"
                           isError={Boolean(error)}
                           errorText={error?.message}
-                          className="flex-grow"
+                          className="flex-1"
                         >
                           <FilterableSelect
                             menuPortalTarget={modalContainer.current}
@@ -800,10 +801,15 @@ const Form = ({
           </>
         )}
         <div className="mt-8 flex items-center space-x-4">
-          <Button type="submit" isLoading={isSubmitting} isDisabled={isSubmitting}>
+          <Button
+            type="submit"
+            colorSchema="secondary"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting}
+          >
             Save
           </Button>
-          <Button onClick={() => onToggle(false)} variant="outline_bg">
+          <Button onClick={() => onToggle(false)} colorSchema="secondary" variant="plain">
             Close
           </Button>
         </div>
