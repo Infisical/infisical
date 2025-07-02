@@ -116,7 +116,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           eventType: z.nativeEnum(EventType).optional().describe(AUDIT_LOGS.EXPORT.eventType),
           userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
           startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
-          endDate: z.string().datetime().default(new Date().toISOString()).describe(AUDIT_LOGS.EXPORT.endDate),
+          endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
           offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
           limit: z.coerce.number().max(1000).default(20).describe(AUDIT_LOGS.EXPORT.limit),
           actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
@@ -184,7 +184,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         filter: {
           ...req.query,
           projectId: req.params.workspaceId,
-          endDate: req.query.endDate,
+          endDate: req.query.endDate || new Date().toISOString(),
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
           eventType: req.query.eventType ? [req.query.eventType] : undefined

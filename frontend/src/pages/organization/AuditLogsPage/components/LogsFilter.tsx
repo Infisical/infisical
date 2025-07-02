@@ -75,7 +75,7 @@ export const LogsFilter = ({ presets, setFilter, filter }: Props) => {
 
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
 
-  const { control, reset, watch, resetField, setValue, handleSubmit, formState } =
+  const { control, watch, resetField, setValue, handleSubmit, formState } =
     useForm<TAuditLogFilterFormData>({
       resolver: zodResolver(auditLogFilterFormSchema),
       defaultValues: {
@@ -84,7 +84,7 @@ export const LogsFilter = ({ presets, setFilter, filter }: Props) => {
         secretKey: "",
         secretPath: "",
         actor: presets?.actorId,
-        eventType: presets?.eventType || [],
+        eventType: filter?.eventType || [],
         userAgentType: undefined
       },
       values: filter
@@ -130,7 +130,7 @@ export const LogsFilter = ({ presets, setFilter, filter }: Props) => {
                 </div>
                 <Button
                   onClick={() => {
-                    reset({
+                    setFilter({
                       eventType: presets?.eventType || [],
                       actor: presets?.actorId,
                       userAgentType: undefined,

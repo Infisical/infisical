@@ -28,7 +28,8 @@ export const LogsSection = withPermission(
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
     const [logFilter, setLogFilter] = useState<TAuditLogFilterFormData>({
-      eventType: []
+      eventType: presets?.eventType || [],
+      actor: presets?.actorId
     });
     const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>({
       startDate: new Date(Number(new Date()) - ms("1h")),

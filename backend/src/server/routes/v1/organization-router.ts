@@ -153,7 +153,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             })
             .describe(AUDIT_LOGS.EXPORT.eventMetadata),
           startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
-          endDate: z.string().datetime().default(new Date().toISOString()).describe(AUDIT_LOGS.EXPORT.endDate),
+          endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
           offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
           limit: z.coerce.number().max(1000).default(20).describe(AUDIT_LOGS.EXPORT.limit),
           actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
@@ -209,7 +209,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
           ...req.query,
-          endDate: req.query.endDate,
+          endDate: req.query.endDatea || new Date().toISOString(),
           projectId: req.query.projectId,
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
