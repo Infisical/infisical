@@ -175,6 +175,15 @@ export const SelectionPanel = ({
     const results = await Promise.allSettled(promises);
     const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");
     const areSomeEntriesDeleted = results.some((result) => result.status === "fulfilled");
+
+    const failedEnvs = userAvailableEnvs
+      .filter(
+        (env) =>
+          !results.some(
+            (result) => result.status === "fulfilled" && result.value.environment === env.slug
+          )
+      )
+      .map((env) => env.slug);
     if (processedEntries === 0) {
       handlePopUpClose("bulkDeleteEntries");
       createNotification({
@@ -191,10 +200,7 @@ export const SelectionPanel = ({
     } else if (areSomeEntriesDeleted) {
       createNotification({
         type: "warning",
-        text: `Successfully deleted selected secrets and folders on environments: ${results
-          .filter((result) => result.status === "fulfilled")
-          .map((result) => result.value.environment)
-          .join(", ")} but failed on the other environments`
+        text: `Deletion partially completed. The following environments could not be processed due to conflicts: ${failedEnvs.join(", ")}.`
       });
     } else {
       createNotification({
