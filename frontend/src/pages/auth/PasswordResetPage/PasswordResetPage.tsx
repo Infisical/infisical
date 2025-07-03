@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
@@ -36,7 +36,12 @@ export const PasswordResetPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-bunker-800">
+    <div className="flex min-h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+      <Link to="/">
+        <div className="mb-4 mt-20 flex justify-center">
+          <img src="/images/gradientLogo.svg" className="h-[90px] w-[120px]" alt="Infisical Logo" />
+        </div>
+      </Link>
       {step === Steps.ConfirmEmail && (
         <ConfirmEmailStep
           onComplete={(verifyToken, userEncryptionVersion) => {
