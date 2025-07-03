@@ -80,10 +80,6 @@ infisical:
   tolerations: []
   # -- Node selector for pod placement
   nodeSelector: {}
-  # -- Topology spread constraints for multi-zone deployments
-  # -- Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-  topologySpreadConstraints: []
-
   # -- Kubernetes Secret reference containing Infisical root credentials
   kubeSecretRef: "infisical-secrets"
 
