@@ -1,11 +1,3 @@
-## 1.5.1 (July 3, 2025)
-
-Changes:
-* Added support for `topologySpreadConstraints` configuration in Helm chart
-
-Features:
-* `topologySpreadConstraints`: Configure pod distribution across availability zones and nodes for high availability
-
 ## 1.5.0 (March 26, 2025)
 
 Changes:
