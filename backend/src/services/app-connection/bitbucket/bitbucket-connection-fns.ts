@@ -46,16 +46,29 @@ export const validateBitBucketConnectionCredentials = async (config: TBitBucketC
 export const listBitBucketRepositories = async (appConnection: TBitBucketConnection) => {
   const { email, apiToken } = appConnection.credentials;
 
-  // TODO(andrey): Support pagination for cases where a token has access to over 100 repos
-  const { data } = await request.get<{ values: TBitBucketRepo[] }>(
-    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories?role=member&pagelen=100`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
-        Accept: "application/json"
-      }
-    }
-  );
+  const headers = {
+    Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
+    Accept: "application/json"
+  };
 
-  return data.values;
+  let allRepos: TBitBucketRepo[] = [];
+  let nextUrl: string | undefined = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories?role=member&pagelen=100`;
+  let iterationCount = 0;
+
+  // Limit to 10 iterations, fetching at most 10 * 100 = 1000 repositories
+  while (nextUrl && iterationCount < 10) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data }: { data: { values: TBitBucketRepo[]; next?: string } } = await request.get<{
+      values: TBitBucketRepo[];
+      next?: string;
+    }>(nextUrl, {
+      headers
+    });
+
+    allRepos = allRepos.concat(data.values);
+    nextUrl = data.next;
+    iterationCount += 1;
+  }
+
+  return allRepos;
 };

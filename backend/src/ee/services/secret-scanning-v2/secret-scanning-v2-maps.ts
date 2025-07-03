@@ -13,6 +13,5 @@ export const SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP: Record<SecretScanningDa
 
 export const AUTO_SYNC_DESCRIPTION_HELPER: Record<SecretScanningDataSource, { verb: string; noun: string }> = {
   [SecretScanningDataSource.GitHub]: { verb: "push", noun: "repositories" },
-  // TODO(andrey): May need change
   [SecretScanningDataSource.BitBucket]: { verb: "push", noun: "repositories" }
 };

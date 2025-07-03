@@ -63,4 +63,6 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
       return res.send("ok");
     }
   });
+
+  // TODO(andrey): Register a webhook for BitBucket
 };

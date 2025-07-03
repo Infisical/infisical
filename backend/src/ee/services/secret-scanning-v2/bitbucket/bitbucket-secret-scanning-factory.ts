@@ -83,7 +83,6 @@ export const BitBucketSecretScanningFactory = () => {
     }));
   };
 
-  // TODO(andrey): Finish
   const getFullScanPath: TSecretScanningFactoryGetFullScanPath<TBitBucketDataSourceWithConnection> = async ({
     dataSource,
     resourceName,
@@ -131,8 +130,6 @@ export const BitBucketSecretScanningFactory = () => {
       }
     } = dataSource;
 
-    console.log("getDiffScanFindingsPayload");
-
     const { commits, repository } = payload;
 
     const allFindings: SecretMatch[] = [];
@@ -175,16 +172,11 @@ export const BitBucketSecretScanningFactory = () => {
             }
           );
 
-          console.log(1);
-
           // eslint-disable-next-line no-continue
           if (!patch) continue;
-          console.log(2);
 
           // eslint-disable-next-line
           const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${patch}`), configPath);
-          console.log(3);
-          console.log(findings);
 
           const adjustedFindings = findings.map((finding) => {
             const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
@@ -194,9 +186,6 @@ export const BitBucketSecretScanningFactory = () => {
                 : convertPatchLineToFileLineNumber(patch, finding.EndLine);
             const startColumn = finding.StartColumn - 1; // subtract 1 for +
             const endColumn = finding.EndColumn - 1; // subtract 1 for +
-
-            console.log("finding");
-            console.log(finding.Link);
 
             return {
               ...finding,
@@ -215,16 +204,10 @@ export const BitBucketSecretScanningFactory = () => {
             };
           });
 
-          console.log("adjusted");
-          console.log(adjustedFindings);
-
           allFindings.push(...adjustedFindings);
         }
       }
     }
-
-    console.log("HEREEE");
-    console.log(allFindings);
 
     return allFindings.map(
       ({

@@ -16,7 +16,6 @@ export const bitBucketConnectionService = (getAppConnection: TGetAppConnectionFu
 
     const repositories = await listBitBucketRepositories(appConnection);
 
-    // TODO(andrey): May need to change from slug to ID or something
     return repositories.map((repo) => ({ id: repo.slug, name: repo.full_name }));
   };
 
