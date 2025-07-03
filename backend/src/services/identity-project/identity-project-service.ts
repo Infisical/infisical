@@ -93,23 +93,25 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        membership.shouldUseNewPrivilegeSystem,
-        ProjectPermissionIdentityActions.GrantPrivileges,
-        ProjectPermissionSub.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to assign to role",
-            membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.GrantPrivileges,
-            ProjectPermissionSub.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      if (requestedRoleChange !== ProjectMembershipRole.NoAccess) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.GrantPrivileges,
+          ProjectPermissionSub.Identity,
+          permission,
+          rolePermission
+        );
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to assign to role",
+              membership.shouldUseNewPrivilegeSystem,
+              ProjectPermissionIdentityActions.GrantPrivileges,
+              ProjectPermissionSub.Identity
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+      }
     }
 
     // validate custom roles input
