@@ -9,6 +9,7 @@
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import RedisStore from "connect-redis";
+import { CronJob } from "cron";
 import { Strategy as GitLabStrategy } from "passport-gitlab2";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
@@ -25,26 +26,13 @@ import { AuthMethod } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
-export const registerSsoRouter = async (server: FastifyZodProvider) => {
+const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
+
+let serverInstance: FastifyZodProvider | null = null;
+
+export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
+  serverInstance = server;
   const appCfg = getConfig();
-
-  const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
-  const redisStore = new RedisStore({
-    client: server.redis,
-    prefix: "oauth-session:",
-    ttl: 600 // 10 minutes
-  });
-
-  await server.register(fastifySession, {
-    secret: appCfg.COOKIE_SECRET_SIGN_KEY,
-    store: redisStore,
-    cookie: {
-      secure: appCfg.HTTPS_ENABLED,
-      sameSite: "lax" // we want cookies to be sent to Infisical in redirects originating from IDP server
-    }
-  });
-  await server.register(passport.initialize());
-  await server.register(passport.secureSession());
 
   // passport oauth strategy for Google
   const isGoogleOauthActive = Boolean(appCfg.CLIENT_ID_GOOGLE_LOGIN && appCfg.CLIENT_SECRET_GOOGLE_LOGIN);
@@ -176,6 +164,49 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       )
     );
   }
+};
+
+export const refreshOauthConfig = () => {
+  if (!serverInstance) {
+    logger.warn("Cannot refresh OAuth config: server instance not available");
+    return;
+  }
+
+  logger.info("Refreshing OAuth configuration...");
+  registerOauthMiddlewares(serverInstance);
+};
+
+export const initializeOauthConfigSync = async () => {
+  logger.info("Setting up background sync process for oauth configuration");
+
+  // sync every 5 minutes
+  const job = new CronJob("*/5 * * * *", refreshOauthConfig);
+  job.start();
+
+  return job;
+};
+
+export const registerSsoRouter = async (server: FastifyZodProvider) => {
+  const appCfg = getConfig();
+
+  const redisStore = new RedisStore({
+    client: server.redis,
+    prefix: "oauth-session:",
+    ttl: 600 // 10 minutes
+  });
+
+  await server.register(fastifySession, {
+    secret: appCfg.COOKIE_SECRET_SIGN_KEY,
+    store: redisStore,
+    cookie: {
+      secure: appCfg.HTTPS_ENABLED,
+      sameSite: "lax" // we want cookies to be sent to Infisical in redirects originating from IDP server
+    }
+  });
+  await server.register(passport.initialize());
+  await server.register(passport.secureSession());
+
+  registerOauthMiddlewares(server);
 
   server.route({
     url: "/redirect/google",
