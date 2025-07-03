@@ -116,9 +116,9 @@ func createScmLink(scmPlatform scm.Platform, remoteUrl string, finding report.Fi
 		link := fmt.Sprintf("%s/src/%s/%s", remoteUrl, finding.Commit, filePath)
 		if finding.StartLine != 0 {
 			link += fmt.Sprintf("#lines-%d", finding.StartLine)
-			if finding.EndLine != finding.StartLine {
-				link += fmt.Sprintf(":%d", finding.EndLine)
-			}
+		}
+		if finding.EndLine != finding.StartLine {
+			link += fmt.Sprintf(":%d", finding.EndLine)
 		}
 		return link
 	default:
