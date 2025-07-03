@@ -79,7 +79,7 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
       rateLimit: writeLimit
     },
     handler: async (req, res) => {
-      // TODO(andrey): Verify IP is from bitbucket
+      // TODO(andrey): Verify request is from bitbucket
 
       const { dataSourceId } = req.query;
 

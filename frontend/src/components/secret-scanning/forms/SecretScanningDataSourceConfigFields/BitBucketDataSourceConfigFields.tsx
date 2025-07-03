@@ -38,7 +38,7 @@ export const BitbucketDataSourceConfigFields = () => {
 
   const { data: repositories, isPending: areRepositoriesLoading } =
     useBitbucketConnectionListRepositories(connectionId, selectedWorkspaceSlug, {
-      enabled: Boolean(connectionId) && Boolean(selectedWorkspaceSlug) // Enable only if both are present
+      enabled: Boolean(connectionId) && Boolean(selectedWorkspaceSlug)
     });
 
   const includeRepos = watch("config.includeRepos");
@@ -127,7 +127,6 @@ export const BitbucketDataSourceConfigFields = () => {
       {scanMethod === ScanMethod.SelectRepositories && (
         <Controller
           name="config.includeRepos"
-          // defaultValue={["*"]} // This defaultValue is handled by the useEffect above
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
@@ -149,16 +148,14 @@ export const BitbucketDataSourceConfigFields = () => {
               <FilterableSelect
                 menuPlacement="top"
                 isLoading={areRepositoriesLoading && Boolean(connectionId)}
-                // Disable if no connection or no workspace slug is selected for fetching repositories
                 isDisabled={!connectionId || !selectedWorkspaceSlug}
                 isMulti
-                // Ensure 'value' is treated as a string array for filtering
                 value={repositories?.filter((repository) =>
                   (value as string[]).includes(repository.full_name)
                 )}
                 onChange={(newValue) => {
                   onChange(
-                    newValue ? (newValue as MultiValue<TBitbucketRepo>).map((p) => p.full_name) : [] // Ensure it's an empty array if cleared
+                    newValue ? (newValue as MultiValue<TBitbucketRepo>).map((p) => p.full_name) : []
                   );
                 }}
                 options={repositories}
