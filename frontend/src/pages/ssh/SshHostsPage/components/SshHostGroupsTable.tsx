@@ -30,7 +30,6 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useListWorkspaceSshHostGroups } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -68,7 +67,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                     key={`ssh-host-group-${group.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/${ProjectType.SSH}/$projectId/ssh-host-groups/$sshHostGroupId` as const,
+                        to: "/projects/$projectId/ssh/ssh-host-groups/$sshHostGroupId",
                         params: {
                           projectId: currentWorkspace.id,
                           sshHostGroupId: group.id
@@ -169,7 +168,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: `/${ProjectType.SSH}/$projectId/ssh-host-groups/$sshHostGroupId` as const,
+                                    to: "/projects/$projectId/ssh/ssh-host-groups/$sshHostGroupId",
                                     params: {
                                       projectId: currentWorkspace.id,
                                       sshHostGroupId: group.id

@@ -700,7 +700,8 @@ export const PROJECTS = {
     slug: "An optional slug for the project. (must be unique within the organization)",
     hasDeleteProtection: "Enable or disable delete protection for the project.",
     secretSharing: "Enable or disable secret sharing for the project.",
-    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project."
+    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
+    defaultProduct: "The default product in which the project will open"
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -2267,6 +2268,10 @@ export const AppConnections = {
       accessToken: "The Access Token used to access GitLab.",
       code: "The OAuth code to use to connect with GitLab.",
       accessTokenType: "The type of token used to connect with GitLab."
+    },
+    ZABBIX: {
+      apiToken: "The API Token used to access Zabbix.",
+      instanceUrl: "The Zabbix instance URL to connect with."
     }
   }
 };
@@ -2456,6 +2461,12 @@ export const SecretSyncs = {
     CLOUDFLARE_PAGES: {
       projectName: "The name of the Cloudflare Pages project to sync secrets to.",
       environment: "The environment of the Cloudflare Pages project to sync secrets to."
+    },
+    ZABBIX: {
+      scope: "The Zabbix scope that secrets should be synced to.",
+      hostId: "The ID of the Zabbix host to sync secrets to.",
+      hostName: "The name of the Zabbix host to sync secrets to.",
+      macroType: "The type of macro to sync secrets to. (0: Text, 1: Secret)"
     }
   }
 };

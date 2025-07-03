@@ -166,22 +166,41 @@ export const SelectionPanel = ({
           secrets: secretsToDelete
         });
       }
+
+      return {
+        environment: env.slug
+      };
     });
 
     const results = await Promise.allSettled(promises);
-    const areEntriesDeleted = results.some((result) => result.status === "fulfilled");
+    const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");
+    const areSomeEntriesDeleted = results.some((result) => result.status === "fulfilled");
+
+    const failedEnvs = userAvailableEnvs
+      .filter(
+        (env) =>
+          !results.some(
+            (result) => result.status === "fulfilled" && result.value.environment === env.slug
+          )
+      )
+      .map((env) => env.name);
     if (processedEntries === 0) {
       handlePopUpClose("bulkDeleteEntries");
       createNotification({
         type: "info",
         text: "You don't have access to delete selected items"
       });
-    } else if (areEntriesDeleted) {
+    } else if (areAllEntriesDeleted) {
       handlePopUpClose("bulkDeleteEntries");
       resetSelectedEntries();
       createNotification({
         type: "success",
         text: "Successfully deleted selected secrets and folders"
+      });
+    } else if (areSomeEntriesDeleted) {
+      createNotification({
+        type: "warning",
+        text: `Deletion partially completed. The following environments could not be processed due to conflicts: ${failedEnvs.join(", ")}.`
       });
     } else {
       createNotification({

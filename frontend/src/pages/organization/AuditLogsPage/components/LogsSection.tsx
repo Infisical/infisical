@@ -1,17 +1,20 @@
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { useDebounce } from "@app/hooks";
-import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { LogsDateFilter } from "./LogsDateFilter";
 import { LogsFilter } from "./LogsFilter";
 import { LogsTable } from "./LogsTable";
-import { AuditLogFilterFormData, auditLogFilterFormSchema, Presets } from "./types";
+import {
+  AuditLogDateFilterType,
+  Presets,
+  TAuditLogDateFilterFormData,
+  TAuditLogFilterFormData
+} from "./types";
 
 type Props = {
   presets?: Presets;
@@ -24,74 +27,45 @@ export const LogsSection = withPermission(
     const { subscription } = useSubscription();
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
-
-    const { control, reset, watch, getFieldState, resetField, setValue } =
-      useForm<AuditLogFilterFormData>({
-        resolver: zodResolver(auditLogFilterFormSchema),
-        defaultValues: {
-          project: null,
-          environment: undefined,
-          secretKey: "",
-          secretPath: "",
-          actor: presets?.actorId,
-          eventType: presets?.eventType || [],
-          userAgentType: undefined,
-          startDate: presets?.startDate ?? new Date(new Date().setDate(new Date().getDate() - 1)),
-          endDate: presets?.endDate ?? new Date(new Date(Date.now()).setHours(23, 59, 59, 999))
-        }
-      });
+    const [logFilter, setLogFilter] = useState<TAuditLogFilterFormData>({
+      eventType: presets?.eventType || [],
+      actor: presets?.actorId
+    });
+    const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>({
+      startDate: new Date(Number(new Date()) - ms("1h")),
+      endDate: new Date(),
+      type: AuditLogDateFilterType.Relative,
+      relativeModeValue: "1h"
+    });
 
     useEffect(() => {
       if (subscription && !subscription.auditLogs) {
         handlePopUpOpen("upgradePlan");
       }
     }, [subscription]);
-
-    const eventType = watch("eventType") as EventType[] | undefined;
-    const userAgentType = watch("userAgentType") as UserAgentType | undefined;
-    const actor = watch("actor");
-    const projectId = watch("project")?.id;
-    const environment = watch("environment")?.slug;
-    const secretPath = watch("secretPath");
-    const secretKey = watch("secretKey");
-
-    const startDate = watch("startDate");
-    const endDate = watch("endDate");
-
-    const [debouncedSecretPath] = useDebounce<string>(secretPath!, 500);
-    const [debouncedSecretKey] = useDebounce<string>(secretKey!, 500);
-
     return (
       <div className="space-y-2">
         <div className="flex w-full justify-end">
+          {showFilters && <LogsDateFilter filter={dateFilter} setFilter={setDateFilter} />}
           {showFilters && (
-            <LogsFilter
-              presets={presets}
-              control={control}
-              watch={watch}
-              reset={reset}
-              resetField={resetField}
-              getFieldState={getFieldState}
-              setValue={setValue}
-            />
+            <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
           )}
         </div>
-
         <LogsTable
           refetchInterval={refetchInterval}
           filter={{
-            secretPath: debouncedSecretPath || undefined,
-            secretKey: debouncedSecretKey || undefined,
-            eventMetadata: presets?.eventMetadata,
-            projectId,
+            secretPath: logFilter.secretPath || undefined,
+            secretKey: logFilter.secretKey || undefined,
+            eventMetadata: logFilter?.eventMetadata,
+            projectId: logFilter?.project?.id,
             actorType: presets?.actorType,
             limit: 15,
-            eventType,
-            userAgentType,
-            startDate,
-            endDate,
-            environment,
-            actor
+            eventType: logFilter?.eventType,
+            userAgentType: logFilter?.userAgentType,
+            startDate: dateFilter?.startDate,
+            endDate: dateFilter?.endDate,
+            environment: logFilter?.environment?.slug,
+            actor: logFilter?.actor
           }}
         />
         <UpgradePlanModal

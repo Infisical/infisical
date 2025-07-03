@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -78,8 +77,7 @@ export const dynamicSecretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -202,8 +200,7 @@ export const dynamicSecretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
@@ -354,8 +351,7 @@ export const dynamicSecretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -420,8 +416,7 @@ export const dynamicSecretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -485,8 +480,7 @@ export const dynamicSecretServiceFactory = ({
         actorId,
         projectId,
         actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.SecretManager
+        actorOrgId
       });
 
       // verify user has access to each env in request
@@ -529,8 +523,7 @@ export const dynamicSecretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
@@ -578,8 +571,7 @@ export const dynamicSecretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
@@ -616,8 +608,7 @@ export const dynamicSecretServiceFactory = ({
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId: actor.orgId
     });
 
     const userAccessibleFolderMappings = folderMappings.filter(({ path, environment }) =>
@@ -661,8 +652,7 @@ export const dynamicSecretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, path);

@@ -1,6 +1,5 @@
 import { Knex } from "knex";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -63,8 +62,7 @@ export const createSshLoginMappings = async ({
             userId: user.id,
             projectId,
             authMethod: actorAuthMethod,
-            userOrgId: actorOrgId,
-            actionProjectType: ActionProjectType.SSH
+            userOrgId: actorOrgId
           });
         }
 

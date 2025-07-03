@@ -147,6 +147,7 @@ export type TCreateAccessRequestDTO = {
 
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
+  policyId?: string;
   envSlug?: string;
   authorUserId?: string;
 };

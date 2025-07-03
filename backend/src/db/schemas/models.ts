@@ -267,16 +267,6 @@ export enum ProjectType {
   SecretScanning = "secret-scanning"
 }
 
-export enum ActionProjectType {
-  SecretManager = ProjectType.SecretManager,
-  CertificateManager = ProjectType.CertificateManager,
-  KMS = ProjectType.KMS,
-  SSH = ProjectType.SSH,
-  SecretScanning = ProjectType.SecretScanning,
-  // project operations that happen on all types
-  Any = "any"
-}
-
 export enum SortDirection {
   ASC = "asc",
   DESC = "desc"

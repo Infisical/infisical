@@ -9,7 +9,7 @@ type Props = {
 
 export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) => {
   const navigate = useNavigate({
-    from: "/secret-manager/$projectId/overview"
+    from: "/projects/$projectId/secret-manager/overview"
   });
 
   const onFolderCrumbClick = (index: number) => {

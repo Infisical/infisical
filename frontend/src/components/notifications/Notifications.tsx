@@ -65,6 +65,7 @@ export const createNotification = (
   toast(<NotificationContent {...myProps} />, {
     position: "bottom-right",
     ...toastProps,
+    autoClose: toastProps.autoClose || 15000,
     theme: "dark",
     type: myProps?.type || "info"
   });

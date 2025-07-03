@@ -490,7 +490,8 @@
                   "integrations/app-connections/teamcity",
                   "integrations/app-connections/terraform-cloud",
                   "integrations/app-connections/vercel",
-                  "integrations/app-connections/windmill"
+                  "integrations/app-connections/windmill",
+                  "integrations/app-connections/zabbix"
                 ]
               }
             ]
@@ -523,7 +524,8 @@
                   "integrations/secret-syncs/teamcity",
                   "integrations/secret-syncs/terraform-cloud",
                   "integrations/secret-syncs/vercel",
-                  "integrations/secret-syncs/windmill"
+                  "integrations/secret-syncs/windmill",
+                  "integrations/secret-syncs/zabbix"
                 ]
               }
             ]
@@ -1521,6 +1523,18 @@
                       "api-reference/endpoints/app-connections/windmill/update",
                       "api-reference/endpoints/app-connections/windmill/delete"
                     ]
+                  },
+                  {
+                    "group": "Zabbix",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/zabbix/list",
+                      "api-reference/endpoints/app-connections/zabbix/available",
+                      "api-reference/endpoints/app-connections/zabbix/get-by-id",
+                      "api-reference/endpoints/app-connections/zabbix/get-by-name",
+                      "api-reference/endpoints/app-connections/zabbix/create",
+                      "api-reference/endpoints/app-connections/zabbix/update",
+                      "api-reference/endpoints/app-connections/zabbix/delete"
+                    ]
                   }
                 ]
               },
@@ -1826,6 +1840,20 @@
                       "api-reference/endpoints/secret-syncs/windmill/sync-secrets",
                       "api-reference/endpoints/secret-syncs/windmill/import-secrets",
                       "api-reference/endpoints/secret-syncs/windmill/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Zabbix",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/zabbix/list",
+                      "api-reference/endpoints/secret-syncs/zabbix/get-by-id",
+                      "api-reference/endpoints/secret-syncs/zabbix/get-by-name",
+                      "api-reference/endpoints/secret-syncs/zabbix/create",
+                      "api-reference/endpoints/secret-syncs/zabbix/update",
+                      "api-reference/endpoints/secret-syncs/zabbix/delete",
+                      "api-reference/endpoints/secret-syncs/zabbix/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/zabbix/import-secrets",
+                      "api-reference/endpoints/secret-syncs/zabbix/remove-secrets"
                     ]
                   }
                 ]

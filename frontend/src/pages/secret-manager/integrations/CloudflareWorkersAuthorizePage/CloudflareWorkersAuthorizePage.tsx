@@ -41,7 +41,7 @@ export const CloudflareWorkersAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/cloudflare-workers/create",
+        to: "/projects/$projectId/secret-manager/integrations/cloudflare-workers/create",
         params: {
           projectId: currentWorkspace.id
         },

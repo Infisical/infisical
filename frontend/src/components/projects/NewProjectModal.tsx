@@ -35,7 +35,6 @@ import { getProjectHomePage } from "@app/helpers/project";
 import { useCreateWorkspace, useGetExternalKmsList, useGetUserWorkspaces } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
@@ -53,12 +52,11 @@ type TAddProjectFormData = z.infer<typeof formSchema>;
 interface NewProjectModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  projectType: ProjectType;
 }
 
-type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange" | "projectType">;
+type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
 
-const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
+const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -72,7 +70,7 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
     OrgPermissionSubjects.ProjectTemplates
   );
 
-  const { data: projectTemplates = [] } = useListProjectTemplates(projectType, {
+  const { data: projectTemplates = [] } = useListProjectTemplates({
     enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates)
   });
 
@@ -115,15 +113,17 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
         projectName: name,
         projectDescription: description,
         kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-        template,
-        type: projectType
+        template
       });
       await refetchWorkspaces();
 
       createNotification({ text: "Project created", type: "success" });
       reset();
       onOpenChange(false);
-      navigate({ to: getProjectHomePage(project), params: { projectId: project.id } });
+      navigate({
+        to: getProjectHomePage(project.defaultProduct),
+        params: { projectId: project.id }
+      });
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create project", type: "error" });
@@ -270,18 +270,14 @@ const NewProjectForm = ({ onOpenChange, projectType }: NewProjectFormProps) => {
   );
 };
 
-export const NewProjectModal: FC<NewProjectModalProps> = ({
-  isOpen,
-  onOpenChange,
-  projectType
-}) => {
+export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange }) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title="Create a new project"
         subTitle="This project will contain your secrets and configurations."
       >
-        <NewProjectForm onOpenChange={onOpenChange} projectType={projectType} />
+        <NewProjectForm onOpenChange={onOpenChange} />
       </ModalContent>
     </Modal>
   );

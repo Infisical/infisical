@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details/admin/_
   beforeLoad: ({ context }) => {
     if (!context.user.superAdmin) {
       throw redirect({
-        to: "/organization/secret-manager/overview"
+        to: "/organization/projects"
       });
     }
   }

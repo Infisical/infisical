@@ -29,6 +29,7 @@ import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { getProjectHomePage } from "@app/helpers/project";
 import { withPermission } from "@app/hoc";
 import { useDebounce } from "@app/hooks";
 import { useOrgAdminAccessProject, useOrgAdminGetProjects } from "@app/hooks/api";
@@ -58,26 +59,8 @@ export const OrgAdminProjects = withPermission(
         await orgAdminAccessProject.mutateAsync({
           projectId
         });
-        if (type === ProjectType.CertificateManager) {
-          await navigate({
-            to: "/cert-manager/$projectId/subscribers" as const,
-            params: {
-              projectId
-            }
-          });
-          return;
-        }
-        if (type === ProjectType.SecretScanning) {
-          await navigate({
-            to: "/secret-scanning/$projectId/data-sources" as const,
-            params: {
-              projectId
-            }
-          });
-          return;
-        }
         await navigate({
-          to: `/${type}/$projectId/overview` as const,
+          to: getProjectHomePage(type),
           params: {
             projectId
           }
@@ -122,7 +105,7 @@ export const OrgAdminProjects = withPermission(
                 <TBody>
                   {isProjectsLoading && <TableSkeleton columns={4} innerKey="projects" />}
                   {!isProjectsLoading &&
-                    projects?.map(({ name, slug, createdAt, type, id }) => (
+                    projects?.map(({ name, slug, createdAt, id, defaultProduct }) => (
                       <Tr key={`project-${id}`} className="group w-full">
                         <Td>{name}</Td>
                         <Td>{slug}</Td>
@@ -143,7 +126,7 @@ export const OrgAdminProjects = withPermission(
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
-                                    handleAccessProject(type, id);
+                                    handleAccessProject(defaultProduct, id);
                                   }}
                                   icon={<FontAwesomeIcon icon={faSignIn} />}
                                   disabled={

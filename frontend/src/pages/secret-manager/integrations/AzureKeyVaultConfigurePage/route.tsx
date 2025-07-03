@@ -11,7 +11,7 @@ const AzureKeyVaultConfigurePageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/integrations/azure-key-vault/create"
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-key-vault/create"
 )({
   component: AzureKeyVaultConfigurePage,
   validateSearch: zodValidator(AzureKeyVaultConfigurePageQueryParamsSchema),
@@ -22,7 +22,7 @@ export const Route = createFileRoute(
         {
           label: "Integrations",
           link: linkOptions({
-            to: "/secret-manager/$projectId/integrations",
+            to: "/projects/$projectId/secret-manager/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.NativeIntegrations

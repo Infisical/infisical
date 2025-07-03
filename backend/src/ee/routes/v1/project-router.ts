@@ -111,15 +111,38 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         workspaceId: z.string().trim().describe(AUDIT_LOGS.EXPORT.projectId)
       }),
-      querystring: z.object({
-        eventType: z.nativeEnum(EventType).optional().describe(AUDIT_LOGS.EXPORT.eventType),
-        userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
-        startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
-        endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
-        offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
-        limit: z.coerce.number().default(20).describe(AUDIT_LOGS.EXPORT.limit),
-        actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
-      }),
+      querystring: z
+        .object({
+          eventType: z.nativeEnum(EventType).optional().describe(AUDIT_LOGS.EXPORT.eventType),
+          userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
+          startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
+          endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
+          offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
+          limit: z.coerce.number().max(1000).default(20).describe(AUDIT_LOGS.EXPORT.limit),
+          actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
+        })
+        .superRefine((el, ctx) => {
+          if (el.endDate && el.startDate) {
+            const startDate = new Date(el.startDate);
+            const endDate = new Date(el.endDate);
+            const maxAllowedDate = new Date(startDate);
+            maxAllowedDate.setMonth(maxAllowedDate.getMonth() + 3);
+            if (endDate < startDate) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["endDate"],
+                message: "End date cannot be before start date"
+              });
+            }
+            if (endDate > maxAllowedDate) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["endDate"],
+                message: "Dates must be within 3 months"
+              });
+            }
+          }
+        }),
       response: {
         200: z.object({
           auditLogs: AuditLogsSchema.omit({
@@ -161,7 +184,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         filter: {
           ...req.query,
           projectId: req.params.workspaceId,
-          endDate: req.query.endDate,
+          endDate: req.query.endDate || new Date().toISOString(),
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
           eventType: req.query.eventType ? [req.query.eventType] : undefined

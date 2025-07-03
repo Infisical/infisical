@@ -22,6 +22,7 @@ import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schem
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 import { WindmillSyncDestinationSchema } from "./windmill-sync-destination-schema";
+import { ZabbixSyncDestinationSchema } from "./zabbix-sync-destination-schema";
 
 const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncDestinationSchema,
@@ -45,7 +46,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   RenderSyncDestinationSchema,
   FlyioSyncDestinationSchema,
   GitlabSyncDestinationSchema,
-  CloudflarePagesSyncDestinationSchema
+  CloudflarePagesSyncDestinationSchema,
+  ZabbixSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

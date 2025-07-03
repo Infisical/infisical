@@ -9,7 +9,6 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { CommitHistoryTab } from "./components/CommitHistoryTab";
 
@@ -32,7 +31,7 @@ export const CommitsPage = () => {
 
   const handleSelectCommit = (commitId: string) => {
     navigate({
-      to: `/${ProjectType.SecretManager}/$projectId/commits/$environment/$folderId/$commitId` as const,
+      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId/$commitId",
       params: {
         projectId: currentWorkspace.id,
         folderId,

@@ -7,7 +7,6 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { CommitDetailsTab } from "./components/CommitDetailsTab";
 
@@ -35,7 +34,7 @@ export const CommitDetailsPage = () => {
 
   const handleGoBackToHistory = () => {
     navigate({
-      to: `/${ProjectType.SecretManager}/$projectId/commits/$environment/$folderId` as const,
+      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId",
       params: {
         projectId: currentWorkspace.id,
         folderId,
@@ -50,7 +49,7 @@ export const CommitDetailsPage = () => {
 
   const handleGoToRollbackPreview = () => {
     navigate({
-      to: `/${ProjectType.SecretManager}/$projectId/commits/$environment/$folderId/$commitId/restore` as const,
+      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId/$commitId/restore",
       params: {
         projectId: currentWorkspace.id,
         folderId,
