@@ -39,7 +39,7 @@ import {
   VercelConnectionMethod,
   WindmillConnectionMethod
 } from "@app/hooks/api/appConnections/types";
-import { BitBucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
+import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
@@ -90,7 +90,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
-  [AppConnection.BitBucket]: { name: "BitBucket", image: "BitBucket.png" }
+  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -122,7 +122,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
     case CloudflareConnectionMethod.ApiToken:
-    case BitBucketConnectionMethod.ApiToken:
+    case BitbucketConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

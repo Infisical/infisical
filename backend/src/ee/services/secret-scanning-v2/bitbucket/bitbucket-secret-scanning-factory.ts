@@ -3,7 +3,6 @@ import { join } from "path";
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import {
-  SecretScanningDataSource,
   SecretScanningFindingSeverity,
   SecretScanningResource
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
@@ -20,54 +19,106 @@ import {
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryPostInitialization
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 import { GitHubRepositoryRegex } from "@app/lib/regex";
 import {
-  getBitBucketUser,
-  listBitBucketRepositories,
-  TBitBucketConnection
+  getBitbucketUser,
+  listBitbucketRepositories,
+  TBitbucketConnection
 } from "@app/services/app-connection/bitbucket";
+import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
-import { TBitBucketDataSourceWithConnection, TQueueBitBucketResourceDiffScan } from "./bitbucket-secret-scanning-types";
+import { TBitbucketDataSourceWithConnection, TQueueBitbucketResourceDiffScan } from "./bitbucket-secret-scanning-types";
 
-export const BitBucketSecretScanningFactory = () => {
-  const initialize: TSecretScanningFactoryInitialize<TBitBucketConnection> = async (
-    { connection, secretScanningV2DAL },
+export const BitbucketSecretScanningFactory = () => {
+  const initialize: TSecretScanningFactoryInitialize<TBitbucketConnection> = async (
+    { connection, payload },
     callback
   ) => {
-    // TODO(andrey): Swap for something proper
-    const externalId = connection.credentials.email;
+    const { email, apiToken } = connection.credentials;
+    const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
 
-    const existingDataSource = await secretScanningV2DAL.dataSources.findOne({
-      externalId,
-      type: SecretScanningDataSource.BitBucket
-    });
-
-    if (existingDataSource)
-      throw new BadRequestError({
-        message: `A Data Source already exists for this BitBucket Radar Connection in the Project with ID "${existingDataSource.projectId}"`
-      });
+    const { data } = await request.post<{ uuid: string }>(
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${payload.config.workspaceSlug}/hooks`,
+      {
+        description: "Infisical webhook for push events",
+        url: `https://tunnel.util.lol/secret-scanning/webhooks/bitbucket`, // TODO(andrey): Swap to ${cfg.SITE_URL}
+        active: true,
+        events: ["repo:push"]
+      },
+      {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json"
+        }
+      }
+    );
 
     return callback({
-      externalId
+      credentials: { webhookId: data.uuid }
     });
   };
 
-  const postInitialization: TSecretScanningFactoryPostInitialization<TBitBucketConnection> = async () => {
-    // no post-initialization required
+  const postInitialization: TSecretScanningFactoryPostInitialization<TBitbucketConnection> = async ({
+    dataSourceId,
+    credentials,
+    connection,
+    payload
+  }) => {
+    const { email, apiToken } = connection.credentials;
+    const { webhookId } = credentials;
+
+    const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
+
+    const cfg = getConfig();
+    const newWebhookUrl = `${cfg.SITE_URL}/secret-scanning/webhooks/bitbucket?dataSourceId=${dataSourceId}`;
+
+    await request.put(
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${payload.config.workspaceSlug}/hooks/${webhookId}`,
+      {
+        description: "Infisical webhook for push events",
+        url: newWebhookUrl,
+        active: true,
+        events: ["repo:push"]
+      },
+      {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json"
+        }
+      }
+    );
   };
 
-  const listRawResources: TSecretScanningFactoryListRawResources<TBitBucketDataSourceWithConnection> = async (
+  // TODO(andrey): Hook this up
+  const postDeletion: any = async ({ credentials, connection, payload }) => {
+    const { email, apiToken } = connection.credentials;
+    const { webhookId } = credentials;
+
+    const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
+
+    await request.delete(
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${payload.config.workspaceSlug}/hooks/${webhookId}`,
+      {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json"
+        }
+      }
+    );
+  };
+
+  const listRawResources: TSecretScanningFactoryListRawResources<TBitbucketDataSourceWithConnection> = async (
     dataSource
   ) => {
     const {
       connection,
-      config: { includeRepos }
+      config: { includeRepos, workspaceSlug }
     } = dataSource;
 
-    const repos = await listBitBucketRepositories(connection);
+    const repos = await listBitbucketRepositories(connection, workspaceSlug);
 
     const filteredRepos: typeof repos = [];
     if (includeRepos.includes("*")) {
@@ -83,7 +134,7 @@ export const BitBucketSecretScanningFactory = () => {
     }));
   };
 
-  const getFullScanPath: TSecretScanningFactoryGetFullScanPath<TBitBucketDataSourceWithConnection> = async ({
+  const getFullScanPath: TSecretScanningFactoryGetFullScanPath<TBitbucketDataSourceWithConnection> = async ({
     dataSource,
     resourceName,
     tempFolder
@@ -97,10 +148,10 @@ export const BitBucketSecretScanningFactory = () => {
     const repoPath = join(tempFolder, "repo.git");
 
     if (!GitHubRepositoryRegex.test(resourceName)) {
-      throw new Error("Invalid BitBucket repository name");
+      throw new Error("Invalid Bitbucket repository name");
     }
 
-    const { username } = await getBitBucketUser({ email, apiToken });
+    const { username } = await getBitbucketUser({ email, apiToken });
 
     await cloneRepository({
       cloneUrl: `https://${encodeURIComponent(username)}:${apiToken}@bitbucket.org/${resourceName}.git`,
@@ -111,18 +162,18 @@ export const BitBucketSecretScanningFactory = () => {
   };
 
   const getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<
-    TQueueBitBucketResourceDiffScan["payload"]
-  > = ({ repository }) => {
+    TQueueBitbucketResourceDiffScan["payload"]
+  > = ({ repository, dataSourceId }) => {
     return {
       name: repository.full_name,
-      externalId: repository.id.toString(),
+      externalId: dataSourceId,
       type: SecretScanningResource.Repository
     };
   };
 
   const getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<
-    TBitBucketDataSourceWithConnection,
-    TQueueBitBucketResourceDiffScan["payload"]
+    TBitbucketDataSourceWithConnection,
+    TQueueBitbucketResourceDiffScan["payload"]
   > = async ({ dataSource, payload, resourceName, configPath }) => {
     const {
       connection: {
@@ -130,81 +181,86 @@ export const BitBucketSecretScanningFactory = () => {
       }
     } = dataSource;
 
-    const { commits, repository } = payload;
+    const { push, repository } = payload;
 
     const allFindings: SecretMatch[] = [];
 
     const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
 
-    for (const commit of commits) {
-      // eslint-disable-next-line no-await-in-loop
-      const { data: diffstat } = await request.get<{
-        values: {
-          status: "added" | "modified" | "removed" | "renamed";
-          new?: { path: string };
-          old?: { path: string };
-        }[];
-      }>(`https://api.bitbucket.org/2.0/repositories/${repository.full_name}/diffstat/${commit.id}`, {
-        headers: {
-          Authorization: authHeader,
-          Accept: "application/json"
-        }
-      });
+    for (const change of push.changes) {
+      for (const commit of change.commits) {
+        // eslint-disable-next-line no-await-in-loop
+        const { data: diffstat } = await request.get<{
+          values: {
+            status: "added" | "modified" | "removed" | "renamed";
+            new?: { path: string };
+            old?: { path: string };
+          }[];
+        }>(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${repository.full_name}/diffstat/${commit.hash}`, {
+          headers: {
+            Authorization: authHeader,
+            Accept: "application/json"
+          }
+        });
 
-      // eslint-disable-next-line no-continue
-      if (!diffstat.values) continue;
+        // eslint-disable-next-line no-continue
+        if (!diffstat.values) continue;
 
-      for (const file of diffstat.values) {
-        if ((file.status === "added" || file.status === "modified") && file.new?.path) {
-          const filePath = file.new.path;
+        for (const file of diffstat.values) {
+          if ((file.status === "added" || file.status === "modified") && file.new?.path) {
+            const filePath = file.new.path;
 
-          // eslint-disable-next-line no-await-in-loop
-          const { data: patch } = await request.get<string>(
-            `https://api.bitbucket.org/2.0/repositories/${repository.full_name}/diff/${commit.id}`,
-            {
-              params: {
-                path: filePath
-              },
-              headers: {
-                Authorization: authHeader
-              },
-              responseType: "text"
-            }
-          );
+            // eslint-disable-next-line no-await-in-loop
+            const { data: patch } = await request.get<string>(
+              `https://api.bitbucket.org/2.0/repositories/${repository.full_name}/diff/${commit.hash}`,
+              {
+                params: {
+                  path: filePath
+                },
+                headers: {
+                  Authorization: authHeader
+                },
+                responseType: "text"
+              }
+            );
 
-          // eslint-disable-next-line no-continue
-          if (!patch) continue;
+            // eslint-disable-next-line no-continue
+            if (!patch) continue;
 
-          // eslint-disable-next-line
-          const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${patch}`), configPath);
+            // eslint-disable-next-line no-await-in-loop
+            const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${patch}`), configPath);
 
-          const adjustedFindings = findings.map((finding) => {
-            const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
-            const endLine =
-              finding.StartLine === finding.EndLine
-                ? startLine
-                : convertPatchLineToFileLineNumber(patch, finding.EndLine);
-            const startColumn = finding.StartColumn - 1; // subtract 1 for +
-            const endColumn = finding.EndColumn - 1; // subtract 1 for +
+            const adjustedFindings = findings.map((finding) => {
+              const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
+              const endLine =
+                finding.StartLine === finding.EndLine
+                  ? startLine
+                  : convertPatchLineToFileLineNumber(patch, finding.EndLine);
+              const startColumn = finding.StartColumn - 1; // subtract 1 for +
+              const endColumn = finding.EndColumn - 1; // subtract 1 for +
+              const authorName = commit.author.user?.display_name || commit.author.raw.split(" <")[0];
+              const emailMatch = commit.author.raw.match(/<(.*)>/);
+              const authorEmail = emailMatch?.[1] ?? "";
 
-            return {
-              ...finding,
-              StartLine: startLine,
-              EndLine: endLine,
-              StartColumn: startColumn,
-              EndColumn: endColumn,
-              File: filePath,
-              Commit: commit.id,
-              Author: commit.author.name,
-              Email: commit.author.email ?? "",
-              Message: commit.message,
-              Fingerprint: `${commit.id}:${filePath}:${finding.RuleID}:${startLine}:${startColumn}`,
-              Date: commit.timestamp,
-              Link: `https://bitbucket.org/${resourceName}/src/${commit.id}/${filePath}#lines-${startLine}`
-            };
-          });
+              return {
+                ...finding,
+                StartLine: startLine,
+                EndLine: endLine,
+                StartColumn: startColumn,
+                EndColumn: endColumn,
+                File: filePath,
+                Commit: commit.hash,
+                Author: authorName,
+                Email: authorEmail,
+                Message: commit.message,
+                Fingerprint: `${commit.hash}:${filePath}:${finding.RuleID}:${startLine}:${startColumn}`,
+                Date: commit.date,
+                Link: `https://bitbucket.org/${resourceName}/src/${commit.hash}/${filePath}#lines-${startLine}`
+              };
+            });
 
-          allFindings.push(...adjustedFindings);
+            allFindings.push(...adjustedFindings);
+          }
         }
       }
     }

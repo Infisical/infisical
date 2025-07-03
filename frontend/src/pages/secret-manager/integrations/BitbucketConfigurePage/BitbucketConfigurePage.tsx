@@ -20,9 +20,9 @@ import { useWorkspace } from "@app/context";
 import {
   useCreateIntegration,
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthBitBucketWorkspaces
+  useGetIntegrationAuthBitbucketWorkspaces
 } from "@app/hooks/api";
-import { useGetIntegrationAuthBitBucketEnvironments } from "@app/hooks/api/integrationAuth/queries";
+import { useGetIntegrationAuthBitbucketEnvironments } from "@app/hooks/api/integrationAuth/queries";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 enum BitbucketScope {
@@ -99,7 +99,7 @@ export const BitbucketConfigurePage = () => {
   const { currentWorkspace } = useWorkspace();
 
   const { data: bitbucketWorkspaces, isPending: isBitbucketWorkspacesLoading } =
-    useGetIntegrationAuthBitBucketWorkspaces((integrationAuthId as string) ?? "");
+    useGetIntegrationAuthBitbucketWorkspaces((integrationAuthId as string) ?? "");
 
   const { data: bitbucketRepos, isPending: isBitbucketReposLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? "",
@@ -107,7 +107,7 @@ export const BitbucketConfigurePage = () => {
   });
 
   const { data: bitbucketEnvironments, isPending: isBitbucketEnvironmentsLoading } =
-    useGetIntegrationAuthBitBucketEnvironments(
+    useGetIntegrationAuthBitbucketEnvironments(
       {
         integrationAuthId: (integrationAuthId as string) ?? "",
         workspaceSlug: bitBucketWorkspace?.slug ?? "",

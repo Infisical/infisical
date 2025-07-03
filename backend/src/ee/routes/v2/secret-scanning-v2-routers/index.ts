@@ -1,6 +1,6 @@
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 
-import { registerBitBucketSecretScanningRouter } from "./bitbucket-secret-scanning-router";
+import { registerBitbucketSecretScanningRouter } from "./bitbucket-secret-scanning-router";
 import { registerGitHubSecretScanningRouter } from "./github-secret-scanning-router";
 
 export * from "./secret-scanning-v2-router";
@@ -10,5 +10,5 @@ export const SECRET_SCANNING_REGISTER_ROUTER_MAP: Record<
   (server: FastifyZodProvider) => Promise<void>
 > = {
   [SecretScanningDataSource.GitHub]: registerGitHubSecretScanningRouter,
-  [SecretScanningDataSource.BitBucket]: registerBitBucketSecretScanningRouter
+  [SecretScanningDataSource.Bitbucket]: registerBitbucketSecretScanningRouter
 };

@@ -1,7 +1,9 @@
 import type { EmitterWebhookEventName } from "@octokit/webhooks/dist-types/types";
 import { PushEvent } from "@octokit/webhooks-types";
 import { Probot } from "probot";
+import { z } from "zod";
 
+import { TBitbucketPushEvent } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
@@ -64,5 +66,31 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
     }
   });
 
-  // TODO(andrey): Register a webhook for BitBucket
+  // bitbucket push event webhook
+  server.route({
+    method: "POST",
+    url: "/bitbucket",
+    schema: {
+      querystring: z.object({
+        dataSourceId: z.string().min(1, { message: "Data Source ID is required" })
+      })
+    },
+    config: {
+      rateLimit: writeLimit
+    },
+    handler: async (req, res) => {
+      // TODO(andrey): Verify IP is from bitbucket
+
+      const { dataSourceId } = req.query;
+
+      if (!dataSourceId) return res.status(400).send({ message: "Data Source ID is required" });
+
+      await server.services.secretScanningV2.bitbucket.handlePushEvent({
+        ...(req.body as TBitbucketPushEvent),
+        dataSourceId
+      });
+
+      return res.send("ok");
+    }
+  });
 };

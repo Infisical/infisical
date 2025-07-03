@@ -16,7 +16,7 @@ import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConn
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
-import { BitBucketConnectionForm } from "./BitBucketConnectionForm";
+import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -135,8 +135,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <GitLabConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
-    case AppConnection.BitBucket:
-      return <BitBucketConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Bitbucket:
+      return <BitbucketConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -231,8 +231,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <GitLabConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-    case AppConnection.BitBucket:
-      return <BitBucketConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Bitbucket:
+      return <BitbucketConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

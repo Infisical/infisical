@@ -6,10 +6,10 @@ import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 import { TSecretScanningDataSourceForm } from "../schemas";
 import { SecretScanningDataSourceConfigReviewSection } from "./shared";
 
-export const BitBucketDataSourceReviewFields = () => {
+export const BitbucketDataSourceReviewFields = () => {
   const { watch } = useFormContext<
     TSecretScanningDataSourceForm & {
-      type: SecretScanningDataSource.BitBucket;
+      type: SecretScanningDataSource.Bitbucket;
     }
   >();
 

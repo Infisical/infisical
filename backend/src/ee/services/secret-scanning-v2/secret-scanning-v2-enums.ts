@@ -1,6 +1,6 @@
 export enum SecretScanningDataSource {
   GitHub = "github",
-  BitBucket = "bitbucket"
+  Bitbucket = "bitbucket"
 }
 
 export enum SecretScanningScanStatus {

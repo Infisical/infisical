@@ -12,7 +12,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import { BitBucketConnectionMethod, TBitBucketConnection } from "@app/hooks/api/appConnections";
+import { BitbucketConnectionMethod, TBitbucketConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import {
@@ -21,17 +21,17 @@ import {
 } from "./GenericAppConnectionFields";
 
 type Props = {
-  appConnection?: TBitBucketConnection;
+  appConnection?: TBitbucketConnection;
   onSubmit: (formData: FormData) => void;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.BitBucket)
+  app: z.literal(AppConnection.Bitbucket)
 });
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(BitBucketConnectionMethod.ApiToken),
+    method: z.literal(BitbucketConnectionMethod.ApiToken),
     credentials: z.object({
       email: z.string().email().trim().min(1, "Email required"),
       apiToken: z.string().trim().min(1, "API Token required")
@@ -41,14 +41,14 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
-export const BitBucketConnectionForm = ({ appConnection, onSubmit }: Props) => {
+export const BitbucketConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
-      app: AppConnection.BitBucket,
-      method: BitBucketConnectionMethod.ApiToken
+      app: AppConnection.Bitbucket,
+      method: BitbucketConnectionMethod.ApiToken
     }
   });
 
@@ -68,7 +68,7 @@ export const BitBucketConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.BitBucket].name
+                APP_CONNECTION_MAP[AppConnection.Bitbucket].name
               }. This field cannot be changed after creation.`}
               errorText={error?.message}
               isError={Boolean(error?.message)}
@@ -82,7 +82,7 @@ export const BitBucketConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >
-                {Object.values(BitBucketConnectionMethod).map((method) => {
+                {Object.values(BitbucketConnectionMethod).map((method) => {
                   return (
                     <SelectItem value={method} key={method}>
                       {getAppConnectionMethodDetails(method).name}{" "}
@@ -130,7 +130,7 @@ export const BitBucketConnectionForm = ({ appConnection, onSubmit }: Props) => {
             isLoading={isSubmitting}
             isDisabled={isSubmitting || !isDirty}
           >
-            {isUpdate ? "Update Credentials" : "Connect to BitBucket"}
+            {isUpdate ? "Update Credentials" : "Connect to Bitbucket"}
           </Button>
           <ModalClose asChild>
             <Button colorSchema="secondary" variant="plain">

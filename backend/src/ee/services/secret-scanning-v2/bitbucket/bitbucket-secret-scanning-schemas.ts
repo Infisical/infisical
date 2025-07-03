@@ -15,7 +15,12 @@ import { SecretScanningDataSources } from "@app/lib/api-docs";
 import { GitHubRepositoryRegex } from "@app/lib/regex";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-export const BitBucketDataSourceConfigSchema = z.object({
+export const BitbucketDataSourceConfigSchema = z.object({
+  workspaceSlug: z
+    .string()
+    .min(1, "Workspace slug required")
+    .max(128)
+    .describe(SecretScanningDataSources.CONFIG.BITBUCKET.workspaceSlug),
   includeRepos: z
     .array(
       z
@@ -30,58 +35,62 @@ export const BitBucketDataSourceConfigSchema = z.object({
     .describe(SecretScanningDataSources.CONFIG.BITBUCKET.includeRepos)
 });
 
-export const BitBucketDataSourceSchema = BaseSecretScanningDataSourceSchema({
-  type: SecretScanningDataSource.BitBucket,
+export const BitbucketDataSourceSchema = BaseSecretScanningDataSourceSchema({
+  type: SecretScanningDataSource.Bitbucket,
   isConnectionRequired: true
 })
   .extend({
-    config: BitBucketDataSourceConfigSchema
+    config: BitbucketDataSourceConfigSchema
   })
   .describe(
     JSON.stringify({
-      title: "BitBucket"
+      title: "Bitbucket"
     })
   );
 
-export const CreateBitBucketDataSourceSchema = BaseCreateSecretScanningDataSourceSchema({
-  type: SecretScanningDataSource.BitBucket,
+export const CreateBitbucketDataSourceSchema = BaseCreateSecretScanningDataSourceSchema({
+  type: SecretScanningDataSource.Bitbucket,
   isConnectionRequired: true
 })
   .extend({
-    config: BitBucketDataSourceConfigSchema
+    config: BitbucketDataSourceConfigSchema
   })
   .describe(
     JSON.stringify({
-      title: "BitBucket"
+      title: "Bitbucket"
     })
   );
 
-export const UpdateBitBucketDataSourceSchema = BaseUpdateSecretScanningDataSourceSchema(
-  SecretScanningDataSource.BitBucket
+export const UpdateBitbucketDataSourceSchema = BaseUpdateSecretScanningDataSourceSchema(
+  SecretScanningDataSource.Bitbucket
 )
   .extend({
-    config: BitBucketDataSourceConfigSchema.optional()
+    config: BitbucketDataSourceConfigSchema.optional()
   })
   .describe(
     JSON.stringify({
-      title: "BitBucket"
+      title: "Bitbucket"
     })
   );
 
-export const BitBucketDataSourceListItemSchema = z
+export const BitbucketDataSourceListItemSchema = z
   .object({
-    name: z.literal("BitBucket"),
-    connection: z.literal(AppConnection.BitBucket),
-    type: z.literal(SecretScanningDataSource.BitBucket)
+    name: z.literal("Bitbucket"),
+    connection: z.literal(AppConnection.Bitbucket),
+    type: z.literal(SecretScanningDataSource.Bitbucket)
   })
   .describe(
     JSON.stringify({
-      title: "BitBucket"
+      title: "Bitbucket"
     })
   );
 
-export const BitBucketFindingSchema = BaseSecretScanningFindingSchema.extend({
+export const BitbucketFindingSchema = BaseSecretScanningFindingSchema.extend({
   resourceType: z.literal(SecretScanningResource.Repository),
-  dataSourceType: z.literal(SecretScanningDataSource.BitBucket),
+  dataSourceType: z.literal(SecretScanningDataSource.Bitbucket),
   details: GitRepositoryScanFindingDetailsSchema
+});
+
+export const BitbucketDataSourceCredentialsSchema = z.object({
+  webhookId: z.string()
 });

@@ -1,3 +1,3 @@
-export enum BitBucketConnectionMethod {
+export enum BitbucketConnectionMethod {
   ApiToken = "api-token"
 }

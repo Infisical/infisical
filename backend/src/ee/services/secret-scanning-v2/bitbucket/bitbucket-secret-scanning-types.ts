@@ -1,31 +1,84 @@
-import { PushEvent } from "@octokit/webhooks-types";
 import { z } from "zod";
 
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
-import { TBitBucketConnection } from "@app/services/app-connection/bitbucket";
+import { TBitbucketConnection } from "@app/services/app-connection/bitbucket";
 
 import {
-  BitBucketDataSourceListItemSchema,
-  BitBucketDataSourceSchema,
-  BitBucketFindingSchema,
-  CreateBitBucketDataSourceSchema
+  BitbucketDataSourceCredentialsSchema,
+  BitbucketDataSourceListItemSchema,
+  BitbucketDataSourceSchema,
+  BitbucketFindingSchema,
+  CreateBitbucketDataSourceSchema
 } from "./bitbucket-secret-scanning-schemas";
 
-export type TBitBucketDataSource = z.infer<typeof BitBucketDataSourceSchema>;
+export type TBitbucketDataSource = z.infer<typeof BitbucketDataSourceSchema>;
 
-export type TBitBucketDataSourceInput = z.infer<typeof CreateBitBucketDataSourceSchema>;
+export type TBitbucketDataSourceInput = z.infer<typeof CreateBitbucketDataSourceSchema>;
 
-export type TBitBucketDataSourceListItem = z.infer<typeof BitBucketDataSourceListItemSchema>;
+export type TBitbucketDataSourceListItem = z.infer<typeof BitbucketDataSourceListItemSchema>;
 
-export type TBitBucketFinding = z.infer<typeof BitBucketFindingSchema>;
+export type TBitbucketDataSourceCredentials = z.infer<typeof BitbucketDataSourceCredentialsSchema>;
 
-export type TBitBucketDataSourceWithConnection = TBitBucketDataSource & {
-  connection: TBitBucketConnection;
+export type TBitbucketFinding = z.infer<typeof BitbucketFindingSchema>;
+
+export type TBitbucketDataSourceWithConnection = TBitbucketDataSource & {
+  connection: TBitbucketConnection;
 };
 
-export type TQueueBitBucketResourceDiffScan = {
-  dataSourceType: SecretScanningDataSource.BitBucket;
-  payload: PushEvent;
+export type TBitbucketPushEventRepository = {
+  full_name: string;
+  name: string;
+  workspace: {
+    slug: string;
+    uuid: string;
+  };
+  uuid: string;
+};
+
+export type TBitbucketPushEventCommit = {
+  hash: string;
+  message: string;
+  author: {
+    raw: string;
+    user?: {
+      display_name: string;
+      uuid: string;
+      nickname: string;
+    };
+  };
+  date: string;
+};
+
+export type TBitbucketPushEventChange = {
+  new?: {
+    name: string;
+    type: string;
+  };
+  old?: {
+    name: string;
+    type: string;
+  };
+  created: boolean;
+  closed: boolean;
+  forced: boolean;
+  commits: TBitbucketPushEventCommit[];
+};
+
+export type TBitbucketPushEvent = {
+  push: {
+    changes: TBitbucketPushEventChange[];
+  };
+  repository: TBitbucketPushEventRepository;
+  actor: {
+    display_name: string;
+    uuid: string;
+    nickname: string;
+  };
+};
+
+export type TQueueBitbucketResourceDiffScan = {
+  dataSourceType: SecretScanningDataSource.Bitbucket;
+  payload: TBitbucketPushEvent & { dataSourceId: string };
   dataSourceId: string;
   resourceId: string;
   scanId: string;

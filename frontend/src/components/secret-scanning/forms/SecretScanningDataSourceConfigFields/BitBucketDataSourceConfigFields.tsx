@@ -1,13 +1,15 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue } from "react-select";
+import { MultiValue, SingleValue } from "react-select";
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
 import {
-  TBitBucketRepo,
-  useBitBucketConnectionListRepositories
+  TBitbucketRepo,
+  TBitbucketWorkspace,
+  useBitbucketConnectionListRepositories,
+  useBitbucketConnectionListWorkspaces
 } from "@app/hooks/api/appConnections/bitbucket";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
@@ -19,18 +21,25 @@ enum ScanMethod {
   SelectRepositories = "select-repositories"
 }
 
-export const BitBucketDataSourceConfigFields = () => {
+export const BitbucketDataSourceConfigFields = () => {
   const { control, watch, setValue } = useFormContext<
     TSecretScanningDataSourceForm & {
-      type: SecretScanningDataSource.BitBucket;
+      type: SecretScanningDataSource.Bitbucket;
     }
   >();
 
   const connectionId = useWatch({ control, name: "connection.id" });
   const isUpdate = Boolean(watch("id"));
 
+  const selectedWorkspaceSlug = useWatch({ control, name: "config.workspaceSlug" });
+
+  const { data: workspaces, isPending: areWorkspacesLoading } =
+    useBitbucketConnectionListWorkspaces(connectionId, { enabled: Boolean(connectionId) });
+
   const { data: repositories, isPending: areRepositoriesLoading } =
-    useBitBucketConnectionListRepositories(connectionId, { enabled: Boolean(connectionId) });
+    useBitbucketConnectionListRepositories(connectionId, selectedWorkspaceSlug, {
+      enabled: Boolean(connectionId) && Boolean(selectedWorkspaceSlug) // Enable only if both are present
+    });
 
   const includeRepos = watch("config.includeRepos");
 
@@ -51,9 +60,49 @@ export const BitBucketDataSourceConfigFields = () => {
         isUpdate={isUpdate}
         onChange={() => {
           if (scanMethod === ScanMethod.SelectRepositories) {
+            setValue("config.workspaceSlug", "");
             setValue("config.includeRepos", []);
           }
         }}
+      />
+      <Controller
+        name="config.workspaceSlug"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            isError={Boolean(error)}
+            errorText={error?.message}
+            label="Workspace"
+            helperText={
+              <Tooltip
+                className="max-w-md"
+                content={<>Ensure that your connection has the correct permissions.</>}
+              >
+                <div>
+                  <span>Don&#39;t see the workspaces you&#39;re looking for?</span>{" "}
+                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                </div>
+              </Tooltip>
+            }
+          >
+            <FilterableSelect
+              menuPlacement="top"
+              isLoading={areWorkspacesLoading && Boolean(connectionId)}
+              isDisabled={!connectionId}
+              value={value ? { slug: value } : null}
+              onChange={(newValue) => {
+                onChange((newValue as SingleValue<TBitbucketWorkspace>)?.slug);
+                if (scanMethod === ScanMethod.SelectRepositories) {
+                  setValue("config.includeRepos", []);
+                }
+              }}
+              options={workspaces}
+              placeholder="Select workspace..."
+              getOptionLabel={(option) => option.slug}
+              getOptionValue={(option) => option.slug}
+            />
+          </FormControl>
+        )}
       />
       <FormControl label="Scan Repositories">
         <Select
@@ -78,7 +127,7 @@ export const BitBucketDataSourceConfigFields = () => {
       {scanMethod === ScanMethod.SelectRepositories && (
         <Controller
           name="config.includeRepos"
-          defaultValue={["*"]}
+          // defaultValue={["*"]} // This defaultValue is handled by the useEffect above
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
@@ -100,18 +149,22 @@ export const BitBucketDataSourceConfigFields = () => {
               <FilterableSelect
                 menuPlacement="top"
                 isLoading={areRepositoriesLoading && Boolean(connectionId)}
-                isDisabled={!connectionId}
+                // Disable if no connection or no workspace slug is selected for fetching repositories
+                isDisabled={!connectionId || !selectedWorkspaceSlug}
                 isMulti
-                value={repositories?.filter((repository) => value.includes(repository.name))}
+                // Ensure 'value' is treated as a string array for filtering
+                value={repositories?.filter((repository) =>
+                  (value as string[]).includes(repository.full_name)
+                )}
                 onChange={(newValue) => {
                   onChange(
-                    newValue ? (newValue as MultiValue<TBitBucketRepo>).map((p) => p.name) : null
+                    newValue ? (newValue as MultiValue<TBitbucketRepo>).map((p) => p.full_name) : [] // Ensure it's an empty array if cleared
                   );
                 }}
                 options={repositories}
                 placeholder="Select repositories..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.name}
+                getOptionLabel={(option) => option.full_name}
+                getOptionValue={(option) => option.full_name}
               />
             </FormControl>
           )}

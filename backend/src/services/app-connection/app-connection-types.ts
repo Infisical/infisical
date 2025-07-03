@@ -57,10 +57,10 @@ import {
   TValidateAzureKeyVaultConnectionCredentialsSchema
 } from "./azure-key-vault";
 import {
-  TBitBucketConnection,
-  TBitBucketConnectionConfig,
-  TBitBucketConnectionInput,
-  TValidateBitBucketConnectionCredentialsSchema
+  TBitbucketConnection,
+  TBitbucketConnectionConfig,
+  TBitbucketConnectionInput,
+  TValidateBitbucketConnectionCredentialsSchema
 } from "./bitbucket";
 import {
   TCamundaConnection,
@@ -202,7 +202,7 @@ export type TAppConnection = { id: string } & (
   | TFlyioConnection
   | TGitLabConnection
   | TCloudflareConnection
-  | TBitBucketConnection
+  | TBitbucketConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -239,7 +239,7 @@ export type TAppConnectionInput = { id: string } & (
   | TFlyioConnectionInput
   | TGitLabConnectionInput
   | TCloudflareConnectionInput
-  | TBitBucketConnectionInput
+  | TBitbucketConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -284,7 +284,7 @@ export type TAppConnectionConfig =
   | TFlyioConnectionConfig
   | TGitLabConnectionConfig
   | TCloudflareConnectionConfig
-  | TBitBucketConnectionConfig;
+  | TBitbucketConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -316,7 +316,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateFlyioConnectionCredentialsSchema
   | TValidateGitLabConnectionCredentialsSchema
   | TValidateCloudflareConnectionCredentialsSchema
-  | TValidateBitBucketConnectionCredentialsSchema;
+  | TValidateBitbucketConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

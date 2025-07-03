@@ -7,7 +7,7 @@ import { TAzureAppConfigurationConnection } from "./azure-app-configuration-conn
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
-import { TBitBucketConnection } from "./bitbucket-connection";
+import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
@@ -92,7 +92,7 @@ export type TAppConnection =
   | TFlyioConnection
   | TGitLabConnection
   | TCloudflareConnection
-  | TBitBucketConnection;
+  | TBitbucketConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -149,5 +149,5 @@ export type TAppConnectionMap = {
   [AppConnection.Flyio]: TFlyioConnection;
   [AppConnection.Gitlab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
-  [AppConnection.BitBucket]: TBitBucketConnection;
+  [AppConnection.Bitbucket]: TBitbucketConnection;
 };

@@ -2270,8 +2270,8 @@ export const AppConnections = {
       accessTokenType: "The type of token used to connect with GitLab."
     },
     BITBUCKET: {
-      email: "The email used to access BitBucket.",
-      apiToken: "The API token used to access BitBucket."
+      email: "The email used to access Bitbucket.",
+      apiToken: "The API token used to access Bitbucket."
     }
   }
 };
@@ -2634,6 +2634,7 @@ export const SecretScanningDataSources = {
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
     },
     BITBUCKET: {
+      workspaceSlug: "The workspace to scan.",
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
     }
   }

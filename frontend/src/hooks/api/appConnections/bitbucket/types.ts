@@ -1,8 +1,16 @@
-export type TBitBucketRepo = {
-  id: string;
-  name: string; // workspace-slug/repo-slug
+export type TBitbucketWorkspace = {
+  slug: string;
 };
 
-export type TBitBucketConnectionListRepositoriesResponse = {
-  repositories: TBitBucketRepo[];
+export type TBitbucketRepo = {
+  slug: string;
+  full_name: string; // workspace-slug/repo-slug
+};
+
+export type TBitbucketConnectionListWorkspacesResponse = {
+  workspaces: TBitbucketWorkspace[];
+};
+
+export type TBitbucketConnectionListRepositoriesResponse = {
+  repositories: TBitbucketRepo[];
 };

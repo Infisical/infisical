@@ -13,7 +13,7 @@ import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListIte
 
 const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSecretScanningDataSourceListItem> = {
   [SecretScanningDataSource.GitHub]: GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
-  [SecretScanningDataSource.BitBucket]: BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION
+  [SecretScanningDataSource.Bitbucket]: BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION
 };
 
 export const listSecretScanningDataSourceOptions = () => {

@@ -3,7 +3,7 @@ import { TSecretScanningDataSourceListItem } from "@app/ee/services/secret-scann
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION: TSecretScanningDataSourceListItem = {
-  name: "BitBucket",
-  type: SecretScanningDataSource.BitBucket,
-  connection: AppConnection.BitBucket
+  name: "Bitbucket",
+  type: SecretScanningDataSource.Bitbucket,
+  connection: AppConnection.Bitbucket
 };

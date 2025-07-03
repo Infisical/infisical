@@ -1,11 +1,11 @@
 import { GenericFieldLabel } from "@app/components/v2";
-import { TBitBucketDataSource } from "@app/hooks/api/secretScanningV2/types/bitbucket-data-source";
+import { TBitbucketDataSource } from "@app/hooks/api/secretScanningV2/types/bitbucket-data-source";
 
 type Props = {
-  dataSource: TBitBucketDataSource;
+  dataSource: TBitbucketDataSource;
 };
 
-export const BitBucketDataSourceConfigDisplay = ({ dataSource }: Props) => {
+export const BitbucketDataSourceConfigDisplay = ({ dataSource }: Props) => {
   const {
     config: { includeRepos }
   } = dataSource;

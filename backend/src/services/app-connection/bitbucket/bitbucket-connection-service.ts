@@ -1,25 +1,33 @@
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listBitBucketRepositories } from "./bitbucket-connection-fns";
-import { TBitBucketConnection } from "./bitbucket-connection-types";
+import { listBitbucketRepositories, listBitbucketWorkspaces } from "./bitbucket-connection-fns";
+import { TBitbucketConnection, TGetBitbucketRepositoriesDTO } from "./bitbucket-connection-types";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
   actor: OrgServiceActor
-) => Promise<TBitBucketConnection>;
+) => Promise<TBitbucketConnection>;
 
 export const bitBucketConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listRepositories = async (connectionId: string, actor: OrgServiceActor) => {
-    const appConnection = await getAppConnection(AppConnection.BitBucket, connectionId, actor);
+  const listWorkspaces = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Bitbucket, connectionId, actor);
+    const workspaces = await listBitbucketWorkspaces(appConnection);
+    return workspaces;
+  };
 
-    const repositories = await listBitBucketRepositories(appConnection);
-
-    return repositories.map((repo) => ({ id: repo.slug, name: repo.full_name }));
+  const listRepositories = async (
+    { connectionId, workspaceSlug }: TGetBitbucketRepositoriesDTO,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.Bitbucket, connectionId, actor);
+    const repositories = await listBitbucketRepositories(appConnection, workspaceSlug);
+    return repositories;
   };
 
   return {
+    listWorkspaces,
     listRepositories
   };
 };

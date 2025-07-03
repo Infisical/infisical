@@ -8,54 +8,54 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
-import { BitBucketConnectionMethod } from "./bitbucket-connection-enums";
+import { BitbucketConnectionMethod } from "./bitbucket-connection-enums";
 
-export const BitBucketConnectionAccessTokenCredentialsSchema = z.object({
+export const BitbucketConnectionAccessTokenCredentialsSchema = z.object({
   apiToken: z.string().trim().min(1, "API Token required").describe(AppConnections.CREDENTIALS.BITBUCKET.apiToken),
   email: z.string().email().trim().min(1, "Email required").describe(AppConnections.CREDENTIALS.BITBUCKET.email)
 });
 
-const BaseBitBucketConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.BitBucket) });
+const BaseBitbucketConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Bitbucket) });
 
-export const BitBucketConnectionSchema = BaseBitBucketConnectionSchema.extend({
-  method: z.literal(BitBucketConnectionMethod.ApiToken),
-  credentials: BitBucketConnectionAccessTokenCredentialsSchema
+export const BitbucketConnectionSchema = BaseBitbucketConnectionSchema.extend({
+  method: z.literal(BitbucketConnectionMethod.ApiToken),
+  credentials: BitbucketConnectionAccessTokenCredentialsSchema
 });
 
-export const SanitizedBitBucketConnectionSchema = z.discriminatedUnion("method", [
-  BaseBitBucketConnectionSchema.extend({
-    method: z.literal(BitBucketConnectionMethod.ApiToken),
-    credentials: BitBucketConnectionAccessTokenCredentialsSchema.pick({
+export const SanitizedBitbucketConnectionSchema = z.discriminatedUnion("method", [
+  BaseBitbucketConnectionSchema.extend({
+    method: z.literal(BitbucketConnectionMethod.ApiToken),
+    credentials: BitbucketConnectionAccessTokenCredentialsSchema.pick({
       email: true
     })
   })
 ]);
 
-export const ValidateBitBucketConnectionCredentialsSchema = z.discriminatedUnion("method", [
+export const ValidateBitbucketConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
-      .literal(BitBucketConnectionMethod.ApiToken)
-      .describe(AppConnections.CREATE(AppConnection.BitBucket).method),
-    credentials: BitBucketConnectionAccessTokenCredentialsSchema.describe(
-      AppConnections.CREATE(AppConnection.BitBucket).credentials
+      .literal(BitbucketConnectionMethod.ApiToken)
+      .describe(AppConnections.CREATE(AppConnection.Bitbucket).method),
+    credentials: BitbucketConnectionAccessTokenCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.Bitbucket).credentials
     )
   })
 ]);
 
-export const CreateBitBucketConnectionSchema = ValidateBitBucketConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.BitBucket)
+export const CreateBitbucketConnectionSchema = ValidateBitbucketConnectionCredentialsSchema.and(
+  GenericCreateAppConnectionFieldsSchema(AppConnection.Bitbucket)
 );
 
-export const UpdateBitBucketConnectionSchema = z
+export const UpdateBitbucketConnectionSchema = z
   .object({
-    credentials: BitBucketConnectionAccessTokenCredentialsSchema.optional().describe(
-      AppConnections.UPDATE(AppConnection.BitBucket).credentials
+    credentials: BitbucketConnectionAccessTokenCredentialsSchema.optional().describe(
+      AppConnections.UPDATE(AppConnection.Bitbucket).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.BitBucket));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Bitbucket));
 
-export const BitBucketConnectionListItemSchema = z.object({
-  name: z.literal("BitBucket"),
-  app: z.literal(AppConnection.BitBucket),
-  methods: z.nativeEnum(BitBucketConnectionMethod).array()
+export const BitbucketConnectionListItemSchema = z.object({
+  name: z.literal("Bitbucket"),
+  app: z.literal(AppConnection.Bitbucket),
+  methods: z.nativeEnum(BitbucketConnectionMethod).array()
 });
