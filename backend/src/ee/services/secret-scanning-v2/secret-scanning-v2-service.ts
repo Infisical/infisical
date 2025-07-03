@@ -49,6 +49,7 @@ import { TAppConnection } from "@app/services/app-connection/app-connection-type
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { bitBucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue";
 
@@ -869,6 +870,7 @@ export const secretScanningV2ServiceFactory = ({
     updateSecretScanningFindingById,
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
-    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue)
+    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
+    bitbucket: bitBucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue)
   };
 };

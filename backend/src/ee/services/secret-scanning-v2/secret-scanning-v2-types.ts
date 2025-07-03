@@ -5,6 +5,14 @@ import {
   TSecretScanningScans
 } from "@app/db/schemas";
 import {
+  TBitBucketDataSource,
+  TBitBucketDataSourceInput,
+  TBitBucketDataSourceListItem,
+  TBitBucketDataSourceWithConnection,
+  TBitBucketFinding,
+  TQueueBitBucketResourceDiffScan
+} from "@app/ee/services/secret-scanning-v2/bitbucket";
+import {
   TGitHubDataSource,
   TGitHubDataSourceInput,
   TGitHubDataSourceListItem,
@@ -19,7 +27,7 @@ import {
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 
-export type TSecretScanningDataSource = TGitHubDataSource;
+export type TSecretScanningDataSource = TGitHubDataSource | TBitBucketDataSource;
 
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScannedAt?: Date | null;
@@ -41,13 +49,15 @@ export type TSecretScanningScanWithDetails = TSecretScanningScans & {
   resourceName: string;
 };
 
-export type TSecretScanningDataSourceWithConnection = TGitHubDataSourceWithConnection;
+export type TSecretScanningDataSourceWithConnection =
+  | TGitHubDataSourceWithConnection
+  | TBitBucketDataSourceWithConnection;
 
-export type TSecretScanningDataSourceInput = TGitHubDataSourceInput;
+export type TSecretScanningDataSourceInput = TGitHubDataSourceInput | TBitBucketDataSourceInput;
 
-export type TSecretScanningDataSourceListItem = TGitHubDataSourceListItem;
+export type TSecretScanningDataSourceListItem = TGitHubDataSourceListItem | TBitBucketDataSourceListItem;
 
-export type TSecretScanningFinding = TGitHubFinding;
+export type TSecretScanningFinding = TGitHubFinding | TBitBucketFinding;
 
 export type TListSecretScanningDataSourcesByProjectId = {
   projectId: string;
@@ -99,7 +109,7 @@ export type TQueueSecretScanningDataSourceFullScan = {
   scanId: string;
 };
 
-export type TQueueSecretScanningResourceDiffScan = TQueueGitHubResourceDiffScan;
+export type TQueueSecretScanningResourceDiffScan = TQueueGitHubResourceDiffScan | TQueueBitBucketResourceDiffScan;
 
 export type TQueueSecretScanningSendNotification = {
   dataSource: TSecretScanningDataSources;

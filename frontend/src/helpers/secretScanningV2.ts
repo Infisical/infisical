@@ -19,6 +19,11 @@ export const SECRET_SCANNING_DATA_SOURCE_MAP: Record<
     name: "GitHub",
     image: "GitHub.png",
     size: 45
+  },
+  [SecretScanningDataSource.BitBucket]: {
+    name: "BitBucket",
+    image: "BitBucket.png",
+    size: 45
   }
 };
 
@@ -26,7 +31,8 @@ export const SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP: Record<
   SecretScanningDataSource,
   AppConnection
 > = {
-  [SecretScanningDataSource.GitHub]: AppConnection.GitHubRadar
+  [SecretScanningDataSource.GitHub]: AppConnection.GitHubRadar,
+  [SecretScanningDataSource.BitBucket]: AppConnection.BitBucket
 };
 
 export const RESOURCE_DESCRIPTION_HELPER: Record<
@@ -40,6 +46,13 @@ export const RESOURCE_DESCRIPTION_HELPER: Record<
   }
 > = {
   [SecretScanningDataSource.GitHub]: {
+    verb: "push",
+    pluralNoun: "repositories",
+    singularNoun: "repository",
+    pluralTitle: "Repositories",
+    singularTitle: "Repository"
+  },
+  [SecretScanningDataSource.BitBucket]: {
     verb: "push",
     pluralNoun: "repositories",
     singularNoun: "repository",

@@ -2,13 +2,17 @@ import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/se
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const SECRET_SCANNING_DATA_SOURCE_NAME_MAP: Record<SecretScanningDataSource, string> = {
-  [SecretScanningDataSource.GitHub]: "GitHub"
+  [SecretScanningDataSource.GitHub]: "GitHub",
+  [SecretScanningDataSource.BitBucket]: "BitBucket"
 };
 
 export const SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP: Record<SecretScanningDataSource, AppConnection> = {
-  [SecretScanningDataSource.GitHub]: AppConnection.GitHubRadar
+  [SecretScanningDataSource.GitHub]: AppConnection.GitHubRadar,
+  [SecretScanningDataSource.BitBucket]: AppConnection.BitBucket
 };
 
 export const AUTO_SYNC_DESCRIPTION_HELPER: Record<SecretScanningDataSource, { verb: string; noun: string }> = {
-  [SecretScanningDataSource.GitHub]: { verb: "push", noun: "repositories" }
+  [SecretScanningDataSource.GitHub]: { verb: "push", noun: "repositories" },
+  // TODO(andrey): May need change
+  [SecretScanningDataSource.BitBucket]: { verb: "push", noun: "repositories" }
 };
