@@ -10,14 +10,7 @@ export const EmailNotVerifiedPage = () => {
       </Helmet>
       <Link to="/">
         <div className="mb-4 mt-20 flex justify-center">
-          <img
-            src="/images/gradientLogo.svg"
-            style={{
-              height: "90px",
-              width: "120px"
-            }}
-            alt="Infisical Logo"
-          />
+          <img src="/images/gradientLogo.svg" className="h-[90px] w-[120px]" alt="Infisical Logo" />
         </div>
       </Link>
       <div className="mx-auto flex w-full flex-col items-center justify-center">
