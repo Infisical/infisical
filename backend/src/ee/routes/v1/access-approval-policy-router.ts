@@ -19,7 +19,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z.object({
         projectSlug: z.string().trim(),
         name: z.string().optional(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().min(1, { message: "Secret path cannot be empty" }),
         environment: z.string(),
         approvers: z
           .discriminatedUnion("type", [
@@ -171,11 +171,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       body: z.object({
         name: z.string().optional(),
-        secretPath: z
-          .string()
-          .trim()
-          .optional()
-          .transform((val) => (val === "" ? "/" : val)),
+        secretPath: z.string().trim().optional(),
         approvers: z
           .discriminatedUnion("type", [
             z.object({

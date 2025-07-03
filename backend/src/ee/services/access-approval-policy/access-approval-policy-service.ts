@@ -60,6 +60,26 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   orgMembershipDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
+  const $policyExists = async ({
+    envId,
+    secretPath,
+    policyId
+  }: {
+    envId: string;
+    secretPath: string;
+    policyId?: string;
+  }) => {
+    const policy = await accessApprovalPolicyDAL
+      .findOne({
+        envId,
+        secretPath,
+        deletedAt: null
+      })
+      .catch(() => null);
+
+    return policyId ? policy && policy.id !== policyId : Boolean(policy);
+  };
+
   const createAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["createAccessApprovalPolicy"] = async ({
     name,
     actor,
@@ -105,6 +125,12 @@ export const accessApprovalPolicyServiceFactory = ({
     );
     const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id });
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
+
+    if (await $policyExists({ envId: env.id, secretPath })) {
+      throw new BadRequestError({
+        message: `A policy for secret path '${secretPath}' already exists in environment '${environment}'`
+      });
+    }
 
     let approverUserIds = userApprovers;
     if (userApproverNames.length) {
@@ -288,6 +314,24 @@ export const accessApprovalPolicyServiceFactory = ({
       currentApprovals > userApprovers.length + userApproverNames.length
     ) {
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
+    }
+
+    // Case: Previously we allowed secret path to be null, but now we don't.
+    // This check ensures that we have a secret path to match with for finding conflicting policies.
+    if (!secretPath && !accessApprovalPolicy.secretPath) {
+      throw new BadRequestError({ message: "Secret path is required to update the policy" });
+    }
+
+    if (
+      await $policyExists({
+        envId: accessApprovalPolicy.envId,
+        secretPath: secretPath || accessApprovalPolicy.secretPath || "",
+        policyId: accessApprovalPolicy.id
+      })
+    ) {
+      throw new BadRequestError({
+        message: `A policy for secret path '${secretPath}' already exists in environment '${accessApprovalPolicy.environment.slug}'`
+      });
     }
 
     if (!accessApprovalPolicy) {

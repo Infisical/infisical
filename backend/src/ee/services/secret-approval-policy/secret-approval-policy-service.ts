@@ -5,6 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -55,6 +56,27 @@ export const secretApprovalPolicyServiceFactory = ({
   licenseService,
   secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
+  const $policyExists = async ({
+    envId,
+    secretPath,
+    policyId
+  }: {
+    envId: string;
+    secretPath?: string | null;
+    policyId?: string;
+  }) => {
+    const policy = await secretApprovalPolicyDAL
+      .findOne({
+        envId,
+        // For environment-wide policies, we store the path as an empty string, even though the column is nullable; for that reason we check for an empty string.
+        ...(secretPath ? { secretPath } : { secretPath: "" }),
+        deletedAt: null
+      })
+      .catch(() => null);
+
+    return policyId ? policy && policy.id !== policyId : Boolean(policy);
+  };
+
   const createSecretApprovalPolicy = async ({
     name,
     actor,
@@ -106,10 +128,17 @@ export const secretApprovalPolicyServiceFactory = ({
     }
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    if (!env)
+    if (!env) {
       throw new NotFoundError({
         message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
       });
+    }
+
+    if (await $policyExists({ envId: env.id, secretPath })) {
+      throw new BadRequestError({
+        message: `A policy for secret path '${secretPath}' already exists in environment '${environment}'`
+      });
+    }
 
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
@@ -257,6 +286,12 @@ export const secretApprovalPolicyServiceFactory = ({
     if (!secretApprovalPolicy) {
       throw new NotFoundError({
         message: `Secret approval policy with ID '${secretPolicyId}' not found`
+      });
+    }
+
+    if (await $policyExists({ envId: secretApprovalPolicy.envId, secretPath, policyId: secretApprovalPolicy.id })) {
+      throw new BadRequestError({
+        message: `A policy for secret path '${secretPath}' already exists in environment '${secretApprovalPolicy.environment.slug}'`
       });
     }
 
