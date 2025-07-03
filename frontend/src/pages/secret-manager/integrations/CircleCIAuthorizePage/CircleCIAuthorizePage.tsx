@@ -36,7 +36,7 @@ export const CircleCIAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/circleci/create",
+        to: "/projects/$projectId/secret-manager/integrations/circleci/create",
         params: {
           projectId: currentWorkspace.id
         },

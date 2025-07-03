@@ -30,10 +30,10 @@ type TFindQuery = {
   actor?: string;
   projectId?: string;
   environment?: string;
-  orgId?: string;
+  orgId: string;
   eventType?: string;
-  startDate?: string;
-  endDate?: string;
+  startDate: string;
+  endDate: string;
   userAgentType?: string;
   limit?: number;
   offset?: number;
@@ -61,18 +61,15 @@ export const auditLogDALFactory = (db: TDbClient) => {
     },
     tx
   ) => {
-    if (!orgId && !projectId) {
-      throw new Error("Either orgId or projectId must be provided");
-    }
-
     try {
       // Find statements
       const sqlQuery = (tx || db.replicaNode())(TableName.AuditLog)
+        .where(`${TableName.AuditLog}.orgId`, orgId)
+        .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
+        .andWhereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
         // eslint-disable-next-line func-names
         .where(function () {
-          if (orgId) {
-            void this.where(`${TableName.AuditLog}.orgId`, orgId);
-          } else if (projectId) {
+          if (projectId) {
             void this.where(`${TableName.AuditLog}.projectId`, projectId);
           }
         });
@@ -135,14 +132,6 @@ export const auditLogDALFactory = (db: TDbClient) => {
         void sqlQuery.whereIn("eventType", eventType);
       }
 
-      // Filter by date range
-      if (startDate) {
-        void sqlQuery.whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate]);
-      }
-      if (endDate) {
-        void sqlQuery.whereRaw(`"${TableName.AuditLog}"."createdAt" <= ?::timestamptz`, [endDate]);
-      }
-
       // we timeout long running queries to prevent DB resource issues (2 minutes)
       const docs = await sqlQuery.timeout(1000 * 120);
 
@@ -174,6 +163,8 @@ export const auditLogDALFactory = (db: TDbClient) => {
       try {
         const findExpiredLogSubQuery = (tx || db)(TableName.AuditLog)
           .where("expiresAt", "<", today)
+          .where("createdAt", "<", today) // to use audit log partition
+          .orderBy(`${TableName.AuditLog}.createdAt`, "desc")
           .select("id")
           .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
 

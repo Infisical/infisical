@@ -158,7 +158,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       onKeyDown={(evt) => {
                         if (evt.key === "Enter") {
                           navigate({
-                            to: `/${currentWorkspace.type}/$projectId/groups/$groupId` as const,
+                            to: "/projects/$projectId/groups/$groupId",
                             params: {
                               projectId: currentWorkspace.id,
                               groupId: id
@@ -168,7 +168,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       }}
                       onClick={() =>
                         navigate({
-                          to: `/${currentWorkspace.type}/$projectId/groups/$groupId` as const,
+                          to: "/projects/$projectId/groups/$groupId",
                           params: {
                             projectId: currentWorkspace.id,
                             groupId: id

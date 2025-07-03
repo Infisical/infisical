@@ -24,7 +24,7 @@ export type Workspace = {
   __v: number;
   id: string;
   name: string;
-  type: ProjectType;
+  defaultProduct: ProjectType;
   description?: string;
   orgId: string;
   version: ProjectVersion;
@@ -71,7 +71,6 @@ export type CreateWorkspaceDTO = {
   projectDescription?: string;
   kmsKeyId?: string;
   template?: string;
-  type: ProjectType;
 };
 
 export type UpdateProjectDTO = {
@@ -81,6 +80,7 @@ export type UpdateProjectDTO = {
   newSlug?: string;
   secretSharing?: boolean;
   showSnapshotsLegacy?: boolean;
+  defaultProduct?: ProjectType;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
@@ -181,7 +181,6 @@ export enum ProjectIdentityOrderBy {
   Name = "name"
 }
 export type TSearchProjectsDTO = {
-  type?: ProjectType;
   name?: string;
   limit?: number;
   offset?: number;

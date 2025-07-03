@@ -12,7 +12,6 @@ import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const QueryParamsSchema = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
@@ -112,7 +111,7 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       throw redirect({ to: "/login/select-organization" });
     }
     throw redirect({
-      to: `/organization/${ProjectType.SecretManager}/overview` as const
+      to: "/organization/projects"
     });
   },
   component: AuthConsentWrapper

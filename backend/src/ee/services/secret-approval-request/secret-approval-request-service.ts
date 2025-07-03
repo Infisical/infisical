@@ -2,7 +2,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import {
-  ActionProjectType,
   ProjectMembershipRole,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
@@ -183,8 +182,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId, policyId);
@@ -211,8 +209,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -264,8 +261,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -414,8 +410,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -484,8 +479,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -541,8 +535,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     if (
@@ -958,7 +951,7 @@ export const secretApprovalRequestServiceFactory = ({
           bypassReason,
           secretPath: policy.secretPath,
           environment: env.name,
-          approvalUrl: `${cfg.SITE_URL}/secret-manager/${project.id}/approval`
+          approvalUrl: `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`
         },
         template: SmtpTemplates.AccessSecretRequestBypassed
       });
@@ -987,8 +980,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1278,8 +1270,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)

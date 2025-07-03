@@ -154,16 +154,14 @@ export const useGetWorkspaceById = (
 
 export const useGetUserWorkspaces = ({
   includeRoles,
-  type = "all",
   options = {}
 }: {
   includeRoles?: boolean;
-  type?: ProjectType | "all";
   options?: { enabled?: boolean };
 } = {}) =>
   useQuery({
-    queryKey: workspaceKeys.getAllUserWorkspace(type),
-    queryFn: () => fetchUserWorkspaces(includeRoles, type),
+    queryKey: workspaceKeys.getAllUserWorkspace(),
+    queryFn: () => fetchUserWorkspaces(includeRoles),
     ...options
   });
 
@@ -257,17 +255,16 @@ export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { project: Workspace } }, object, CreateWorkspaceDTO>({
-    mutationFn: async ({ projectName, projectDescription, kmsKeyId, template, type }) =>
+    mutationFn: async ({ projectName, projectDescription, kmsKeyId, template }) =>
       createWorkspace({
         projectName,
         projectDescription,
         kmsKeyId,
-        template,
-        type
+        template
       }),
-    onSuccess: (dto) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace(dto.data.project.type)
+        queryKey: workspaceKeys.getAllUserWorkspace()
       });
     }
   });
@@ -283,7 +280,8 @@ export const useUpdateProject = () => {
       newProjectDescription,
       newSlug,
       secretSharing,
-      showSnapshotsLegacy
+      showSnapshotsLegacy,
+      defaultProduct
     }) => {
       const { data } = await apiRequest.patch<{ workspace: Workspace }>(
         `/api/v1/workspace/${projectID}`,
@@ -291,6 +289,7 @@ export const useUpdateProject = () => {
           name: newProjectName,
           description: newProjectDescription,
           slug: newSlug,
+          defaultProduct,
           secretSharing,
           showSnapshotsLegacy
         }
@@ -351,8 +350,8 @@ export const useUpdateWorkspaceVersionLimit = () => {
       });
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -370,8 +369,8 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
       );
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -384,8 +383,8 @@ export const useDeleteWorkspace = () => {
       const { data } = await apiRequest.delete(`/api/v1/workspace/${workspaceID}`);
       return data.workspace;
     },
-    onSuccess: (dto) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace(dto.type) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
       });

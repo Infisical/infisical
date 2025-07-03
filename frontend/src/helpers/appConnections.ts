@@ -37,7 +37,8 @@ import {
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
   VercelConnectionMethod,
-  WindmillConnectionMethod
+  WindmillConnectionMethod,
+  ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
@@ -88,7 +89,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Render]: { name: "Render", image: "Render.png" },
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
-  [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" }
+  [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
+  [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -120,6 +122,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
     case CloudflareConnectionMethod.ApiToken:
+    case ZabbixConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

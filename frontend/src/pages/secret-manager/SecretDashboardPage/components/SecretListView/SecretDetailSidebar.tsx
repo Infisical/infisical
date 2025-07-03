@@ -990,9 +990,7 @@ export const SecretDetailSidebar = ({
                                 className="z-[100] capitalize"
                               >
                                 <Link
-                                  to={
-                                    `/${ProjectType.SecretManager}/$projectId/members/$membershipId` as const
-                                  }
+                                  to="/projects/$projectId/members/$membershipId"
                                   params={{
                                     projectId: currentWorkspace.id,
                                     membershipId: user.membershipId
@@ -1023,9 +1021,7 @@ export const SecretDetailSidebar = ({
                                 className="z-[100]"
                               >
                                 <Link
-                                  to={
-                                    `/${ProjectType.SecretManager}/$projectId/identities/$identityId` as const
-                                  }
+                                  to="/projects/$projectId/identities/$identityId"
                                   params={{
                                     projectId: currentWorkspace.id,
                                     identityId: identity.id

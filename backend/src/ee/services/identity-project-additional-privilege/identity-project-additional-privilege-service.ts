@@ -1,7 +1,6 @@
 import { ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
@@ -73,8 +72,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorId,
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -87,8 +85,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorId: identityId,
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
 
     // we need to validate that the privilege given is not higher than the assigning users permission
@@ -175,8 +172,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorId,
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -189,8 +185,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorId: identityProjectMembership.identityId,
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
 
     // we need to validate that the privilege given is not higher than the assigning users permission
@@ -293,8 +288,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorId,
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Edit,
@@ -306,8 +300,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorId: identityProjectMembership.identityId,
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     const permissionBoundary = validatePrivilegeChangeOperation(
       membership.shouldUseNewPrivilegeSystem,
@@ -366,8 +359,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorId,
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Read,
@@ -409,8 +401,7 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       actorId,
       projectId: identityProjectMembership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

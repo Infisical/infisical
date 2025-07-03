@@ -5,6 +5,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityUaClientSecretDALFactory } from "../identity-ua/identity-ua-client-secret-dal";
+import { TOrgServiceFactory } from "../org/org-service";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
@@ -24,6 +25,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets" | "pruneExpiredSecretRequests">;
   serviceTokenService: Pick<TServiceTokenServiceFactory, "notifyExpiringTokens">;
   queueService: TQueueServiceFactory;
+  orgService: TOrgServiceFactory;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -39,12 +41,12 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   secretSharingDAL,
   secretVersionV2DAL,
   identityUniversalAuthClientSecretDAL,
-  serviceTokenService
+  serviceTokenService,
+  orgService
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   queueService.start(QueueName.DailyResourceCleanUp, async () => {
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
     await secretDAL.pruneSecretReminders(queueService);
-    await auditLogDAL.pruneAuditLog();
     await identityAccessTokenDAL.removeExpiredTokens();
     await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
     await secretSharingDAL.pruneExpiredSharedSecrets();
@@ -54,6 +56,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await secretVersionV2DAL.pruneExcessVersions();
     await secretFolderVersionDAL.pruneExcessVersions();
     await serviceTokenService.notifyExpiringTokens();
+    await orgService.notifyInvitedUsers();
+    await auditLogDAL.pruneAuditLog();
     logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
   });
 

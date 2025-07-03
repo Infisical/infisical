@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ProjectMembershipRole, ProjectType, TProjectEnvironments } from "@app/db/schemas";
+import { ProjectMembershipRole, TProjectEnvironments } from "@app/db/schemas";
 import { TProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { OrgServiceActor } from "@app/lib/types";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
@@ -16,7 +16,6 @@ export type TProjectTemplateRole = {
 export type TCreateProjectTemplateDTO = {
   name: string;
   description?: string;
-  type: ProjectType;
   roles: TProjectTemplateRole[];
   environments?: TProjectTemplateEnvironment[] | null;
 };
@@ -30,14 +29,10 @@ export enum InfisicalProjectTemplate {
 }
 
 export type TProjectTemplateServiceFactory = {
-  listProjectTemplatesByOrg: (
-    actor: OrgServiceActor,
-    type?: ProjectType
-  ) => Promise<
+  listProjectTemplatesByOrg: (actor: OrgServiceActor) => Promise<
     (
       | {
           id: string;
-          type: ProjectType;
           name: InfisicalProjectTemplate;
           createdAt: Date;
           updatedAt: Date;
@@ -74,7 +69,6 @@ export type TProjectTemplateServiceFactory = {
             name: string;
           }[];
           name: string;
-          type: string;
           orgId: string;
           id: string;
           createdAt: Date;
@@ -99,7 +93,6 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     name: string;
-    type: string;
     orgId: string;
     id: string;
     createdAt: Date;
@@ -123,7 +116,6 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     name: string;
-    type: string;
     orgId: string;
     id: string;
     createdAt: Date;
@@ -146,7 +138,6 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     name: string;
-    type: string;
     orgId: string;
     id: string;
     createdAt: Date;
@@ -170,7 +161,6 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     name: string;
-    type: string;
     orgId: string;
     id: string;
     createdAt: Date;
@@ -194,7 +184,6 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     name: string;
-    type: string;
     orgId: string;
     id: string;
     createdAt: Date;
