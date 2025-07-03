@@ -24,15 +24,7 @@ export type TBitBucketConnectionConfig = DiscriminativePick<
   orgId: string;
 };
 
-export type TBitBucketVault = {
-  id: string;
-  name: string;
-  type: string;
-  items: number;
-
-  attributeVersion: number;
-  contentVersion: number;
-
-  createdAt: string;
-  updatedAt: string;
+export type TBitBucketRepo = {
+  full_name: string; // workspace-slug/repo-slug
+  slug: string;
 };

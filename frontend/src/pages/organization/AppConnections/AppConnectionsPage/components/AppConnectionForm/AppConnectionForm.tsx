@@ -16,6 +16,7 @@ import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConn
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
+import { BitBucketConnectionForm } from "./BitBucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -38,7 +39,6 @@ import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
-import { BitBucketConnectionForm } from "./BitBucketConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;

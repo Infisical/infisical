@@ -38,6 +38,7 @@ export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
+export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
@@ -60,7 +61,6 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
-export * from "./bitbucket-connection";
 
 export type TAppConnection =
   | TAwsConnection

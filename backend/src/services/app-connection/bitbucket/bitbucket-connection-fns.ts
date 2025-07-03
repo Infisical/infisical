@@ -3,9 +3,10 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { BitBucketConnectionMethod } from "./bitbucket-connection-enums";
-import { TBitBucketConnectionConfig } from "./bitbucket-connection-types";
+import { TBitBucketConnection, TBitBucketConnectionConfig, TBitBucketRepo } from "./bitbucket-connection-types";
 
 export const getBitBucketConnectionListItem = () => {
   return {
@@ -15,16 +16,16 @@ export const getBitBucketConnectionListItem = () => {
   };
 };
 
-export const validateBitBucketConnectionCredentials = async (config: TBitBucketConnectionConfig) => {
-  const { email, apiToken } = config.credentials;
-
+export const getBitBucketUser = async ({ email, apiToken }: { email: string; apiToken: string }) => {
   try {
-    await request.get("https://api.bitbucket.org/2.0/user", {
+    const { data } = await request.get<{ username: string }>(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/user`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
         Accept: "application/json"
       }
     });
+
+    return data;
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
@@ -35,6 +36,26 @@ export const validateBitBucketConnectionCredentials = async (config: TBitBucketC
       message: "Unable to validate connection: verify credentials"
     });
   }
+};
 
+export const validateBitBucketConnectionCredentials = async (config: TBitBucketConnectionConfig) => {
+  await getBitBucketUser(config.credentials);
   return config.credentials;
+};
+
+export const listBitBucketRepositories = async (appConnection: TBitBucketConnection) => {
+  const { email, apiToken } = appConnection.credentials;
+
+  // TODO(andrey): Support pagination for cases where a token has access to over 100 repos
+  const { data } = await request.get<{ values: TBitBucketRepo[] }>(
+    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories?role=member&pagelen=100`,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  return data.values;
 };

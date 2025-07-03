@@ -39,10 +39,10 @@ import {
   VercelConnectionMethod,
   WindmillConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { BitBucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
-import { BitBucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,

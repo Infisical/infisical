@@ -2632,6 +2632,9 @@ export const SecretScanningDataSources = {
   CONFIG: {
     GITHUB: {
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+    },
+    BITBUCKET: {
+      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
     }
   }
 };
