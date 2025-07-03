@@ -6,6 +6,7 @@ import { logger } from "@app/lib/logger";
 
 import { TFeatureSet } from "./license-types";
 
+// TODO(andrey): Revert this
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,
   slug: null,
