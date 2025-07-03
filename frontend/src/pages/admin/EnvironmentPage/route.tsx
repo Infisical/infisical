@@ -6,7 +6,7 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/admin/_admin-layout/environment"
 )({
   component: EnvironmentPage,
-  beforeLoad: async () => {
+  beforeLoad: () => {
     return {
       breadcrumbs: [
         {
