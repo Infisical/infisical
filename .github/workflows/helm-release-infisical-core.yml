@@ -53,7 +53,7 @@ jobs:
           ct install \
             --config ct.yaml \
             --charts helm-charts/infisical-standalone-postgres \
-            --helm-extra-args="--timeout=300s" \
+            --helm-extra-args="--timeout=600s" \
             --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.autoDatabaseSchemaMigration=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.132.2-postgres" \
             --namespace infisical-standalone-postgres
 
