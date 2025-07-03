@@ -22,6 +22,7 @@ import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
 import { registerWindmillSyncRouter } from "./windmill-sync-router";
+import { registerZabbixSyncRouter } from "./zabbix-sync-router";
 
 export * from "./secret-sync-router";
 
@@ -47,5 +48,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Render]: registerRenderSyncRouter,
   [SecretSync.Flyio]: registerFlyioSyncRouter,
   [SecretSync.GitLab]: registerGitLabSyncRouter,
-  [SecretSync.CloudflarePages]: registerCloudflarePagesSyncRouter
+  [SecretSync.CloudflarePages]: registerCloudflarePagesSyncRouter,
+  [SecretSync.Zabbix]: registerZabbixSyncRouter
 };

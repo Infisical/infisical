@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -469,15 +469,41 @@ export const secretFolderServiceFactory = ({
 
   const $checkFolderPolicy = async ({
     projectId,
-    environment,
-    parentId
+    env,
+    parentId,
+    idOrName
   }: {
     projectId: string;
-    environment: string;
+    env: TProjectEnvironments;
     parentId: string;
+    idOrName: string;
   }) => {
+    let targetFolder = await folderDAL
+      .findOne({
+        envId: env.id,
+        name: idOrName,
+        parentId,
+        isReserved: false
+      })
+      .catch(() => null);
+
+    if (!targetFolder && uuidValidate(idOrName)) {
+      targetFolder = await folderDAL
+        .findOne({
+          envId: env.id,
+          id: idOrName,
+          parentId,
+          isReserved: false
+        })
+        .catch(() => null);
+    }
+
+    if (!targetFolder) {
+      throw new NotFoundError({ message: `Target folder not found` });
+    }
+
     // get environment root folder (as it's needed to get all folders under it)
-    const rootFolder = await folderDAL.findBySecretPath(projectId, environment, "/");
+    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/");
     if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
     // get all folders under environment root folder
     const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] });
@@ -492,7 +518,13 @@ export const secretFolderServiceFactory = ({
       folderMap.get(normalizeKey(folder.parentId))?.push(folder);
     }
 
-    // Recursively collect all folders under the given parentId
+    // Find the target folder in the folderPaths to get its full details
+    const targetFolderWithPath = folderPaths.find((f) => f.id === targetFolder!.id);
+    if (!targetFolderWithPath) {
+      throw new NotFoundError({ message: `Target folder path not found` });
+    }
+
+    // Recursively collect all folders under the target folder (descendants only)
     const collectDescendants = (
       id: string
     ): (TSecretFolders & { path: string; depth: number; environment: string })[] => {
@@ -500,23 +532,31 @@ export const secretFolderServiceFactory = ({
       return [...children, ...children.flatMap((child) => collectDescendants(child.id))];
     };
 
-    const foldersUnderParent = collectDescendants(parentId);
+    const targetFolderDescendants = collectDescendants(targetFolder.id);
 
-    const folderPolicyPaths = foldersUnderParent.map((folder) => ({
+    // Include the target folder itself plus all its descendants
+    const foldersToCheck = [targetFolderWithPath, ...targetFolderDescendants];
+
+    const folderPolicyPaths = foldersToCheck.map((folder) => ({
       path: folder.path,
       id: folder.id
     }));
 
     // get secrets under the given folders
-    const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: folderPolicyPaths.map((p) => p.id) });
+    const secrets = await secretV2BridgeDAL.findByFolderIds({
+      folderIds: folderPolicyPaths.map((p) => p.id)
+    });
+
     for await (const folderPolicyPath of folderPolicyPaths) {
       // eslint-disable-next-line no-continue
       if (!secrets.some((s) => s.folderId === folderPolicyPath.id)) continue;
+
       const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         projectId,
-        environment,
+        env.slug,
         folderPolicyPath.path
       );
+
       // if there is a policy and there are secrets under the given folder, throw error
       if (policy) {
         throw new BadRequestError({
@@ -560,19 +600,41 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, environment, parentId: parentFolder.id });
+      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName });
+
+      let folderToDelete = await folderDAL
+        .findOne({
+          envId: env.id,
+          name: idOrName,
+          parentId: parentFolder.id,
+          isReserved: false
+        })
+        .catch(() => null);
+
+      if (!folderToDelete && uuidValidate(idOrName)) {
+        folderToDelete = await folderDAL
+          .findOne({
+            envId: env.id,
+            id: idOrName,
+            parentId: parentFolder.id,
+            isReserved: false
+          })
+          .catch(() => null);
+      }
+
+      if (!folderToDelete) {
+        throw new NotFoundError({ message: `Folder with ID '${idOrName}' not found` });
+      }
 
       const [doc] = await folderDAL.delete(
         {
           envId: env.id,
-          [uuidValidate(idOrName) ? "id" : "name"]: idOrName,
+          id: folderToDelete.id,
           parentId: parentFolder.id,
           isReserved: false
         },
         tx
       );
-
-      if (!doc) throw new NotFoundError({ message: `Failed to delete folder with ID '${idOrName}', not found` });
 
       const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id], tx);
 

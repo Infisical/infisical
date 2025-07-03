@@ -171,6 +171,12 @@ import {
   TWindmillConnectionConfig,
   TWindmillConnectionInput
 } from "./windmill";
+import {
+  TValidateZabbixConnectionCredentialsSchema,
+  TZabbixConnection,
+  TZabbixConnectionConfig,
+  TZabbixConnectionInput
+} from "./zabbix";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -203,6 +209,7 @@ export type TAppConnection = { id: string } & (
   | TGitLabConnection
   | TCloudflareConnection
   | TBitbucketConnection
+  | TZabbixConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -240,6 +247,7 @@ export type TAppConnectionInput = { id: string } & (
   | TGitLabConnectionInput
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
+  | TZabbixConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -285,6 +293,7 @@ export type TAppConnectionConfig =
   | TGitLabConnectionConfig
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig;
+  | TZabbixConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -316,7 +325,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateFlyioConnectionCredentialsSchema
   | TValidateGitLabConnectionCredentialsSchema
   | TValidateCloudflareConnectionCredentialsSchema
-  | TValidateBitbucketConnectionCredentialsSchema;
+  | TValidateBitbucketConnectionCredentialsSchema
+  | TValidateZabbixConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

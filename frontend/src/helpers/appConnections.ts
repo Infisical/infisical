@@ -37,7 +37,8 @@ import {
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
   VercelConnectionMethod,
-  WindmillConnectionMethod
+  WindmillConnectionMethod,
+  ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
@@ -90,7 +91,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
-  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" }
+  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
+  [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -123,6 +125,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case OnePassConnectionMethod.ApiToken:
     case CloudflareConnectionMethod.ApiToken:
     case BitbucketConnectionMethod.ApiToken:
+    case ZabbixConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

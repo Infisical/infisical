@@ -318,7 +318,7 @@ export const secretScanningV2QueueServiceFactory = async ({
     },
     {
       batchSize: 1,
-      workerCount: 20,
+      workerCount: 2,
       pollingIntervalSeconds: 1
     }
   );
@@ -539,7 +539,7 @@ export const secretScanningV2QueueServiceFactory = async ({
     },
     {
       batchSize: 1,
-      workerCount: 20,
+      workerCount: 2,
       pollingIntervalSeconds: 1
     }
   );
@@ -613,7 +613,7 @@ export const secretScanningV2QueueServiceFactory = async ({
     },
     {
       batchSize: 1,
-      workerCount: 5,
+      workerCount: 2,
       pollingIntervalSeconds: 1
     }
   );

@@ -1,0 +1,101 @@
+---
+title: "Zabbix Connection"
+description: "Learn how to configure a Zabbix Connection for Infisical."
+---
+
+Infisical supports the use of [API Tokens](https://www.zabbix.com/documentation/current/en/manual/web_interface/frontend_sections/users/api_tokens) to connect with Zabbix.
+
+## Create Zabbix API Token
+
+<Steps>
+    <Step title="Navigate to 'API Tokens'">
+        ![Dashboard Page](/images/app-connections/zabbix/zabbix-dashboard.png)
+    </Step>
+    <Step title="Click 'Create API Token'">
+        ![Click Create Token](/images/app-connections/zabbix/zabbix-api-token-list.png)
+    </Step>
+    <Step title="Provide Token Information">
+        Ensure that you give this token access to the correct app, then click 'Create Token'.
+
+        ![Create Token Page](/images/app-connections/zabbix/zabbix-api-token-form.png)
+    </Step>
+    <Step title="Save Token">
+        After clicking 'Create Token', a modal containing your access token will appear. Save this token for later steps.
+        ![Copy Token Modal](/images/app-connections/zabbix/zabbix-api-token-generated.png)
+    </Step>
+</Steps>
+
+## Create Zabbix Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select Zabbix Connection">
+                Click the **+ Add Connection** button and select the **Zabbix Connection** option from the available integrations.
+
+                ![Select Zabbix Connection](/images/app-connections/zabbix/zabbix-app-connection-option.png)
+            </Step>
+            <Step title="Fill out the Zabbix Connection Modal">
+                Complete the Zabbix Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - The Zabbix URL for your instance
+                - The API Token from earlier steps
+
+                ![Zabbix Connection Modal](/images/app-connections/zabbix/zabbix-app-connection-form.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **Zabbix Connection** is established and ready to use with your Infisical projects.
+
+                ![Zabbix Connection Created](/images/app-connections/zabbix/zabbix-app-connection-generated.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Zabbix Connection, make an API request to the [Create Zabbix Connection](/api-reference/endpoints/app-connections/zabbix/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/zabbix \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-zabbix-connection",
+                    "method": "api-token",
+                    "credentials": {
+                        "apiToken": "[API TOKEN]",
+                        "instanceUrl": "https://zabbix.example.com"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-zabbix-connection",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "zabbix",
+              "method": "api-token",
+              "credentials": {
+                "instanceUrl": "https://zabbix.example.com"
+              }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

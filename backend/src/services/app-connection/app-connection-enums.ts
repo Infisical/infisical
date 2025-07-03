@@ -28,7 +28,8 @@ export enum AppConnection {
   Flyio = "flyio",
   GitLab = "gitlab",
   Cloudflare = "cloudflare",
-  Bitbucket = "bitbucket"
+  Bitbucket = "bitbucket",
+  Zabbix = "zabbix"
 }
 
 export enum AWSRegion {

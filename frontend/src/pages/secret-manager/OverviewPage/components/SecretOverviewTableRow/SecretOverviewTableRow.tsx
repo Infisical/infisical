@@ -1,8 +1,8 @@
 import { subject } from "@casl/ability";
+import { faCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faCheck,
-  faCircle,
   faCodeBranch,
   faEye,
   faEyeSlash,
@@ -148,7 +148,7 @@ export const SecretOverviewTableRow = ({
                 "border-r border-mineshaft-600 px-0 py-3 group-hover:bg-mineshaft-700",
                 isFormExpanded && "border-t-2 border-mineshaft-500",
                 (isSecretPresent && !isSecretEmpty) || isSecretImported ? "text-green-600" : "",
-                isSecretPresent && isSecretEmpty && !isSecretImported ? "text-yellow" : "",
+                isSecretPresent && isSecretEmpty && !isSecretImported ? "text-mineshaft-400" : "",
                 !isSecretPresent && !isSecretEmpty && !isSecretImported ? "text-red-600" : ""
               )}
             >
@@ -174,7 +174,7 @@ export const SecretOverviewTableRow = ({
                   )}
                   {isSecretEmpty && (
                     <Tooltip content="Empty value">
-                      <FontAwesomeIcon icon={faCircle} />
+                      <FontAwesomeIcon size="sm" icon={faCircle} />
                     </Tooltip>
                   )}
                 </div>

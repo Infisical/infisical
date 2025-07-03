@@ -35,6 +35,7 @@ import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
+import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -123,6 +124,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflarePages:
       DestinationFieldsComponent = <CloudflarePagesSyncReviewFields />;
+      break;
+    case SecretSync.Zabbix:
+      DestinationFieldsComponent = <ZabbixSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

@@ -2272,6 +2272,10 @@ export const AppConnections = {
     BITBUCKET: {
       email: "The email used to access Bitbucket.",
       apiToken: "The API token used to access Bitbucket."
+    },
+    ZABBIX: {
+      apiToken: "The API Token used to access Zabbix.",
+      instanceUrl: "The Zabbix instance URL to connect with."
     }
   }
 };
@@ -2461,6 +2465,12 @@ export const SecretSyncs = {
     CLOUDFLARE_PAGES: {
       projectName: "The name of the Cloudflare Pages project to sync secrets to.",
       environment: "The environment of the Cloudflare Pages project to sync secrets to."
+    },
+    ZABBIX: {
+      scope: "The Zabbix scope that secrets should be synced to.",
+      hostId: "The ID of the Zabbix host to sync secrets to.",
+      hostName: "The name of the Zabbix host to sync secrets to.",
+      macroType: "The type of macro to sync secrets to. (0: Text, 1: Secret)"
     }
   }
 };

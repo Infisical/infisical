@@ -56,8 +56,8 @@ export type TListProjectAuditLogDTO = {
     eventType?: EventType[];
     offset?: number;
     limit: number;
-    endDate?: string;
-    startDate?: string;
+    endDate: string;
+    startDate: string;
     projectId?: string;
     environment?: string;
     auditLogActorId?: string;

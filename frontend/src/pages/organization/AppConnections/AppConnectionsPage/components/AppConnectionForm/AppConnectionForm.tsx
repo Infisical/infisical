@@ -39,6 +39,7 @@ import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
+import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -137,6 +138,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Bitbucket:
       return <BitbucketConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Zabbix:
+      return <ZabbixConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -233,6 +236,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Bitbucket:
       return <BitbucketConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Zabbix:
+      return <ZabbixConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

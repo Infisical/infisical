@@ -30,6 +30,7 @@ import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
+import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
 
 export * from "./app-connection-router";
 
@@ -64,5 +65,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Flyio]: registerFlyioConnectionRouter,
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
-    [AppConnection.Bitbucket]: registerBitbucketConnectionRouter
+    [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
+    [AppConnection.Zabbix]: registerZabbixConnectionRouter
   };
