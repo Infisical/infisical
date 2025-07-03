@@ -253,7 +253,7 @@ export const SecretDropzone = ({
       >
         {isLoading ? (
           <div className="mb-16 flex items-center justify-center pt-16">
-            <Lottie icon="infisical_loading" className="h-32 w-32" />
+            <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center space-y-2">

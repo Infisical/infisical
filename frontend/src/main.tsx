@@ -63,7 +63,7 @@ const router = createRouter({
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
     <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
-      <Lottie icon="infisical_loading" className="h-32 w-32" />
+      <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
     </div>
   ),
   defaultNotFoundComponent: NotFoundPage,
