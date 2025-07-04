@@ -25,7 +25,16 @@ spec:
       containers:
         - name: infisical-schema-migration
           image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
+          {{- if .Values.postgresql.auth.existingSecret }}
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              export DB_CONNECTION_URI="postgresql://{{ .Values.postgresql.auth.username }}:${DB_PASSWORD}@{{ include "infisical.postgresService" . }}:5432/{{ .Values.postgresql.auth.database }}"
+              npm run migration:latest
+          {{- else }}
           command: ["npm", "run", "migration:latest"]
+          {{- end }}
           env:
           {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
           - name: DB_CONNECTION_URI
@@ -33,12 +42,19 @@ spec:
               secretKeyRef:
                 name: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.name }}
                 key: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.key }}
-          {{- end }}
-          {{- if .Values.postgresql.enabled }}
+          {{- else if not .Values.postgresql.auth.existingSecret }}
           - name: DB_CONNECTION_URI
-            value: {{ include "infisical.postgresDBConnectionString" . }}
+            value: {{ include "infisical.postgresDBConnectionString" . }}  
+          {{- end }}
+          {{- if .Values.postgresql.auth.existingSecret }}
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.postgresql.auth.existingSecret }}
+                key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey }}
           {{- end }}
           envFrom:
           - secretRef:
               name: {{ $infisicalValues.kubeSecretRef }}
+
 {{- end }}
