@@ -134,7 +134,7 @@ export type TCloudflareConnectionOption = TAppConnectionOptionBase & {
 
 export type TBitbucketConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Bitbucket;
-}
+};
 
 export type TZabbixConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Zabbix;
@@ -168,7 +168,7 @@ export type TAppConnectionOption =
   | TFlyioConnectionOption
   | TGitlabConnectionOption
   | TCloudflareConnectionOption
-  | TBitbucketConnectionOption;
+  | TBitbucketConnectionOption
   | TZabbixConnectionOption;
 
 export type TAppConnectionOptionMap = {

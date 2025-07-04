@@ -292,7 +292,7 @@ export type TAppConnectionConfig =
   | TFlyioConnectionConfig
   | TGitLabConnectionConfig
   | TCloudflareConnectionConfig
-  | TBitbucketConnectionConfig;
+  | TBitbucketConnectionConfig
   | TZabbixConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
