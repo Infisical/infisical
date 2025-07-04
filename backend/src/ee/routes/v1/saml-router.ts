@@ -150,8 +150,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             firstName,
             lastName: lastName as string,
             relayState: (req.body as { RelayState?: string }).RelayState,
-            authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider as string,
-            orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string,
+            authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider,
+            orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId,
             metadata: userMetadata
           });
           cb(null, { isUserCompleted, providerAuthToken });
