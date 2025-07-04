@@ -5,14 +5,16 @@ import { SecretScanningDataSource } from "./secret-scanning-v2-enums";
 import {
   TQueueSecretScanningResourceDiffScan,
   TSecretScanningDataSourceCredentials,
+  TSecretScanningDataSourceInput,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningFactory
 } from "./secret-scanning-v2-types";
 
 type TSecretScanningFactoryImplementation = TSecretScanningFactory<
   TSecretScanningDataSourceWithConnection,
-  TSecretScanningDataSourceCredentials,
-  TQueueSecretScanningResourceDiffScan["payload"]
+  TQueueSecretScanningResourceDiffScan["payload"],
+  TSecretScanningDataSourceInput,
+  TSecretScanningDataSourceCredentials
 >;
 
 export const SECRET_SCANNING_FACTORY_MAP: Record<SecretScanningDataSource, TSecretScanningFactoryImplementation> = {

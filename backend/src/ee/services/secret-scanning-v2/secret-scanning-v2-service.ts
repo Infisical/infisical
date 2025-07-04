@@ -30,6 +30,8 @@ import {
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
   TSecretScanningDataSource,
+  TSecretScanningDataSourceCredentials,
+  TSecretScanningDataSourceInput,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
@@ -257,7 +259,7 @@ export const secretScanningV2ServiceFactory = ({
     try {
       const createdDataSource = await factory.initialize(
         {
-          payload,
+          payload: payload as TSecretScanningDataSourceInput,
           connection: connection as TSecretScanningDataSourceWithConnection["connection"],
           secretScanningV2DAL
         },
@@ -288,7 +290,7 @@ export const secretScanningV2ServiceFactory = ({
             );
 
             await factory.postInitialization({
-              payload,
+              payload: payload as TSecretScanningDataSourceInput,
               connection: connection as TSecretScanningDataSourceWithConnection["connection"],
               dataSourceId: dataSource.id,
               credentials
@@ -399,7 +401,6 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
       projectId: dataSource.projectId
     });
 
@@ -413,7 +414,36 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
-    // TODO: clean up webhooks
+    const factory = SECRET_SCANNING_FACTORY_MAP[type]();
+
+    let connection: TAppConnection | null = null;
+    if (dataSource.connection) {
+      connection = await decryptAppConnection(dataSource.connection, kmsService);
+    }
+
+    let credentials: TSecretScanningDataSourceCredentials | undefined;
+
+    if (dataSource.encryptedCredentials) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: dataSource.projectId
+      });
+
+      credentials = JSON.parse(
+        decryptor({
+          cipherTextBlob: dataSource.encryptedCredentials
+        }).toString()
+      ) as TSecretScanningDataSourceCredentials;
+    }
+
+    await factory.teardown({
+      dataSource: {
+        ...dataSource,
+        // @ts-expect-error currently we don't have a null connection data source
+        connection
+      },
+      credentials
+    });
 
     await secretScanningV2DAL.dataSources.deleteById(dataSourceId);
 
