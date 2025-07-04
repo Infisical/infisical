@@ -1906,6 +1906,8 @@ export const registerRoutes = async (
 
   // setup the communication with license key server
   await licenseService.init();
+  await secretReplicationService.init();
+  await secretQueueService.init();
 
   // Start HSM service if it's configured/enabled.
   await hsmService.startService();
