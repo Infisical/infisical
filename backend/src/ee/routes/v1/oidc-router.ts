@@ -165,7 +165,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        orgSlug: z.string().trim().describe(OidcSSo.GET_CONFIG.orgSlug)
+        organizationId: z.string().trim().describe(OidcSSo.GET_CONFIG.organizationId)
       }),
       response: {
         200: SanitizedOidcConfigSchema.pick({
@@ -189,9 +189,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { orgSlug } = req.query;
       const oidc = await server.services.oidc.getOidc({
-        orgSlug,
+        organizationId: req.query.organizationId,
         type: "external",
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -252,7 +251,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm)
         })
         .partial()
-        .merge(z.object({ orgSlug: z.string() })),
+        .merge(z.object({ organizationId: z.string().describe(OidcSSo.UPDATE_CONFIG.organizationId) })),
       response: {
         200: SanitizedOidcConfigSchema.pick({
           id: true,
@@ -329,7 +328,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientId),
           clientSecret: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientSecret),
           isActive: z.boolean().describe(OidcSSo.CREATE_CONFIG.isActive),
-          orgSlug: z.string().trim().describe(OidcSSo.CREATE_CONFIG.orgSlug),
+          organizationId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.organizationId),
           manageGroupMemberships: z
             .boolean()
             .optional()
