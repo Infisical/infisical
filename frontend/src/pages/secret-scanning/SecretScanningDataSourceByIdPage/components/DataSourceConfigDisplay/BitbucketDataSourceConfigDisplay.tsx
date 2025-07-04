@@ -7,12 +7,15 @@ type Props = {
 
 export const BitbucketDataSourceConfigDisplay = ({ dataSource }: Props) => {
   const {
-    config: { includeRepos }
+    config: { includeRepos, workspaceSlug }
   } = dataSource;
 
   return (
-    <GenericFieldLabel label="Scan Repositories">
-      {includeRepos.includes("*") ? "All" : includeRepos.join(", ")}
-    </GenericFieldLabel>
+    <>
+      <GenericFieldLabel label="Workspace Slug">{workspaceSlug}</GenericFieldLabel>
+      <GenericFieldLabel label="Scan Repositories">
+        {includeRepos.includes("*") ? "All" : includeRepos.join(", ")}
+      </GenericFieldLabel>
+    </>
   );
 };

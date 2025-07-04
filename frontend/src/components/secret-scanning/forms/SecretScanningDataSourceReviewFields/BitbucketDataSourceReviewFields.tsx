@@ -13,12 +13,13 @@ export const BitbucketDataSourceReviewFields = () => {
     }
   >();
 
-  const [{ includeRepos }, connection] = watch(["config", "connection"]);
+  const [{ includeRepos, workspaceSlug }, connection] = watch(["config", "connection"]);
   const shouldScanAll = includeRepos[0] === "*";
 
   return (
     <SecretScanningDataSourceConfigReviewSection>
       {connection && <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>}
+      <GenericFieldLabel label="Workspace Slug">{workspaceSlug}</GenericFieldLabel>
       <GenericFieldLabel label="Scan Repositories">
         {shouldScanAll ? "All" : includeRepos.join(", ")}
       </GenericFieldLabel>

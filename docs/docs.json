@@ -210,6 +210,7 @@
                 "group": "Secret Scanning",
                 "pages": [
                   "documentation/platform/secret-scanning/overview",
+                  "documentation/platform/secret-scanning/bitbucket",
                   "documentation/platform/secret-scanning/github"
                 ]
               }
@@ -1111,6 +1112,21 @@
                     "pages": [
                       "api-reference/endpoints/secret-scanning/data-sources/list",
                       "api-reference/endpoints/secret-scanning/data-sources/options",
+                      {
+                        "group": "Bitbucket",
+                        "pages": [
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-id",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-name",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-resources",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-scans",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/create",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/update",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/delete",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan",
+                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan-resource"
+                        ]
+                      },
                       {
                         "group": "GitHub",
                         "pages": [
