@@ -277,19 +277,17 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim().describe(SamlSso.GET_CONFIG.organizationId)
       }),
       response: {
-        200: z
-          .object({
-            id: z.string(),
-            organization: z.string(),
-            orgId: z.string(),
-            authProvider: z.string(),
-            isActive: z.boolean(),
-            entryPoint: z.string(),
-            issuer: z.string(),
-            cert: z.string(),
-            lastUsed: z.date().nullable().optional()
-          })
-          .optional()
+        200: z.object({
+          id: z.string(),
+          organization: z.string(),
+          orgId: z.string(),
+          authProvider: z.string(),
+          isActive: z.boolean(),
+          entryPoint: z.string(),
+          issuer: z.string(),
+          cert: z.string(),
+          lastUsed: z.date().nullable().optional()
+        })
       }
     },
     handler: async (req) => {

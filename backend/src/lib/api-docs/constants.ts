@@ -2706,7 +2706,7 @@ export const SamlSso = {
   },
   UPDATE_CONFIG: {
     organizationId: "The ID of the organization to update the SAML config for.",
-    authProvider: "The authentication provider to use for SAML authentication.",
+    authProvider: "Authentication provider to use for SAML authentication.",
     isActive: "Whether to enable or disable this SAML configuration.",
     entryPoint:
       "The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.",
@@ -2715,7 +2715,7 @@ export const SamlSso = {
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the SAML config for.",
-    authProvider: "The authentication provider to use for SAML authentication.",
+    authProvider: "Authentication provider to use for SAML authentication.",
     isActive: "Whether to enable or disable this SAML configuration.",
     entryPoint:
       "The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.",
