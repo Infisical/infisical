@@ -470,6 +470,7 @@
                   "integrations/app-connections/azure-client-secrets",
                   "integrations/app-connections/azure-devops",
                   "integrations/app-connections/azure-key-vault",
+                  "integrations/app-connections/bitbucket",
                   "integrations/app-connections/camunda",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/databricks",
@@ -1274,6 +1275,18 @@
                       "api-reference/endpoints/app-connections/azure-key-vault/create",
                       "api-reference/endpoints/app-connections/azure-key-vault/update",
                       "api-reference/endpoints/app-connections/azure-key-vault/delete"
+                    ]
+                  },
+                  {
+                    "group": "Bitbucket",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/bitbucket/list",
+                      "api-reference/endpoints/app-connections/bitbucket/available",
+                      "api-reference/endpoints/app-connections/bitbucket/get-by-id",
+                      "api-reference/endpoints/app-connections/bitbucket/get-by-name",
+                      "api-reference/endpoints/app-connections/bitbucket/create",
+                      "api-reference/endpoints/app-connections/bitbucket/update",
+                      "api-reference/endpoints/app-connections/bitbucket/delete"
                     ]
                   },
                   {
