@@ -102,8 +102,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .string()
           .optional()
           .nullable()
-          .transform((val) => (val ? removeTrailingSlash(val) : val))
-          .transform((val) => (val === "" ? "/" : val)),
+          .transform((val) => (val ? removeTrailingSlash(val) : val)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true)
       }),
