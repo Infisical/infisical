@@ -150,7 +150,7 @@ export const samlConfigServiceFactory = ({
       samlConfig = await samlConfigDAL.findOne({ orgId: dto.orgId });
       if (!samlConfig) {
         throw new NotFoundError({
-          message: `Organization with ID '${dto.orgId}' not found`
+          message: `SAML configuration for organization with ID '${dto.orgId}' not found`
         });
       }
     } else if (dto.type === "orgSlug") {
