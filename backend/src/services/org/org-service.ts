@@ -46,7 +46,6 @@ import {
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
-import { TQueueServiceFactory } from "@app/queue";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -64,6 +63,7 @@ import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
+import { TReminderServiceFactory } from "../reminder/reminder-service";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -123,8 +123,8 @@ type TOrgServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "updateById">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "create">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
+  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -156,8 +156,8 @@ export const orgServiceFactory = ({
   projectUserMembershipRoleDAL,
   identityMetadataDAL,
   projectBotService,
-  queueService,
-  loginService
+  loginService,
+  reminderService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -599,7 +599,7 @@ export const orgServiceFactory = ({
         await fnDeleteProjectSecretReminders(project.id, {
           secretDAL,
           secretV2BridgeDAL,
-          queueService,
+          reminderService,
           projectBotService,
           folderDAL
         });

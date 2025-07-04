@@ -223,20 +223,7 @@ export const fnSecretBulkUpdate = async ({
   const actorType = actor?.type || ActorType.PLATFORM;
 
   const sanitizedInputSecrets = inputSecrets.map(
-    ({
-      filter,
-      data: {
-        skipMultilineEncoding,
-        type,
-        key,
-        encryptedValue,
-        userId,
-        encryptedComment,
-        metadata,
-        reminderNote,
-        reminderRepeatDays
-      }
-    }) => ({
+    ({ filter, data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, metadata } }) => ({
       filter: { ...filter, folderId },
       data: {
         skipMultilineEncoding,
@@ -245,9 +232,7 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         metadata,
-        reminderNote,
-        encryptedValue,
-        reminderRepeatDays
+        encryptedValue
       }
     })
   );
@@ -263,9 +248,7 @@ export const fnSecretBulkUpdate = async ({
         encryptedComment,
         version,
         metadata,
-        reminderNote,
         encryptedValue,
-        reminderRepeatDays,
         id: secretId
       }) => ({
         skipMultilineEncoding,
@@ -275,9 +258,7 @@ export const fnSecretBulkUpdate = async ({
         encryptedComment,
         version,
         metadata: metadata ? JSON.stringify(metadata) : [],
-        reminderNote,
         encryptedValue,
-        reminderRepeatDays,
         folderId,
         secretId,
         userActorId,

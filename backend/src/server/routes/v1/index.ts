@@ -42,6 +42,7 @@ import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
 import { registerProjectRouter } from "./project-router";
+import { registerReminderRouter } from "./reminder-router";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
@@ -172,4 +173,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/secret-syncs" }
   );
+
+  await server.register(registerReminderRouter, { prefix: "/reminders" });
 };

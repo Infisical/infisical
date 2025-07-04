@@ -513,18 +513,19 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
-        .leftJoin(
-          TableName.SecretReminderRecipients,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretReminderRecipients}.secretId`
-        )
-        .leftJoin(TableName.Users, `${TableName.SecretReminderRecipients}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .leftJoin(
           TableName.SecretRotationV2SecretMapping,
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+        .leftJoin(TableName.Reminders, `${TableName.SecretV2}.id`, `${TableName.Reminders}.secretId`)
+        .leftJoin(
+          TableName.RemindersRecipients,
+          `${TableName.Reminders}.id`,
+          `${TableName.RemindersRecipients}.reminderId`
+        )
+        .leftJoin(TableName.Users, `${TableName.RemindersRecipients}.userId`, `${TableName.Users}.id`)
         .where((qb) => {
           if (filters?.metadataFilter && filters.metadataFilter.length > 0) {
             filters.metadataFilter.forEach((meta) => {
@@ -547,7 +548,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             }) as rank`
           )
         )
-        .select(db.ref("id").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientId"))
+        .select(db.ref("id").withSchema(TableName.Reminders).as("reminderId"))
+        .select(db.ref("message").withSchema(TableName.Reminders).as("reminderNote"))
+        .select(db.ref("repeatDays").withSchema(TableName.Reminders).as("reminderRepeatDays"))
+        .select(db.ref("nextReminderDate").withSchema(TableName.Reminders).as("nextReminderDate"))
+        .select(db.ref("id").withSchema(TableName.RemindersRecipients).as("reminderRecipientId"))
         .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
         .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
         .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
@@ -809,6 +814,47 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findSecretsWithReminderRecipients = async (ids: string[], limit: number, tx?: Knex) => {
+    try {
+      // Create a subquery to get limited secret IDs
+      const limitedSecretIds = (tx || db)(TableName.SecretV2)
+        .whereIn(`${TableName.SecretV2}.id`, ids)
+        .limit(limit)
+        .select("id");
+
+      // Join with all recipients for the limited secrets
+      const docs = await (tx || db)(TableName.SecretV2)
+        .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
+        .leftJoin(
+          TableName.SecretReminderRecipients,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretReminderRecipients}.secretId`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("userId").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientUserId"));
+
+      const data = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretsV2Schema.parse(el)
+        }),
+        childrenMapper: [
+          {
+            key: "reminderRecipientUserId",
+            label: "recipients" as const,
+            mapper: ({ reminderRecipientUserId }) => reminderRecipientUserId
+          }
+        ]
+      });
+
+      return data;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretsWithReminderRecipients" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -826,6 +872,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByFolderIds,
     findOne,
     find,
-    invalidateSecretCacheByProjectId
+    invalidateSecretCacheByProjectId,
+    findSecretsWithReminderRecipients
   };
 };

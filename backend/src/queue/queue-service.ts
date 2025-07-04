@@ -63,7 +63,9 @@ export enum QueueName {
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
-  TelemetryAggregatedEvents = "telemetry-aggregated-events"
+  TelemetryAggregatedEvents = "telemetry-aggregated-events",
+  DailyReminders = "daily-reminders",
+  SecretReminderMigration = "secret-reminder-migration"
 }
 
 export enum QueueJobs {
@@ -103,7 +105,9 @@ export enum QueueJobs {
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
-  TelemetryAggregatedEvents = "telemetry-aggregated-events"
+  TelemetryAggregatedEvents = "telemetry-aggregated-events",
+  DailyReminders = "daily-reminders",
+  SecretReminderMigration = "secret-reminder-migration"
 }
 
 export type TQueueJobTypes = {
@@ -290,6 +294,14 @@ export type TQueueJobTypes = {
       caType: CaType;
     };
   };
+  [QueueName.DailyReminders]: {
+    name: QueueJobs.DailyReminders;
+    payload: undefined;
+  };
+  [QueueName.SecretReminderMigration]: {
+    name: QueueJobs.SecretReminderMigration;
+    payload: undefined;
+  };
   [QueueName.PkiSubscriber]: {
     name: QueueJobs.PkiSubscriberDailyAutoRenewal;
     payload: undefined;
@@ -389,6 +401,11 @@ export type TQueueServiceFactory = {
     startOffset?: number,
     endOffset?: number
   ) => Promise<{ key: string; name: string; id: string | null }[]>;
+  getDelayedJobs: (
+    name: QueueName,
+    startOffset?: number,
+    endOffset?: number
+  ) => Promise<{ delay: number; timestamp: number; repeatJobKey?: string }[]>;
 };
 
 export const queueServiceFactory = (
@@ -535,6 +552,13 @@ export const queueServiceFactory = (
     return q.getRepeatableJobs(startOffset, endOffset);
   };
 
+  const getDelayedJobs: TQueueServiceFactory["getDelayedJobs"] = (name, startOffset, endOffset) => {
+    const q = queueContainer[name];
+    if (!q) throw new Error(`Queue '${name}' not initialized`);
+
+    return q.getDelayed(startOffset, endOffset);
+  };
+
   const stopRepeatableJobByJobId: TQueueServiceFactory["stopRepeatableJobByJobId"] = async (name, jobId) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
@@ -581,6 +605,7 @@ export const queueServiceFactory = (
     stopJobById,
     stopJobByIdPg,
     getRepeatableJobs,
+    getDelayedJobs,
     startPg,
     queuePg,
     schedulePg

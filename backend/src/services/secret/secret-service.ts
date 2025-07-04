@@ -48,6 +48,7 @@ import { ChangeType } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TReminderServiceFactory } from "../reminder/reminder-service";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
@@ -131,6 +132,7 @@ type TSecretServiceFactoryDep = {
     "insertMany" | "insertApprovalSecretTags"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  reminderService: Pick<TReminderServiceFactory, "createReminder">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -153,7 +155,8 @@ export const secretServiceFactory = ({
   secretApprovalRequestSecretDAL,
   secretV2BridgeService,
   secretApprovalRequestService,
-  licenseService
+  licenseService,
+  reminderService
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -390,8 +393,7 @@ export const secretServiceFactory = ({
         id: secrets[0].id,
         ...inputSecret
       },
-      oldSecret: secrets[0],
-      projectId
+      oldSecret: secrets[0]
     });
 
     const tags = inputSecret.tags ? await secretTagDAL.findManyTagsById(projectId, inputSecret.tags) : [];
@@ -1660,8 +1662,6 @@ export const secretServiceFactory = ({
                 secretComment,
                 secretValue,
                 tagIds,
-                reminderNote: secretReminderNote,
-                reminderRepeatDays: secretReminderRepeatDays,
                 secretMetadata
               }
             ]
@@ -1824,9 +1824,6 @@ export const secretServiceFactory = ({
                 secretComment,
                 secretValue,
                 tagIds,
-                reminderNote: secretReminderNote,
-                reminderRepeatDays: secretReminderRepeatDays,
-                secretReminderRecipients,
                 secretMetadata
               }
             ]
@@ -1835,9 +1832,6 @@ export const secretServiceFactory = ({
         return { type: SecretProtectionType.Approval as const, approval };
       }
       const secret = await secretV2BridgeService.updateSecret({
-        secretReminderRepeatDays,
-        secretReminderNote,
-        secretReminderRecipients,
         skipMultilineEncoding,
         tagIds,
         secretComment,
@@ -1855,6 +1849,22 @@ export const secretServiceFactory = ({
         secretValue,
         secretMetadata
       });
+
+      if (secretReminderRepeatDays) {
+        await reminderService.createReminder({
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          projectId,
+          reminder: {
+            secretId: secret.id,
+            message: secretReminderNote,
+            repeatDays: secretReminderRepeatDays,
+            recipients: secretReminderRecipients
+          }
+        });
+      }
       return { type: SecretProtectionType.Direct as const, secret };
     }
 
@@ -2246,6 +2256,30 @@ export const secretServiceFactory = ({
         secrets: inputSecrets,
         mode
       });
+
+      await Promise.all(
+        inputSecrets
+          .filter((el) => el.secretReminderRepeatDays)
+          .map(async (secret) => {
+            await reminderService.createReminder({
+              actor,
+              actorId,
+              actorOrgId,
+              actorAuthMethod,
+              projectId,
+              reminder: {
+                secretId: secrets.find(
+                  (el) =>
+                    (el.secretKey === secret.secretKey || el.secretKey === secret.newSecretName) &&
+                    el.secretPath === (secret.secretPath || secretPath)
+                )?.id,
+                message: secret.secretReminderNote,
+                repeatDays: secret.secretReminderRepeatDays
+              }
+            });
+          })
+      );
+
       return { type: SecretProtectionType.Direct as const, secrets };
     }
 

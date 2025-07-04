@@ -20,11 +20,9 @@ import {
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
-import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
   fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
@@ -36,6 +34,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TReminderServiceFactory } from "../reminder/reminder-service";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretDALFactory } from "./secret-dal";
@@ -1184,14 +1183,14 @@ export const decryptSecretWithBot = (
 type TFnDeleteProjectSecretReminders = {
   secretDAL: Pick<TSecretDALFactory, "find">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
-  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
+  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
 };
 
 export const fnDeleteProjectSecretReminders = async (
   projectId: string,
-  { secretDAL, secretV2BridgeDAL, queueService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+  { secretDAL, secretV2BridgeDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
 ) => {
   const projectFolders = await folderDAL.findByProjectId(projectId);
   const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
@@ -1206,23 +1205,13 @@ export const fnDeleteProjectSecretReminders = async (
         $notNull: ["secretReminderRepeatDays"]
       });
 
-  const appCfg = getConfig();
   for await (const secret of projectSecrets) {
     const repeatDays = shouldUseSecretV2Bridge
       ? (secret as { reminderRepeatDays: number }).reminderRepeatDays
       : (secret as { secretReminderRepeatDays: number }).secretReminderRepeatDays;
 
-    // We're using the queue service directly to get around conflicting imports.
     if (repeatDays) {
-      await queueService.stopRepeatableJob(
-        QueueName.SecretReminder,
-        QueueJobs.SecretReminder,
-        {
-          // on prod it this will be in days, in development this will be second
-          every: appCfg.NODE_ENV === "development" ? secondsToMillis(repeatDays) : daysToMillisecond(repeatDays)
-        },
-        `reminder-${secret.id}`
-      );
+      await reminderService.deleteReminderBySecretId(secret.id);
     }
   }
 };

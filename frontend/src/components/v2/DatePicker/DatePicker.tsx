@@ -18,6 +18,7 @@ export type DatePickerProps = Omit<DayPickerProps, "selected"> & {
   popUpProps: PopoverProps;
   popUpContentProps: PopoverContentProps;
   dateFormat?: "PPP" | "PP" | "P"; // extend as needed
+  hideTime?: boolean;
 };
 
 // Doc: https://react-day-picker.js.org/
@@ -27,6 +28,7 @@ export const DatePicker = ({
   popUpProps,
   popUpContentProps,
   dateFormat = "PPP",
+  hideTime = false,
   ...props
 }: DatePickerProps) => {
   const [timeValue, setTimeValue] = useState<string>(value ? format(value, "HH:mm") : "00:00");
@@ -85,14 +87,16 @@ export const DatePicker = ({
             }}
           />
         </div>
-        <div className="mx-4 my-4">
-          <Input
-            type="time"
-            value={timeValue}
-            onChange={handleTimeChange}
-            className="bg-mineshaft-700 text-white [color-scheme:dark]"
-          />
-        </div>
+        {!hideTime && (
+          <div className="mx-4 my-4">
+            <Input
+              type="time"
+              value={timeValue}
+              onChange={handleTimeChange}
+              className="bg-mineshaft-700 text-white [color-scheme:dark]"
+            />
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

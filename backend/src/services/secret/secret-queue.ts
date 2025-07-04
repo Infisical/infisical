@@ -20,7 +20,6 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -41,7 +40,6 @@ import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { createProjectKey } from "../project/project-fns";
@@ -50,12 +48,12 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
+import { TReminderServiceFactory } from "../reminder/reminder-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
-import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
@@ -93,7 +91,6 @@ type TSecretQueueFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers" | "create">;
   smtpService: TSmtpService;
-  orgDAL: Pick<TOrgDALFactory, "findOrgByProjectId">;
   secretVersionDAL: TSecretVersionDALFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   secretTagDAL: TSecretTagDALFactory;
@@ -113,11 +110,11 @@ type TSecretQueueFactoryDep = {
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  secretReminderRecipientsDAL: Pick<
-    TSecretReminderRecipientsDALFactory,
-    "delete" | "findUsersBySecretId" | "insertMany" | "transaction"
-  >;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
+  reminderService: Pick<
+    TReminderServiceFactory,
+    "createReminderInternal" | "deleteReminderBySecretId" | "removeReminderRecipients"
+  >;
 };
 
 export type TGetSecrets = {
@@ -155,7 +152,6 @@ export const secretQueueFactory = ({
   userDAL,
   webhookDAL,
   projectEnvDAL,
-  orgDAL,
   smtpService,
   projectDAL,
   projectBotDAL,
@@ -178,9 +174,9 @@ export const secretQueueFactory = ({
   projectUserMembershipRoleDAL,
   projectKeyDAL,
   resourceMetadataDAL,
-  secretReminderRecipientsDAL,
   secretSyncQueue,
-  folderCommitService
+  folderCommitService,
+  reminderService
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -190,19 +186,8 @@ export const secretQueueFactory = ({
 
   const removeSecretReminder = async ({ deleteRecipients = true, ...dto }: TRemoveSecretReminderDTO, tx?: Knex) => {
     if (deleteRecipients) {
-      await secretReminderRecipientsDAL.delete({ secretId: dto.secretId }, tx);
+      await reminderService.deleteReminderBySecretId(dto.secretId, tx);
     }
-
-    const appCfg = getConfig();
-    await queueService.stopRepeatableJob(
-      QueueName.SecretReminder,
-      QueueJobs.SecretReminder,
-      {
-        // on prod it this will be in days, in development this will be second
-        every: appCfg.NODE_ENV === "development" ? secondsToMillis(dto.repeatDays) : daysToMillisecond(dto.repeatDays)
-      },
-      `reminder-${dto.secretId}`
-    );
   };
 
   const $generateActor = async (actorId?: string, isManual?: boolean): Promise<Actor> => {
@@ -238,15 +223,8 @@ export const secretQueueFactory = ({
       .replace(":", "-");
   };
 
-  const addSecretReminder = async ({
-    oldSecret,
-    newSecret,
-    projectId,
-    deleteRecipients = true
-  }: TCreateSecretReminderDTO) => {
+  const addSecretReminder = async ({ oldSecret, newSecret, secretReminderRecipients }: TCreateSecretReminderDTO) => {
     try {
-      const appCfg = getConfig();
-
       if (oldSecret.id !== newSecret.id) {
         throw new BadRequestError({
           name: "SecretReminderIdMismatch",
@@ -261,38 +239,12 @@ export const secretQueueFactory = ({
         });
       }
 
-      // If the secret already has a reminder, we should remove the existing one first.
-      if (oldSecret.secretReminderRepeatDays) {
-        await removeSecretReminder({
-          repeatDays: oldSecret.secretReminderRepeatDays,
-          secretId: oldSecret.id,
-          deleteRecipients
-        });
-      }
-
-      await queueService.queue(
-        QueueName.SecretReminder,
-        QueueJobs.SecretReminder,
-        {
-          note: newSecret.secretReminderNote,
-          projectId,
-          repeatDays: newSecret.secretReminderRepeatDays,
-          secretId: newSecret.id
-        },
-        {
-          jobId: `reminder-${newSecret.id}`,
-          repeat: {
-            // on prod it this will be in days, in development this will be second
-            every:
-              appCfg.NODE_ENV === "development"
-                ? secondsToMillis(newSecret.secretReminderRepeatDays)
-                : daysToMillisecond(newSecret.secretReminderRepeatDays),
-            immediately: true
-          },
-          removeOnComplete: true,
-          removeOnFail: true
-        }
-      );
+      await reminderService.createReminderInternal({
+        secretId: newSecret.id,
+        message: newSecret.secretReminderNote,
+        repeatDays: newSecret.secretReminderRepeatDays,
+        recipients: secretReminderRecipients
+      });
     } catch (err) {
       logger.error(err, "Failed to create secret reminder.");
       throw new BadRequestError({
@@ -302,58 +254,31 @@ export const secretQueueFactory = ({
     }
   };
 
-  const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
+  const handleSecretReminder = async ({ newSecret, oldSecret }: THandleReminderDTO) => {
     const { secretReminderRepeatDays, secretReminderNote, secretReminderRecipients } = newSecret;
 
-    const recipientsUpdated =
-      secretReminderRecipients?.some(
-        (newId) => !oldSecret.secretReminderRecipients?.find((oldId) => newId === oldId)
-      ) || secretReminderRecipients?.length !== oldSecret.secretReminderRecipients?.length;
-
-    await secretReminderRecipientsDAL.transaction(async (tx) => {
-      if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
-        if (
-          (secretReminderRepeatDays && oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
-          (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
-        ) {
-          await addSecretReminder({
-            oldSecret,
-            newSecret,
-            projectId,
-            deleteRecipients: false
-          });
-        } else if (
-          secretReminderRepeatDays === null &&
-          secretReminderNote === null &&
-          oldSecret.secretReminderRepeatDays
-        ) {
-          await removeSecretReminder({
-            secretId: oldSecret.id,
-            repeatDays: oldSecret.secretReminderRepeatDays
-          });
-        }
+    if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
+      if (
+        (secretReminderRepeatDays && oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
+        (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
+      ) {
+        await addSecretReminder({
+          oldSecret,
+          newSecret,
+          secretReminderRecipients: secretReminderRecipients ?? [],
+          deleteRecipients: false
+        });
+      } else if (
+        secretReminderRepeatDays === null &&
+        secretReminderNote === null &&
+        oldSecret.secretReminderRepeatDays
+      ) {
+        await removeSecretReminder({
+          secretId: oldSecret.id,
+          repeatDays: oldSecret.secretReminderRepeatDays
+        });
       }
-
-      if (recipientsUpdated) {
-        // if no recipients, delete all existing recipients
-        if (!secretReminderRecipients?.length) {
-          const existingRecipients = await secretReminderRecipientsDAL.findUsersBySecretId(newSecret.id, tx);
-          if (existingRecipients) {
-            await secretReminderRecipientsDAL.delete({ secretId: newSecret.id }, tx);
-          }
-        } else {
-          await secretReminderRecipientsDAL.delete({ secretId: newSecret.id }, tx);
-          await secretReminderRecipientsDAL.insertMany(
-            secretReminderRecipients.map((r) => ({
-              secretId: newSecret.id,
-              userId: r,
-              projectId
-            })),
-            tx
-          );
-        }
-      }
-    });
+    }
   };
   const createManySecretsRawFn = createManySecretsRawFnFactory({
     projectDAL,
@@ -1111,62 +1036,9 @@ export const secretQueueFactory = ({
     }
   });
 
+  // TODO: remove this queue (needed for queue initialization and perform the migration)
   queueService.start(QueueName.SecretReminder, async ({ data }) => {
-    logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}]`);
-
-    const { projectId } = data;
-
-    const organization = await orgDAL.findOrgByProjectId(projectId);
-    const project = await projectDAL.findById(projectId);
-    const secret = await secretV2BridgeDAL.findById(data.secretId);
-    const [folder] = await folderDAL.findSecretPathByFolderIds(project.id, [secret.folderId]);
-
-    const recipients = await secretReminderRecipientsDAL.findUsersBySecretId(data.secretId);
-
-    if (!organization) {
-      logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no organization found`);
-      return;
-    }
-
-    if (!project) {
-      logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no project found`);
-      return;
-    }
-
-    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-
-    if (!projectMembers || !projectMembers.length) {
-      logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}] no project members found`);
-      return;
-    }
-
-    const selectedRecipients = recipients?.length
-      ? recipients.map((r) => r.email as string)
-      : projectMembers.map((m) => m.user.email as string);
-
-    await smtpService.sendMail({
-      template: SmtpTemplates.SecretReminder,
-      subjectLine: "Infisical secret reminder",
-      recipients: selectedRecipients,
-      substitutions: {
-        reminderNote: data.note, // May not be present.
-        projectName: project.name,
-        organizationName: organization.name
-      }
-    });
-
-    await queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, {
-      type: WebhookEvents.SecretReminderExpired,
-      payload: {
-        projectName: project.name,
-        projectId: project.id,
-        secretPath: folder?.path,
-        environment: folder?.environmentSlug || "",
-        reminderNote: data.note,
-        secretName: secret?.key,
-        secretId: data.secretId
-      }
-    });
+    logger.info(`(deprecated) secretReminderQueue.process: [secretDocument=${data.secretId}]`);
   });
 
   const startSecretV2Migration = async (projectId: string) => {
