@@ -58,7 +58,7 @@ export const BitbucketSecretScanningFactory = () => {
     const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
 
     const { data } = await request.post<{ uuid: string }>(
-      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${payload.config.workspaceSlug}/hooks`,
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodeURIComponent(payload.config.workspaceSlug)}/hooks`,
       {
         description: "Infisical webhook for push events",
         url: `${cfg.SITE_URL}/secret-scanning/webhooks/bitbucket`,
@@ -92,7 +92,7 @@ export const BitbucketSecretScanningFactory = () => {
     const newWebhookUrl = `${cfg.SITE_URL}/secret-scanning/webhooks/bitbucket?dataSourceId=${dataSourceId}`;
 
     await request.put(
-      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${payload.config.workspaceSlug}/hooks/${webhookId}`,
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodeURIComponent(payload.config.workspaceSlug)}/hooks/${webhookId}`,
       {
         description: "Infisical webhook for push events",
         url: newWebhookUrl,

@@ -5,7 +5,7 @@ import { logger } from "@app/lib/logger";
 
 import { TBitbucketDataSource, TBitbucketPushEvent } from "./bitbucket-secret-scanning-types";
 
-export const bitBucketSecretScanningService = (
+export const bitbucketSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">
 ) => {

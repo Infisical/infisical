@@ -62,7 +62,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
         connectionId: z.string().uuid()
       }),
       querystring: z.object({
-        workspaceSlug: z.string()
+        workspaceSlug: z.string().min(1).max(255)
       }),
       response: {
         200: z.object({

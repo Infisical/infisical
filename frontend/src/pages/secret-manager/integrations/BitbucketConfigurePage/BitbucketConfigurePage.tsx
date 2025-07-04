@@ -89,8 +89,8 @@ export const BitbucketConfigurePage = () => {
     }
   });
 
-  const bitBucketWorkspace = watch("targetWorkspace");
-  const bitBucketRepo = watch("targetRepo");
+  const bitbucketWorkspace = watch("targetWorkspace");
+  const bitbucketRepo = watch("targetRepo");
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.BitbucketConfigurePage.id,
@@ -103,17 +103,17 @@ export const BitbucketConfigurePage = () => {
 
   const { data: bitbucketRepos, isPending: isBitbucketReposLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? "",
-    workspaceSlug: bitBucketWorkspace?.slug
+    workspaceSlug: bitbucketWorkspace?.slug
   });
 
   const { data: bitbucketEnvironments, isPending: isBitbucketEnvironmentsLoading } =
     useGetIntegrationAuthBitbucketEnvironments(
       {
         integrationAuthId: (integrationAuthId as string) ?? "",
-        workspaceSlug: bitBucketWorkspace?.slug ?? "",
-        repoSlug: bitBucketRepo?.appId ?? ""
+        workspaceSlug: bitbucketWorkspace?.slug ?? "",
+        repoSlug: bitbucketRepo?.appId ?? ""
       },
-      { enabled: Boolean(bitBucketWorkspace?.slug && bitBucketRepo?.appId) }
+      { enabled: Boolean(bitbucketWorkspace?.slug && bitbucketRepo?.appId) }
     );
 
   const onSubmit = async ({
@@ -167,8 +167,8 @@ export const BitbucketConfigurePage = () => {
 
   useEffect(() => {
     if (
-      bitBucketWorkspace ||
-      bitBucketRepo ||
+      bitbucketWorkspace ||
+      bitbucketRepo ||
       !bitbucketRepos ||
       !bitbucketWorkspaces ||
       !currentWorkspace
@@ -325,7 +325,7 @@ export const BitbucketConfigurePage = () => {
                       ? "Select an environment..."
                       : "No environments found..."
                   }
-                  isLoading={isBitbucketEnvironmentsLoading && Boolean(bitBucketRepo)}
+                  isLoading={isBitbucketEnvironmentsLoading && Boolean(bitbucketRepo)}
                   isDisabled={!bitbucketEnvironments?.length || isBitbucketEnvironmentsLoading}
                 />
               </FormControl>

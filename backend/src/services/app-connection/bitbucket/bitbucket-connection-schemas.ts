@@ -11,8 +11,19 @@ import {
 import { BitbucketConnectionMethod } from "./bitbucket-connection-enums";
 
 export const BitbucketConnectionAccessTokenCredentialsSchema = z.object({
-  apiToken: z.string().trim().min(1, "API Token required").describe(AppConnections.CREDENTIALS.BITBUCKET.apiToken),
-  email: z.string().email().trim().min(1, "Email required").describe(AppConnections.CREDENTIALS.BITBUCKET.email)
+  apiToken: z
+    .string()
+    .trim()
+    .min(1, "API Token required")
+    .max(255)
+    .describe(AppConnections.CREDENTIALS.BITBUCKET.apiToken),
+  email: z
+    .string()
+    .email()
+    .trim()
+    .min(1, "Email required")
+    .max(255)
+    .describe(AppConnections.CREDENTIALS.BITBUCKET.email)
 });
 
 const BaseBitbucketConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Bitbucket) });

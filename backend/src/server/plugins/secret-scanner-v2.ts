@@ -1,14 +1,14 @@
 import type { EmitterWebhookEventName } from "@octokit/webhooks/dist-types/types";
 import { PushEvent } from "@octokit/webhooks-types";
+import crypto from "crypto";
 import { Probot } from "probot";
 import { z } from "zod";
 
+import { generateBitbucketWebhookSecret } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-factory";
 import { TBitbucketPushEvent } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
-import crypto from "crypto";
-import { generateBitbucketWebhookSecret } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-factory";
 
 export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvider) => {
   const probotApp = (app: Probot) => {

@@ -95,7 +95,7 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
 
   let allRepos: TBitbucketRepo[] = [];
   let nextUrl: string | undefined =
-    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}?pagelen=100`;
+    `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}?pagelen=100`;
   let iterationCount = 0;
 
   // Limit to 10 iterations, fetching at most 10 * 100 = 1000 repositories
