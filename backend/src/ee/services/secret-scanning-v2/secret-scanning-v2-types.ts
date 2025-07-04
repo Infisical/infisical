@@ -58,7 +58,7 @@ export type TSecretScanningDataSourceInput = TGitHubDataSourceInput | TBitbucket
 
 export type TSecretScanningDataSourceListItem = TGitHubDataSourceListItem | TBitbucketDataSourceListItem;
 
-export type TDataSourceCredentialsSchema = TBitbucketDataSourceCredentials | undefined;
+export type TSecretScanningDataSourceCredentials = TBitbucketDataSourceCredentials | undefined;
 
 export type TSecretScanningFinding = TGitHubFinding | TBitbucketFinding;
 
@@ -151,11 +151,12 @@ export type TSecretScanningDataSourceRaw = NonNullable<
 >;
 
 export type TSecretScanningFactoryInitialize<
+  P extends TSecretScanningDataSourceInput,
   T extends TSecretScanningDataSourceWithConnection["connection"] | undefined = undefined,
-  C extends TSecretScanningDataSourceCredentials = TDataSourceCredentialsSchema
+  C extends TSecretScanningDataSourceCredentials = undefined
 > = (
   params: {
-    payload: TCreateSecretScanningDataSourceDTO;
+    payload: P;
     connection: T;
     secretScanningV2DAL: TSecretScanningV2DALFactory;
   },
@@ -163,24 +164,27 @@ export type TSecretScanningFactoryInitialize<
 ) => Promise<TSecretScanningDataSourceRaw>;
 
 export type TSecretScanningFactoryPostInitialization<
+  P extends TSecretScanningDataSourceInput,
   T extends TSecretScanningDataSourceWithConnection["connection"] | undefined = undefined,
-  C extends TSecretScanningDataSourceCredentials = TDataSourceCredentialsSchema
-> = (params: {
-  payload: TCreateSecretScanningDataSourceDTO;
-  connection: T;
-  credentials: C;
-  dataSourceId: string;
-}) => Promise<void>;
+  C extends TSecretScanningDataSourceCredentials = undefined
+> = (params: { payload: P; connection: T; credentials: C; dataSourceId: string }) => Promise<void>;
+
+export type TSecretScanningFactoryTeardown<
+  T extends TSecretScanningDataSourceWithConnection,
+  C extends TSecretScanningDataSourceCredentials = undefined
+> = (params: { dataSource: T; credentials: C }) => Promise<void>;
 
 export type TSecretScanningFactory<
   T extends TSecretScanningDataSourceWithConnection,
-  C extends TSecretScanningDataSourceCredentials,
-  P extends TQueueSecretScanningResourceDiffScan["payload"]
+  P extends TQueueSecretScanningResourceDiffScan["payload"],
+  I extends TSecretScanningDataSourceInput,
+  C extends TSecretScanningDataSourceCredentials | undefined = undefined
 > = () => {
   listRawResources: TSecretScanningFactoryListRawResources<T>;
   getFullScanPath: TSecretScanningFactoryGetFullScanPath<T>;
-  initialize: TSecretScanningFactoryInitialize<T["connection"] | undefined, C>;
-  postInitialization: TSecretScanningFactoryPostInitialization<T["connection"] | undefined, C>;
+  initialize: TSecretScanningFactoryInitialize<I, T["connection"] | undefined, C>;
+  postInitialization: TSecretScanningFactoryPostInitialization<I, T["connection"] | undefined, C>;
+  teardown: TSecretScanningFactoryTeardown<T, C>;
   getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<P>;
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;
 };
@@ -198,5 +202,3 @@ export type TUpsertSecretScanningConfigDTO = {
   projectId: string;
   content: string | null;
 };
-
-export type TSecretScanningDataSourceCredentials = TDataSourceCredentialsSchema;

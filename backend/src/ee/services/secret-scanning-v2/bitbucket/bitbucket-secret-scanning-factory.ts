@@ -17,7 +17,8 @@ import {
   TSecretScanningFactoryGetFullScanPath,
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
-  TSecretScanningFactoryPostInitialization
+  TSecretScanningFactoryPostInitialization,
+  TSecretScanningFactoryTeardown
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -30,13 +31,19 @@ import {
 } from "@app/services/app-connection/bitbucket";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
-import { TBitbucketDataSourceWithConnection, TQueueBitbucketResourceDiffScan } from "./bitbucket-secret-scanning-types";
+import {
+  TBitbucketDataSourceCredentials,
+  TBitbucketDataSourceInput,
+  TBitbucketDataSourceWithConnection,
+  TQueueBitbucketResourceDiffScan
+} from "./bitbucket-secret-scanning-types";
 
 export const BitbucketSecretScanningFactory = () => {
-  const initialize: TSecretScanningFactoryInitialize<TBitbucketConnection> = async (
-    { connection, payload },
-    callback
-  ) => {
+  const initialize: TSecretScanningFactoryInitialize<
+    TBitbucketDataSourceInput,
+    TBitbucketConnection,
+    TBitbucketDataSourceCredentials
+  > = async ({ connection, payload }, callback) => {
     const { email, apiToken } = connection.credentials;
     const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
 
@@ -61,12 +68,11 @@ export const BitbucketSecretScanningFactory = () => {
     });
   };
 
-  const postInitialization: TSecretScanningFactoryPostInitialization<TBitbucketConnection> = async ({
-    dataSourceId,
-    credentials,
-    connection,
-    payload
-  }) => {
+  const postInitialization: TSecretScanningFactoryPostInitialization<
+    TBitbucketDataSourceInput,
+    TBitbucketConnection,
+    TBitbucketDataSourceCredentials
+  > = async ({ dataSourceId, credentials, connection, payload }) => {
     const { email, apiToken } = connection.credentials;
     const { webhookId } = credentials;
 
@@ -92,15 +98,22 @@ export const BitbucketSecretScanningFactory = () => {
     );
   };
 
-  // TODO(andrey): Hook this up
-  const postDeletion: any = async ({ credentials, connection, payload }) => {
-    const { email, apiToken } = connection.credentials;
+  const teardown: TSecretScanningFactoryTeardown<
+    TBitbucketDataSourceWithConnection,
+    TBitbucketDataSourceCredentials
+  > = async ({ credentials, dataSource }) => {
+    const {
+      connection: {
+        credentials: { email, apiToken }
+      },
+      config
+    } = dataSource;
     const { webhookId } = credentials;
 
     const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
 
     await request.delete(
-      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${payload.config.workspaceSlug}/hooks/${webhookId}`,
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${config.workspaceSlug}/hooks/${webhookId}`,
       {
         headers: {
           Authorization: authHeader,
@@ -286,6 +299,7 @@ export const BitbucketSecretScanningFactory = () => {
     listRawResources,
     getFullScanPath,
     getDiffScanResourcePayload,
-    getDiffScanFindingsPayload
+    getDiffScanFindingsPayload,
+    teardown
   };
 };
