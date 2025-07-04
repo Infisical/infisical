@@ -186,7 +186,7 @@ export const secretQueueFactory = ({
 
   const removeSecretReminder = async ({ deleteRecipients = true, ...dto }: TRemoveSecretReminderDTO, tx?: Knex) => {
     if (deleteRecipients) {
-      await reminderService.deleteReminderBySecretId(dto.secretId, tx);
+      await reminderService.deleteReminderBySecretId(dto.secretId, dto.projectId, tx);
     }
   };
 
@@ -223,7 +223,12 @@ export const secretQueueFactory = ({
       .replace(":", "-");
   };
 
-  const addSecretReminder = async ({ oldSecret, newSecret, secretReminderRecipients }: TCreateSecretReminderDTO) => {
+  const addSecretReminder = async ({
+    oldSecret,
+    newSecret,
+    projectId,
+    secretReminderRecipients
+  }: TCreateSecretReminderDTO) => {
     try {
       if (oldSecret.id !== newSecret.id) {
         throw new BadRequestError({
@@ -243,7 +248,8 @@ export const secretQueueFactory = ({
         secretId: newSecret.id,
         message: newSecret.secretReminderNote,
         repeatDays: newSecret.secretReminderRepeatDays,
-        recipients: secretReminderRecipients
+        recipients: secretReminderRecipients,
+        projectId
       });
     } catch (err) {
       logger.error(err, "Failed to create secret reminder.");
@@ -254,7 +260,7 @@ export const secretQueueFactory = ({
     }
   };
 
-  const handleSecretReminder = async ({ newSecret, oldSecret }: THandleReminderDTO) => {
+  const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
     const { secretReminderRepeatDays, secretReminderNote, secretReminderRecipients } = newSecret;
 
     if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
@@ -265,6 +271,7 @@ export const secretQueueFactory = ({
         await addSecretReminder({
           oldSecret,
           newSecret,
+          projectId,
           secretReminderRecipients: secretReminderRecipients ?? [],
           deleteRecipients: false
         });
@@ -275,7 +282,8 @@ export const secretQueueFactory = ({
       ) {
         await removeSecretReminder({
           secretId: oldSecret.id,
-          repeatDays: oldSecret.secretReminderRepeatDays
+          repeatDays: oldSecret.secretReminderRepeatDays,
+          projectId
         });
       }
     }

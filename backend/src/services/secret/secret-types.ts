@@ -404,11 +404,13 @@ export type TFnSecretBlindIndexCheckV2 = {
 export type THandleReminderDTO = {
   newSecret: TPartialInputSecret;
   oldSecret: TPartialSecret;
+  projectId: string;
 };
 
 export type TCreateSecretReminderDTO = {
   oldSecret: TPartialSecret;
   newSecret: TPartialSecret;
+  projectId: string;
   secretReminderRecipients: string[];
 
   deleteRecipients?: boolean;
@@ -417,6 +419,7 @@ export type TCreateSecretReminderDTO = {
 export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;
+  projectId: string;
   deleteRecipients?: boolean;
 };
 

@@ -248,7 +248,7 @@ import { projectRoleServiceFactory } from "@app/services/project-role/project-ro
 import { reminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { dailyReminderQueueServiceFactory } from "@app/services/reminder/reminder-queue";
 import { reminderServiceFactory } from "@app/services/reminder/reminder-service";
-import { reminderRecipientDALFactory } from "@app/services/reminder-recipients/reminder-dal";
+import { reminderRecipientDALFactory } from "@app/services/reminder-recipients/reminder-recipient-dal";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
@@ -743,7 +743,8 @@ export const registerRoutes = async (
     reminderRecipientDAL,
     smtpService,
     projectMembershipDAL,
-    permissionService
+    permissionService,
+    secretV2BridgeDAL
   });
 
   const orgService = orgServiceFactory({

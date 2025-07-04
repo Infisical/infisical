@@ -519,13 +519,9 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
-        .leftJoin(TableName.Reminders, `${TableName.SecretV2}.id`, `${TableName.Reminders}.secretId`)
-        .leftJoin(
-          TableName.RemindersRecipients,
-          `${TableName.Reminders}.id`,
-          `${TableName.RemindersRecipients}.reminderId`
-        )
-        .leftJoin(TableName.Users, `${TableName.RemindersRecipients}.userId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
+        .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
+        .leftJoin(TableName.Users, `${TableName.ReminderRecipient}.userId`, `${TableName.Users}.id`)
         .where((qb) => {
           if (filters?.metadataFilter && filters.metadataFilter.length > 0) {
             filters.metadataFilter.forEach((meta) => {
@@ -548,11 +544,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             }) as rank`
           )
         )
-        .select(db.ref("id").withSchema(TableName.Reminders).as("reminderId"))
-        .select(db.ref("message").withSchema(TableName.Reminders).as("reminderNote"))
-        .select(db.ref("repeatDays").withSchema(TableName.Reminders).as("reminderRepeatDays"))
-        .select(db.ref("nextReminderDate").withSchema(TableName.Reminders).as("nextReminderDate"))
-        .select(db.ref("id").withSchema(TableName.RemindersRecipients).as("reminderRecipientId"))
+        .select(db.ref("id").withSchema(TableName.Reminder).as("reminderId"))
+        .select(db.ref("message").withSchema(TableName.Reminder).as("reminderNote"))
+        .select(db.ref("repeatDays").withSchema(TableName.Reminder).as("reminderRepeatDays"))
+        .select(db.ref("nextReminderDate").withSchema(TableName.Reminder).as("nextReminderDate"))
+        .select(db.ref("id").withSchema(TableName.ReminderRecipient).as("reminderRecipientId"))
         .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
         .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
         .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
@@ -825,13 +821,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       // Join with all recipients for the limited secrets
       const docs = await (tx || db)(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
-        .leftJoin(
-          TableName.SecretReminderRecipients,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretReminderRecipients}.secretId`
-        )
+        .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
+        .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
         .select(selectAllTableCols(TableName.SecretV2))
-        .select(db.ref("userId").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientUserId"));
+        .select(db.ref("userId").withSchema(TableName.ReminderRecipient).as("reminderRecipientUserId"));
 
       const data = sqlNestRelationships({
         data: docs,

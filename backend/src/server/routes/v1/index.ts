@@ -85,6 +85,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
+  await server.register(registerReminderRouter, { prefix: "/reminders" });
   await server.register(registerSecretFolderRouter, { prefix: "/folders" });
 
   await server.register(
@@ -173,6 +174,4 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/secret-syncs" }
   );
-
-  await server.register(registerReminderRouter, { prefix: "/reminders" });
 };

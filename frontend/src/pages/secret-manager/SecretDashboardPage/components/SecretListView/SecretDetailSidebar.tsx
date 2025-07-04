@@ -314,7 +314,7 @@ export const SecretDetailSidebar = ({
         workspaceId={currentWorkspace.id}
         environment={environment}
         secretPath={secretPath}
-        secret={secret}
+        secretId={secret?.id}
         reminder={reminderData}
       />
       <UpgradePlanModal

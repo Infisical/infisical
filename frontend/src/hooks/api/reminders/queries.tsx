@@ -15,9 +15,8 @@ export const useCreateReminder = (secretId: string, projectId: string) => {
   return useMutation<Reminder, object, CreateReminderDTO>({
     mutationFn: async ({ message, repeatDays, nextReminderDate, recipients }) => {
       const { data } = await apiRequest.post<{ reminder: Reminder }>(
-        `/api/v1/reminders/${projectId}/reminder`,
+        `/api/v1/reminders/${projectId}/reminder/${secretId}`,
         {
-          secretId,
           message,
           repeatDays,
           nextReminderDate,

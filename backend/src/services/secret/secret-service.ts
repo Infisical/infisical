@@ -393,7 +393,8 @@ export const secretServiceFactory = ({
         id: secrets[0].id,
         ...inputSecret
       },
-      oldSecret: secrets[0]
+      oldSecret: secrets[0],
+      projectId
     });
 
     const tags = inputSecret.tags ? await secretTagDAL.findManyTagsById(projectId, inputSecret.tags) : [];
@@ -548,7 +549,8 @@ export const secretServiceFactory = ({
           await secretQueueService.removeSecretReminder(
             {
               repeatDays: secret.secretReminderRepeatDays,
-              secretId: secret.id
+              secretId: secret.id,
+              projectId
             },
             tx
           );
@@ -1074,7 +1076,8 @@ export const secretServiceFactory = ({
           await secretQueueService.removeSecretReminder(
             {
               repeatDays: secret.secretReminderRepeatDays,
-              secretId: secret.id
+              secretId: secret.id,
+              projectId
             },
             tx
           );

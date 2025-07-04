@@ -53,9 +53,7 @@ interface ReminderFormProps {
   workspaceId: string;
   environment: string;
   secretPath: string;
-  secret: {
-    id: string;
-  };
+  secretId: string;
   reminder?: Reminder;
 }
 
@@ -134,7 +132,7 @@ export const CreateReminderForm = ({
   workspaceId,
   environment,
   secretPath,
-  secret,
+  secretId,
   reminder
 }: ReminderFormProps) => {
   const queryClient = useQueryClient();
@@ -145,8 +143,8 @@ export const CreateReminderForm = ({
   const { memberOptions } = useWorkspaceMembers();
 
   // API mutations
-  const { mutateAsync: createReminder } = useCreateReminder(secret?.id, workspaceId);
-  const { mutateAsync: deleteReminder } = useDeleteReminder(secret?.id, workspaceId);
+  const { mutateAsync: createReminder } = useCreateReminder(secretId, workspaceId);
+  const { mutateAsync: deleteReminder } = useDeleteReminder(secretId, workspaceId);
 
   // Form setup
   const form = useForm<TReminderFormSchema>({
@@ -185,7 +183,7 @@ export const CreateReminderForm = ({
       queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
     });
     queryClient.invalidateQueries({
-      queryKey: reminderKeys.getReminder(secret.id, workspaceId)
+      queryKey: reminderKeys.getReminder(secretId, workspaceId)
     });
   };
 
@@ -196,7 +194,7 @@ export const CreateReminderForm = ({
         repeatDays: data.repeatDays,
         message: data.message,
         recipients: data.recipients?.map((r) => r.value) || [],
-        secretId: secret.id,
+        secretId,
         nextReminderDate: data.nextReminderDate
       });
 
@@ -221,7 +219,7 @@ export const CreateReminderForm = ({
   // Delete reminder handler
   const handleDeleteReminder = async () => {
     try {
-      await deleteReminder({ reminderId: reminder?.id || "", secretId: secret.id });
+      await deleteReminder({ reminderId: reminder?.id || "", secretId });
       invalidateQueries();
       reset();
       onOpenChange();
@@ -387,6 +385,7 @@ export const CreateReminderForm = ({
                       }}
                       popUpContentProps={{}}
                       hideTime
+                      hidden={{ before: new Date(Date.now() + 86400000) }}
                     />
                   </FormControl>
                 </div>

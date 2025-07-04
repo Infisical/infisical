@@ -1,28 +1,33 @@
 import { z } from "zod";
 
 import { RemindersSchema } from "@app/db/schemas/reminders";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerReminderRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:projectId/reminder",
+    url: "/:projectId/reminder/:secretId",
     method: "POST",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        projectId: z.string().uuid()
+        projectId: z.string().uuid(),
+        secretId: z.string().uuid()
       }),
-      body: z.object({
-        message: z.string().trim(),
-        repeatDays: z.number().min(1).nullable().optional(),
-        nextReminderDate: z.string().datetime().nullable().optional(),
-        secretId: z.string().uuid(),
-        recipients: z.string().array().optional()
-      }),
+      body: z
+        .object({
+          message: z.string().trim().max(1024).optional(),
+          repeatDays: z.number().min(1).nullable().optional(),
+          nextReminderDate: z.string().datetime().nullable().optional(),
+          recipients: z.string().array().optional()
+        })
+        .refine((data) => {
+          return data.repeatDays || data.nextReminderDate;
+        }, "At least one of repeatDays or nextReminderDate is required"),
       response: {
         200: z.object({
           message: z.string()
@@ -37,8 +42,31 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         projectId: req.params.projectId,
-        reminder: req.body
+        reminder: {
+          secretId: req.params.secretId,
+          message: req.body.message,
+          repeatDays: req.body.repeatDays,
+          nextReminderDate: req.body.nextReminderDate,
+          recipients: req.body.recipients
+        }
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.CREATE_SECRET_REMINDER,
+          metadata: {
+            secretId: req.params.secretId,
+            message: req.body.message,
+            repeatDays: req.body.repeatDays,
+            nextReminderDate: req.body.nextReminderDate,
+            recipients: req.body.recipients
+          }
+        }
+      });
+
       return { message: "Successfully created reminder" };
     }
   });
@@ -74,6 +102,18 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
         secretId: req.params.secretId,
         projectId: req.params.projectId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.GET_SECRET_REMINDER,
+          metadata: {
+            secretId: req.params.secretId
+          }
+        }
+      });
       return { reminder };
     }
   });
@@ -104,6 +144,18 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         secretId: req.params.secretId,
         projectId: req.params.projectId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.DELETE_SECRET_REMINDER,
+          metadata: {
+            secretId: req.params.secretId
+          }
+        }
       });
       return { message: "Successfully deleted reminder" };
     }

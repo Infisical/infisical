@@ -1217,8 +1217,8 @@ declare module "knex/types/tables" {
       TSecretScanningConfigsInsert,
       TSecretScanningConfigsUpdate
     >;
-    [TableName.Reminders]: KnexOriginal.CompositeTableType<TReminders, TRemindersInsert, TRemindersUpdate>;
-    [TableName.RemindersRecipients]: KnexOriginal.CompositeTableType<
+    [TableName.Reminder]: KnexOriginal.CompositeTableType<TReminders, TRemindersInsert, TRemindersUpdate>;
+    [TableName.ReminderRecipient]: KnexOriginal.CompositeTableType<
       TRemindersRecipients,
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate

@@ -24,21 +24,11 @@ export type TCreateReminderDTO = {
   };
 };
 
-export type TCreateSecretReminderDTO = {
-  secretName: string;
-  projectId: string;
-  environment: string;
-  secretPath: string;
-  message?: string | null;
-  repeatDays?: number | null;
-  nextReminderDate?: string | null;
-  recipients?: string[] | null;
-};
-
 export type TBatchCreateReminderDTO = {
   secretId: string;
   message?: string | null;
   repeatDays?: number | null;
   nextReminderDate?: string | Date | null;
   recipients?: string[] | null;
+  projectId?: string;
 }[];

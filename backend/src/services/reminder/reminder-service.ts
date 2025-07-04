@@ -9,7 +9,8 @@ import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TReminderRecipientDALFactory } from "../reminder-recipients/reminder-dal";
+import { TReminderRecipientDALFactory } from "../reminder-recipients/reminder-recipient-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TReminderDALFactory } from "./reminder-dal";
 import { TBatchCreateReminderDTO, TCreateReminderDTO } from "./reminder-types";
@@ -20,6 +21,7 @@ type TReminderServiceFactoryDep = {
   smtpService: TSmtpService;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
 };
 
 export type TReminderServiceFactory = ReturnType<typeof reminderServiceFactory>;
@@ -29,7 +31,8 @@ export const reminderServiceFactory = ({
   reminderRecipientDAL,
   smtpService,
   projectMembershipDAL,
-  permissionService
+  permissionService,
+  secretV2BridgeDAL
 }: TReminderServiceFactoryDep) => {
   const addDays = (days: number, fromDate: Date = new Date()): Date => {
     const result = new Date(fromDate);
@@ -76,13 +79,15 @@ export const reminderServiceFactory = ({
     message,
     repeatDays,
     nextReminderDate: nextReminderDateInput,
-    recipients
+    recipients,
+    projectId
   }: {
     secretId?: string;
     message?: string | null;
     repeatDays?: number | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
+    projectId: string;
   }) => {
     if (!secretId) {
       throw new BadRequestError({ message: "secretId is required" });
@@ -124,7 +129,7 @@ export const reminderServiceFactory = ({
 
     // Manage recipients (add/update/delete as needed)
     await $manageReminderRecipients(reminderId, recipients);
-
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return { id: reminderId, created: !existingReminder };
   };
 
@@ -145,7 +150,10 @@ export const reminderServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
 
-    const response = await createReminderInternal(reminder);
+    const response = await createReminderInternal({
+      ...reminder,
+      projectId
+    });
     return response;
   };
 
@@ -184,28 +192,30 @@ export const reminderServiceFactory = ({
 
     for (const reminder of remindersToSend) {
       try {
-        const recipients: string[] = reminder.recipients
-          .map((r) => r.email)
-          .filter((email): email is string => Boolean(email));
-        if (recipients.length === 0) {
-          const members = await projectMembershipDAL.findAllProjectMembers(reminder.projectId);
-          recipients.push(...members.map((m) => m.user.email).filter((email): email is string => Boolean(email)));
-        }
-        await smtpService.sendMail({
-          template: SmtpTemplates.SecretReminder,
-          subjectLine: "Infisical secret reminder",
-          recipients,
-          substitutions: {
-            reminderNote: reminder.message || "",
-            projectName: reminder.projectName || "",
-            organizationName: reminder.organizationName || ""
+        await reminderDAL.transaction(async (tx) => {
+          const recipients: string[] = reminder.recipients
+            .map((r) => r.email)
+            .filter((email): email is string => Boolean(email));
+          if (recipients.length === 0) {
+            const members = await projectMembershipDAL.findAllProjectMembers(reminder.projectId);
+            recipients.push(...members.map((m) => m.user.email).filter((email): email is string => Boolean(email)));
+          }
+          await smtpService.sendMail({
+            template: SmtpTemplates.SecretReminder,
+            subjectLine: "Infisical secret reminder",
+            recipients,
+            substitutions: {
+              reminderNote: reminder.message || "",
+              projectName: reminder.projectName || "",
+              organizationName: reminder.organizationName || ""
+            }
+          });
+          if (reminder.repeatDays) {
+            await reminderDAL.updateById(reminder.id, { nextReminderDate: addDays(reminder.repeatDays) }, tx);
+          } else {
+            await reminderDAL.deleteById(reminder.id, tx);
           }
         });
-        if (reminder.repeatDays) {
-          await reminderDAL.updateById(reminder.id, { nextReminderDate: addDays(reminder.repeatDays) });
-        } else {
-          await reminderDAL.deleteById(reminder.id);
-        }
       } catch (error) {
         logger.error(
           error,
@@ -240,27 +250,30 @@ export const reminderServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
     await reminderDAL.delete({ secretId });
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
-  const removeReminderRecipients = async (secretId: string, tx?: Knex) => {
+  const removeReminderRecipients = async (secretId: string, projectId: string, tx?: Knex) => {
     const reminder = await reminderDAL.findOne({ secretId }, tx);
     if (!reminder) {
       return;
     }
     await reminderRecipientDAL.delete({ reminderId: reminder.id }, tx);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
-  const deleteReminderBySecretId = async (secretId: string, tx?: Knex) => {
+  const deleteReminderBySecretId = async (secretId: string, projectId: string, tx?: Knex) => {
     await reminderDAL.delete({ secretId }, tx);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
-  const batchCreateReminders = async (remindersData: TBatchCreateReminderDTO) => {
+  const batchCreateReminders = async (remindersData: TBatchCreateReminderDTO, tx?: Knex) => {
     if (!remindersData || remindersData.length === 0) {
       return { created: 0, reminderIds: [] };
     }
 
     const processedReminders = remindersData.map(
-      ({ secretId, message, repeatDays, nextReminderDate: nextReminderDateInput, recipients }) => {
+      ({ secretId, message, repeatDays, nextReminderDate: nextReminderDateInput, recipients, projectId }) => {
         let nextReminderDate;
         if (nextReminderDateInput) {
           nextReminderDate = new Date(nextReminderDateInput);
@@ -281,18 +294,21 @@ export const reminderServiceFactory = ({
           message,
           repeatDays,
           nextReminderDate,
-          recipients: recipients ? [...new Set(recipients)] : []
+          recipients: recipients ? [...new Set(recipients)] : [],
+          projectId
         };
       }
     );
 
     const newReminders = await reminderDAL.insertMany(
-      processedReminders.map(({ secretId, message, repeatDays, nextReminderDate }) => ({
+      processedReminders.map(({ secretId, message, repeatDays, nextReminderDate, projectId }) => ({
         secretId,
         message,
         repeatDays,
-        nextReminderDate
-      }))
+        nextReminderDate,
+        projectId
+      })),
+      tx
     );
 
     const allRecipientInserts: Array<{ reminderId: string; userId: string }> = [];
@@ -310,7 +326,12 @@ export const reminderServiceFactory = ({
     });
 
     if (allRecipientInserts.length > 0) {
-      await reminderRecipientDAL.insertMany(allRecipientInserts);
+      await reminderRecipientDAL.insertMany(allRecipientInserts, tx);
+    }
+
+    const projectIds = new Set(processedReminders.map((r) => r.projectId).filter((id): id is string => Boolean(id)));
+    for (const projectId of projectIds) {
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     }
 
     return {

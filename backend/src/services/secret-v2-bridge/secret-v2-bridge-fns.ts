@@ -376,7 +376,8 @@ export const fnSecretBulkDelete = async ({
   secretDAL,
   secretQueueService,
   folderCommitService,
-  secretVersionDAL
+  secretVersionDAL,
+  projectId
 }: TFnSecretBulkDelete) => {
   const deletedSecrets = await secretDAL.deleteMany(
     inputSecrets.map(({ type, secretKey }) => ({
@@ -392,7 +393,10 @@ export const fnSecretBulkDelete = async ({
     deletedSecrets
       .filter(({ reminderRepeatDays }) => Boolean(reminderRepeatDays))
       .map(({ id, reminderRepeatDays }) =>
-        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: reminderRepeatDays as number }, tx)
+        secretQueueService.removeSecretReminder(
+          { secretId: id, repeatDays: reminderRepeatDays as number, projectId },
+          tx
+        )
       )
   );
 

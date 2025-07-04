@@ -405,7 +405,7 @@ export type TQueueServiceFactory = {
     name: QueueName,
     startOffset?: number,
     endOffset?: number
-  ) => Promise<{ delay: number; timestamp: number; repeatJobKey?: string }[]>;
+  ) => Promise<{ delay: number; timestamp: number; repeatJobKey?: string; data?: unknown }[]>;
 };
 
 export const queueServiceFactory = (

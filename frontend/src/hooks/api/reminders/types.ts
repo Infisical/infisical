@@ -11,11 +11,4 @@ export type DeleteReminderDTO = {
   reminderId: string;
 };
 
-export type Reminder = {
-  id: string;
-  message?: string | null;
-  repeatDays?: number | null;
-  nextReminderDate?: Date | null;
-  secretId: string;
-  recipients?: string[];
-};
+export type Reminder = { id: string } & CreateReminderDTO;

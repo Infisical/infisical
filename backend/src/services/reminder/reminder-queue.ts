@@ -11,7 +11,7 @@ import { TReminderServiceFactory } from "./reminder-service";
 type TDailyReminderQueueServiceFactoryDep = {
   reminderService: TReminderServiceFactory;
   queueService: TQueueServiceFactory;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "findSecretsWithReminderRecipients">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "transaction" | "findSecretsWithReminderRecipients">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
 };
 
@@ -51,11 +51,12 @@ export const dailyReminderQueueServiceFactory = ({
         if (match) {
           map.set(match[0], {
             timestamp: job.timestamp,
-            delay: job.delay
+            delay: job.delay,
+            data: job.data
           });
         }
         return map;
-      }, new Map<string, { timestamp: number; delay: number }>());
+      }, new Map<string, { timestamp: number; delay: number; data: unknown }>());
       if (reminderJobs.length === 0) {
         logger.info(`${QueueName.SecretReminderMigration}: no reminder jobs found`);
         return;
@@ -96,21 +97,26 @@ export const dailyReminderQueueServiceFactory = ({
             }
           }
 
-          await reminderService.batchCreateReminders(
-            secretsWithReminder.map((secret) => {
-              const delayedJob = reminderDelayedJobs.get(secret.id);
-              const nextDate = delayedJob ? new Date(delayedJob.timestamp + delayedJob.delay) : undefined;
-              return {
-                secretId: secret.id,
-                message: secret.reminderNote,
-                repeatDays: secret.reminderRepeatDays,
-                nextReminderDate: nextDate,
-                recipients: secret.recipients || []
-              };
-            })
-          );
+          await secretDAL.transaction(async (tx) => {
+            await reminderService.batchCreateReminders(
+              secretsWithReminder.map((secret) => {
+                const delayedJob = reminderDelayedJobs.get(secret.id);
+                const projectId = (delayedJob?.data as { projectId?: string })?.projectId;
+                const nextDate = delayedJob ? new Date(delayedJob.timestamp + delayedJob.delay) : undefined;
+                return {
+                  secretId: secret.id,
+                  message: secret.reminderNote,
+                  repeatDays: secret.reminderRepeatDays,
+                  nextReminderDate: nextDate,
+                  recipients: secret.recipients || [],
+                  projectId
+                };
+              }),
+              tx
+            );
 
-          await secretReminderRecipientsDAL.delete({ $in: { secretId: secretsWithReminder.map((s) => s.id) } });
+            await secretReminderRecipientsDAL.delete({ $in: { secretId: secretsWithReminder.map((s) => s.id) } }, tx);
+          });
 
           numberOfRetryOnFailure = 0;
         } catch (error) {
@@ -176,11 +182,11 @@ export const dailyReminderQueueServiceFactory = ({
   };
 
   queueService.listen(QueueName.DailyReminders, "failed", (_, err) => {
-    logger.error(err, `${QueueName.DailyReminders}: resource cleanup failed`);
+    logger.error(err, `${QueueName.DailyReminders}: daily reminder processing failed`);
   });
 
   queueService.listen(QueueName.SecretReminderMigration, "failed", (_, err) => {
-    logger.error(err, `${QueueName.SecretReminderMigration}: resource cleanup failed`);
+    logger.error(err, `${QueueName.SecretReminderMigration}: secret reminder migration failed`);
   });
 
   return {

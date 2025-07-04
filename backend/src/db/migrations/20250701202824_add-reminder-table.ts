@@ -4,39 +4,41 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.Reminders))) {
-    await knex.schema.createTable(TableName.Reminders, (t) => {
+  if (!(await knex.schema.hasTable(TableName.Reminder))) {
+    await knex.schema.createTable(TableName.Reminder, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("secretId").nullable();
       t.foreign("secretId").references("id").inTable(TableName.SecretV2).onDelete("CASCADE");
-      t.string("message").nullable();
-      t.integer("repeatDays").nullable();
+      t.string("message", 1024).nullable();
+      t.integer("repeatDays").checkPositive().nullable();
       t.timestamp("nextReminderDate").notNullable();
       t.timestamps(true, true, true);
       t.index("secretId");
+      t.unique("secretId");
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.RemindersRecipients))) {
-    await knex.schema.createTable(TableName.RemindersRecipients, (t) => {
+  if (!(await knex.schema.hasTable(TableName.ReminderRecipient))) {
+    await knex.schema.createTable(TableName.ReminderRecipient, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("reminderId").notNullable();
-      t.foreign("reminderId").references("id").inTable(TableName.Reminders).onDelete("CASCADE");
+      t.foreign("reminderId").references("id").inTable(TableName.Reminder).onDelete("CASCADE");
       t.uuid("userId").notNullable();
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
       t.timestamps(true, true, true);
       t.index("reminderId");
       t.index("userId");
+      t.unique(["reminderId", "userId"]);
     });
   }
 
-  await createOnUpdateTrigger(knex, TableName.Reminders);
-  await createOnUpdateTrigger(knex, TableName.RemindersRecipients);
+  await createOnUpdateTrigger(knex, TableName.Reminder);
+  await createOnUpdateTrigger(knex, TableName.ReminderRecipient);
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.Reminders);
-  await knex.schema.dropTableIfExists(TableName.RemindersRecipients);
-  await dropOnUpdateTrigger(knex, TableName.Reminders);
-  await dropOnUpdateTrigger(knex, TableName.RemindersRecipients);
+  await dropOnUpdateTrigger(knex, TableName.Reminder);
+  await dropOnUpdateTrigger(knex, TableName.ReminderRecipient);
+  await knex.schema.dropTableIfExists(TableName.Reminder);
+  await knex.schema.dropTableIfExists(TableName.ReminderRecipient);
 }
