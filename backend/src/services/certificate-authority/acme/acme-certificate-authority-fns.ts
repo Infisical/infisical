@@ -2,6 +2,7 @@ import { ChangeResourceRecordSetsCommand, Route53Client } from "@aws-sdk/client-
 import * as x509 from "@peculiar/x509";
 import acme from "acme-client";
 import { KeyObject } from "crypto";
+import axios from "axios";
 
 import { TableName } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -13,6 +14,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection, TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
+import { TCloudflareConnectionConfig } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -38,6 +40,7 @@ import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme-certificate-authority-types";
+import { cloudflareInsertTxtRecord, cloudflareDeleteTxtRecord } from "./cloudflare";
 
 type TAcmeCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -127,6 +130,9 @@ export const route53InsertTxtRecord = async (
   await route53Client.send(command);
 };
 
+//This is for Cloudflare DNS thing
+
+
 export const route53DeleteTxtRecord = async (
   connection: TAwsConnectionConfig,
   hostedZoneId: string,
@@ -197,6 +203,12 @@ export const AcmeCertificateAuthorityFns = ({
     if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
       throw new BadRequestError({
         message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
+      });
+    }
+
+    if (dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare && appConnection.app !== AppConnection.Cloudflare) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
       });
     }
 
@@ -277,6 +289,12 @@ export const AcmeCertificateAuthorityFns = ({
         if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
+          });
+        }
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare && appConnection.app !== AppConnection.Cloudflare) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
           });
         }
 
@@ -430,8 +448,8 @@ export const AcmeCertificateAuthorityFns = ({
           throw new Error("Unsupported challenge type");
         }
 
-        const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
-        const recordValue = `"${keyAuthorization}"`; // must be double quoted
+        const recordName = `_acme-challenge.${authz.identifier.value}`;
+        const recordValue = keyAuthorization; // The value from acme-client doesn't need extra quotes
 
         if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.Route53) {
           await route53InsertTxtRecord(
@@ -440,11 +458,27 @@ export const AcmeCertificateAuthorityFns = ({
             recordName,
             recordValue
           );
+        } else if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare) {
+          const recordId = await cloudflareInsertTxtRecord(
+            connection.credentials.apiToken,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            authz.identifier.value,
+            recordValue
+          );
+          
+          // CRUCIAL: We store the recordId so we can use it for deletion later.
+          if (recordId) {
+            (challenge as any).cloudflareRecordId = recordId;
+          }
         }
       },
       challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
-        const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
-        const recordValue = `"${keyAuthorization}"`; // must be double quoted
+        if (challenge.type !== "dns-01") {
+          throw new Error("Unsupported challenge type");
+        }
+          
+        const recordName = `_acme-challenge.${authz.identifier.value}`;
+        const recordValue = keyAuthorization;
 
         if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.Route53) {
           await route53DeleteTxtRecord(
@@ -453,6 +487,17 @@ export const AcmeCertificateAuthorityFns = ({
             recordName,
             recordValue
           );
+        } else if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare) {
+          const recordId = (challenge as any).cloudflareRecordId;
+          if (recordId) {
+            await cloudflareDeleteTxtRecord(
+              connection.credentials.apiToken,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordId
+            );
+          } else {
+            console.error("Could not delete Cloudflare record because ID was not found.");
+          }
         }
       }
     });
