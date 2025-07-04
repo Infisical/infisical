@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { join } from "path";
 
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
@@ -38,6 +39,13 @@ import {
   TQueueBitbucketResourceDiffScan
 } from "./bitbucket-secret-scanning-types";
 
+export function generateBitbucketWebhookSecret(serverSecret: string, dataSourceId: string) {
+  return crypto
+    .createHash("sha256")
+    .update(serverSecret + dataSourceId)
+    .digest("hex");
+}
+
 export const BitbucketSecretScanningFactory = () => {
   const initialize: TSecretScanningFactoryInitialize<
     TBitbucketDataSourceInput,
@@ -54,7 +62,7 @@ export const BitbucketSecretScanningFactory = () => {
       {
         description: "Infisical webhook for push events",
         url: `${cfg.SITE_URL}/secret-scanning/webhooks/bitbucket`,
-        active: true,
+        active: false,
         events: ["repo:push"]
       },
       {
@@ -89,7 +97,8 @@ export const BitbucketSecretScanningFactory = () => {
         description: "Infisical webhook for push events",
         url: newWebhookUrl,
         active: true,
-        events: ["repo:push"]
+        events: ["repo:push"],
+        secret: generateBitbucketWebhookSecret(cfg.AUTH_SECRET, dataSourceId)
       },
       {
         headers: {

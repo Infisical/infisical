@@ -7,6 +7,8 @@ import { TBitbucketPushEvent } from "@app/ee/services/secret-scanning-v2/bitbuck
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import crypto from "crypto";
+import { generateBitbucketWebhookSecret } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-factory";
 
 export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvider) => {
   const probotApp = (app: Probot) => {
@@ -73,15 +75,44 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
     schema: {
       querystring: z.object({
         dataSourceId: z.string().min(1, { message: "Data Source ID is required" })
-      })
+      }),
+      headers: z
+        .object({
+          "x-hub-signature": z.string().min(1, { message: "X-Hub-Signature header is required" })
+        })
+        .passthrough()
     },
     config: {
       rateLimit: writeLimit
     },
     handler: async (req, res) => {
-      // TODO(andrey): Verify request is from bitbucket
-
       const { dataSourceId } = req.query;
+
+      // Verify signature
+      const signature = req.headers["x-hub-signature"];
+      if (!signature) {
+        logger.error("Missing X-Hub-Signature header for Bitbucket webhook");
+        return res.status(401).send({ message: "Unauthorized: Missing signature" });
+      }
+
+      const expectedSignaturePrefix = "sha256=";
+      if (!signature.startsWith(expectedSignaturePrefix)) {
+        logger.error({ signature }, "Invalid X-Hub-Signature format for Bitbucket webhook");
+        return res.status(401).send({ message: "Unauthorized: Invalid signature format" });
+      }
+
+      const cfg = getConfig();
+
+      const hmac = crypto.createHmac("sha256", generateBitbucketWebhookSecret(cfg.AUTH_SECRET, dataSourceId));
+      hmac.update(JSON.stringify(req.body));
+      const calculatedSignature = hmac.digest("hex");
+
+      const receivedSignature = signature.substring(expectedSignaturePrefix.length);
+
+      if (calculatedSignature !== receivedSignature) {
+        logger.error("Invalid signature for Bitbucket webhook");
+        return res.status(401).send({ message: "Unauthorized: Invalid signature" });
+      }
 
       if (!dataSourceId) return res.status(400).send({ message: "Data Source ID is required" });
 
