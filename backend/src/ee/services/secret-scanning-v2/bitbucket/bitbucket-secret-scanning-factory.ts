@@ -44,6 +44,8 @@ export const BitbucketSecretScanningFactory = () => {
     TBitbucketConnection,
     TBitbucketDataSourceCredentials
   > = async ({ connection, payload }, callback) => {
+    const cfg = getConfig();
+
     const { email, apiToken } = connection.credentials;
     const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
 
@@ -51,7 +53,7 @@ export const BitbucketSecretScanningFactory = () => {
       `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${payload.config.workspaceSlug}/hooks`,
       {
         description: "Infisical webhook for push events",
-        url: `https://tunnel.util.lol/secret-scanning/webhooks/bitbucket`, // TODO(andrey): Swap to ${cfg.SITE_URL}
+        url: `${cfg.SITE_URL}/secret-scanning/webhooks/bitbucket`,
         active: true,
         events: ["repo:push"]
       },
@@ -140,9 +142,9 @@ export const BitbucketSecretScanningFactory = () => {
       filteredRepos.push(...repos.filter((repo) => includeRepos.includes(repo.full_name)));
     }
 
-    return filteredRepos.map(({ slug, full_name }) => ({
+    return filteredRepos.map(({ full_name }) => ({
       name: full_name,
-      externalId: slug.toString(),
+      externalId: full_name,
       type: SecretScanningResource.Repository
     }));
   };
@@ -176,10 +178,10 @@ export const BitbucketSecretScanningFactory = () => {
 
   const getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<
     TQueueBitbucketResourceDiffScan["payload"]
-  > = ({ repository, dataSourceId }) => {
+  > = ({ repository }) => {
     return {
       name: repository.full_name,
-      externalId: dataSourceId,
+      externalId: repository.full_name,
       type: SecretScanningResource.Repository
     };
   };

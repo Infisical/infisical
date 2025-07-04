@@ -9,28 +9,6 @@ export const bitBucketSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
   secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">
 ) => {
-  const handleInstallationDeletedEvent = async (installationId: number) => {
-    const dataSource = await secretScanningV2DAL.dataSources.findOne({
-      externalId: String(installationId),
-      type: SecretScanningDataSource.Bitbucket
-    });
-
-    if (!dataSource) {
-      logger.error(
-        `secretScanningV2RemoveEvent: Bitbucket - Could not find data source [installationId=${installationId}]`
-      );
-      return;
-    }
-
-    logger.info(
-      `secretScanningV2RemoveEvent: Bitbucket - installation deleted [installationId=${installationId}] [dataSourceId=${dataSource.id}]`
-    );
-
-    await secretScanningV2DAL.dataSources.updateById(dataSource.id, {
-      isDisconnected: true
-    });
-  };
-
   const handlePushEvent = async (payload: TBitbucketPushEvent & { dataSourceId: string }) => {
     const { push, repository } = payload;
 
@@ -44,7 +22,7 @@ export const bitBucketSecretScanningService = (
     }
 
     const dataSource = (await secretScanningV2DAL.dataSources.findOne({
-      externalId: payload.dataSourceId,
+      id: payload.dataSourceId,
       type: SecretScanningDataSource.Bitbucket
     })) as TBitbucketDataSource | undefined;
 
@@ -81,7 +59,6 @@ export const bitBucketSecretScanningService = (
   };
 
   return {
-    handlePushEvent,
-    handleInstallationDeletedEvent
+    handlePushEvent
   };
 };
