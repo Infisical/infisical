@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     make \
     g++ \
     openssh-client \
-    openssl 
+    openssl
 
 # Install dependencies for TDS driver (required for SAP ASE dynamic secrets)
 RUN apt-get install -y \
@@ -55,10 +55,10 @@ COPY --from=build /app .
 # Install Infisical CLI
 RUN apt-get install -y curl bash && \
     curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
-    apt-get update && apt-get install -y infisical=0.41.2 git
+    apt-get update && apt-get install -y infisical=0.41.89 git
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
-  CMD node healthcheck.js
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
+    CMD node healthcheck.js
 
 ENV HOST=0.0.0.0
 
