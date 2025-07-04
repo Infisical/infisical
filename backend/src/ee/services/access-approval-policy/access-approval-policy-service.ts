@@ -305,7 +305,11 @@ export const accessApprovalPolicyServiceFactory = ({
     ) as { username: string; sequence?: number }[];
 
     const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
-    if (!accessApprovalPolicy) throw new BadRequestError({ message: "Approval policy not found" });
+    if (!accessApprovalPolicy) {
+      throw new NotFoundError({
+        message: `Access approval policy with ID '${policyId}' not found`
+      });
+    }
 
     const currentApprovals = approvals || accessApprovalPolicy.approvals;
     if (
@@ -334,9 +338,6 @@ export const accessApprovalPolicyServiceFactory = ({
       });
     }
 
-    if (!accessApprovalPolicy) {
-      throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
-    }
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

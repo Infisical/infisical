@@ -171,7 +171,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       body: z.object({
         name: z.string().optional(),
-        secretPath: z.string().trim().optional(),
+        secretPath: z.string().trim().min(1, { message: "Secret path cannot be empty" }).optional(),
         approvers: z
           .discriminatedUnion("type", [
             z.object({
