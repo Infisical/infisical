@@ -32,6 +32,10 @@ import {
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
 import {
+  BitbucketConnectionListItemSchema,
+  SanitizedBitbucketConnectionSchema
+} from "@app/services/app-connection/bitbucket";
+import {
   CamundaConnectionListItemSchema,
   SanitizedCamundaConnectionSchema
 } from "@app/services/app-connection/camunda";
@@ -118,6 +122,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedFlyioConnectionSchema.options,
   ...SanitizedGitLabConnectionSchema.options,
   ...SanitizedCloudflareConnectionSchema.options,
+  ...SanitizedBitbucketConnectionSchema.options,
   ...SanitizedZabbixConnectionSchema.options
 ]);
 
@@ -151,6 +156,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   FlyioConnectionListItemSchema,
   GitLabConnectionListItemSchema,
   CloudflareConnectionListItemSchema,
+  BitbucketConnectionListItemSchema,
   ZabbixConnectionListItemSchema
 ]);
 

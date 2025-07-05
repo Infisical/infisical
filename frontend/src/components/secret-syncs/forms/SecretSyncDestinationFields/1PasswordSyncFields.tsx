@@ -60,7 +60,7 @@ export const OnePassSyncFields = () => {
               menuPlacement="top"
               isLoading={isVaultsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
-              value={vaults?.find((v) => v.id === value) ?? null}
+              value={vaults?.find((v) => v.id === value) || null}
               onChange={(option) => onChange((option as SingleValue<TOnePassVault>)?.id ?? null)}
               options={vaults}
               placeholder="Select a vault..."

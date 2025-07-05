@@ -19,7 +19,7 @@ WORKDIR /app
 
 # Copy dependencies
 COPY --from=frontend-dependencies /app/node_modules ./node_modules
-# Copy all files 
+# Copy all files
 COPY /frontend .
 
 ENV NODE_ENV production
@@ -32,7 +32,7 @@ ENV VITE_INTERCOM_ID $INTERCOM_ID
 ARG INFISICAL_PLATFORM_VERSION
 ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 ARG CAPTCHA_SITE_KEY
-ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY 
+ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
 
 # Build
 RUN npm run build
@@ -134,7 +134,7 @@ RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-li
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.41.2 \
+    && apt-get update && apt-get install -y infisical=0.41.89 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r -g 1001 nodejs && useradd -r -u 1001 -g nodejs non-root-user
@@ -155,7 +155,7 @@ ENV INTERCOM_ID=$INTERCOM_ID
 ARG CAPTCHA_SITE_KEY
 ENV CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 
-WORKDIR / 
+WORKDIR /
 
 COPY --from=backend-runner /app /backend
 
@@ -166,9 +166,9 @@ ENV INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 
 ENV PORT 8080
 ENV HOST=0.0.0.0
-ENV HTTPS_ENABLED false 
+ENV HTTPS_ENABLED false
 ENV NODE_ENV production
-ENV STANDALONE_BUILD true 
+ENV STANDALONE_BUILD true
 ENV STANDALONE_MODE true
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
 ENV NODE_OPTIONS="--max-old-space-size=1024"

@@ -814,9 +814,9 @@ const getAppsCloudflareWorkers = async ({ accessToken, accountId }: { accessToke
 };
 
 /**
- * Return list of repositories for the BitBucket integration based on provided BitBucket workspace
+ * Return list of repositories for the Bitbucket integration based on provided Bitbucket workspace
  */
-const getAppsBitBucket = async ({ accessToken, workspaceSlug }: { accessToken: string; workspaceSlug?: string }) => {
+const getAppsBitbucket = async ({ accessToken, workspaceSlug }: { accessToken: string; workspaceSlug?: string }) => {
   interface RepositoriesResponse {
     size: number;
     page: number;
@@ -1302,7 +1302,7 @@ export const getApps = async ({
       });
 
     case Integrations.BITBUCKET:
-      return getAppsBitBucket({
+      return getAppsBitbucket({
         accessToken,
         workspaceSlug
       });

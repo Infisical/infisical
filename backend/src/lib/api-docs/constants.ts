@@ -2272,6 +2272,10 @@ export const AppConnections = {
       code: "The OAuth code to use to connect with GitLab.",
       accessTokenType: "The type of token used to connect with GitLab."
     },
+    BITBUCKET: {
+      email: "The email used to access Bitbucket.",
+      apiToken: "The API token used to access Bitbucket."
+    },
     ZABBIX: {
       apiToken: "The API Token used to access Zabbix.",
       instanceUrl: "The Zabbix instance URL to connect with."
@@ -2640,6 +2644,10 @@ export const SecretScanningDataSources = {
   }),
   CONFIG: {
     GITHUB: {
+      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+    },
+    BITBUCKET: {
+      workspaceSlug: "The workspace to scan.",
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
     }
   }

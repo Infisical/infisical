@@ -120,7 +120,7 @@ export const OCIVaultSyncFields = () => {
               menuPlacement="top"
               isLoading={isVaultsLoading && Boolean(connectionId)}
               isDisabled={!connectionId || !selectedCompartment}
-              value={vaults?.find((v) => v.id === value) ?? null}
+              value={vaults?.find((v) => v.id === value) || null}
               onChange={(option) => {
                 onChange((option as SingleValue<{ id: string }>)?.id ?? null);
                 setValue("destinationConfig.keyOcid", "");

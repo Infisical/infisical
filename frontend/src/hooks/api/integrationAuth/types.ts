@@ -78,13 +78,13 @@ export type Service = {
   serviceId: string;
 };
 
-export type BitBucketWorkspace = {
+export type BitbucketWorkspace = {
   uuid: string;
   name: string;
   slug: string;
 };
 
-export type BitBucketEnvironment = {
+export type BitbucketEnvironment = {
   uuid: string;
   name: string;
   slug: string;

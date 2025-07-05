@@ -112,10 +112,12 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
           const isActive = includeRepos.includes("*") || includeRepos.includes(name);
 
           if (filters.status.length === 1) {
-            if (filters.status.includes(ResourceStatus.Active)) {
-              return isActive;
+            if (filters.status.includes(ResourceStatus.Active) && !isActive) {
+              return false;
             }
-            return !isActive;
+            if (filters.status.includes(ResourceStatus.Inactive) && isActive) {
+              return false;
+            }
           }
 
           const searchValue = search.trim().toLowerCase();

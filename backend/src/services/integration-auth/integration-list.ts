@@ -342,7 +342,7 @@ export const getIntegrationOptions = async () => {
     {
       name: "Bitbucket",
       slug: "bitbucket",
-      image: "BitBucket.png",
+      image: "Bitbucket.png",
       isAvailable: true,
       type: "oauth",
       clientId: appCfg.CLIENT_ID_BITBUCKET,
