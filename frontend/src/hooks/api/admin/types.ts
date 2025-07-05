@@ -40,6 +40,7 @@ export type TServerConfig = {
   trustLdapEmails: boolean;
   trustOidcEmails: boolean;
   isSecretScanningDisabled: boolean;
+  kubernetesAutoFetchServiceAccountToken: boolean;
   defaultAuthOrgSlug: string | null;
   defaultAuthOrgId: string | null;
   defaultAuthOrgAuthMethod?: string | null;
