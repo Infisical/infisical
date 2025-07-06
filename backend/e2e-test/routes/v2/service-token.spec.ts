@@ -1,8 +1,6 @@
-import crypto from "node:crypto";
-
 import { SecretType, TSecrets } from "@app/db/schemas";
 import { decryptSecret, encryptSecret, getUserPrivateKey, seedData1 } from "@app/db/seed-data";
-import { decryptAsymmetric, decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { SymmetricKeySize } from "@app/lib/crypto";
 
 const createServiceToken = async (
   scopes: { environment: string; secretPath: string }[],
@@ -26,15 +24,21 @@ const createServiceToken = async (
   });
   const { user: userInfo } = JSON.parse(userInfoRes.payload);
   const privateKey = await getUserPrivateKey(seedData1.password, userInfo);
-  const projectKey = decryptAsymmetric({
+  const projectKey = testCryptoProvider.encryption().asymmetric().decrypt({
     ciphertext: projectKeyEnc.encryptedKey,
     nonce: projectKeyEnc.nonce,
     publicKey: projectKeyEnc.sender.publicKey,
     privateKey
   });
 
-  const randomBytes = crypto.randomBytes(16).toString("hex");
-  const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8(projectKey, randomBytes);
+  const randomBytes = testCryptoProvider.randomBytes(16).toString("hex");
+
+  const { ciphertext, iv, tag } = testCryptoProvider.encryption().encryptSymmetric({
+    plaintext: projectKey,
+    key: randomBytes,
+    keySize: SymmetricKeySize.Bits128
+  });
+
   const serviceTokenRes = await testServer.inject({
     method: "POST",
     url: "/api/v2/service-token",
@@ -153,11 +157,13 @@ describe("Service token secret ops", async () => {
     expect(serviceTokenInfoRes.statusCode).toBe(200);
     const serviceTokenInfo = serviceTokenInfoRes.json();
     const serviceTokenParts = serviceToken.split(".");
-    projectKey = decryptSymmetric128BitHexKeyUTF8({
+
+    projectKey = testCryptoProvider.encryption().decryptSymmetric({
       key: serviceTokenParts[3],
       tag: serviceTokenInfo.tag,
       ciphertext: serviceTokenInfo.encryptedKey,
-      iv: serviceTokenInfo.iv
+      iv: serviceTokenInfo.iv,
+      keySize: SymmetricKeySize.Bits128
     });
 
     // create a deep folder
@@ -551,7 +557,7 @@ describe("Service token fail cases", async () => {
         type: SecretType.Shared,
         secretPath: "/",
         // doesn't matter project key because this will fail before that due to read only access
-        ...encryptSecret(crypto.randomBytes(16).toString("hex"), "NEW", "value", "")
+        ...encryptSecret(testCryptoProvider.randomBytes(16).toString("hex"), "NEW", "value", "")
       },
       headers: {
         authorization: `Bearer ${serviceToken}`

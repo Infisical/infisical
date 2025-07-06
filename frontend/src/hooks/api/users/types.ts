@@ -129,16 +129,6 @@ export type TWorkspaceUser = {
   deniedPermissions: any[];
 };
 
-export type AddUserToWsDTOE2EE = {
-  workspaceId: string;
-  decryptKey: UserWsKeyPair;
-  userPrivateKey: string;
-  members: {
-    orgMembershipId: string;
-    userPublicKey: string;
-  }[];
-};
-
 export type AddUserToWsDTONonE2EE = {
   projectId: string;
   usernames: string[];

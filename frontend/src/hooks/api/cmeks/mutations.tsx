@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { encodeBase64 } from "tweetnacl-util";
 
+import { encodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 import { cmekKeys } from "@app/hooks/api/cmeks/queries";
 import {
@@ -66,6 +66,7 @@ export const useDeleteCmek = () => {
 export const useCmekEncrypt = () => {
   return useMutation({
     mutationFn: async ({ keyId, plaintext, isBase64Encoded }: TCmekEncrypt) => {
+      console.log("CALLING CMEK ENCRYPT");
       const { data } = await apiRequest.post<TCmekEncryptResponse>(
         `/api/v1/kms/keys/${keyId}/encrypt`,
         {

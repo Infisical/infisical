@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
-import { decryptSymmetric, infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -71,7 +71,8 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
           );
           orgEncryptionRingBuffer.push(orgId, orgKmsService);
         }
-        const key = infisicalSymmetricDecrypt({
+
+        const key = crypto.encryption().decryptWithRootEncryptionKey({
           ciphertext: encryptedSymmetricKey,
           iv: symmetricKeyIV,
           tag: symmetricKeyTag,
@@ -82,8 +83,9 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedCaCert && el.caCertIV && el.caCertTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.caCertIV,

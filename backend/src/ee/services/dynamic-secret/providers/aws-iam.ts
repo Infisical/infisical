@@ -17,10 +17,10 @@ import {
   RemoveUserFromGroupCommand
 } from "@aws-sdk/client-iam";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
-import { randomUUID } from "crypto";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
@@ -60,7 +60,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
       const command = new AssumeRoleCommand({
         RoleArn: providerInputs.roleArn,
-        RoleSessionName: `infisical-dynamic-secret-${randomUUID()}`,
+        RoleSessionName: `infisical-dynamic-secret-${crypto.rawCrypto.randomUUID()}`,
         DurationSeconds: 900, // 15 mins
         ExternalId: projectId
       });

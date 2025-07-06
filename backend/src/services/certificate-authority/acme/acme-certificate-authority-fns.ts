@@ -1,9 +1,9 @@
 import { ChangeResourceRecordSetsCommand, Route53Client } from "@aws-sdk/client-route-53";
 import * as x509 from "@peculiar/x509";
 import acme from "acme-client";
-import { KeyObject } from "crypto";
 
 import { TableName } from "@app/db/schemas";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -404,8 +404,9 @@ export const AcmeCertificateAuthorityFns = ({
     });
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
-    const leafKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const skLeafObj = KeyObject.from(leafKeys.privateKey);
+
+    const leafKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const skLeafObj = crypto.rawCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const [, certificateCsr] = await acme.crypto.createCsr(

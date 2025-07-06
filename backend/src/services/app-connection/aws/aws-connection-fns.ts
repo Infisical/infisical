@@ -1,9 +1,9 @@
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import AWS from "aws-sdk";
 import { AxiosError } from "axios";
-import { randomUUID } from "crypto";
 
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -46,7 +46,7 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 
       const command = new AssumeRoleCommand({
         RoleArn: credentials.roleArn,
-        RoleSessionName: `infisical-app-connection-${randomUUID()}`,
+        RoleSessionName: `infisical-app-connection-${crypto.rawCrypto.randomUUID()}`,
         DurationSeconds: 900, // 15 mins
         ExternalId: orgId
       });

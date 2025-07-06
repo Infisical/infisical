@@ -16,11 +16,8 @@ import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permiss
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import {
-  buildSecretBlindIndexFromName,
-  decryptSymmetric128BitHexKeyUTF8,
-  encryptSymmetric128BitHexKeyUTF8
-} from "@app/lib/crypto";
+import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
@@ -239,17 +236,19 @@ export const interpolateSecrets = ({ projectId, secretEncKey, secretDAL, folderD
     const secrets = await secretDAL.findByFolderId(folder.id);
 
     const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
-      const decryptedSecretKey = decryptSymmetric128BitHexKeyUTF8({
+      const decryptedSecretKey = crypto.encryption().decryptSymmetric({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
-        key: secretEncKey
+        key: secretEncKey,
+        keySize: SymmetricKeySize.Bits128
       });
-      const decryptedSecretValue = decryptSymmetric128BitHexKeyUTF8({
+      const decryptedSecretValue = crypto.encryption().decryptSymmetric({
         ciphertext: secret.secretValueCiphertext,
         iv: secret.secretValueIV,
         tag: secret.secretValueTag,
-        key: secretEncKey
+        key: secretEncKey,
+        keySize: SymmetricKeySize.Bits128
       });
 
       // eslint-disable-next-line
@@ -366,30 +365,33 @@ export const decryptSecretRaw = (
   },
   key: string
 ) => {
-  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+  const secretKey = crypto.encryption().decryptSymmetric({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
     tag: secret.secretKeyTag,
-    key
+    key,
+    keySize: SymmetricKeySize.Bits128
   });
 
   const secretValue = !secret.secretValueHidden
-    ? decryptSymmetric128BitHexKeyUTF8({
+    ? crypto.encryption().decryptSymmetric({
         ciphertext: secret.secretValueCiphertext,
         iv: secret.secretValueIV,
         tag: secret.secretValueTag,
-        key
+        key,
+        keySize: SymmetricKeySize.Bits128
       })
     : INFISICAL_SECRET_VALUE_HIDDEN_MASK;
 
   let secretComment = "";
 
   if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
-    secretComment = decryptSymmetric128BitHexKeyUTF8({
+    secretComment = crypto.encryption().decryptSymmetric({
       ciphertext: secret.secretCommentCiphertext,
       iv: secret.secretCommentIV,
       tag: secret.secretCommentTag,
-      key
+      key,
+      keySize: SymmetricKeySize.Bits128
     });
   }
 
@@ -877,11 +879,24 @@ export const createManySecretsRawFnFactory = ({
         message: `Project bot not found for project with ID '${projectId}'. Please upgrade your project.`,
         name: "bot_not_found_error"
       });
+
     const inputSecrets = secrets.map((secret) => {
-      const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
-      const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
+      const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
+        plaintext: secret.secretName,
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
+      const secretValueEncrypted = crypto.encryption().encryptSymmetric({
+        plaintext: secret.secretValue || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
       const secretReferences = getAllNestedSecretReferences(secret.secretValue || "");
-      const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
+      const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
+        plaintext: secret.secretComment || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
 
       return {
         type: secret.type,
@@ -1065,10 +1080,22 @@ export const updateManySecretsRawFnFactory = ({
         throw new BadRequestError({ message: "New secret name cannot be empty" });
       }
 
-      const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretName, botKey);
-      const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretValue || "", botKey);
+      const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
+        plaintext: secret.secretName,
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
+      const secretValueEncrypted = crypto.encryption().encryptSymmetric({
+        plaintext: secret.secretValue || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
       const secretReferences = getAllNestedSecretReferences(secret.secretValue || "");
-      const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8(secret.secretComment || "", botKey);
+      const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
+        plaintext: secret.secretComment || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
 
       return {
         type: secret.type,
@@ -1151,28 +1178,31 @@ export const decryptSecretWithBot = (
   >,
   key: string
 ) => {
-  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+  const secretKey = crypto.encryption().decryptSymmetric({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
     tag: secret.secretKeyTag,
-    key
+    key,
+    keySize: SymmetricKeySize.Bits128
   });
 
-  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+  const secretValue = crypto.encryption().decryptSymmetric({
     ciphertext: secret.secretValueCiphertext,
     iv: secret.secretValueIV,
     tag: secret.secretValueTag,
-    key
+    key,
+    keySize: SymmetricKeySize.Bits128
   });
 
   let secretComment = "";
 
   if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
-    secretComment = decryptSymmetric128BitHexKeyUTF8({
+    secretComment = crypto.encryption().decryptSymmetric({
       ciphertext: secret.secretCommentCiphertext,
       iv: secret.secretCommentIV,
       tag: secret.secretCommentTag,
-      key
+      key,
+      keySize: SymmetricKeySize.Bits128
     });
   }
 

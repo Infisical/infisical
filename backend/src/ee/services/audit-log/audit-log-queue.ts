@@ -3,7 +3,7 @@ import { AxiosError, RawAxiosRequestHeaders } from "axios";
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -114,7 +114,7 @@ export const auditLogQueueServiceFactory = async ({
               const streamHeaders =
                 encryptedHeadersIV && encryptedHeadersCiphertext && encryptedHeadersTag
                   ? (JSON.parse(
-                      infisicalSymmetricDecrypt({
+                      crypto.encryption().decryptWithRootEncryptionKey({
                         keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
                         iv: encryptedHeadersIV,
                         tag: encryptedHeadersTag,
@@ -216,7 +216,7 @@ export const auditLogQueueServiceFactory = async ({
           const streamHeaders =
             encryptedHeadersIV && encryptedHeadersCiphertext && encryptedHeadersTag
               ? (JSON.parse(
-                  infisicalSymmetricDecrypt({
+                  crypto.encryption().decryptWithRootEncryptionKey({
                     keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
                     iv: encryptedHeadersIV,
                     tag: encryptedHeadersTag,

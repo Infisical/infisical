@@ -3,7 +3,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
-import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -236,14 +236,16 @@ export const secretSnapshotServiceFactory = ({
       const { botKey } = await projectBotService.getBotKey(snapshot.projectId);
       if (!botKey)
         throw new NotFoundError({ message: `Project bot key not found for project with ID '${snapshot.projectId}'` });
+
       snapshotDetails = {
         ...encryptedSnapshotDetails,
         secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
-          const secretKey = decryptSymmetric128BitHexKeyUTF8({
+          const secretKey = crypto.encryption().decryptSymmetric({
             ciphertext: el.secretKeyCiphertext,
             iv: el.secretKeyIV,
             tag: el.secretKeyTag,
-            key: botKey
+            key: botKey,
+            keySize: SymmetricKeySize.Bits128
           });
 
           const canReadValue = hasSecretReadValueOrDescribePermission(
@@ -260,11 +262,12 @@ export const secretSnapshotServiceFactory = ({
           let secretValue = "";
 
           if (canReadValue) {
-            secretValue = decryptSymmetric128BitHexKeyUTF8({
+            secretValue = crypto.encryption().decryptSymmetric({
               ciphertext: el.secretValueCiphertext,
               iv: el.secretValueIV,
               tag: el.secretValueTag,
-              key: botKey
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
             });
           } else {
             secretValue = INFISICAL_SECRET_VALUE_HIDDEN_MASK;
@@ -277,11 +280,12 @@ export const secretSnapshotServiceFactory = ({
             secretValue,
             secretComment:
               el.secretCommentTag && el.secretCommentIV && el.secretCommentCiphertext
-                ? decryptSymmetric128BitHexKeyUTF8({
+                ? crypto.encryption().decryptSymmetric({
                     ciphertext: el.secretCommentCiphertext,
                     iv: el.secretCommentIV,
                     tag: el.secretCommentTag,
-                    key: botKey
+                    key: botKey,
+                    keySize: SymmetricKeySize.Bits128
                   })
                 : ""
           };

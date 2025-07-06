@@ -6,7 +6,7 @@ import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/ap
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { generateHash } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
@@ -272,7 +272,7 @@ export const appConnectionServiceFactory = ({
 
       return {
         ...connection,
-        credentialsHash: generateHash(connection.encryptedCredentials),
+        credentialsHash: crypto.rawCrypto.createHash("sha256").update(connection.encryptedCredentials).digest("hex"),
         credentials: validatedCredentials
       } as TAppConnection;
     } catch (err) {

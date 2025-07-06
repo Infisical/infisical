@@ -1,24 +1,19 @@
 import { SecretKeyEncoding } from "@app/db/schemas";
-import {
-  decryptAsymmetric,
-  encryptAsymmetric,
-  generateAsymmetricKeyPair,
-  infisicalSymmetricDecrypt,
-  infisicalSymmetricEncypt
-} from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TGetPrivateKeyDTO } from "./project-bot-types";
 
-export const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) =>
-  infisicalSymmetricDecrypt({
+export const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) => {
+  return crypto.encryption().decryptWithRootEncryptionKey({
     keyEncoding: bot.keyEncoding as SecretKeyEncoding,
     iv: bot.iv,
     tag: bot.tag,
     ciphertext: bot.encryptedPrivateKey
   });
+};
 
 export const getBotKeyFnFactory = (
   projectBotDAL: TProjectBotDALFactory,
@@ -51,22 +46,27 @@ export const getBotKeyFnFactory = (
         projectV1Keys.serverEncryptedPrivateKeyTag &&
         projectV1Keys.serverEncryptedPrivateKeyEncoding
       ) {
-        userPrivateKey = infisicalSymmetricDecrypt({
+        userPrivateKey = crypto.encryption().decryptWithRootEncryptionKey({
           iv: projectV1Keys.serverEncryptedPrivateKeyIV,
           tag: projectV1Keys.serverEncryptedPrivateKeyTag,
           ciphertext: projectV1Keys.serverEncryptedPrivateKey,
           keyEncoding: projectV1Keys.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
         });
       }
-      const workspaceKey = decryptAsymmetric({
+      const workspaceKey = crypto.encryption().asymmetric().decrypt({
         ciphertext: projectV1Keys.projectEncryptedKey,
         nonce: projectV1Keys.projectKeyNonce,
         publicKey: projectV1Keys.senderPublicKey,
         privateKey: userPrivateKey
       });
-      const botKey = generateAsymmetricKeyPair();
-      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(botKey.privateKey);
-      const encryptedWorkspaceKey = encryptAsymmetric(workspaceKey, botKey.publicKey, userPrivateKey);
+      const botKey = crypto.encryption().asymmetric().generateKeyPair();
+      const { iv, tag, ciphertext, encoding, algorithm } = crypto
+        .encryption()
+        .encryptWithRootEncryptionKey(botKey.privateKey);
+      const encryptedWorkspaceKey = crypto
+        .encryption()
+        .asymmetric()
+        .encrypt(workspaceKey, botKey.publicKey, userPrivateKey);
 
       let botId;
       if (!bot) {
@@ -105,7 +105,7 @@ export const getBotKeyFnFactory = (
     }
 
     const botPrivateKey = getBotPrivateKey({ bot });
-    const botKey = decryptAsymmetric({
+    const botKey = crypto.encryption().asymmetric().decrypt({
       ciphertext: bot.encryptedProjectKey,
       privateKey: botPrivateKey,
       nonce: bot.encryptedProjectKeyNonce,

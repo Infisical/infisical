@@ -1,10 +1,10 @@
 import slugify from "@sindresorhus/slugify";
-import { randomUUID } from "crypto";
 import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
 import { SecretType, TSecretFolders } from "@app/db/schemas";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -228,7 +228,7 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
               }
 
               infisicalImportData.secrets.push({
-                id: randomUUID(),
+                id: crypto.rawCrypto.randomUUID(),
                 name: secretName,
                 environmentId: matchingAppEnv.id,
                 value: resolvedSecret.val || "",
@@ -261,7 +261,7 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
               }
 
               infisicalImportData.secrets.push({
-                id: randomUUID(),
+                id: crypto.rawCrypto.randomUUID(),
                 name: secretName,
                 environmentId: matchingAppEnv.id,
                 value: secretData.val || "",
@@ -348,7 +348,7 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
               }
 
               infisicalImportData.secrets.push({
-                id: randomUUID(),
+                id: crypto.rawCrypto.randomUUID(),
                 name: secret,
                 environmentId: matchingEnv.id,
                 value: resolvedSecret.val || "",
@@ -380,7 +380,7 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
               }
 
               infisicalImportData.secrets.push({
-                id: randomUUID(),
+                id: crypto.rawCrypto.randomUUID(),
                 name: secret,
                 environmentId: matchingEnv.id,
                 value: selectedSecret.val || "",
@@ -461,7 +461,7 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
         }
 
         infisicalImportData.secrets.push({
-          id: randomUUID(),
+          id: crypto.rawCrypto.randomUUID(),
           name: secretName,
           environmentId: subEnv ? subEnv.parentEnvironmentId : env,
           value: resolvedSecret.val || "",
@@ -487,7 +487,7 @@ export const parseEnvKeyDataFn = async (decryptedJson: string): Promise<Infisica
         const folderId = targetIdToFolderIdsMap.get(subEnv?.id || "") || subEnv?.id;
 
         infisicalImportData.secrets.push({
-          id: randomUUID(),
+          id: crypto.rawCrypto.randomUUID(),
           name: secretName,
           environmentId: subEnv ? subEnv.parentEnvironmentId : env,
           value: secretData.val || "",

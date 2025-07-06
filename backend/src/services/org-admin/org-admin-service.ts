@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ProjectMembershipRole, ProjectVersion, SecretKeyEncoding } from "@app/db/schemas";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -144,7 +144,7 @@ export const orgAdminServiceFactory = ({
       });
     }
 
-    const botPrivateKey = infisicalSymmetricDecrypt({
+    const botPrivateKey = crypto.encryption().decryptWithRootEncryptionKey({
       keyEncoding: bot.keyEncoding as SecretKeyEncoding,
       iv: bot.iv,
       tag: bot.tag,

@@ -1,13 +1,10 @@
 import argon2 from "argon2";
-import crypto from "crypto";
 import jsrp from "jsrp";
-import nacl from "tweetnacl";
-import tweetnacl from "tweetnacl-util";
 
 import { TUserEncryptionKeys } from "@app/db/schemas";
 import { UserEncryption } from "@app/services/user/user-types";
 
-import { decryptSymmetric128BitHexKeyUTF8, encryptAsymmetric, encryptSymmetric } from "./encryption";
+import { crypto, SymmetricKeySize } from "./cryptography";
 
 export const generateSrpServerKey = async (salt: string, verifier: string) => {
   // eslint-disable-next-line new-cap
@@ -42,11 +39,10 @@ export const generateUserSrpKeys = async (
   password: string,
   customKeys?: { publicKey: string; privateKey: string }
 ) => {
-  const pair = nacl.box.keyPair();
-  const secretKeyUint8Array = pair.secretKey;
-  const publicKeyUint8Array = pair.publicKey;
-  const privateKey = customKeys?.privateKey || tweetnacl.encodeBase64(secretKeyUint8Array);
-  const publicKey = customKeys?.publicKey || tweetnacl.encodeBase64(publicKeyUint8Array);
+  const pair = crypto.encryption().asymmetric().generateKeyPair();
+
+  const privateKey = customKeys?.privateKey || pair.privateKey;
+  const publicKey = customKeys?.publicKey || pair.publicKey;
 
   // eslint-disable-next-line
   const client = new jsrp.client();
@@ -78,7 +74,11 @@ export const generateUserSrpKeys = async (
     ciphertext: encryptedPrivateKey,
     iv: encryptedPrivateKeyIV,
     tag: encryptedPrivateKeyTag
-  } = encryptSymmetric(privateKey, key.toString("base64"));
+  } = crypto.encryption().encryptSymmetric({
+    plaintext: privateKey,
+    key: key.toString("base64"),
+    keySize: SymmetricKeySize.Bits256
+  });
 
   // create the protected key by encrypting the symmetric key
   // [key] with the derived key
@@ -86,7 +86,11 @@ export const generateUserSrpKeys = async (
     ciphertext: protectedKey,
     iv: protectedKeyIV,
     tag: protectedKeyTag
-  } = encryptSymmetric(key.toString("hex"), derivedKey.toString("base64"));
+  } = crypto.encryption().encryptSymmetric({
+    plaintext: key.toString("hex"),
+    key: derivedKey.toString("base64"),
+    keySize: SymmetricKeySize.Bits256
+  });
 
   return {
     protectedKey,
@@ -117,11 +121,12 @@ export const getUserPrivateKey = async (
   >
 ) => {
   if (user.encryptionVersion === UserEncryption.V1) {
-    return decryptSymmetric128BitHexKeyUTF8({
+    return crypto.encryption().decryptSymmetric({
       ciphertext: user.encryptedPrivateKey,
       iv: user.iv,
       tag: user.tag,
-      key: password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0")
+      key: password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0"),
+      keySize: SymmetricKeySize.Bits128
     });
   }
   if (
@@ -140,18 +145,20 @@ export const getUserPrivateKey = async (
       raw: true
     });
     if (!derivedKey) throw new Error("Failed to derive key from password");
-    const key = decryptSymmetric128BitHexKeyUTF8({
+    const key = crypto.encryption().decryptSymmetric({
       ciphertext: user.protectedKey,
       iv: user.protectedKeyIV,
       tag: user.protectedKeyTag,
-      key: derivedKey
+      key: derivedKey,
+      keySize: SymmetricKeySize.Bits128
     });
 
-    const privateKey = decryptSymmetric128BitHexKeyUTF8({
+    const privateKey = crypto.encryption().decryptSymmetric({
       ciphertext: user.encryptedPrivateKey,
       iv: user.iv,
       tag: user.tag,
-      key: Buffer.from(key, "hex")
+      key: Buffer.from(key, "hex"),
+      keySize: SymmetricKeySize.Bits128
     });
     return privateKey;
   }
@@ -160,6 +167,6 @@ export const getUserPrivateKey = async (
 
 export const buildUserProjectKey = async (privateKey: string, publickey: string) => {
   const randomBytes = crypto.randomBytes(16).toString("hex");
-  const { nonce, ciphertext } = encryptAsymmetric(randomBytes, publickey, privateKey);
+  const { nonce, ciphertext } = crypto.encryption().asymmetric().encrypt(randomBytes, publickey, privateKey);
   return { nonce, ciphertext };
 };

@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
-import bcrypt from "bcrypt";
 
 import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -11,6 +10,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { isCertChainValid } from "../certificate/certificate-fns";
@@ -313,7 +313,7 @@ export const certificateTemplateServiceFactory = ({
       encryptedCaChain = cipherTextBlob;
     }
 
-    const hashedPassphrase = await bcrypt.hash(passphrase, appCfg.SALT_ROUNDS);
+    const hashedPassphrase = await crypto.hashing().createHash(passphrase, appCfg.SALT_ROUNDS);
     const estConfig = await certificateTemplateEstConfigDAL.create({
       certificateTemplateId,
       hashedPassphrase,
@@ -410,7 +410,7 @@ export const certificateTemplateServiceFactory = ({
     }
 
     if (passphrase) {
-      const hashedPassphrase = await bcrypt.hash(passphrase, appCfg.SALT_ROUNDS);
+      const hashedPassphrase = await crypto.hashing().createHash(passphrase, appCfg.SALT_ROUNDS);
       updatedData.hashedPassphrase = hashedPassphrase;
     }
 

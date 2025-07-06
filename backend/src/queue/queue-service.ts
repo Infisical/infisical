@@ -1,4 +1,13 @@
-import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
+import {
+  Job,
+  JobsOptions,
+  Queue,
+  QueueOptions,
+  RepeatOptions,
+  Worker,
+  WorkerListener,
+  AdvancedRepeatOptions
+} from "bullmq";
 import PgBoss, { WorkOptions } from "pg-boss";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
@@ -438,6 +447,9 @@ export const queueServiceFactory = (
 
     queueContainer[name] = new Queue(name as string, {
       ...queueSettings,
+      settings: {
+        repeatKeyHashAlgorithm: "sha256"
+      },
       connection
     });
 

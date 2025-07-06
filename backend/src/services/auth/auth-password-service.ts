@@ -1,10 +1,9 @@
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
-import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -95,7 +94,7 @@ export const authPaswordServiceFactory = ({
     if (!isValidClientProof) throw new Error("Failed to authenticate. Try again?");
 
     const appCfg = getConfig();
-    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
     await userDAL.updateUserEncryptionByUserId(userId, {
       encryptionVersion: 2,
       protectedKey,
@@ -208,13 +207,13 @@ export const authPaswordServiceFactory = ({
         throw new BadRequestError({ message: "Current password is required." });
       }
 
-      const isValid = await bcrypt.compare(oldPassword, user.hashedPassword);
+      const isValid = await crypto.hashing().compareHash(oldPassword, user.hashedPassword);
       if (!isValid) {
         throw new BadRequestError({ message: "Incorrect current password." });
       }
     }
 
-    const newHashedPassword = await bcrypt.hash(newPassword, cfg.BCRYPT_SALT_ROUND);
+    const newHashedPassword = await crypto.hashing().createHash(newPassword, cfg.SALT_ROUNDS);
 
     // we need to get the original private key first for v2
     let privateKey: string;
@@ -225,7 +224,7 @@ export const authPaswordServiceFactory = ({
       user.serverEncryptedPrivateKeyEncoding &&
       user.encryptionVersion === UserEncryption.V2
     ) {
-      privateKey = infisicalSymmetricDecrypt({
+      privateKey = crypto.encryption().decryptWithRootEncryptionKey({
         iv: user.serverEncryptedPrivateKeyIV,
         tag: user.serverEncryptedPrivateKeyTag,
         ciphertext: user.serverEncryptedPrivateKey,
@@ -243,7 +242,7 @@ export const authPaswordServiceFactory = ({
       privateKey
     });
 
-    const { tag, iv, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
+    const { tag, iv, ciphertext, encoding } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
 
     await userDAL.updateUserEncryptionByUserId(userId, {
       hashedPassword: newHashedPassword,
@@ -285,7 +284,7 @@ export const authPaswordServiceFactory = ({
   }: TResetPasswordViaBackupKeyDTO) => {
     const cfg = getConfig();
 
-    const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
+    const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
 
     await userDAL.updateUserEncryptionByUserId(userId, {
       encryptionVersion: 2,
@@ -461,7 +460,7 @@ export const authPaswordServiceFactory = ({
 
       const cfg = getConfig();
 
-      const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
+      const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
 
       await userDAL.updateUserEncryptionByUserId(
         actor.id,

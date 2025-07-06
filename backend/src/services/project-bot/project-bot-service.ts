@@ -3,8 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { generateAsymmetricKeyPair } from "@app/lib/crypto";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -55,9 +54,12 @@ export const projectBotServiceFactory = ({
       const doc = await projectBotDAL.findOne({ projectId }, tx);
       if (doc) return doc;
 
-      const keys = privateKey && publicKey ? { privateKey, publicKey } : generateAsymmetricKeyPair();
+      const keys =
+        privateKey && publicKey ? { privateKey, publicKey } : crypto.encryption().asymmetric().generateKeyPair();
 
-      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(keys.privateKey);
+      const { iv, tag, ciphertext, encoding, algorithm } = crypto
+        .encryption()
+        .encryptWithRootEncryptionKey(keys.privateKey);
 
       const project = await projectDAL.findById(projectId, tx);
 

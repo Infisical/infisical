@@ -18,8 +18,7 @@ import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-d
 import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
@@ -504,18 +503,20 @@ export const secretQueueFactory = ({
     const secrets = await secretDAL.findByFolderId(dto.folderId);
     await Promise.allSettled(
       secrets.map(async (secret) => {
-        const secretKey = decryptSymmetric128BitHexKeyUTF8({
+        const secretKey = crypto.encryption().decryptSymmetric({
           ciphertext: secret.secretKeyCiphertext,
           iv: secret.secretKeyIV,
           tag: secret.secretKeyTag,
-          key: dto.key
+          key: dto.key,
+          keySize: SymmetricKeySize.Bits128
         });
 
-        const secretValue = decryptSymmetric128BitHexKeyUTF8({
+        const secretValue = crypto.encryption().decryptSymmetric({
           ciphertext: secret.secretValueCiphertext,
           iv: secret.secretValueIV,
           tag: secret.secretValueTag,
-          key: dto.key
+          key: dto.key,
+          keySize: SymmetricKeySize.Bits128
         });
         const expandedSecretValue = await expandSecretReferences({
           environment: dto.environment,
@@ -527,11 +528,12 @@ export const secretQueueFactory = ({
         content[secretKey] = { value: expandedSecretValue || "" };
 
         if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
-          const commentValue = decryptSymmetric128BitHexKeyUTF8({
+          const commentValue = crypto.encryption().decryptSymmetric({
             ciphertext: secret.secretCommentCiphertext,
             iv: secret.secretCommentIV,
             tag: secret.secretCommentTag,
-            key: dto.key
+            key: dto.key,
+            keySize: SymmetricKeySize.Bits128
           });
           content[secretKey].comment = commentValue;
         }
@@ -952,11 +954,12 @@ export const secretQueueFactory = ({
             integrationAuth.awsAssumeIamRoleArnIV &&
             integrationAuth.awsAssumeIamRoleArnCipherText
           ) {
-            awsAssumeRoleArn = decryptSymmetric128BitHexKeyUTF8({
+            awsAssumeRoleArn = crypto.encryption().decryptSymmetric({
               ciphertext: integrationAuth.awsAssumeIamRoleArnCipherText,
               iv: integrationAuth.awsAssumeIamRoleArnIV,
               tag: integrationAuth.awsAssumeIamRoleArnTag,
-              key: botKey as string
+              key: botKey as string,
+              keySize: SymmetricKeySize.Bits128
             });
           }
 
@@ -1236,7 +1239,9 @@ export const secretQueueFactory = ({
           },
           tx
         );
-        const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
+        const { iv, tag, ciphertext, encoding, algorithm } = crypto
+          .encryption()
+          .encryptWithRootEncryptionKey(ghostUser.keys.plainPrivateKey);
         await projectBotDAL.updateById(
           bot.id,
           {
@@ -1267,27 +1272,31 @@ export const secretQueueFactory = ({
             secretId: string;
             references: { environment: string; secretPath: string; secretKey: string }[];
           }[] = [];
+
           await secretV2BridgeDAL.batchInsert(
             projectV1Secrets.map((el) => {
-              const key = decryptSymmetric128BitHexKeyUTF8({
+              const key = crypto.encryption().decryptSymmetric({
                 ciphertext: el.secretKeyCiphertext,
                 iv: el.secretKeyIV,
                 tag: el.secretKeyTag,
-                key: botKey
+                key: botKey,
+                keySize: SymmetricKeySize.Bits128
               });
-              const value = decryptSymmetric128BitHexKeyUTF8({
+              const value = crypto.encryption().decryptSymmetric({
                 ciphertext: el.secretValueCiphertext,
                 iv: el.secretValueIV,
                 tag: el.secretValueTag,
-                key: botKey
+                key: botKey,
+                keySize: SymmetricKeySize.Bits128
               });
               const comment =
                 el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-                  ? decryptSymmetric128BitHexKeyUTF8({
+                  ? crypto.encryption().decryptSymmetric({
                       ciphertext: el.secretCommentCiphertext,
                       iv: el.secretCommentIV,
                       tag: el.secretCommentTag,
-                      key: botKey
+                      key: botKey,
+                      keySize: SymmetricKeySize.Bits128
                     })
                   : "";
               const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
@@ -1325,6 +1334,7 @@ export const secretQueueFactory = ({
         const projectV3SecretVersionsGroupById: Record<string, TSecretVersionsV2> = {};
         const projectV3SecretVersionTags: { secret_versions_v2Id: string; secret_tagsId: string }[] = [];
         const projectV3SnapshotSecrets: Omit<TSecretSnapshotSecretsV2, "id">[] = [];
+
         snapshots.forEach(({ secretVersions = [], ...snapshot }) => {
           secretVersions.forEach((el) => {
             projectV3SnapshotSecrets.push({
@@ -1336,25 +1346,28 @@ export const secretQueueFactory = ({
             });
             if (projectV3SecretVersionsGroupById[el.id]) return;
 
-            const key = decryptSymmetric128BitHexKeyUTF8({
+            const key = crypto.encryption().decryptSymmetric({
               ciphertext: el.secretKeyCiphertext,
               iv: el.secretKeyIV,
               tag: el.secretKeyTag,
-              key: botKey
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
             });
-            const value = decryptSymmetric128BitHexKeyUTF8({
+            const value = crypto.encryption().decryptSymmetric({
               ciphertext: el.secretValueCiphertext,
               iv: el.secretValueIV,
               tag: el.secretValueTag,
-              key: botKey
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
             });
             const comment =
               el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-                ? decryptSymmetric128BitHexKeyUTF8({
+                ? crypto.encryption().decryptSymmetric({
                     ciphertext: el.secretCommentCiphertext,
                     iv: el.secretCommentIV,
                     tag: el.secretCommentTag,
-                    key: botKey
+                    key: botKey,
+                    keySize: SymmetricKeySize.Bits128
                   })
                 : "";
             const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
@@ -1395,25 +1408,28 @@ export const secretQueueFactory = ({
         );
         Object.values(latestSecretVersionByFolder).forEach((el) => {
           if (projectV3SecretVersionsGroupById[el.id]) return;
-          const key = decryptSymmetric128BitHexKeyUTF8({
+          const key = crypto.encryption().decryptSymmetric({
             ciphertext: el.secretKeyCiphertext,
             iv: el.secretKeyIV,
             tag: el.secretKeyTag,
-            key: botKey
+            key: botKey,
+            keySize: SymmetricKeySize.Bits128
           });
-          const value = decryptSymmetric128BitHexKeyUTF8({
+          const value = crypto.encryption().decryptSymmetric({
             ciphertext: el.secretValueCiphertext,
             iv: el.secretValueIV,
             tag: el.secretValueTag,
-            key: botKey
+            key: botKey,
+            keySize: SymmetricKeySize.Bits128
           });
           const comment =
             el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-              ? decryptSymmetric128BitHexKeyUTF8({
+              ? crypto.encryption().decryptSymmetric({
                   ciphertext: el.secretCommentCiphertext,
                   iv: el.secretCommentIV,
                   tag: el.secretCommentTag,
-                  key: botKey
+                  key: botKey,
+                  keySize: SymmetricKeySize.Bits128
                 })
               : "";
           const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
@@ -1475,42 +1491,47 @@ export const secretQueueFactory = ({
        * */
       // eslint-disable-next-line no-await-in-loop
       const projectV1IntegrationAuths = await integrationAuthDAL.find({ projectId }, { tx });
+
       await integrationAuthDAL.upsert(
         projectV1IntegrationAuths.map((el) => {
           const accessToken =
             el.accessIV && el.accessTag && el.accessCiphertext
-              ? decryptSymmetric128BitHexKeyUTF8({
+              ? crypto.encryption().decryptSymmetric({
                   ciphertext: el.accessCiphertext,
                   iv: el.accessIV,
                   tag: el.accessTag,
-                  key: botKey
+                  key: botKey,
+                  keySize: SymmetricKeySize.Bits128
                 })
               : undefined;
           const accessId =
             el.accessIdIV && el.accessIdTag && el.accessIdCiphertext
-              ? decryptSymmetric128BitHexKeyUTF8({
+              ? crypto.encryption().decryptSymmetric({
                   ciphertext: el.accessIdCiphertext,
                   iv: el.accessIdIV,
                   tag: el.accessIdTag,
-                  key: botKey
+                  key: botKey,
+                  keySize: SymmetricKeySize.Bits128
                 })
               : undefined;
           const refreshToken =
             el.refreshIV && el.refreshTag && el.refreshCiphertext
-              ? decryptSymmetric128BitHexKeyUTF8({
+              ? crypto.encryption().decryptSymmetric({
                   ciphertext: el.refreshCiphertext,
                   iv: el.refreshIV,
                   tag: el.refreshTag,
-                  key: botKey
+                  key: botKey,
+                  keySize: SymmetricKeySize.Bits128
                 })
               : undefined;
           const awsAssumeRoleArn =
             el.awsAssumeIamRoleArnCipherText && el.awsAssumeIamRoleArnIV && el.awsAssumeIamRoleArnTag
-              ? decryptSymmetric128BitHexKeyUTF8({
+              ? crypto.encryption().decryptSymmetric({
                   ciphertext: el.awsAssumeIamRoleArnCipherText,
                   iv: el.awsAssumeIamRoleArnIV,
                   tag: el.awsAssumeIamRoleArnTag,
-                  key: botKey
+                  key: botKey,
+                  keySize: SymmetricKeySize.Bits128
                 })
               : undefined;
 

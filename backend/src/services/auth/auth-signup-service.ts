@@ -1,4 +1,3 @@
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipStatus, SecretKeyEncoding, TableName } from "@app/db/schemas";
@@ -7,7 +6,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
-import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getMinExpiresIn } from "@app/lib/fn";
@@ -193,7 +192,7 @@ export const authSignupServiceFactory = ({
       validateSignUpAuthorization(authorization, user.id);
     }
 
-    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
     const privateKey = await getUserPrivateKey(password, {
       salt,
       protectedKey,
@@ -204,7 +203,7 @@ export const authSignupServiceFactory = ({
       tag: encryptedPrivateKeyTag,
       encryptionVersion: UserEncryption.V2
     });
-    const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
+    const { tag, encoding, ciphertext, iv } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
@@ -225,7 +224,7 @@ export const authSignupServiceFactory = ({
         systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
       ) {
         // get server generated password
-        const serverGeneratedPassword = infisicalSymmetricDecrypt({
+        const serverGeneratedPassword = crypto.encryption().decryptWithRootEncryptionKey({
           iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
           tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
           ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
@@ -436,7 +435,7 @@ export const authSignupServiceFactory = ({
       });
 
     const appCfg = getConfig();
-    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
     const privateKey = await getUserPrivateKey(password, {
       salt,
       protectedKey,
@@ -447,7 +446,7 @@ export const authSignupServiceFactory = ({
       tag: encryptedPrivateKeyTag,
       encryptionVersion: 2
     });
-    const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
+    const { tag, encoding, ciphertext, iv } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
@@ -464,7 +463,7 @@ export const authSignupServiceFactory = ({
         systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
       ) {
         // get server generated password
-        const serverGeneratedPassword = infisicalSymmetricDecrypt({
+        const serverGeneratedPassword = crypto.encryption().decryptWithRootEncryptionKey({
           iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
           tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
           ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,

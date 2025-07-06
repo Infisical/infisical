@@ -1,6 +1,7 @@
 import { CreateKeyCommand, DecryptCommand, DescribeKeyCommand, EncryptCommand, KMSClient } from "@aws-sdk/client-kms";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
-import { randomUUID } from "crypto";
+
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { ExternalKmsAwsSchema, KmsAwsCredentialType, TExternalKmsAwsSchema, TExternalKmsProviderFns } from "./model";
 
@@ -12,7 +13,7 @@ const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsCredential.assumeRoleArn,
-      RoleSessionName: `infisical-kms-${randomUUID()}`,
+      RoleSessionName: `infisical-kms-${crypto.rawCrypto.randomUUID()}`,
       DurationSeconds: 900, // 15mins
       ExternalId: awsCredential.externalId
     });

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -65,7 +65,7 @@ export async function up(knex: Knex): Promise<void> {
 
       let encryptedSecretKey = null;
       if (el.encryptedSecretKey && el.iv && el.tag && el.keyEncoding) {
-        const decyptedSecretKey = infisicalSymmetricDecrypt({
+        const decyptedSecretKey = crypto.encryption().decryptWithRootEncryptionKey({
           keyEncoding: el.keyEncoding as SecretKeyEncoding,
           iv: el.iv,
           tag: el.tag,
@@ -78,7 +78,7 @@ export async function up(knex: Knex): Promise<void> {
 
       const decryptedUrl =
         el.urlIV && el.urlTag && el.urlCipherText && el.keyEncoding
-          ? infisicalSymmetricDecrypt({
+          ? crypto.encryption().decryptWithRootEncryptionKey({
               keyEncoding: el.keyEncoding as SecretKeyEncoding,
               iv: el.urlIV,
               tag: el.urlTag,

@@ -17,6 +17,8 @@ import { queueServiceFactory } from "@app/queue";
 import { keyStoreFactory } from "@app/keystore/keystore";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+import { crypto } from "@app/lib/crypto/cryptography";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -29,6 +31,8 @@ export default {
       dbConnectionUri: envConfig.DB_CONNECTION_URI,
       dbRootCert: envConfig.DB_ROOT_CERT
     });
+    const superAdminDAL = superAdminDALFactory(db);
+    await crypto.initialize(superAdminDAL);
 
     const redis = buildRedisFromConfig(envConfig);
     await redis.flushdb("SYNC");
@@ -68,12 +72,15 @@ export default {
         queue,
         keyStore,
         hsmModule: hsmModule.getModule(),
+        superAdminDAL,
         redis,
         envConfig
       });
 
       // @ts-expect-error type
       globalThis.testServer = server;
+      // @ts-expect-error type
+      globalThis.testCryptoProvider = crypto;
       // @ts-expect-error type
       globalThis.jwtAuthToken = jwt.sign(
         {

@@ -2,7 +2,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import slugify from "@sindresorhus/slugify";
-import crypto, { KeyObject } from "crypto";
 import { z } from "zod";
 
 import {
@@ -21,6 +20,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -189,7 +189,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
-    const keys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const newCa = await certificateAuthorityDAL.transaction(async (tx) => {
       const notBeforeDate = notBefore ? new Date(notBefore) : new Date();
@@ -243,8 +243,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         kmsId: certificateManagerKmsId
       });
 
-      // // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
-      const skObj = KeyObject.from(keys.privateKey);
+      // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
+      const skObj = crypto.rawCrypto.KeyObject.from(keys.privateKey);
 
       const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
         plainText: skObj.export({
@@ -1129,7 +1129,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       kmsService
     });
 
-    const isCaAndCertPublicKeySame = Buffer.from(await crypto.subtle.exportKey("spki", caPublicKey)).equals(
+    const isCaAndCertPublicKeySame = Buffer.from(await crypto.rawCrypto.subtle.exportKey("spki", caPublicKey)).equals(
       Buffer.from(certObj.publicKey.rawData)
     );
 
@@ -1293,7 +1293,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${commonName}`,
@@ -1440,7 +1440,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       extensions
     });
 
-    const skLeafObj = KeyObject.from(leafKeys.privateKey);
+    const skLeafObj = crypto.rawCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const kmsEncryptor = await kmsService.encryptWithKmsKey({

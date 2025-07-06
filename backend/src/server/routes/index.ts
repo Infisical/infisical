@@ -278,7 +278,7 @@ import { slackIntegrationDALFactory } from "@app/services/slack/slack-integratio
 import { slackServiceFactory } from "@app/services/slack/slack-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
@@ -310,6 +310,7 @@ export const registerRoutes = async (
   server: FastifyZodProvider,
   {
     auditLogDb,
+    superAdminDAL,
     db,
     hsmModule,
     smtp: smtpService,
@@ -318,6 +319,7 @@ export const registerRoutes = async (
     envConfig
   }: {
     auditLogDb?: Knex;
+    superAdminDAL: TSuperAdminDALFactory;
     db: Knex;
     hsmModule: HsmModule;
     smtp: TSmtpService;
@@ -341,7 +343,6 @@ export const registerRoutes = async (
   const orgBotDAL = orgBotDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const orgRoleDAL = orgRoleDALFactory(db);
-  const superAdminDAL = superAdminDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
 

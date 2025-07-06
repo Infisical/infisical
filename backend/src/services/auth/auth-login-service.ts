@@ -1,4 +1,3 @@
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
@@ -8,7 +7,7 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
@@ -336,8 +335,11 @@ export const authLoginServiceFactory = ({
         );
         return "";
       });
-      const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
-      const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
+
+      const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
+
+      const { iv, tag, ciphertext, encoding } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
+
       await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
         serverPrivateKey: null,
         clientPublicKey: null,

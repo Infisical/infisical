@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -60,7 +60,7 @@ export async function up(knex: Knex): Promise<void> {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore This will be removed in next cycle so ignore the ts missing error
         el.inputIV && el.inputTag && el.inputCiphertext && el.keyEncoding
-          ? infisicalSymmetricDecrypt({
+          ? crypto.encryption().decryptWithRootEncryptionKey({
               // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               // @ts-ignore This will be removed in next cycle so ignore the ts missing error
               keyEncoding: el.keyEncoding as SecretKeyEncoding,

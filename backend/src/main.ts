@@ -9,12 +9,14 @@ import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
 import { buildRedisFromConfig } from "./lib/config/redis";
+import { crypto } from "./lib/crypto/cryptography";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
+import { superAdminDALFactory } from "./services/super-admin/super-admin-dal";
 
 dotenv.config();
 
@@ -32,6 +34,9 @@ const run = async () => {
       dbConnectionUri: el.DB_CONNECTION_URI
     }))
   });
+
+  const superAdminDAL = superAdminDALFactory(db);
+  await crypto.initialize(superAdminDAL);
 
   const auditLogDb = envConfig.AUDIT_LOGS_DB_CONNECTION_URI
     ? initAuditLogDbConnection({
@@ -60,6 +65,7 @@ const run = async () => {
   const server = await main({
     db,
     auditLogDb,
+    superAdminDAL,
     hsmModule: hsmModule.getModule(),
     smtp,
     logger,

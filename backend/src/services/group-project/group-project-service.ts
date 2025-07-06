@@ -8,8 +8,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -214,14 +213,14 @@ export const groupProjectServiceFactory = ({
           });
         }
 
-        const botPrivateKey = infisicalSymmetricDecrypt({
+        const botPrivateKey = crypto.encryption().decryptWithRootEncryptionKey({
           keyEncoding: bot.keyEncoding as SecretKeyEncoding,
           iv: bot.iv,
           tag: bot.tag,
           ciphertext: bot.encryptedPrivateKey
         });
 
-        const plaintextProjectKey = decryptAsymmetric({
+        const plaintextProjectKey = crypto.encryption().asymmetric().decrypt({
           ciphertext: ghostUserLatestKey.encryptedKey,
           nonce: ghostUserLatestKey.nonce,
           publicKey: ghostUserLatestKey.sender.publicKey,
@@ -229,7 +228,10 @@ export const groupProjectServiceFactory = ({
         });
 
         const projectKeyData = groupMembers.map(({ user: { publicKey, id } }) => {
-          const { ciphertext: encryptedKey, nonce } = encryptAsymmetric(plaintextProjectKey, publicKey, botPrivateKey);
+          const { ciphertext: encryptedKey, nonce } = crypto
+            .encryption()
+            .asymmetric()
+            .encrypt(plaintextProjectKey, publicKey, botPrivateKey);
 
           return {
             encryptedKey,
