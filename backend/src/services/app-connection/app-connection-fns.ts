@@ -91,6 +91,7 @@ import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import {
@@ -144,7 +145,8 @@ export const listAppConnectionOptions = () => {
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
     getBitbucketConnectionListItem(),
-    getZabbixConnectionListItem()
+    getZabbixConnectionListItem(),
+    getRailwayConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -226,7 +228,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -346,7 +349,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
   [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
-  [AppConnection.Zabbix]: platformManagedCredentialsNotSupported
+  [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
+  [AppConnection.Railway]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

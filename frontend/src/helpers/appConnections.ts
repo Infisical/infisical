@@ -43,6 +43,7 @@ import {
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 
 export const APP_CONNECTION_MAP: Record<
@@ -92,7 +93,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
   [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
-  [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" }
+  [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
+  [AppConnection.Railway]: { name: "Railway", image: "Railway.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -126,6 +128,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case CloudflareConnectionMethod.ApiToken:
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
+    case RailwayConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

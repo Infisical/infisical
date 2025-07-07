@@ -95,6 +95,12 @@ import {
   THumanitecSyncWithCredentials
 } from "./humanitec";
 import {
+  TRailwaySync,
+  TRailwaySyncInput,
+  TRailwaySyncListItem,
+  TRailwaySyncWithCredentials
+} from "./railway/railway-sync-types";
+import {
   TRenderSync,
   TRenderSyncInput,
   TRenderSyncListItem,
@@ -138,7 +144,8 @@ export type TSecretSync =
   | TFlyioSync
   | TGitLabSync
   | TCloudflarePagesSync
-  | TZabbixSync;
+  | TZabbixSync
+  | TRailwaySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -163,7 +170,8 @@ export type TSecretSyncWithCredentials =
   | TFlyioSyncWithCredentials
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
-  | TZabbixSyncWithCredentials;
+  | TZabbixSyncWithCredentials
+  | TRailwaySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -188,7 +196,8 @@ export type TSecretSyncInput =
   | TFlyioSyncInput
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
-  | TZabbixSyncInput;
+  | TZabbixSyncInput
+  | TRailwaySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -213,7 +222,8 @@ export type TSecretSyncListItem =
   | TFlyioSyncListItem
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
-  | TZabbixSyncListItem;
+  | TZabbixSyncListItem
+  | TRailwaySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

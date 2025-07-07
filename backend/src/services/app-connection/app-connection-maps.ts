@@ -31,7 +31,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.GitLab]: "GitLab",
   [AppConnection.Cloudflare]: "Cloudflare",
   [AppConnection.Bitbucket]: "Bitbucket",
-  [AppConnection.Zabbix]: "Zabbix"
+  [AppConnection.Zabbix]: "Zabbix",
+  [AppConnection.Railway]: "Railway"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -65,5 +66,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.GitLab]: AppConnectionPlanType.Regular,
   [AppConnection.Cloudflare]: AppConnectionPlanType.Regular,
   [AppConnection.Bitbucket]: AppConnectionPlanType.Regular,
-  [AppConnection.Zabbix]: AppConnectionPlanType.Regular
+  [AppConnection.Zabbix]: AppConnectionPlanType.Regular,
+  [AppConnection.Railway]: AppConnectionPlanType.Regular
 };
