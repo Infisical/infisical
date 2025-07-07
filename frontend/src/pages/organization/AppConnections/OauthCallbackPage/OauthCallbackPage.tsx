@@ -179,11 +179,6 @@ export const OAuthCallbackPage = () => {
         appConnectionName: formData.app
       };
     } catch (err: any) {
-      createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} GitLab Connection`,
-        text: err?.message,
-        type: "error"
-      });
       navigate({
         to: returnUrl ?? "/organization/app-connections"
       });
@@ -222,14 +217,10 @@ export const OAuthCallbackPage = () => {
         });
       }
     } catch (err: any) {
-      createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} Azure Key Vault Connection`,
-        text: err?.message,
-        type: "error"
-      });
       navigate({
         to: returnUrl ?? "/organization/app-connections"
       });
+      return null;
     }
 
     return {
@@ -270,14 +261,10 @@ export const OAuthCallbackPage = () => {
         });
       }
     } catch (err: any) {
-      createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} Azure App Configuration Connection`,
-        text: err?.message,
-        type: "error"
-      });
       navigate({
         to: returnUrl ?? "/organization/app-connections"
       });
+      return null;
     }
 
     return {
@@ -318,14 +305,10 @@ export const OAuthCallbackPage = () => {
         });
       }
     } catch (err: any) {
-      createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} Azure Client Secrets Connection`,
-        text: err?.message,
-        type: "error"
-      });
       navigate({
         to: returnUrl ?? "/organization/app-connections"
       });
+      return null;
     }
 
     return {
@@ -372,14 +355,10 @@ export const OAuthCallbackPage = () => {
         });
       }
     } catch (err: any) {
-      createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} Azure DevOps Connection`,
-        text: err?.message,
-        type: "error"
-      });
       navigate({
         to: returnUrl ?? "/organization/app-connections"
       });
+      return null;
     }
 
     return {
@@ -438,14 +417,10 @@ export const OAuthCallbackPage = () => {
         });
       }
     } catch (e: any) {
-      createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} GitHub Connection`,
-        text: e.message,
-        type: "error"
-      });
       navigate({
         to: returnUrl ?? "/organization/app-connections"
       });
+      return null;
     }
 
     return {
@@ -486,14 +461,10 @@ export const OAuthCallbackPage = () => {
         });
       }
     } catch (e: any) {
-      createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} GitHub Radar Connection`,
-        text: e.message,
-        type: "error"
-      });
       navigate({
         to: returnUrl ?? "/organization/app-connections"
       });
+      return null;
     }
 
     return {
@@ -537,11 +508,6 @@ export const OAuthCallbackPage = () => {
         createNotification({
           text: `Successfully ${data.connectionId ? "updated" : "added"} ${data.appConnectionName ? APP_CONNECTION_MAP[data.appConnectionName as AppConnection].name : ""} Connection`,
           type: "success"
-        });
-      } else {
-        createNotification({
-          text: "Failed to add connection",
-          type: "error"
         });
       }
 
