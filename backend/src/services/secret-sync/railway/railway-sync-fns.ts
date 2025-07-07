@@ -5,6 +5,7 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { RailwayGraphQueries } from "@app/services/app-connection/railway";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretMap } from "../secret-sync-types";
@@ -103,7 +104,7 @@ export const RailwaySyncFns = {
       });
     } catch (error) {
       logger.error(error, "Error while upserting secret in Railway");
-      // Come back to this for handling ratelimits properly
+      // TODO: Handle ratelimits correctly
       throw new SecretSyncError({
         error,
         secretKey: key
@@ -112,44 +113,61 @@ export const RailwaySyncFns = {
   },
 
   async syncSecrets(secretSync: TRailwaySyncWithCredentials, secretMap: TSecretMap) {
-    try {
-      const railwaySecrets = await this.getSecrets(secretSync);
+    const {
+      environment,
+      syncOptions: { disableSecretDeletion, keySchema }
+    } = secretSync;
+    const railwaySecrets = await this.getSecrets(secretSync);
 
-      for await (const key of Object.keys(secretMap)) {
+    for await (const key of Object.keys(secretMap)) {
+      try {
         const existing = railwaySecrets[key];
 
         if (existing === undefined || existing.value !== secretMap[key].value) {
           await this.upsertSecret(secretSync, key, secretMap[key].value);
         }
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
       }
+    }
 
-      if (secretSync.syncOptions.disableSecretDeletion) return;
+    if (disableSecretDeletion) return;
 
-      for await (const key of Object.keys(railwaySecrets)) {
+    for await (const key of Object.keys(railwaySecrets)) {
+      try {
+        // eslint-disable-next-line no-continue
+        if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
+
         if (!secretMap[key]) {
           await deleteSecret(secretSync, key);
         }
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
       }
-    } catch (error) {
-      // Come back to this for handling ratelimits properly
-      throw new SecretSyncError({
-        error
-      });
     }
   },
 
   async removeSecrets(secretSync: TRailwaySyncWithCredentials, secretMap: TSecretMap) {
     const existing = await this.getSecrets(secretSync);
 
-    const tasks = [];
-
-    for (const secret of Object.keys(existing)) {
-      if (secret in secretMap) {
-        // Might not be a good idea if the secret count is too large - I gues chunking would be better
-        tasks.push(deleteSecret(secretSync, secret));
+    for await (const secret of Object.keys(existing)) {
+      try {
+        if (secret in secretMap) {
+          // Might not be a good idea if the secret count is too large - I gues chunking would be better
+          await deleteSecret(secretSync, secret);
+        }
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: secret
+        });
       }
     }
-
-    await Promise.all(tasks);
   }
 };
