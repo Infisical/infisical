@@ -105,7 +105,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateOIDCConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle(false);
 
-  const { data } = useGetOIDCConfig(currentOrg?.slug ?? "");
+  const { data } = useGetOIDCConfig(currentOrg?.id ?? "");
 
   const { control, handleSubmit, reset, setValue, watch } = useForm<OIDCFormData>({
     resolver: zodResolver(schema),
@@ -134,7 +134,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         clientId: "",
         clientSecret: "",
         isActive: false,
-        orgSlug: currentOrg.slug
+        organizationId: currentOrg.id
       });
 
       createNotification({
@@ -196,7 +196,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
           clientId,
           clientSecret,
           isActive: true,
-          orgSlug: currentOrg.slug,
+          organizationId: currentOrg.id,
           jwtSignatureAlgorithm
         });
       } else {
@@ -212,7 +212,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
           clientId,
           clientSecret,
           isActive: true,
-          orgSlug: currentOrg.slug,
+          organizationId: currentOrg.id,
           jwtSignatureAlgorithm
         });
       }

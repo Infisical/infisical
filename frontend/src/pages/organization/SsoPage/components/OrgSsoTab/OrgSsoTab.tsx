@@ -38,7 +38,7 @@ export const OrgSsoTab = withPermission(
     const { subscription } = useSubscription();
 
     const { data: oidcConfig, isPending: isLoadingOidcConfig } = useGetOIDCConfig(
-      currentOrg?.slug ?? ""
+      currentOrg?.id ?? ""
     );
     const { data: samlConfig, isPending: isLoadingSamlConfig } = useGetSSOConfig(
       currentOrg?.id ?? ""

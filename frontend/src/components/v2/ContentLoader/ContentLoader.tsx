@@ -33,7 +33,7 @@ export const ContentLoader = ({ text, frequency = 2000, className }: Props) => {
         className
       )}
     >
-      <Lottie icon="infisical_loading" className="h-32 w-32" />
+      <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
       {text && isTextArray && (
         <AnimatePresence mode="wait">
           <motion.div

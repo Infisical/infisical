@@ -382,7 +382,8 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         {
           syncId,
           destination,
-          importBehavior
+          importBehavior,
+          auditLogInfo: req.auditLogInfo
         },
         req.permission
       )) as T;
@@ -415,7 +416,8 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       const secretSync = (await server.services.secretSync.triggerSecretSyncRemoveSecretsById(
         {
           syncId,
-          destination
+          destination,
+          auditLogInfo: req.auditLogInfo
         },
         req.permission
       )) as T;
