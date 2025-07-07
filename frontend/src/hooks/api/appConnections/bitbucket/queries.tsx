@@ -51,18 +51,15 @@ export const useBitbucketConnectionListRepositories = (
       TBitbucketRepo[],
       unknown,
       TBitbucketRepo[],
-      // The ReturnType here will be a supertype of the actual queryKey, which is acceptable
       ReturnType<typeof bitbucketConnectionKeys.listRepos>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    // Append workspaceSlug to the existing query key for unique caching
     queryKey: bitbucketConnectionKeys.listRepos(connectionId, workspaceSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<TBitbucketConnectionListRepositoriesResponse>(
-        // Include workspaceSlug in the API endpoint path
         `/api/v1/app-connections/bitbucket/${connectionId}/repositories?workspaceSlug=${encodeURIComponent(workspaceSlug)}`
       );
 
