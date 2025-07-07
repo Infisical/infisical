@@ -1442,6 +1442,7 @@ export const orgServiceFactory = ({
     const appCfg = getConfig();
 
     const orgCache: Record<string, { name: string; id: string } | undefined> = {};
+    const notifiedUsers: string[] = [];
 
     await Promise.all(
       invitedUsers.map(async (invitedUser) => {
@@ -1472,11 +1473,12 @@ export const orgServiceFactory = ({
               callback_url: `${appCfg.SITE_URL}/signupinvite`
             }
           });
+          notifiedUsers.push(invitedUser.id);
         }
       })
     );
 
-    await orgMembershipDAL.updateLastInvitedAtByIds(invitedUsers.map((u) => u.id));
+    await orgMembershipDAL.updateLastInvitedAtByIds(notifiedUsers);
   };
 
   return {
