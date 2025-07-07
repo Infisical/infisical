@@ -415,6 +415,7 @@ const cryptographyFactory = () => {
 
     if (process.env.FIPS_ENABLED !== "true") {
       logger.info("[FIPS]: Instance is running in non-FIPS mode.");
+      $setFipsModeEnabled(false);
       return false;
     }
 
