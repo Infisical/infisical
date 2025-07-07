@@ -360,13 +360,15 @@ const cryptographyFactory = () => {
     }
   };
 
-  const isFipsModeEnabled = () => {
-    $checkIsInitialized();
+  const isFipsModeEnabled = (options: { skipInitializationCheck?: boolean } = {}) => {
+    if (!options?.skipInitializationCheck) {
+      $checkIsInitialized();
+    }
     return $fipsEnabled;
   };
 
   const verifyFipsLicense = (licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">) => {
-    if (isFipsModeEnabled() && !licenseService.onPremFeatures?.fips) {
+    if (isFipsModeEnabled({ skipInitializationCheck: true }) && !licenseService.onPremFeatures?.fips) {
       throw new CryptographyError({
         message: "FIPS mode is enabled but your license does not include FIPS support. Please contact support."
       });
