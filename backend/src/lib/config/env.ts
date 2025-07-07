@@ -394,9 +394,9 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
   }
 
   return {
-    dbConnectionUri: envCfg.DB_CONNECTION_URI,
-    dbRootCert: envCfg.DB_ROOT_CERT,
-    readReplicas: envCfg.DB_READ_REPLICAS?.map((el) => ({
+    dbConnectionUri: parsedEnv.data.DB_CONNECTION_URI,
+    dbRootCert: parsedEnv.data.DB_ROOT_CERT,
+    readReplicas: parsedEnv.data.DB_READ_REPLICAS?.map((el) => ({
       dbRootCert: el.DB_ROOT_CERT,
       dbConnectionUri: el.DB_CONNECTION_URI
     }))
