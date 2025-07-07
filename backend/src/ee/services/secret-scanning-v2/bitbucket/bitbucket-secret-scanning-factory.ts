@@ -38,6 +38,7 @@ import {
   TBitbucketDataSourceWithConnection,
   TQueueBitbucketResourceDiffScan
 } from "./bitbucket-secret-scanning-types";
+import { logger } from "@app/lib/logger";
 
 export const BitbucketSecretScanningFactory = () => {
   const initialize: TSecretScanningFactoryInitialize<
@@ -116,15 +117,19 @@ export const BitbucketSecretScanningFactory = () => {
 
     const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
 
-    await request.delete(
-      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${config.workspaceSlug}/hooks/${webhookId}`,
-      {
-        headers: {
-          Authorization: authHeader,
-          Accept: "application/json"
+    try {
+      await request.delete(
+        `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${config.workspaceSlug}/hooks/${webhookId}`,
+        {
+          headers: {
+            Authorization: authHeader,
+            Accept: "application/json"
+          }
         }
-      }
-    );
+      );
+    } catch (err) {
+      logger.error(`teardown: Bitbucket - Failed to call delete on webhook [webhookId=${webhookId}]`);
+    }
   };
 
   const listRawResources: TSecretScanningFactoryListRawResources<TBitbucketDataSourceWithConnection> = async (
