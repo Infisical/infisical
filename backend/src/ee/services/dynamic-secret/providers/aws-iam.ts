@@ -19,6 +19,7 @@ import {
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { z } from "zod";
 
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -49,6 +50,8 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     if (providerInputs.method === AwsIamAuthType.AssumeRole) {
       const stsClient = new STSClient({
         region: providerInputs.region,
+        useFipsEndpoint: crypto.isFipsModeEnabled(),
+        sha256: CustomAWSHasher,
         credentials:
           appCfg.DYNAMIC_SECRET_AWS_ACCESS_KEY_ID && appCfg.DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY
             ? {
@@ -72,6 +75,8 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
       }
       const client = new IAMClient({
         region: providerInputs.region,
+        useFipsEndpoint: crypto.isFipsModeEnabled(),
+        sha256: CustomAWSHasher,
         credentials: {
           accessKeyId: assumeRes.Credentials?.AccessKeyId,
           secretAccessKey: assumeRes.Credentials?.SecretAccessKey,
@@ -83,6 +88,8 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
     const client = new IAMClient({
       region: providerInputs.region,
+      useFipsEndpoint: crypto.isFipsModeEnabled(),
+      sha256: CustomAWSHasher,
       credentials: {
         accessKeyId: providerInputs.accessKey,
         secretAccessKey: providerInputs.secretAccessKey

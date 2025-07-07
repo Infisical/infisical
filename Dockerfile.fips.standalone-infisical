@@ -73,6 +73,17 @@ RUN apt-get update && apt-get install -y \
 # Configure ODBC
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
+
+# Build and install FIPS validated OpenSSL
+WORKDIR /openssl-build
+RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
+    && tar -xf openssl-3.1.2.tar.gz \
+    && cd openssl-3.1.2 \
+    && ./Configure enable-fips \
+    && make \
+    && make install_fips
+
+
 COPY backend/package*.json ./
 RUN npm ci --only-production
 
@@ -102,6 +113,15 @@ RUN apt-get update && apt-get install -y \
 
 # Configure ODBC
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+
+# Build and install FIPS validated OpenSSL
+WORKDIR /openssl-build
+RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
+    && tar -xf openssl-3.1.2.tar.gz \
+    && cd openssl-3.1.2 \
+    && ./Configure enable-fips \
+    && make \
+    && make install_fips
 
 COPY backend/package*.json ./
 RUN npm ci --only-production
@@ -172,6 +192,12 @@ ENV STANDALONE_BUILD true
 ENV STANDALONE_MODE true
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
 ENV NODE_OPTIONS="--max-old-space-size=1024"
+
+# FIPS mode of operation:
+ENV OPENSSL_CONF=/backend/nodejs.fips.cnf
+ENV OPENSSL_MODULES=/usr/local/lib/ossl-modules
+ENV NODE_OPTIONS=--force-fips
+ENV FIPS_ENABLED=true
 
 WORKDIR /backend
 

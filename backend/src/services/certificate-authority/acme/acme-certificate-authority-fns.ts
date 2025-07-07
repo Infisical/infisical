@@ -3,6 +3,7 @@ import * as x509 from "@peculiar/x509";
 import acme from "acme-client";
 
 import { TableName } from "@app/db/schemas";
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -102,6 +103,8 @@ export const route53InsertTxtRecord = async (
 ) => {
   const config = await getAwsConnectionConfig(connection, AWSRegion.US_WEST_1); // REGION is irrelevant because Route53 is global
   const route53Client = new Route53Client({
+    sha256: CustomAWSHasher,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
     credentials: config.credentials!,
     region: config.region
   });

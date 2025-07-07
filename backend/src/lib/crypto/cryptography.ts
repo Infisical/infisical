@@ -193,13 +193,12 @@ const encryptAsymmetricFipsValidated = (data: string, publicKey: string, private
     format: "der"
   });
 
-  // Generate shared secret using X25519
+  // Generate shared secret using x25519 curve
   const sharedSecret = crypto.diffieHellman({
     privateKey: privKeyObj,
     publicKey: pubKeyObj
   });
 
-  // Generate 24-byte nonce (same as NaCl)
   const nonce = crypto.randomBytes(24);
 
   // Derive 32-byte key from shared secret
@@ -209,7 +208,7 @@ const encryptAsymmetricFipsValidated = (data: string, publicKey: string, private
   const iv = nonce.subarray(0, 12);
 
   // Encrypt with AES-256-GCM
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const cipher = crypto.createCipheriv(SecretEncryptionAlgo.AES_256_GCM, key, iv);
 
   const ciphertext = cipher.update(data, "utf8");
   cipher.final();
@@ -665,7 +664,8 @@ const cryptographyFactory = () => {
       },
       constants: crypto.constants,
       X509Certificate: crypto.X509Certificate,
-      KeyObject: crypto.KeyObject
+      KeyObject: crypto.KeyObject,
+      Hash: crypto.Hash
     }
   };
 };

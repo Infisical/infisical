@@ -30,6 +30,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -796,6 +797,8 @@ const syncSecretsAWSParameterStore = async ({
   if (awsAssumeRoleArn) {
     const client = new STSClient({
       region: integration.region as string,
+      useFipsEndpoint: crypto.isFipsModeEnabled(),
+      sha256: CustomAWSHasher,
       credentials:
         appCfg.CLIENT_ID_AWS_INTEGRATION && appCfg.CLIENT_SECRET_AWS_INTEGRATION
           ? {

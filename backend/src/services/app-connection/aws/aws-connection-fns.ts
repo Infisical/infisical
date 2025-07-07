@@ -2,6 +2,7 @@ import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import AWS from "aws-sdk";
 import { AxiosError } from "axios";
 
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
@@ -35,6 +36,8 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
     case AwsConnectionMethod.AssumeRole: {
       const client = new STSClient({
         region,
+        useFipsEndpoint: crypto.isFipsModeEnabled(),
+        sha256: CustomAWSHasher,
         credentials:
           appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID && appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
             ? {

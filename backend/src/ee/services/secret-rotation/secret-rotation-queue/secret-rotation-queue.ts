@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-iam";
 
 import { SecretType } from "@app/db/schemas";
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
@@ -226,6 +227,8 @@ export const secretRotationQueueFactory = ({
       if (provider.template.type === TProviderFunctionTypes.AWS) {
         if (provider.template.client === TAwsProviderSystems.IAM) {
           const client = new IAMClient({
+            useFipsEndpoint: crypto.isFipsModeEnabled(),
+            sha256: CustomAWSHasher,
             region: newCredential.inputs.manager_user_aws_region as string,
             credentials: {
               accessKeyId: newCredential.inputs.manager_user_access_key as string,
