@@ -25,7 +25,7 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
-import { GitHubRepositoryRegex } from "@app/lib/regex";
+import { BasicRepositoryRegex } from "@app/lib/regex";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
 
 import {
@@ -119,7 +119,7 @@ export const GitHubSecretScanningFactory = () => {
 
     const repoPath = join(tempFolder, "repo.git");
 
-    if (!GitHubRepositoryRegex.test(resourceName)) {
+    if (!BasicRepositoryRegex.test(resourceName)) {
       throw new Error("Invalid GitHub repository name");
     }
 

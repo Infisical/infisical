@@ -23,8 +23,9 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { titleCaseToCamelCase } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { GitHubRepositoryRegex } from "@app/lib/regex";
+import { BasicRepositoryRegex } from "@app/lib/regex";
 import {
   getBitbucketUser,
   listBitbucketRepositories,
@@ -38,7 +39,6 @@ import {
   TBitbucketDataSourceWithConnection,
   TQueueBitbucketResourceDiffScan
 } from "./bitbucket-secret-scanning-types";
-import { logger } from "@app/lib/logger";
 
 export const BitbucketSecretScanningFactory = () => {
   const initialize: TSecretScanningFactoryInitialize<
@@ -169,7 +169,7 @@ export const BitbucketSecretScanningFactory = () => {
 
     const repoPath = join(tempFolder, "repo.git");
 
-    if (!GitHubRepositoryRegex.test(resourceName)) {
+    if (!BasicRepositoryRegex.test(resourceName)) {
       throw new Error("Invalid Bitbucket repository name");
     }
 
