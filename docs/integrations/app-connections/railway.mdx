@@ -1,0 +1,97 @@
+---
+title: "Railway Connection"
+description: "Learn how to configure a Railway Connection for Infisical."
+---
+
+Infisical supports the use of [API Tokens](https://docs.railway.com/reference/public-api#authentication) to connect with Railway.
+
+## Create Railway API Token
+
+<Steps>
+    <Step title="Navigate to 'Tokens'">
+        ![Dashboard Page](/images/app-connections/railway/railway-dashboard.png)
+    </Step>
+    <Step title="Enter a token name and select a Team">
+        Ensure that you give this token descriptive name and access to the correct team.
+
+        ![Enter Name and Select Team](/images/app-connections/railway/railway-api-token-form.png)
+    </Step>
+    <Step title="Click on 'Create'">
+        ![Create Token](/images/app-connections/railway/railway-api-token-form-save.png)
+    </Step>
+    <Step title="Save Token">
+        After clicking 'Create', your access token will appear. Save this token for later steps.
+        ![Copy Token Modal](/images/app-connections/railway/railway-api-token-generated.png)
+    </Step>
+</Steps>
+
+## Create Railway Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select Railway Connection">
+                Click the **+ Add Connection** button and select the **Railway Connection** option from the available integrations.
+
+                ![Select Railway Connection](/images/app-connections/railway/railway-app-connection-option.png)
+            </Step>
+            <Step title="Fill out the Railway Connection Modal">
+                Complete the Railway Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - The API Token from earlier steps
+
+                ![Railway Connection Modal](/images/app-connections/railway/railway-app-connection-form.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **Railway Connection** is established and ready to use with your Infisical projects.
+
+                ![Railway Connection Created](/images/app-connections/railway/railway-app-connection-generated.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Railway Connection, make an API request to the [Create Railway Connection](/api-reference/endpoints/app-connections/railway/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/railway \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-railway-connection",
+                    "method": "api-token",
+                    "credentials": {
+                        "apiToken": "[API TOKEN]",
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-railway-connection",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "railway",
+              "method": "api-token",
+              "credentials": {}
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

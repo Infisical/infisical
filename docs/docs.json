@@ -78,10 +78,7 @@
               },
               {
                 "group": "Infisical SSH",
-                "pages": [
-                  "documentation/platform/ssh/overview",
-                  "documentation/platform/ssh/host-groups"
-                ]
+                "pages": ["documentation/platform/ssh/overview", "documentation/platform/ssh/host-groups"]
               },
               {
                 "group": "Key Management (KMS)",
@@ -378,10 +375,7 @@
               },
               {
                 "group": "Architecture",
-                "pages": [
-                  "internals/architecture/components",
-                  "internals/architecture/cloud"
-                ]
+                "pages": ["internals/architecture/components", "internals/architecture/cloud"]
               },
               "internals/security",
               "internals/service-tokens"
@@ -493,7 +487,8 @@
                   "integrations/app-connections/terraform-cloud",
                   "integrations/app-connections/vercel",
                   "integrations/app-connections/windmill",
-                  "integrations/app-connections/zabbix"
+                  "integrations/app-connections/zabbix",
+                  "integrations/app-connections/railway"
                 ]
               }
             ]
@@ -527,7 +522,8 @@
                   "integrations/secret-syncs/terraform-cloud",
                   "integrations/secret-syncs/vercel",
                   "integrations/secret-syncs/windmill",
-                  "integrations/secret-syncs/zabbix"
+                  "integrations/secret-syncs/zabbix",
+                  "integrations/secret-syncs/railway"
                 ]
               }
             ]
@@ -550,10 +546,7 @@
               "integrations/cloud/gcp-secret-manager",
               {
                 "group": "Cloudflare",
-                "pages": [
-                  "integrations/cloud/cloudflare-pages",
-                  "integrations/cloud/cloudflare-workers"
-                ]
+                "pages": ["integrations/cloud/cloudflare-pages", "integrations/cloud/cloudflare-workers"]
               },
               "integrations/cloud/terraform-cloud",
               "integrations/cloud/databricks",
@@ -665,11 +658,7 @@
                   "cli/commands/reset",
                   {
                     "group": "infisical scan",
-                    "pages": [
-                      "cli/commands/scan",
-                      "cli/commands/scan-git-changes",
-                      "cli/commands/scan-install"
-                    ]
+                    "pages": ["cli/commands/scan", "cli/commands/scan-git-changes", "cli/commands/scan-install"]
                   }
                 ]
               },
@@ -853,30 +842,30 @@
               {
                 "group": "Organizations",
                 "pages": [
-                {
-                  "group": "OIDC SSO",
-                  "pages": [
-                    "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
-                    "api-reference/endpoints/organizations/oidc-sso/update-oidc-config",
-                    "api-reference/endpoints/organizations/oidc-sso/create-oidc-config"
-                  ]
-                },
-                {
-                  "group": "LDAP SSO",
-                  "pages": [
-                    "api-reference/endpoints/organizations/ldap-sso/get-ldap-config",
-                    "api-reference/endpoints/organizations/ldap-sso/update-ldap-config",
-                    "api-reference/endpoints/organizations/ldap-sso/create-ldap-config"
-                  ]
-                },
-                {
-                  "group": "SAML SSO",
-                  "pages": [
-                    "api-reference/endpoints/organizations/saml-sso/get-saml-config",
-                    "api-reference/endpoints/organizations/saml-sso/update-saml-config",
-                    "api-reference/endpoints/organizations/saml-sso/create-saml-config"
-                  ]
-                },
+                  {
+                    "group": "OIDC SSO",
+                    "pages": [
+                      "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
+                      "api-reference/endpoints/organizations/oidc-sso/update-oidc-config",
+                      "api-reference/endpoints/organizations/oidc-sso/create-oidc-config"
+                    ]
+                  },
+                  {
+                    "group": "LDAP SSO",
+                    "pages": [
+                      "api-reference/endpoints/organizations/ldap-sso/get-ldap-config",
+                      "api-reference/endpoints/organizations/ldap-sso/update-ldap-config",
+                      "api-reference/endpoints/organizations/ldap-sso/create-ldap-config"
+                    ]
+                  },
+                  {
+                    "group": "SAML SSO",
+                    "pages": [
+                      "api-reference/endpoints/organizations/saml-sso/get-saml-config",
+                      "api-reference/endpoints/organizations/saml-sso/update-saml-config",
+                      "api-reference/endpoints/organizations/saml-sso/create-saml-config"
+                    ]
+                  },
                   "api-reference/endpoints/organizations/memberships",
                   "api-reference/endpoints/organizations/update-membership",
                   "api-reference/endpoints/organizations/delete-membership",
@@ -993,9 +982,7 @@
                 "pages": [
                   {
                     "group": "Kubernetes",
-                    "pages": [
-                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
-                    ]
+                    "pages": ["api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"]
                   },
                   "api-reference/endpoints/dynamic-secrets/create",
                   "api-reference/endpoints/dynamic-secrets/update",
@@ -1588,6 +1575,18 @@
                       "api-reference/endpoints/app-connections/zabbix/update",
                       "api-reference/endpoints/app-connections/zabbix/delete"
                     ]
+                  },
+                  {
+                    "group": "Railway",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/railway/list",
+                      "api-reference/endpoints/app-connections/railway/available",
+                      "api-reference/endpoints/app-connections/railway/get-by-id",
+                      "api-reference/endpoints/app-connections/railway/get-by-name",
+                      "api-reference/endpoints/app-connections/railway/create",
+                      "api-reference/endpoints/app-connections/railway/update",
+                      "api-reference/endpoints/app-connections/railway/delete"
+                    ]
                   }
                 ]
               },
@@ -1908,6 +1907,20 @@
                       "api-reference/endpoints/secret-syncs/zabbix/import-secrets",
                       "api-reference/endpoints/secret-syncs/zabbix/remove-secrets"
                     ]
+                  },
+                  {
+                    "group": "Railway",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/railway/list",
+                      "api-reference/endpoints/secret-syncs/railway/get-by-id",
+                      "api-reference/endpoints/secret-syncs/railway/get-by-name",
+                      "api-reference/endpoints/secret-syncs/railway/create",
+                      "api-reference/endpoints/secret-syncs/railway/update",
+                      "api-reference/endpoints/secret-syncs/railway/delete",
+                      "api-reference/endpoints/secret-syncs/railway/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/railway/import-secrets",
+                      "api-reference/endpoints/secret-syncs/railway/remove-secrets"
+                    ]
                   }
                 ]
               },
@@ -2172,7 +2185,7 @@
   "api": {
     "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://app.infisical.com", "http://localhost:8080"]
+      "server": ["https://app.infisical.com", "https://8b6c87dbf546.ngrok-free.app"]
     }
   },
   "appearance": {
