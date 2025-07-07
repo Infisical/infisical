@@ -1,5 +1,4 @@
 import { MfaMethod } from "../auth/types";
-import { UserWsKeyPair } from "../keys/types";
 import { ProjectType, ProjectUserMembershipTemporaryMode } from "../workspace/types";
 
 export enum AuthMethod {

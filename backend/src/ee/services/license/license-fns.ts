@@ -18,7 +18,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   environmentsUsed: 0,
   identityLimit: null,
   identitiesUsed: 0,
-  dynamicSecret: true,
+  dynamicSecret: false,
   secretVersioning: true,
   pitRecovery: false,
   ipAllowlisting: false,
@@ -59,7 +59,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretScanning: false,
   enterpriseSecretSyncs: false,
   enterpriseAppConnections: false,
-  fips: true
+  fips: false
 });
 
 export const setupLicenseRequestWithStore = (
