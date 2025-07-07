@@ -75,27 +75,29 @@ const initTelemetryInstrumentation = ({
 };
 
 const setupTelemetry = () => {
-  const appCfg = initEnvConfig();
+  const { envCfg } = initEnvConfig();
 
-  if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+  console.log("envCfg", envCfg);
+
+  if (envCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
     console.log("Initializing telemetry instrumentation");
     initTelemetryInstrumentation({
-      otlpURL: appCfg.OTEL_EXPORT_OTLP_ENDPOINT,
-      otlpUser: appCfg.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,
-      otlpPassword: appCfg.OTEL_COLLECTOR_BASIC_AUTH_PASSWORD,
-      otlpPushInterval: appCfg.OTEL_OTLP_PUSH_INTERVAL,
-      exportType: appCfg.OTEL_EXPORT_TYPE
+      otlpURL: envCfg.OTEL_EXPORT_OTLP_ENDPOINT,
+      otlpUser: envCfg.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,
+      otlpPassword: envCfg.OTEL_COLLECTOR_BASIC_AUTH_PASSWORD,
+      otlpPushInterval: envCfg.OTEL_OTLP_PUSH_INTERVAL,
+      exportType: envCfg.OTEL_EXPORT_TYPE
     });
   }
 
-  if (appCfg.SHOULD_USE_DATADOG_TRACER) {
+  if (envCfg.SHOULD_USE_DATADOG_TRACER) {
     console.log("Initializing Datadog tracer");
     tracer.init({
-      profiling: appCfg.DATADOG_PROFILING_ENABLED,
-      version: appCfg.INFISICAL_PLATFORM_VERSION,
-      env: appCfg.DATADOG_ENV,
-      service: appCfg.DATADOG_SERVICE,
-      hostname: appCfg.DATADOG_HOSTNAME
+      profiling: envCfg.DATADOG_PROFILING_ENABLED,
+      version: envCfg.INFISICAL_PLATFORM_VERSION,
+      env: envCfg.DATADOG_ENV,
+      service: envCfg.DATADOG_SERVICE,
+      hostname: envCfg.DATADOG_HOSTNAME
     });
   }
 };

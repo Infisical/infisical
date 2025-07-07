@@ -22,26 +22,29 @@ dotenv.config();
 
 const run = async () => {
   const logger = initLogger();
-  const envConfig = initEnvConfig(logger);
+  const { envCfg, updateRootEncryptionKey } = initEnvConfig(logger);
 
   await removeTemporaryBaseDirectory();
 
   const db = initDbConnection({
-    dbConnectionUri: envConfig.DB_CONNECTION_URI,
-    dbRootCert: envConfig.DB_ROOT_CERT,
-    readReplicas: envConfig.DB_READ_REPLICAS?.map((el) => ({
+    dbConnectionUri: envCfg.DB_CONNECTION_URI,
+    dbRootCert: envCfg.DB_ROOT_CERT,
+    readReplicas: envCfg.DB_READ_REPLICAS?.map((el) => ({
       dbRootCert: el.DB_ROOT_CERT,
       dbConnectionUri: el.DB_CONNECTION_URI
     }))
   });
 
   const superAdminDAL = superAdminDALFactory(db);
-  await crypto.initialize(superAdminDAL);
+  const fipsEnabled = await crypto.initialize(superAdminDAL);
+  if (fipsEnabled) {
+    updateRootEncryptionKey(envCfg.ENCRYPTION_KEY);
+  }
 
-  const auditLogDb = envConfig.AUDIT_LOGS_DB_CONNECTION_URI
+  const auditLogDb = envCfg.AUDIT_LOGS_DB_CONNECTION_URI
     ? initAuditLogDbConnection({
-        dbConnectionUri: envConfig.AUDIT_LOGS_DB_CONNECTION_URI,
-        dbRootCert: envConfig.AUDIT_LOGS_DB_ROOT_CERT
+        dbConnectionUri: envCfg.AUDIT_LOGS_DB_CONNECTION_URI,
+        dbRootCert: envCfg.AUDIT_LOGS_DB_ROOT_CERT
       })
     : undefined;
 
@@ -49,17 +52,17 @@ const run = async () => {
 
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
-  const queue = queueServiceFactory(envConfig, {
-    dbConnectionUrl: envConfig.DB_CONNECTION_URI,
-    dbRootCert: envConfig.DB_ROOT_CERT
+  const queue = queueServiceFactory(envCfg, {
+    dbConnectionUrl: envCfg.DB_CONNECTION_URI,
+    dbRootCert: envCfg.DB_ROOT_CERT
   });
 
   await queue.initialize();
 
-  const keyStore = keyStoreFactory(envConfig);
-  const redis = buildRedisFromConfig(envConfig);
+  const keyStore = keyStoreFactory(envCfg);
+  const redis = buildRedisFromConfig(envCfg);
 
-  const hsmModule = initializeHsmModule(envConfig);
+  const hsmModule = initializeHsmModule(envCfg);
   hsmModule.initialize();
 
   const server = await main({
@@ -72,7 +75,7 @@ const run = async () => {
     queue,
     keyStore,
     redis,
-    envConfig
+    envConfig: envCfg
   });
   const bootstrap = await bootstrapCheck({ db });
 
@@ -96,7 +99,7 @@ const run = async () => {
     process.exit(0);
   });
 
-  if (!envConfig.isDevelopmentMode) {
+  if (!envCfg.isDevelopmentMode) {
     process.on("uncaughtException", (error) => {
       logger.error(error, "CRITICAL ERROR: Uncaught Exception");
     });
@@ -107,8 +110,8 @@ const run = async () => {
   }
 
   await server.listen({
-    port: envConfig.PORT,
-    host: envConfig.HOST,
+    port: envCfg.PORT,
+    host: envCfg.HOST,
     listenTextResolver: (address) => {
       void bootstrap();
       return address;

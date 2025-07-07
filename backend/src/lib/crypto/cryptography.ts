@@ -11,7 +11,9 @@ import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
 
+import { isBase64 } from "../base64";
 import { getConfig } from "../config/env";
+import { CryptographyError } from "../errors";
 import { logger } from "../logger";
 
 enum DigestType {
@@ -58,6 +60,8 @@ type TDecryptAsymmetricInput = {
   publicKey: string;
   privateKey: string;
 };
+
+const bytesToBits = (bytes: number) => bytes * 8;
 
 const IV_BYTES_SIZE = 12;
 const BLOCK_SIZE_BYTES_16 = 16;
@@ -294,6 +298,33 @@ const cryptographyFactory = () => {
     return $fipsEnabled;
   };
   const $setFipsModeEnabled = (enabled: boolean) => {
+    // If FIPS is enabled, we need to validate that the ENCRYPTION_KEY is in a base64 format, and is a 256-bit key.
+    if (enabled) {
+      const appCfg = getConfig();
+
+      if (appCfg.ENCRYPTION_KEY) {
+        // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
+
+        if (!isBase64(appCfg.ENCRYPTION_KEY)) {
+          throw new CryptographyError({
+            message:
+              "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a base64 encoded 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
+          });
+        }
+
+        if (bytesToBits(Buffer.from(appCfg.ENCRYPTION_KEY, "base64").length) !== 256) {
+          throw new CryptographyError({
+            message:
+              "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
+          });
+        }
+      } else {
+        throw new CryptographyError({
+          message:
+            "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not set.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
+        });
+      }
+    }
     $fipsEnabled = enabled;
     $isInitialized = true;
   };
@@ -337,52 +368,22 @@ const cryptographyFactory = () => {
     const asymmetric = () => {
       const generateKeyPair = () => {
         if (isFipsModeEnabled()) {
-          logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is enabled.");
-          logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is enabled.");
-          logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is enabled.");
-          logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is enabled.");
-          logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is enabled.");
           return generateAsymmetricKeyPairFipsValidated();
         }
-        logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Generating asymmetric key pair. FIPS mode is DISABLED.");
         return generateAsymmetricKeyPairNoFipsValidation();
       };
 
       const encrypt = (data: string, publicKey: string, privateKey: string) => {
         if (isFipsModeEnabled()) {
-          logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is enabled.");
-          logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is enabled.");
-          logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is enabled.");
-          logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is enabled.");
-          logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is enabled.");
           return encryptAsymmetricFipsValidated(data, publicKey, privateKey);
         }
-        logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Encrypting asymmetric data. FIPS mode is DISABLED.");
         return encryptAsymmetricNoFipsValidation(data, publicKey, privateKey);
       };
 
       const decrypt = ({ ciphertext, nonce, publicKey, privateKey }: TDecryptAsymmetricInput) => {
         if (isFipsModeEnabled()) {
-          logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is enabled.");
-          logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is enabled.");
-          logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is enabled.");
-          logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is enabled.");
-          logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is enabled.");
           return decryptAsymmetricFipsValidated({ ciphertext, nonce, publicKey, privateKey });
         }
-        logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is DISABLED.");
-        logger.info("[FIPS]: Decrypting asymmetric data. FIPS mode is DISABLED.");
         return decryptAsymmetricNoFipsValidation({ ciphertext, nonce, publicKey, privateKey });
       };
 
@@ -397,6 +398,12 @@ const cryptographyFactory = () => {
       let decipher;
 
       if (keySize === SymmetricKeySize.Bits128) {
+        if (isFipsModeEnabled()) {
+          throw new CryptographyError({
+            message: "128-bit symmetric key is not supported in FIPS mode of operation."
+          });
+        }
+
         // Not ideal: 128-bit hex key (32 chars) gets interpreted as 32 UTF-8 bytes (256 bits)
         // This works but reduces effective key entropy from 256 to 128 bits
         // Note: Never use this for FIPS mode of operation.
@@ -418,6 +425,12 @@ const cryptographyFactory = () => {
       let cipher;
 
       if (keySize === SymmetricKeySize.Bits128) {
+        if (isFipsModeEnabled()) {
+          throw new CryptographyError({
+            message: "128-bit symmetric key is not supported in FIPS mode of operation."
+          });
+        }
+
         iv = crypto.randomBytes(BLOCK_SIZE_BYTES_16);
         cipher = crypto.createCipheriv(SecretEncryptionAlgo.AES_256_GCM, key, iv);
       } else {
@@ -478,21 +491,6 @@ const cryptographyFactory = () => {
     }: Omit<TDecryptSymmetricInput, "key" | "keySize"> & {
       keyEncoding: SecretKeyEncoding;
     }) => {
-      logger.info(
-        `[FIPS]: decryptWithRootEncryptionKey -> Decrypting symmetric data. FIPS mode is: ${isFipsModeEnabled()}`
-      );
-      logger.info(
-        `[FIPS]: decryptWithRootEncryptionKey -> Decrypting symmetric data. FIPS mode is: ${isFipsModeEnabled()}`
-      );
-      logger.info(
-        `[FIPS]: decryptWithRootEncryptionKey -> Decrypting symmetric data. FIPS mode is: ${isFipsModeEnabled()}`
-      );
-      logger.info(
-        `[FIPS]: decryptWithRootEncryptionKey -> Decrypting symmetric data. FIPS mode is: ${isFipsModeEnabled()}`
-      );
-      logger.info(
-        `[FIPS]: decryptWithRootEncryptionKey -> Decrypting symmetric data. FIPS mode is: ${isFipsModeEnabled()}`
-      );
       const appCfg = getConfig();
       // the or gate is used used in migration
       const rootEncryptionKey = appCfg?.ROOT_ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY;
@@ -530,11 +528,6 @@ const cryptographyFactory = () => {
      * @deprecated Do not use MD5 unless you absolutely have to. It is considered an unsafe hashing algorithm, and should only be used if absolutely necessary.
      */
     const md5 = (message: string, digest: DigestType = DigestType.Hex) => {
-      logger.info(`[FIPS]: md5 -> Hashing message. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: md5 -> Hashing message. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: md5 -> Hashing message. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: md5 -> Hashing message. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: md5 -> Hashing message. FIPS mode is: ${isFipsModeEnabled()}`);
       // If FIPS is enabled and we need MD5, we use the crypto-js implementation.
       // Avoid this at all costs unless strictly necessary, like for mongo atlas digest auth.
       if (isFipsModeEnabled()) {
@@ -544,12 +537,6 @@ const cryptographyFactory = () => {
     };
 
     const createHash = async (password: string, saltRounds: number) => {
-      logger.info(`[FIPS]: createHash -> Hashing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: createHash -> Hashing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: createHash -> Hashing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: createHash -> Hashing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: createHash -> Hashing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: createHash -> Hashing password. FIPS mode is: ${isFipsModeEnabled()}`);
       if (isFipsModeEnabled()) {
         const hasher = hasherFipsValidated();
 
@@ -566,12 +553,6 @@ const cryptographyFactory = () => {
     };
 
     const compareHash = async (password: string, hash: string) => {
-      logger.info(`[FIPS]: compareHash -> Comparing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: compareHash -> Comparing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: compareHash -> Comparing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: compareHash -> Comparing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: compareHash -> Comparing password. FIPS mode is: ${isFipsModeEnabled()}`);
-      logger.info(`[FIPS]: compareHash -> Comparing password. FIPS mode is: ${isFipsModeEnabled()}`);
       if (isFipsModeEnabled()) {
         const isValid = await hasherFipsValidated().compare(password, hash);
         return isValid;

@@ -26,15 +26,18 @@ export default {
   transformMode: "ssr",
   async setup() {
     const logger = initLogger();
-    const envConfig = initEnvConfig(logger);
+    const { envCfg, updateRootEncryptionKey } = initEnvConfig(logger);
     const db = initDbConnection({
-      dbConnectionUri: envConfig.DB_CONNECTION_URI,
-      dbRootCert: envConfig.DB_ROOT_CERT
+      dbConnectionUri: envCfg.DB_CONNECTION_URI,
+      dbRootCert: envCfg.DB_ROOT_CERT
     });
     const superAdminDAL = superAdminDALFactory(db);
-    await crypto.initialize(superAdminDAL);
+    const fipsEnabled = await crypto.initialize(superAdminDAL);
+    if (fipsEnabled) {
+      updateRootEncryptionKey(envCfg.ENCRYPTION_KEY);
+    }
 
-    const redis = buildRedisFromConfig(envConfig);
+    const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");
 
     try {
@@ -59,10 +62,10 @@ export default {
       });
 
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(envConfig, { dbConnectionUrl: envConfig.DB_CONNECTION_URI });
-      const keyStore = keyStoreFactory(envConfig);
+      const queue = queueServiceFactory(envCfg, { dbConnectionUrl: envCfg.DB_CONNECTION_URI });
+      const keyStore = keyStoreFactory(envCfg);
 
-      const hsmModule = initializeHsmModule(envConfig);
+      const hsmModule = initializeHsmModule(envCfg);
       hsmModule.initialize();
 
       const server = await main({
@@ -74,7 +77,7 @@ export default {
         hsmModule: hsmModule.getModule(),
         superAdminDAL,
         redis,
-        envConfig
+        envConfig: envCfg
       });
 
       // @ts-expect-error type
@@ -91,8 +94,8 @@ export default {
           organizationId: seedData1.organization.id,
           accessVersion: 1
         },
-        envConfig.AUTH_SECRET,
-        { expiresIn: envConfig.JWT_AUTH_LIFETIME }
+        envCfg.AUTH_SECRET,
+        { expiresIn: envCfg.JWT_AUTH_LIFETIME }
       );
     } catch (error) {
       // eslint-disable-next-line

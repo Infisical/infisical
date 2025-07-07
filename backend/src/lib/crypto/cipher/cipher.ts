@@ -5,6 +5,7 @@ import { SymmetricKeyAlgorithm, TSymmetricEncryptionFns } from "./types";
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
+// todo(daniel): Decide if we should move this into the cryptography module
 export const symmetricCipherService = (
   type: SymmetricKeyAlgorithm.AES_GCM_128 | SymmetricKeyAlgorithm.AES_GCM_256
 ): TSymmetricEncryptionFns => {

@@ -353,8 +353,23 @@ export const initEnvConfig = (logger?: CustomLogger) => {
     process.exit(-1);
   }
 
-  envCfg = Object.freeze(parsedEnv.data);
-  return envCfg;
+  const updateRootEncryptionKey = (key?: string) => {
+    if (!key) {
+      throw new Error("Failed to update root encryption key. Key is unset.");
+    }
+
+    const newEnvCfg = {
+      ...envCfg
+    };
+
+    newEnvCfg.ROOT_ENCRYPTION_KEY = key;
+    delete newEnvCfg.ENCRYPTION_KEY;
+
+    envCfg = Object.freeze(newEnvCfg);
+    return envCfg;
+  };
+
+  return { envCfg, updateRootEncryptionKey };
 };
 
 export const formatSmtpConfig = () => {
