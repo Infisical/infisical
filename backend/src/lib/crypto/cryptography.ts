@@ -8,6 +8,7 @@ import nacl from "tweetnacl";
 import naclUtils from "tweetnacl-util";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
 
@@ -67,40 +68,101 @@ const IV_BYTES_SIZE = 12;
 const BLOCK_SIZE_BYTES_16 = 16;
 
 const hasherFipsValidated = () => {
-  const $hashPassword = (password: string, salt: string, iterations: number, keyLength: number) => {
-    return new Promise<string>((resolve, reject) => {
+  const keySize = 32;
+
+  // For the salt when using pkdf2, we do salt rounds^6. If the salt rounds are 10, this will result in 10^6 = 1.000.000 iterations.
+  // The reason for this is because pbkdf2 is not as compute intense as bcrypt, making it faster to brute-force.
+  // From my testing, doing salt rounds^6 brings the computational power required to a little more than bcrypt.
+  // OWASP recommends a minimum of 600.000 iterations for pbkdf2, so 1.000.000 is more than enough.
+  // Ref: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#pbkdf2
+  const MIN_COST_FACTOR = 10;
+  const MAX_COST_FACTOR = 20; // Iterations scales polynomial (costFactor^6), so we need an upper bound
+
+  const $calculateIterations = (costFactor: number) => {
+    return Math.round(costFactor ** 6);
+  };
+
+  const $hashPassword = (password: Buffer, salt: Buffer, iterations: number, keyLength: number) => {
+    return new Promise<Buffer>((resolve, reject) => {
       crypto.pbkdf2(password, salt, iterations, keyLength, "sha256", (err, derivedKey) => {
         if (err) {
           return reject(err);
         }
-        resolve(derivedKey.toString("hex"));
+        resolve(derivedKey);
       });
     });
   };
 
-  const $validatePassword = (
-    inputPassword: string,
-    storedHash: string,
-    salt: string,
+  const $validatePassword = async (
+    inputPassword: Buffer,
+    storedHash: Buffer,
+    salt: Buffer,
     iterations: number,
     keyLength: number
   ) => {
-    return $hashPassword(inputPassword, salt, iterations, keyLength).then((hash) => hash === storedHash);
+    const computedHash = await $hashPassword(inputPassword, salt, iterations, keyLength);
+
+    return crypto.timingSafeEqual(computedHash, storedHash);
   };
 
-  const hash = async (password: string, saltRounds: number) => {
-    const salt = crypto.randomBytes(16).toString("hex");
-    const derivedKey = await $hashPassword(password, salt, saltRounds, 32);
-    return `$infisical$${saltRounds}$${salt}$${derivedKey}`;
+  const hash = async (password: string, costFactor: number) => {
+    // Strict input validation
+    if (typeof password !== "string" || password.length === 0) {
+      throw new CryptographyError({
+        message: "Invalid input, password must be a non-empty string"
+      });
+    }
+
+    if (!Number.isInteger(costFactor)) {
+      throw new CryptographyError({
+        message: "Invalid cost factor, must be an integer"
+      });
+    }
+
+    if (costFactor < MIN_COST_FACTOR || costFactor > MAX_COST_FACTOR) {
+      throw new CryptographyError({
+        message: `Invalid cost factor, must be between ${MIN_COST_FACTOR} and ${MAX_COST_FACTOR}`
+      });
+    }
+
+    const iterations = $calculateIterations(costFactor);
+
+    const salt = crypto.randomBytes(16);
+    const derivedKey = await $hashPassword(Buffer.from(password), salt, iterations, keySize);
+
+    const combined = Buffer.concat([salt, derivedKey]);
+    return `$v1$${costFactor}$${combined.toString("base64")}`; // Store original costFactor!
   };
 
   const compare = async (password: string, hashedPassword: string) => {
-    if (!hashedPassword.startsWith("$infisical$")) {
-      throw new Error("Invalid hash format");
-    }
+    try {
+      if (!hashedPassword?.startsWith("$v1$")) return false;
 
-    const [, , iterations, salt, storedHash] = hashedPassword.split("$");
-    return $validatePassword(password, storedHash, salt, Number(iterations), 32);
+      const parts = hashedPassword.split("$");
+      if (parts.length !== 4) return false;
+
+      const [, , storedCostFactor, combined] = parts;
+
+      if (
+        !Number.isInteger(Number(storedCostFactor)) ||
+        Number(storedCostFactor) < MIN_COST_FACTOR ||
+        Number(storedCostFactor) > MAX_COST_FACTOR
+      ) {
+        return false;
+      }
+
+      const combinedBuffer = Buffer.from(combined, "base64");
+      const salt = combinedBuffer.subarray(0, 16);
+      const storedHash = combinedBuffer.subarray(16);
+
+      const iterations = $calculateIterations(Number(storedCostFactor));
+
+      const isMatch = await $validatePassword(Buffer.from(password), storedHash, salt, iterations, keySize);
+
+      return isMatch;
+    } catch {
+      return false;
+    }
   };
 
   return {
@@ -216,7 +278,9 @@ const decryptAsymmetricFipsValidated = ({
     const final = decipher.final();
     return Buffer.concat([plaintext, final]).toString("utf8");
   } catch (error) {
-    throw new Error("Invalid ciphertext or keys");
+    throw new CryptographyError({
+      message: "Invalid ciphertext or keys"
+    });
   }
 };
 
@@ -276,7 +340,9 @@ export const computeMd5 = (message: string, digest: DigestType = DigestType.Hex)
       encoder = cryptoJs.enc.Base64;
       break;
     default:
-      throw new Error(`Invalid digest type: ${digest as string}`);
+      throw new CryptographyError({
+        message: `Invalid digest type: ${digest as string}`
+      });
   }
 
   return cryptoJs.MD5(message).toString(encoder);
@@ -289,7 +355,9 @@ const cryptographyFactory = () => {
 
   const $checkIsInitialized = () => {
     if (!$isInitialized) {
-      throw new Error("Internal cryptography module is not initialized");
+      throw new CryptographyError({
+        message: "Internal cryptography module is not initialized"
+      });
     }
   };
 
@@ -297,6 +365,15 @@ const cryptographyFactory = () => {
     $checkIsInitialized();
     return $fipsEnabled;
   };
+
+  const verifyFipsLicense = (licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">) => {
+    if (isFipsModeEnabled() && !licenseService.onPremFeatures?.fips) {
+      throw new CryptographyError({
+        message: "FIPS mode is enabled but your license does not include FIPS support. Please contact support."
+      });
+    }
+  };
+
   const $setFipsModeEnabled = (enabled: boolean) => {
     // If FIPS is enabled, we need to validate that the ENCRYPTION_KEY is in a base64 format, and is a 256-bit key.
     if (enabled) {
@@ -305,6 +382,7 @@ const cryptographyFactory = () => {
       if (appCfg.ENCRYPTION_KEY) {
         // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
 
+        // note(daniel): for some reason this resolves as true for some hex-encoded strings.
         if (!isBase64(appCfg.ENCRYPTION_KEY)) {
           throw new CryptographyError({
             message:
@@ -398,15 +476,8 @@ const cryptographyFactory = () => {
       let decipher;
 
       if (keySize === SymmetricKeySize.Bits128) {
-        if (isFipsModeEnabled()) {
-          throw new CryptographyError({
-            message: "128-bit symmetric key is not supported in FIPS mode of operation."
-          });
-        }
-
         // Not ideal: 128-bit hex key (32 chars) gets interpreted as 32 UTF-8 bytes (256 bits)
         // This works but reduces effective key entropy from 256 to 128 bits
-        // Note: Never use this for FIPS mode of operation.
         decipher = crypto.createDecipheriv(SecretEncryptionAlgo.AES_256_GCM, key, Buffer.from(iv, "base64"));
       } else {
         const secretKey = crypto.createSecretKey(key, "base64");
@@ -425,12 +496,6 @@ const cryptographyFactory = () => {
       let cipher;
 
       if (keySize === SymmetricKeySize.Bits128) {
-        if (isFipsModeEnabled()) {
-          throw new CryptographyError({
-            message: "128-bit symmetric key is not supported in FIPS mode of operation."
-          });
-        }
-
         iv = crypto.randomBytes(BLOCK_SIZE_BYTES_16);
         cipher = crypto.createCipheriv(SecretEncryptionAlgo.AES_256_GCM, key, iv);
       } else {
@@ -452,6 +517,7 @@ const cryptographyFactory = () => {
       const appCfg = getConfig();
       const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
       const encryptionKey = appCfg.ENCRYPTION_KEY;
+
       if (rootEncryptionKey) {
         const { iv, tag, ciphertext } = encryptSymmetric({
           plaintext: data,
@@ -480,7 +546,9 @@ const cryptographyFactory = () => {
           encoding: SecretKeyEncoding.UTF8
         };
       }
-      throw new Error("Missing both encryption keys");
+      throw new CryptographyError({
+        message: "Missing both encryption keys"
+      });
     };
 
     const decryptWithRootEncryptionKey = <T = string>({
@@ -509,7 +577,9 @@ const cryptographyFactory = () => {
         const data = decryptSymmetric({ key: encryptionKey, iv, tag, ciphertext, keySize: SymmetricKeySize.Bits128 });
         return data as T;
       }
-      throw new Error("Missing both encryption keys");
+      throw new CryptographyError({
+        message: "Missing both encryption keys"
+      });
     };
 
     return {
@@ -540,12 +610,7 @@ const cryptographyFactory = () => {
       if (isFipsModeEnabled()) {
         const hasher = hasherFipsValidated();
 
-        // For the salt when using pkdf2, we do salt rounds * 100.000.
-        // The reason for this is because pbkdf2 is not as compute intense as bcrypt, making it faster to brute-force.
-        // From my testing, doing salt rounds * 100.000 brings the computational power required to roughly the same as bcrypt.
-        // OWASP recommends a minimum of 600.000 iterations for pbkdf2.
-        // Ref: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#pbkdf2
-        const hash = await hasher.hash(password, saltRounds * 100_000);
+        const hash = await hasher.hash(password, saltRounds);
         return hash;
       }
       const hash = await bcrypt.hash(password, saltRounds);
@@ -572,6 +637,7 @@ const cryptographyFactory = () => {
     initialize,
     isFipsModeEnabled,
     hashing,
+    verifyFipsLicense,
     encryption,
     randomBytes: crypto.randomBytes,
     randomInt: crypto.randomInt,

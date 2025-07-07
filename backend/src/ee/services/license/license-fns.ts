@@ -58,7 +58,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   sshHostGroups: false,
   secretScanning: false,
   enterpriseSecretSyncs: false,
-  enterpriseAppConnections: false
+  enterpriseAppConnections: false,
+  fips: true
 });
 
 export const setupLicenseRequestWithStore = (

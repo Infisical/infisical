@@ -75,6 +75,7 @@ export type TFeatureSet = {
   secretScanning: false;
   enterpriseSecretSyncs: false;
   enterpriseAppConnections: false;
+  fips: false;
 };
 
 export type TOrgPlansTableDTO = {

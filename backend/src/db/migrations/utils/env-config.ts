@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { zpStr } from "@app/lib/zod";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 const envSchema = z
   .object({
@@ -35,7 +37,7 @@ const envSchema = z
 
 export type TMigrationEnvConfig = z.infer<typeof envSchema>;
 
-export const getMigrationEnvConfig = () => {
+export const getMigrationEnvConfig = async (superAdminDAL: TSuperAdminDALFactory) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     // eslint-disable-next-line no-console
@@ -49,5 +51,19 @@ export const getMigrationEnvConfig = () => {
     process.exit(-1);
   }
 
-  return Object.freeze(parsedEnv.data);
+  let envCfg = Object.freeze(parsedEnv.data);
+
+  const fipsEnabled = await crypto.initialize(superAdminDAL);
+
+  if (fipsEnabled) {
+    const newEnvCfg = {
+      ...envCfg,
+      ROOT_ENCRYPTION_KEY: envCfg.ENCRYPTION_KEY
+    };
+    delete newEnvCfg.ENCRYPTION_KEY;
+
+    envCfg = Object.freeze(newEnvCfg);
+  }
+
+  return envCfg;
 };

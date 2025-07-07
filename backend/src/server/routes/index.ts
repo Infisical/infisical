@@ -119,6 +119,7 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -1903,10 +1904,13 @@ export const registerRoutes = async (
     kmsService
   });
 
-  await superAdminService.initServerCfg();
-
   // setup the communication with license key server
   await licenseService.init();
+
+  // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
+  crypto.verifyFipsLicense(licenseService);
+
+  await superAdminService.initServerCfg();
 
   // Start HSM service if it's configured/enabled.
   await hsmService.startService();

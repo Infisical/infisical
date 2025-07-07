@@ -1,6 +1,8 @@
 import { z } from "zod";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { QueueWorkerProfile } from "@app/lib/types";
+import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
@@ -349,7 +351,7 @@ export const getConfig = () => envCfg;
 export const getOriginalConfig = () => originalEnvConfig;
 
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = (logger?: CustomLogger) => {
+export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");
@@ -357,14 +359,48 @@ export const initEnvConfig = (logger?: CustomLogger) => {
     process.exit(-1);
   }
 
-  const config = Object.freeze(parsedEnv.data);
-  envCfg = config;
+  if (superAdminDAL) {
+    const fipsEnabled = await crypto.initialize(superAdminDAL);
 
-  if (!originalEnvConfig) {
-    originalEnvConfig = config;
+    if (fipsEnabled) {
+      const newEnvCfg = {
+        ...envCfg,
+        ROOT_ENCRYPTION_KEY: envCfg.ENCRYPTION_KEY
+      };
+      delete newEnvCfg.ENCRYPTION_KEY;
+
+      envCfg = Object.freeze(newEnvCfg);
+    }
+  }
+
+  if (!envCfg) {
+    const config = Object.freeze(parsedEnv.data);
+    envCfg = config;
+
+    if (!originalEnvConfig) {
+      originalEnvConfig = config;
+    }
   }
 
   return envCfg;
+};
+
+export const getDatabaseCredentials = (logger?: CustomLogger) => {
+  const parsedEnv = envSchema.safeParse(process.env);
+  if (!parsedEnv.success) {
+    (logger ?? console).error("Invalid environment variables. Check the error below");
+    (logger ?? console).error(parsedEnv.error.issues);
+    process.exit(-1);
+  }
+
+  return {
+    dbConnectionUri: envCfg.DB_CONNECTION_URI,
+    dbRootCert: envCfg.DB_ROOT_CERT,
+    readReplicas: envCfg.DB_READ_REPLICAS?.map((el) => ({
+      dbRootCert: el.DB_ROOT_CERT,
+      dbConnectionUri: el.DB_CONNECTION_URI
+    }))
+  };
 };
 
 // A list of environment variables that can be overwritten
@@ -462,7 +498,11 @@ export const overrideEnvConfig = (config: Record<string, string>) => {
   const parsedResult = envSchema.safeParse(tempEnv);
 
   if (parsedResult.success) {
-    envCfg = Object.freeze(parsedResult.data);
+    envCfg = Object.freeze({
+      ...parsedResult.data,
+      ENCRYPTION_KEY: envCfg.ENCRYPTION_KEY,
+      ROOT_ENCRYPTION_KEY: envCfg.ROOT_ENCRYPTION_KEY
+    });
   }
 };
 

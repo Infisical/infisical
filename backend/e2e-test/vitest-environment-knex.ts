@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import path from "path";
 
 import { seedData1 } from "@app/db/seed-data";
-import { initEnvConfig } from "@app/lib/config/env";
+import { getDatabaseCredentials, initEnvConfig } from "@app/lib/config/env";
 import { initLogger } from "@app/lib/logger";
 import { main } from "@app/server/app";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
@@ -26,16 +26,15 @@ export default {
   transformMode: "ssr",
   async setup() {
     const logger = initLogger();
-    const { envCfg, updateRootEncryptionKey } = initEnvConfig(logger);
+    const databaseCredentials = getDatabaseCredentials(logger);
+
     const db = initDbConnection({
-      dbConnectionUri: envCfg.DB_CONNECTION_URI,
-      dbRootCert: envCfg.DB_ROOT_CERT
+      dbConnectionUri: databaseCredentials.dbConnectionUri,
+      dbRootCert: databaseCredentials.dbRootCert
     });
+
     const superAdminDAL = superAdminDALFactory(db);
-    const fipsEnabled = await crypto.initialize(superAdminDAL);
-    if (fipsEnabled) {
-      updateRootEncryptionKey(envCfg.ENCRYPTION_KEY);
-    }
+    const envCfg = await initEnvConfig(superAdminDAL, logger);
 
     const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");

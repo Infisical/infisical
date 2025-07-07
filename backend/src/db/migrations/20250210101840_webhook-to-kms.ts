@@ -4,6 +4,7 @@ import { inMemoryKeyStore } from "@app/keystore/memory";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -26,9 +27,12 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   initLogger();
-  const envConfig = getMigrationEnvConfig();
+  const superAdminDAL = superAdminDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+
   const projectEncryptionRingBuffer =
     createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
   const webhooks = await knex(TableName.Webhook)

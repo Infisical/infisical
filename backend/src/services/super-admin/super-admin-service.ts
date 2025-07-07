@@ -277,6 +277,7 @@ export const superAdminServiceFactory = ({
 
   const $syncEnvConfig = async () => {
     const config = await getEnvOverrides();
+
     overrideEnvConfig(config);
   };
 
@@ -483,6 +484,7 @@ export const superAdminServiceFactory = ({
     userAgent
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
+
     const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });

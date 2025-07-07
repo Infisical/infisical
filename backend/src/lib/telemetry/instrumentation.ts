@@ -74,10 +74,8 @@ const initTelemetryInstrumentation = ({
   });
 };
 
-const setupTelemetry = () => {
-  const { envCfg } = initEnvConfig();
-
-  console.log("envCfg", envCfg);
+const setupTelemetry = async () => {
+  const envCfg = await initEnvConfig();
 
   if (envCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
     console.log("Initializing telemetry instrumentation");

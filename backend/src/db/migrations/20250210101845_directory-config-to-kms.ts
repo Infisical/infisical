@@ -10,6 +10,7 @@ import { SecretKeyEncoding, TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
 import { getMigrationEncryptionServices } from "./utils/services";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 const BATCH_SIZE = 500;
 const reencryptSamlConfig = async (knex: Knex) => {
@@ -27,7 +28,8 @@ const reencryptSamlConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const envConfig = getMigrationEnvConfig();
+  const superAdminDAL = superAdminDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
@@ -189,7 +191,8 @@ const reencryptLdapConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const envConfig = getMigrationEnvConfig();
+  const superAdminDAL = superAdminDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
@@ -345,7 +348,8 @@ const reencryptOidcConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const envConfig = getMigrationEnvConfig();
+  const superAdminDAL = superAdminDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
