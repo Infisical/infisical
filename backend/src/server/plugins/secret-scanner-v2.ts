@@ -4,7 +4,6 @@ import crypto from "crypto";
 import { Probot } from "probot";
 import { z } from "zod";
 
-import { generateBitbucketWebhookSecret } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-factory";
 import { TBitbucketPushEvent } from "@app/ee/services/secret-scanning-v2/bitbucket/bitbucket-secret-scanning-types";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -101,24 +100,17 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
         return res.status(401).send({ message: "Unauthorized: Invalid signature format" });
       }
 
-      const cfg = getConfig();
-
-      const hmac = crypto.createHmac("sha256", generateBitbucketWebhookSecret(cfg.AUTH_SECRET, dataSourceId));
-      hmac.update(JSON.stringify(req.body));
-      const calculatedSignature = hmac.digest("hex");
-
       const receivedSignature = signature.substring(expectedSignaturePrefix.length);
-
-      if (calculatedSignature !== receivedSignature) {
-        logger.error("Invalid signature for Bitbucket webhook");
-        return res.status(401).send({ message: "Unauthorized: Invalid signature" });
-      }
 
       if (!dataSourceId) return res.status(400).send({ message: "Data Source ID is required" });
 
+      console.log("111");
+
       await server.services.secretScanningV2.bitbucket.handlePushEvent({
         ...(req.body as TBitbucketPushEvent),
-        dataSourceId
+        dataSourceId,
+        receivedSignature,
+        bodyString: JSON.stringify(req.body)
       });
 
       return res.send("ok");

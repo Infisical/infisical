@@ -901,6 +901,6 @@ export const secretScanningV2ServiceFactory = ({
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
     github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
-    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue)
+    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)
   };
 };

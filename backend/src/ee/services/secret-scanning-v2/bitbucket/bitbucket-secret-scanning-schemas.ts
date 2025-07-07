@@ -92,5 +92,6 @@ export const BitbucketFindingSchema = BaseSecretScanningFindingSchema.extend({
 });
 
 export const BitbucketDataSourceCredentialsSchema = z.object({
-  webhookId: z.string()
+  webhookId: z.string(),
+  webhookSecret: z.string()
 });

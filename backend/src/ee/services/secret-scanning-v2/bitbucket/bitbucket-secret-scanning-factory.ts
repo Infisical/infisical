@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { join } from "path";
 
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
@@ -24,6 +23,7 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { titleCaseToCamelCase } from "@app/lib/fn";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { GitHubRepositoryRegex } from "@app/lib/regex";
 import {
   getBitbucketUser,
@@ -38,13 +38,6 @@ import {
   TBitbucketDataSourceWithConnection,
   TQueueBitbucketResourceDiffScan
 } from "./bitbucket-secret-scanning-types";
-
-export function generateBitbucketWebhookSecret(serverSecret: string, dataSourceId: string) {
-  return crypto
-    .createHash("sha256")
-    .update(serverSecret + dataSourceId)
-    .digest("hex");
-}
 
 export const BitbucketSecretScanningFactory = () => {
   const initialize: TSecretScanningFactoryInitialize<
@@ -74,7 +67,7 @@ export const BitbucketSecretScanningFactory = () => {
     );
 
     return callback({
-      credentials: { webhookId: data.uuid }
+      credentials: { webhookId: data.uuid, webhookSecret: alphaNumericNanoId(64) }
     });
   };
 
@@ -84,7 +77,7 @@ export const BitbucketSecretScanningFactory = () => {
     TBitbucketDataSourceCredentials
   > = async ({ dataSourceId, credentials, connection, payload }) => {
     const { email, apiToken } = connection.credentials;
-    const { webhookId } = credentials;
+    const { webhookId, webhookSecret } = credentials;
 
     const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
 
@@ -98,7 +91,7 @@ export const BitbucketSecretScanningFactory = () => {
         url: newWebhookUrl,
         active: true,
         events: ["repo:push"],
-        secret: generateBitbucketWebhookSecret(cfg.AUTH_SECRET, dataSourceId)
+        secret: webhookSecret
       },
       {
         headers: {
