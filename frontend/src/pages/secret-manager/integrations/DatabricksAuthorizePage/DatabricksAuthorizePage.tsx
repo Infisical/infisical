@@ -40,7 +40,7 @@ export const DatabricksAuthorizePage = () => {
       });
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/databricks/create",
+        to: "/projects/$projectId/secret-manager/integrations/databricks/create",
         params: {
           projectId: currentWorkspace.id
         },

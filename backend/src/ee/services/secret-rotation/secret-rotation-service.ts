@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { ActionProjectType, ProjectVersion, TableName } from "@app/db/schemas";
+import { ProjectVersion, TableName } from "@app/db/schemas";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
@@ -66,8 +66,7 @@ export const secretRotationServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Read,
@@ -98,8 +97,7 @@ export const secretRotationServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Read,
@@ -215,8 +213,7 @@ export const secretRotationServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Read,
@@ -266,8 +263,7 @@ export const secretRotationServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Edit,
@@ -287,8 +283,7 @@ export const secretRotationServiceFactory = ({
       actorId,
       projectId: doc.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Delete,

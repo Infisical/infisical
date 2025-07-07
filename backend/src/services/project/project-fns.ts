@@ -137,7 +137,7 @@ export const bootstrapSshProject = async ({
     tx
   });
 
-  await projectSshConfigDAL.create(
+  const sshConfig = await projectSshConfigDAL.create(
     {
       projectId,
       defaultHostSshCaId: hostSshCa.id,
@@ -145,4 +145,5 @@ export const bootstrapSshProject = async ({
     },
     tx
   );
+  return sshConfig;
 };

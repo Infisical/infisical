@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -38,8 +37,7 @@ export const auditLogServiceFactory = ({
         actorId,
         projectId: filter.projectId,
         actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.Any
+        actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
     } else {
@@ -69,7 +67,8 @@ export const auditLogServiceFactory = ({
       secretPath: filter.secretPath,
       secretKey: filter.secretKey,
       environment: filter.environment,
-      ...(filter.projectId ? { projectId: filter.projectId } : { orgId: actorOrgId })
+      orgId: actorOrgId,
+      ...(filter.projectId ? { projectId: filter.projectId } : {})
     });
 
     return auditLogs.map(({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({

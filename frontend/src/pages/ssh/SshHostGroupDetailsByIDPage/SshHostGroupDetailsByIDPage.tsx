@@ -54,7 +54,7 @@ const Page = () => {
 
       handlePopUpClose("deleteSshHostGroup");
       navigate({
-        to: `/${ProjectType.SSH}/$projectId/overview` as const,
+        to: `/projects/$projectId/${ProjectType.SSH}/overview` as const,
         params: {
           projectId
         }

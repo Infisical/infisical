@@ -24,7 +24,6 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useCommitRollback, useGetRollbackPreview } from "@app/hooks/api/folderCommits/queries";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { SecretVersionDiffView } from "../SecretVersionDiffView";
 
@@ -103,7 +102,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
 
   const goBackToHistory = () => {
     navigate({
-      to: `/${ProjectType.SecretManager}/$projectId/commits/$environment/$folderId` as const,
+      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId",
       params: {
         projectId: currentWorkspace.id,
         folderId,

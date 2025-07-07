@@ -42,7 +42,7 @@ export const redirectForProviderAuth = (
     switch (integrationOption.slug) {
       case "gcp-secret-manager":
         navigate({
-          to: "/secret-manager/$projectId/integrations/gcp-secret-manager/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/gcp-secret-manager/authorize",
           params: {
             projectId
           }
@@ -54,7 +54,7 @@ export const redirectForProviderAuth = (
           return;
         }
         navigate({
-          to: "/secret-manager/$projectId/integrations/azure-key-vault/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/azure-key-vault/authorize",
           params: {
             projectId
           },
@@ -76,7 +76,7 @@ export const redirectForProviderAuth = (
       }
       case "aws-parameter-store":
         navigate({
-          to: "/secret-manager/$projectId/integrations/aws-parameter-store/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/aws-parameter-store/authorize",
           params: {
             projectId
           }
@@ -84,7 +84,7 @@ export const redirectForProviderAuth = (
         break;
       case "aws-secret-manager":
         navigate({
-          to: "/secret-manager/$projectId/integrations/aws-secret-manager/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/aws-secret-manager/authorize",
           params: {
             projectId
           }
@@ -120,7 +120,7 @@ export const redirectForProviderAuth = (
       }
       case "github":
         navigate({
-          to: "/secret-manager/$projectId/integrations/github/auth-mode-selection",
+          to: "/projects/$projectId/secret-manager/integrations/github/auth-mode-selection",
           params: {
             projectId
           }
@@ -128,7 +128,7 @@ export const redirectForProviderAuth = (
         break;
       case "gitlab":
         navigate({
-          to: "/secret-manager/$projectId/integrations/gitlab/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/gitlab/authorize",
           params: {
             projectId
           }
@@ -136,7 +136,7 @@ export const redirectForProviderAuth = (
         break;
       case "render":
         navigate({
-          to: "/secret-manager/$projectId/integrations/render/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/render/authorize",
           params: {
             projectId
           }
@@ -144,7 +144,7 @@ export const redirectForProviderAuth = (
         break;
       case "flyio":
         navigate({
-          to: "/secret-manager/$projectId/integrations/flyio/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/flyio/authorize",
           params: {
             projectId
           }
@@ -152,7 +152,7 @@ export const redirectForProviderAuth = (
         break;
       case "circleci":
         navigate({
-          to: "/secret-manager/$projectId/integrations/circleci/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/circleci/authorize",
           params: {
             projectId
           }
@@ -160,7 +160,7 @@ export const redirectForProviderAuth = (
         break;
       case "databricks":
         navigate({
-          to: "/secret-manager/$projectId/integrations/databricks/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/databricks/authorize",
           params: {
             projectId
           }
@@ -168,7 +168,7 @@ export const redirectForProviderAuth = (
         break;
       case "laravel-forge":
         navigate({
-          to: "/secret-manager/$projectId/integrations/laravel-forge/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/laravel-forge/authorize",
           params: {
             projectId
           }
@@ -176,7 +176,7 @@ export const redirectForProviderAuth = (
         break;
       case "travisci":
         navigate({
-          to: "/secret-manager/$projectId/integrations/travisci/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/travisci/authorize",
           params: {
             projectId
           }
@@ -184,7 +184,7 @@ export const redirectForProviderAuth = (
         break;
       case "supabase":
         navigate({
-          to: "/secret-manager/$projectId/integrations/supabase/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/supabase/authorize",
           params: {
             projectId
           }
@@ -192,7 +192,7 @@ export const redirectForProviderAuth = (
         break;
       case "checkly":
         navigate({
-          to: "/secret-manager/$projectId/integrations/checkly/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/checkly/authorize",
           params: {
             projectId
           }
@@ -200,7 +200,7 @@ export const redirectForProviderAuth = (
         break;
       case "qovery":
         navigate({
-          to: "/secret-manager/$projectId/integrations/qovery/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/qovery/authorize",
           params: {
             projectId
           }
@@ -208,7 +208,7 @@ export const redirectForProviderAuth = (
         break;
       case "railway":
         navigate({
-          to: "/secret-manager/$projectId/integrations/railway/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/railway/authorize",
           params: {
             projectId
           }
@@ -216,7 +216,7 @@ export const redirectForProviderAuth = (
         break;
       case "terraform-cloud":
         navigate({
-          to: "/secret-manager/$projectId/integrations/terraform-cloud/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/terraform-cloud/authorize",
           params: {
             projectId
           }
@@ -224,7 +224,7 @@ export const redirectForProviderAuth = (
         break;
       case "hashicorp-vault":
         navigate({
-          to: "/secret-manager/$projectId/integrations/hashicorp-vault/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/hashicorp-vault/authorize",
           params: {
             projectId
           }
@@ -232,7 +232,7 @@ export const redirectForProviderAuth = (
         break;
       case "cloudflare-pages":
         navigate({
-          to: "/secret-manager/$projectId/integrations/cloudflare-pages/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/cloudflare-pages/authorize",
           params: {
             projectId
           }
@@ -240,7 +240,7 @@ export const redirectForProviderAuth = (
         break;
       case "cloudflare-workers":
         navigate({
-          to: "/secret-manager/$projectId/integrations/cloudflare-workers/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/cloudflare-workers/authorize",
           params: {
             projectId
           }
@@ -257,7 +257,7 @@ export const redirectForProviderAuth = (
       }
       case "codefresh":
         navigate({
-          to: "/secret-manager/$projectId/integrations/codefresh/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/codefresh/authorize",
           params: {
             projectId
           }
@@ -265,7 +265,7 @@ export const redirectForProviderAuth = (
         break;
       case "digital-ocean-app-platform":
         navigate({
-          to: "/secret-manager/$projectId/integrations/digital-ocean-app-platform/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/digital-ocean-app-platform/authorize",
           params: {
             projectId
           }
@@ -273,7 +273,7 @@ export const redirectForProviderAuth = (
         break;
       case "cloud-66":
         navigate({
-          to: "/secret-manager/$projectId/integrations/cloud-66/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/cloud-66/authorize",
           params: {
             projectId
           }
@@ -281,7 +281,7 @@ export const redirectForProviderAuth = (
         break;
       case "northflank":
         navigate({
-          to: "/secret-manager/$projectId/integrations/northflank/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/northflank/authorize",
           params: {
             projectId
           }
@@ -289,7 +289,7 @@ export const redirectForProviderAuth = (
         break;
       case "windmill":
         navigate({
-          to: "/secret-manager/$projectId/integrations/windmill/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/windmill/authorize",
           params: {
             projectId
           }
@@ -297,7 +297,7 @@ export const redirectForProviderAuth = (
         break;
       case "teamcity":
         navigate({
-          to: "/secret-manager/$projectId/integrations/teamcity/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/teamcity/authorize",
           params: {
             projectId
           }
@@ -305,7 +305,7 @@ export const redirectForProviderAuth = (
         break;
       case "hasura-cloud":
         navigate({
-          to: "/secret-manager/$projectId/integrations/hasura-cloud/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/hasura-cloud/authorize",
           params: {
             projectId
           }
@@ -313,7 +313,7 @@ export const redirectForProviderAuth = (
         break;
       case "rundeck":
         navigate({
-          to: "/secret-manager/$projectId/integrations/rundeck/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/rundeck/authorize",
           params: {
             projectId
           }
@@ -321,7 +321,7 @@ export const redirectForProviderAuth = (
         break;
       case "azure-devops":
         navigate({
-          to: "/secret-manager/$projectId/integrations/azure-devops/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/azure-devops/authorize",
           params: {
             projectId
           }
@@ -329,7 +329,7 @@ export const redirectForProviderAuth = (
         break;
       case "octopus-deploy":
         navigate({
-          to: "/secret-manager/$projectId/integrations/octopus-deploy/authorize",
+          to: "/projects/$projectId/secret-manager/integrations/octopus-deploy/authorize",
           params: {
             projectId
           }

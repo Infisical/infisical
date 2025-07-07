@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -62,8 +62,7 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Create,
@@ -94,23 +93,25 @@ export const identityProjectServiceFactory = ({
         projectId
       );
 
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        membership.shouldUseNewPrivilegeSystem,
-        ProjectPermissionIdentityActions.GrantPrivileges,
-        ProjectPermissionSub.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to assign to role",
-            membership.shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.GrantPrivileges,
-            ProjectPermissionSub.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      if (requestedRoleChange !== ProjectMembershipRole.NoAccess) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          membership.shouldUseNewPrivilegeSystem,
+          ProjectPermissionIdentityActions.GrantPrivileges,
+          ProjectPermissionSub.Identity,
+          permission,
+          rolePermission
+        );
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to assign to role",
+              membership.shouldUseNewPrivilegeSystem,
+              ProjectPermissionIdentityActions.GrantPrivileges,
+              ProjectPermissionSub.Identity
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+      }
     }
 
     // validate custom roles input
@@ -180,8 +181,7 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Edit,
@@ -291,8 +291,7 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Delete,
@@ -320,8 +319,7 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Read,
@@ -354,8 +352,7 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -391,8 +388,7 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId: membership.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

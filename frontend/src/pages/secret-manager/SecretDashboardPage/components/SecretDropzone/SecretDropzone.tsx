@@ -10,7 +10,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
 import { parseDotEnv, parseJson } from "@app/components/utilities/parseSecrets";
-import { Button, Modal, ModalContent } from "@app/components/v2";
+import { Button, Lottie, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
@@ -253,14 +253,7 @@ export const SecretDropzone = ({
       >
         {isLoading ? (
           <div className="mb-16 flex items-center justify-center pt-16">
-            <img
-              src="/images/loading/loading.gif"
-              height={70}
-              width={120}
-              decoding="async"
-              loading="lazy"
-              alt="loading animation"
-            />
+            <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center space-y-2">

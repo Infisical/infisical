@@ -4,7 +4,6 @@ import {
   OrgMembershipsSchema,
   ProjectMembershipsSchema,
   ProjectsSchema,
-  ProjectType,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -85,9 +84,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         organizationId: z.string().trim().describe(ORGANIZATIONS.GET_PROJECTS.organizationId)
       }),
-      querystring: z.object({
-        type: z.nativeEnum(ProjectType).optional().describe(ORGANIZATIONS.GET_PROJECTS.type)
-      }),
       response: {
         200: z.object({
           workspaces: z
@@ -114,8 +110,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        orgId: req.params.organizationId,
-        type: req.query.type
+        orgId: req.params.organizationId
       });
 
       return { workspaces };

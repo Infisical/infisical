@@ -113,52 +113,73 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.AuditLogs],
       description: "Get all audit logs for an organization",
-      querystring: z.object({
-        projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
-        environment: z.string().optional().describe(AUDIT_LOGS.EXPORT.environment),
-        actorType: z.nativeEnum(ActorType).optional(),
-        secretPath: z
-          .string()
-          .optional()
-          .transform((val) => (!val ? val : removeTrailingSlash(val)))
-          .describe(AUDIT_LOGS.EXPORT.secretPath),
-        secretKey: z.string().optional().describe(AUDIT_LOGS.EXPORT.secretKey),
+      querystring: z
+        .object({
+          projectId: z.string().optional().describe(AUDIT_LOGS.EXPORT.projectId),
+          environment: z.string().optional().describe(AUDIT_LOGS.EXPORT.environment),
+          actorType: z.nativeEnum(ActorType).optional(),
+          secretPath: z
+            .string()
+            .optional()
+            .transform((val) => (!val ? val : removeTrailingSlash(val)))
+            .describe(AUDIT_LOGS.EXPORT.secretPath),
+          secretKey: z.string().optional().describe(AUDIT_LOGS.EXPORT.secretKey),
+          // eventType is split with , for multiple values, we need to transform it to array
+          eventType: z
+            .string()
+            .optional()
+            .transform((val) => (val ? val.split(",") : undefined)),
+          userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
+          eventMetadata: z
+            .string()
+            .optional()
+            .transform((val) => {
+              if (!val) {
+                return undefined;
+              }
 
-        // eventType is split with , for multiple values, we need to transform it to array
-        eventType: z
-          .string()
-          .optional()
-          .transform((val) => (val ? val.split(",") : undefined)),
-        userAgentType: z.nativeEnum(UserAgentType).optional().describe(AUDIT_LOGS.EXPORT.userAgentType),
-        eventMetadata: z
-          .string()
-          .optional()
-          .transform((val) => {
-            if (!val) {
-              return undefined;
+              const pairs = val.split(",");
+
+              return pairs.reduce(
+                (acc, pair) => {
+                  const [key, value] = pair.split("=");
+                  if (key && value) {
+                    acc[key] = value;
+                  }
+                  return acc;
+                },
+                {} as Record<string, string>
+              );
+            })
+            .describe(AUDIT_LOGS.EXPORT.eventMetadata),
+          startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
+          endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
+          offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
+          limit: z.coerce.number().max(1000).default(20).describe(AUDIT_LOGS.EXPORT.limit),
+          actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
+        })
+        .superRefine((el, ctx) => {
+          if (el.endDate && el.startDate) {
+            const startDate = new Date(el.startDate);
+            const endDate = new Date(el.endDate);
+            const maxAllowedDate = new Date(startDate);
+            maxAllowedDate.setMonth(maxAllowedDate.getMonth() + 3);
+            if (endDate < startDate) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["endDate"],
+                message: "End date cannot be before start date"
+              });
             }
-
-            const pairs = val.split(",");
-
-            return pairs.reduce(
-              (acc, pair) => {
-                const [key, value] = pair.split("=");
-                if (key && value) {
-                  acc[key] = value;
-                }
-                return acc;
-              },
-              {} as Record<string, string>
-            );
-          })
-          .describe(AUDIT_LOGS.EXPORT.eventMetadata),
-        startDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.startDate),
-        endDate: z.string().datetime().optional().describe(AUDIT_LOGS.EXPORT.endDate),
-        offset: z.coerce.number().default(0).describe(AUDIT_LOGS.EXPORT.offset),
-        limit: z.coerce.number().default(20).describe(AUDIT_LOGS.EXPORT.limit),
-        actor: z.string().optional().describe(AUDIT_LOGS.EXPORT.actor)
-      }),
-
+            if (endDate > maxAllowedDate) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["endDate"],
+                message: "Dates must be within 3 months"
+              });
+            }
+          }
+        }),
       response: {
         200: z.object({
           auditLogs: AuditLogsSchema.omit({
@@ -188,14 +209,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
         filter: {
           ...req.query,
-          endDate: req.query.endDate,
+          endDate: req.query.endDate || new Date().toISOString(),
           projectId: req.query.projectId,
           startDate: req.query.startDate || getLastMidnightDateISO(),
           auditLogActorId: req.query.actor,
           actorType: req.query.actorType,
           eventType: req.query.eventType as EventType[] | undefined
         },
-
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,

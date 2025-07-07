@@ -28,9 +28,10 @@ export const secretApprovalRequestKeys = {
     ] as const,
   detail: ({ id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) =>
     [{ id }, "secret-approval-request-detail"] as const,
-  count: ({ workspaceId }: TGetSecretApprovalRequestCount) => [
+  count: ({ workspaceId, policyId }: TGetSecretApprovalRequestCount) => [
     { workspaceId },
-    "secret-approval-request-count"
+    "secret-approval-request-count",
+    ...(policyId ? [policyId] : [])
   ]
 };
 
@@ -125,10 +126,13 @@ export const useGetSecretApprovalRequestDetails = ({
     enabled: Boolean(id) && (options?.enabled ?? true)
   });
 
-const fetchSecretApprovalRequestCount = async ({ workspaceId }: TGetSecretApprovalRequestCount) => {
+const fetchSecretApprovalRequestCount = async ({
+  workspaceId,
+  policyId
+}: TGetSecretApprovalRequestCount) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequestCount }>(
     "/api/v1/secret-approval-requests/count",
-    { params: { workspaceId } }
+    { params: { workspaceId, policyId } }
   );
 
   return data.approvals;
@@ -136,6 +140,7 @@ const fetchSecretApprovalRequestCount = async ({ workspaceId }: TGetSecretApprov
 
 export const useGetSecretApprovalRequestCount = ({
   workspaceId,
+  policyId,
   options = {}
 }: TGetSecretApprovalRequestCount & {
   options?: Omit<
@@ -149,8 +154,8 @@ export const useGetSecretApprovalRequestCount = ({
   >;
 }) =>
   useQuery({
-    queryKey: secretApprovalRequestKeys.count({ workspaceId }),
+    queryKey: secretApprovalRequestKeys.count({ workspaceId, policyId }),
     refetchInterval: 15000,
-    queryFn: () => fetchSecretApprovalRequestCount({ workspaceId }),
+    queryFn: () => fetchSecretApprovalRequestCount({ workspaceId, policyId }),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true)
   });

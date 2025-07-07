@@ -110,7 +110,8 @@ export const initAuditLogDbConnection = ({
     },
     migrations: {
       tableName: "infisical_migrations"
-    }
+    },
+    pool: { min: 0, max: 10 }
   });
 
   // we add these overrides so that auditLogDb and the primary DB are interchangeable

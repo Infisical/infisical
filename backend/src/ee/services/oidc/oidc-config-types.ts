@@ -26,11 +26,11 @@ export type TOidcLoginDTO = {
 export type TGetOidcCfgDTO =
   | ({
       type: "external";
-      orgSlug: string;
+      organizationId: string;
     } & TGenericPermission)
   | {
       type: "internal";
-      orgSlug: string;
+      organizationId: string;
     };
 
 export type TCreateOidcCfgDTO = {
@@ -45,7 +45,7 @@ export type TCreateOidcCfgDTO = {
   clientId: string;
   clientSecret: string;
   isActive: boolean;
-  orgSlug: string;
+  organizationId: string;
   manageGroupMemberships: boolean;
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
 } & TGenericPermission;
@@ -62,7 +62,7 @@ export type TUpdateOidcCfgDTO = Partial<{
   clientId: string;
   clientSecret: string;
   isActive: boolean;
-  orgSlug: string;
+  organizationId: string;
   manageGroupMemberships: boolean;
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
 }> &

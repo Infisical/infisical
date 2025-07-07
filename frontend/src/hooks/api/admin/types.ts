@@ -49,6 +49,7 @@ export type TServerConfig = {
   pageFrameContent?: string;
   invalidatingCache: boolean;
   fipsEnabled: boolean;
+  envOverrides?: Record<string, string>;
 };
 
 export type TUpdateServerConfigDTO = {
@@ -62,6 +63,7 @@ export type TUpdateServerConfigDTO = {
   gitHubAppConnectionSlug?: string;
   gitHubAppConnectionId?: string;
   gitHubAppConnectionPrivateKey?: string;
+  envOverrides?: Record<string, string>;
 } & Partial<TServerConfig>;
 
 export type TCreateAdminUserDTO = {
@@ -139,3 +141,10 @@ export type TInvalidateCacheDTO = {
 export type TGetInvalidatingCacheStatus = {
   invalidating: boolean;
 };
+
+export interface TGetEnvOverrides {
+  [key: string]: {
+    name: string;
+    fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[];
+  };
+}

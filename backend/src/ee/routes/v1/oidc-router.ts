@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
+import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -153,10 +154,18 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcSso],
+      description: "Get OIDC config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
-        orgSlug: z.string().trim()
+        organizationId: z.string().trim().describe(OidcSSo.GET_CONFIG.organizationId)
       }),
       response: {
         200: SanitizedOidcConfigSchema.pick({
@@ -180,9 +189,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { orgSlug } = req.query;
       const oidc = await server.services.oidc.getOidc({
-        orgSlug,
+        organizationId: req.query.organizationId,
         type: "external",
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -200,8 +208,16 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcSso],
+      description: "Update OIDC config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z
         .object({
           allowedEmailDomains: z
@@ -216,22 +232,26 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
                 .split(",")
                 .map((id) => id.trim())
                 .join(", ");
-            }),
-          discoveryURL: z.string().trim(),
-          configurationType: z.nativeEnum(OIDCConfigurationType),
-          issuer: z.string().trim(),
-          authorizationEndpoint: z.string().trim(),
-          jwksUri: z.string().trim(),
-          tokenEndpoint: z.string().trim(),
-          userinfoEndpoint: z.string().trim(),
-          clientId: z.string().trim(),
-          clientSecret: z.string().trim(),
-          isActive: z.boolean(),
-          manageGroupMemberships: z.boolean().optional(),
-          jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).optional()
+            })
+            .describe(OidcSSo.UPDATE_CONFIG.allowedEmailDomains),
+          discoveryURL: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.discoveryURL),
+          configurationType: z.nativeEnum(OIDCConfigurationType).describe(OidcSSo.UPDATE_CONFIG.configurationType),
+          issuer: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.issuer),
+          authorizationEndpoint: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.authorizationEndpoint),
+          jwksUri: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.jwksUri),
+          tokenEndpoint: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.tokenEndpoint),
+          userinfoEndpoint: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.userinfoEndpoint),
+          clientId: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.clientId),
+          clientSecret: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.clientSecret),
+          isActive: z.boolean().describe(OidcSSo.UPDATE_CONFIG.isActive),
+          manageGroupMemberships: z.boolean().optional().describe(OidcSSo.UPDATE_CONFIG.manageGroupMemberships),
+          jwtSignatureAlgorithm: z
+            .nativeEnum(OIDCJWTSignatureAlgorithm)
+            .optional()
+            .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm)
         })
         .partial()
-        .merge(z.object({ orgSlug: z.string() })),
+        .merge(z.object({ organizationId: z.string().describe(OidcSSo.UPDATE_CONFIG.organizationId) })),
       response: {
         200: SanitizedOidcConfigSchema.pick({
           id: true,
@@ -267,8 +287,16 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OidcSso],
+      description: "Create OIDC config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z
         .object({
           allowedEmailDomains: z
@@ -283,23 +311,34 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
                 .split(",")
                 .map((id) => id.trim())
                 .join(", ");
-            }),
-          configurationType: z.nativeEnum(OIDCConfigurationType),
-          issuer: z.string().trim().optional().default(""),
-          discoveryURL: z.string().trim().optional().default(""),
-          authorizationEndpoint: z.string().trim().optional().default(""),
-          jwksUri: z.string().trim().optional().default(""),
-          tokenEndpoint: z.string().trim().optional().default(""),
-          userinfoEndpoint: z.string().trim().optional().default(""),
-          clientId: z.string().trim(),
-          clientSecret: z.string().trim(),
-          isActive: z.boolean(),
-          orgSlug: z.string().trim(),
-          manageGroupMemberships: z.boolean().optional().default(false),
+            })
+            .describe(OidcSSo.CREATE_CONFIG.allowedEmailDomains),
+          configurationType: z.nativeEnum(OIDCConfigurationType).describe(OidcSSo.CREATE_CONFIG.configurationType),
+          issuer: z.string().trim().optional().default("").describe(OidcSSo.CREATE_CONFIG.issuer),
+          discoveryURL: z.string().trim().optional().default("").describe(OidcSSo.CREATE_CONFIG.discoveryURL),
+          authorizationEndpoint: z
+            .string()
+            .trim()
+            .optional()
+            .default("")
+            .describe(OidcSSo.CREATE_CONFIG.authorizationEndpoint),
+          jwksUri: z.string().trim().optional().default("").describe(OidcSSo.CREATE_CONFIG.jwksUri),
+          tokenEndpoint: z.string().trim().optional().default("").describe(OidcSSo.CREATE_CONFIG.tokenEndpoint),
+          userinfoEndpoint: z.string().trim().optional().default("").describe(OidcSSo.CREATE_CONFIG.userinfoEndpoint),
+          clientId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientId),
+          clientSecret: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientSecret),
+          isActive: z.boolean().describe(OidcSSo.CREATE_CONFIG.isActive),
+          organizationId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.organizationId),
+          manageGroupMemberships: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe(OidcSSo.CREATE_CONFIG.manageGroupMemberships),
           jwtSignatureAlgorithm: z
             .nativeEnum(OIDCJWTSignatureAlgorithm)
             .optional()
             .default(OIDCJWTSignatureAlgorithm.RS256)
+            .describe(OidcSSo.CREATE_CONFIG.jwtSignatureAlgorithm)
         })
         .superRefine((data, ctx) => {
           if (data.configurationType === OIDCConfigurationType.CUSTOM) {

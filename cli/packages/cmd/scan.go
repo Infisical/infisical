@@ -337,9 +337,7 @@ var scanCmd = &cobra.Command{
 			if gitCmd, err = sources.NewGitLogCmd(source, logOpts); err != nil {
 				logging.Fatal().Err(err).Msg("could not create Git cmd")
 			}
-			if scmPlatform, err = scm.PlatformFromString("github"); err != nil {
-				logging.Fatal().Err(err).Send()
-			}
+			scmPlatform = scm.UnknownPlatform
 			remote = detect.NewRemoteInfo(scmPlatform, source)
 
 			if findings, err = detector.DetectGit(gitCmd, remote); err != nil {

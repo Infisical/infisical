@@ -300,6 +300,7 @@ import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { registerV1Routes } from "./v1";
+import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 
@@ -996,8 +997,7 @@ export const registerRoutes = async (
     pkiAlertDAL,
     pkiCollectionDAL,
     permissionService,
-    smtpService,
-    projectDAL
+    smtpService
   });
 
   const pkiCollectionService = pkiCollectionServiceFactory({
@@ -1005,8 +1005,7 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateAuthorityDAL,
     certificateDAL,
-    permissionService,
-    projectDAL
+    permissionService
   });
 
   const projectTemplateService = projectTemplateServiceFactory({
@@ -1190,7 +1189,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     snapshotService,
     projectDAL,
-    folderCommitService
+    folderCommitService,
+    secretApprovalPolicyService,
+    secretV2BridgeDAL
   });
 
   const secretImportService = secretImportServiceFactory({
@@ -1616,7 +1617,8 @@ export const registerRoutes = async (
     secretSharingDAL,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
-    serviceTokenService
+    serviceTokenService,
+    orgService
   });
 
   const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
@@ -1664,8 +1666,7 @@ export const registerRoutes = async (
   const cmekService = cmekServiceFactory({
     kmsDAL,
     kmsService,
-    permissionService,
-    projectDAL
+    permissionService
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
@@ -1807,7 +1808,6 @@ export const registerRoutes = async (
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
-    projectDAL,
     permissionService,
     appConnectionDAL,
     appConnectionService,
@@ -1817,7 +1817,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     kmsService,
-    pkiSubscriberDAL
+    pkiSubscriberDAL,
+    projectDAL
   });
 
   const internalCaFns = InternalCertificateAuthorityFns({
@@ -2045,6 +2046,16 @@ export const registerRoutes = async (
     if (adminIntegrationsSyncJob) {
       cronJobs.push(adminIntegrationsSyncJob);
     }
+  }
+
+  const configSyncJob = await superAdminService.initializeEnvConfigSync();
+  if (configSyncJob) {
+    cronJobs.push(configSyncJob);
+  }
+
+  const oauthConfigSyncJob = await initializeOauthConfigSync();
+  if (oauthConfigSyncJob) {
+    cronJobs.push(oauthConfigSyncJob);
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {

@@ -1,401 +1,317 @@
 import { useTranslation } from "react-i18next";
-import { faMobile } from "@fortawesome/free-solid-svg-icons";
+import { faDotCircle, faMobile, faWindowMaximize } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { ShouldWrap } from "@app/components/utilities/ShouldWrapComponent";
 import {
-  Badge,
-  BreadcrumbContainer,
+  Divider,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Lottie,
   Menu,
-  MenuGroup,
   MenuItem,
-  TBreadcrumbFormat
+  Tooltip
 } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useProjectPermission,
-  useSubscription,
-  useWorkspace
-} from "@app/context";
-import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
-import {
-  useGetAccessRequestsCount,
-  useGetSecretApprovalRequestCount,
-  useGetSecretRotations
-} from "@app/hooks/api";
-import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
+import { useProjectPermission, useWorkspace } from "@app/context";
+import { getCurrentProductFromUrl } from "@app/helpers/project";
+import { useLocalStorageState } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AssumePrivilegeModeBanner } from "./components/AssumePrivilegeModeBanner";
-import { ProjectSelect } from "./components/ProjectSelect";
 
+enum SidebarStyle {
+  Expanded = "expanded",
+  Collapsed = "collapsed",
+  ExpandOnHover = "expand-on-hover"
+}
+const MIN_SIDEBAR_SIZE = "55px";
+const MAX_SIDEBAR_SIZE = "220px";
 // This is a generic layout shared by all types of projects.
 // If the product layout differs significantly, create a new layout as needed.
 export const ProjectLayout = () => {
+  const location = useLocation();
   const { currentWorkspace } = useWorkspace();
-  const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
-  const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
-
-  const { permission } = useProjectPermission();
+  const [sidebarStyle, setSidebarStyle] = useLocalStorageState(
+    "project-sidebar-style",
+    SidebarStyle.ExpandOnHover
+  );
 
   const { t } = useTranslation();
   const { assumedPrivilegeDetails } = useProjectPermission();
-  const workspaceId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
-  const { subscription } = useSubscription();
 
-  const isSecretManager = currentWorkspace?.type === ProjectType.SecretManager;
-  const isCertManager = currentWorkspace?.type === ProjectType.CertificateManager;
-  const isCmek = currentWorkspace?.type === ProjectType.KMS;
-  const isSSH = currentWorkspace?.type === ProjectType.SSH;
-  const isSecretScanning = currentWorkspace?.type === ProjectType.SecretScanning;
+  const minSidebarWidth =
+    sidebarStyle === SidebarStyle.Expanded ? MAX_SIDEBAR_SIZE : MIN_SIDEBAR_SIZE;
+  const maxSidebarWidth =
+    sidebarStyle === SidebarStyle.Collapsed ? MIN_SIDEBAR_SIZE : MAX_SIDEBAR_SIZE;
 
-  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
-    workspaceId,
-    options: { enabled: isSecretManager }
-  });
-  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
-    projectSlug,
-    options: { enabled: isSecretManager }
-  });
-
-  // we only show the secret rotations v1 tab if they have existing rotations
-  const { data: secretRotations } = useGetSecretRotations({
-    workspaceId,
-    options: {
-      enabled: isSecretManager && Boolean(subscription.secretRotation),
-      refetchOnMount: false
-    }
-  });
-
-  const pendingRequestsCount =
-    (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
-
-  const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(workspaceId, {
-    enabled:
-      isSecretScanning &&
-      subscription.secretScanning &&
-      permission.can(
-        ProjectPermissionSecretScanningFindingActions.Read,
-        ProjectPermissionSub.SecretScanningFindings
-      ),
-    refetchInterval: 30000
-  });
+  const currentProductType = getCurrentProductFromUrl(location.pathname);
+  const isSecretManager = currentProductType === ProjectType.SecretManager;
+  const isPki = currentProductType === ProjectType.CertificateManager;
+  const isKms = currentProductType === ProjectType.KMS;
+  const isSsh = currentProductType === ProjectType.SSH;
+  const isSecretScanning = currentProductType === ProjectType.SecretScanning;
 
   return (
     <>
-      <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
-        {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
-        <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
+      <div
+        className="dark relative hidden w-full flex-col overflow-x-hidden md:flex"
+        style={{
+          height: "calc(100vh - 3rem)",
+          paddingLeft: !(sidebarStyle === SidebarStyle.Expanded) ? MIN_SIDEBAR_SIZE : "0px"
+        }}
+      >
+        <div className="flex flex-grow flex-col overflow-y-auto overflow-x-hidden md:flex-row">
           <motion.div
             key="menu-project-items"
             initial={{ x: -150 }}
             animate={{ x: 0 }}
             exit={{ x: -150 }}
             transition={{ duration: 0.2 }}
-            className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
+            style={{ width: minSidebarWidth, height: "calc(100vh - 3rem)" }}
+            whileHover={{
+              width: maxSidebarWidth
+            }}
+            className={twMerge(
+              "dark group z-10 w-full overflow-hidden border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60",
+              !(sidebarStyle === SidebarStyle.Expanded) && "absolute bottom-0 left-0"
+            )}
           >
-            <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
-              <div>
-                <ProjectSelect />
-                <div className="px-1">
-                  <Menu>
-                    <MenuGroup title="Main Menu">
+            <nav className="items-between flex h-full flex-col justify-between">
+              <Menu>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="Secret Manager"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/secret-manager/overview"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                      isSelected={isSecretManager}
+                      leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="vault" />}
+                    >
                       {isSecretManager && (
-                        <Link
-                          to={`/${ProjectType.SecretManager}/$projectId/overview` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="lock-closed">
-                              {t("nav.menu.secrets")}
-                            </MenuItem>
-                          )}
-                        </Link>
+                        <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
                       )}
-                      {isCertManager && (
-                        <>
-                          <Link
-                            to={
-                              `/${ProjectType.CertificateManager}/$projectId/subscribers` as const
-                            }
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
-                          >
-                            {({ isActive }) => (
-                              <MenuItem isSelected={isActive} icon="pki-subscriber">
-                                Subscribers
-                              </MenuItem>
-                            )}
-                          </Link>
-                          <Link
-                            to={
-                              `/${ProjectType.CertificateManager}/$projectId/certificate-templates` as const
-                            }
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
-                          >
-                            {({ isActive }) => (
-                              <MenuItem
-                                iconMode="reverse"
-                                isSelected={isActive}
-                                icon="pki-template"
-                              >
-                                Certificate Templates
-                              </MenuItem>
-                            )}
-                          </Link>
-                          <Link
-                            to={
-                              `/${ProjectType.CertificateManager}/$projectId/certificates` as const
-                            }
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
-                          >
-                            {({ isActive }) => (
-                              <MenuItem isSelected={isActive} icon="certificate">
-                                Certificates
-                              </MenuItem>
-                            )}
-                          </Link>
-                          <Link
-                            to={
-                              `/${ProjectType.CertificateManager}/$projectId/certificate-authorities` as const
-                            }
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
-                          >
-                            {({ isActive }) => (
-                              <MenuItem isSelected={isActive} icon="certificate-authority">
-                                Certificate Authorities
-                              </MenuItem>
-                            )}
-                          </Link>
-                          <Link
-                            to={`/${ProjectType.CertificateManager}/$projectId/alerting` as const}
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
-                          >
-                            {({ isActive }) => (
-                              <MenuItem isSelected={isActive} icon="notification-bell">
-                                Alerting
-                              </MenuItem>
-                            )}
-                          </Link>
-                        </>
-                      )}
-                      {isCmek && (
-                        <Link
-                          to={`/${ProjectType.KMS}/$projectId/overview` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="lock-closed">
-                              Overview
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                      {isCmek && (
-                        <Link
-                          to={`/${ProjectType.KMS}/$projectId/kmip` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="key-user" iconMode="reverse">
-                              KMIP
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                      {isSSH && (
-                        <>
-                          <Link
-                            to={`/${ProjectType.SSH}/$projectId/overview` as const}
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
-                          >
-                            {({ isActive }) => (
-                              <MenuItem isSelected={isActive} icon="server">
-                                Hosts
-                              </MenuItem>
-                            )}
-                          </Link>
-                          {/* <Link
-                            to={`/${ProjectType.SSH}/$projectId/certificates` as const}
-                            params={{
-                              projectId: currentWorkspace.id
-                            }}
-                          >
-                            {({ isActive }) => (
-                              <MenuItem isSelected={isActive} icon="certificate" iconMode="reverse">
-                                Certificates
-                              </MenuItem>
-                            )}
-                          </Link> */}
-                          <ProjectPermissionCan
-                            I={ProjectPermissionActions.Read}
-                            a={ProjectPermissionSub.SshCertificateAuthorities}
-                          >
-                            {(isAllowed) =>
-                              isAllowed && (
-                                <Link
-                                  to={`/${ProjectType.SSH}/$projectId/cas` as const}
-                                  params={{
-                                    projectId: currentWorkspace.id
-                                  }}
-                                >
-                                  {({ isActive }) => (
-                                    <MenuItem
-                                      isSelected={isActive}
-                                      icon="certificate-authority"
-                                      iconMode="reverse"
-                                    >
-                                      Certificate Authorities
-                                    </MenuItem>
-                                  )}
-                                </Link>
-                              )
-                            }
-                          </ProjectPermissionCan>
-                        </>
-                      )}
+                      Secret Manager
+                    </MenuItem>
+                  </Link>
+                </ShouldWrap>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="PKI Manager"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/cert-manager/subscribers"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                      isSelected={isPki}
+                      leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="note" />}
+                    >
+                      {isPki && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
+                      PKI Manager
+                    </MenuItem>
+                  </Link>
+                </ShouldWrap>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="KMS"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/kms/overview"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                      isSelected={isKms}
+                      leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="unlock" />}
+                    >
+                      {isKms && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
+                      KMS
+                    </MenuItem>
+                  </Link>
+                </ShouldWrap>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="SSH"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/ssh/overview"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                      isSelected={isSsh}
+                      leftIcon={
+                        <Lottie className="inline-block h-6 w-6 shrink-0" icon="terminal" />
+                      }
+                    >
+                      {isSsh && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
+                      SSH
+                    </MenuItem>
+                  </Link>
+                </ShouldWrap>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="Secret Scanning"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/secret-scanning/data-sources"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                      isSelected={isSecretScanning}
+                      leftIcon={
+                        <Lottie className="inline-block h-6 w-6 shrink-0" icon="secret-scan" />
+                      }
+                    >
                       {isSecretScanning && (
-                        <Link
-                          to={`/${ProjectType.SecretScanning}/$projectId/data-sources` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="blocks">
-                              Data Sources
-                            </MenuItem>
-                          )}
-                        </Link>
+                        <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
                       )}
-                      {isSecretScanning && (
-                        <Link
-                          to={`/${ProjectType.SecretScanning}/$projectId/findings` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="search">
-                              <div className="flex w-full items-center justify-between">
-                                <span>Findings</span>
-                                {Boolean(unresolvedFindings) && (
-                                  <Badge variant="primary" className="mr-2">
-                                    {unresolvedFindings}
-                                  </Badge>
-                                )}
-                              </div>
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                      {isSecretManager && (
-                        <Link
-                          to={`/${ProjectType.SecretManager}/$projectId/integrations` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="jigsaw-puzzle">
-                              {t("nav.menu.integrations")}
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                      {isSecretManager && Boolean(secretRotations?.length) && (
-                        <Link
-                          to={`/${ProjectType.SecretManager}/$projectId/secret-rotation` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="rotation">
-                              Secret Rotation
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                      {isSecretManager && (
-                        <Link
-                          to={`/${ProjectType.SecretManager}/$projectId/approval` as const}
-                          params={{
-                            projectId: currentWorkspace.id
-                          }}
-                        >
-                          {({ isActive }) => (
-                            <MenuItem isSelected={isActive} icon="circular-check">
-                              Approvals
-                              {Boolean(
-                                secretApprovalReqCount?.open ||
-                                  accessApprovalRequestCount?.pendingCount
-                              ) && (
-                                <Badge variant="primary" className="ml-1.5">
-                                  {pendingRequestsCount}
-                                </Badge>
-                              )}
-                            </MenuItem>
-                          )}
-                        </Link>
-                      )}
-                    </MenuGroup>
-                    <MenuGroup title="Other">
-                      <Link
-                        to={`/${currentWorkspace.type}/$projectId/access-management` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
+                      Secret Scanning
+                    </MenuItem>
+                  </Link>
+                </ShouldWrap>
+              </Menu>
+              <Divider />
+              <Menu>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="Access Control"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/access-management"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem
+                        className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                        isSelected={isActive}
+                        leftIcon={
+                          <Lottie className="inline-block h-6 w-6 shrink-0" icon="groups" />
+                        }
                       >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="groups">
-                            Access Control
-                          </MenuItem>
+                        {isActive && (
+                          <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
                         )}
-                      </Link>
-                      <Link
-                        to={`/${currentWorkspace.type}/$projectId/settings` as const}
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
+                        Access Control
+                      </MenuItem>
+                    )}
+                  </Link>
+                </ShouldWrap>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="Project Settings"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/settings"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem
+                        className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                        isSelected={isActive}
+                        leftIcon={
+                          <Lottie className="inline-block h-6 w-6 shrink-0" icon="settings-cog" />
+                        }
                       >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive} icon="toggle-settings">
-                            {t("nav.menu.project-settings")}
-                          </MenuItem>
+                        {isActive && (
+                          <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
                         )}
-                      </Link>
-                    </MenuGroup>
-                  </Menu>
-                </div>
-              </div>
+                        Project Settings
+                      </MenuItem>
+                    )}
+                  </Link>
+                </ShouldWrap>
+              </Menu>
+              <div className="flex-grow" />
+              <Menu>
+                <DropdownMenu>
+                  <ShouldWrap
+                    wrapper={Tooltip}
+                    isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                    content="Sidebar Control"
+                    position="right"
+                  >
+                    <DropdownMenuTrigger className="w-full">
+                      <MenuItem
+                        className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                        leftIcon={
+                          <FontAwesomeIcon
+                            className="mx-1 inline-block shrink-0"
+                            icon={faWindowMaximize}
+                            flip="vertical"
+                          />
+                        }
+                      >
+                        Sidebar Control
+                      </MenuItem>
+                    </DropdownMenuTrigger>
+                  </ShouldWrap>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      iconPos="right"
+                      icon={
+                        sidebarStyle === SidebarStyle.Expanded && (
+                          <FontAwesomeIcon icon={faDotCircle} size="sm" />
+                        )
+                      }
+                      onClick={() => setSidebarStyle(SidebarStyle.Expanded)}
+                    >
+                      Expanded
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      iconPos="right"
+                      icon={
+                        sidebarStyle === SidebarStyle.Collapsed && (
+                          <FontAwesomeIcon icon={faDotCircle} size="sm" />
+                        )
+                      }
+                      onClick={() => setSidebarStyle(SidebarStyle.Collapsed)}
+                    >
+                      Collapsed
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      iconPos="right"
+                      icon={
+                        sidebarStyle === SidebarStyle.ExpandOnHover && (
+                          <FontAwesomeIcon icon={faDotCircle} size="sm" />
+                        )
+                      }
+                      onClick={() => setSidebarStyle(SidebarStyle.ExpandOnHover)}
+                    >
+                      Expand on hover
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </Menu>
             </nav>
           </motion.div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 dark:[color-scheme:dark]">
-            {breadcrumbs ? (
-              <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
-            ) : null}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800">
+            {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
             <Outlet />
           </div>
         </div>

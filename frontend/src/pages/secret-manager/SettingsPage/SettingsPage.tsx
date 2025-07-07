@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 import { EncryptionTab } from "./components/EncryptionTab";
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
@@ -18,22 +18,17 @@ export const SettingsPage = () => {
     {
       name: "Encryption",
       key: "tab-project-encryption",
-      isHidden:
-        currentWorkspace?.version !== ProjectVersion.V3 ||
-        currentWorkspace?.type !== ProjectType.SecretManager,
+      isHidden: currentWorkspace?.version !== ProjectVersion.V3,
       Component: EncryptionTab
     },
     {
       name: "Workflow Integrations",
       key: "tab-workflow-integrations",
-      isHidden: currentWorkspace?.type !== ProjectType.SecretManager,
       Component: WorkflowIntegrationTab
     },
     {
       name: "Webhooks",
       key: "tab-project-webhooks",
-      isHidden: currentWorkspace?.type !== ProjectType.SecretManager,
-
       Component: WebhooksTab
     }
   ];
@@ -44,7 +39,10 @@ export const SettingsPage = () => {
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
       <div className="w-full max-w-7xl">
-        <PageHeader title={t("settings.project.title")} />
+        <PageHeader
+          title="Settings"
+          description="Configure your secret manager's encryption, environments, webhooks and other configurations."
+        />
         <Tabs defaultValue={tabs[0].key}>
           <TabList>
             {tabs

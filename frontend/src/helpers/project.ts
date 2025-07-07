@@ -1,6 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const secretsToBeAdded = [
   {
@@ -42,8 +42,7 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   const {
     data: { project }
   } = await createWorkspace({
-    projectName,
-    type: ProjectType.SecretManager
+    projectName
   });
 
   try {
@@ -60,14 +59,14 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
 
   return project;
 };
-export const getProjectHomePage = (workspace: Workspace) => {
-  switch (workspace.type) {
+export const getProjectHomePage = (type: ProjectType) => {
+  switch (type) {
     case ProjectType.CertificateManager:
-      return `/${workspace.type}/$projectId/subscribers` as const;
+      return `/projects/$projectId/${type}/subscribers` as const;
     case ProjectType.SecretScanning:
-      return `/${workspace.type}/$projectId/data-sources` as const;
+      return `/projects/$projectId/${type}/data-sources` as const;
     default:
-      return `/${workspace.type}/$projectId/overview` as const;
+      return `/projects/$projectId/${type}/overview` as const;
   }
 };
 
@@ -80,4 +79,9 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.SecretScanning]: "Secret Scanning"
   };
   return titleConvert[type];
+};
+
+export const getCurrentProductFromUrl = (location: string) => {
+  const type = Object.values(ProjectType).find((el) => location.includes(`/${el}`));
+  return type;
 };

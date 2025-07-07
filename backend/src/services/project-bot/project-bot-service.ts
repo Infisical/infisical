@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
+import { ProjectVersion } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -45,8 +45,7 @@ export const projectBotServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
 
@@ -115,8 +114,7 @@ export const projectBotServiceFactory = ({
       actorId,
       projectId: bot.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
 

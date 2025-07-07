@@ -16,11 +16,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -54,8 +52,6 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
-  useDeleteAccessApprovalPolicy,
-  useDeleteSecretApprovalPolicy,
   useGetSecretApprovalPolicies,
   useGetWorkspaceUsers,
   useListWorkspaceGroups
@@ -67,6 +63,7 @@ import { TAccessApprovalPolicy, Workspace } from "@app/hooks/api/types";
 
 import { AccessPolicyForm } from "./components/AccessPolicyModal";
 import { ApprovalPolicyRow } from "./components/ApprovalPolicyRow";
+import { RemoveApprovalPolicyModal } from "./components/RemoveApprovalPolicyModal";
 
 interface IProps {
   workspaceId: string;
@@ -122,7 +119,7 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
 };
 
 export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
-  const { handlePopUpToggle, handlePopUpOpen, handlePopUpClose, popUp } = usePopUp([
+  const { handlePopUpToggle, handlePopUpOpen, popUp } = usePopUp([
     "policyForm",
     "deletePolicy",
     "upgradePlan"
@@ -212,39 +209,6 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
     offset,
     setPage
   });
-
-  const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
-  const { mutateAsync: deleteAccessApprovalPolicy } = useDeleteAccessApprovalPolicy();
-
-  const handleDeletePolicy = async () => {
-    const { id, policyType } = popUp.deletePolicy.data as TAccessApprovalPolicy;
-    if (!currentWorkspace?.slug) return;
-
-    try {
-      if (policyType === PolicyType.ChangePolicy) {
-        await deleteSecretApprovalPolicy({
-          workspaceId,
-          id
-        });
-      } else {
-        await deleteAccessApprovalPolicy({
-          projectSlug: currentWorkspace?.slug,
-          id
-        });
-      }
-      createNotification({
-        type: "success",
-        text: "Successfully deleted policy"
-      });
-      handlePopUpClose("deletePolicy");
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to delete policy"
-      });
-    }
-  };
 
   const isTableFiltered = filters.type !== null || Boolean(filters.environmentIds.length);
 
@@ -528,13 +492,14 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
         members={members}
         editValues={popUp.policyForm.data as TAccessApprovalPolicy}
       />
-      <DeleteActionModal
-        isOpen={popUp.deletePolicy.isOpen}
-        deleteKey="remove"
-        title="Do you want to remove this policy?"
-        onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
-        onDeleteApproved={handleDeletePolicy}
-      />
+      {popUp.deletePolicy.data && (
+        <RemoveApprovalPolicyModal
+          isOpen={popUp.deletePolicy.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
+          policyType={popUp.deletePolicy.data.policyType}
+          policyId={popUp.deletePolicy.data.id}
+        />
+      )}
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
