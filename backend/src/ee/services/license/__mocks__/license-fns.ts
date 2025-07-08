@@ -30,8 +30,8 @@ export const getDefaultOnPremFeatures = () => {
     secretRotation: true,
     caCrl: false,
     sshHostGroups: false,
-    enterpriseSecretSyncs: true,
-    enterpriseAppConnections: true
+    enterpriseSecretSyncs: false,
+    enterpriseAppConnections: false
   };
 };
 
