@@ -40,6 +40,7 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
@@ -90,6 +91,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
+  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
   [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" }
 };
 
@@ -122,6 +124,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
     case CloudflareConnectionMethod.ApiToken:
+    case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:

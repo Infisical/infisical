@@ -30,6 +30,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Flyio]: "Fly.io",
   [AppConnection.GitLab]: "GitLab",
   [AppConnection.Cloudflare]: "Cloudflare",
+  [AppConnection.Bitbucket]: "Bitbucket",
   [AppConnection.Zabbix]: "Zabbix"
 };
 
@@ -63,5 +64,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Flyio]: AppConnectionPlanType.Regular,
   [AppConnection.GitLab]: AppConnectionPlanType.Regular,
   [AppConnection.Cloudflare]: AppConnectionPlanType.Regular,
+  [AppConnection.Bitbucket]: AppConnectionPlanType.Regular,
   [AppConnection.Zabbix]: AppConnectionPlanType.Regular
 };

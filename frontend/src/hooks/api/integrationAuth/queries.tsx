@@ -6,8 +6,8 @@ import { TReactQueryOptions } from "@app/types/reactQuery";
 import { workspaceKeys } from "../workspace";
 import {
   App,
-  BitBucketEnvironment,
-  BitBucketWorkspace,
+  BitbucketEnvironment,
+  BitbucketWorkspace,
   ChecklyGroup,
   CircleCIOrganization,
   Environment,
@@ -98,9 +98,9 @@ const integrationAuthKeys = {
     integrationAuthId: string;
     appId: string;
   }) => [{ integrationAuthId, appId }, "integrationAuthRailwayServices"] as const,
-  getIntegrationAuthBitBucketWorkspaces: (integrationAuthId: string) =>
+  getIntegrationAuthBitbucketWorkspaces: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthBitbucketWorkspaces"] as const,
-  getIntegrationAuthBitBucketEnvironments: (
+  getIntegrationAuthBitbucketEnvironments: (
     integrationAuthId: string,
     workspaceSlug: string,
     repoSlug: string
@@ -446,23 +446,23 @@ const fetchIntegrationAuthRailwayServices = async ({
   return services;
 };
 
-const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string) => {
+const fetchIntegrationAuthBitbucketWorkspaces = async (integrationAuthId: string) => {
   const {
     data: { workspaces }
-  } = await apiRequest.get<{ workspaces: BitBucketWorkspace[] }>(
+  } = await apiRequest.get<{ workspaces: BitbucketWorkspace[] }>(
     `/api/v1/integration-auth/${integrationAuthId}/bitbucket/workspaces`
   );
   return workspaces;
 };
 
-const fetchIntegrationAuthBitBucketEnvironments = async (
+const fetchIntegrationAuthBitbucketEnvironments = async (
   integrationAuthId: string,
   workspaceSlug: string,
   repoSlug: string
 ) => {
   const {
     data: { environments }
-  } = await apiRequest.get<{ environments: BitBucketEnvironment[] }>(
+  } = await apiRequest.get<{ environments: BitbucketEnvironment[] }>(
     `/api/v1/integration-auth/${integrationAuthId}/bitbucket/environments`,
     {
       params: {
@@ -833,10 +833,10 @@ export const useGetIntegrationAuthRailwayServices = ({
   });
 };
 
-export const useGetIntegrationAuthBitBucketWorkspaces = (integrationAuthId: string) => {
+export const useGetIntegrationAuthBitbucketWorkspaces = (integrationAuthId: string) => {
   return useQuery({
-    queryKey: integrationAuthKeys.getIntegrationAuthBitBucketWorkspaces(integrationAuthId),
-    queryFn: () => fetchIntegrationAuthBitBucketWorkspaces(integrationAuthId),
+    queryKey: integrationAuthKeys.getIntegrationAuthBitbucketWorkspaces(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthBitbucketWorkspaces(integrationAuthId),
     enabled: true
   });
 };
@@ -858,7 +858,7 @@ export const useGetIntegrationAuthOctopusDeployScopeValues = (
     ...options
   });
 
-export const useGetIntegrationAuthBitBucketEnvironments = (
+export const useGetIntegrationAuthBitbucketEnvironments = (
   {
     integrationAuthId,
     workspaceSlug,
@@ -871,13 +871,13 @@ export const useGetIntegrationAuthBitBucketEnvironments = (
   options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
-    queryKey: integrationAuthKeys.getIntegrationAuthBitBucketEnvironments(
+    queryKey: integrationAuthKeys.getIntegrationAuthBitbucketEnvironments(
       integrationAuthId,
       workspaceSlug,
       repoSlug
     ),
     queryFn: () =>
-      fetchIntegrationAuthBitBucketEnvironments(integrationAuthId, workspaceSlug, repoSlug),
+      fetchIntegrationAuthBitbucketEnvironments(integrationAuthId, workspaceSlug, repoSlug),
     ...options
   });
 };

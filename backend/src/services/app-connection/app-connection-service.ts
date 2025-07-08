@@ -45,6 +45,8 @@ import { azureClientSecretsConnectionService } from "./azure-client-secrets/azur
 import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/azure-devops-schemas";
 import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
+import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
+import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
@@ -122,6 +124,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
+  [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
   [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema
 };
 
@@ -533,6 +536,7 @@ export const appConnectionServiceFactory = ({
     flyio: flyioConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
+    bitbucket: bitbucketConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById)
   };
 };

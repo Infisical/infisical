@@ -1,0 +1,133 @@
+---
+title: "Bitbucket Connection"
+description: "Learn how to configure a Bitbucket Connection for Infisical."
+---
+
+Infisical supports the use of [API Tokens](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/) to connect with Bitbucket.
+
+<Tip>
+    Infisical recommends creating a dedicated Bitbucket account with access restricted to only the resources your use case requires.
+</Tip>
+
+## Create Bitbucket Access Token
+
+<Steps>
+    <Step title="Create API Token">
+        Go to [Account API Tokens](https://id.atlassian.com/manage-profile/security/api-tokens) and click **Create API token with scopes**.
+
+        ![Create API Token](/images/app-connections/bitbucket/step-1.png)
+    </Step>
+    <Step title="Set Name and Expiry">
+        Set the name and expiration date of the token, then click **Next**.
+
+        ![Set Name and Expiry](/images/app-connections/bitbucket/step-2.png)
+
+        <Note>
+          Keep in mind that you'll need to manually replace the token after it expires.
+        </Note>
+    </Step>
+    <Step title="Select Bitbucket">
+        Select **Bitbucket** and then click **Next**.
+
+        ![Select Bitbucket](/images/app-connections/bitbucket/step-3.png)
+    </Step>
+    <Step title="Configure Permissions">
+        Configure permissions according to your app's use case:
+
+        <Tabs>
+            <Tab title="Secret Scanning">
+                ```
+                read:workspace:bitbucket
+                read:user:bitbucket
+                read:webhook:bitbucket
+                write:webhook:bitbucket
+                delete:webhook:bitbucket
+                read:repository:bitbucket
+                ```
+
+                ![Configure Permissions](/images/app-connections/bitbucket/step-4.png)
+            </Tab>
+        </Tabs>
+
+        Click **Next**.
+
+    </Step>
+    <Step title="Copy Token">
+        Save the API Token for later steps.
+
+        ![Save Token](/images/app-connections/bitbucket/step-5.png)
+    </Step>
+</Steps>
+
+## Create Bitbucket Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select Bitbucket Connection">
+                Click the **Add new connection** button and select **Bitbucket** from the list of available connections.
+            </Step>
+            <Step title="Fill out the Bitbucket Connection Modal">
+                Complete the Bitbucket Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - Your Bitbucket email
+                - The API Token from earlier steps
+
+                ![Bitbucket Connection Modal](/images/app-connections/bitbucket/step-6.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **Bitbucket Connection** is established and ready to use with your Infisical projects.
+
+                ![Bitbucket Connection Created](/images/app-connections/bitbucket/step-7.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Bitbucket Connection, make an API request to the [Create Bitbucket Connection](/api-reference/endpoints/app-connections/bitbucket/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/bitbucket \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-bitbucket-connection",
+                    "method": "api-token",
+                    "credentials": {
+                        "email": "user@example.com",
+                        "apiToken": "<YOUR-API-TOKEN>"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-bitbucket-connection",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "bitbucket",
+              "method": "api-token",
+              "credentials": {
+                  "email": "user@example.com"
+              }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

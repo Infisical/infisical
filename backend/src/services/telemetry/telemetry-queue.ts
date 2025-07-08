@@ -71,6 +71,15 @@ export const telemetryQueueServiceFactory = ({
       QueueName.TelemetryInstanceStats // just a job id
     );
 
+    if (postHog) {
+      await queueService.queue(QueueName.TelemetryInstanceStats, QueueJobs.TelemetryInstanceStats, undefined, {
+        jobId: QueueName.TelemetryInstanceStats,
+        repeat: { pattern: "0 0 * * *", utc: true }
+      });
+    }
+  };
+
+  const startAggregatedEventsJob = async () => {
     // clear previous aggregated events job
     await queueService.stopRepeatableJob(
       QueueName.TelemetryAggregatedEvents,
@@ -80,11 +89,6 @@ export const telemetryQueueServiceFactory = ({
     );
 
     if (postHog) {
-      await queueService.queue(QueueName.TelemetryInstanceStats, QueueJobs.TelemetryInstanceStats, undefined, {
-        jobId: QueueName.TelemetryInstanceStats,
-        repeat: { pattern: "0 0 * * *", utc: true }
-      });
-
       // Start aggregated events job (runs every five minutes)
       await queueService.queue(QueueName.TelemetryAggregatedEvents, QueueJobs.TelemetryAggregatedEvents, undefined, {
         jobId: QueueName.TelemetryAggregatedEvents,
@@ -102,6 +106,7 @@ export const telemetryQueueServiceFactory = ({
   });
 
   return {
-    startTelemetryCheck
+    startTelemetryCheck,
+    startAggregatedEventsJob
   };
 };

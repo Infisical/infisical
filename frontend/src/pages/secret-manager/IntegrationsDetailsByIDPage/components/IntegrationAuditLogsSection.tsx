@@ -70,7 +70,7 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
                     upgrade your subscription
                   </a>
                 </a>
-              )}
+              )}{" "}
               to view integration logs
             </p>
           </div>

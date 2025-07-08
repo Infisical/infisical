@@ -14,7 +14,7 @@ export const TELEMETRY_SECRET_PROCESSED_KEY = "telemetry-secret-processed";
 export const TELEMETRY_SECRET_OPERATIONS_KEY = "telemetry-secret-operations";
 
 export const POSTHOG_AGGREGATED_EVENTS = [PostHogEventTypes.SecretPulled];
-const TELEMETRY_AGGREGATED_KEY_EXP = 900; // 15mins
+const TELEMETRY_AGGREGATED_KEY_EXP = 600; // 10mins
 
 // Bucket configuration
 const TELEMETRY_BUCKET_COUNT = 30;
@@ -102,13 +102,6 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       const instanceType = licenseService.getInstanceType();
       // capture posthog only when its cloud or signup event happens in self-hosted
       if (instanceType === InstanceType.Cloud || event.event === PostHogEventTypes.UserSignedUp) {
-        if (event.organizationId) {
-          try {
-            postHog.groupIdentify({ groupType: "organization", groupKey: event.organizationId });
-          } catch (error) {
-            logger.error(error, "Failed to identify PostHog organization");
-          }
-        }
         if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
           const eventKey = createTelemetryEventKey(event.event, event.distinctId);
           await keyStore.setItemWithExpiry(
@@ -122,6 +115,13 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             })
           );
         } else {
+          if (event.organizationId) {
+            try {
+              postHog.groupIdentify({ groupType: "organization", groupKey: event.organizationId });
+            } catch (error) {
+              logger.error(error, "Failed to identify PostHog organization");
+            }
+          }
           postHog.capture({
             event: event.event,
             distinctId: event.distinctId,
