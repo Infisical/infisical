@@ -42,7 +42,7 @@ import { useGetOrganizations, useLogoutUser, workspaceKeys } from "@app/hooks/ap
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
+import { SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
@@ -54,35 +54,26 @@ const getPlan = (subscription: SubscriptionPlan) => {
   return "Free";
 };
 
-type SupportType = "organisation" | "personal";
-
-const getFormattedSupportEmailLink = <T extends SupportType>(
-  type: T,
-  org: T extends "organisation" ? Organization : null
-) => {
+const getFormattedSupportEmailLink = (variables: { org_id: string; domain: string }) => {
   const email = "support@infisical.com";
 
-  const subject =
-    type === "organisation"
-      ? `Support Request for Organisation: ${org!.name}`
-      : "Support Request for Personal Account";
+  const body = `Hello Infisical Support Team,
 
-  const body = `Hello Infisical Team,
+Issue Details:
+[What you did]
+[What you expected to happen]
+[What actually happened]
+[Any error request IDs]
+[Any supporting screenshots or video recording of the issue/request at hand]
 
-I am reaching out regarding an issue with my account.
-
-Organisation ID: ${org?.id ?? "N/A"}
-
-Description of Issue:
-[Please describe your issue here...]
-
-Expected Outcome:
-[What you were hoping to happen...]
+Account Info:
+- Organization ID: ${variables.org_id}
+- Domain: ${variables.domain}
 
 Thank you,
 [Your Name]`;
 
-  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return `mailto:${email}?body=${encodeURIComponent(body)}`;
 };
 
 export const INFISICAL_SUPPORT_OPTIONS = [
@@ -290,7 +281,13 @@ export const Navbar = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="bottom" className="mt-3 p-1">
           {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, getUrl]) => {
-            const url = text === "Email Support" ? getUrl("organisation", currentOrg) : getUrl();
+            const url =
+              text === "Email Support"
+                ? getUrl({
+                    org_id: currentOrg.id,
+                    domain: window.location.origin
+                  })
+                : getUrl();
 
             if (url === "server-admins" && isInfisicalCloud()) {
               return null;
