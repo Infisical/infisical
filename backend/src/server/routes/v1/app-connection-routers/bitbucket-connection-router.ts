@@ -66,7 +66,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          repositories: z.object({ slug: z.string(), full_name: z.string() }).array()
+          repositories: z.object({ slug: z.string(), full_name: z.string(), uuid: z.string() }).array()
         })
       }
     },

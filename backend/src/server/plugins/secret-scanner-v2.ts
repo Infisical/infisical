@@ -1,6 +1,5 @@
 import type { EmitterWebhookEventName } from "@octokit/webhooks/dist-types/types";
 import { PushEvent } from "@octokit/webhooks-types";
-import crypto from "crypto";
 import { Probot } from "probot";
 import { z } from "zod";
 

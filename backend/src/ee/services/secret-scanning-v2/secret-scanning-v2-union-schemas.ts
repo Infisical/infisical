@@ -9,6 +9,14 @@ export const SecretScanningDataSourceSchema = z.discriminatedUnion("type", [
 ]);
 
 export const SecretScanningFindingSchema = z.discriminatedUnion("dataSourceType", [
-  GitHubFindingSchema,
-  BitbucketFindingSchema
+  GitHubFindingSchema.describe(
+    JSON.stringify({
+      title: "GitHub"
+    })
+  ),
+  BitbucketFindingSchema.describe(
+    JSON.stringify({
+      title: "Bitbucket"
+    })
+  )
 ]);

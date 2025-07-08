@@ -149,9 +149,9 @@ export const BitbucketSecretScanningFactory = () => {
       filteredRepos.push(...repos.filter((repo) => includeRepos.includes(repo.full_name)));
     }
 
-    return filteredRepos.map(({ full_name }) => ({
+    return filteredRepos.map(({ full_name, uuid }) => ({
       name: full_name,
-      externalId: full_name,
+      externalId: uuid,
       type: SecretScanningResource.Repository
     }));
   };
@@ -188,7 +188,7 @@ export const BitbucketSecretScanningFactory = () => {
   > = ({ repository }) => {
     return {
       name: repository.full_name,
-      externalId: repository.full_name,
+      externalId: repository.uuid,
       type: SecretScanningResource.Repository
     };
   };

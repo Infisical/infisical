@@ -34,6 +34,7 @@ export type TBitbucketWorkspace = {
 };
 
 export type TBitbucketRepo = {
+  uuid: string;
   full_name: string; // workspace-slug/repo-slug
   slug: string;
 };
