@@ -20,17 +20,8 @@ import { logger } from "../../logger";
 import { asymmetricFipsValidated } from "./asymmetric-fips";
 import { hasherFipsValidated } from "./hash-fips";
 import { jwtFipsValidated } from "./jwt-fips";
-import {
-  DigestType,
-  JWTPayload,
-  JWTSecretOrKey,
-  JWTSignOptions,
-  JWTVerifyOptions,
-  SymmetricKeySize,
-  TDecryptAsymmetricInput,
-  TDecryptSymmetricInput,
-  TEncryptSymmetricInput
-} from "./types";
+import type { TDecryptAsymmetricInput, TDecryptSymmetricInput, TEncryptSymmetricInput } from "./types";
+import { DigestType, JWTPayload, JWTSecretOrKey, JWTSignOptions, JWTVerifyOptions, SymmetricKeySize } from "./types";
 
 const bytesToBits = (bytes: number) => bytes * 8;
 

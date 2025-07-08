@@ -6,7 +6,6 @@ import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { Resource } from "@opentelemetry/resources";
 import { AggregationTemporality, MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
-import tracer from "dd-trace";
 import dotenv from "dotenv";
 
 import { initEnvConfig } from "../config/env";
@@ -89,6 +88,8 @@ const setupTelemetry = async () => {
   }
 
   if (envCfg.SHOULD_USE_DATADOG_TRACER) {
+    const tracer = await import("dd-trace");
+
     console.log("Initializing Datadog tracer");
     tracer.init({
       profiling: envCfg.DATADOG_PROFILING_ENABLED,

@@ -448,6 +448,9 @@ export const queueServiceFactory = (
     if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
       workerContainer[name] = new Worker(name, jobFn, {
         ...queueSettings,
+        settings: {
+          repeatKeyHashAlgorithm: "sha256"
+        },
         connection
       });
     }

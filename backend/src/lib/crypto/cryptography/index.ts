@@ -1,9 +1,8 @@
 export { crypto } from "./crypto";
-export {
-  DigestType,
-  SymmetricKeySize,
+export type {
   TDecryptAsymmetricInput,
   TDecryptSymmetricInput,
   TEncryptedWithRootEncryptionKey,
   TEncryptSymmetricInput
 } from "./types";
+export { DigestType, SymmetricKeySize } from "./types";
