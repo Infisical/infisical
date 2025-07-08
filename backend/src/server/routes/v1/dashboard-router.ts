@@ -732,8 +732,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           projectId,
           environment,
-          path: secretPath,
-          search
+          path: secretPath
+          // search scott: removing for now because this prevents searching imported secrets which are fetched separately client side
         });
 
         if (remainingLimit > 0 && totalImportCount > adjustedOffset) {
@@ -745,7 +745,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             projectId,
             environment,
             path: secretPath,
-            search,
+            // search scott: removing for now because this prevents searching imported secrets which are fetched separately client side
             limit: remainingLimit,
             offset: adjustedOffset
           });
