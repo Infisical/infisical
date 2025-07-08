@@ -144,9 +144,9 @@ export const listAppConnectionOptions = () => {
     getFlyioConnectionListItem(),
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
-    getBitbucketConnectionListItem(),
     getZabbixConnectionListItem(),
-    getRailwayConnectionListItem()
+    getRailwayConnectionListItem(),
+    getBitbucketConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -227,9 +227,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -348,9 +348,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
-  [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
-  [AppConnection.Railway]: platformManagedCredentialsNotSupported
+  [AppConnection.Railway]: platformManagedCredentialsNotSupported,
+  [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
