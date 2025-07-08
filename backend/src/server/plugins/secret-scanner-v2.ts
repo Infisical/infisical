@@ -103,8 +103,6 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
 
       if (!dataSourceId) return res.status(400).send({ message: "Data Source ID is required" });
 
-      console.log("111");
-
       await server.services.secretScanningV2.bitbucket.handlePushEvent({
         ...(req.body as TBitbucketPushEvent),
         dataSourceId,
