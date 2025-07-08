@@ -364,9 +364,10 @@ export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logge
 
     if (fipsEnabled) {
       const newEnvCfg = {
-        ...envCfg,
+        ...parsedEnv.data,
         ROOT_ENCRYPTION_KEY: envCfg.ENCRYPTION_KEY
       };
+
       delete newEnvCfg.ENCRYPTION_KEY;
 
       envCfg = Object.freeze(newEnvCfg);
