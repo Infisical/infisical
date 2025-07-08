@@ -348,7 +348,6 @@ export const computeMd5 = (message: string, digest: DigestType = DigestType.Hex)
 };
 
 const cryptographyFactory = () => {
-  // placeholder for now
   let $fipsEnabled = false;
   let $isInitialized = false;
 

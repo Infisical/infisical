@@ -18,7 +18,6 @@ import { keyStoreFactory } from "@app/keystore/keystore";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
-import { crypto } from "@app/lib/crypto/cryptography";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -82,7 +81,7 @@ export default {
       // @ts-expect-error type
       globalThis.testServer = server;
       // @ts-expect-error type
-      globalThis.testCryptoProvider = crypto;
+      globalThis.testSuperAdminDAL = superAdminDAL;
       // @ts-expect-error type
       globalThis.jwtAuthToken = jwt.sign(
         {
@@ -110,6 +109,8 @@ export default {
         await globalThis.testServer.close();
         // @ts-expect-error type
         delete globalThis.testServer;
+        // @ts-expect-error type
+        delete globalThis.testSuperAdminDAL;
         // @ts-expect-error type
         delete globalThis.jwtToken;
         // called after all tests with this env have been run

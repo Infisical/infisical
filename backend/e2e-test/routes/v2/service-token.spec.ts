@@ -1,6 +1,9 @@
 import { SecretType, TSecrets } from "@app/db/schemas";
 import { decryptSecret, encryptSecret, getUserPrivateKey, seedData1 } from "@app/db/seed-data";
+import { initEnvConfig } from "@app/lib/config/env";
 import { SymmetricKeySize } from "@app/lib/crypto";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { initLogger, logger } from "@app/lib/logger";
 
 const createServiceToken = async (
   scopes: { environment: string; secretPath: string }[],
@@ -24,16 +27,17 @@ const createServiceToken = async (
   });
   const { user: userInfo } = JSON.parse(userInfoRes.payload);
   const privateKey = await getUserPrivateKey(seedData1.password, userInfo);
-  const projectKey = testCryptoProvider.encryption().asymmetric().decrypt({
+
+  const projectKey = crypto.encryption().asymmetric().decrypt({
     ciphertext: projectKeyEnc.encryptedKey,
     nonce: projectKeyEnc.nonce,
     publicKey: projectKeyEnc.sender.publicKey,
     privateKey
   });
 
-  const randomBytes = testCryptoProvider.randomBytes(16).toString("hex");
+  const randomBytes = crypto.randomBytes(16).toString("hex");
 
-  const { ciphertext, iv, tag } = testCryptoProvider.encryption().encryptSymmetric({
+  const { ciphertext, iv, tag } = crypto.encryption().encryptSymmetric({
     plaintext: projectKey,
     key: randomBytes,
     keySize: SymmetricKeySize.Bits128
@@ -141,6 +145,9 @@ describe("Service token secret ops", async () => {
   let projectKey = "";
   let folderId = "";
   beforeAll(async () => {
+    initLogger();
+    await initEnvConfig(testSuperAdminDAL, logger);
+
     serviceToken = await createServiceToken(
       [{ secretPath: "/**", environment: seedData1.environment.slug }],
       ["read", "write"]
@@ -158,7 +165,7 @@ describe("Service token secret ops", async () => {
     const serviceTokenInfo = serviceTokenInfoRes.json();
     const serviceTokenParts = serviceToken.split(".");
 
-    projectKey = testCryptoProvider.encryption().decryptSymmetric({
+    projectKey = crypto.encryption().decryptSymmetric({
       key: serviceTokenParts[3],
       tag: serviceTokenInfo.tag,
       ciphertext: serviceTokenInfo.encryptedKey,
@@ -557,7 +564,7 @@ describe("Service token fail cases", async () => {
         type: SecretType.Shared,
         secretPath: "/",
         // doesn't matter project key because this will fail before that due to read only access
-        ...encryptSecret(testCryptoProvider.randomBytes(16).toString("hex"), "NEW", "value", "")
+        ...encryptSecret(crypto.randomBytes(16).toString("hex"), "NEW", "value", "")
       },
       headers: {
         authorization: `Bearer ${serviceToken}`

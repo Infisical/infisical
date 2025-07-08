@@ -3,11 +3,12 @@ import { Knex } from "knex";
 
 import { chunkArray } from "@app/lib/fn";
 import { selectAllTableCols } from "@app/lib/knex";
-import { logger } from "@app/lib/logger";
+import { initLogger, logger } from "@app/lib/logger";
 
 import { SecretType, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
+  initLogger();
   logger.info("Starting secret version fix migration");
 
   // Get all shared secret IDs first to optimize versions query
@@ -133,6 +134,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(): Promise<void> {
+  initLogger();
   logger.info("Rollback not implemented for secret version fix migration");
   // Note: Rolling back this migration would be complex and potentially destructive
   // as it would require tracking which version entries were added
