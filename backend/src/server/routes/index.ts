@@ -1916,6 +1916,7 @@ export const registerRoutes = async (
   await hsmService.startService();
 
   await telemetryQueue.startTelemetryCheck();
+  await telemetryQueue.startAggregatedEventsJob();
   await dailyResourceCleanUp.startCleanUp();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();

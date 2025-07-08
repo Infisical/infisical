@@ -122,8 +122,8 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
         .orWhere((qb) => {
           // lastInvitedAt is older than 1 week ago AND createdAt is younger than 1 month ago
           void qb
-            .where(`${TableName.OrgMembership}.lastInvitedAt`, "<", oneMonthAgo)
-            .where(`${TableName.OrgMembership}.createdAt`, ">", oneWeekAgo);
+            .where(`${TableName.OrgMembership}.lastInvitedAt`, "<", oneWeekAgo)
+            .where(`${TableName.OrgMembership}.createdAt`, ">", oneMonthAgo);
         });
 
       return memberships;
@@ -135,9 +135,22 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const updateLastInvitedAtByIds = async (membershipIds: string[]) => {
+    try {
+      if (membershipIds.length === 0) return;
+      await db(TableName.OrgMembership).whereIn("id", membershipIds).update({ lastInvitedAt: new Date() });
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Update last invited at by ids"
+      });
+    }
+  };
+
   return {
     ...orgMembershipOrm,
     findOrgMembershipById,
-    findRecentInvitedMemberships
+    findRecentInvitedMemberships,
+    updateLastInvitedAtByIds
   };
 };

@@ -107,7 +107,12 @@ type TOrgServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey" | "create">;
   orgMembershipDAL: Pick<
     TOrgMembershipDALFactory,
-    "findOrgMembershipById" | "findOne" | "findById" | "findRecentInvitedMemberships" | "updateById"
+    | "findOrgMembershipById"
+    | "findOne"
+    | "findById"
+    | "findRecentInvitedMemberships"
+    | "updateById"
+    | "updateLastInvitedAtByIds"
   >;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
@@ -760,6 +765,10 @@ export const orgServiceFactory = ({
         token,
         callback_url: `${appCfg.SITE_URL}/signupinvite`
       }
+    });
+
+    await orgMembershipDAL.updateById(inviteeOrgMembership.id, {
+      lastInvitedAt: new Date()
     });
 
     return { signupToken: undefined };
@@ -1435,6 +1444,7 @@ export const orgServiceFactory = ({
     const appCfg = getConfig();
 
     const orgCache: Record<string, { name: string; id: string } | undefined> = {};
+    const notifiedUsers: string[] = [];
 
     await Promise.all(
       invitedUsers.map(async (invitedUser) => {
@@ -1465,13 +1475,12 @@ export const orgServiceFactory = ({
               callback_url: `${appCfg.SITE_URL}/signupinvite`
             }
           });
+          notifiedUsers.push(invitedUser.id);
         }
-
-        await orgMembershipDAL.updateById(invitedUser.id, {
-          lastInvitedAt: new Date()
-        });
       })
     );
+
+    await orgMembershipDAL.updateLastInvitedAtByIds(notifiedUsers);
   };
 
   return {

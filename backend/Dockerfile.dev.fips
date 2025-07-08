@@ -46,6 +46,7 @@ RUN apt-get install -y opensc
 RUN mkdir -p /etc/softhsm2/tokens && \
     softhsm2-util --init-token --slot 0 --label "auth-app" --pin 1234 --so-pin 0000
     
+    
 # Build and install FIPS validated OpenSSL
 WORKDIR /openssl-build
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
@@ -60,7 +61,7 @@ RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
     apt-get update && \
-    apt-get install -y infisical=0.41.2
+    apt-get install -y infisical=0.41.89
 
 WORKDIR /app
 
