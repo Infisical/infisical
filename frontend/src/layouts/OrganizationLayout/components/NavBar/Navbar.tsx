@@ -42,7 +42,7 @@ import { useGetOrganizations, useLogoutUser, workspaceKeys } from "@app/hooks/ap
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-import { SubscriptionPlan } from "@app/hooks/api/types";
+import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
@@ -54,33 +54,64 @@ const getPlan = (subscription: SubscriptionPlan) => {
   return "Free";
 };
 
+type SupportType = "organisation" | "personal";
+
+const getFormattedSupportEmailLink = <T extends SupportType>(
+  type: T,
+  org: T extends "organisation" ? Organization : null
+) => {
+  const email = "support@infisical.com";
+
+  const subject =
+    type === "organisation"
+      ? `Support Request for Organisation: ${org!.name}`
+      : "Support Request for Personal Account";
+
+  const body = `Hello Infisical Team,
+
+I am reaching out regarding an issue with my account.
+
+Organisation ID: ${org?.id ?? "N/A"}
+
+Description of Issue:
+[Please describe your issue here...]
+
+Expected Outcome:
+[What you were hoping to happen...]
+
+Thank you,
+[Your Name]`;
+
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
+
 export const INFISICAL_SUPPORT_OPTIONS = [
   [
     <FontAwesomeIcon key={1} className="pr-4 text-sm" icon={faSlack} />,
     "Support Forum",
-    "https://infisical.com/slack"
+    () => "https://infisical.com/slack"
   ],
   [
     <FontAwesomeIcon key={2} className="pr-4 text-sm" icon={faBook} />,
     "Read Docs",
-    "https://infisical.com/docs/documentation/getting-started/introduction"
+    () => "https://infisical.com/docs/documentation/getting-started/introduction"
   ],
   [
     <FontAwesomeIcon key={3} className="pr-4 text-sm" icon={faGithub} />,
     "GitHub Issues",
-    "https://github.com/Infisical/infisical/issues"
+    () => "https://github.com/Infisical/infisical/issues"
   ],
   [
     <FontAwesomeIcon key={4} className="pr-4 text-sm" icon={faEnvelope} />,
     "Email Support",
-    "mailto:support@infisical.com"
+    getFormattedSupportEmailLink
   ],
   [
     <FontAwesomeIcon key={5} className="pr-4 text-sm" icon={faUsers} />,
     "Instance Admins",
-    "server-admins"
+    () => "server-admins"
   ]
-];
+] as const;
 
 export const Navbar = () => {
   const { user } = useUser();
@@ -258,7 +289,9 @@ export const Navbar = () => {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="bottom" className="mt-3 p-1">
-          {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => {
+          {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, getUrl]) => {
+            const url = text === "Email Support" ? getUrl("organisation", currentOrg) : getUrl();
+
             if (url === "server-admins" && isInfisicalCloud()) {
               return null;
             }
