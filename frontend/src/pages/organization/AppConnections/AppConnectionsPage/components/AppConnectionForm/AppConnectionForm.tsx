@@ -16,6 +16,7 @@ import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConn
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
+import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -135,6 +136,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <GitLabConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Bitbucket:
+      return <BitbucketConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Zabbix:
       return <ZabbixConnectionForm onSubmit={onSubmit} />;
     default:
@@ -231,6 +234,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <GitLabConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Bitbucket:
+      return <BitbucketConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Zabbix:
       return <ZabbixConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:

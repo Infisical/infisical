@@ -19,8 +19,7 @@ export const BaseSecretScanningDataSourceSchema = ({
     // unique to provider
     type: true,
     connectionId: true,
-    config: true,
-    encryptedCredentials: true
+    config: true
   }).extend({
     type: z.literal(type),
     connectionId: isConnectionRequired ? z.string().uuid() : z.null(),
