@@ -1,5 +1,3 @@
-import jwt from "jsonwebtoken";
-
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
@@ -174,7 +172,7 @@ export const authPaswordServiceFactory = ({
       code
     });
 
-    const token = jwt.sign(
+    const token = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
         userId: user.id

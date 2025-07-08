@@ -13,6 +13,8 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
+import { CompleteJWTPayload } from "@app/lib/crypto/cryptography/types";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -93,7 +95,7 @@ export const identityOidcAuthServiceFactory = ({
     );
     const jwksUri = discoveryDoc.jwks_uri;
 
-    const decodedToken = jwt.decode(oidcJwt, { complete: true });
+    const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true }) as CompleteJWTPayload;
     if (!decodedToken) {
       throw new UnauthorizedError({
         message: "Invalid JWT"
@@ -105,12 +107,12 @@ export const identityOidcAuthServiceFactory = ({
       requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
     });
 
-    const { kid } = decodedToken.header;
+    const { kid } = decodedToken.header as { kid: string };
     const oidcSigningKey = await client.getSigningKey(kid);
 
     let tokenData: Record<string, string>;
     try {
-      tokenData = jwt.verify(oidcJwt, oidcSigningKey.getPublicKey(), {
+      tokenData = crypto.jwt().verify(oidcJwt, oidcSigningKey.getPublicKey(), {
         issuer: identityOidcAuth.boundIssuer
       }) as Record<string, string>;
     } catch (error) {
@@ -193,7 +195,7 @@ export const identityOidcAuthServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         identityId: identityOidcAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,

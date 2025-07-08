@@ -1,4 +1,3 @@
-import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
@@ -160,7 +159,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
         message: "Failed to find refresh token"
       });
 
-    const decodedToken = jwt.verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
+    const decodedToken = crypto.jwt().verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
 
     if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
       throw new UnauthorizedError({

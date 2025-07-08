@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
-import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import {
@@ -596,7 +595,7 @@ export const orgServiceFactory = ({
     const cfg = getConfig();
     const authToken = authorizationHeader.replace("Bearer ", "");
 
-    const decodedToken = jwt.verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
+    const decodedToken = crypto.jwt().verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
     const response = await orgDAL.transaction(async (tx) => {
@@ -1304,7 +1303,7 @@ export const orgServiceFactory = ({
     }
 
     const appCfg = getConfig();
-    const token = jwt.sign(
+    const token = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
         userId: user.id

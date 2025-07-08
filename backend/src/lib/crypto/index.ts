@@ -1,4 +1,4 @@
-export { crypto, SymmetricKeySize } from "./cryptography";
+export { crypto, SymmetricKeySize, TEncryptedWithRootEncryptionKey } from "./cryptography";
 export { buildSecretBlindIndexFromName } from "./encryption";
 export {
   decryptIntegrationAuths,

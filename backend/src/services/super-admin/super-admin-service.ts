@@ -1,5 +1,4 @@
 import { CronJob } from "cron";
-import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod, OrgMembershipRole, TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -670,7 +669,7 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      const generatedAccessToken = jwt.sign(
+      const generatedAccessToken = crypto.jwt().sign(
         {
           identityId: newIdentity.id,
           identityAccessTokenId: newToken.id,

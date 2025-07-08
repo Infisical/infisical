@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -147,7 +146,7 @@ export const identityUaServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         identityId: identityUa.identityId,
         clientSecretId: validClientSecretInfo.id,

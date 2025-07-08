@@ -2,7 +2,7 @@
 import "ts-node/register";
 
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
+import { crypto } from "@app/lib/crypto/cryptography";
 import path from "path";
 
 import { seedData1 } from "@app/db/seed-data";
@@ -83,7 +83,7 @@ export default {
       // @ts-expect-error type
       globalThis.testSuperAdminDAL = superAdminDAL;
       // @ts-expect-error type
-      globalThis.jwtAuthToken = jwt.sign(
+      globalThis.jwtAuthToken = crypto.jwt().sign(
         {
           authTokenType: AuthTokenType.ACCESS_TOKEN,
           userId: seedData1.id,

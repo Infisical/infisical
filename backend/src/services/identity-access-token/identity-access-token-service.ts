@@ -1,7 +1,7 @@
-import jwt, { JwtPayload } from "jsonwebtoken";
-
 import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
+import { JWTPayload } from "@app/lib/crypto/cryptography/types";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
@@ -81,7 +81,7 @@ export const identityAccessTokenServiceFactory = ({
   const renewAccessToken = async ({ accessToken }: TRenewAccessTokenDTO) => {
     const appCfg = getConfig();
 
-    const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as TIdentityAccessTokenJwtPayload;
+    const decodedToken = crypto.jwt().verify(accessToken, appCfg.AUTH_SECRET) as TIdentityAccessTokenJwtPayload;
     if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
       throw new BadRequestError({ message: "Only identity access tokens can be renewed" });
     }
@@ -145,7 +145,7 @@ export const identityAccessTokenServiceFactory = ({
       expiresIn = undefined;
     }
 
-    const renewedToken = jwt.sign(
+    const renewedToken = crypto.jwt().sign(
       {
         identityId: decodedToken.identityId,
         clientSecretId: decodedToken.clientSecretId,
@@ -162,7 +162,7 @@ export const identityAccessTokenServiceFactory = ({
   const revokeAccessToken = async (accessToken: string) => {
     const appCfg = getConfig();
 
-    const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload & {
+    const decodedToken = crypto.jwt().verify(accessToken, appCfg.AUTH_SECRET) as JWTPayload & {
       identityAccessTokenId: string;
     };
     if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {

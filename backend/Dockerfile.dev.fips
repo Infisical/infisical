@@ -1,5 +1,12 @@
 FROM node:20-slim
 
+# ? Setup a test SoftHSM module. In production a real HSM is used.
+
+ARG SOFTHSM2_VERSION=2.5.0
+
+ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
+    SOFTHSM2_SOURCES=/tmp/softhsm2
+
 # Install build dependencies including python3 (required for pkcs11js and partially TDS driver)
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -45,9 +52,7 @@ RUN apt-get install -y opensc
 
 RUN mkdir -p /etc/softhsm2/tokens && \
     softhsm2-util --init-token --slot 0 --label "auth-app" --pin 1234 --so-pin 0000
-    
-    
-# Build and install FIPS validated OpenSSL
+
 WORKDIR /openssl-build
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && tar -xf openssl-3.1.2.tar.gz \

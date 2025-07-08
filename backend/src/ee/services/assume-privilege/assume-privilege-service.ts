@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
-import jwt from "jsonwebtoken";
 
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -62,7 +62,7 @@ export const assumePrivilegeServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const assumePrivilegesToken = jwt.sign(
+    const assumePrivilegesToken = crypto.jwt().sign(
       {
         tokenVersionId,
         actorType: targetActorType,
@@ -82,7 +82,7 @@ export const assumePrivilegeServiceFactory = ({
     tokenVersionId
   ) => {
     const appCfg = getConfig();
-    const decodedToken = jwt.verify(token, appCfg.AUTH_SECRET) as {
+    const decodedToken = crypto.jwt().verify(token, appCfg.AUTH_SECRET) as {
       tokenVersionId: string;
       projectId: string;
       requesterId: string;

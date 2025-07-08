@@ -1,5 +1,3 @@
-import jwt from "jsonwebtoken";
-
 import { OrgMembershipStatus, SecretKeyEncoding, TableName } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -131,7 +129,7 @@ export const authSignupServiceFactory = ({
     await userDAL.updateById(user.id, { isEmailVerified: true });
 
     // generate jwt token this is a temporary token
-    const jwtToken = jwt.sign(
+    const jwtToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
         userId: user.id.toString()
@@ -364,7 +362,7 @@ export const authSignupServiceFactory = ({
     });
     if (!tokenSession) throw new Error("Failed to create token");
 
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         authMethod: authMethod || AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
@@ -377,7 +375,7 @@ export const authSignupServiceFactory = ({
       { expiresIn: tokenSessionExpiresIn }
     );
 
-    const refreshToken = jwt.sign(
+    const refreshToken = crypto.jwt().sign(
       {
         authMethod: authMethod || AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
@@ -551,7 +549,7 @@ export const authSignupServiceFactory = ({
     });
     if (!tokenSession) throw new Error("Failed to create token");
 
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
@@ -563,7 +561,7 @@ export const authSignupServiceFactory = ({
       { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
     );
 
-    const refreshToken = jwt.sign(
+    const refreshToken = crypto.jwt().sign(
       {
         authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
