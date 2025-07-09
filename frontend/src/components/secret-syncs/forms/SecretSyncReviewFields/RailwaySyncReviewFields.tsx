@@ -20,8 +20,8 @@ export const RailwaySyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Project ID">{project?.name ?? projectId}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment ID">
+      <GenericFieldLabel label="Project">{project?.name ?? projectId}</GenericFieldLabel>
+      <GenericFieldLabel label="Environment">
         {environment?.name ?? environmentId}
       </GenericFieldLabel>
     </>

@@ -10,10 +10,8 @@ export const RailwaySyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Project ID">{destinationConfig.projectId}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment ID">
-        {destinationConfig.environmentId}
-      </GenericFieldLabel>
+      <GenericFieldLabel label="Project">{destinationConfig.projectName}</GenericFieldLabel>
+      <GenericFieldLabel label="Environment">{destinationConfig.environmentName}</GenericFieldLabel>
     </>
   );
 };
