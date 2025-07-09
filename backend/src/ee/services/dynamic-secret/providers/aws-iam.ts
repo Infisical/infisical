@@ -16,9 +16,8 @@ import {
   PutUserPolicyCommand,
   RemoveUserFromGroupCommand
 } from "@aws-sdk/client-iam";
-import { AssumeRoleCommand, AssumeRoleWithWebIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { randomUUID } from "crypto";
-import { promises as fs } from "fs";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
@@ -90,42 +89,9 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
         });
       }
 
-      const tokenFilePath =
-        appCfg.INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH || "/var/run/secrets/kubernetes.io/serviceaccount/token";
-
-      let webIdentityToken;
-      try {
-        webIdentityToken = await fs.readFile(tokenFilePath, "utf-8");
-      } catch (error) {
-        throw new BadRequestError({
-          message: `Failed to get AWS credentials via IRSA: service account token not found at ${tokenFilePath}`
-        });
-      }
-
-      const stsClient = new STSClient({
-        region: providerInputs.region
-      });
-
-      const command = new AssumeRoleWithWebIdentityCommand({
-        RoleArn: providerInputs.roleArn,
-        RoleSessionName: `infisical-dynamic-secret-irsa-${randomUUID()}`,
-        WebIdentityToken: webIdentityToken,
-        DurationSeconds: 900 // 15 mins
-      });
-
-      const assumeRes = await stsClient.send(command);
-
-      if (!assumeRes.Credentials?.AccessKeyId || !assumeRes.Credentials?.SecretAccessKey) {
-        throw new BadRequestError({ message: "Failed to assume role with web identity - verify IRSA configuration" });
-      }
-
+      // The SDK will automatically pick up credentials from the environment
       const client = new IAMClient({
-        region: providerInputs.region,
-        credentials: {
-          accessKeyId: assumeRes.Credentials.AccessKeyId,
-          secretAccessKey: assumeRes.Credentials.SecretAccessKey,
-          sessionToken: assumeRes.Credentials.SessionToken
-        }
+        region: providerInputs.region
       });
       return client;
     }

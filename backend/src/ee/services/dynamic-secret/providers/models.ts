@@ -225,7 +225,6 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
     }),
     z.object({
       method: z.literal(AwsIamAuthType.IRSA),
-      roleArn: z.string().trim().min(1, "Role ARN required"),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
       permissionBoundaryPolicyArn: z.string().trim().optional(),

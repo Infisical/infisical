@@ -115,7 +115,6 @@ export type TDynamicSecretProvider =
           }
         | {
             method: DynamicSecretAwsIamAuth.IRSA;
-            roleArn: string;
             region: string;
             awsPath?: string;
             policyDocument?: string;

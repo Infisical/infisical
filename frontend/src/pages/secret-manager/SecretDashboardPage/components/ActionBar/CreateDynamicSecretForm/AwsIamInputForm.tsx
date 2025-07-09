@@ -14,8 +14,8 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useGetServerConfig } from "@app/hooks/api/admin";
 import { useCreateDynamicSecret } from "@app/hooks/api";
+import { useGetServerConfig } from "@app/hooks/api/admin";
 import {
   DynamicSecretAwsIamAuth,
   DynamicSecretProviders
@@ -65,7 +65,6 @@ const formSchema = z.object({
     }),
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.IRSA),
-      roleArn: z.string().trim().min(1),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
       permissionBoundaryPolicyArn: z.string().trim().optional(),
@@ -265,7 +264,7 @@ export const AwsIamInputForm = ({
                   </FormControl>
                 )}
               />
-              {method === DynamicSecretAwsIamAuth.AccessKey ? (
+              {method === DynamicSecretAwsIamAuth.AccessKey && (
                 <div className="flex items-center space-x-2">
                   <Controller
                     control={control}
@@ -298,7 +297,8 @@ export const AwsIamInputForm = ({
                     )}
                   />
                 </div>
-              ) : (
+              )}
+              {method === DynamicSecretAwsIamAuth.AssumeRole && (
                 <div className="flex items-center space-x-2">
                   <Controller
                     control={control}
@@ -306,11 +306,7 @@ export const AwsIamInputForm = ({
                     defaultValue=""
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        label={
-                          method === DynamicSecretAwsIamAuth.AssumeRole
-                            ? "Assume Role ARN"
-                            : "Role ARN"
-                        }
+                        label="Assume Role ARN"
                         className="flex-grow"
                         isError={Boolean(error?.message)}
                         errorText={error?.message}

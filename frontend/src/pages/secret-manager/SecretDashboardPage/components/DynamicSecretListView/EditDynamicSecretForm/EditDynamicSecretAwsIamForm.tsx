@@ -235,7 +235,7 @@ export const EditDynamicSecretAwsIamForm = ({
                 </FormControl>
               )}
             />
-            {method === DynamicSecretAwsIamAuth.AccessKey ? (
+            {method === DynamicSecretAwsIamAuth.AccessKey && (
               <div className="flex items-center space-x-2">
                 <Controller
                   control={control}
@@ -268,7 +268,8 @@ export const EditDynamicSecretAwsIamForm = ({
                   )}
                 />
               </div>
-            ) : (
+            )}
+            {method === DynamicSecretAwsIamAuth.AssumeRole && (
               <div className="flex items-center space-x-2">
                 <Controller
                   control={control}
@@ -276,11 +277,7 @@ export const EditDynamicSecretAwsIamForm = ({
                   defaultValue=""
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label={
-                        method === DynamicSecretAwsIamAuth.AssumeRole
-                          ? "Assume Role ARN"
-                          : "Role ARN"
-                      }
+                      label="Assume Role ARN"
                       className="flex-grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
