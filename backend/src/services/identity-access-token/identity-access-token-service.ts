@@ -1,7 +1,6 @@
 import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { JWTPayload } from "@app/lib/crypto/cryptography/types";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
@@ -162,7 +161,7 @@ export const identityAccessTokenServiceFactory = ({
   const revokeAccessToken = async (accessToken: string) => {
     const appCfg = getConfig();
 
-    const decodedToken = crypto.jwt().verify(accessToken, appCfg.AUTH_SECRET) as JWTPayload & {
+    const decodedToken = crypto.jwt().verify(accessToken, appCfg.AUTH_SECRET) as TIdentityAccessTokenJwtPayload & {
       identityAccessTokenId: string;
     };
     if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN) {
