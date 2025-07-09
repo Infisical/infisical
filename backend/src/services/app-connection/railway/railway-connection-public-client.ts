@@ -34,6 +34,7 @@ export function getRailwayAuthHeaders(method: RailwayConnectionMethod, token: st
 
 export function getRailwayRatelimiter(headers: AxiosResponse["headers"]): {
   isRatelimited: boolean;
+  maxAttempts: number;
   wait: () => Promise<void>;
 } {
   const retryAfter: number | undefined = headers["Retry-After"] as number | undefined;
@@ -53,7 +54,8 @@ export function getRailwayRatelimiter(headers: AxiosResponse["headers"]): {
 
   return {
     isRatelimited: Boolean(retryAfter || requestsLeft === 0),
-    wait
+    wait,
+    maxAttempts: 3
   };
 }
 
@@ -73,7 +75,8 @@ class RailwayPublicClient {
   async send<T extends TRailwayResponse>(
     query: string,
     options: RailwaySendReqOptions,
-    variables: Record<string, string | Record<string, string>> = {}
+    variables: Record<string, string | Record<string, string>> = {},
+    retryAttempt: number = 0
   ): Promise<T["data"] | undefined> {
     const body = {
       query,
@@ -93,8 +96,9 @@ class RailwayPublicClient {
 
     const limiter = getRailwayRatelimiter(response.headers);
 
-    if (limiter.isRatelimited) {
+    if (limiter.isRatelimited && retryAttempt <= limiter.maxAttempts) {
       await limiter.wait();
+      return this.send(query, options, variables, retryAttempt + 1);
     }
 
     return response.data.data;
