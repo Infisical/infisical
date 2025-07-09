@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { useSendVerificationEmail } from "@app/hooks/api";
 
 import Error from "../basic/Error";
-import { Button } from "../v2";
 
 // The style for the verification code input
 const props = {
@@ -48,27 +47,22 @@ const propsPhone = {
 
 interface CodeInputStepProps {
   email: string;
-  incrementStep: () => void;
   setCode: (value: string) => void;
   codeError: boolean;
-  isCodeInputCheckLoading: boolean;
 }
 
 /**
  * This is the second step of sign up where users need to verify their email
  * @param {object} obj
  * @param {string} obj.email - user's email to which we just sent a verification email
- * @param {function} obj.incrementStep - goes to the next step of signup
  * @param {function} obj.setCode - state updating function that set the current value of the emai verification code
  * @param {boolean} obj.codeError - whether the code was inputted wrong or now
  * @returns
  */
 export default function CodeInputStep({
   email,
-  incrementStep,
   setCode,
   codeError,
-  isCodeInputCheckLoading
 }: CodeInputStepProps): JSX.Element {
   const { mutateAsync } = useSendVerificationEmail();
   const [isLoading, setIsLoading] = useState(false);
@@ -115,23 +109,6 @@ export default function CodeInputStep({
         />
       </div>
       {codeError && <Error text={t("signup.step2-code-error")} />}
-      <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
-        <div className="text-l w-full py-1 text-lg">
-          <Button
-            type="submit"
-            onClick={incrementStep}
-            size="sm"
-            isFullWidth
-            className="h-14"
-            colorSchema="primary"
-            variant="outline_bg"
-            isLoading={isCodeInputCheckLoading}
-          >
-            {" "}
-            {String(t("signup.verify"))}{" "}
-          </Button>
-        </div>
-      </div>
       <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
