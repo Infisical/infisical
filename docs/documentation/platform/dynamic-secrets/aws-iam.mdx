@@ -275,7 +275,8 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
                         "Action": "sts:AssumeRoleWithWebIdentity",
                         "Condition": {
                             "StringEquals": {
-                                "oidc.eks.<REGION>.amazonaws.com/id/<OIDC_ID>:sub": "system:serviceaccount:<K8S_NAMESPACE>:<INFISICAL_SERVICE_ACCOUNT_NAME>"
+                                "oidc.eks.<REGION>.amazonaws.com/id/<OIDC_ID>:sub": "system:serviceaccount:<K8S_NAMESPACE>:<INFISICAL_SERVICE_ACCOUNT_NAME>",
+                                "oidc.eks.<REGION>.amazonaws.com/id/<OIDC_ID>:aud": "sts.amazonaws.com"
                             }
                         }
                     }
