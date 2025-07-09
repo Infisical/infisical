@@ -14,7 +14,6 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { CompleteJWTPayload } from "@app/lib/crypto/cryptography/types";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -95,7 +94,7 @@ export const identityOidcAuthServiceFactory = ({
     );
     const jwksUri = discoveryDoc.jwks_uri;
 
-    const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true }) as CompleteJWTPayload;
+    const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
     if (!decodedToken) {
       throw new UnauthorizedError({
         message: "Invalid JWT"

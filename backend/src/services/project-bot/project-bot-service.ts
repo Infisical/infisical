@@ -54,7 +54,7 @@ export const projectBotServiceFactory = ({
       if (doc) return doc;
 
       const keys =
-        privateKey && publicKey ? { privateKey, publicKey } : crypto.encryption().asymmetric().generateKeyPair();
+        privateKey && publicKey ? { privateKey, publicKey } : await crypto.encryption().asymmetric().generateKeyPair();
 
       const { iv, tag, ciphertext, encoding, algorithm } = crypto
         .encryption()

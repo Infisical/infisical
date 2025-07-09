@@ -1,3 +1,5 @@
+// Note(Daniel): Do not rename this import, as it is strictly removed from FIPS standalone builds to avoid FIPS mode issues.
+// If you rename the import, update the Dockerfile.fips.standalone-infisical file as well.
 import "./lib/telemetry/instrumentation";
 
 import dotenv from "dotenv";

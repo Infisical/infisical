@@ -200,8 +200,11 @@ WORKDIR /backend
 ENV TELEMETRY_ENABLED true
 
 EXPOSE 8080
-EXPOSE 80
 EXPOSE 443
+
+# Remove telemetry. dd-trace uses BullMQ with MD5 hashing, which breaks when FIPS mode is enabled.
+RUN grep -v 'import "./lib/telemetry/instrumentation.mjs";' dist/main.mjs > dist/main.mjs.tmp && \
+    mv dist/main.mjs.tmp dist/main.mjs
 
 USER non-root-user
 

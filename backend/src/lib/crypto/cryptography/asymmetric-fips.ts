@@ -1,11 +1,25 @@
-import crypto from "crypto";
+import crypto, { KeyObject } from "crypto";
 
 import { SecretEncryptionAlgo } from "@app/db/schemas";
 import { CryptographyError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 export const asymmetricFipsValidated = () => {
-  const generateKeyPair = () => {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync("x25519");
+  const generateKeyPair = async () => {
+    const { publicKey, privateKey } = await new Promise<{ publicKey: KeyObject; privateKey: KeyObject }>((resolve) => {
+      crypto.generateKeyPair("x25519", undefined, (err, pubKey, privKey) => {
+        if (err) {
+          logger.error(err, "FIPS generateKeyPair: Failed to generate key pair");
+          throw new CryptographyError({
+            message: "Failed to generate key pair"
+          });
+        }
+        resolve({
+          publicKey: pubKey,
+          privateKey: privKey
+        });
+      });
+    });
 
     return {
       publicKey: publicKey.export({ type: "spki", format: "der" }).toString("base64"),

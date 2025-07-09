@@ -386,6 +386,34 @@ export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logge
   return envCfg;
 };
 
+export const getTelemetryConfig = () => {
+  const parsedEnv = envSchema.safeParse(process.env);
+  if (!parsedEnv.success) {
+    console.error("Invalid environment variables. Check the error below");
+    console.error(parsedEnv.error.issues);
+    process.exit(-1);
+  }
+
+  return {
+    useOtel: parsedEnv.data.OTEL_TELEMETRY_COLLECTION_ENABLED,
+    useDataDogTracer: parsedEnv.data.SHOULD_USE_DATADOG_TRACER,
+    OTEL: {
+      otlpURL: parsedEnv.data.OTEL_EXPORT_OTLP_ENDPOINT,
+      otlpUser: parsedEnv.data.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,
+      otlpPassword: parsedEnv.data.OTEL_COLLECTOR_BASIC_AUTH_PASSWORD,
+      otlpPushInterval: parsedEnv.data.OTEL_OTLP_PUSH_INTERVAL,
+      exportType: parsedEnv.data.OTEL_EXPORT_TYPE
+    },
+    TRACER: {
+      profiling: parsedEnv.data.DATADOG_PROFILING_ENABLED,
+      version: parsedEnv.data.INFISICAL_PLATFORM_VERSION,
+      env: parsedEnv.data.DATADOG_ENV,
+      service: parsedEnv.data.DATADOG_SERVICE,
+      hostname: parsedEnv.data.DATADOG_HOSTNAME
+    }
+  };
+};
+
 export const getDatabaseCredentials = (logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {

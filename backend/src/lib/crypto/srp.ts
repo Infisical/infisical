@@ -39,7 +39,7 @@ export const generateUserSrpKeys = async (
   password: string,
   customKeys?: { publicKey: string; privateKey: string }
 ) => {
-  const pair = crypto.encryption().asymmetric().generateKeyPair();
+  const pair = await crypto.encryption().asymmetric().generateKeyPair();
 
   const privateKey = customKeys?.privateKey || pair.privateKey;
   const publicKey = customKeys?.publicKey || pair.publicKey;

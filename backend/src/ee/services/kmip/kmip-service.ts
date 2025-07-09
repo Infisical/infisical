@@ -67,6 +67,12 @@ export const kmipServiceFactory = ({
     description,
     permissions
   }: TCreateKmipClientDTO) => {
+    if (crypto.isFipsModeEnabled()) {
+      throw new BadRequestError({
+        message: "KMIP is currently not supported in FIPS mode of operation."
+      });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

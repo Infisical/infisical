@@ -59,7 +59,7 @@ export const getBotKeyFnFactory = (
         publicKey: projectV1Keys.senderPublicKey,
         privateKey: userPrivateKey
       });
-      const botKey = crypto.encryption().asymmetric().generateKeyPair();
+      const botKey = await crypto.encryption().asymmetric().generateKeyPair();
       const { iv, tag, ciphertext, encoding, algorithm } = crypto
         .encryption()
         .encryptWithRootEncryptionKey(botKey.privateKey);

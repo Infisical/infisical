@@ -497,7 +497,7 @@ export const orgServiceFactory = ({
     orgName: string;
     userEmail?: string | null;
   }) => {
-    const { privateKey, publicKey } = crypto.encryption().asymmetric().generateKeyPair();
+    const { privateKey, publicKey } = await crypto.encryption().asymmetric().generateKeyPair();
     const key = crypto.randomBytes(32).toString("base64");
     const {
       ciphertext: encryptedPrivateKey,

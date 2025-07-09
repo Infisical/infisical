@@ -52,7 +52,7 @@ export const seedData1 = {
 };
 
 export const generateUserSrpKeys = async (password: string) => {
-  const { publicKey, privateKey } = crypto.encryption().asymmetric().generateKeyPair();
+  const { publicKey, privateKey } = await crypto.encryption().asymmetric().generateKeyPair();
 
   // eslint-disable-next-line
   const client = new jsrp.client();

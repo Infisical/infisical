@@ -19,9 +19,8 @@ import { CryptographyError } from "../../errors";
 import { logger } from "../../logger";
 import { asymmetricFipsValidated } from "./asymmetric-fips";
 import { hasherFipsValidated } from "./hash-fips";
-import { jwtFipsValidated } from "./jwt-fips";
 import type { TDecryptAsymmetricInput, TDecryptSymmetricInput, TEncryptSymmetricInput } from "./types";
-import { DigestType, JWTPayload, JWTSecretOrKey, JWTSignOptions, JWTVerifyOptions, SymmetricKeySize } from "./types";
+import { DigestType, SymmetricKeySize } from "./types";
 
 const bytesToBits = (bytes: number) => bytes * 8;
 
@@ -122,6 +121,8 @@ const cryptographyFactory = () => {
   const $setFipsModeEnabled = (enabled: boolean) => {
     // If FIPS is enabled, we need to validate that the ENCRYPTION_KEY is in a base64 format, and is a 256-bit key.
     if (enabled) {
+      crypto.setFips(true);
+
       const appCfg = getConfig();
 
       if (appCfg.ENCRYPTION_KEY) {
@@ -190,9 +191,10 @@ const cryptographyFactory = () => {
     $checkIsInitialized();
 
     const asymmetric = () => {
-      const generateKeyPair = () => {
+      const generateKeyPair = async () => {
         if (isFipsModeEnabled()) {
-          return asymmetricFipsValidated().generateKeyPair();
+          const keyPair = await asymmetricFipsValidated().generateKeyPair();
+          return keyPair;
         }
         return generateAsymmetricKeyPairNoFipsValidation();
       };
@@ -381,31 +383,10 @@ const cryptographyFactory = () => {
   const jwt = () => {
     $checkIsInitialized();
 
-    const sign = (payload: JWTPayload, secretOrKey: JWTSecretOrKey, options: JWTSignOptions = {}) => {
-      if (isFipsModeEnabled()) {
-        return jwtFipsValidated().sign(payload, secretOrKey, options);
-      }
-      return jwtDep.sign(payload, secretOrKey, options);
-    };
-
-    const verify = (token: string, secretOrKey: JWTSecretOrKey, options: JWTVerifyOptions = {}) => {
-      if (isFipsModeEnabled()) {
-        return jwtFipsValidated().verify(token, secretOrKey, options);
-      }
-      return jwtDep.verify(token, secretOrKey, options);
-    };
-
-    const decode = (token: string, options: { complete?: boolean } = {}) => {
-      if (isFipsModeEnabled()) {
-        return jwtFipsValidated().decode(token, options);
-      }
-      return jwtDep.decode(token, options);
-    };
-
     return {
-      sign,
-      verify,
-      decode
+      sign: jwtDep.sign,
+      verify: jwtDep.verify,
+      decode: jwtDep.decode
     };
   };
 

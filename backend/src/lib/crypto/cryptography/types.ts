@@ -1,5 +1,3 @@
-import { KeyObject } from "crypto";
-
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 
 export enum DigestType {
@@ -54,39 +52,3 @@ export type TEncryptedWithRootEncryptionKey = {
   algorithm: SecretEncryptionAlgo;
   encoding: SecretKeyEncoding;
 };
-
-export interface JWTPayload {
-  iat?: number;
-  exp?: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
-}
-
-export interface CompleteJWTPayload {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  header: any;
-  payload: JWTPayload;
-  signature: string;
-}
-
-export type Algorithm = "HS256" | "HS384" | "HS512" | "RS256" | "RS384" | "RS512";
-
-export interface JWTSignOptions {
-  algorithm?: Algorithm | undefined;
-  keyid?: string | undefined;
-  expiresIn?: string | number;
-}
-
-export type JWTSecretOrKey = string | Buffer | KeyObject | { key: string | Buffer; passphrase: string };
-
-export interface JWTVerifyOptions {
-  algorithms?: Algorithm[] | undefined;
-  audience?: string | string[];
-  issuer?: string | string[];
-  subject?: string;
-  ignoreExpiration?: boolean;
-  ignoreNotBefore?: boolean;
-  clockTolerance?: number;
-  maxAge?: string | number;
-  jwtid?: string;
-}

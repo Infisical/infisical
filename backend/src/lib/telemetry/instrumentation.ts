@@ -6,9 +6,10 @@ import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { Resource } from "@opentelemetry/resources";
 import { AggregationTemporality, MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
+import tracer from "dd-trace";
 import dotenv from "dotenv";
 
-import { initEnvConfig } from "../config/env";
+import { getTelemetryConfig } from "../config/env";
 
 dotenv.config();
 
@@ -73,31 +74,17 @@ const initTelemetryInstrumentation = ({
   });
 };
 
-const setupTelemetry = async () => {
-  const envCfg = await initEnvConfig();
+const setupTelemetry = () => {
+  const appCfg = getTelemetryConfig();
 
-  if (envCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+  if (appCfg.useOtel) {
     console.log("Initializing telemetry instrumentation");
-    initTelemetryInstrumentation({
-      otlpURL: envCfg.OTEL_EXPORT_OTLP_ENDPOINT,
-      otlpUser: envCfg.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,
-      otlpPassword: envCfg.OTEL_COLLECTOR_BASIC_AUTH_PASSWORD,
-      otlpPushInterval: envCfg.OTEL_OTLP_PUSH_INTERVAL,
-      exportType: envCfg.OTEL_EXPORT_TYPE
-    });
+    initTelemetryInstrumentation({ ...appCfg.OTEL });
   }
 
-  if (envCfg.SHOULD_USE_DATADOG_TRACER) {
-    const tracer = await import("dd-trace");
-
+  if (appCfg.useDataDogTracer) {
     console.log("Initializing Datadog tracer");
-    tracer.init({
-      profiling: envCfg.DATADOG_PROFILING_ENABLED,
-      version: envCfg.INFISICAL_PLATFORM_VERSION,
-      env: envCfg.DATADOG_ENV,
-      service: envCfg.DATADOG_SERVICE,
-      hostname: envCfg.DATADOG_HOSTNAME
-    });
+    tracer.init({ ...appCfg.TRACER });
   }
 };
 
