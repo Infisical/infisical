@@ -20,6 +20,7 @@ import { deriveArgonKey } from "../utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "../utilities/saveTokenToLocalStorage";
 import SecurityClient from "../utilities/SecurityClient";
 import { Button, Input } from "../v2";
+import { validateOrganizationName } from "../utilities/checks/validateOrganizationName";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -76,7 +77,7 @@ export default function UserInfoStep({
   providerAuthToken
 }: UserInfoStepProps): JSX.Element {
   const [nameError, setNameError] = useState(false);
-  const [organizationNameError, setOrganizationNameError] = useState(false);
+  const [organizationNameError, setOrganizationNameError] = useState<string | null>(null);
 
   const [errors, setErrors] = useState<Errors>({});
 
@@ -95,11 +96,12 @@ export default function UserInfoStep({
     } else {
       setNameError(false);
     }
-    if (!organizationName) {
-      setOrganizationNameError(true);
+    const organizationNameError = validateOrganizationName(organizationName);
+
+    setOrganizationNameError(organizationNameError);
+
+    if (organizationNameError) {
       errorCheck = true;
-    } else {
-      setOrganizationNameError(false);
     }
 
     errorCheck = await checkPassword({
@@ -257,7 +259,7 @@ export default function UserInfoStep({
           />
           {organizationNameError && (
             <p className="ml-1 mt-1 w-full text-left text-xs text-red-600">
-              Please, specify your organization name
+              {organizationNameError}
             </p>
           )}
         </div>
