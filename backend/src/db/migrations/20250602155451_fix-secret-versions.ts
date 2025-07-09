@@ -3,7 +3,7 @@ import { Knex } from "knex";
 
 import { chunkArray } from "@app/lib/fn";
 import { selectAllTableCols } from "@app/lib/knex";
-import { logger, initLogger } from "@app/lib/logger";
+import { initLogger, logger } from "@app/lib/logger";
 
 import { SecretType, TableName } from "../schemas";
 

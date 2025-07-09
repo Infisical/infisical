@@ -108,16 +108,16 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
       const now = new Date();
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const twelveMonthsAgo = new Date(now.getTime() - 360 * 24 * 60 * 60 * 1000);
 
       const memberships = await db
         .replicaNode()(TableName.OrgMembership)
         .where("status", "invited")
         .where((qb) => {
-          // lastInvitedAt is null AND createdAt is between 1 week and 3 months ago
+          // lastInvitedAt is null AND createdAt is between 1 week and 12 months ago
           void qb
             .whereNull(`${TableName.OrgMembership}.lastInvitedAt`)
-            .whereBetween(`${TableName.OrgMembership}.createdAt`, [threeMonthsAgo, oneWeekAgo]);
+            .whereBetween(`${TableName.OrgMembership}.createdAt`, [twelveMonthsAgo, oneWeekAgo]);
         })
         .orWhere((qb) => {
           // lastInvitedAt is older than 1 week ago AND createdAt is younger than 1 month ago
