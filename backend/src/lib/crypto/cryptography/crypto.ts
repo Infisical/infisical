@@ -433,12 +433,9 @@ const cryptographyFactory = () => {
       getRandomValues: crypto.getRandomValues,
       randomUUID: crypto.randomUUID,
       subtle: {
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        generateKey: subtle.generateKey,
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        importKey: subtle.importKey,
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        exportKey: subtle.exportKey
+        generateKey: subtle.generateKey.bind(subtle),
+        importKey: subtle.importKey.bind(subtle),
+        exportKey: subtle.exportKey.bind(subtle)
       },
       constants: crypto.constants,
       X509Certificate: crypto.X509Certificate,

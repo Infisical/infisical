@@ -5,7 +5,7 @@ import acme from "acme-client";
 import { TableName } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -190,6 +190,12 @@ export const AcmeCertificateAuthorityFns = ({
     enableDirectIssuance: boolean;
     actor: OrgServiceActor;
   }) => {
+    if (crypto.isFipsModeEnabled()) {
+      throw new CryptographyError({
+        message: "ACME is currently not supported in FIPS mode of operation."
+      });
+    }
+
     const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig } = configuration;
     const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
