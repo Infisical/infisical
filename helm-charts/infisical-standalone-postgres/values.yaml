@@ -13,6 +13,31 @@ infisical:
   # -- Automatically migrates new database schema when deploying
   autoDatabaseSchemaMigration: true
 
+  autoBootstrap:
+    # -- Enable auto-bootstrap of the Infisical instance
+    enabled: false
+
+    image:
+      # -- Infisical Infisical CLI image tag version
+      tag: "0.41.86"
+
+    # -- Template for the data/stringData section of the Kubernetes secret. Available functions: encodeBase64
+    secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
+
+    secretDestination:
+      # -- Name of the bootstrap secret to create in the Kubernetes cluster which will store the formatted root identity credentials
+      name: "infisical-bootstrap-secret"
+
+      # -- Namespace to create the bootstrap secret in. If not provided, the secret will be created in the same namespace as the release.
+      namespace: "default"
+
+    # -- Infisical organization to create in the Infisical instance during auto-bootstrap
+    organization: "default-org"
+
+    credentialSecret:
+      # -- Name of the Kubernetes secret containing the credentials for the auto-bootstrap workflow
+      name: "infisical-bootstrap-credentials"
+
   databaseSchemaMigrationJob:
     image:
       # -- Image repository for migration wait job
@@ -55,6 +80,10 @@ infisical:
   tolerations: []
   # -- Node selector for pod placement
   nodeSelector: {}
+  # -- Topology spread constraints for multi-zone deployments
+  # -- Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+  topologySpreadConstraints: []
+
   # -- Kubernetes Secret reference containing Infisical root credentials
   kubeSecretRef: "infisical-secrets"
 

@@ -3,6 +3,7 @@ import { Control, Controller, useFieldArray, useFormContext, useWatch } from "re
 import {
   faChevronDown,
   faChevronRight,
+  faDiagramProject,
   faGripVertical,
   faInfoCircle,
   faPlus,
@@ -11,7 +12,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button, Checkbox, Select, SelectItem, Tag, Tooltip } from "@app/components/v2";
+import { Button, Checkbox, IconButton, Select, SelectItem, Tag, Tooltip } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
@@ -27,6 +28,7 @@ type Props<T extends ProjectPermissionSub> = {
   actions: TProjectPermissionObject[T]["actions"];
   children?: JSX.Element;
   isDisabled?: boolean;
+  onShowAccessTree?: (subject: ProjectPermissionSub) => void;
 };
 
 type ActionProps = {
@@ -71,7 +73,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   actions,
   children,
   title,
-  isDisabled
+  isDisabled,
+  onShowAccessTree
 }: Props<T>) => {
   const { control, watch } = useFormContext<TFormSchema>();
   const { fields, remove, insert, move } = useFieldArray({
@@ -89,7 +92,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
-  if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return <div />;
+  if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return null;
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);
@@ -121,9 +124,9 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   };
 
   return (
-    <div className="border border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md">
+    <div className="overflow-clip border border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md">
       <div
-        className="flex cursor-pointer items-center space-x-8 px-5 py-4 text-sm text-gray-300"
+        className="flex h-14 cursor-pointer items-center px-5 py-4 text-sm text-gray-300"
         role="button"
         tabIndex={0}
         onClick={() => setIsOpen.toggle()}
@@ -133,20 +136,50 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
           }
         }}
       >
-        <div>
-          <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} />
-        </div>
-        <div className="flex-grow">{title}</div>
+        <FontAwesomeIcon className="mr-8" icon={isOpen ? faChevronDown : faChevronRight} />
+
+        <div className="flex-grow text-base">{title}</div>
         {fields.length > 1 && (
           <div>
-            <Tag size="xs" className="px-2">
-              {fields.length} rules
+            <Tag size="xs" className="mr-2 px-2">
+              {fields.length} Rules
             </Tag>
           </div>
         )}
+        {isOpen && onShowAccessTree && (
+          <Button
+            leftIcon={<FontAwesomeIcon icon={faDiagramProject} />}
+            variant="outline_bg"
+            size="xs"
+            className="ml-2"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowAccessTree(subject);
+            }}
+          >
+            Visualize Access
+          </Button>
+        )}
+        {!isDisabled && isOpen && isConditionalSubjects(subject) && (
+          <Button
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            variant="outline_bg"
+            className="ml-2"
+            size="xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              insert(fields.length, [
+                { read: false, edit: false, create: false, delete: false } as any
+              ]);
+            }}
+            isDisabled={isDisabled}
+          >
+            Add Rule
+          </Button>
+        )}
       </div>
       {isOpen && (
-        <div key={`select-${subject}-type`} className="flex flex-col space-y-4 bg-bunker-800 p-6">
+        <div key={`select-${subject}-type`} className="flex flex-col space-y-3 bg-bunker-700 p-3">
           {fields.map((el, rootIndex) => {
             let isFullReadAccessEnabled = false;
 
@@ -154,78 +187,109 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
               isFullReadAccessEnabled = watch(`permissions.${subject}.${rootIndex}.read` as any);
             }
 
+            const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted` as any);
+
             return (
               <div
                 key={el.id}
                 className={twMerge(
-                  "relative bg-mineshaft-800 p-5 pr-10 first:rounded-t-md last:rounded-b-md",
-                  dragOverItem === rootIndex ? "border-2 border-blue-400" : "",
+                  "relative rounded-md border-l-[6px] bg-mineshaft-800 px-5 py-4 transition-colors duration-300",
+                  isInverted ? "border-l-red-600/50" : "border-l-green-600/50",
+                  dragOverItem === rootIndex ? "border-2 border-primary/50" : "",
                   draggedItem === rootIndex ? "opacity-50" : ""
                 )}
                 onDragOver={(e) => handleDragOver(e, rootIndex)}
                 onDrop={handleDrop}
               >
-                {!isDisabled && (
-                  <Tooltip position="left" content="Drag to reorder permission">
-                    <div
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, rootIndex)}
-                      onDragEnd={handleDragEnd}
-                      className="absolute right-3 top-2 cursor-move rounded-md bg-mineshaft-700 p-2 text-gray-400 hover:text-gray-200"
-                    >
-                      <FontAwesomeIcon icon={faGripVertical} />
-                    </div>
-                  </Tooltip>
-                )}
-
-                <div className="mb-4 flex items-center">
-                  {isConditionalSubjects(subject) && (
+                {isConditionalSubjects(subject) && (
+                  <div className="mb-4 flex items-center gap-3">
                     <div className="flex w-full items-center text-gray-300">
-                      <div className="w-1/4">Permission</div>
-                      <div className="mr-4 w-1/4">
-                        <Controller
-                          defaultValue={false as any}
-                          name={`permissions.${subject}.${rootIndex}.inverted`}
-                          render={({ field }) => (
-                            <Select
-                              value={String(field.value)}
-                              onValueChange={(val) => field.onChange(val === "true")}
-                              containerClassName="w-full"
-                              className="w-full"
-                              isDisabled={isDisabled}
-                            >
-                              <SelectItem value="false">Allow</SelectItem>
-                              <SelectItem value="true">Forbid</SelectItem>
-                            </Select>
-                          )}
+                      <div className="mr-3">Permission</div>
+                      <Controller
+                        defaultValue={false as any}
+                        name={`permissions.${subject}.${rootIndex}.inverted`}
+                        render={({ field }) => (
+                          <Select
+                            value={String(field.value)}
+                            onValueChange={(val) => field.onChange(val === "true")}
+                            containerClassName="w-40"
+                            className="w-full"
+                            isDisabled={isDisabled}
+                            position="popper"
+                          >
+                            <SelectItem value="false">Allow</SelectItem>
+                            <SelectItem value="true">Forbid</SelectItem>
+                          </Select>
+                        )}
+                      />
+                      <Tooltip
+                        asChild
+                        content={
+                          <>
+                            <p>
+                              Whether to allow or forbid the selected actions when the following
+                              conditions (if any) are met.
+                            </p>
+                            <p className="mt-2">Forbid rules must come after allow rules.</p>
+                          </>
+                        }
+                      >
+                        <FontAwesomeIcon
+                          icon={faInfoCircle}
+                          size="sm"
+                          className="ml-2 text-bunker-400"
                         />
-                      </div>
-                      <div>
-                        <Tooltip
-                          asChild
-                          content={
-                            <>
-                              <p>
-                                Whether to allow or forbid the selected actions when the following
-                                conditions (if any) are met.
-                              </p>
-                              <p className="mt-2">Forbid rules must come after allow rules.</p>
-                            </>
-                          }
-                        >
-                          <FontAwesomeIcon
-                            icon={faInfoCircle}
-                            size="sm"
-                            className="text-gray-400"
-                          />
+                      </Tooltip>
+                      {!isDisabled && (
+                        <Tooltip content="Remove Rule">
+                          <IconButton
+                            ariaLabel="Remove rule"
+                            colorSchema="danger"
+                            variant="plain"
+                            size="xs"
+                            className="ml-auto mr-3 rounded"
+                            onClick={() => remove(rootIndex)}
+                            isDisabled={isDisabled}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
                         </Tooltip>
-                      </div>
+                      )}
+                      {!isDisabled && (
+                        <Tooltip position="left" content="Drag to reorder permission">
+                          <div
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, rootIndex)}
+                            onDragEnd={handleDragEnd}
+                            className="cursor-move text-bunker-300 hover:text-bunker-200"
+                          >
+                            <FontAwesomeIcon icon={faGripVertical} />
+                          </div>
+                        </Tooltip>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="flex gap-4 text-gray-300">
-                  <div className="w-1/4">Actions</div>
-                  <div className="flex flex-grow flex-wrap justify-start gap-8">
+                  </div>
+                )}
+                <div className="flex flex-col text-gray-300">
+                  <div className="flex w-full justify-between">
+                    <div className="mb-2">Actions</div>
+                    {!isDisabled && !isConditionalSubjects(subject) && (
+                      <Tooltip content="Remove Rule">
+                        <IconButton
+                          ariaLabel="Remove rule"
+                          colorSchema="danger"
+                          variant="plain"
+                          size="xs"
+                          className="ml-auto rounded"
+                          onClick={() => remove(rootIndex)}
+                          isDisabled={isDisabled}
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </div>
+                  <div className="flex flex-grow flex-wrap justify-start gap-x-8 gap-y-4">
                     {actions.map(({ label, value }, index) => {
                       if (typeof value !== "string") return undefined;
 
@@ -255,41 +319,6 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   cloneElement(children, {
                     position: rootIndex
                   })}
-                <div
-                  className={twMerge(
-                    "mt-4 flex justify-start space-x-4",
-                    isConditionalSubjects(subject) && "justify-end"
-                  )}
-                >
-                  {!isDisabled && isConditionalSubjects(subject) && (
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      variant="star"
-                      size="xs"
-                      className="mt-2"
-                      onClick={() => {
-                        insert(rootIndex + 1, [
-                          { read: false, edit: false, create: false, delete: false } as any
-                        ]);
-                      }}
-                      isDisabled={isDisabled}
-                    >
-                      Add policy
-                    </Button>
-                  )}
-                  {!isDisabled && (
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                      variant="outline_bg"
-                      size="xs"
-                      className="mt-2 hover:border-red"
-                      onClick={() => remove(rootIndex)}
-                      isDisabled={isDisabled}
-                    >
-                      Remove policy
-                    </Button>
-                  )}{" "}
-                </div>
               </div>
             );
           })}

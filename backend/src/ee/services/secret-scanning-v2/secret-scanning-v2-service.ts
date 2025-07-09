@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -31,6 +30,8 @@ import {
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
   TSecretScanningDataSource,
+  TSecretScanningDataSourceCredentials,
+  TSecretScanningDataSourceInput,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
@@ -50,6 +51,7 @@ import { TAppConnection } from "@app/services/app-connection/app-connection-type
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue";
 
@@ -92,7 +94,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -154,7 +156,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -199,7 +201,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -233,7 +235,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: payload.projectId
     });
 
@@ -257,7 +259,7 @@ export const secretScanningV2ServiceFactory = ({
     try {
       const createdDataSource = await factory.initialize(
         {
-          payload,
+          payload: payload as TSecretScanningDataSourceInput,
           connection: connection as TSecretScanningDataSourceWithConnection["connection"],
           secretScanningV2DAL
         },
@@ -288,7 +290,7 @@ export const secretScanningV2ServiceFactory = ({
             );
 
             await factory.postInitialization({
-              payload,
+              payload: payload as TSecretScanningDataSourceInput,
               connection: connection as TSecretScanningDataSourceWithConnection["connection"],
               dataSourceId: dataSource.id,
               credentials
@@ -346,7 +348,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -399,7 +401,6 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
       projectId: dataSource.projectId
     });
 
@@ -413,7 +414,36 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
-    // TODO: clean up webhooks
+    const factory = SECRET_SCANNING_FACTORY_MAP[type]();
+
+    let connection: TAppConnection | null = null;
+    if (dataSource.connection) {
+      connection = await decryptAppConnection(dataSource.connection, kmsService);
+    }
+
+    let credentials: TSecretScanningDataSourceCredentials | undefined;
+
+    if (dataSource.encryptedCredentials) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: dataSource.projectId
+      });
+
+      credentials = JSON.parse(
+        decryptor({
+          cipherTextBlob: dataSource.encryptedCredentials
+        }).toString()
+      ) as TSecretScanningDataSourceCredentials;
+    }
+
+    await factory.teardown({
+      dataSource: {
+        ...dataSource,
+        // @ts-expect-error currently we don't have a null connection data source
+        connection
+      },
+      credentials
+    });
 
     await secretScanningV2DAL.dataSources.deleteById(dataSourceId);
 
@@ -444,7 +474,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -508,7 +538,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -553,7 +583,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -596,7 +626,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -639,7 +669,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: dataSource.projectId
     });
 
@@ -672,7 +702,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -706,7 +736,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -746,7 +776,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId: finding.projectId
     });
 
@@ -777,7 +807,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -812,7 +842,7 @@ export const secretScanningV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
+
       projectId
     });
 
@@ -870,6 +900,7 @@ export const secretScanningV2ServiceFactory = ({
     updateSecretScanningFindingById,
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
-    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue)
+    github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
+    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)
   };
 };

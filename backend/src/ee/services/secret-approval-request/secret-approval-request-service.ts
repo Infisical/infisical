@@ -2,7 +2,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import {
-  ActionProjectType,
   ProjectMembershipRole,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
@@ -11,6 +10,7 @@ import {
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
+import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -168,7 +168,14 @@ export const secretApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   folderCommitService
 }: TSecretApprovalRequestServiceFactoryDep) => {
-  const requestCount = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod }: TApprovalRequestCountDTO) => {
+  const requestCount = async ({
+    projectId,
+    policyId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     await permissionService.getProjectPermission({
@@ -176,11 +183,10 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
-    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId);
+    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId, policyId);
     return count;
   };
 
@@ -204,8 +210,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -257,8 +262,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -407,8 +411,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -477,8 +480,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -522,7 +524,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { policy, folderId, projectId, bypassers } = secretApprovalRequest;
+    const { policy, folderId, projectId, bypassers, environment } = secretApprovalRequest;
     if (policy.deletedAt) {
       throw new BadRequestError({
         message: "The policy associated with this secret approval request has been deleted."
@@ -534,8 +536,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     if (
@@ -951,13 +952,118 @@ export const secretApprovalRequestServiceFactory = ({
           bypassReason,
           secretPath: policy.secretPath,
           environment: env.name,
-          approvalUrl: `${cfg.SITE_URL}/secret-manager/${project.id}/approval`
+          approvalUrl: `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`
         },
         template: SmtpTemplates.AccessSecretRequestBypassed
       });
     }
 
-    return mergeStatus;
+    const { created, updated, deleted } = mergeStatus.secrets;
+
+    const secretMutationEvents: Event[] = [];
+
+    if (created.length) {
+      if (created.length > 1) {
+        secretMutationEvents.push({
+          type: EventType.CREATE_SECRETS,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secrets: created.map((secret) => ({
+              secretId: secret.id,
+              secretVersion: 1,
+              // @ts-expect-error not present on v1 secrets
+              secretKey: secret.key as string,
+              // @ts-expect-error not present on v1 secrets
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            }))
+          }
+        });
+      } else {
+        const [secret] = created;
+        secretMutationEvents.push({
+          type: EventType.CREATE_SECRET,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secretId: secret.id,
+            secretVersion: 1,
+            // @ts-expect-error not present on v1 secrets
+            secretKey: secret.key as string,
+            // @ts-expect-error not present on v1 secrets
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+          }
+        });
+      }
+    }
+
+    if (updated.length) {
+      if (updated.length > 1) {
+        secretMutationEvents.push({
+          type: EventType.UPDATE_SECRETS,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secrets: updated.map((secret) => ({
+              secretId: secret.id,
+              secretVersion: secret.version,
+              // @ts-expect-error not present on v1 secrets
+              secretKey: secret.key as string,
+              // @ts-expect-error not present on v1 secrets
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            }))
+          }
+        });
+      } else {
+        const [secret] = updated;
+        secretMutationEvents.push({
+          type: EventType.UPDATE_SECRET,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secretId: secret.id,
+            secretVersion: secret.version,
+            // @ts-expect-error not present on v1 secrets
+            secretKey: secret.key as string,
+            // @ts-expect-error not present on v1 secrets
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+          }
+        });
+      }
+    }
+
+    if (deleted.length) {
+      if (deleted.length > 1) {
+        secretMutationEvents.push({
+          type: EventType.DELETE_SECRETS,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secrets: deleted.map((secret) => ({
+              secretId: secret.id,
+              secretVersion: secret.version,
+              // @ts-expect-error not present on v1 secrets
+              secretKey: secret.key as string
+            }))
+          }
+        });
+      } else {
+        const [secret] = deleted;
+        secretMutationEvents.push({
+          type: EventType.DELETE_SECRET,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secretId: secret.id,
+            secretVersion: secret.version,
+            // @ts-expect-error not present on v1 secrets
+            secretKey: secret.key as string
+          }
+        });
+      }
+    }
+
+    return { ...mergeStatus, projectId, secretMutationEvents };
   };
 
   // function to save secret change to secret approval
@@ -980,8 +1086,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1271,8 +1376,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)

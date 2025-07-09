@@ -62,7 +62,8 @@ export enum QueueName {
   SecretRotationV2 = "secret-rotation-v2",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
-  SecretScanningV2 = "secret-scanning-v2"
+  SecretScanningV2 = "secret-scanning-v2",
+  TelemetryAggregatedEvents = "telemetry-aggregated-events"
 }
 
 export enum QueueJobs {
@@ -101,7 +102,8 @@ export enum QueueJobs {
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
-  PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal"
+  PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
+  TelemetryAggregatedEvents = "telemetry-aggregated-events"
 }
 
 export type TQueueJobTypes = {
@@ -292,6 +294,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.PkiSubscriberDailyAutoRenewal;
     payload: undefined;
   };
+  [QueueName.TelemetryAggregatedEvents]: {
+    name: QueueJobs.TelemetryAggregatedEvents;
+    payload: undefined;
+  };
 };
 
 const SECRET_SCANNING_JOBS = [
@@ -377,6 +383,7 @@ export type TQueueServiceFactory = {
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
+  stopJobByIdPg: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
   getRepeatableJobs: (
     name: QueueName,
     startOffset?: number,
@@ -542,6 +549,10 @@ export const queueServiceFactory = (
     return q.removeRepeatableByKey(repeatJobKey);
   };
 
+  const stopJobByIdPg: TQueueServiceFactory["stopJobByIdPg"] = async (name, jobId) => {
+    await pgBoss.deleteJob(name, jobId);
+  };
+
   const stopJobById: TQueueServiceFactory["stopJobById"] = async (name, jobId) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
@@ -568,6 +579,7 @@ export const queueServiceFactory = (
     stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
+    stopJobByIdPg,
     getRepeatableJobs,
     startPg,
     queuePg,

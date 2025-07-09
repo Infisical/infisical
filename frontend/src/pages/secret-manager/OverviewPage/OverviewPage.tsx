@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
@@ -6,6 +6,9 @@ import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faArrowDown,
+  faArrowLeft,
+  faArrowRight,
+  faArrowRightToBracket,
   faArrowUp,
   faFileImport,
   faFingerprint,
@@ -39,6 +42,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
+  Lottie,
   Modal,
   ModalContent,
   PageHeader,
@@ -54,6 +58,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { HeaderResizer } from "@app/components/v2/HeaderResizer/HeaderResizer";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -69,7 +74,14 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import {
+  useDebounce,
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useResizableHeaderHeight,
+  useToggle
+} from "@app/hooks";
 import {
   useCreateFolder,
   useCreateSecretV3,
@@ -85,7 +97,7 @@ import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
-import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
@@ -93,6 +105,7 @@ import {
   useSecretRotationOverview
 } from "@app/hooks/utils";
 import { SecretOverviewSecretRotationRow } from "@app/pages/secret-manager/OverviewPage/components/SecretOverviewSecretRotationRow";
+import { getHeaderStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
@@ -138,6 +151,8 @@ const DEFAULT_FILTER_STATE = {
   [RowType.SecretRotation]: true
 };
 
+const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
+
 export const OverviewPage = () => {
   const { t } = useTranslation();
 
@@ -155,7 +170,7 @@ export const OverviewPage = () => {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const { permission } = useProjectPermission();
-
+  const tableRef = useRef<HTMLDivElement>(null);
   const { currentWorkspace } = useWorkspace();
   const isProjectV3 = currentWorkspace?.version === ProjectVersion.V3;
   const workspaceId = currentWorkspace?.id as string;
@@ -164,6 +179,18 @@ export const OverviewPage = () => {
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
+  const [collapseEnvironments, setCollapseEnvironments] = useToggle(
+    Boolean(localStorage.getItem("overview-collapse-environments"))
+  );
+
+  const handleToggleNarrowHeader = () => {
+    setCollapseEnvironments.toggle();
+    if (collapseEnvironments) {
+      localStorage.removeItem("overview-collapse-environments");
+    } else {
+      localStorage.setItem("overview-collapse-environments", "true");
+    }
+  };
 
   const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
   const [filterHistory, setFilterHistory] = useState<
@@ -640,7 +667,7 @@ export const OverviewPage = () => {
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({
-        to: `/${ProjectType.SecretManager}/$projectId/secrets/$envSlug` as const,
+        to: "/projects/$projectId/secret-manager/secrets/$envSlug",
         params: {
           projectId: workspaceId,
           envSlug: slug
@@ -845,17 +872,26 @@ export const OverviewPage = () => {
     );
   }, [importedByEnvs, selectedEntries, selectedKeysCount]);
 
+  const storedHeight = Number.parseInt(
+    localStorage.getItem("overview-header-height") ?? DEFAULT_COLLAPSED_HEADER_HEIGHT.toString(),
+    10
+  );
+  const { headerHeight, handleMouseDown, isResizing } = useResizableHeaderHeight({
+    initialHeight: Number.isNaN(storedHeight) ? DEFAULT_COLLAPSED_HEADER_HEIGHT : storedHeight,
+    minHeight: DEFAULT_COLLAPSED_HEADER_HEIGHT,
+    maxHeight: 288
+  });
+
+  const debouncedHeaderHeight = useDebounce(headerHeight);
+
+  useEffect(() => {
+    localStorage.setItem("overview-header-height", debouncedHeaderHeight.toString());
+  }, [debouncedHeaderHeight]);
+
   if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
-        <img
-          src="/images/loading/loading.gif"
-          height={70}
-          width={120}
-          alt="loading animation"
-          decoding="async"
-          loading="lazy"
-        />
+        <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
       </div>
     );
   }
@@ -883,7 +919,7 @@ export const OverviewPage = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="relative mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             title="Secrets Overview"
@@ -950,7 +986,10 @@ export const OverviewPage = () => {
                     </Tooltip>
                   </IconButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent
+                  className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                  align="end"
+                >
                   {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
                       size="xs"
@@ -1167,53 +1206,86 @@ export const OverviewPage = () => {
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
         />
-        <div className="thin-scrollbar mt-4">
+        <div ref={tableRef} className="thin-scrollbar mt-4">
           <TableContainer
             onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
             className="thin-scrollbar rounded-b-none"
           >
             <Table>
-              <THead>
-                <Tr className="sticky top-0 z-20 border-0">
-                  <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
-                    <div className="flex items-center border-b border-r border-mineshaft-600 pb-3 pl-3 pr-5 pt-3.5">
-                      <Tooltip
-                        className="max-w-[20rem] whitespace-nowrap capitalize"
-                        content={
-                          totalCount > 0
-                            ? `${
-                                !allRowsSelectedOnPage.isChecked ? "Select" : "Unselect"
-                              } all folders and secrets on page`
-                            : ""
-                        }
+              <THead style={{ height: collapseEnvironments ? headerHeight : undefined }}>
+                <Tr
+                  className="sticky top-0 z-20 border-0"
+                  style={{ height: collapseEnvironments ? headerHeight : undefined }}
+                >
+                  <Th
+                    className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0"
+                    style={{ height: collapseEnvironments ? headerHeight : undefined }}
+                  >
+                    <div
+                      className={twMerge(
+                        "flex h-full border-b border-mineshaft-600 pb-3 pl-3 pr-5",
+                        !collapseEnvironments && "border-r pt-3.5"
+                      )}
+                    >
+                      <div
+                        className={twMerge("flex items-center", collapseEnvironments && "mt-auto")}
                       >
-                        <div className="ml-2 mr-4">
-                          <Checkbox
-                            isDisabled={totalCount === 0}
-                            id="checkbox-select-all-rows"
-                            isChecked={allRowsSelectedOnPage.isChecked}
-                            isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
-                            onCheckedChange={toggleSelectAllRows}
+                        <Tooltip
+                          className="max-w-[20rem] whitespace-nowrap capitalize"
+                          content={
+                            totalCount > 0
+                              ? `${
+                                  !allRowsSelectedOnPage.isChecked ? "Select" : "Unselect"
+                                } all folders and secrets on page`
+                              : ""
+                          }
+                        >
+                          <div className="ml-2 mr-4">
+                            <Checkbox
+                              isDisabled={totalCount === 0}
+                              id="checkbox-select-all-rows"
+                              isChecked={allRowsSelectedOnPage.isChecked}
+                              isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
+                              onCheckedChange={toggleSelectAllRows}
+                            />
+                          </div>
+                        </Tooltip>
+                        Name
+                        <IconButton
+                          variant="plain"
+                          className="ml-2"
+                          ariaLabel="sort"
+                          onClick={() =>
+                            setOrderDirection((prev) =>
+                              prev === OrderByDirection.ASC
+                                ? OrderByDirection.DESC
+                                : OrderByDirection.ASC
+                            )
+                          }
+                        >
+                          <FontAwesomeIcon
+                            icon={orderDirection === "asc" ? faArrowDown : faArrowUp}
                           />
-                        </div>
-                      </Tooltip>
-                      Name
-                      <IconButton
-                        variant="plain"
-                        className="ml-2"
-                        ariaLabel="sort"
-                        onClick={() =>
-                          setOrderDirection((prev) =>
-                            prev === OrderByDirection.ASC
-                              ? OrderByDirection.DESC
-                              : OrderByDirection.ASC
-                          )
+                        </IconButton>
+                      </div>
+                      <Tooltip
+                        content={
+                          collapseEnvironments ? "Expand Environments" : "Collapse Environments"
                         }
+                        className="capitalize"
                       >
-                        <FontAwesomeIcon
-                          icon={orderDirection === "asc" ? faArrowDown : faArrowUp}
-                        />
-                      </IconButton>
+                        <IconButton
+                          ariaLabel="Toggle Environment View"
+                          variant="plain"
+                          colorSchema="secondary"
+                          className="ml-auto mt-auto h-min p-1"
+                          onClick={handleToggleNarrowHeader}
+                        >
+                          <FontAwesomeIcon
+                            icon={collapseEnvironments ? faArrowLeft : faArrowRight}
+                          />
+                        </IconButton>
+                      </Tooltip>
                     </div>
                   </Th>
                   {visibleEnvs?.map(({ name, slug }, index) => {
@@ -1221,34 +1293,108 @@ export const OverviewPage = () => {
                     const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
                     const missingKeyCount = secKeys.length - envSecKeyCount - importedSecKeyCount;
 
+                    const isLast = index === visibleEnvs.length - 1;
+
                     return (
                       <Th
-                        className="min-table-row min-w-[11rem] border-b-0 p-0 text-center"
+                        className={twMerge(
+                          "min-table-row border-b-0 p-0 text-xs",
+                          collapseEnvironments && index === visibleEnvs.length - 1 && "!mr-8",
+                          !collapseEnvironments && "min-w-[11rem] text-center"
+                        )}
+                        style={
+                          collapseEnvironments
+                            ? {
+                                height: headerHeight,
+                                width: "w-[1rem]"
+                              }
+                            : undefined
+                        }
                         key={`secret-overview-${name}-${index + 1}`}
                       >
-                        <div className="flex items-center justify-center border-b border-mineshaft-600 px-5 pb-[0.83rem] pt-3.5">
-                          <button
-                            type="button"
-                            className="text-sm font-medium duration-100 hover:text-mineshaft-100"
-                            onClick={() => handleExploreEnvClick(slug)}
+                        <Tooltip
+                          content={
+                            collapseEnvironments ? (
+                              <p className="whitespace-break-spaces">{name}</p>
+                            ) : (
+                              ""
+                            )
+                          }
+                          side="bottom"
+                          sideOffset={-1}
+                          align="end"
+                          className="max-w-xl text-xs normal-case"
+                          rootProps={{
+                            disableHoverableContent: true
+                          }}
+                        >
+                          <div
+                            className={twMerge(
+                              "border-b border-mineshaft-600",
+                              collapseEnvironments
+                                ? "relative"
+                                : "flex items-center justify-center px-5 pb-[0.82rem] pt-3.5",
+                              collapseEnvironments && isLast && "overflow-clip"
+                            )}
+                            style={{
+                              height: collapseEnvironments ? headerHeight : undefined,
+                              minWidth: collapseEnvironments ? "2.9rem" : undefined,
+                              width: collapseEnvironments && isLast ? headerHeight * 0.3 : undefined
+                            }}
                           >
-                            {name}
-                          </button>
-                          {missingKeyCount > 0 && (
-                            <Tooltip
-                              className="max-w-none lowercase"
-                              content={`${missingKeyCount} secrets missing\n compared to other environments`}
+                            <div
+                              className={twMerge(
+                                "border-mineshaft-600",
+                                collapseEnvironments
+                                  ? "-skew-x-[16rad] transform border-l text-xs"
+                                  : "flex items-center justify-center"
+                              )}
+                              style={{
+                                height: collapseEnvironments ? headerHeight : undefined,
+                                marginLeft: collapseEnvironments ? headerHeight * 0.145 : undefined
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className={twMerge(
+                                "duration-100 hover:text-mineshaft-100",
+                                collapseEnvironments
+                                  ? "absolute -rotate-[72.75deg] text-left text-sm font-normal"
+                                  : "flex items-center text-center text-sm font-medium"
+                              )}
+                              style={getHeaderStyle({
+                                collapseEnvironments,
+                                isLast,
+                                headerHeight
+                              })}
+                              onClick={() => handleExploreEnvClick(slug)}
                             >
-                              <div className="ml-2 flex h-[1.1rem] cursor-default items-center justify-center rounded-sm border border-red-400 bg-red-600 p-1 text-xs font-medium text-bunker-100">
-                                <span className="text-bunker-100">{missingKeyCount}</span>
-                              </div>
-                            </Tooltip>
-                          )}
-                        </div>
+                              <p className="truncate font-medium">{name}</p>
+                            </button>
+                            {!collapseEnvironments && missingKeyCount > 0 && (
+                              <Tooltip
+                                className="max-w-none lowercase"
+                                content={`${missingKeyCount} secrets missing\n compared to other environments`}
+                              >
+                                <div className="ml-2 flex h-[1.1rem] cursor-default items-center justify-center rounded-sm border border-red-400 bg-red-600 p-1 text-xs font-medium text-bunker-100">
+                                  <span className="text-bunker-100">{missingKeyCount}</span>
+                                </div>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </Tooltip>
                       </Th>
                     );
                   })}
                 </Tr>
+                {collapseEnvironments && (
+                  <HeaderResizer
+                    onMouseDown={handleMouseDown}
+                    isActive={isResizing}
+                    scrollOffset={scrollOffset}
+                    heightOffset={(tableRef.current?.clientTop ?? 0) + headerHeight - 2.5}
+                  />
+                )}
               </THead>
               <TBody>
                 {canViewOverviewPage && isOverviewLoading && (
@@ -1274,7 +1420,7 @@ export const OverviewPage = () => {
                         iconSize="3x"
                       >
                         <Link
-                          to={`/${ProjectType.SecretManager}/$projectId/settings` as const}
+                          to="/projects/$projectId/secret-manager/settings"
                           params={{
                             projectId: workspaceId
                           }}
@@ -1408,17 +1554,41 @@ export const OverviewPage = () => {
                       style={{ height: "45px" }}
                     />
                   </Td>
-                  {visibleEnvs?.map(({ name, slug }) => (
-                    <Td key={`explore-${name}-btn`} className="border-0 border-mineshaft-600 p-0">
-                      <div className="flex w-full items-center justify-center border-r border-t border-mineshaft-600 px-5 py-2">
-                        <Button
-                          size="xs"
-                          variant="outline_bg"
-                          isFullWidth
-                          onClick={() => handleExploreEnvClick(slug)}
-                        >
-                          Explore
-                        </Button>
+                  {visibleEnvs?.map(({ name, slug }, i) => (
+                    <Td
+                      key={`explore-${name}-btn-${i + 1}`}
+                      className="border-0 border-r border-mineshaft-600 p-0"
+                    >
+                      <div
+                        className={twMerge(
+                          "flex w-full items-center justify-center border-t border-mineshaft-600 py-2"
+                        )}
+                      >
+                        {collapseEnvironments ? (
+                          <Tooltip className="normal-case" content="Explore Environment">
+                            <IconButton
+                              ariaLabel="Explore Environment"
+                              size="xs"
+                              variant="outline_bg"
+                              className="mx-auto h-[1.76rem] rounded"
+                              onClick={() => handleExploreEnvClick(slug)}
+                            >
+                              <FontAwesomeIcon icon={faArrowRightToBracket} />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <Button
+                            leftIcon={
+                              <FontAwesomeIcon className="mr-1" icon={faArrowRightToBracket} />
+                            }
+                            variant="outline_bg"
+                            size="xs"
+                            className="mx-2 w-full"
+                            onClick={() => handleExploreEnvClick(slug)}
+                          >
+                            Explore
+                          </Button>
+                        )}
                       </div>
                     </Td>
                   ))}

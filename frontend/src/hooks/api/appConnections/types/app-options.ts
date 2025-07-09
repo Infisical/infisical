@@ -123,6 +123,23 @@ export type TFlyioConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Flyio;
 };
 
+export type TGitlabConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Gitlab;
+  oauthClientId?: string;
+};
+
+export type TCloudflareConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Cloudflare;
+};
+
+export type TBitbucketConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Bitbucket;
+};
+
+export type TZabbixConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Zabbix;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -148,7 +165,11 @@ export type TAppConnectionOption =
   | TOnePassConnectionOption
   | THerokuConnectionOption
   | TRenderConnectionOption
-  | TFlyioConnectionOption;
+  | TFlyioConnectionOption
+  | TGitlabConnectionOption
+  | TCloudflareConnectionOption
+  | TBitbucketConnectionOption
+  | TZabbixConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -178,4 +199,8 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Heroku]: THerokuConnectionOption;
   [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
+  [AppConnection.Gitlab]: TGitlabConnectionOption;
+  [AppConnection.Cloudflare]: TCloudflareConnectionOption;
+  [AppConnection.Bitbucket]: TBitbucketConnectionOption;
+  [AppConnection.Zabbix]: TZabbixConnectionOption;
 };

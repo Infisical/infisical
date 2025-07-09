@@ -1,0 +1,192 @@
+---
+title: "GitLab Connection"
+description: "Learn how to configure a GitLab Connection for Infisical using OAuth or Access Token methods."
+---
+
+Infisical supports two methods for connecting to GitLab: **OAuth** and **Access Token**. Choose the method that best fits your setup and security requirements.
+
+<Tabs>
+  <Tab title="OAuth Method">
+    The OAuth method provides secure authentication through GitLab's OAuth flow.
+
+    <Accordion title="Self-Hosted Instance Setup">
+      Using the GitLab Connection with OAuth on a self-hosted instance of Infisical requires configuring an OAuth application in GitLab and registering your instance with it.
+
+      **Prerequisites:**
+      - A GitLab account with existing projects
+      - Self-hosted Infisical instance
+
+      <Steps>
+        <Step title="Create an OAuth application in GitLab">
+          Navigate to your user Settings > Applications to create a new GitLab application.
+
+          ![GitLab Dashboard](/images/app-connections/gitlab/gitlab-dashboard.png)
+          ![GitLab Applications Settings](/images/app-connections/gitlab/gitlab-applications.png)
+
+
+          Create the application. As part of the form, set the **Redirect URI** to `https://your-domain.com/organization/app-connections/gitlab/oauth/callback`.
+
+          ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-top.png)
+          ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-bottom.png)
+
+          <Tip>
+            The domain you defined in the Redirect URI should be equivalent to the `SITE_URL` configured in your Infisical instance.
+          </Tip>
+
+          <Note>
+            If you have a GitLab group, you can create an OAuth application under it in your group Settings > Applications.
+          </Note>
+        </Step>
+        <Step title="Add your GitLab OAuth application credentials to Infisical">
+          Obtain the **Application ID** and **Secret** for your GitLab OAuth application.
+
+          ![GitLab Application Credentials](/images/app-connections/gitlab/gitlab-config-credentials.png)
+
+          Back in your Infisical instance, add two new environment variables for the credentials of your GitLab OAuth application:
+
+          - `INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID`: The **Application ID** of your GitLab OAuth application.
+          - `INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET`: The **Secret** of your GitLab OAuth application.
+
+          Once added, restart your Infisical instance and use the GitLab Connection.
+        </Step>
+      </Steps>
+    </Accordion>
+
+    ## Setup GitLab OAuth Connection in Infisical
+
+    <Steps>
+      <Step title="Navigate to App Connections">
+        Navigate to the **App Connections** tab on the **Organization Settings** page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Add Connection">
+        Select the **GitLab Connection** option from the connection options modal.
+        ![Select GitLab Connection](/images/app-connections/gitlab/select-gitlab-connection.png)
+      </Step>
+      <Step title="Choose OAuth Method">
+        Select the **OAuth** method and click **Connect to GitLab**.
+
+        ![Connect via GitLab OAuth](/images/app-connections/gitlab/create-gitlab-oauth-connection.png)
+      </Step>
+      <Step title="Grant Access">
+        You will be redirected to GitLab to grant Infisical access to your GitLab account. Once granted, you will be redirected back to Infisical's App Connections page.
+        ![GitLab Authorization](/images/app-connections/gitlab/gitlab-authorization-page.png)
+      </Step>
+      <Step title="Connection Created">
+        Your **GitLab Connection** is now available for use.
+        ![GitLab OAuth Connection](/images/app-connections/gitlab/gitlab-oauth-connection.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="Access Token Method">
+    The Access Token method uses a GitLab access token for authentication, providing a straightforward setup process.
+
+    ## Generate GitLab Access Token
+
+    <Tabs>
+      <Tab title="Personal Access Token">
+        Personal access tokens provide access to your GitLab account and all projects you have access to.
+
+        <Steps>
+          <Step title="Navigate to Access Tokens">
+            Log in to your GitLab account and navigate to User Settings > Access tokens. Click **Add new token** to create a new personal access token.
+
+            ![GitLab Personal Access Tokens](/images/app-connections/gitlab/gitlab-add-access-token.png)
+          </Step>
+          <Step title="Configure Token">
+            <Tabs>
+              <Tab title="Secret Sync">
+              For Secret Syncs, your token will require the ability to access the API:
+              Fill in the token details:
+              - **Token name**: A descriptive name for the token (e.g., "connection-token")
+              - **Expiration date**: Set an appropriate expiration date
+              - **Select scopes**: Choose the **api** scope for full API access
+
+              ![GitLab Personal Token Form](/images/app-connections/gitlab/gitlab-personal-access-token-form.png)
+              </Tab>
+            </Tabs>
+
+            <Info>
+              Personal Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
+            </Info>
+          </Step>
+          <Step title="Copy Token">
+            Copy the generated token immediately as it won't be shown again.
+
+            ![GitLab Personal Token Created](/images/app-connections/gitlab/gitlab-copy-token.png)
+
+            <Warning>
+              Keep your access token secure and do not share it. Anyone with access to this token can access your GitLab account and projects.
+            </Warning>
+          </Step>
+        </Steps>
+      </Tab>
+
+      <Tab title="Project Access Token">
+        Project access tokens provide access to a specific GitLab project, offering more granular control.
+
+        <Steps>
+          <Step title="Navigate to Project Settings">
+            Go to your GitLab project and navigate to Settings > Access Tokens. Click **Add new token** to create a new project access token.
+
+            ![GitLab Project Access Tokens](/images/app-connections/gitlab/gitlab-project-access-token-list.png)
+          </Step>
+          <Step title="Configure Token">
+            <Tabs>
+            <Tab title="Secret Sync">
+                  For Secret Syncs, your token will require the ability to access the API and be at least an **Owner**:
+                  Fill in the token details:
+                  - **Token name**: A descriptive name for the token
+                  - **Expiration date**: Set an appropriate expiration date
+                  - **Select role**: Choose **Owner** or higher role
+                  - **Select scopes**: Choose the **api** scope for API access
+
+                  ![GitLab Create Project Token](/images/app-connections/gitlab/gitlab-project-access-token-form.png)
+              </Tab>
+            </Tabs>
+
+            <Info>
+              Project Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
+            </Info>
+          </Step>
+          <Step title="Copy Token">
+            Copy the generated token immediately as it won't be shown again.
+
+            ![GitLab Project Token Form](/images/app-connections/gitlab/gitlab-project-access-token-created.png)
+
+            <Warning>
+              Keep your access token secure and do not share it. Anyone with access to this token can access your GitLab account and projects.
+            </Warning>
+          </Step>
+        </Steps>
+      </Tab>
+    </Tabs>
+
+    ## Setup GitLab Access Token Connection in Infisical
+
+    <Steps>
+      <Step title="Navigate to App Connections">
+        Navigate to the **App Connections** tab on the **Organization Settings** page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Add Connection">
+        Select the **GitLab Connection** option from the connection options modal.
+        ![Select GitLab Connection](/images/app-connections/gitlab/select-gitlab-connection.png)
+      </Step>
+      <Step title="Configure Access Token">
+        Select the **Access Token** method, paste your GitLab access token in the provided field, and select the appropriate token type.
+
+        ![Configure Access Token](/images/app-connections/gitlab/create-gitlab-access-token-connection.png)
+
+        Click **Connect** to establish the connection.
+      </Step>
+      <Step title="Connection Created">
+        Your **GitLab Connection** is now available for use.
+        ![GitLab Access Token Connection](/images/app-connections/gitlab/gitlab-access-token-connection.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>

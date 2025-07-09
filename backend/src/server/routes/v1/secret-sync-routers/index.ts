@@ -8,10 +8,12 @@ import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configurati
 import { registerAzureDevOpsSyncRouter } from "./azure-devops-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
+import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerFlyioSyncRouter } from "./flyio-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
+import { registerGitLabSyncRouter } from "./gitlab-sync-router";
 import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
 import { registerHerokuSyncRouter } from "./heroku-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
@@ -20,6 +22,7 @@ import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
 import { registerWindmillSyncRouter } from "./windmill-sync-router";
+import { registerZabbixSyncRouter } from "./zabbix-sync-router";
 
 export * from "./secret-sync-router";
 
@@ -43,5 +46,8 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.OnePass]: registerOnePassSyncRouter,
   [SecretSync.Heroku]: registerHerokuSyncRouter,
   [SecretSync.Render]: registerRenderSyncRouter,
-  [SecretSync.Flyio]: registerFlyioSyncRouter
+  [SecretSync.Flyio]: registerFlyioSyncRouter,
+  [SecretSync.GitLab]: registerGitLabSyncRouter,
+  [SecretSync.CloudflarePages]: registerCloudflarePagesSyncRouter,
+  [SecretSync.Zabbix]: registerZabbixSyncRouter
 };

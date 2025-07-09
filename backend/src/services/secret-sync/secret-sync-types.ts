@@ -72,8 +72,15 @@ import {
   TAzureKeyVaultSyncListItem,
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
+import {
+  TCloudflarePagesSync,
+  TCloudflarePagesSyncInput,
+  TCloudflarePagesSyncListItem,
+  TCloudflarePagesSyncWithCredentials
+} from "./cloudflare-pages/cloudflare-pages-types";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
+import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
 import {
   THCVaultSync,
   THCVaultSyncInput,
@@ -106,6 +113,7 @@ import {
   TTerraformCloudSyncWithCredentials
 } from "./terraform-cloud";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
+import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -127,7 +135,10 @@ export type TSecretSync =
   | TOnePassSync
   | THerokuSync
   | TRenderSync
-  | TFlyioSync;
+  | TFlyioSync
+  | TGitLabSync
+  | TCloudflarePagesSync
+  | TZabbixSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -149,7 +160,10 @@ export type TSecretSyncWithCredentials =
   | TOnePassSyncWithCredentials
   | THerokuSyncWithCredentials
   | TRenderSyncWithCredentials
-  | TFlyioSyncWithCredentials;
+  | TFlyioSyncWithCredentials
+  | TGitLabSyncWithCredentials
+  | TCloudflarePagesSyncWithCredentials
+  | TZabbixSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -171,7 +185,10 @@ export type TSecretSyncInput =
   | TOnePassSyncInput
   | THerokuSyncInput
   | TRenderSyncInput
-  | TFlyioSyncInput;
+  | TFlyioSyncInput
+  | TGitLabSyncInput
+  | TCloudflarePagesSyncInput
+  | TZabbixSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -193,7 +210,10 @@ export type TSecretSyncListItem =
   | TOnePassSyncListItem
   | THerokuSyncListItem
   | TRenderSyncListItem
-  | TFlyioSyncListItem;
+  | TFlyioSyncListItem
+  | TGitLabSyncListItem
+  | TCloudflarePagesSyncListItem
+  | TZabbixSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

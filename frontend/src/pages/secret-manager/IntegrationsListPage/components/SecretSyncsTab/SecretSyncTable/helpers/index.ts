@@ -1,10 +1,12 @@
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
+import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
   GitHubSyncScope,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
+import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
 // This functional ensures parity across what is displayed in the destination column
@@ -127,6 +129,32 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Flyio:
       primaryText = destinationConfig.appId;
       secondaryText = "App ID";
+      break;
+    case SecretSync.GitLab:
+      if (destinationConfig.scope === GitLabSyncScope.Project) {
+        primaryText = destinationConfig.projectName;
+        secondaryText = destinationConfig.projectId;
+      } else if (destinationConfig.scope === GitLabSyncScope.Group) {
+        primaryText = destinationConfig.groupName;
+        secondaryText = destinationConfig.groupId;
+      } else {
+        throw new Error(`Unhandled GitLab Scope Destination Col Values ${destination}`);
+      }
+      break;
+    case SecretSync.CloudflarePages:
+      primaryText = destinationConfig.projectName;
+      secondaryText = destinationConfig.environment;
+      break;
+    case SecretSync.Zabbix:
+      if (destinationConfig.scope === ZabbixSyncScope.Host) {
+        primaryText = destinationConfig.hostName;
+        secondaryText = destinationConfig.hostId;
+      } else if (destinationConfig.scope === ZabbixSyncScope.Global) {
+        primaryText = "Global";
+        secondaryText = "";
+      } else {
+        throw new Error(`Unhandled Zabbix Scope Destination Col Values ${destination}`);
+      }
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

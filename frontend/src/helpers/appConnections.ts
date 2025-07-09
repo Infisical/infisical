@@ -18,11 +18,13 @@ import {
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
+  CloudflareConnectionMethod,
   DatabricksConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
   GitHubRadarConnectionMethod,
+  GitLabConnectionMethod,
   HCVaultConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
@@ -35,8 +37,10 @@ import {
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
   VercelConnectionMethod,
-  WindmillConnectionMethod
+  WindmillConnectionMethod,
+  ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
@@ -84,7 +88,11 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.OnePass]: { name: "1Password", image: "1Password.png" },
   [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" },
   [AppConnection.Render]: { name: "Render", image: "Render.png" },
-  [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" }
+  [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
+  [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
+  [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
+  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
+  [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -98,6 +106,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureDevOpsConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
+    case GitLabConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
@@ -114,6 +123,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
+    case CloudflareConnectionMethod.ApiToken:
+    case BitbucketConnectionMethod.ApiToken:
+    case ZabbixConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

@@ -34,7 +34,7 @@ export const Cloud66AuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/secret-manager/$projectId/integrations/cloud-66/create",
+        to: "/projects/$projectId/secret-manager/integrations/cloud-66/create",
         params: {
           projectId: currentWorkspace.id
         },

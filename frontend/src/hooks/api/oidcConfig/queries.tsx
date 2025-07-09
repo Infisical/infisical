@@ -5,18 +5,18 @@ import { apiRequest } from "@app/config/request";
 import { OIDCConfigData } from "./types";
 
 export const oidcConfigKeys = {
-  getOIDCConfig: (orgSlug: string) => [{ orgSlug }, "organization-oidc"] as const,
+  getOIDCConfig: (orgId: string) => [{ orgId }, "organization-oidc"] as const,
   getOIDCManageGroupMembershipsEnabled: (orgId: string) =>
     ["oidc-manage-group-memberships", orgId] as const
 };
 
-export const useGetOIDCConfig = (orgSlug: string) => {
+export const useGetOIDCConfig = (orgId: string) => {
   return useQuery({
-    queryKey: oidcConfigKeys.getOIDCConfig(orgSlug),
+    queryKey: oidcConfigKeys.getOIDCConfig(orgId),
     queryFn: async () => {
       try {
         const { data } = await apiRequest.get<OIDCConfigData>(
-          `/api/v1/sso/oidc/config?orgSlug=${orgSlug}`
+          `/api/v1/sso/oidc/config?organizationId=${orgId}`
         );
 
         return data;

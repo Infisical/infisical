@@ -12,7 +12,6 @@ import {
   useGetPkiCollectionById,
   useUpdatePkiCollection
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -83,7 +82,7 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         navigate({
-          to: `/${ProjectType.CertificateManager}/$projectId/pki-collections/$collectionId` as const,
+          to: "/projects/$projectId/cert-manager/pki-collections/$collectionId",
           params: {
             projectId,
             collectionId

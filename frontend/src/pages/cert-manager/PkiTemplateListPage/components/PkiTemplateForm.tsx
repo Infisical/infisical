@@ -333,7 +333,6 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
                           <Checkbox
                             id={optionValue}
                             key={optionValue}
-                            className="data-[state=checked]:bg-primary"
                             isChecked={value[optionValue]}
                             onCheckedChange={(state) => {
                               onChange({
@@ -367,7 +366,6 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
                           <Checkbox
                             id={optionValue}
                             key={optionValue}
-                            className="data-[state=checked]:bg-primary"
                             isChecked={value[optionValue]}
                             onCheckedChange={(state) => {
                               onChange({

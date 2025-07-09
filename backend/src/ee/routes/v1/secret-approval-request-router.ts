@@ -94,7 +94,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     schema: {
       querystring: z.object({
-        workspaceId: z.string().trim()
+        workspaceId: z.string().trim(),
+        policyId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -112,7 +113,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.query.workspaceId
+        projectId: req.query.workspaceId,
+        policyId: req.query.policyId
       });
       return { approvals };
     }
@@ -139,14 +141,39 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { approval } = await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        approvalId: req.params.id,
-        bypassReason: req.body.bypassReason
+      const { approval, projectId, secretMutationEvents } =
+        await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          approvalId: req.params.id,
+          bypassReason: req.body.bypassReason
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.SECRET_APPROVAL_MERGED,
+          metadata: {
+            mergedBy: req.permission.id,
+            secretApprovalRequestSlug: approval.slug,
+            secretApprovalRequestId: approval.id
+          }
+        }
       });
+
+      for await (const event of secretMutationEvents) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event
+        });
+      }
+
       return { approval };
     }
   });

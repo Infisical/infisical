@@ -9,10 +9,12 @@ import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
 import { TAzureDevOpsSync } from "./azure-devops-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TCamundaSync } from "./camunda-sync";
+import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
+import { TGitLabSync } from "./gitlab-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
@@ -21,6 +23,7 @@ import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
+import { TZabbixSync } from "./zabbix-sync";
 
 export type TSecretSyncOption = {
   name: string;
@@ -49,7 +52,10 @@ export type TSecretSync =
   | TOnePassSync
   | THerokuSync
   | TRenderSync
-  | TFlyioSync;
+  | TFlyioSync
+  | TGitLabSync
+  | TCloudflarePagesSync
+  | TZabbixSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

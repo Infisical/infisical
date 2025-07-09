@@ -76,7 +76,7 @@ export const GcpSyncFields = () => {
             helperText={
               <Tooltip
                 className="max-w-md"
-                content="Ensure that you've enabled the Secret Manager API and Cloud Resource Manager API on your GCP project. Additionally, make sure that the service account is assigned the appropriate GCP roles."
+                content="Ensure that you've enabled the Secret Manager API, Cloud Resource Manager API, and Service Usage API on your GCP project. Additionally, make sure that the service account is assigned the appropriate GCP roles."
               >
                 <div>
                   <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}

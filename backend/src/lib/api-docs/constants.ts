@@ -22,6 +22,7 @@ export enum ApiDocsTags {
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
   AliCloudAuth = "Alibaba Cloud Auth",
+  TlsCertAuth = "TLS Certificate Auth",
   AwsAuth = "AWS Auth",
   OciAuth = "OCI Auth",
   AzureAuth = "Azure Auth",
@@ -65,7 +66,10 @@ export enum ApiDocsTags {
   KmsKeys = "KMS Keys",
   KmsEncryption = "KMS Encryption",
   KmsSigning = "KMS Signing",
-  SecretScanning = "Secret Scanning"
+  SecretScanning = "Secret Scanning",
+  OidcSso = "OIDC SSO",
+  SamlSso = "SAML SSO",
+  LdapSso = "LDAP SSO"
 }
 
 export const GROUPS = {
@@ -270,6 +274,38 @@ export const ALICLOUD_AUTH = {
   UPDATE: {
     identityId: "The ID of the identity to update the auth method for.",
     allowedArns: "The comma-separated list of trusted ARNs that are allowed to authenticate with Infisical.",
+    accessTokenTTL: "The new lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+  },
+  RETRIEVE: {
+    identityId: "The ID of the identity to retrieve the auth method for."
+  },
+  REVOKE: {
+    identityId: "The ID of the identity to revoke the auth method for."
+  }
+} as const;
+
+export const TLS_CERT_AUTH = {
+  LOGIN: {
+    identityId: "The ID of the identity to login."
+  },
+  ATTACH: {
+    identityId: "The ID of the identity to attach the configuration onto.",
+    allowedCommonNames:
+      "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    accessTokenTTL: "The lifetime for an access token in seconds.",
+    accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
+    accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update the auth method for.",
+    allowedCommonNames:
+      "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
+    caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
@@ -667,7 +703,8 @@ export const PROJECTS = {
     slug: "An optional slug for the project. (must be unique within the organization)",
     hasDeleteProtection: "Enable or disable delete protection for the project.",
     secretSharing: "Enable or disable secret sharing for the project.",
-    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project."
+    showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
+    defaultProduct: "The default product in which the project will open"
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -2228,6 +2265,20 @@ export const AppConnections = {
     },
     FLYIO: {
       accessToken: "The Access Token used to access fly.io."
+    },
+    GITLAB: {
+      instanceUrl: "The GitLab instance URL to connect with.",
+      accessToken: "The Access Token used to access GitLab.",
+      code: "The OAuth code to use to connect with GitLab.",
+      accessTokenType: "The type of token used to connect with GitLab."
+    },
+    BITBUCKET: {
+      email: "The email used to access Bitbucket.",
+      apiToken: "The API token used to access Bitbucket."
+    },
+    ZABBIX: {
+      apiToken: "The API Token used to access Zabbix.",
+      instanceUrl: "The Zabbix instance URL to connect with."
     }
   }
 };
@@ -2388,7 +2439,8 @@ export const SecretSyncs = {
       keyOcid: "The OCID (Oracle Cloud Identifier) of the encryption key to use when creating secrets in the vault."
     },
     ONEPASS: {
-      vaultId: "The ID of the 1Password vault to sync secrets to."
+      vaultId: "The ID of the 1Password vault to sync secrets to.",
+      valueLabel: "The label of the entry that holds the secret value."
     },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",
@@ -2401,6 +2453,27 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    GITLAB: {
+      projectId: "The GitLab Project ID to sync secrets to.",
+      projectName: "The GitLab Project Name to sync secrets to.",
+      groupId: "The GitLab Group ID to sync secrets to.",
+      groupName: "The GitLab Group Name to sync secrets to.",
+      scope: "The GitLab scope that secrets should be synced to. (default: project)",
+      targetEnvironment: "The GitLab environment scope that secrets should be synced to. (default: *)",
+      shouldProtectSecrets: "Whether variables should be protected",
+      shouldMaskSecrets: "Whether variables should be masked in logs",
+      shouldHideSecrets: "Whether variables should be hidden"
+    },
+    CLOUDFLARE_PAGES: {
+      projectName: "The name of the Cloudflare Pages project to sync secrets to.",
+      environment: "The environment of the Cloudflare Pages project to sync secrets to."
+    },
+    ZABBIX: {
+      scope: "The Zabbix scope that secrets should be synced to.",
+      hostId: "The ID of the Zabbix host to sync secrets to.",
+      hostName: "The name of the Zabbix host to sync secrets to.",
+      macroType: "The type of macro to sync secrets to. (0: Text, 1: Secret)"
     }
   }
 };
@@ -2572,6 +2645,10 @@ export const SecretScanningDataSources = {
   CONFIG: {
     GITHUB: {
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+    },
+    BITBUCKET: {
+      workspaceSlug: "The workspace to scan.",
+      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
     }
   }
 };
@@ -2594,5 +2671,115 @@ export const SecretScanningConfigs = {
   UPDATE: {
     projectId: "The ID of the project to update the Secret Scanning Configuration for.",
     content: "The contents of the Secret Scanning Configuration file."
+  }
+};
+
+export const OidcSSo = {
+  GET_CONFIG: {
+    organizationId: "The ID of the organization to get the OIDC config for."
+  },
+  UPDATE_CONFIG: {
+    organizationId: "The ID of the organization to update the OIDC config for.",
+    allowedEmailDomains:
+      "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Example: 'example.com,acme.com'",
+    discoveryURL: "The URL of the OIDC discovery endpoint.",
+    configurationType: "The configuration type to use for the OIDC configuration.",
+    issuer:
+      "The issuer for the OIDC configuration. This is only supported when the OIDC configuration type is set to 'custom'.",
+    authorizationEndpoint:
+      "The endpoint to use for OIDC authorization. This is only supported when the OIDC configuration type is set to 'custom'.",
+    jwksUri: "The URL of the OIDC JWKS endpoint.",
+    tokenEndpoint: "The token endpoint to use for OIDC token exchange.",
+    userinfoEndpoint: "The userinfo endpoint to get user information from the OIDC provider.",
+    clientId: "The client ID to use for OIDC authentication.",
+    clientSecret: "The client secret to use for OIDC authentication.",
+    isActive: "Whether to enable or disable this OIDC configuration.",
+    manageGroupMemberships:
+      "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+  },
+  CREATE_CONFIG: {
+    organizationId: "The ID of the organization to create the OIDC config for.",
+    allowedEmailDomains:
+      "A list of allowed email domains that users can use to authenticate with. This field is comma separated.",
+    discoveryURL: "The URL of the OIDC discovery endpoint.",
+    configurationType: "The configuration type to use for the OIDC configuration.",
+    issuer:
+      "The issuer for the OIDC configuration. This is only supported when the OIDC configuration type is set to 'custom'.",
+    authorizationEndpoint:
+      "The authorization endpoint to use for OIDC authorization. This is only supported when the OIDC configuration type is set to 'custom'.",
+    jwksUri: "The URL of the OIDC JWKS endpoint.",
+    tokenEndpoint: "The token endpoint to use for OIDC token exchange.",
+    userinfoEndpoint: "The userinfo endpoint to get user information from the OIDC provider.",
+    clientId: "The client ID to use for OIDC authentication.",
+    clientSecret: "The client secret to use for OIDC authentication.",
+    isActive: "Whether to enable or disable this OIDC configuration.",
+    manageGroupMemberships:
+      "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+  }
+};
+
+export const SamlSso = {
+  GET_CONFIG: {
+    organizationId: "The ID of the organization to get the SAML config for."
+  },
+  UPDATE_CONFIG: {
+    organizationId: "The ID of the organization to update the SAML config for.",
+    authProvider: "Authentication provider to use for SAML authentication.",
+    isActive: "Whether to enable or disable this SAML configuration.",
+    entryPoint:
+      "The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.",
+    issuer: "The SAML provider issuer URL or entity ID.",
+    cert: "The certificate to use for SAML authentication."
+  },
+  CREATE_CONFIG: {
+    organizationId: "The ID of the organization to create the SAML config for.",
+    authProvider: "Authentication provider to use for SAML authentication.",
+    isActive: "Whether to enable or disable this SAML configuration.",
+    entryPoint:
+      "The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.",
+    issuer: "The SAML provider issuer URL or entity ID.",
+    cert: "The certificate to use for SAML authentication."
+  }
+};
+
+export const LdapSso = {
+  GET_CONFIG: {
+    organizationId: "The ID of the organization to get the LDAP config for."
+  },
+  CREATE_CONFIG: {
+    organizationId: "The ID of the organization to create the LDAP config for.",
+    isActive: "Whether to enable or disable this LDAP configuration.",
+    url: "The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.",
+    bindDN:
+      "The distinguished name of the object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`",
+    bindPass: "The password to use along with Bind DN when performing the user search.",
+    searchBase: "The base DN to use for the user search such as `ou=Users,dc=acme,dc=com`",
+    uniqueUserAttribute:
+      "The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID`. If left blank, defaults to uidNumber",
+    searchFilter:
+      "The template used to construct the LDAP user search filter such as `(uid={{username}})` uses literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.",
+    groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
+    groupSearchFilter:
+      "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
+    caCert: "The CA certificate to use when verifying the LDAP server certificate."
+  },
+  UPDATE_CONFIG: {
+    organizationId: "The ID of the organization to update the LDAP config for.",
+    isActive: "Whether to enable or disable this LDAP configuration.",
+    url: "The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.",
+    bindDN:
+      "The distinguished name of object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`",
+    bindPass: "The password to use along with Bind DN when performing the user search.",
+    uniqueUserAttribute:
+      "The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID`. If left blank, defaults to uidNumber",
+    searchFilter:
+      "The template used to construct the LDAP user search filter such as `(uid={{username}})` uses literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.",
+    searchBase: "The base DN to use for the user search such as `ou=Users,dc=acme,dc=com`",
+    groupSearchBase: "LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`",
+    groupSearchFilter:
+      "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
+    caCert: "The CA certificate to use when verifying the LDAP server certificate."
   }
 };

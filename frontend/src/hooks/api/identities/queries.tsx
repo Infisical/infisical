@@ -17,6 +17,7 @@ import {
   IdentityMembershipOrg,
   IdentityOciAuth,
   IdentityOidcAuth,
+  IdentityTlsCertAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
   TSearchIdentitiesDTO
@@ -34,6 +35,8 @@ export const identitiesKeys = {
   getIdentityGcpAuth: (identityId: string) => [{ identityId }, "identity-gcp-auth"] as const,
   getIdentityOidcAuth: (identityId: string) => [{ identityId }, "identity-oidc-auth"] as const,
   getIdentityAwsAuth: (identityId: string) => [{ identityId }, "identity-aws-auth"] as const,
+  getIdentityTlsCertAuth: (identityId: string) =>
+    [{ identityId }, "identity-tls-cert-auth"] as const,
   getIdentityAliCloudAuth: (identityId: string) =>
     [{ identityId }, "identity-alicloud-auth"] as const,
   getIdentityOciAuth: (identityId: string) => [{ identityId }, "identity-oci-auth"] as const,
@@ -78,7 +81,8 @@ export const useSearchIdentities = (dto: TSearchIdentitiesDTO) => {
         search
       });
       return data;
-    }
+    },
+    placeholderData: (previousData) => previousData
   });
 };
 
@@ -167,6 +171,27 @@ export const useGetIdentityAwsAuth = (
         `/api/v1/auth/aws-auth/identities/${identityId}`
       );
       return identityAwsAuth;
+    },
+    staleTime: 0,
+    gcTime: 0,
+    ...options,
+    enabled: Boolean(identityId) && (options?.enabled ?? true)
+  });
+};
+
+export const useGetIdentityTlsCertAuth = (
+  identityId: string,
+  options?: TReactQueryOptions["options"]
+) => {
+  return useQuery({
+    queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId),
+    queryFn: async () => {
+      const {
+        data: { identityTlsCertAuth }
+      } = await apiRequest.get<{ identityTlsCertAuth: IdentityTlsCertAuth }>(
+        `/api/v1/auth/tls-cert-auth/identities/${identityId}`
+      );
+      return identityTlsCertAuth;
     },
     staleTime: 0,
     gcTime: 0,

@@ -11,12 +11,14 @@ import {
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
+  GitLabConnectionMethod,
   TAzureAppConfigurationConnection,
   TAzureClientSecretsConnection,
   TAzureDevOpsConnection,
   TAzureKeyVaultConnection,
   TGitHubConnection,
   TGitHubRadarConnection,
+  TGitLabConnection,
   useCreateAppConnection,
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
@@ -25,12 +27,15 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 type BaseFormData = {
   returnUrl?: string;
   connectionId?: string;
+  isUpdate?: boolean;
 };
 
 type GithubFormData = BaseFormData & Pick<TGitHubConnection, "name" | "method" | "description">;
 
 type GithubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
+
+type GitLabFormData = BaseFormData & Pick<TGitLabConnection, "name" | "method" | "description">;
 
 type AzureKeyVaultFormData = BaseFormData &
   Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
@@ -60,6 +65,7 @@ type AzureDevOpsFormData = BaseFormData &
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
   [AppConnection.GitHubRadar]: GithubRadarFormData & { app: AppConnection.GitHubRadar };
+  [AppConnection.Gitlab]: GitLabFormData & { app: AppConnection.Gitlab };
   [AppConnection.AzureKeyVault]: AzureKeyVaultFormData & { app: AppConnection.AzureKeyVault };
   [AppConnection.AzureAppConfiguration]: AzureAppConfigurationFormData & {
     app: AppConnection.AzureAppConfiguration;
@@ -75,6 +81,7 @@ type FormDataMap = {
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.GitHub]: "githubConnectionFormData",
   [AppConnection.GitHubRadar]: "githubRadarConnectionFormData",
+  [AppConnection.Gitlab]: "gitlabConnectionFormData",
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
   [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
   [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData",
@@ -132,6 +139,57 @@ export const OAuthCallbackPage = () => {
       return null;
     }
   };
+
+  const handleGitlab = useCallback(async () => {
+    const formData = getFormData(AppConnection.Gitlab);
+    if (formData === null) return null;
+
+    clearState(AppConnection.Gitlab);
+
+    const { connectionId, name, description, returnUrl, isUpdate } = formData;
+
+    try {
+      if (isUpdate && connectionId) {
+        await updateAppConnection.mutateAsync({
+          app: AppConnection.Gitlab,
+          connectionId,
+          credentials: {
+            code: code as string
+          }
+        });
+      } else {
+        await createAppConnection.mutateAsync({
+          app: AppConnection.Gitlab,
+          name,
+          description,
+          method: GitLabConnectionMethod.OAuth,
+          credentials: {
+            code: code as string
+          }
+        });
+      }
+
+      navigate({
+        to: returnUrl ?? "/organization/app-connections"
+      });
+
+      return {
+        connectionId,
+        returnUrl,
+        appConnectionName: formData.app
+      };
+    } catch (err: any) {
+      createNotification({
+        title: `Failed to ${connectionId ? "update" : "add"} GitLab Connection`,
+        text: err?.message,
+        type: "error"
+      });
+      navigate({
+        to: returnUrl ?? "/organization/app-connections"
+      });
+      return null;
+    }
+  }, []);
 
   const handleAzureKeyVault = useCallback(async () => {
     const formData = getFormData(AppConnection.AzureKeyVault);
@@ -463,6 +521,8 @@ export const OAuthCallbackPage = () => {
         data = await handleGithub();
       } else if (appConnection === AppConnection.GitHubRadar) {
         data = await handleGithubRadar();
+      } else if (appConnection === AppConnection.Gitlab) {
+        data = await handleGitlab();
       } else if (appConnection === AppConnection.AzureKeyVault) {
         data = await handleAzureKeyVault();
       } else if (appConnection === AppConnection.AzureAppConfiguration) {

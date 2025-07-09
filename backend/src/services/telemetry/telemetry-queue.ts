@@ -7,13 +7,18 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TTelemetryDALFactory } from "./telemetry-dal";
-import { TELEMETRY_SECRET_OPERATIONS_KEY, TELEMETRY_SECRET_PROCESSED_KEY } from "./telemetry-service";
+import {
+  TELEMETRY_SECRET_OPERATIONS_KEY,
+  TELEMETRY_SECRET_PROCESSED_KEY,
+  TTelemetryServiceFactory
+} from "./telemetry-service";
 import { PostHogEventTypes } from "./telemetry-types";
 
 type TTelemetryQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "deleteItem">;
   telemetryDAL: TTelemetryDALFactory;
+  telemetryService: TTelemetryServiceFactory;
 };
 
 export type TTelemetryQueueServiceFactory = ReturnType<typeof telemetryQueueServiceFactory>;
@@ -21,7 +26,8 @@ export type TTelemetryQueueServiceFactory = ReturnType<typeof telemetryQueueServ
 export const telemetryQueueServiceFactory = ({
   queueService,
   keyStore,
-  telemetryDAL
+  telemetryDAL,
+  telemetryService
 }: TTelemetryQueueServiceFactoryDep) => {
   const appCfg = getConfig();
   const postHog =
@@ -48,6 +54,10 @@ export const telemetryQueueServiceFactory = ({
     await keyStore.deleteItem(TELEMETRY_SECRET_OPERATIONS_KEY);
   });
 
+  queueService.start(QueueName.TelemetryAggregatedEvents, async () => {
+    await telemetryService.processAggregatedEvents();
+  });
+
   // every day at midnight a telemetry job executes on self-hosted instances
   // this sends some telemetry information like instance id secrets operated etc
   const startTelemetryCheck = async () => {
@@ -60,6 +70,7 @@ export const telemetryQueueServiceFactory = ({
       { pattern: "0 0 * * *", utc: true },
       QueueName.TelemetryInstanceStats // just a job id
     );
+
     if (postHog) {
       await queueService.queue(QueueName.TelemetryInstanceStats, QueueJobs.TelemetryInstanceStats, undefined, {
         jobId: QueueName.TelemetryInstanceStats,
@@ -68,11 +79,34 @@ export const telemetryQueueServiceFactory = ({
     }
   };
 
+  const startAggregatedEventsJob = async () => {
+    // clear previous aggregated events job
+    await queueService.stopRepeatableJob(
+      QueueName.TelemetryAggregatedEvents,
+      QueueJobs.TelemetryAggregatedEvents,
+      { pattern: "*/5 * * * *", utc: true },
+      QueueName.TelemetryAggregatedEvents // just a job id
+    );
+
+    if (postHog) {
+      // Start aggregated events job (runs every five minutes)
+      await queueService.queue(QueueName.TelemetryAggregatedEvents, QueueJobs.TelemetryAggregatedEvents, undefined, {
+        jobId: QueueName.TelemetryAggregatedEvents,
+        repeat: { pattern: "*/5 * * * *", utc: true }
+      });
+    }
+  };
+
   queueService.listen(QueueName.TelemetryInstanceStats, "failed", (err) => {
     logger.error(err?.failedReason, `${QueueName.TelemetryInstanceStats}: failed`);
   });
 
+  queueService.listen(QueueName.TelemetryAggregatedEvents, "failed", (err) => {
+    logger.error(err?.failedReason, `${QueueName.TelemetryAggregatedEvents}: failed`);
+  });
+
   return {
-    startTelemetryCheck
+    startTelemetryCheck,
+    startAggregatedEventsJob
   };
 };

@@ -62,7 +62,7 @@ export const SshCaTable = ({ handlePopUpOpen }: Props) => {
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/${ProjectType.SSH}/$projectId/ca/$caId` as const,
+                        to: `/projects/$projectId/${ProjectType.SSH}/ca/$caId` as const,
                         params: {
                           projectId: currentWorkspace.id,
                           caId: ca.id

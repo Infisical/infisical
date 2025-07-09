@@ -9,12 +9,15 @@ import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-confi
 import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-router";
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
+import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
+import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
 import { registerGitHubRadarConnectionRouter } from "./github-radar-connection-router";
+import { registerGitLabConnectionRouter } from "./gitlab-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
@@ -27,6 +30,7 @@ import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
+import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
 
 export * from "./app-connection-router";
 
@@ -58,5 +62,9 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.OnePass]: registerOnePassConnectionRouter,
     [AppConnection.Heroku]: registerHerokuConnectionRouter,
     [AppConnection.Render]: registerRenderConnectionRouter,
-    [AppConnection.Flyio]: registerFlyioConnectionRouter
+    [AppConnection.Flyio]: registerFlyioConnectionRouter,
+    [AppConnection.GitLab]: registerGitLabConnectionRouter,
+    [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
+    [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
+    [AppConnection.Zabbix]: registerZabbixConnectionRouter
   };

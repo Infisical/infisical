@@ -1,5 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { faCopy, faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
@@ -12,19 +14,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageHeader,
-  Tooltip
+  PageHeader
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
+import { RolePermissionsSection } from "@app/pages/project/RoleDetailsBySlugPage/components/RolePermissionsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
-import { RoleDetailsSection } from "./components/RoleDetailsSection";
 import { RoleModal } from "./components/RoleModal";
-import { RolePermissionsSection } from "./components/RolePermissionsSection";
 
 const Page = () => {
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ const Page = () => {
       });
       handlePopUpClose("deleteRole");
       navigate({
-        to: `/${currentWorkspace?.type}/$projectId/access-management` as const,
+        to: "/projects/$projectId/access-management",
         params: {
           projectId
         },
@@ -88,17 +88,29 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.name}>
+          <PageHeader
+            title={
+              <div className="flex flex-col">
+                <div>
+                  <span>{data.name}</span>
+                  <p className="text-sm font-[400] normal-case leading-3 text-mineshaft-400">
+                    {data.slug} {data.description && `- ${data.description}`}
+                  </p>
+                </div>
+              </div>
+            }
+          >
             {isCustomRole && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild className="rounded-lg">
-                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                    <Tooltip content="More options">
-                      <Button variant="outline_bg">More</Button>
-                    </Tooltip>
-                  </div>
+                  <Button
+                    colorSchema="secondary"
+                    rightIcon={<FontAwesomeIcon icon={faEllipsisV} className="ml-2" />}
+                  >
+                    Options
+                  </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="p-1">
+                <DropdownMenuContent align="end" sideOffset={2} className="p-1">
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Role}
@@ -113,6 +125,7 @@ const Page = () => {
                             roleSlug
                           })
                         }
+                        icon={<FontAwesomeIcon icon={faEdit} />}
                         disabled={!isAllowed}
                       >
                         Edit Role
@@ -128,6 +141,7 @@ const Page = () => {
                         className={twMerge(
                           !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                         )}
+                        icon={<FontAwesomeIcon icon={faCopy} />}
                         onClick={() => {
                           handlePopUpOpen("duplicateRole");
                         }}
@@ -143,13 +157,9 @@ const Page = () => {
                   >
                     {(isAllowed) => (
                       <DropdownMenuItem
-                        className={twMerge(
-                          isAllowed
-                            ? "hover:!bg-red-500 hover:!text-white"
-                            : "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
+                        icon={<FontAwesomeIcon icon={faTrash} />}
                         onClick={() => handlePopUpOpen("deleteRole")}
-                        disabled={!isAllowed}
+                        isDisabled={!isAllowed}
                       >
                         Delete Role
                       </DropdownMenuItem>
@@ -159,12 +169,7 @@ const Page = () => {
               </DropdownMenu>
             )}
           </PageHeader>
-          <div className="flex">
-            <div className="mr-4 w-96">
-              <RoleDetailsSection roleSlug={roleSlug} handlePopUpOpen={handlePopUpOpen} />
-            </div>
-            <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole} />
-          </div>
+          <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole} />
         </div>
       )}
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

@@ -13,6 +13,7 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
+import { providerSpecificPayload } from "./audit-log-stream-fns";
 import { LogStreamHeaders, TAuditLogStreamServiceFactory } from "./audit-log-stream-types";
 
 type TAuditLogStreamServiceFactoryDep = {
@@ -69,10 +70,11 @@ export const auditLogStreamServiceFactory = ({
       headers.forEach(({ key, value }) => {
         streamHeaders[key] = value;
       });
+
     await request
       .post(
         url,
-        { ping: "ok" },
+        { ...providerSpecificPayload(url), ping: "ok" },
         {
           headers: streamHeaders,
           // request timeout
@@ -137,7 +139,7 @@ export const auditLogStreamServiceFactory = ({
     await request
       .post(
         url || logStream.url,
-        { ping: "ok" },
+        { ...providerSpecificPayload(url || logStream.url), ping: "ok" },
         {
           headers: streamHeaders,
           // request timeout

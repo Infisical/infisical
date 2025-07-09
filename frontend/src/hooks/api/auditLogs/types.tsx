@@ -14,8 +14,8 @@ export type TGetAuditLogsFilter = {
   actor?: string; // user ID format
   secretPath?: string;
   secretKey?: string;
-  startDate?: Date;
-  endDate?: Date;
+  startDate: Date;
+  endDate: Date;
   limit: number;
 };
 

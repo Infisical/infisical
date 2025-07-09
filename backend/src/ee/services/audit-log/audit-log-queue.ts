@@ -1,13 +1,15 @@
-import { RawAxiosRequestHeaders } from "axios";
+import { AxiosError, RawAxiosRequestHeaders } from "axios";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
+import { providerSpecificPayload } from "../audit-log-stream/audit-log-stream-fns";
 import { LogStreamHeaders } from "../audit-log-stream/audit-log-stream-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
@@ -128,13 +130,25 @@ export const auditLogQueueServiceFactory = async ({
                   headers[key] = value;
                 });
 
-              return request.post(url, auditLog, {
-                headers,
-                // request timeout
-                timeout: AUDIT_LOG_STREAM_TIMEOUT,
-                // connection timeout
-                signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-              });
+              try {
+                const response = await request.post(
+                  url,
+                  { ...providerSpecificPayload(url), ...auditLog },
+                  {
+                    headers,
+                    // request timeout
+                    timeout: AUDIT_LOG_STREAM_TIMEOUT,
+                    // connection timeout
+                    signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+                  }
+                );
+                return response;
+              } catch (error) {
+                logger.error(
+                  `Failed to stream audit log [url=${url}] for org [orgId=${orgId}] [error=${(error as AxiosError).message}]`
+                );
+                return error;
+              }
             }
           )
         );
@@ -218,13 +232,25 @@ export const auditLogQueueServiceFactory = async ({
               headers[key] = value;
             });
 
-          return request.post(url, auditLog, {
-            headers,
-            // request timeout
-            timeout: AUDIT_LOG_STREAM_TIMEOUT,
-            // connection timeout
-            signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-          });
+          try {
+            const response = await request.post(
+              url,
+              { ...providerSpecificPayload(url), ...auditLog },
+              {
+                headers,
+                // request timeout
+                timeout: AUDIT_LOG_STREAM_TIMEOUT,
+                // connection timeout
+                signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+              }
+            );
+            return response;
+          } catch (error) {
+            logger.error(
+              `Failed to stream audit log [url=${url}] for org [orgId=${orgId}] [error=${(error as AxiosError).message}]`
+            );
+            return error;
+          }
         }
       )
     );

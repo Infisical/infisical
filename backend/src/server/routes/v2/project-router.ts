@@ -198,6 +198,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.ProjectCreated,
         distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
         properties: {
           orgId: project.orgId,
           name: project.name,
@@ -456,6 +457,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -486,6 +489,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -548,6 +553,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         projectId: z.string().trim()
       }),

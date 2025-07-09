@@ -52,6 +52,7 @@ export * from "./identity-org-memberships";
 export * from "./identity-project-additional-privilege";
 export * from "./identity-project-membership-role";
 export * from "./identity-project-memberships";
+export * from "./identity-tls-cert-auths";
 export * from "./identity-token-auths";
 export * from "./identity-ua-client-secrets";
 export * from "./identity-universal-auths";

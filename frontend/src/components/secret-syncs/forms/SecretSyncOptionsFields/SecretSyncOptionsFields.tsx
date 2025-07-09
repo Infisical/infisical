@@ -23,6 +23,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
   const { control, watch } = useFormContext<TSecretSyncForm>();
 
   const destination = watch("destination");
+  const currentSyncOption = watch("syncOptions");
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
 
@@ -55,6 +56,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Heroku:
     case SecretSync.Render:
     case SecretSync.Flyio:
+    case SecretSync.GitLab:
+    case SecretSync.CloudflarePages:
+    case SecretSync.Zabbix:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:
@@ -125,8 +129,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
           {!syncOption?.canImportSecrets && (
             <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
               <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
-              {destinationName} only supports overwriting destination secrets. Secrets not present
-              in Infisical will be removed from the destination.
+              {destinationName} only supports overwriting destination secrets.{" "}
+              {!currentSyncOption.disableSecretDeletion &&
+                "Secrets not present in Infisical will be removed from the destination."}
             </p>
           )}
         </>

@@ -51,7 +51,7 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
-  project: Pick<Workspace, "id" | "name" | "type">;
+  project: Pick<Workspace, "id" | "name" | "defaultProduct">;
   roles: Array<
     {
       id: string;
@@ -481,6 +481,47 @@ export type UpdateIdentityKubernetesAuthDTO = {
 };
 
 export type DeleteIdentityKubernetesAuthDTO = {
+  organizationId: string;
+  identityId: string;
+};
+
+export type IdentityTlsCertAuth = {
+  identityId: string;
+  caCertificate: string;
+  allowedCommonNames: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: IdentityTrustedIp[];
+};
+
+export type AddIdentityTlsCertAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  caCertificate: string;
+  allowedCommonNames?: string;
+  accessTokenTTL: number;
+  accessTokenMaxTTL: number;
+  accessTokenNumUsesLimit: number;
+  accessTokenTrustedIps: {
+    ipAddress: string;
+  }[];
+};
+
+export type UpdateIdentityTlsCertAuthDTO = {
+  organizationId: string;
+  identityId: string;
+  caCertificate: string;
+  allowedCommonNames?: string | null;
+  accessTokenTTL?: number;
+  accessTokenMaxTTL?: number;
+  accessTokenNumUsesLimit?: number;
+  accessTokenTrustedIps?: {
+    ipAddress: string;
+  }[];
+};
+
+export type DeleteIdentityTlsCertAuthDTO = {
   organizationId: string;
   identityId: string;
 };

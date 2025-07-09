@@ -145,7 +145,6 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
                     <Checkbox
                       id={optionValue}
                       key={optionValue}
-                      className="data-[state=checked]:bg-primary"
                       isChecked={value[optionValue]}
                       onCheckedChange={(state) => {
                         onChange({

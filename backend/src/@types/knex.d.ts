@@ -164,6 +164,9 @@ import {
   TIdentityProjectMemberships,
   TIdentityProjectMembershipsInsert,
   TIdentityProjectMembershipsUpdate,
+  TIdentityTlsCertAuths,
+  TIdentityTlsCertAuthsInsert,
+  TIdentityTlsCertAuthsUpdate,
   TIdentityTokenAuths,
   TIdentityTokenAuthsInsert,
   TIdentityTokenAuthsUpdate,
@@ -793,6 +796,11 @@ declare module "knex/types/tables" {
       TIdentityAlicloudAuths,
       TIdentityAlicloudAuthsInsert,
       TIdentityAlicloudAuthsUpdate
+    >;
+    [TableName.IdentityTlsCertAuth]: KnexOriginal.CompositeTableType<
+      TIdentityTlsCertAuths,
+      TIdentityTlsCertAuthsInsert,
+      TIdentityTlsCertAuthsUpdate
     >;
     [TableName.IdentityAwsAuth]: KnexOriginal.CompositeTableType<
       TIdentityAwsAuths,

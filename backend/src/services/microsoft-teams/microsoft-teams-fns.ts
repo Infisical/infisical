@@ -400,7 +400,7 @@ export const buildTeamsPayload = (notification: TNotification) => {
           {
             type: "Action.OpenUrl",
             title: "View request in Infisical",
-            url: `${appCfg.SITE_URL}/secret-manager/${payload.projectId}/approval?requestId=${payload.requestId}`
+            url: `${appCfg.SITE_URL}/projects/${payload.projectId}/secret-manager/approval?requestId=${payload.requestId}`
           }
         ]
       };

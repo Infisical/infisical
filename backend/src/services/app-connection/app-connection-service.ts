@@ -45,8 +45,12 @@ import { azureClientSecretsConnectionService } from "./azure-client-secrets/azur
 import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/azure-devops-schemas";
 import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
+import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
+import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
+import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
+import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
@@ -56,6 +60,8 @@ import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
+import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
+import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
@@ -76,6 +82,8 @@ import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
 import { windmillConnectionService } from "./windmill/windmill-connection-service";
+import { ValidateZabbixConnectionCredentialsSchema } from "./zabbix";
+import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
@@ -113,7 +121,11 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
   [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema,
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
-  [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema
+  [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
+  [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
+  [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
+  [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
+  [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -521,6 +533,10 @@ export const appConnectionServiceFactory = ({
     onepass: onePassConnectionService(connectAppConnectionById),
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
-    flyio: flyioConnectionService(connectAppConnectionById)
+    flyio: flyioConnectionService(connectAppConnectionById),
+    gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
+    cloudflare: cloudflareConnectionService(connectAppConnectionById),
+    bitbucket: bitbucketConnectionService(connectAppConnectionById),
+    zabbix: zabbixConnectionService(connectAppConnectionById)
   };
 };

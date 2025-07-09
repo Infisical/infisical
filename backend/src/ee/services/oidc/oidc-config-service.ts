@@ -107,32 +107,24 @@ export const oidcConfigServiceFactory = ({
   kmsService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
-    const org = await orgDAL.findOne({ slug: dto.orgSlug });
-    if (!org) {
+    const oidcCfg = await oidcConfigDAL.findOne({
+      orgId: dto.organizationId
+    });
+    if (!oidcCfg) {
       throw new NotFoundError({
-        message: `Organization with slug '${dto.orgSlug}' not found`,
-        name: "OrgNotFound"
+        message: `OIDC configuration for organization with ID '${dto.organizationId}' not found`
       });
     }
+
     if (dto.type === "external") {
       const { permission } = await permissionService.getOrgPermission(
         dto.actor,
         dto.actorId,
-        org.id,
+        dto.organizationId,
         dto.actorAuthMethod,
         dto.actorOrgId
       );
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
-    }
-
-    const oidcCfg = await oidcConfigDAL.findOne({
-      orgId: org.id
-    });
-
-    if (!oidcCfg) {
-      throw new NotFoundError({
-        message: `OIDC configuration for organization with slug '${dto.orgSlug}' not found`
-      });
     }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -465,7 +457,7 @@ export const oidcConfigServiceFactory = ({
   };
 
   const updateOidcCfg = async ({
-    orgSlug,
+    organizationId,
     allowedEmailDomains,
     configurationType,
     discoveryURL,
@@ -484,13 +476,11 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships,
     jwtSignatureAlgorithm
   }: TUpdateOidcCfgDTO) => {
-    const org = await orgDAL.findOne({
-      slug: orgSlug
-    });
+    const org = await orgDAL.findOne({ id: organizationId });
 
     if (!org) {
       throw new NotFoundError({
-        message: `Organization with slug '${orgSlug}' not found`
+        message: `Organization with ID '${organizationId}' not found`
       });
     }
 
@@ -555,7 +545,7 @@ export const oidcConfigServiceFactory = ({
   };
 
   const createOidcCfg = async ({
-    orgSlug,
+    organizationId,
     allowedEmailDomains,
     configurationType,
     discoveryURL,
@@ -574,12 +564,10 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships,
     jwtSignatureAlgorithm
   }: TCreateOidcCfgDTO) => {
-    const org = await orgDAL.findOne({
-      slug: orgSlug
-    });
+    const org = await orgDAL.findOne({ id: organizationId });
     if (!org) {
       throw new NotFoundError({
-        message: `Organization with slug '${orgSlug}' not found`
+        message: `Organization with ID '${organizationId}' not found`
       });
     }
 
@@ -639,7 +627,7 @@ export const oidcConfigServiceFactory = ({
 
     const oidcCfg = await getOidc({
       type: "internal",
-      orgSlug
+      organizationId: org.id
     });
 
     if (!oidcCfg || !oidcCfg.isActive) {

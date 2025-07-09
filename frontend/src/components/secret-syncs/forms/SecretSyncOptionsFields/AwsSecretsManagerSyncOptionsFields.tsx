@@ -23,14 +23,93 @@ import { AwsSecretsManagerSyncMappingBehavior } from "@app/hooks/api/secretSyncs
 
 import { TSecretSyncForm } from "../schemas";
 
+const AwsTagsSection = () => {
+  const { control } = useFormContext<
+    TSecretSyncForm & { destination: SecretSync.AWSSecretsManager }
+  >();
+
+  const tagFields = useFieldArray({
+    control,
+    name: "syncOptions.tags"
+  });
+
+  return (
+    <div className="mb-4 mt-2 flex flex-col pl-2">
+      <div className="grid max-h-[20vh] grid-cols-12 items-end gap-2 overflow-y-auto">
+        {tagFields.fields.map(({ id: tagFieldId }, i) => (
+          <Fragment key={tagFieldId}>
+            <div className="col-span-5">
+              {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+              <Controller
+                control={control}
+                name={`syncOptions.tags.${i}.key`}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    className="mb-0"
+                  >
+                    <Input className="text-xs" {...field} />
+                  </FormControl>
+                )}
+              />
+            </div>
+            <div className="col-span-6">
+              {i === 0 && (
+                <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
+              )}
+              <Controller
+                control={control}
+                name={`syncOptions.tags.${i}.value`}
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    className="mb-0"
+                  >
+                    <Input className="text-xs" {...field} />
+                  </FormControl>
+                )}
+              />
+            </div>
+            <Tooltip content="Remove tag" position="right">
+              <IconButton
+                variant="plain"
+                ariaLabel="Remove tag"
+                className="col-span-1 mb-1.5"
+                colorSchema="danger"
+                size="xs"
+                onClick={() => tagFields.remove(i)}
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </IconButton>
+            </Tooltip>
+          </Fragment>
+        ))}
+      </div>
+      <div className="mt-2 flex">
+        <Button
+          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          size="xs"
+          variant="outline_bg"
+          onClick={() => tagFields.append({ key: "", value: "" })}
+        >
+          Add Tag
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export const AwsSecretsManagerSyncOptionsFields = () => {
-  const { control, watch } = useFormContext<
+  const { control, watch, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.AWSSecretsManager }
   >();
 
   const region = watch("destinationConfig.region");
   const connectionId = useWatch({ name: "connection.id", control });
   const mappingBehavior = watch("destinationConfig.mappingBehavior");
+  const watchedTags = watch("syncOptions.tags");
 
   const { data: kmsKeys = [], isPending: isKmsKeysPending } = useListAwsConnectionKmsKeys(
     {
@@ -40,11 +119,6 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
     },
     { enabled: Boolean(connectionId && region) }
   );
-
-  const tagFields = useFieldArray({
-    control,
-    name: "syncOptions.tags"
-  });
 
   return (
     <>
@@ -102,78 +176,50 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
           </FormControl>
         )}
       />
-      <FormLabel label="Tags" tooltipText="Add tags to secrets synced by Infisical" />
-      <div className="mb-3 grid max-h-[20vh] grid-cols-12 flex-col items-end gap-2 overflow-y-auto">
-        {tagFields.fields.map(({ id: tagFieldId }, i) => (
-          <Fragment key={tagFieldId}>
-            <div className="col-span-5">
-              {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
-              <Controller
-                control={control}
-                name={`syncOptions.tags.${i}.key`}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0"
-                  >
-                    <Input className="text-xs" {...field} />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="col-span-6">
-              {i === 0 && (
-                <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
-              )}
-              <Controller
-                control={control}
-                name={`syncOptions.tags.${i}.value`}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0"
-                  >
-                    <Input className="text-xs" {...field} />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <Tooltip content="Remove tag" position="right">
-              <IconButton
-                variant="plain"
-                ariaLabel="Remove tag"
-                className="col-span-1 mb-1.5"
-                colorSchema="danger"
-                size="xs"
-                onClick={() => tagFields.remove(i)}
-              >
-                <FontAwesomeIcon icon={faTrash} />
-              </IconButton>
-            </Tooltip>
-          </Fragment>
-        ))}
-      </div>
-      <div className="mb-6 mt-2 flex">
-        <Button
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          size="xs"
-          variant="outline_bg"
-          onClick={() => tagFields.append({ key: "", value: "" })}
-        >
-          Add Tag
-        </Button>
-      </div>
+
+      <Switch
+        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+        id="overwrite-tags"
+        thumbClassName="bg-mineshaft-800"
+        isChecked={Array.isArray(watchedTags)}
+        onCheckedChange={(isChecked) => {
+          if (isChecked) {
+            setValue("syncOptions.tags", []);
+          } else {
+            setValue("syncOptions.tags", undefined);
+          }
+        }}
+      >
+        <p className="w-fit">
+          Configure Secret Tags{" "}
+          <Tooltip
+            className="max-w-md"
+            content={
+              <p>
+                If enabled, AWS secret tags will be overwritten using static values defined below.
+              </p>
+            }
+          >
+            <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+          </Tooltip>
+        </p>
+      </Switch>
+
+      {Array.isArray(watchedTags) && <AwsTagsSection />}
+
       {mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne && (
         <Controller
           name="syncOptions.syncSecretMetadataAsTags"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+            <FormControl
+              isError={Boolean(error?.message)}
+              errorText={error?.message}
+              className="mt-4"
+            >
               <Switch
                 className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                id="overwrite-existing-secrets"
+                id="sync-metadata-as-tags"
                 thumbClassName="bg-mineshaft-800"
                 isChecked={value}
                 onCheckedChange={onChange}

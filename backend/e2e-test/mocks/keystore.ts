@@ -8,6 +8,9 @@ import { Lock } from "@app/lib/red-lock";
 export const mockKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
 
+  const getRegex = (pattern: string) =>
+    new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
+
   return {
     setItem: async (key, value) => {
       store[key] = value;
@@ -23,7 +26,7 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       return 1;
     },
     deleteItems: async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }) => {
-      const regex = new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
+      const regex = getRegex(pattern);
       let totalDeleted = 0;
       const keys = Object.keys(store);
 
@@ -52,6 +55,27 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     },
     incrementBy: async () => {
       return 1;
+    },
+    getItems: async (keys) => {
+      const values = keys.map((key) => {
+        const value = store[key];
+        if (typeof value === "string") {
+          return value;
+        }
+        return null;
+      });
+      return values;
+    },
+    getKeysByPattern: async (pattern) => {
+      const regex = getRegex(pattern);
+      const keys = Object.keys(store);
+      return keys.filter((key) => regex.test(key));
+    },
+    deleteItemsByKeyIn: async (keys) => {
+      for (const key of keys) {
+        delete store[key];
+      }
+      return keys.length;
     },
     acquireLock: () => {
       return Promise.resolve({

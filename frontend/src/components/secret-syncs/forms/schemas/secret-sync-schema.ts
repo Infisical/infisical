@@ -7,10 +7,12 @@ import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configur
 import { AzureDevOpsSyncDestinationSchema } from "./azure-devops-sync-destination-schema";
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
+import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
 import { GitHubSyncDestinationSchema } from "./github-sync-destination-schema";
+import { GitlabSyncDestinationSchema } from "./gitlab-sync-destination-schema";
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
 import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
@@ -20,6 +22,7 @@ import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schem
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 import { WindmillSyncDestinationSchema } from "./windmill-sync-destination-schema";
+import { ZabbixSyncDestinationSchema } from "./zabbix-sync-destination-schema";
 
 const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncDestinationSchema,
@@ -41,7 +44,10 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   OnePassSyncDestinationSchema,
   HerokuSyncDestinationSchema,
   RenderSyncDestinationSchema,
-  FlyioSyncDestinationSchema
+  FlyioSyncDestinationSchema,
+  GitlabSyncDestinationSchema,
+  CloudflarePagesSyncDestinationSchema,
+  ZabbixSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

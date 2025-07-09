@@ -35,19 +35,40 @@ infisical user update domain
 <Accordion title="infisical user get token">
   Use this command to get your current Infisical access token and session information. This command requires you to be logged in.
 
-  The command will display:
+The command will display:
 
-  - Your session ID
-  - Your full JWT access token
+- Your session ID
+- Your full JWT access token
 
-  ```bash
-  infisical user get token
-  ```
+```bash
+infisical user get token
+```
 
-  Example output:
+Example output:
 
-  ```bash
-  Session ID: abc123-xyz-456
-  Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-  ```
+```bash
+Session ID: abc123-xyz-456
+Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Flags
+
+  <Accordion title="--plain">
+    Output only the JWT token without formatting (no session ID)
+
+    Default value: `false`
+
+    ```bash
+    # Example
+    infisical user get token --plain
+    ```
+
+    Example output:
+
+    ```bash
+    eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    ```
+
+  </Accordion>
+
 </Accordion>

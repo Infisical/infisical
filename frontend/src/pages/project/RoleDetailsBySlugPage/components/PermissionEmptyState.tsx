@@ -12,7 +12,7 @@ export const PermissionEmptyState = () => {
     ([key, value]) => key && value?.length > 0
   );
 
-  if (isNotEmptyPermissions) return <div />;
+  if (isNotEmptyPermissions) return null;
 
   return <EmptyState title="No policies applied" className="py-8" />;
 };

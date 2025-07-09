@@ -24,6 +24,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -136,20 +137,10 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
             text: "User privilege assumption has started"
           });
 
-          let overviewPage: string;
-
-          switch (currentWorkspace.type) {
-            case ProjectType.SecretScanning:
-              overviewPage = "data-sources";
-              break;
-            case ProjectType.CertificateManager:
-              overviewPage = "subscribers";
-              break;
-            default:
-              overviewPage = "overview";
-          }
-
-          window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/${overviewPage}`;
+          const url = getProjectHomePage(
+            getCurrentProductFromUrl(window.location.href) || ProjectType.SecretManager
+          );
+          window.location.href = url.replace("$projectId", currentWorkspace.id);
         }
       }
     );

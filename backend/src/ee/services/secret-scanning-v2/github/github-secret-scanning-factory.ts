@@ -19,18 +19,23 @@ import {
   TSecretScanningFactoryGetFullScanPath,
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
-  TSecretScanningFactoryPostInitialization
+  TSecretScanningFactoryPostInitialization,
+  TSecretScanningFactoryTeardown
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
-import { GitHubRepositoryRegex } from "@app/lib/regex";
+import { BasicRepositoryRegex } from "@app/lib/regex";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
 
-import { TGitHubDataSourceWithConnection, TQueueGitHubResourceDiffScan } from "./github-secret-scanning-types";
+import {
+  TGitHubDataSourceInput,
+  TGitHubDataSourceWithConnection,
+  TQueueGitHubResourceDiffScan
+} from "./github-secret-scanning-types";
 
 export const GitHubSecretScanningFactory = () => {
-  const initialize: TSecretScanningFactoryInitialize<TGitHubRadarConnection> = async (
+  const initialize: TSecretScanningFactoryInitialize<TGitHubDataSourceInput, TGitHubRadarConnection> = async (
     { connection, secretScanningV2DAL },
     callback
   ) => {
@@ -51,8 +56,15 @@ export const GitHubSecretScanningFactory = () => {
     });
   };
 
-  const postInitialization: TSecretScanningFactoryPostInitialization<TGitHubRadarConnection> = async () => {
+  const postInitialization: TSecretScanningFactoryPostInitialization<
+    TGitHubDataSourceInput,
+    TGitHubRadarConnection
+  > = async () => {
     // no post-initialization required
+  };
+
+  const teardown: TSecretScanningFactoryTeardown<TGitHubDataSourceWithConnection> = async () => {
+    // no termination required
   };
 
   const listRawResources: TSecretScanningFactoryListRawResources<TGitHubDataSourceWithConnection> = async (
@@ -107,7 +119,7 @@ export const GitHubSecretScanningFactory = () => {
 
     const repoPath = join(tempFolder, "repo.git");
 
-    if (!GitHubRepositoryRegex.test(resourceName)) {
+    if (!BasicRepositoryRegex.test(resourceName)) {
       throw new Error("Invalid GitHub repository name");
     }
 
@@ -225,6 +237,7 @@ export const GitHubSecretScanningFactory = () => {
     listRawResources,
     getFullScanPath,
     getDiffScanResourcePayload,
-    getDiffScanFindingsPayload
+    getDiffScanFindingsPayload,
+    teardown
   };
 };

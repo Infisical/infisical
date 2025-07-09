@@ -11,5 +11,6 @@ export const identityAuthToNameMap: { [I in IdentityAuthMethod]: string } = {
   [IdentityAuthMethod.OCI_AUTH]: "OCI Auth",
   [IdentityAuthMethod.OIDC_AUTH]: "OIDC Auth",
   [IdentityAuthMethod.LDAP_AUTH]: "LDAP Auth",
-  [IdentityAuthMethod.JWT_AUTH]: "JWT Auth"
+  [IdentityAuthMethod.JWT_AUTH]: "JWT Auth",
+  [IdentityAuthMethod.TLS_CERT_AUTH]: "TLS Certificate Auth"
 };

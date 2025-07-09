@@ -56,12 +56,12 @@ export const OrgGroupsSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Groups</p>
         <OrgPermissionCan I={OrgPermissionGroupActions.Create} a={OrgPermissionSubjects.Groups}>
           {(isAllowed) => (
             <Button
-              colorSchema="primary"
+              colorSchema="secondary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handleAddGroupModal()}

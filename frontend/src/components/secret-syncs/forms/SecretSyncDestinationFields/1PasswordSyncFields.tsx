@@ -4,7 +4,7 @@ import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
+import { FilterableSelect, FormControl, Input, Tooltip } from "@app/components/v2";
 import {
   TOnePassVault,
   useOnePassConnectionListVaults
@@ -32,6 +32,7 @@ export const OnePassSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.vaultId", "");
+          setValue("destinationConfig.valueLabel", "");
         }}
       />
 
@@ -59,7 +60,7 @@ export const OnePassSyncFields = () => {
               menuPlacement="top"
               isLoading={isVaultsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
-              value={vaults?.find((v) => v.id === value) ?? null}
+              value={vaults?.find((v) => v.id === value) || null}
               onChange={(option) => onChange((option as SingleValue<TOnePassVault>)?.id ?? null)}
               options={vaults}
               placeholder="Select a vault..."
@@ -68,6 +69,22 @@ export const OnePassSyncFields = () => {
             />
           </FormControl>
         )}
+      />
+
+      <Controller
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            isError={Boolean(error)}
+            errorText={error?.message}
+            isOptional
+            label="Value Label"
+            tooltipText="It's the label of the 1Password item field which will hold your secret value. For example, if you were to sync Infisical secret 'foo: bar', the 1Password item equivalent would have an item title of 'foo', and a field on that item 'value: bar'. The field label 'value' is what gets changed by this option."
+          >
+            <Input value={value} onChange={onChange} placeholder="value" />
+          </FormControl>
+        )}
+        control={control}
+        name="destinationConfig.valueLabel"
       />
     </>
   );

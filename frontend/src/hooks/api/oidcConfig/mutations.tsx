@@ -21,7 +21,7 @@ export const useUpdateOIDCConfig = () => {
       clientId,
       clientSecret,
       isActive,
-      orgSlug,
+      organizationId,
       manageGroupMemberships,
       jwtSignatureAlgorithm
     }: {
@@ -36,7 +36,7 @@ export const useUpdateOIDCConfig = () => {
       clientSecret?: string;
       isActive?: boolean;
       configurationType?: string;
-      orgSlug: string;
+      organizationId: string;
       manageGroupMemberships?: boolean;
       jwtSignatureAlgorithm?: OIDCJWTSignatureAlgorithm;
     }) => {
@@ -50,7 +50,7 @@ export const useUpdateOIDCConfig = () => {
         tokenEndpoint,
         userinfoEndpoint,
         clientId,
-        orgSlug,
+        organizationId,
         clientSecret,
         isActive,
         manageGroupMemberships,
@@ -60,7 +60,7 @@ export const useUpdateOIDCConfig = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.orgSlug) });
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.organizationId) });
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
     }
   });
@@ -81,7 +81,7 @@ export const useCreateOIDCConfig = () => {
       clientId,
       clientSecret,
       isActive,
-      orgSlug,
+      organizationId,
       manageGroupMemberships,
       jwtSignatureAlgorithm
     }: {
@@ -95,7 +95,7 @@ export const useCreateOIDCConfig = () => {
       clientId: string;
       clientSecret: string;
       isActive: boolean;
-      orgSlug: string;
+      organizationId: string;
       allowedEmailDomains?: string;
       manageGroupMemberships?: boolean;
       jwtSignatureAlgorithm?: OIDCJWTSignatureAlgorithm;
@@ -112,7 +112,7 @@ export const useCreateOIDCConfig = () => {
         clientId,
         clientSecret,
         isActive,
-        orgSlug,
+        organizationId,
         manageGroupMemberships,
         jwtSignatureAlgorithm
       });
@@ -120,7 +120,7 @@ export const useCreateOIDCConfig = () => {
       return data;
     },
     onSuccess(_, dto) {
-      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.orgSlug) });
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.organizationId) });
     }
   });
 };

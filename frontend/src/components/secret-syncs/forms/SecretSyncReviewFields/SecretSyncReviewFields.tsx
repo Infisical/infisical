@@ -19,10 +19,12 @@ import { AzureAppConfigurationSyncReviewFields } from "./AzureAppConfigurationSy
 import { AzureDevOpsSyncReviewFields } from "./AzureDevOpsSyncReviewFields";
 import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
+import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
+import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
@@ -33,6 +35,7 @@ import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
+import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -115,6 +118,15 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;
+      break;
+    case SecretSync.GitLab:
+      DestinationFieldsComponent = <GitLabSyncReviewFields />;
+      break;
+    case SecretSync.CloudflarePages:
+      DestinationFieldsComponent = <CloudflarePagesSyncReviewFields />;
+      break;
+    case SecretSync.Zabbix:
+      DestinationFieldsComponent = <ZabbixSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

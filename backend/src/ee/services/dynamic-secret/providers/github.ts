@@ -1,5 +1,5 @@
 import axios from "axios";
-import * as jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";

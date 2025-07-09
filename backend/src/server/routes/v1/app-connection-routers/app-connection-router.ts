@@ -32,9 +32,17 @@ import {
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
 import {
+  BitbucketConnectionListItemSchema,
+  SanitizedBitbucketConnectionSchema
+} from "@app/services/app-connection/bitbucket";
+import {
   CamundaConnectionListItemSchema,
   SanitizedCamundaConnectionSchema
 } from "@app/services/app-connection/camunda";
+import {
+  CloudflareConnectionListItemSchema,
+  SanitizedCloudflareConnectionSchema
+} from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
 import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
@@ -46,6 +54,7 @@ import {
   GitHubRadarConnectionListItemSchema,
   SanitizedGitHubRadarConnectionSchema
 } from "@app/services/app-connection/github-radar";
+import { GitLabConnectionListItemSchema, SanitizedGitLabConnectionSchema } from "@app/services/app-connection/gitlab";
 import {
   HCVaultConnectionListItemSchema,
   SanitizedHCVaultConnectionSchema
@@ -79,6 +88,7 @@ import {
   SanitizedWindmillConnectionSchema,
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
+import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -109,7 +119,11 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOnePassConnectionSchema.options,
   ...SanitizedHerokuConnectionSchema.options,
   ...SanitizedRenderConnectionSchema.options,
-  ...SanitizedFlyioConnectionSchema.options
+  ...SanitizedFlyioConnectionSchema.options,
+  ...SanitizedGitLabConnectionSchema.options,
+  ...SanitizedCloudflareConnectionSchema.options,
+  ...SanitizedBitbucketConnectionSchema.options,
+  ...SanitizedZabbixConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -139,7 +153,11 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OnePassConnectionListItemSchema,
   HerokuConnectionListItemSchema,
   RenderConnectionListItemSchema,
-  FlyioConnectionListItemSchema
+  FlyioConnectionListItemSchema,
+  GitLabConnectionListItemSchema,
+  CloudflareConnectionListItemSchema,
+  BitbucketConnectionListItemSchema,
+  ZabbixConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

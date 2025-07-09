@@ -48,7 +48,6 @@ export const SecretSnapshotsLegacySection = () => {
         {(isAllowed) => (
           <div className="w-max">
             <Checkbox
-              className="data-[state=checked]:bg-primary"
               id="showSnapshotsLegacy"
               isDisabled={!isAllowed || isLoading}
               isChecked={currentWorkspace?.showSnapshotsLegacy ?? false}

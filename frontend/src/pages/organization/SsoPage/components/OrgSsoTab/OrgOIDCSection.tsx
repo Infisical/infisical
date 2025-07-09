@@ -21,7 +21,7 @@ export const OrgOIDCSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
 
-  const { data, isPending } = useGetOIDCConfig(currentOrg?.slug ?? "");
+  const { data, isPending } = useGetOIDCConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateOIDCConfig();
   const { mutateAsync: updateOrg } = useUpdateOrg();
 
@@ -41,7 +41,7 @@ export const OrgOIDCSection = (): JSX.Element => {
       }
 
       await mutateAsync({
-        orgSlug: currentOrg?.slug,
+        organizationId: currentOrg?.id,
         isActive: value
       });
 
@@ -114,7 +114,7 @@ export const OrgOIDCSection = (): JSX.Element => {
       }
 
       await mutateAsync({
-        orgSlug: currentOrg?.slug,
+        organizationId: currentOrg?.id,
         manageGroupMemberships: value
       });
 

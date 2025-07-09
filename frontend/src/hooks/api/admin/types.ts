@@ -48,6 +48,7 @@ export type TServerConfig = {
   authConsentContent?: string;
   pageFrameContent?: string;
   invalidatingCache: boolean;
+  envOverrides?: Record<string, string>;
 };
 
 export type TUpdateServerConfigDTO = {
@@ -56,6 +57,12 @@ export type TUpdateServerConfigDTO = {
   microsoftTeamsAppId?: string;
   microsoftTeamsClientSecret?: string;
   microsoftTeamsBotId?: string;
+  gitHubAppConnectionClientId?: string;
+  gitHubAppConnectionClientSecret?: string;
+  gitHubAppConnectionSlug?: string;
+  gitHubAppConnectionId?: string;
+  gitHubAppConnectionPrivateKey?: string;
+  envOverrides?: Record<string, string>;
 } & Partial<TServerConfig>;
 
 export type TCreateAdminUserDTO = {
@@ -100,6 +107,13 @@ export type AdminIntegrationsConfig = {
     clientSecret: string;
     botId: string;
   };
+  gitHubAppConnection: {
+    clientId: string;
+    clientSecret: string;
+    appSlug: string;
+    appId: string;
+    privateKey: string;
+  };
 };
 
 export type TGetServerRootKmsEncryptionDetails = {
@@ -126,3 +140,10 @@ export type TInvalidateCacheDTO = {
 export type TGetInvalidatingCacheStatus = {
   invalidating: boolean;
 };
+
+export interface TGetEnvOverrides {
+  [key: string]: {
+    name: string;
+    fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[];
+  };
+}

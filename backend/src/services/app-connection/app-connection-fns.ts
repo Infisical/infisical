@@ -50,7 +50,17 @@ import {
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
+import {
+  BitbucketConnectionMethod,
+  getBitbucketConnectionListItem,
+  validateBitbucketConnectionCredentials
+} from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
+import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
+import {
+  getCloudflareConnectionListItem,
+  validateCloudflareConnectionCredentials
+} from "./cloudflare/cloudflare-connection-fns";
 import {
   DatabricksConnectionMethod,
   getDatabricksConnectionListItem,
@@ -64,6 +74,7 @@ import {
   GitHubRadarConnectionMethod,
   validateGitHubRadarConnectionCredentials
 } from "./github-radar";
+import { getGitLabConnectionListItem, GitLabConnectionMethod, validateGitLabConnectionCredentials } from "./gitlab";
 import {
   getHCVaultConnectionListItem,
   HCVaultConnectionMethod,
@@ -99,6 +110,7 @@ import {
   validateWindmillConnectionCredentials,
   WindmillConnectionMethod
 } from "./windmill";
+import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -128,7 +140,11 @@ export const listAppConnectionOptions = () => {
     getOnePassConnectionListItem(),
     getHerokuConnectionListItem(),
     getRenderConnectionListItem(),
-    getFlyioConnectionListItem()
+    getFlyioConnectionListItem(),
+    getGitLabConnectionListItem(),
+    getCloudflareConnectionListItem(),
+    getBitbucketConnectionListItem(),
+    getZabbixConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -206,7 +222,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -223,6 +243,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubConnectionMethod.OAuth:
     case AzureDevOpsConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
+    case GitLabConnectionMethod.OAuth:
       return "OAuth";
     case HerokuConnectionMethod.AuthToken:
       return "Auth Token";
@@ -241,6 +262,9 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
+    case CloudflareConnectionMethod.APIToken:
+    case BitbucketConnectionMethod.ApiToken:
+    case ZabbixConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -318,7 +342,11 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OnePass]: platformManagedCredentialsNotSupported,
   [AppConnection.Heroku]: platformManagedCredentialsNotSupported,
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
-  [AppConnection.Flyio]: platformManagedCredentialsNotSupported
+  [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
+  [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
+  [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
+  [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
+  [AppConnection.Zabbix]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

@@ -5,7 +5,6 @@ import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import {
-  ActionProjectType,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
@@ -108,7 +107,15 @@ type TOrgServiceFactoryDep = {
     "findProjectMembershipsByUserId" | "delete" | "create" | "find" | "insertMany" | "transaction"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey" | "create">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOne" | "findById">;
+  orgMembershipDAL: Pick<
+    TOrgMembershipDALFactory,
+    | "findOrgMembershipById"
+    | "findOne"
+    | "findById"
+    | "findRecentInvitedMemberships"
+    | "updateById"
+    | "updateLastInvitedAtByIds"
+  >;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -235,14 +242,14 @@ export const orgServiceFactory = ({
     return org;
   };
 
-  const findAllWorkspaces = async ({ actor, actorId, orgId, type }: TFindAllWorkspacesDTO) => {
+  const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
     if (actor === ActorType.USER) {
-      const workspaces = await projectDAL.findUserProjects(actorId, orgId, type || "all");
+      const workspaces = await projectDAL.findUserProjects(actorId, orgId);
       return workspaces;
     }
 
     if (actor === ActorType.IDENTITY) {
-      const workspaces = await projectDAL.findAllProjectsByIdentity(actorId, type);
+      const workspaces = await projectDAL.findAllProjectsByIdentity(actorId);
       return workspaces;
     }
 
@@ -761,6 +768,10 @@ export const orgServiceFactory = ({
       }
     });
 
+    await orgMembershipDAL.updateById(inviteeOrgMembership.id, {
+      lastInvitedAt: new Date()
+    });
+
     return { signupToken: undefined };
   };
 
@@ -972,8 +983,7 @@ export const orgServiceFactory = ({
           actorId,
           projectId,
           actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.Any
+          actorOrgId
         });
         ForbiddenError.from(projectPermission).throwUnlessCan(
           ProjectPermissionMemberActions.Create,
@@ -1424,6 +1434,53 @@ export const orgServiceFactory = ({
     return incidentContact;
   };
 
+  /**
+   * Re-send emails to users who haven't accepted an invite yet
+   */
+  const notifyInvitedUsers = async () => {
+    const invitedUsers = await orgMembershipDAL.findRecentInvitedMemberships();
+    const appCfg = getConfig();
+
+    const orgCache: Record<string, { name: string; id: string } | undefined> = {};
+    const notifiedUsers: string[] = [];
+
+    await Promise.all(
+      invitedUsers.map(async (invitedUser) => {
+        let org = orgCache[invitedUser.orgId];
+        if (!org) {
+          org = await orgDAL.findById(invitedUser.orgId);
+          orgCache[invitedUser.orgId] = org;
+        }
+
+        if (!org || !invitedUser.userId) return;
+
+        const token = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+          userId: invitedUser.userId,
+          orgId: org.id
+        });
+
+        if (invitedUser.inviteEmail) {
+          await smtpService.sendMail({
+            template: SmtpTemplates.OrgInvite,
+            subjectLine: `Reminder: You have been invited to ${org.name} on Infisical`,
+            recipients: [invitedUser.inviteEmail],
+            substitutions: {
+              organizationName: org.name,
+              email: invitedUser.inviteEmail,
+              organizationId: org.id.toString(),
+              token,
+              callback_url: `${appCfg.SITE_URL}/signupinvite`
+            }
+          });
+          notifiedUsers.push(invitedUser.id);
+        }
+      })
+    );
+
+    await orgMembershipDAL.updateLastInvitedAtByIds(notifiedUsers);
+  };
+
   return {
     findOrganizationById,
     findAllOrgMembers,
@@ -1447,6 +1504,7 @@ export const orgServiceFactory = ({
     listProjectMembershipsByOrgMembershipId,
     findOrgBySlug,
     resendOrgMemberInvitation,
-    upgradePrivilegeSystem
+    upgradePrivilegeSystem,
+    notifyInvitedUsers
   };
 };

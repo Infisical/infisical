@@ -24,7 +24,7 @@ export const AddPoliciesButton = ({ isDisabled }: Props) => {
   ] as const);
 
   return (
-    <>
+    <div>
       <Button
         className="h-10 rounded-r-none"
         variant="outline_bg"
@@ -73,6 +73,6 @@ export const AddPoliciesButton = ({ isDisabled }: Props) => {
         isOpen={popUp.applyTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("applyTemplate", isOpen)}
       />
-    </>
+    </div>
   );
 };

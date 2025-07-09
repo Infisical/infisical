@@ -220,7 +220,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
       bypassers: string[];
     }[]
   >;
-  getCount: ({ projectId }: { projectId: string }) => Promise<{
+  getCount: ({ projectId }: { projectId: string; policyId?: string }) => Promise<{
     pendingCount: number;
     finalizedCount: number;
   }>;
@@ -702,7 +702,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
     }
   };
 
-  const getCount: TAccessApprovalRequestDALFactory["getCount"] = async ({ projectId }) => {
+  const getCount: TAccessApprovalRequestDALFactory["getCount"] = async ({ projectId, policyId }) => {
     try {
       const accessRequests = await db
         .replicaNode()(TableName.AccessApprovalRequest)
@@ -723,8 +723,10 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           `${TableName.AccessApprovalRequest}.id`,
           `${TableName.AccessApprovalRequestReviewer}.requestId`
         )
-
         .where(`${TableName.Environment}.projectId`, projectId)
+        .where((qb) => {
+          if (policyId) void qb.where(`${TableName.AccessApprovalPolicy}.id`, policyId);
+        })
         .select(selectAllTableCols(TableName.AccessApprovalRequest))
         .select(db.ref("status").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerStatus"))
         .select(db.ref("reviewerUserId").withSchema(TableName.AccessApprovalRequestReviewer).as("reviewerUserId"))

@@ -2,10 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { MongoAbility, MongoQuery } from "@casl/ability";
 import {
   faAnglesUp,
-  faArrowUpRightFromSquare,
-  faDownLeftAndUpRightToCenter,
   faUpRightAndDownLeftFromCenter,
-  faWindowRestore
+  faWindowRestore,
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -23,8 +22,8 @@ import {
 } from "@xyflow/react";
 import { twMerge } from "tailwind-merge";
 
-import { Button, IconButton, Spinner, Tooltip } from "@app/components/v2";
-import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
+import { Button, IconButton, Select, SelectItem, Spinner, Tooltip } from "@app/components/v2";
+import { ProjectPermissionSet, ProjectPermissionSub } from "@app/context/ProjectPermissionContext";
 
 import { AccessTreeSecretPathInput } from "./nodes/FolderNode/components/AccessTreeSecretPathInput";
 import { ShowMoreButtonNode } from "./nodes/ShowMoreButtonNode";
@@ -36,15 +35,17 @@ import { ViewMode } from "./types";
 
 export type AccessTreeProps = {
   permissions: MongoAbility<ProjectPermissionSet, MongoQuery>;
+  subject: ProjectPermissionSub;
+  onClose: () => void;
 };
 
 const EdgeTypes = { base: BasePermissionEdge };
 
 const NodeTypes = { role: RoleNode, folder: FolderNode, showMoreButton: ShowMoreButtonNode };
 
-const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
+const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) => {
   const [selectedPath, setSelectedPath] = useState<string>("/");
-  const accessTreeData = useAccessTree(permissions, selectedPath);
+  const accessTreeData = useAccessTree(permissions, selectedPath, subject);
   const { edges, nodes, isLoading, viewMode, setViewMode, environment } = accessTreeData;
   const [initialRender, setInitialRender] = useState(true);
 
@@ -78,32 +79,32 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
 
   useEffect(() => {
     setInitialRender(true);
-  }, [selectedPath, environment]);
+  }, [selectedPath, environment, subject, viewMode]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (initialRender) {
       timer = setTimeout(() => {
-        goToRootNode();
+        fitView({ duration: 500 });
         setInitialRender(false);
-      }, 500);
+      }, 50);
     }
     return () => clearTimeout(timer);
-  }, [nodes, edges, getViewport(), initialRender, goToRootNode]);
+  }, [nodes, edges, getViewport(), initialRender, fitView]);
 
   const handleToggleModalView = () =>
     setViewMode((prev) => (prev === ViewMode.Modal ? ViewMode.Docked : ViewMode.Modal));
 
-  const handleToggleUndockedView = () =>
-    setViewMode((prev) => (prev === ViewMode.Undocked ? ViewMode.Docked : ViewMode.Undocked));
+  const handleToggleView = () =>
+    setViewMode((prev) => (prev === ViewMode.Modal ? ViewMode.Undocked : ViewMode.Modal));
 
-  const undockButtonLabel = `${viewMode === ViewMode.Undocked ? "Dock" : "Undock"} View`;
-  const windowButtonLabel = `${viewMode === ViewMode.Modal ? "Dock" : "Expand"} View`;
+  const expandButtonLabel = viewMode === ViewMode.Modal ? "Anchor View" : "Expand View";
+  const hideButtonLabel = "Hide Access Tree";
 
   return (
     <div
       className={twMerge(
-        "w-full",
+        "mt-4 w-full",
         viewMode === ViewMode.Modal && "fixed inset-0 z-50 p-10",
         viewMode === ViewMode.Undocked &&
           "fixed bottom-4 left-20 z-50 h-[40%] w-[38%] min-w-[32rem] lg:w-[34%]"
@@ -130,7 +131,7 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
                 type="submit"
                 className="h-10 rounded-r-none bg-mineshaft-700"
                 leftIcon={<FontAwesomeIcon icon={faWindowRestore} />}
-                onClick={handleToggleUndockedView}
+                onClick={handleToggleView}
               >
                 Undock
               </Button>
@@ -176,48 +177,62 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
                   <Spinner />
                 </Panel>
               )}
+              {viewMode !== ViewMode.Undocked && (
+                <Panel position="top-left" className="flex gap-2">
+                  <Select
+                    value={environment}
+                    onValueChange={accessTreeData.setEnvironment}
+                    className="w-60"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
+                    aria-label="Environment"
+                  >
+                    {Object.values(accessTreeData.environments).map((env) => (
+                      <SelectItem
+                        key={env.slug}
+                        value={env.slug}
+                        className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                      >
+                        <div className="ml-3 truncate font-medium">{env.name}</div>
+                      </SelectItem>
+                    ))}
+                  </Select>
+                  <AccessTreeSecretPathInput
+                    placeholder="Provide a path, default is /"
+                    environment={environment}
+                    value={selectedPath}
+                    onChange={setSelectedPath}
+                  />
+                </Panel>
+              )}
               {viewMode !== ViewMode.Docked && (
-                <Panel position="top-right" className="flex gap-1.5">
-                  {viewMode !== ViewMode.Undocked && (
-                    <AccessTreeSecretPathInput
-                      placeholder="Provide a path, default is /"
-                      environment={environment}
-                      value={selectedPath}
-                      onChange={setSelectedPath}
-                    />
-                  )}
-                  <Tooltip position="bottom" align="center" content={undockButtonLabel}>
+                <Panel position="top-right" className="flex gap-2">
+                  <Tooltip position="bottom" align="center" content={expandButtonLabel}>
                     <IconButton
-                      className="ml-1 w-10 rounded"
+                      className="rounded p-2"
                       colorSchema="secondary"
                       variant="plain"
-                      onClick={handleToggleUndockedView}
-                      ariaLabel={undockButtonLabel}
+                      onClick={handleToggleView}
+                      ariaLabel={expandButtonLabel}
                     >
                       <FontAwesomeIcon
                         icon={
                           viewMode === ViewMode.Undocked
-                            ? faArrowUpRightFromSquare
+                            ? faUpRightAndDownLeftFromCenter
                             : faWindowRestore
                         }
                       />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip align="end" position="bottom" content={windowButtonLabel}>
+                  <Tooltip align="end" position="bottom" content={hideButtonLabel}>
                     <IconButton
-                      className="w-10 rounded"
+                      className="rounded p-2"
                       colorSchema="secondary"
                       variant="plain"
-                      onClick={handleToggleModalView}
-                      ariaLabel={windowButtonLabel}
+                      onClick={onClose}
+                      ariaLabel={hideButtonLabel}
                     >
-                      <FontAwesomeIcon
-                        icon={
-                          viewMode === ViewMode.Modal
-                            ? faDownLeftAndUpRightToCenter
-                            : faUpRightAndDownLeftFromCenter
-                        }
-                      />
+                      <FontAwesomeIcon icon={faXmark} />
                     </IconButton>
                   </Tooltip>
                 </Panel>
@@ -253,6 +268,9 @@ const AccessTreeContent = ({ permissions }: AccessTreeProps) => {
 };
 
 export const AccessTree = (props: AccessTreeProps) => {
+  const { subject } = props;
+  if (!subject) return null;
+
   return (
     <AccessTreeErrorBoundary {...props}>
       <AccessTreeProvider>

@@ -6,6 +6,7 @@ export type TOnePassSync = TRootSecretSync & {
   destination: SecretSync.OnePass;
   destinationConfig: {
     vaultId: string;
+    valueLabel?: string;
   };
   connection: {
     app: AppConnection.OnePass;

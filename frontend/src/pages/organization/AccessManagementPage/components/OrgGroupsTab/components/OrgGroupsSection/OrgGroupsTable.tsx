@@ -2,14 +2,17 @@ import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
-  faEllipsis,
+  faCopy,
+  faEdit,
+  faEllipsisV,
   faMagnifyingGlass,
   faSearch,
+  faTrash,
+  faUserGroup,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -261,7 +264,8 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                               <Select
                                 value={role === "custom" ? (customRole?.slug as string) : role}
                                 isDisabled={!isAllowed}
-                                className="w-48 bg-mineshaft-600"
+                                className="h-8 w-48 bg-mineshaft-700"
+                                position="popper"
                                 dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                                 onValueChange={(selectedRole) =>
                                   handleChangeRole({
@@ -282,13 +286,19 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                       </Td>
                       <Td>
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild className="rounded-lg">
-                            <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                              <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                            </div>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              ariaLabel="Options"
+                              className="w-6"
+                              colorSchema="secondary"
+                              variant="plain"
+                            >
+                              <FontAwesomeIcon icon={faEllipsisV} />
+                            </IconButton>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="p-1">
+                          <DropdownMenuContent sideOffset={2} align="end">
                             <DropdownMenuItem
+                              icon={<FontAwesomeIcon icon={faCopy} />}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 createNotification({
@@ -306,10 +316,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
-                                  className={twMerge(
-                                    !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
-                                  )}
+                                  icon={<FontAwesomeIcon icon={faEdit} />}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("group", {
@@ -320,7 +327,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                       customRole
                                     });
                                   }}
-                                  disabled={!isAllowed}
+                                  isDisabled={!isAllowed}
                                 >
                                   Edit Group
                                 </DropdownMenuItem>
@@ -332,10 +339,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
-                                  className={twMerge(
-                                    !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
-                                  )}
+                                  icon={<FontAwesomeIcon icon={faUserGroup} />}
                                   onClick={() =>
                                     navigate({
                                       to: "/organization/groups/$groupId",
@@ -344,7 +348,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                       }
                                     })
                                   }
-                                  disabled={!isAllowed}
+                                  isDisabled={!isAllowed}
                                 >
                                   Manage Members
                                 </DropdownMenuItem>
@@ -356,11 +360,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
-                                  className={twMerge(
-                                    isAllowed
-                                      ? "hover:!bg-red-500 hover:!text-white"
-                                      : "pointer-events-none cursor-not-allowed opacity-50"
-                                  )}
+                                  icon={<FontAwesomeIcon icon={faTrash} />}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("deleteGroup", {
@@ -368,7 +368,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                       name
                                     });
                                   }}
-                                  disabled={!isAllowed}
+                                  isDisabled={!isAllowed}
                                 >
                                   Delete Group
                                 </DropdownMenuItem>

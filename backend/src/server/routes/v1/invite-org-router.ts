@@ -64,6 +64,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserOrgInvitation,
         distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
         properties: {
           inviteeEmails: req.body.inviteeEmails,
           organizationRoleSlug: req.body.organizationRoleSlug,
@@ -83,7 +84,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: smtpRateLimit({
         keyGenerator: (req) =>
-          (req.body as { membershipId?: string })?.membershipId?.trim().substring(0, 100) ?? req.realIp
+          (req.body as { membershipId?: string })?.membershipId?.trim().substring(0, 100) || req.realIp
       })
     },
     method: "POST",

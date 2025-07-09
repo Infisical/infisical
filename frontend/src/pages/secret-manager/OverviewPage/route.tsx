@@ -1,4 +1,4 @@
-import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -10,11 +10,24 @@ const SecretOverviewPageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/_secret-manager-layout/overview"
+  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/overview"
 )({
   component: OverviewPage,
   validateSearch: zodValidator(SecretOverviewPageQuerySchema),
   search: {
     middlewares: [stripSearchParams({ secretPath: "/", search: "" })]
-  }
+  },
+  beforeLoad: ({ context, params }) => ({
+    ...context,
+    breadcrumbs: [
+      ...context.breadcrumbs,
+      {
+        label: "Secrets",
+        link: linkOptions({
+          to: "/projects/$projectId/secret-manager/overview",
+          params
+        })
+      }
+    ]
+  })
 });

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { QueueWorkerProfile } from "@app/lib/types";
 
+import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
@@ -193,6 +194,9 @@ const envSchema = z
     PYLON_API_KEY: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
     SSL_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default("x-ssl-client-cert"),
+    IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY: zpStr(z.string().optional()).default(
+      "x-identity-tls-cert-auth-client-cert"
+    ),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
@@ -246,6 +250,10 @@ const envSchema = z
     INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET: zpStr(z.string().optional()),
+
+    // gitlab oauth
+    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
 
     // gcp app
     INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
@@ -334,8 +342,11 @@ const envSchema = z
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
 let envCfg: TEnvConfig;
+let originalEnvConfig: TEnvConfig;
 
 export const getConfig = () => envCfg;
+export const getOriginalConfig = () => originalEnvConfig;
+
 // cannot import singleton logger directly as it needs config to load various transport
 export const initEnvConfig = (logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
@@ -345,8 +356,113 @@ export const initEnvConfig = (logger?: CustomLogger) => {
     process.exit(-1);
   }
 
-  envCfg = Object.freeze(parsedEnv.data);
+  const config = Object.freeze(parsedEnv.data);
+  envCfg = config;
+
+  if (!originalEnvConfig) {
+    originalEnvConfig = config;
+  }
+
   return envCfg;
+};
+
+// A list of environment variables that can be overwritten
+export const overwriteSchema: {
+  [key: string]: {
+    name: string;
+    fields: { key: keyof TEnvConfig; description?: string }[];
+  };
+} = {
+  azure: {
+    name: "Azure",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      }
+    ]
+  },
+  google_sso: {
+    name: "Google SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GOOGLE_LOGIN",
+        description: "The Client ID of your GCP OAuth2 application."
+      },
+      {
+        key: "CLIENT_SECRET_GOOGLE_LOGIN",
+        description: "The Client Secret of your GCP OAuth2 application."
+      }
+    ]
+  },
+  github_sso: {
+    name: "GitHub SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GITHUB_LOGIN",
+        description: "The Client ID of your GitHub OAuth application."
+      },
+      {
+        key: "CLIENT_SECRET_GITHUB_LOGIN",
+        description: "The Client Secret of your GitHub OAuth application."
+      }
+    ]
+  },
+  gitlab_sso: {
+    name: "GitLab SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GITLAB_LOGIN",
+        description: "The Client ID of your GitLab application."
+      },
+      {
+        key: "CLIENT_SECRET_GITLAB_LOGIN",
+        description: "The Secret of your GitLab application."
+      },
+      {
+        key: "CLIENT_GITLAB_LOGIN_URL",
+        description:
+          "The URL of your self-hosted instance of GitLab where the OAuth application is registered. If no URL is passed in, this will default to https://gitlab.com."
+      }
+    ]
+  }
+};
+
+export const overridableKeys = new Set(
+  Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
+);
+
+export const validateOverrides = (config: Record<string, string>) => {
+  const allowedOverrides = Object.fromEntries(
+    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
+  );
+
+  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
+  const parsedResult = envSchema.safeParse(tempEnv);
+
+  if (!parsedResult.success) {
+    const errorDetails = parsedResult.error.issues
+      .map((issue) => `Key: "${issue.path.join(".")}", Error: ${issue.message}`)
+      .join("\n");
+    throw new BadRequestError({ message: errorDetails });
+  }
+};
+
+export const overrideEnvConfig = (config: Record<string, string>) => {
+  const allowedOverrides = Object.fromEntries(
+    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
+  );
+
+  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
+  const parsedResult = envSchema.safeParse(tempEnv);
+
+  if (parsedResult.success) {
+    envCfg = Object.freeze(parsedResult.data);
+  }
 };
 
 export const formatSmtpConfig = () => {

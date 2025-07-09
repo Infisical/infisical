@@ -161,6 +161,18 @@ export type IdentityManagementSubjectFields = {
   identityId: string;
 };
 
+export type ConditionalProjectPermissionSubject =
+  | ProjectPermissionSub.SecretSyncs
+  | ProjectPermissionSub.Secrets
+  | ProjectPermissionSub.DynamicSecrets
+  | ProjectPermissionSub.Identity
+  | ProjectPermissionSub.SshHosts
+  | ProjectPermissionSub.PkiSubscribers
+  | ProjectPermissionSub.CertificateTemplates
+  | ProjectPermissionSub.SecretFolders
+  | ProjectPermissionSub.SecretImports
+  | ProjectPermissionSub.SecretRotation;
+
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
   [PermissionConditionOperators.$IN]: "in",

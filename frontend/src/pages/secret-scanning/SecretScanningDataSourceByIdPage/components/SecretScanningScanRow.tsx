@@ -95,7 +95,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
               <Badge
                 onClick={() =>
                   navigate({
-                    to: "/secret-scanning/$projectId/findings",
+                    to: "/projects/$projectId/secret-scanning/findings",
                     params: {
                       projectId: currentWorkspace.id
                     },

@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "@app/components/v2";
 import { useProjectPermission, useWorkspace } from "@app/context";
+import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
 import { useRemoveAssumeProjectPrivilege } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -36,20 +37,11 @@ export const AssumePrivilegeModeBanner = () => {
               },
               {
                 onSuccess: () => {
-                  let page: string;
+                  const url = getProjectHomePage(
+                    getCurrentProductFromUrl(window.location.href) || ProjectType.SecretManager
+                  );
 
-                  switch (currentWorkspace.type) {
-                    case ProjectType.SecretScanning:
-                      page = "data-sources";
-                      break;
-                    case ProjectType.CertificateManager:
-                      page = "subscribers";
-                      break;
-                    default:
-                      page = "overview";
-                  }
-
-                  window.location.href = `/${currentWorkspace.type}/${currentWorkspace.id}/${page}`;
+                  window.location.href = url.replace("$projectId", currentWorkspace.id);
                 }
               }
             );

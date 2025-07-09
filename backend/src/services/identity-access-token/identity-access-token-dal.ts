@@ -17,70 +17,11 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.IdentityAccessToken)
         .where(filter)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityAccessToken}.identityId`)
-        .leftJoin(
-          TableName.IdentityUaClientSecret,
-          `${TableName.IdentityAccessToken}.identityUAClientSecretId`,
-          `${TableName.IdentityUaClientSecret}.id`
-        )
-        .leftJoin(
-          TableName.IdentityUniversalAuth,
-          `${TableName.IdentityUaClientSecret}.identityUAId`,
-          `${TableName.IdentityUniversalAuth}.id`
-        )
-        .leftJoin(TableName.IdentityGcpAuth, `${TableName.Identity}.id`, `${TableName.IdentityGcpAuth}.identityId`)
-        .leftJoin(
-          TableName.IdentityAliCloudAuth,
-          `${TableName.Identity}.id`,
-          `${TableName.IdentityAliCloudAuth}.identityId`
-        )
-        .leftJoin(TableName.IdentityAwsAuth, `${TableName.Identity}.id`, `${TableName.IdentityAwsAuth}.identityId`)
-        .leftJoin(TableName.IdentityAzureAuth, `${TableName.Identity}.id`, `${TableName.IdentityAzureAuth}.identityId`)
-        .leftJoin(TableName.IdentityLdapAuth, `${TableName.Identity}.id`, `${TableName.IdentityLdapAuth}.identityId`)
-        .leftJoin(
-          TableName.IdentityKubernetesAuth,
-          `${TableName.Identity}.id`,
-          `${TableName.IdentityKubernetesAuth}.identityId`
-        )
-        .leftJoin(TableName.IdentityOciAuth, `${TableName.Identity}.id`, `${TableName.IdentityOciAuth}.identityId`)
-        .leftJoin(TableName.IdentityOidcAuth, `${TableName.Identity}.id`, `${TableName.IdentityOidcAuth}.identityId`)
-        .leftJoin(TableName.IdentityTokenAuth, `${TableName.Identity}.id`, `${TableName.IdentityTokenAuth}.identityId`)
-        .leftJoin(TableName.IdentityJwtAuth, `${TableName.Identity}.id`, `${TableName.IdentityJwtAuth}.identityId`)
         .select(selectAllTableCols(TableName.IdentityAccessToken))
-        .select(
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityUniversalAuth).as("accessTokenTrustedIpsUa"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityGcpAuth).as("accessTokenTrustedIpsGcp"),
-          db
-            .ref("accessTokenTrustedIps")
-            .withSchema(TableName.IdentityAliCloudAuth)
-            .as("accessTokenTrustedIpsAliCloud"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAwsAuth).as("accessTokenTrustedIpsAws"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityAzureAuth).as("accessTokenTrustedIpsAzure"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityKubernetesAuth).as("accessTokenTrustedIpsK8s"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityOciAuth).as("accessTokenTrustedIpsOci"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityOidcAuth).as("accessTokenTrustedIpsOidc"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityTokenAuth).as("accessTokenTrustedIpsToken"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityJwtAuth).as("accessTokenTrustedIpsJwt"),
-          db.ref("accessTokenTrustedIps").withSchema(TableName.IdentityLdapAuth).as("accessTokenTrustedIpsLdap"),
-          db.ref("name").withSchema(TableName.Identity)
-        )
+        .select(db.ref("name").withSchema(TableName.Identity))
         .first();
 
-      if (!doc) return;
-
-      return {
-        ...doc,
-        trustedIpsUniversalAuth: doc.accessTokenTrustedIpsUa,
-        trustedIpsGcpAuth: doc.accessTokenTrustedIpsGcp,
-        trustedIpsAliCloudAuth: doc.accessTokenTrustedIpsAliCloud,
-        trustedIpsAwsAuth: doc.accessTokenTrustedIpsAws,
-        trustedIpsAzureAuth: doc.accessTokenTrustedIpsAzure,
-        trustedIpsKubernetesAuth: doc.accessTokenTrustedIpsK8s,
-        trustedIpsOciAuth: doc.accessTokenTrustedIpsOci,
-        trustedIpsOidcAuth: doc.accessTokenTrustedIpsOidc,
-        trustedIpsAccessTokenAuth: doc.accessTokenTrustedIpsToken,
-        trustedIpsAccessJwtAuth: doc.accessTokenTrustedIpsJwt,
-        trustedIpsAccessLdapAuth: doc.accessTokenTrustedIpsLdap
-      };
+      return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "IdAccessTokenFindOne" });
     }

@@ -11,7 +11,9 @@ export const PgSqlLock = {
   OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
   OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
-  CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`)
+  CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
+  CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
+  SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -72,6 +74,7 @@ type TWaitTillReady = {
 export type TKeyStoreFactory = {
   setItem: (key: string, value: string | number | Buffer, prefix?: string) => Promise<"OK">;
   getItem: (key: string, prefix?: string) => Promise<string | null>;
+  getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   setExpiry: (key: string, expiryInSeconds: number) => Promise<number>;
   setItemWithExpiry: (
     key: string,
@@ -80,6 +83,7 @@ export type TKeyStoreFactory = {
     prefix?: string
   ) => Promise<"OK">;
   deleteItem: (key: string) => Promise<number>;
+  deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
   acquireLock(
@@ -88,6 +92,7 @@ export type TKeyStoreFactory = {
     settings?: Partial<Settings>
   ): Promise<{ release: () => Promise<ExecutionResult> }>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
+  getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
 };
 
 export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFactory => {
@@ -99,6 +104,9 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
 
   const getItem = async (key: string, prefix?: string) => redis.get(prefix ? `${prefix}:${key}` : key);
 
+  const getItems = async (keys: string[], prefix?: string) =>
+    redis.mget(keys.map((key) => (prefix ? `${prefix}:${key}` : key)));
+
   const setItemWithExpiry = async (
     key: string,
     expiryInSeconds: number | string,
@@ -107,6 +115,11 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
   ) => redis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
 
   const deleteItem = async (key: string) => redis.del(key);
+
+  const deleteItemsByKeyIn = async (keys: string[]) => {
+    if (keys.length === 0) return 0;
+    return redis.del(keys);
+  };
 
   const deleteItems = async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }: TDeleteItems) => {
     let cursor = "0";
@@ -163,6 +176,24 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     }
   };
 
+  const getKeysByPattern = async (pattern: string, limit?: number) => {
+    let cursor = "0";
+    const allKeys: string[] = [];
+
+    do {
+      // eslint-disable-next-line no-await-in-loop
+      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 1000);
+      cursor = nextCursor;
+      allKeys.push(...keys);
+
+      if (limit && allKeys.length >= limit) {
+        return allKeys.slice(0, limit);
+      }
+    } while (cursor !== "0");
+
+    return allKeys;
+  };
+
   return {
     setItem,
     getItem,
@@ -174,6 +205,9 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
     },
-    waitTillReady
+    waitTillReady,
+    getKeysByPattern,
+    deleteItemsByKeyIn,
+    getItems
   };
 };

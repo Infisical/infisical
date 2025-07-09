@@ -10,10 +10,12 @@ import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFiel
 import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
+import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
+import { GitLabSyncFields } from "./GitLabSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
@@ -23,6 +25,7 @@ import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
 import { WindmillSyncFields } from "./WindmillSyncFields";
+import { ZabbixSyncFields } from "./ZabbixSyncFields";
 
 export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -70,6 +73,12 @@ export const SecretSyncDestinationFields = () => {
       return <RenderSyncFields />;
     case SecretSync.Flyio:
       return <FlyioSyncFields />;
+    case SecretSync.GitLab:
+      return <GitLabSyncFields />;
+    case SecretSync.CloudflarePages:
+      return <CloudflarePagesSyncFields />;
+    case SecretSync.Zabbix:
+      return <ZabbixSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

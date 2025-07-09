@@ -193,6 +193,8 @@ import { identityOidcAuthServiceFactory } from "@app/services/identity-oidc-auth
 import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectMembershipRoleDALFactory } from "@app/services/identity-project/identity-project-membership-role-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identityTlsCertAuthDALFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-dal";
+import { identityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-service";
 import { identityTokenAuthDALFactory } from "@app/services/identity-token-auth/identity-token-auth-dal";
 import { identityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
@@ -297,8 +299,8 @@ import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
-import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
+import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 
@@ -326,7 +328,6 @@ export const registerRoutes = async (
   }
 ) => {
   const appCfg = getConfig();
-  await server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
   await server.register(registerSecretScanningV2Webhooks, {
     prefix: "/secret-scanning/webhooks"
   });
@@ -386,6 +387,7 @@ export const registerRoutes = async (
   const identityKubernetesAuthDAL = identityKubernetesAuthDALFactory(db);
   const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
   const identityAliCloudAuthDAL = identityAliCloudAuthDALFactory(db);
+  const identityTlsCertAuthDAL = identityTlsCertAuthDALFactory(db);
   const identityAwsAuthDAL = identityAwsAuthDALFactory(db);
   const identityGcpAuthDAL = identityGcpAuthDALFactory(db);
   const identityOciAuthDAL = identityOciAuthDALFactory(db);
@@ -686,7 +688,8 @@ export const registerRoutes = async (
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
-    queueService
+    queueService,
+    telemetryService
   });
 
   const invalidateCacheQueue = invalidateCacheQueueFactory({
@@ -993,8 +996,7 @@ export const registerRoutes = async (
     pkiAlertDAL,
     pkiCollectionDAL,
     permissionService,
-    smtpService,
-    projectDAL
+    smtpService
   });
 
   const pkiCollectionService = pkiCollectionServiceFactory({
@@ -1002,8 +1004,7 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateAuthorityDAL,
     certificateDAL,
-    permissionService,
-    projectDAL
+    permissionService
   });
 
   const projectTemplateService = projectTemplateServiceFactory({
@@ -1187,7 +1188,9 @@ export const registerRoutes = async (
     projectEnvDAL,
     snapshotService,
     projectDAL,
-    folderCommitService
+    folderCommitService,
+    secretApprovalPolicyService,
+    secretV2BridgeDAL
   });
 
   const secretImportService = secretImportServiceFactory({
@@ -1417,7 +1420,8 @@ export const registerRoutes = async (
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
     identityOrgMembershipDAL,
-    accessTokenQueue
+    accessTokenQueue,
+    identityDAL
   });
 
   const identityProjectService = identityProjectServiceFactory({
@@ -1491,6 +1495,15 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     licenseService,
     permissionService
+  });
+
+  const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
+    identityAccessTokenDAL,
+    identityTlsCertAuthDAL,
+    identityOrgMembershipDAL,
+    licenseService,
+    permissionService,
+    kmsService
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
@@ -1603,7 +1616,8 @@ export const registerRoutes = async (
     secretSharingDAL,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
-    serviceTokenService
+    serviceTokenService,
+    orgService
   });
 
   const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
@@ -1651,8 +1665,7 @@ export const registerRoutes = async (
   const cmekService = cmekServiceFactory({
     kmsDAL,
     kmsService,
-    permissionService,
-    projectDAL
+    permissionService
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
@@ -1794,7 +1807,6 @@ export const registerRoutes = async (
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
-    projectDAL,
     permissionService,
     appConnectionDAL,
     appConnectionService,
@@ -1804,7 +1816,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     kmsService,
-    pkiSubscriberDAL
+    pkiSubscriberDAL,
+    projectDAL
   });
 
   const internalCaFns = InternalCertificateAuthorityFns({
@@ -1898,11 +1911,13 @@ export const registerRoutes = async (
   await hsmService.startService();
 
   await telemetryQueue.startTelemetryCheck();
+  await telemetryQueue.startAggregatedEventsJob();
   await dailyResourceCleanUp.startCleanUp();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await kmsService.startService();
   await microsoftTeamsService.start();
+  await dynamicSecretQueueService.init();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -1946,6 +1961,7 @@ export const registerRoutes = async (
     identityAwsAuth: identityAwsAuthService,
     identityAzureAuth: identityAzureAuthService,
     identityOciAuth: identityOciAuthService,
+    identityTlsCertAuth: identityTlsCertAuthService,
     identityOidcAuth: identityOidcAuthService,
     identityJwtAuth: identityJwtAuthService,
     identityLdapAuth: identityLdapAuthService,
@@ -2020,10 +2036,26 @@ export const registerRoutes = async (
     if (licenseSyncJob) {
       cronJobs.push(licenseSyncJob);
     }
+
     const microsoftTeamsSyncJob = await microsoftTeamsService.initializeBackgroundSync();
     if (microsoftTeamsSyncJob) {
       cronJobs.push(microsoftTeamsSyncJob);
     }
+
+    const adminIntegrationsSyncJob = await superAdminService.initializeAdminIntegrationConfigSync();
+    if (adminIntegrationsSyncJob) {
+      cronJobs.push(adminIntegrationsSyncJob);
+    }
+  }
+
+  const configSyncJob = await superAdminService.initializeEnvConfigSync();
+  if (configSyncJob) {
+    cronJobs.push(configSyncJob);
+  }
+
+  const oauthConfigSyncJob = await initializeOauthConfigSync();
+  if (oauthConfigSyncJob) {
+    cronJobs.push(oauthConfigSyncJob);
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {

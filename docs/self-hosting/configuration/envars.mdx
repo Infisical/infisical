@@ -32,7 +32,7 @@ Used to configure platform-specific security and operational settings
 <ParamField query="HOST" type="string" default="localhost" optional>
   Specifies the network interface Infisical will bind to when accepting incoming connections.
 
-  By default, Infisical binds to `localhost`, which restricts access to connections from the same machine.
+By default, Infisical binds to `localhost`, which restricts access to connections from the same machine.
 
 To make the application accessible externally (e.g., for self-hosted deployments), set this to `0.0.0.0`, which tells the server to listen on all network interfaces.
 
@@ -122,6 +122,7 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 </ParamField>
 
 ### Redis
+
 Redis is used for caching and background tasks. You can use either a standalone Redis instance or a Redis Sentinel setup.
 
 <Tabs>
@@ -199,8 +200,17 @@ Without email configuration, Infisical's core functions like sign-up/login and s
   connection can not be encrypted then message is not sent.
 </ParamField>
 
-<ParamField query="SMTP_TLS_REJECT_UNAUTHORIZED" type="bool" default="true" optional>
-  If this is `true`, Infisical will validate the server's SSL/TLS certificate and reject the connection if the certificate is invalid or not trusted. If set to `false`, the client will accept the server's certificate regardless of its validity, which can be useful in development or testing environments but is not recommended for production use.
+<ParamField
+  query="SMTP_TLS_REJECT_UNAUTHORIZED"
+  type="bool"
+  default="true"
+  optional
+>
+  If this is `true`, Infisical will validate the server's SSL/TLS certificate
+  and reject the connection if the certificate is invalid or not trusted. If set
+  to `false`, the client will accept the server's certificate regardless of its
+  validity, which can be useful in development or testing environments but is
+  not recommended for production use.
 </ParamField>
 
 <ParamField query="SMTP_CUSTOM_CA_CERT" type="string" default="none" optional>
@@ -211,6 +221,7 @@ Without email configuration, Infisical's core functions like sign-up/login and s
     Infisical highly encourages the following variables be used alongside this one for maximum security:
     - `SMTP_REQUIRE_TLS=true`
     - `SMTP_TLS_REJECT_UNAUTHORIZED=true`
+
 </ParamField>
 </Accordion>
 
@@ -577,6 +588,7 @@ You can configure third-party app connections for re-use across Infisical Projec
     <ParamField query="INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET" type="string" default="none" optional>
         The webhook secret configured for payload verification in the GitHub Radar App
     </ParamField>
+
 </Accordion>
 
 <Accordion title="GitHub OAuth Connection">
@@ -586,6 +598,17 @@ You can configure third-party app connections for re-use across Infisical Projec
 
     <ParamField query="INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
         The OAuth2 client secret for GitHub OAuth Connection
+    </ParamField>
+
+</Accordion>
+
+<Accordion title="GitLab OAuth Connection">
+    <ParamField query="INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID" type="string" default="none" optional>
+        The Application ID of your GitLab OAuth application.
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
+        The Secret of your GitLab OAuth application.
     </ParamField>
 
 </Accordion>
@@ -646,11 +669,11 @@ To help you sync secrets from Infisical to services such as Github and Gitlab, I
 
 <Accordion title="Bitbucket">
   <ParamField query="CLIENT_ID_BITBUCKET" type="string" default="none" optional>
-    OAuth2 client ID for BitBucket integration
+    OAuth2 client ID for Bitbucket integration
   </ParamField>
 
   <ParamField query="CLIENT_SECRET_BITBUCKET" type="string" default="none" optional>
-    OAuth2 client secret for BitBucket integration
+    OAuth2 client secret for Bitbucket integration
   </ParamField>
 </Accordion>
 
@@ -760,3 +783,20 @@ If export type is set to `otlp`, you will have to configure a value for `OTEL_EX
 <ParamField query="OTEL_COLLECTOR_BASIC_AUTH_PASSWORD" type="string">
   The password for authenticating with the telemetry collector.
 </ParamField>
+
+## Identity Auth Method
+
+<ParamField
+  query="IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY"
+  type="string"
+  default="x-identity-tls-cert-auth-client-cert"
+>
+  The TLS header used to propagate the client certificate from the load balancer
+  to the server.
+</ParamField>
+
+## Environment Variable Overrides
+
+If you can't directly access and modify environment variables, you can update them using the [Server Admin Console](/documentation/platform/admin-panel/server-admin).
+
+![Environment Variables Overrides Page](../../images/self-hosting/configuration/overrides/page.png)

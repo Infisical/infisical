@@ -84,6 +84,8 @@ export enum IntegrationUrls {
   QOVERY_API_URL = "https://api.qovery.com",
   TERRAFORM_CLOUD_API_URL = "https://app.terraform.io",
   CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com",
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
+  CLOUDFLARE_API_URL = "https://api.cloudflare.com",
   // eslint-disable-next-line
   CLOUDFLARE_WORKERS_API_URL = "https://api.cloudflare.com",
   BITBUCKET_API_URL = "https://api.bitbucket.org",
@@ -340,7 +342,7 @@ export const getIntegrationOptions = async () => {
     {
       name: "Bitbucket",
       slug: "bitbucket",
-      image: "BitBucket.png",
+      image: "Bitbucket.png",
       isAvailable: true,
       type: "oauth",
       clientId: appCfg.CLIENT_ID_BITBUCKET,

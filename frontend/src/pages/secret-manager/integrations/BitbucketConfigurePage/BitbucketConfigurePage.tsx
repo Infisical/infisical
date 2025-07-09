@@ -20,9 +20,9 @@ import { useWorkspace } from "@app/context";
 import {
   useCreateIntegration,
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthBitBucketWorkspaces
+  useGetIntegrationAuthBitbucketWorkspaces
 } from "@app/hooks/api";
-import { useGetIntegrationAuthBitBucketEnvironments } from "@app/hooks/api/integrationAuth/queries";
+import { useGetIntegrationAuthBitbucketEnvironments } from "@app/hooks/api/integrationAuth/queries";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 enum BitbucketScope {
@@ -89,8 +89,8 @@ export const BitbucketConfigurePage = () => {
     }
   });
 
-  const bitBucketWorkspace = watch("targetWorkspace");
-  const bitBucketRepo = watch("targetRepo");
+  const bitbucketWorkspace = watch("targetWorkspace");
+  const bitbucketRepo = watch("targetRepo");
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.BitbucketConfigurePage.id,
@@ -99,21 +99,21 @@ export const BitbucketConfigurePage = () => {
   const { currentWorkspace } = useWorkspace();
 
   const { data: bitbucketWorkspaces, isPending: isBitbucketWorkspacesLoading } =
-    useGetIntegrationAuthBitBucketWorkspaces((integrationAuthId as string) ?? "");
+    useGetIntegrationAuthBitbucketWorkspaces((integrationAuthId as string) ?? "");
 
   const { data: bitbucketRepos, isPending: isBitbucketReposLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? "",
-    workspaceSlug: bitBucketWorkspace?.slug
+    workspaceSlug: bitbucketWorkspace?.slug
   });
 
   const { data: bitbucketEnvironments, isPending: isBitbucketEnvironmentsLoading } =
-    useGetIntegrationAuthBitBucketEnvironments(
+    useGetIntegrationAuthBitbucketEnvironments(
       {
         integrationAuthId: (integrationAuthId as string) ?? "",
-        workspaceSlug: bitBucketWorkspace?.slug ?? "",
-        repoSlug: bitBucketRepo?.appId ?? ""
+        workspaceSlug: bitbucketWorkspace?.slug ?? "",
+        repoSlug: bitbucketRepo?.appId ?? ""
       },
-      { enabled: Boolean(bitBucketWorkspace?.slug && bitBucketRepo?.appId) }
+      { enabled: Boolean(bitbucketWorkspace?.slug && bitbucketRepo?.appId) }
     );
 
   const onSubmit = async ({
@@ -148,7 +148,7 @@ export const BitbucketConfigurePage = () => {
         text: "Successfully created integration"
       });
       navigate({
-        to: "/secret-manager/$projectId/integrations",
+        to: "/projects/$projectId/secret-manager/integrations",
         params: {
           projectId: currentWorkspace.id
         },
@@ -167,8 +167,8 @@ export const BitbucketConfigurePage = () => {
 
   useEffect(() => {
     if (
-      bitBucketWorkspace ||
-      bitBucketRepo ||
+      bitbucketWorkspace ||
+      bitbucketRepo ||
       !bitbucketRepos ||
       !bitbucketWorkspaces ||
       !currentWorkspace
@@ -325,7 +325,7 @@ export const BitbucketConfigurePage = () => {
                       ? "Select an environment..."
                       : "No environments found..."
                   }
-                  isLoading={isBitbucketEnvironmentsLoading && Boolean(bitBucketRepo)}
+                  isLoading={isBitbucketEnvironmentsLoading && Boolean(bitbucketRepo)}
                   isDisabled={!bitbucketEnvironments?.length || isBitbucketEnvironmentsLoading}
                 />
               </FormControl>

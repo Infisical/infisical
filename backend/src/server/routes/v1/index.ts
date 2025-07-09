@@ -25,6 +25,7 @@ import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityRouter } from "./identity-router";
+import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
 import { registerIdentityUaRouter } from "./identity-universal-auth-router";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
@@ -66,6 +67,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await authRouter.register(registerIdentityAccessTokenRouter);
       await authRouter.register(registerIdentityAliCloudAuthRouter);
       await authRouter.register(registerIdentityAwsAuthRouter);
+      await authRouter.register(registerIdentityTlsCertAuthRouter, { prefix: "/tls-cert-auth" });
       await authRouter.register(registerIdentityAzureAuthRouter);
       await authRouter.register(registerIdentityOciAuthRouter);
       await authRouter.register(registerIdentityOidcAuthRouter);

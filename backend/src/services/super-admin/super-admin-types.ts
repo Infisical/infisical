@@ -1,3 +1,5 @@
+import { TEnvConfig } from "@app/lib/config/env";
+
 export type TAdminSignUpDTO = {
   email: string;
   password: string;
@@ -54,4 +56,30 @@ export enum LoginMethod {
 export enum CacheType {
   ALL = "all",
   SECRETS = "secrets"
+}
+
+export type TAdminIntegrationConfig = {
+  slack: {
+    clientSecret: string;
+    clientId: string;
+  };
+  microsoftTeams: {
+    appId: string;
+    clientSecret: string;
+    botId: string;
+  };
+  gitHubAppConnection: {
+    clientId: string;
+    clientSecret: string;
+    appSlug: string;
+    appId: string;
+    privateKey: string;
+  };
+};
+
+export interface EnvOverrides {
+  [key: string]: {
+    name: string;
+    fields: { key: keyof TEnvConfig; value: string; hasEnvEntry: boolean; description?: string }[];
+  };
 }

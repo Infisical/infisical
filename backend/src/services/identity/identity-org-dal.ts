@@ -12,6 +12,7 @@ import {
   TIdentityOciAuths,
   TIdentityOidcAuths,
   TIdentityOrgMemberships,
+  TIdentityTlsCertAuths,
   TIdentityTokenAuths,
   TIdentityUniversalAuths,
   TOrgRoles
@@ -99,7 +100,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           `${TableName.IdentityOrgMembership}.identityId`,
           `${TableName.IdentityLdapAuth}.identityId`
         )
-
+        .leftJoin<TIdentityTlsCertAuths>(
+          TableName.IdentityTlsCertAuth,
+          `${TableName.IdentityOrgMembership}.identityId`,
+          `${TableName.IdentityTlsCertAuth}.identityId`
+        )
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
 
@@ -114,6 +119,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
           db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
+          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
           db.ref("name").withSchema(TableName.Identity),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity)
         );
@@ -238,7 +244,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           "paginatedIdentity.identityId",
           `${TableName.IdentityLdapAuth}.identityId`
         )
-
+        .leftJoin<TIdentityTlsCertAuths>(
+          TableName.IdentityTlsCertAuth,
+          "paginatedIdentity.identityId",
+          `${TableName.IdentityTlsCertAuth}.identityId`
+        )
         .select(
           db.ref("id").withSchema("paginatedIdentity"),
           db.ref("role").withSchema("paginatedIdentity"),
@@ -260,7 +270,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("azureId").withSchema(TableName.IdentityAzureAuth),
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
-          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth)
+          db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
+          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth)
         )
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))
@@ -306,6 +317,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           azureId,
           tokenId,
           ldapId,
+          tlsCertId,
           createdAt,
           updatedAt
         }) => ({
@@ -313,7 +325,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           roleId,
           identityId,
           id,
-
           orgId,
           createdAt,
           updatedAt,
@@ -341,7 +352,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               azureId,
               tokenId,
               jwtId,
-              ldapId
+              ldapId,
+              tlsCertId
             })
           }
         }),
@@ -380,7 +392,12 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityOrgMembership}.identityId`)
         .where(`${TableName.IdentityOrgMembership}.orgId`, orgId)
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
-        .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection)
+        .orderBy(
+          orderBy === OrgIdentityOrderBy.Role
+            ? `${TableName.IdentityOrgMembership}.${orderBy}`
+            : `${TableName.Identity}.${orderBy}`,
+          orderDirection
+        )
         .select(`${TableName.IdentityOrgMembership}.id`)
         .select<{ id: string; total_count: string }>(
           db.raw(
@@ -511,6 +528,23 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       if (orderBy === OrgIdentityOrderBy.Name) {
         void query.orderBy("identityName", orderDirection);
+      } else if (orderBy === OrgIdentityOrderBy.Role) {
+        void query.orderByRaw(
+          `
+          CASE 
+            WHEN ??.role = ? 
+            THEN ??.slug 
+            ELSE ??.role 
+          END ?
+          `,
+          [
+            TableName.IdentityOrgMembership,
+            "custom",
+            TableName.OrgRoles,
+            TableName.IdentityOrgMembership,
+            db.raw(orderDirection)
+          ]
+        );
       }
 
       const docs = await query;

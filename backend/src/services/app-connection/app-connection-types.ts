@@ -57,11 +57,23 @@ import {
   TValidateAzureKeyVaultConnectionCredentialsSchema
 } from "./azure-key-vault";
 import {
+  TBitbucketConnection,
+  TBitbucketConnectionConfig,
+  TBitbucketConnectionInput,
+  TValidateBitbucketConnectionCredentialsSchema
+} from "./bitbucket";
+import {
   TCamundaConnection,
   TCamundaConnectionConfig,
   TCamundaConnectionInput,
   TValidateCamundaConnectionCredentialsSchema
 } from "./camunda";
+import {
+  TCloudflareConnection,
+  TCloudflareConnectionConfig,
+  TCloudflareConnectionInput,
+  TValidateCloudflareConnectionCredentialsSchema
+} from "./cloudflare/cloudflare-connection-types";
 import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
@@ -92,6 +104,12 @@ import {
   TGitHubRadarConnectionInput,
   TValidateGitHubRadarConnectionCredentialsSchema
 } from "./github-radar";
+import {
+  TGitLabConnection,
+  TGitLabConnectionConfig,
+  TGitLabConnectionInput,
+  TValidateGitLabConnectionCredentialsSchema
+} from "./gitlab";
 import {
   THCVaultConnection,
   THCVaultConnectionConfig,
@@ -153,6 +171,12 @@ import {
   TWindmillConnectionConfig,
   TWindmillConnectionInput
 } from "./windmill";
+import {
+  TValidateZabbixConnectionCredentialsSchema,
+  TZabbixConnection,
+  TZabbixConnectionConfig,
+  TZabbixConnectionInput
+} from "./zabbix";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -182,6 +206,10 @@ export type TAppConnection = { id: string } & (
   | THerokuConnection
   | TRenderConnection
   | TFlyioConnection
+  | TGitLabConnection
+  | TCloudflareConnection
+  | TBitbucketConnection
+  | TZabbixConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -216,6 +244,10 @@ export type TAppConnectionInput = { id: string } & (
   | THerokuConnectionInput
   | TRenderConnectionInput
   | TFlyioConnectionInput
+  | TGitLabConnectionInput
+  | TCloudflareConnectionInput
+  | TBitbucketConnectionInput
+  | TZabbixConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -257,7 +289,11 @@ export type TAppConnectionConfig =
   | TOnePassConnectionConfig
   | THerokuConnectionConfig
   | TRenderConnectionConfig
-  | TFlyioConnectionConfig;
+  | TFlyioConnectionConfig
+  | TGitLabConnectionConfig
+  | TCloudflareConnectionConfig
+  | TBitbucketConnectionConfig
+  | TZabbixConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -286,7 +322,11 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOnePassConnectionCredentialsSchema
   | TValidateHerokuConnectionCredentialsSchema
   | TValidateRenderConnectionCredentialsSchema
-  | TValidateFlyioConnectionCredentialsSchema;
+  | TValidateFlyioConnectionCredentialsSchema
+  | TValidateGitLabConnectionCredentialsSchema
+  | TValidateCloudflareConnectionCredentialsSchema
+  | TValidateBitbucketConnectionCredentialsSchema
+  | TValidateZabbixConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

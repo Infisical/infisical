@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -107,8 +107,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -217,7 +216,7 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const approvalUrl = `${cfg.SITE_URL}/secret-manager/${project.id}/approval`;
+      const approvalUrl = `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`;
 
       await triggerWorkflowIntegrationNotification({
         input: {
@@ -290,8 +289,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -337,8 +335,7 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: accessApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
 
     if (!membership) {
@@ -349,6 +346,12 @@ export const accessApprovalRequestServiceFactory = ({
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
     const canBypass = !policy.bypassers.length || policy.bypassers.some((bypasser) => bypasser.userId === actorId);
     const cannotBypassUnderSoftEnforcement = !(isSoftEnforcement && canBypass);
+
+    // Calculate break glass attempt before sequence checks
+    const isBreakGlassApprovalAttempt =
+      policy.enforcementLevel === EnforcementLevel.Soft &&
+      actorId === accessApprovalRequest.requestedByUserId &&
+      status === ApprovalStatus.APPROVED;
 
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
     // If user is (not an approver OR cant self approve) AND can't bypass policy
@@ -409,15 +412,14 @@ export const accessApprovalRequestServiceFactory = ({
       const isApproverOfTheSequence = policy.approvers.find(
         (el) => el.sequence === presentSequence.step && el.userId === actorId
       );
-      if (!isApproverOfTheSequence) throw new BadRequestError({ message: "You are not reviewer in this step" });
+
+      // Only throw if actor is not the approver and not bypassing
+      if (!isApproverOfTheSequence && !isBreakGlassApprovalAttempt) {
+        throw new BadRequestError({ message: "You are not a reviewer in this step" });
+      }
     }
 
     const reviewStatus = await accessApprovalRequestReviewerDAL.transaction(async (tx) => {
-      const isBreakGlassApprovalAttempt =
-        policy.enforcementLevel === EnforcementLevel.Soft &&
-        actorId === accessApprovalRequest.requestedByUserId &&
-        status === ApprovalStatus.APPROVED;
-
       let reviewForThisActorProcessing: {
         id: string;
         requestId: string;
@@ -543,7 +545,7 @@ export const accessApprovalRequestServiceFactory = ({
                   bypassReason: bypassReason || "No reason provided",
                   secretPath: policy.secretPath || "/",
                   environment,
-                  approvalUrl: `${cfg.SITE_URL}/secret-manager/${project.id}/approval`,
+                  approvalUrl: `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`,
                   requestType: "access"
                 },
                 template: SmtpTemplates.AccessSecretRequestBypassed
@@ -560,6 +562,7 @@ export const accessApprovalRequestServiceFactory = ({
 
   const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({
     projectSlug,
+    policyId,
     actor,
     actorAuthMethod,
     actorId,
@@ -573,14 +576,13 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actorOrgId
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
     }
 
-    const count = await accessApprovalRequestDAL.getCount({ projectId: project.id });
+    const count = await accessApprovalRequestDAL.getCount({ projectId: project.id, policyId });
 
     return { count };
   };

@@ -307,7 +307,6 @@ export const AwsParameterStoreSyncFns = {
       awsParameterStoreSecretsRecord,
       Boolean(syncOptions.tags?.length || syncOptions.syncSecretMetadataAsTags)
     );
-    const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
 
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value, secretMetadata }] = entry;
@@ -342,13 +341,13 @@ export const AwsParameterStoreSyncFns = {
         }
       }
 
-      if (shouldManageTags) {
+      if ((syncOptions.tags !== undefined || syncOptions.syncSecretMetadataAsTags) && shouldManageTags) {
         const { tagsToAdd, tagKeysToRemove } = processParameterTags({
           syncTagsRecord: {
             // configured sync tags take preference over secret metadata
             ...(syncOptions.syncSecretMetadataAsTags &&
               Object.fromEntries(secretMetadata?.map((tag) => [tag.key, tag.value]) ?? [])),
-            ...syncTagsRecord
+            ...(syncOptions.tags && Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []))
           },
           awsTagsRecord: awsParameterStoreTagsRecord[key] ?? {}
         });

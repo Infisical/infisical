@@ -2,6 +2,8 @@ import { ButtonHTMLAttributes, forwardRef, ReactNode } from "react";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
+import { Lottie } from "../Lottie";
+
 type Props = {
   children: ReactNode;
   isDisabled?: boolean;
@@ -189,11 +191,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading && (
-          <img
-            src="/images/loading/loading.gif"
-            width={36}
-            alt="loading animation"
-            className="absolute rounded-xl opacity-80"
+          <Lottie
+            icon={
+              variant === "solid" && colorSchema === "primary"
+                ? "infisical_loading_bw"
+                : "infisical_loading"
+            }
+            isAutoPlay
+            className="absolute w-8 rounded-xl opacity-80 shadow-sm"
           />
         )}
         {leftIcon && (

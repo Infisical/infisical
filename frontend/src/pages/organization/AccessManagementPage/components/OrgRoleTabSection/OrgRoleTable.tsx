@@ -1,4 +1,17 @@
-import { faEllipsis, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { useMemo } from "react";
+import {
+  faArrowDown,
+  faArrowUp,
+  faCopy,
+  faEdit,
+  faEllipsisV,
+  faEye,
+  faIdBadge,
+  faMagnifyingGlass,
+  faPlus,
+  faSearch,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
@@ -14,6 +27,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  EmptyState,
+  IconButton,
+  Input,
+  Pagination,
   Table,
   TableContainer,
   TableSkeleton,
@@ -30,12 +47,24 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { isCustomOrgRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { isCustomOrgRole, isCustomProjectRole } from "@app/helpers/roles";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TOrgRole } from "@app/hooks/api/roles/types";
 import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { RoleModal } from "@app/pages/organization/RoleByIDPage/components/RoleModal";
+
+enum RolesOrderBy {
+  Name = "name",
+  Slug = "slug",
+  Type = "type"
+}
 
 export const OrgRoleTable = () => {
   const navigate = useNavigate();
@@ -93,14 +122,89 @@ export const OrgRoleTable = () => {
     }
   };
 
+  const {
+    orderDirection,
+    toggleOrderDirection,
+    orderBy,
+    setOrderDirection,
+    setOrderBy,
+    search,
+    setSearch,
+    page,
+    perPage,
+    setPerPage,
+    setPage,
+    offset
+  } = usePagination<RolesOrderBy>(RolesOrderBy.Type, {
+    initPerPage: getUserTablePreference("orgRolesTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("orgRolesTable", PreferenceKey.PerPage, newPerPage);
+  };
+
+  const filteredRoles = useMemo(
+    () =>
+      roles
+        ?.filter((role) => {
+          const { slug, name } = role;
+
+          const searchValue = search.trim().toLowerCase();
+
+          return (
+            name.toLowerCase().includes(searchValue) || slug.toLowerCase().includes(searchValue)
+          );
+        })
+        .sort((a, b) => {
+          const [roleOne, roleTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
+
+          switch (orderBy) {
+            case RolesOrderBy.Slug:
+              return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
+            case RolesOrderBy.Type: {
+              const roleOneValue = isCustomOrgRole(roleOne.slug) ? -1 : 1;
+              const roleTwoValue = isCustomOrgRole(roleTwo.slug) ? -1 : 1;
+
+              return roleTwoValue - roleOneValue;
+            }
+            case RolesOrderBy.Name:
+            default:
+              return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
+          }
+        }) ?? [],
+    [roles, orderDirection, search, orderBy]
+  );
+
+  useResetPageHelper({
+    totalCount: filteredRoles.length,
+    offset,
+    setPage
+  });
+
+  const handleSort = (column: RolesOrderBy) => {
+    if (column === orderBy) {
+      toggleOrderDirection();
+      return;
+    }
+
+    setOrderBy(column);
+    setOrderDirection(OrderByDirection.ASC);
+  };
+
+  const getClassName = (col: RolesOrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+
+  const getColSortIcon = (col: RolesOrderBy) =>
+    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Organization Roles</p>
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button
-              colorSchema="primary"
+              colorSchema="secondary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
@@ -113,18 +217,63 @@ export const OrgRoleTable = () => {
           )}
         </OrgPermissionCan>
       </div>
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+        placeholder="Search roles..."
+        className="flex-1"
+        containerClassName="mb-4"
+      />
       <TableContainer>
         <Table>
           <THead>
             <Tr>
-              <Th>Name</Th>
-              <Th>Slug</Th>
+              <Th>
+                <div className="flex items-center">
+                  Name
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(RolesOrderBy.Name)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(RolesOrderBy.Name)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Name)} />
+                  </IconButton>
+                </div>
+              </Th>
+              <Th>
+                <div className="flex items-center">
+                  Slug
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(RolesOrderBy.Slug)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(RolesOrderBy.Slug)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Slug)} />
+                  </IconButton>
+                </div>
+              </Th>
+              <Th>
+                <div className="flex items-center">
+                  Type
+                  <IconButton
+                    variant="plain"
+                    className={getClassName(RolesOrderBy.Type)}
+                    ariaLabel="sort"
+                    onClick={() => handleSort(RolesOrderBy.Type)}
+                  >
+                    <FontAwesomeIcon icon={getColSortIcon(RolesOrderBy.Type)} />
+                  </IconButton>
+                </div>
+              </Th>
               <Th aria-label="actions" className="w-5" />
             </Tr>
           </THead>
           <TBody>
-            {isRolesLoading && <TableSkeleton columns={3} innerKey="org-roles" />}
-            {roles?.map((role) => {
+            {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
+            {filteredRoles?.slice(offset, perPage * page).map((role) => {
               const { id, name, slug } = role;
               const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(slug);
               const isDefaultOrgRole = isCustomOrgRole(slug)
@@ -163,22 +312,29 @@ export const OrgRoleTable = () => {
                     {slug}
                   </Td>
                   <Td>
+                    <Badge className="w-min whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
+                      {isCustomProjectRole(slug) ? "Custom" : "Default"}
+                    </Badge>
+                  </Td>
+                  <Td>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="rounded-lg">
-                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                          <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                        </div>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton
+                          ariaLabel="Options"
+                          colorSchema="secondary"
+                          className="w-6"
+                          variant="plain"
+                        >
+                          <FontAwesomeIcon icon={faEllipsisV} />
+                        </IconButton>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="p-1">
+                      <DropdownMenuContent className="min-w-[12rem]" sideOffset={2} align="end">
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}
                           a={OrgPermissionSubjects.Role}
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate({
@@ -188,7 +344,8 @@ export const OrgRoleTable = () => {
                                   }
                                 });
                               }}
-                              disabled={!isAllowed}
+                              isDisabled={!isAllowed}
+                              icon={<FontAwesomeIcon icon={isNonMutatable ? faEye : faEdit} />}
                             >
                               {`${isNonMutatable ? "View" : "Edit"} Role`}
                             </DropdownMenuItem>
@@ -200,14 +357,12 @@ export const OrgRoleTable = () => {
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handlePopUpOpen("duplicateRole", role);
                               }}
-                              disabled={!isAllowed}
+                              isDisabled={!isAllowed}
+                              icon={<FontAwesomeIcon icon={faCopy} />}
                             >
                               Duplicate Role
                             </DropdownMenuItem>
@@ -220,14 +375,12 @@ export const OrgRoleTable = () => {
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                disabled={!isAllowed}
+                                isDisabled={!isAllowed}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleSetRoleAsDefault(slug);
                                 }}
+                                icon={<FontAwesomeIcon icon={faIdBadge} />}
                               >
                                 Set as Default Role
                               </DropdownMenuItem>
@@ -250,16 +403,12 @@ export const OrgRoleTable = () => {
                               >
                                 {(isAllowed) => (
                                   <DropdownMenuItem
-                                    className={twMerge(
-                                      isAllowed && !isDefaultOrgRole
-                                        ? "hover:!bg-red-500 hover:!text-white"
-                                        : "pointer-events-none cursor-not-allowed opacity-50"
-                                    )}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("deleteRole", role);
                                     }}
-                                    disabled={!isAllowed || isDefaultOrgRole}
+                                    icon={<FontAwesomeIcon icon={faTrash} />}
+                                    isDisabled={!isAllowed || isDefaultOrgRole}
                                   >
                                     Delete Role
                                   </DropdownMenuItem>
@@ -276,6 +425,25 @@ export const OrgRoleTable = () => {
             })}
           </TBody>
         </Table>
+        {Boolean(filteredRoles?.length) && (
+          <Pagination
+            count={filteredRoles!.length}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={handlePerPageChange}
+          />
+        )}
+        {!filteredRoles?.length && !isRolesLoading && (
+          <EmptyState
+            title={
+              roles?.length
+                ? "No roles match search..."
+                : "This organization does not have any roles"
+            }
+            icon={roles?.length ? faSearch : undefined}
+          />
+        )}
       </TableContainer>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal

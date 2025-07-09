@@ -7,10 +7,12 @@ import { AzureAppConfigurationDestinationSyncCol } from "./AzureAppConfiguration
 import { AzureDevOpsSyncDestinationCol } from "./AzureDevOpsSyncDestinationCol";
 import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncCol";
 import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
+import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
+import { GitLabSyncDestinationCol } from "./GitLabSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
@@ -20,6 +22,7 @@ import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
+import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;
@@ -67,6 +70,12 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <RenderSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Flyio:
       return <FlyioSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.GitLab:
+      return <GitLabSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.CloudflarePages:
+      return <CloudflarePagesSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Zabbix:
+      return <ZabbixSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

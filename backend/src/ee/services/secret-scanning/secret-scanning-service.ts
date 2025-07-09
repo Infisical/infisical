@@ -98,6 +98,7 @@ export const secretScanningServiceFactory = ({
     if (canUseSecretScanning(actorOrgId)) {
       await Promise.all(
         repositories.map(({ id, full_name }) =>
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-member-access
           secretScanningQueue.startFullRepoScan({
             organizationId: session.orgId,
             installationId,
@@ -180,6 +181,7 @@ export const secretScanningServiceFactory = ({
     if (!installationLink) return;
 
     if (canUseSecretScanning(installationLink.orgId)) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-member-access
       await secretScanningQueue.startPushEventScan({
         commits,
         pusher: { name: pusher.name, email: pusher.email },

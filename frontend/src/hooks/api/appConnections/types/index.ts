@@ -7,12 +7,15 @@ import { TAzureAppConfigurationConnection } from "./azure-app-configuration-conn
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
+import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
+import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
 import { TGitHubRadarConnection } from "./github-radar-connection";
+import { TGitLabConnection } from "./gitlab-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
@@ -27,6 +30,7 @@ import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
+import { TZabbixConnection } from "./zabbix-connection";
 
 export * from "./1password-connection";
 export * from "./auth0-connection";
@@ -35,12 +39,15 @@ export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
+export * from "./bitbucket-connection";
 export * from "./camunda-connection";
+export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
 export * from "./github-connection";
 export * from "./github-radar-connection";
+export * from "./gitlab-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./humanitec-connection";
@@ -55,6 +62,7 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./zabbix-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -83,7 +91,11 @@ export type TAppConnection =
   | TOnePassConnection
   | THerokuConnection
   | TRenderConnection
-  | TFlyioConnection;
+  | TFlyioConnection
+  | TGitLabConnection
+  | TCloudflareConnection
+  | TBitbucketConnection
+  | TZabbixConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -138,4 +150,8 @@ export type TAppConnectionMap = {
   [AppConnection.Heroku]: THerokuConnection;
   [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
+  [AppConnection.Gitlab]: TGitLabConnection;
+  [AppConnection.Cloudflare]: TCloudflareConnection;
+  [AppConnection.Bitbucket]: TBitbucketConnection;
+  [AppConnection.Zabbix]: TZabbixConnection;
 };

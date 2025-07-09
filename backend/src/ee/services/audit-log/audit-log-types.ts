@@ -56,8 +56,8 @@ export type TListProjectAuditLogDTO = {
     eventType?: EventType[];
     offset?: number;
     limit: number;
-    endDate?: string;
-    startDate?: string;
+    endDate: string;
+    startDate: string;
     projectId?: string;
     environment?: string;
     auditLogActorId?: string;
@@ -114,6 +114,15 @@ interface BaseAuthData {
   ipAddress?: string;
   userAgent?: string;
   userAgentType?: UserAgentType;
+}
+
+export enum SecretApprovalEvent {
+  Create = "create",
+  Update = "update",
+  Delete = "delete",
+  CreateMany = "create-many",
+  UpdateMany = "update-many",
+  DeleteMany = "delete-many"
 }
 
 export enum UserAgentType {
@@ -201,6 +210,12 @@ export enum EventType {
   UPDATE_IDENTITY_ALICLOUD_AUTH = "update-identity-alicloud-auth",
   REVOKE_IDENTITY_ALICLOUD_AUTH = "revoke-identity-alicloud-auth",
   GET_IDENTITY_ALICLOUD_AUTH = "get-identity-alicloud-auth",
+
+  LOGIN_IDENTITY_TLS_CERT_AUTH = "login-identity-tls-cert-auth",
+  ADD_IDENTITY_TLS_CERT_AUTH = "add-identity-tls-cert-auth",
+  UPDATE_IDENTITY_TLS_CERT_AUTH = "update-identity-tls-cert-auth",
+  REVOKE_IDENTITY_TLS_CERT_AUTH = "revoke-identity-tls-cert-auth",
+  GET_IDENTITY_TLS_CERT_AUTH = "get-identity-tls-cert-auth",
 
   LOGIN_IDENTITY_AWS_AUTH = "login-identity-aws-auth",
   ADD_IDENTITY_AWS_AUTH = "add-identity-aws-auth",
@@ -1141,6 +1156,53 @@ interface GetIdentityAliCloudAuthEvent {
   };
 }
 
+interface LoginIdentityTlsCertAuthEvent {
+  type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH;
+  metadata: {
+    identityId: string;
+    identityTlsCertAuthId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityTlsCertAuthEvent {
+  type: EventType.ADD_IDENTITY_TLS_CERT_AUTH;
+  metadata: {
+    identityId: string;
+    allowedCommonNames: string | null | undefined;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface DeleteIdentityTlsCertAuthEvent {
+  type: EventType.REVOKE_IDENTITY_TLS_CERT_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface UpdateIdentityTlsCertAuthEvent {
+  type: EventType.UPDATE_IDENTITY_TLS_CERT_AUTH;
+  metadata: {
+    identityId: string;
+    allowedCommonNames: string | null | undefined;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityTlsCertAuthEvent {
+  type: EventType.GET_IDENTITY_TLS_CERT_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
 interface LoginIdentityOciAuthEvent {
   type: EventType.LOGIN_IDENTITY_OCI_AUTH;
   metadata: {
@@ -1652,6 +1714,17 @@ interface SecretApprovalRequest {
     committedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
+    eventType: SecretApprovalEvent;
+    secretKey?: string;
+    secretId?: string;
+    secrets?: {
+      secretKey?: string;
+      secretId?: string;
+      environment?: string;
+      secretPath?: string;
+    }[];
+    environment: string;
+    secretPath: string;
   };
 }
 
@@ -3358,6 +3431,11 @@ export type Event =
   | UpdateIdentityAliCloudAuthEvent
   | GetIdentityAliCloudAuthEvent
   | DeleteIdentityAliCloudAuthEvent
+  | LoginIdentityTlsCertAuthEvent
+  | AddIdentityTlsCertAuthEvent
+  | UpdateIdentityTlsCertAuthEvent
+  | GetIdentityTlsCertAuthEvent
+  | DeleteIdentityTlsCertAuthEvent
   | LoginIdentityOciAuthEvent
   | AddIdentityOciAuthEvent
   | UpdateIdentityOciAuthEvent

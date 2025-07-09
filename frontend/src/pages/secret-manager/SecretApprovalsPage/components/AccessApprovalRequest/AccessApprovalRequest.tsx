@@ -247,9 +247,7 @@ export const AccessApprovalRequest = ({
         };
       else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
-          label: `Pending ${request.policy.approvals - request.reviewers.length} review${
-            request.policy.approvals - request.reviewers.length > 1 ? "s" : ""
-          }`,
+          label: "Pending Additional Reviews",
           type: "primary",
           icon: faClipboardCheck
         };
