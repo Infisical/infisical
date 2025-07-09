@@ -482,13 +482,13 @@
                   "integrations/app-connections/oci",
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/postgres",
+                  "integrations/app-connections/railway",
                   "integrations/app-connections/render",
                   "integrations/app-connections/teamcity",
                   "integrations/app-connections/terraform-cloud",
                   "integrations/app-connections/vercel",
                   "integrations/app-connections/windmill",
-                  "integrations/app-connections/zabbix",
-                  "integrations/app-connections/railway"
+                  "integrations/app-connections/zabbix"
                 ]
               }
             ]
@@ -517,13 +517,13 @@
                   "integrations/secret-syncs/heroku",
                   "integrations/secret-syncs/humanitec",
                   "integrations/secret-syncs/oci-vault",
+                  "integrations/secret-syncs/railway",
                   "integrations/secret-syncs/render",
                   "integrations/secret-syncs/teamcity",
                   "integrations/secret-syncs/terraform-cloud",
                   "integrations/secret-syncs/vercel",
                   "integrations/secret-syncs/windmill",
-                  "integrations/secret-syncs/zabbix",
-                  "integrations/secret-syncs/railway"
+                  "integrations/secret-syncs/zabbix"
                 ]
               }
             ]
@@ -556,8 +556,8 @@
                   "integrations/cloud/digital-ocean-app-platform",
                   "integrations/cloud/heroku",
                   "integrations/cloud/netlify",
-                  "integrations/cloud/railway",
                   "integrations/cloud/flyio",
+                  "integrations/cloud/railway",
                   "integrations/cloud/render",
                   "integrations/cloud/laravel-forge",
                   "integrations/cloud/supabase",
@@ -1505,6 +1505,18 @@
                     ]
                   },
                   {
+                    "group": "Railway",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/railway/list",
+                      "api-reference/endpoints/app-connections/railway/available",
+                      "api-reference/endpoints/app-connections/railway/get-by-id",
+                      "api-reference/endpoints/app-connections/railway/get-by-name",
+                      "api-reference/endpoints/app-connections/railway/create",
+                      "api-reference/endpoints/app-connections/railway/update",
+                      "api-reference/endpoints/app-connections/railway/delete"
+                    ]
+                  },
+                  {
                     "group": "Render",
                     "pages": [
                       "api-reference/endpoints/app-connections/render/list",
@@ -1574,18 +1586,6 @@
                       "api-reference/endpoints/app-connections/zabbix/create",
                       "api-reference/endpoints/app-connections/zabbix/update",
                       "api-reference/endpoints/app-connections/zabbix/delete"
-                    ]
-                  },
-                  {
-                    "group": "Railway",
-                    "pages": [
-                      "api-reference/endpoints/app-connections/railway/list",
-                      "api-reference/endpoints/app-connections/railway/available",
-                      "api-reference/endpoints/app-connections/railway/get-by-id",
-                      "api-reference/endpoints/app-connections/railway/get-by-name",
-                      "api-reference/endpoints/app-connections/railway/create",
-                      "api-reference/endpoints/app-connections/railway/update",
-                      "api-reference/endpoints/app-connections/railway/delete"
                     ]
                   }
                 ]
@@ -1826,6 +1826,20 @@
                     ]
                   },
                   {
+                    "group": "Railway",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/railway/list",
+                      "api-reference/endpoints/secret-syncs/railway/get-by-id",
+                      "api-reference/endpoints/secret-syncs/railway/get-by-name",
+                      "api-reference/endpoints/secret-syncs/railway/create",
+                      "api-reference/endpoints/secret-syncs/railway/update",
+                      "api-reference/endpoints/secret-syncs/railway/delete",
+                      "api-reference/endpoints/secret-syncs/railway/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/railway/import-secrets",
+                      "api-reference/endpoints/secret-syncs/railway/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Render",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/render/list",
@@ -1906,20 +1920,6 @@
                       "api-reference/endpoints/secret-syncs/zabbix/sync-secrets",
                       "api-reference/endpoints/secret-syncs/zabbix/import-secrets",
                       "api-reference/endpoints/secret-syncs/zabbix/remove-secrets"
-                    ]
-                  },
-                  {
-                    "group": "Railway",
-                    "pages": [
-                      "api-reference/endpoints/secret-syncs/railway/list",
-                      "api-reference/endpoints/secret-syncs/railway/get-by-id",
-                      "api-reference/endpoints/secret-syncs/railway/get-by-name",
-                      "api-reference/endpoints/secret-syncs/railway/create",
-                      "api-reference/endpoints/secret-syncs/railway/update",
-                      "api-reference/endpoints/secret-syncs/railway/delete",
-                      "api-reference/endpoints/secret-syncs/railway/sync-secrets",
-                      "api-reference/endpoints/secret-syncs/railway/import-secrets",
-                      "api-reference/endpoints/secret-syncs/railway/remove-secrets"
                     ]
                   }
                 ]

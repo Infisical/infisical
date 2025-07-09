@@ -10,8 +10,17 @@ import {
 
 import { RailwayConnectionMethod } from "./railway-connection-constants";
 
+export const RailwayConnectionMethodSchema = z
+  .nativeEnum(RailwayConnectionMethod)
+  .describe(AppConnections.CREATE(AppConnection.Railway).method);
+
 export const RailwayConnectionAccessTokenCredentialsSchema = z.object({
-  apiToken: z.string().trim().min(1, "API Token required").describe(AppConnections.CREDENTIALS.RAILWAY.apiToken)
+  apiToken: z
+    .string()
+    .trim()
+    .min(1, "API Token required")
+    .max(255)
+    .describe(AppConnections.CREDENTIALS.RAILWAY.apiToken)
 });
 
 const BaseRailwayConnectionSchema = BaseAppConnectionSchema.extend({
@@ -19,20 +28,20 @@ const BaseRailwayConnectionSchema = BaseAppConnectionSchema.extend({
 });
 
 export const RailwayConnectionSchema = BaseRailwayConnectionSchema.extend({
-  method: z.literal(RailwayConnectionMethod.ApiToken),
+  method: RailwayConnectionMethodSchema,
   credentials: RailwayConnectionAccessTokenCredentialsSchema
 });
 
 export const SanitizedRailwayConnectionSchema = z.discriminatedUnion("method", [
   BaseRailwayConnectionSchema.extend({
-    method: z.literal(RailwayConnectionMethod.ApiToken),
+    method: RailwayConnectionMethodSchema,
     credentials: RailwayConnectionAccessTokenCredentialsSchema.pick({})
   })
 ]);
 
 export const ValidateRailwayConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z.literal(RailwayConnectionMethod.ApiToken).describe(AppConnections.CREATE(AppConnection.Railway).method),
+    method: RailwayConnectionMethodSchema,
     credentials: RailwayConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Railway).credentials
     )
@@ -55,4 +64,54 @@ export const RailwayConnectionListItemSchema = z.object({
   name: z.literal("Railway"),
   app: z.literal(AppConnection.Railway),
   methods: z.nativeEnum(RailwayConnectionMethod).array()
+});
+
+export const RailwayResourceSchema = z.object({
+  node: z.object({
+    id: z.string(),
+    name: z.string()
+  })
+});
+
+export const RailwayProjectEdgeSchema = z.object({
+  node: z.object({
+    id: z.string(),
+    name: z.string(),
+    services: z.object({
+      edges: z.array(RailwayResourceSchema)
+    }),
+    environments: z.object({
+      edges: z.array(RailwayResourceSchema)
+    })
+  })
+});
+
+export const RailwayProjectsListSchema = z.object({
+  projects: z.object({
+    edges: z.array(RailwayProjectEdgeSchema)
+  })
+});
+
+export const RailwayAccountWorkspaceListSchema = z.object({
+  me: z.object({
+    workspaces: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        team: RailwayProjectsListSchema
+      })
+    )
+  })
+});
+
+export const RailwayGetProjectsByProjectTokenSchema = z.object({
+  projectToken: z.object({
+    project: RailwayProjectEdgeSchema.shape.node
+  })
+});
+
+export const RailwayGetSubscriptionTypeSchema = z.object({
+  project: z.object({
+    subscriptionType: z.enum(["free", "hobby", "pro", "trial"])
+  })
 });

@@ -38,24 +38,29 @@ export type RailwayProject = {
   environments: TRailwayEnvironment[];
 };
 
-export interface ProjectListGraphResponse {
-  data: {
-    projects: {
-      edges: {
-        node: RailwayProjectNode;
-      }[];
-    };
-  };
-}
+export type TRailwayResponse<T = unknown> = {
+  data?: T;
+  errors?: {
+    message: string;
+  }[];
+};
 
-export interface RailwayProjectNode {
-  id: string;
-  name: string;
-  services: {
-    edges: TServiceEdge[];
+export type TAccountProjectListResponse = TRailwayResponse<{
+  projects: {
+    edges: TProjectEdge[];
   };
-  environments: {
-    edges: TEnvironmentEdge[];
+}>;
+
+export interface TProjectEdge {
+  node: {
+    id: string;
+    name: string;
+    services: {
+      edges: TServiceEdge[];
+    };
+    environments: {
+      edges: TEnvironmentEdge[];
+    };
   };
 }
 

@@ -33,7 +33,7 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(RailwayConnectionMethod.ApiToken),
+    method: z.nativeEnum(RailwayConnectionMethod),
     credentials: z.object({
       apiToken: z.string().trim().min(1, "Service API Token required")
     })
@@ -49,7 +49,7 @@ export const RailwayConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Railway,
-      method: RailwayConnectionMethod.ApiToken
+      method: RailwayConnectionMethod.AccountToken
     }
   });
 
@@ -68,12 +68,12 @@ export const RailwayConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
-              tooltipText={`The method you would like to use to connect with ${
+              tooltipText={`The type of token you would like to use to connect with ${
                 APP_CONNECTION_MAP[AppConnection.Railway].name
               }. This field cannot be changed after creation.`}
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="Method"
+              label="Token Type"
             >
               <Select
                 isDisabled={isUpdate}
@@ -102,7 +102,7 @@ export const RailwayConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="API Token"
+              label="Token Value"
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
