@@ -3,12 +3,11 @@ import { Knex } from "knex";
 
 import { chunkArray } from "@app/lib/fn";
 import { selectAllTableCols } from "@app/lib/knex";
-import { initLogger, logger } from "@app/lib/logger";
+import { logger } from "@app/lib/logger";
 
 import { SecretType, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  initLogger();
   logger.info("Starting secret version fix migration");
 
   // Get all shared secret IDs first to optimize versions query
