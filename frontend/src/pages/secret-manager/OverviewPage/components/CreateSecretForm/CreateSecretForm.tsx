@@ -1,4 +1,4 @@
-import { ClipboardEvent, useRef } from "react";
+import { ClipboardEvent, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
@@ -68,6 +68,8 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
     canReadTags ? workspaceId : ""
   );
+
+  const [tagInputValue, setTagInputValue] = useState("");
 
   const secretKeyInputRef = useRef<HTMLInputElement>(null);
   const { ref: setSecretKeyHookRef, ...secretKeyRegisterRest } = register("key");
@@ -269,10 +271,15 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
               name="tagIds"
               isDisabled={!canReadTags}
               isLoading={isTagsLoading && canReadTags}
-              options={projectTags?.map((el) => ({ label: el.slug, value: el.id }))}
+              options={projectTags
+                ?.map((el) => ({ label: el.slug, value: el.id }))
+                .filter((opt) => !field.value?.some((selected) => selected.value === opt.value))}
               value={field.value}
               onChange={field.onChange}
               onCreateOption={createNewTag}
+              inputValue={tagInputValue}
+              onInputChange={(val) => setTagInputValue(val)}
+              noOptionsMessage={() => "No tags"}
             />
           </FormControl>
         )}
