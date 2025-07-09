@@ -9,7 +9,8 @@ import { CloudflareConnectionMethod } from "./cloudflare-connection-enum";
 import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
-  TCloudflarePagesProject
+  TCloudflarePagesProject,
+  TCloudflareWorkersProject
 } from "./cloudflare-connection-types";
 
 export const getCloudflareConnectionListItem = () => {
@@ -39,6 +40,28 @@ export const listCloudflarePagesProjects = async (
 
   return data.result.map((a) => ({
     name: a.name,
+    id: a.id
+  }));
+};
+
+export const listCloudflareWorkersProjects = async (
+  appConnection: TCloudflareConnection
+): Promise<TCloudflareWorkersProject[]> => {
+  const {
+    credentials: { apiToken, accountId }
+  } = appConnection;
+
+  const { data } = await request.get<{ result: { id: string }[] }>(
+    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/workers/scripts`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  return data.result.map((a) => ({
     id: a.id
   }));
 };

@@ -24,6 +24,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Flyio]: "Fly.io",
   [SecretSync.GitLab]: "GitLab",
   [SecretSync.CloudflarePages]: "Cloudflare Pages",
+  [SecretSync.CloudflareWorkers]: "Cloudflare Workers",
   [SecretSync.Zabbix]: "Zabbix"
 };
 
@@ -50,6 +51,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Flyio]: AppConnection.Flyio,
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
+  [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.Zabbix]: AppConnection.Zabbix
 };
 
@@ -76,5 +78,6 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Flyio]: SecretSyncPlanType.Regular,
   [SecretSync.GitLab]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular,
+  [SecretSync.CloudflareWorkers]: SecretSyncPlanType.Regular,
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular
 };

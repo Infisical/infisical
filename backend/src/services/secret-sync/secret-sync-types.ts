@@ -78,6 +78,12 @@ import {
   TCloudflarePagesSyncListItem,
   TCloudflarePagesSyncWithCredentials
 } from "./cloudflare-pages/cloudflare-pages-types";
+import {
+  TCloudflareWorkersSync,
+  TCloudflareWorkersSyncInput,
+  TCloudflareWorkersSyncListItem,
+  TCloudflareWorkersSyncWithCredentials
+} from "./cloudflare-workers";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
@@ -138,6 +144,7 @@ export type TSecretSync =
   | TFlyioSync
   | TGitLabSync
   | TCloudflarePagesSync
+  | TCloudflareWorkersSync
   | TZabbixSync;
 
 export type TSecretSyncWithCredentials =
@@ -163,6 +170,7 @@ export type TSecretSyncWithCredentials =
   | TFlyioSyncWithCredentials
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
+  | TCloudflareWorkersSyncWithCredentials
   | TZabbixSyncWithCredentials;
 
 export type TSecretSyncInput =
@@ -188,6 +196,7 @@ export type TSecretSyncInput =
   | TFlyioSyncInput
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
+  | TCloudflareWorkersSyncInput
   | TZabbixSyncInput;
 
 export type TSecretSyncListItem =
@@ -213,6 +222,7 @@ export type TSecretSyncListItem =
   | TFlyioSyncListItem
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
+  | TCloudflareWorkersSyncListItem
   | TZabbixSyncListItem;
 
 export type TSyncOptionsConfig = {

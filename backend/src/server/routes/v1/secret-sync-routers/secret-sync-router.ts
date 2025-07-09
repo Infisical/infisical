@@ -26,6 +26,10 @@ import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema
 } from "@app/services/secret-sync/cloudflare-pages/cloudflare-pages-schema";
+import {
+  CloudflareWorkersSyncListItemSchema,
+  CloudflareWorkersSyncSchema
+} from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
@@ -64,6 +68,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   FlyioSyncSchema,
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
+  CloudflareWorkersSyncSchema,
   ZabbixSyncSchema
 ]);
 
@@ -90,6 +95,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   FlyioSyncListItemSchema,
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,
+  CloudflareWorkersSyncListItemSchema,
   ZabbixSyncListItemSchema
 ]);
 

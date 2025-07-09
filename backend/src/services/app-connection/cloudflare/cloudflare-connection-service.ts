@@ -2,7 +2,7 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listCloudflarePagesProjects } from "./cloudflare-connection-fns";
+import { listCloudflarePagesProjects, listCloudflareWorkersProjects } from "./cloudflare-connection-fns";
 import { TCloudflareConnection } from "./cloudflare-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -24,7 +24,20 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
+  const listWorkersProjects = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
+    try {
+      const projects = await listCloudflareWorkersProjects(appConnection);
+
+      return projects;
+    } catch (error) {
+      logger.error(error, "Failed to list Cloudflare Workers projects for Cloudflare connection");
+      return [];
+    }
+  };
+
   return {
-    listPagesProjects
+    listPagesProjects,
+    listWorkersProjects
   };
 };

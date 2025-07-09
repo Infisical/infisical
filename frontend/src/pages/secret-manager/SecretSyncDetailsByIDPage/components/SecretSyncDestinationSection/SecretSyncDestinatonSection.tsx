@@ -19,6 +19,7 @@ import { AzureDevOpsSyncDestinationSection } from "./AzureDevOpsSyncDestinationS
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
+import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
@@ -114,6 +115,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.CloudflarePages:
       DestinationComponents = <CloudflarePagesSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.CloudflareWorkers:
+      DestinationComponents = <CloudflareWorkersSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Zabbix:
       DestinationComponents = <ZabbixSyncDestinationSection secretSync={secretSync} />;

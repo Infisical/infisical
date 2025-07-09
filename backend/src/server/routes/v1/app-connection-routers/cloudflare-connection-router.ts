@@ -50,4 +50,32 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
       return projects;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloudflare-workers-projects`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const projects = await server.services.appConnection.cloudflare.listWorkersProjects(connectionId, req.permission);
+
+      return projects;
+    }
+  });
 };
