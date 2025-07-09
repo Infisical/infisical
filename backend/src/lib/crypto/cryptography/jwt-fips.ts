@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import RE2 from "re2";
 
+import { CryptographyError } from "@app/lib/errors";
+
 import { Algorithm, CompleteJWTPayload, JWTPayload, JWTSecretOrKey, JWTSignOptions, JWTVerifyOptions } from "./types";
 
 export const jwtFipsValidated = () => {
@@ -14,7 +16,9 @@ export const jwtFipsValidated = () => {
 
     const match = new RE2(/^(\d+)([smhd])$/).exec(timeStr);
     if (!match) {
-      throw new Error(`Invalid time format: ${timeStr}`);
+      throw new CryptographyError({
+        message: `Invalid JWT time format: ${timeStr}`
+      });
     }
 
     const value = parseInt(match[1], 10);
@@ -30,7 +34,9 @@ export const jwtFipsValidated = () => {
       case "d":
         return value * 60 * 60 * 24;
       default:
-        throw new Error(`Unknown time unit: ${unit}`);
+        throw new CryptographyError({
+          message: `Unknown JWT time unit: ${unit}`
+        });
     }
   };
 
@@ -46,7 +52,9 @@ export const jwtFipsValidated = () => {
       case "RS512":
         return "sha512";
       default:
-        throw new Error(`Unsupported algorithm: ${algorithm}`);
+        throw new CryptographyError({
+          message: `Unsupported JWT algorithm: ${algorithm}`
+        });
     }
   };
 
@@ -88,7 +96,9 @@ export const jwtFipsValidated = () => {
           // Try to create a proper private key object
           privateKey = crypto.createPrivateKey(secretOrPrivateKey);
         } catch (error) {
-          throw new Error("Invalid JWT private key");
+          throw new CryptographyError({
+            message: "Invalid JWT private key"
+          });
         }
       } else {
         privateKey = secretOrPrivateKey;
@@ -99,7 +109,9 @@ export const jwtFipsValidated = () => {
     } else {
       // HMAC signing
       if (typeof secretOrPrivateKey !== "string") {
-        throw new Error("HMAC algorithms require a string secret");
+        throw new CryptographyError({
+          message: "HMAC algorithms require a string secret"
+        });
       }
       signature = crypto
         .createHmac(hashAlgorithm, secretOrPrivateKey)
@@ -116,7 +128,9 @@ export const jwtFipsValidated = () => {
   const verify = (token: string, secretOrKey: JWTSecretOrKey, options: JWTVerifyOptions = {}) => {
     const parts = token.split(".");
     if (parts.length !== 3) {
-      throw new Error("Invalid JWT format");
+      throw new CryptographyError({
+        message: "Invalid JWT format"
+      });
     }
 
     const [encodedHeader, encodedPayload, signature] = parts;
@@ -126,7 +140,9 @@ export const jwtFipsValidated = () => {
     const header = JSON.parse(headerJson) as { alg: string; typ: string; kid?: string };
 
     if (!header.alg || header.typ !== "JWT") {
-      throw new Error("Invalid JWT header");
+      throw new CryptographyError({
+        message: "Invalid JWT header"
+      });
     }
 
     // Extract the actual key from different input types
@@ -161,7 +177,9 @@ export const jwtFipsValidated = () => {
           verificationKey = crypto.createPublicKey(cleanKey);
         }
       } catch (error) {
-        throw new Error("Invalid JWT signature");
+        throw new CryptographyError({
+          message: "Invalid JWT signature"
+        });
       }
 
       // Convert base64url signature back to buffer
@@ -183,7 +201,9 @@ export const jwtFipsValidated = () => {
     }
 
     if (!isValidSignature) {
-      throw new Error("Invalid JWT signature");
+      throw new CryptographyError({
+        message: "Invalid JWT signature"
+      });
     }
 
     // Decode payload
@@ -201,12 +221,16 @@ export const jwtFipsValidated = () => {
 
     // Check expiration
     if (!options.ignoreExpiration && payload.exp && now - clockTolerance > payload.exp) {
-      throw new Error("JWT token has expired");
+      throw new CryptographyError({
+        message: "JWT token has expired"
+      });
     }
 
     // Check not before
     if (!options.ignoreNotBefore && payload.nbf && now + clockTolerance < payload.nbf) {
-      throw new Error("JWT not active");
+      throw new CryptographyError({
+        message: "JWT not active"
+      });
     }
 
     // Check audience
@@ -215,7 +239,9 @@ export const jwtFipsValidated = () => {
       const tokenAudiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
       const hasValidAudience = audiences.some((aud) => tokenAudiences.includes(aud));
       if (!hasValidAudience) {
-        throw new Error("JWT audience invalid");
+        throw new CryptographyError({
+          message: "JWT audience invalid"
+        });
       }
     }
 
@@ -223,31 +249,41 @@ export const jwtFipsValidated = () => {
     if (options.issuer) {
       const issuers = Array.isArray(options.issuer) ? options.issuer : [options.issuer];
       if (!payload.iss || !issuers.includes(payload.iss)) {
-        throw new Error("JWT issuer invalid");
+        throw new CryptographyError({
+          message: "JWT issuer invalid"
+        });
       }
     }
 
     // Check subject
     if (options.subject && payload.sub !== options.subject) {
-      throw new Error("JWT subject invalid");
+      throw new CryptographyError({
+        message: "JWT subject invalid"
+      });
     }
 
     // Check JWT ID
     if (options.jwtid && payload.jti !== options.jwtid) {
-      throw new Error("JWT ID invalid");
+      throw new CryptographyError({
+        message: "JWT ID invalid"
+      });
     }
 
     // Check max age
     if (options.maxAge && payload.iat) {
       const maxAgeSeconds = typeof options.maxAge === "string" ? $parseTimeToSeconds(options.maxAge) : options.maxAge;
       if (now - payload.iat > maxAgeSeconds) {
-        throw new Error("JWT max age exceeded");
+        throw new CryptographyError({
+          message: "JWT max age exceeded"
+        });
       }
     }
 
     // Check algorithms
     if (options.algorithms && !options.algorithms.includes(header.alg as Algorithm)) {
-      throw new Error(`Algorithm not allowed: ${header.alg}`);
+      throw new CryptographyError({
+        message: `Algorithm not allowed: ${header.alg}`
+      });
     }
 
     return payload;
@@ -256,7 +292,9 @@ export const jwtFipsValidated = () => {
   const decode = (token: string, options: { complete?: boolean } = {}): JWTPayload | CompleteJWTPayload => {
     const parts = token.split(".");
     if (parts.length !== 3) {
-      throw new Error("Invalid JWT format");
+      throw new CryptographyError({
+        message: "Invalid JWT format"
+      });
     }
 
     const [encodedHeader, encodedPayload] = parts;
