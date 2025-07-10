@@ -279,7 +279,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
               onCreateOption={createNewTag}
               inputValue={tagInputValue}
               onInputChange={(val) => setTagInputValue(val)}
-              noOptionsMessage={() => "No tags"}
+              noOptionsMessage={() => "No available tags to select"}
             />
           </FormControl>
         )}
