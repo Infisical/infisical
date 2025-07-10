@@ -28,7 +28,8 @@ export enum SqlProviders {
 
 export enum AwsIamAuthType {
   AssumeRole = "assume-role",
-  AccessKey = "access-key"
+  AccessKey = "access-key",
+  IRSA = "irsa"
 }
 
 export enum ElasticSearchAuthTypes {
@@ -214,6 +215,16 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
     z.object({
       method: z.literal(AwsIamAuthType.AssumeRole),
       roleArn: z.string().trim().min(1, "Role ARN required"),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional(),
+      tags: ResourceMetadataSchema.optional()
+    }),
+    z.object({
+      method: z.literal(AwsIamAuthType.IRSA),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
       permissionBoundaryPolicyArn: z.string().trim().optional(),
