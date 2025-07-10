@@ -254,30 +254,13 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
 
     if (change.type === "delete") {
       return (
-        <div className="mt-3 overflow-hidden rounded-md border border-red-700 bg-red-900/20">
+        <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-red-600 bg-red-800/30">
-                <th className="w-24 py-2 pl-4 text-left text-xs font-medium text-red-300">Field</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-red-300">
-                  Deleted Value
-                </th>
-                <th className="w-8" />
-              </tr>
-            </thead>
             <tbody>
-              <tr className="border-b border-red-700">
-                <td className="w-24 py-3 pl-4 font-medium text-red-300">Key:</td>
-                <td className="px-3 py-3 font-mono text-red-100 line-through" colSpan={2}>
+              <tr className="border-b border-mineshaft-700">
+                <td className="w-24 py-3 pl-4 font-medium text-red-400">Key:</td>
+                <td className="px-3 py-3 font-mono text-red-400 line-through" colSpan={2}>
                   {change.secretKey}
-                </td>
-              </tr>
-              <tr className="border-b border-red-700 last:border-b-0">
-                <td className="w-24 py-3 pl-4 font-medium text-red-300">Value:</td>
-                <td className="px-3 py-3" colSpan={2}>
-                  <div className="max-w-md break-all rounded bg-red-800/50 px-2 py-1 font-mono text-xs text-red-100 line-through">
-                    {change.secretValue || <span className="italic">(empty)</span>}
-                  </div>
                 </td>
               </tr>
             </tbody>
@@ -353,21 +336,12 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
 
     if (change.type === "delete") {
       return (
-        <div className="mt-3 overflow-hidden rounded-md border border-red-700 bg-red-900/20">
+        <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-red-600 bg-red-800/30">
-                <th className="w-24 py-2 pl-4 text-left text-xs font-medium text-red-300">Field</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-red-300">
-                  Deleted Value
-                </th>
-                <th className="w-8" />
-              </tr>
-            </thead>
             <tbody>
-              <tr className="border-b border-red-700 last:border-b-0">
-                <td className="w-24 py-3 pl-4 font-medium text-red-300">Name:</td>
-                <td className="px-3 py-3 font-mono text-red-100 line-through" colSpan={2}>
+              <tr className="border-b border-mineshaft-700">
+                <td className="w-24 py-3 pl-4 font-medium text-red-400">Name:</td>
+                <td className="px-3 py-3 font-mono text-red-400 line-through" colSpan={2}>
                   {change.folderName}
                 </td>
               </tr>
