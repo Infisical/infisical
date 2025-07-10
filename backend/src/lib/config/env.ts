@@ -378,7 +378,7 @@ export const overwriteSchema: {
     fields: [
       {
         key: "INF_APP_CONNECTION_AWS_ACCESS_KEY_ID",
-        description: "The Client ID of your AWS application."
+        description: "The Access Key ID of your AWS account."
       },
       {
         key: "INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY",
