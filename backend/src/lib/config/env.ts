@@ -408,19 +408,6 @@ export const overwriteSchema: {
       }
     ]
   },
-  google_sso: {
-    name: "Google SSO",
-    fields: [
-      {
-        key: "CLIENT_ID_GOOGLE_LOGIN",
-        description: "The Client ID of your GCP OAuth2 application."
-      },
-      {
-        key: "CLIENT_SECRET_GOOGLE_LOGIN",
-        description: "The Client Secret of your GCP OAuth2 application."
-      }
-    ]
-  },
   github_app: {
     name: "GitHub App",
     fields: [
@@ -443,6 +430,19 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY",
         description: "The Private Key of your GitHub application."
+      }
+    ]
+  },
+  github_oauth: {
+    name: "GitHub OAuth",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID",
+        description: "The Client ID of your GitHub OAuth application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET",
+        description: "The Client Secret of your GitHub OAuth application."
       }
     ]
   },
@@ -472,19 +472,6 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET",
         description: "The Webhook Secret of your GitHub application."
-      }
-    ]
-  },
-  github_oauth: {
-    name: "GitHub OAuth",
-    fields: [
-      {
-        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID",
-        description: "The Client ID of your GitHub OAuth application."
-      },
-      {
-        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET",
-        description: "The Client Secret of your GitHub OAuth application."
       }
     ]
   },
@@ -529,6 +516,19 @@ export const overwriteSchema: {
         key: "CLIENT_GITLAB_LOGIN_URL",
         description:
           "The URL of your self-hosted instance of GitLab where the OAuth application is registered. If no URL is passed in, this will default to https://gitlab.com."
+      }
+    ]
+  },
+  google_sso: {
+    name: "Google SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GOOGLE_LOGIN",
+        description: "The Client ID of your GCP OAuth2 application."
+      },
+      {
+        key: "CLIENT_SECRET_GOOGLE_LOGIN",
+        description: "The Client Secret of your GCP OAuth2 application."
       }
     ]
   }
