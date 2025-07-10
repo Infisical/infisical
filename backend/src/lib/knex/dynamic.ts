@@ -12,6 +12,11 @@ type TKnexDynamicPrimitiveOperator<T extends object> =
       operator: "notIn";
       value: string[];
       field: Extract<keyof T, string>;
+    }
+  | {
+      operator: "lte";
+      value: Date;
+      field: Extract<keyof T, string>;
     };
 
 type TKnexDynamicInOperator<T extends object> = {
@@ -80,6 +85,10 @@ export const buildDynamicKnexQuery = <T extends object>(
             buildDynamicKnexQuery(subQueryBuilder, el);
           });
         });
+        break;
+      }
+      case "lte": {
+        void queryBuilder.where(filterAst.field, "<=", filterAst.value);
         break;
       }
       default:

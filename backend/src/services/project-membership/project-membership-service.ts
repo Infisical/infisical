@@ -14,6 +14,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
+import { OrgServiceActor } from "@app/lib/types";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
@@ -567,6 +568,35 @@ export const projectMembershipServiceFactory = ({
     return deletedMembership;
   };
 
+  const getProjectMembershipCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const projectMemberships = await projectMembershipDAL.find({
+      projectId
+    });
+
+    const users = await userDAL.find(
+      {
+        $in: {
+          id: projectMemberships.map((membership) => membership.userId)
+        },
+        isGhost: false
+      },
+      {
+        count: true
+      }
+    );
+
+    return Number(users?.[0]?.count ?? 0);
+  };
+
   return {
     getProjectMemberships,
     getProjectMembershipByUsername,
@@ -575,6 +605,7 @@ export const projectMembershipServiceFactory = ({
     deleteProjectMembership, // TODO: Remove this
     addUsersToProject,
     leaveProject,
-    getProjectMembershipById
+    getProjectMembershipById,
+    getProjectMembershipCount
   };
 };

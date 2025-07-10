@@ -26,6 +26,7 @@ import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { OrgServiceActor } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -86,7 +87,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     | "findBySecretPath"
@@ -2914,6 +2915,39 @@ export const secretV2BridgeServiceFactory = ({
     });
   };
 
+  const getProjectSecretResourcesCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const environments = await projectEnvDAL.find({
+      projectId
+    });
+
+    const folders = await folderDAL.find({
+      isReserved: false,
+      $in: {
+        envId: environments.map((env) => env.id)
+      }
+    });
+
+    const secrets = await secretDAL.rawFind(
+      {
+        $in: {
+          folderId: folders.map((folder) => folder.id)
+        }
+      },
+      { countDistinct: "key" }
+    );
+
+    return { environmentCount: environments.length, secretCount: Number(secrets?.[0]?.count ?? 0) };
+  };
+
   return {
     createSecret,
     deleteSecret,
@@ -2933,6 +2967,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsByFolderMappings,
     getSecretById,
     getAccessibleSecrets,
-    getSecretVersionsByIds
+    getSecretVersionsByIds,
+    getProjectSecretResourcesCount
   };
 };

@@ -47,8 +47,9 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findByIdWithAssociatedCa"
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
+    | "find"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "find">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -382,11 +383,36 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
+  const getProjectCertificateAuthorityCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const cas = await certificateAuthorityDAL.find({ projectId });
+
+    const externalCas = await externalCertificateAuthorityDAL.find(
+      { $in: { caId: cas.map((ca) => ca.id) } },
+      { count: true }
+    );
+
+    const externalCaCount = Number(externalCas?.[0]?.count ?? 0);
+
+    return {
+      externalCaCount,
+      internalCaCount: cas.length - externalCaCount
+    };
+  };
   return {
     createCertificateAuthority,
     findCertificateAuthorityByNameAndProjectId,
     listCertificateAuthoritiesByProjectId,
     updateCertificateAuthority,
-    deleteCertificateAuthority
+    deleteCertificateAuthority,
+    getProjectCertificateAuthorityCount
   };
 };

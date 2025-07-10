@@ -392,6 +392,7 @@ export const routes = rootRoute("root.tsx", [
         ]),
         route("/projects/$projectId", [
           layout("project-layout", "project/layout.tsx", [
+            route("/overview", "project/OverviewPage/route.tsx"),
             projectGeneralRoutes,
             secretManagerRoutes,
             secretManagerIntegrationsRedirect,

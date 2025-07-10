@@ -9,7 +9,7 @@ import { DASHBOARD } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
-import { secretsLimit } from "@app/server/config/rateLimiter";
+import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -1352,6 +1352,130 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       return { secrets };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/project-overview",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        projectId: z.string(),
+        projectSlug: z.string()
+      }),
+      response: {
+        200: z.object({
+          accessControl: z.object({
+            userCount: z.number(),
+            machineIdentityCount: z.number(),
+            groupCount: z.number()
+          }),
+          secretsManagement: z.object({
+            secretCount: z.number(),
+            environmentCount: z.number(),
+            pendingApprovalCount: z.number()
+          }),
+          certificateManagement: z.object({
+            internalCaCount: z.number(),
+            externalCaCount: z.number(),
+            expiryCount: z.number()
+          }),
+          kms: z.object({
+            keyCount: z.number(),
+            kmipClientCount: z.number()
+          }),
+          ssh: z.object({
+            hostCount: z.number(),
+            hostGroupCount: z.number()
+          }),
+          secretScanning: z.object({
+            dataSourceCount: z.number(),
+            resourceCount: z.number(),
+            findingCount: z.number()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const {
+        query: { projectId, projectSlug },
+        permission
+      } = req;
+
+      const userCount = await server.services.projectMembership.getProjectMembershipCount(projectId, permission);
+
+      const machineIdentityCount = await server.services.identityProject.getProjectIdentityCount(projectId, permission);
+
+      const groupCount = await server.services.groupProject.getProjectGroupCount(projectId, permission);
+
+      const secretsManagement = await server.services.secret.getProjectSecretResourcesCount(projectId, permission);
+
+      const accessApprovals = await server.services.accessApprovalRequest.getCount({
+        projectSlug,
+        actor: permission.type,
+        actorId: permission.id,
+        actorOrgId: permission.orgId,
+        actorAuthMethod: permission.authMethod
+      });
+
+      const secretApprovals = await server.services.secretApprovalRequest.requestCount({
+        projectId,
+        actor: permission.type,
+        actorId: permission.id,
+        actorOrgId: permission.orgId,
+        actorAuthMethod: permission.authMethod
+      });
+
+      const certificateAuthorityCount = await server.services.certificateAuthority.getProjectCertificateAuthorityCount(
+        projectId,
+        permission
+      );
+
+      const expiryCount = await server.services.certificate.getProjectExpiringCertificates(projectId, permission);
+
+      const keyCount = await server.services.cmek.getProjectKeyCount(projectId, permission);
+
+      const kmipClientCount = await server.services.kmip.getProjectClientCount(projectId, permission);
+
+      const hostCount = await server.services.sshHost.getProjectHostCount(projectId, permission);
+
+      const hostGroupCount = await server.services.sshHostGroup.getProjectHostGroupCount(projectId, permission);
+
+      const secretScanning = await server.services.secretScanningV2.getProjectResourcesCount(projectId, permission);
+
+      return {
+        accessControl: {
+          userCount,
+          machineIdentityCount,
+          groupCount
+        },
+        secretsManagement: {
+          ...secretsManagement,
+          pendingApprovalCount: accessApprovals.count.pendingCount + secretApprovals.open
+        },
+        certificateManagement: {
+          ...certificateAuthorityCount,
+          expiryCount
+        },
+        kms: {
+          keyCount,
+          kmipClientCount
+        },
+        ssh: {
+          hostCount,
+          hostGroupCount
+        },
+        secretScanning
+      };
     }
   });
 };

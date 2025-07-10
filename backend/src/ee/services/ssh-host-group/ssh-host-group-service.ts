@@ -8,6 +8,7 @@ import { TSshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { TSshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-membership-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -414,6 +415,26 @@ export const sshHostGroupServiceFactory = ({
     return { sshHostGroup, sshHost };
   };
 
+  const getProjectHostGroupCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const hostGroups = await sshHostGroupDAL.find(
+      {
+        projectId
+      },
+      { count: true }
+    );
+
+    return Number(hostGroups?.[0]?.count ?? 0);
+  };
+
   return {
     createSshHostGroup,
     getSshHostGroup,
@@ -421,6 +442,7 @@ export const sshHostGroupServiceFactory = ({
     updateSshHostGroup,
     listSshHostGroupHosts,
     addHostToSshHostGroup,
-    removeHostFromSshHostGroup
+    removeHostFromSshHostGroup,
+    getProjectHostGroupCount
   };
 };

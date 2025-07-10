@@ -881,6 +881,47 @@ export const secretScanningV2ServiceFactory = ({
     return config;
   };
 
+  const getProjectResourcesCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const dataSources = await secretScanningV2DAL.dataSources.findRaw(
+      {
+        projectId
+      },
+      { count: true }
+    );
+
+    const resources = await secretScanningV2DAL.resources.find(
+      {
+        $in: {
+          dataSourceId: dataSources.map((dataSource) => dataSource.id)
+        }
+      },
+      { count: true }
+    );
+
+    const findings = await secretScanningV2DAL.findings.find(
+      {
+        projectId,
+        status: SecretScanningFindingStatus.Unresolved
+      },
+      { count: true }
+    );
+
+    return {
+      dataSourceCount: Number(dataSources?.[0]?.count ?? 0),
+      resourceCount: Number(resources?.[0]?.count ?? 0),
+      findingCount: Number(findings?.[0]?.count ?? 0)
+    };
+  };
+
   return {
     listSecretScanningDataSourceOptions,
     listSecretScanningDataSourcesByProjectId,
@@ -900,6 +941,7 @@ export const secretScanningV2ServiceFactory = ({
     updateSecretScanningFindingById,
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
+    getProjectResourcesCount,
     github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
     bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)
   };

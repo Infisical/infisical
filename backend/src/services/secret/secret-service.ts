@@ -3339,6 +3339,20 @@ export const secretServiceFactory = ({
     }));
   };
 
+  const getProjectSecretResourcesCount = async (projectId: string, actor: OrgServiceActor) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support pagination",
+        name: "PaginationNotSupportedError"
+      });
+
+    const count = await secretV2BridgeService.getProjectSecretResourcesCount(projectId, actor);
+
+    return count;
+  };
+
   return {
     attachTags,
     detachTags,
@@ -3371,6 +3385,7 @@ export const secretServiceFactory = ({
     getSecretByIdRaw,
     getAccessibleSecrets,
     getSecretVersionsV2ByIds,
-    getChangeVersions
+    getChangeVersions,
+    getProjectSecretResourcesCount
   };
 };
