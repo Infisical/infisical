@@ -61,14 +61,13 @@ export const secretApprovalPolicyServiceFactory = ({
     policyId
   }: {
     envId: string;
-    secretPath?: string | null;
+    secretPath: string;
     policyId?: string;
   }) => {
     const policy = await secretApprovalPolicyDAL
       .findOne({
         envId,
-        // For environment-wide policies, we store the path as an empty string, even though the column is nullable; for that reason we check for an empty string.
-        ...(secretPath ? { secretPath } : { secretPath: "" }),
+        secretPath,
         deletedAt: null
       })
       .catch(() => null);
@@ -288,7 +287,13 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    if (await $policyExists({ envId: secretApprovalPolicy.envId, secretPath, policyId: secretApprovalPolicy.id })) {
+    if (
+      await $policyExists({
+        envId: secretApprovalPolicy.envId,
+        secretPath: secretPath || secretApprovalPolicy.secretPath,
+        policyId: secretApprovalPolicy.id
+      })
+    ) {
       throw new BadRequestError({
         message: `A policy for secret path '${secretPath}' already exists in environment '${secretApprovalPolicy.environment.slug}'`
       });
