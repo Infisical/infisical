@@ -320,16 +320,10 @@ export const accessApprovalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
     }
 
-    // Case: Previously we allowed secret path to be null, but now we don't.
-    // This check ensures that we have a secret path to match with for finding conflicting policies.
-    if (!secretPath && !accessApprovalPolicy.secretPath) {
-      throw new BadRequestError({ message: "Secret path is required to update the policy" });
-    }
-
     if (
       await $policyExists({
         envId: accessApprovalPolicy.envId,
-        secretPath: secretPath || accessApprovalPolicy.secretPath || "",
+        secretPath: secretPath || accessApprovalPolicy.secretPath,
         policyId: accessApprovalPolicy.id
       })
     ) {

@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -19,7 +20,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z.object({
         projectSlug: z.string().trim(),
         name: z.string().optional(),
-        secretPath: z.string().trim().min(1, { message: "Secret path cannot be empty" }),
+        secretPath: z.string().trim().min(1, { message: "Secret path cannot be empty" }).transform(removeTrailingSlash),
         environment: z.string(),
         approvers: z
           .discriminatedUnion("type", [
@@ -171,7 +172,12 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       body: z.object({
         name: z.string().optional(),
-        secretPath: z.string().trim().min(1, { message: "Secret path cannot be empty" }).optional(),
+        secretPath: z
+          .string()
+          .trim()
+          .min(1, { message: "Secret path cannot be empty" })
+          .optional()
+          .transform((val) => (val ? removeTrailingSlash(val) : val)),
         approvers: z
           .discriminatedUnion("type", [
             z.object({

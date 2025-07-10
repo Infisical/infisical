@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const SecretApprovalPoliciesSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  secretPath: z.string().nullable().optional(),
+  secretPath: z.string(),
   approvals: z.number().default(1),
   envId: z.string().uuid(),
   createdAt: z.date(),
