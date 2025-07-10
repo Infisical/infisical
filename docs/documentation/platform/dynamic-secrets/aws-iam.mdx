@@ -241,8 +241,6 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
 
     <Warning type="warning" title="IRSA Configuration Prerequisite">
         In order to use IRSA, the `KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN` environment variable must be set to `true` for your self-hosted Infisical instance.
-
-        To define a custom path for the service account token, you can use the `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH` environment variable. Otherwise, the default path of `/var/run/secrets/kubernetes.io/serviceaccount/token` will be used.
     </Warning>
 
     <Steps>
