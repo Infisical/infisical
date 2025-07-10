@@ -28,7 +28,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorType } from "../auth/auth-type";
-import { TCreateCommitChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -1477,7 +1477,7 @@ export const secretV2BridgeServiceFactory = ({
     secrets: inputSecrets,
     tx: providedTx,
     commitChanges
-  }: TCreateManySecretDTO & { tx?: Knex; commitChanges?: TCreateCommitChangeDTO[] }) => {
+  }: TCreateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1652,7 +1652,7 @@ export const secretV2BridgeServiceFactory = ({
     mode: updateMode,
     tx: providedTx,
     commitChanges
-  }: TUpdateManySecretDTO & { tx?: Knex; commitChanges?: TCreateCommitChangeDTO[] }) => {
+  }: TUpdateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2013,7 +2013,7 @@ export const secretV2BridgeServiceFactory = ({
     actorOrgId,
     tx: providedTx,
     commitChanges
-  }: TDeleteManySecretDTO & { tx?: Knex; commitChanges?: TCreateCommitChangeDTO[] }) => {
+  }: TDeleteManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

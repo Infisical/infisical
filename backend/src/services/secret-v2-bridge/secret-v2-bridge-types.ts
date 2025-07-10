@@ -8,7 +8,7 @@ import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
-import { TCreateCommitChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
@@ -167,7 +167,7 @@ export type TFnSecretBulkInsert = {
   folderId: string;
   orgId: string;
   tx?: Knex;
-  commitChanges?: TCreateCommitChangeDTO[];
+  commitChanges?: TCommitResourceChangeDTO[];
   inputSecrets: Array<
     Omit<TSecretsV2Insert, "folderId"> & {
       tagIds?: string[];
@@ -215,7 +215,7 @@ export type TFnSecretBulkUpdate = {
     actorId?: string;
   };
   tx?: Knex;
-  commitChanges?: TCreateCommitChangeDTO[];
+  commitChanges?: TCommitResourceChangeDTO[];
 };
 
 export type TFnSecretBulkDelete = {
@@ -225,7 +225,7 @@ export type TFnSecretBulkDelete = {
   actorId: string;
   actorType?: string;
   tx?: Knex;
-  commitChanges?: TCreateCommitChangeDTO[];
+  commitChanges?: TCommitResourceChangeDTO[];
   secretDAL: Pick<TSecretV2BridgeDALFactory, "deleteMany">;
   secretQueueService: {
     removeSecretReminder: (data: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;

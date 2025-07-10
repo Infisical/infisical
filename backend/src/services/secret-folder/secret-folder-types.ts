@@ -23,7 +23,7 @@ export type TUpdateFolderDTO = {
 } & TProjectPermission;
 
 export type TUpdateManyFoldersDTO = {
-  projectSlug: string;
+  projectSlug?: string;
   folders: {
     environment: string;
     path: string;
@@ -75,7 +75,7 @@ export type TCreateManyFoldersDTO = {
     name: string;
     environment: string;
     path: string;
-    description?: string;
+    description?: string | null;
   }>;
 };
 

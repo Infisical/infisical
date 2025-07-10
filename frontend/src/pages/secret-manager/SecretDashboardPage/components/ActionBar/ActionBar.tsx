@@ -74,6 +74,7 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/types";
 import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
@@ -193,7 +194,7 @@ export const ActionBar = ({
         const pendingFolderCreate: PendingFolderCreate = {
           id: folderId,
           resourceType: "folder",
-          type: "create",
+          type: PendingAction.Create,
           folderName,
           description: description || undefined,
           parentPath: secretPath,

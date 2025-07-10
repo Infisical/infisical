@@ -47,7 +47,9 @@ import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
+import { SecretV3RawSanitized } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { SecretRotationListView } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView";
 
@@ -136,14 +138,22 @@ const Page = () => {
     }
   }, [isBatchMode, workspaceId, environment, secretPath, loadPendingChanges]);
 
-  const handleCreateCommit = (changes: PendingChanges, message: string) => {
-    createCommit({
-      workspaceId,
-      environment,
-      secretPath,
-      pendingChanges: changes,
-      message
-    });
+  const handleCreateCommit = async (changes: PendingChanges, message: string) => {
+    try {
+      await createCommit({
+        workspaceId,
+        environment,
+        secretPath,
+        pendingChanges: changes,
+        message
+      });
+    } catch (error) {
+      createNotification({
+        text: "Failed to commit changes",
+        type: "error"
+      });
+      console.error(error);
+    }
   };
 
   const canReadSecret = hasSecretReadValueOrDescribePermission(
@@ -521,7 +531,7 @@ const Page = () => {
 
     pendingChanges.secrets.forEach((change) => {
       switch (change.type) {
-        case "create":
+        case PendingAction.Create:
           mergedSecrets.unshift({
             id: change.id,
             key: change.secretKey,
@@ -534,11 +544,11 @@ const Page = () => {
             updatedAt: new Date().toISOString(),
             version: 1,
             isPending: true,
-            pendingAction: "create"
-          } as any);
+            pendingAction: PendingAction.Create
+          } as unknown as SecretV3RawSanitized);
           break;
 
-        case "update":
+        case PendingAction.Update:
           const updateIndex = mergedSecrets.findIndex((s) => s.key === change.secretKey);
           if (updateIndex >= 0) {
             mergedSecrets[updateIndex] = {
@@ -558,18 +568,18 @@ const Page = () => {
                   : mergedSecrets[updateIndex].skipMultilineEncoding,
               secretMetadata: change.secretMetadata || mergedSecrets[updateIndex].secretMetadata,
               isPending: true,
-              pendingAction: "update"
+              pendingAction: PendingAction.Update
             };
           }
           break;
 
-        case "delete":
+        case PendingAction.Delete:
           const deleteIndex = mergedSecrets.findIndex((s) => s.key === change.secretKey);
           if (deleteIndex >= 0) {
             mergedSecrets[deleteIndex] = {
               ...mergedSecrets[deleteIndex],
               isPending: true,
-              pendingAction: "delete"
+              pendingAction: PendingAction.Delete
             };
           }
           break;
@@ -591,18 +601,18 @@ const Page = () => {
 
     pendingChanges.folders.forEach((change) => {
       switch (change.type) {
-        case "create":
+        case PendingAction.Create:
           mergedFolders.unshift({
             id: change.id,
             name: change.folderName,
             description: change.description,
             parentId: null,
             isPending: true,
-            pendingAction: "create"
+            pendingAction: PendingAction.Create
           } as any);
           break;
 
-        case "update":
+        case PendingAction.Update:
           const updateIndex = mergedFolders.findIndex((f) => f.id === change.id);
           if (updateIndex >= 0) {
             mergedFolders[updateIndex] = {
@@ -613,18 +623,18 @@ const Page = () => {
                   ? change.description
                   : mergedFolders[updateIndex].description,
               isPending: true,
-              pendingAction: "update"
+              pendingAction: PendingAction.Update
             };
           }
           break;
 
-        case "delete":
+        case PendingAction.Delete:
           const deleteIndex = mergedFolders.findIndex((f) => f.id === change.id);
           if (deleteIndex >= 0) {
             mergedFolders[deleteIndex] = {
               ...mergedFolders[deleteIndex],
               isPending: true,
-              pendingAction: "delete"
+              pendingAction: PendingAction.Delete
             };
           }
           break;
@@ -758,9 +768,7 @@ const Page = () => {
               )}
               {(pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0) && (
                 <CommitForm
-                  onCommit={async (changes, commitMessage) => {
-                    await handleCreateCommit(changes, commitMessage);
-                  }}
+                  onCommit={handleCreateCommit}
                   environment={environment}
                   workspaceId={workspaceId}
                   secretPath={secretPath}

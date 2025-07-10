@@ -12,6 +12,7 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateSecretV3, useCreateWsTag, useGetWsTags } from "@app/hooks/api";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType } from "@app/hooks/api/types";
 
 import {
@@ -96,7 +97,7 @@ export const CreateSecretForm = ({
       if (isBatchMode) {
         const pendingSecretCreate: PendingSecretCreate = {
           id: key,
-          type: "create",
+          type: PendingAction.Create,
           secretKey: key,
           secretValue: value || "",
           secretComment: "",

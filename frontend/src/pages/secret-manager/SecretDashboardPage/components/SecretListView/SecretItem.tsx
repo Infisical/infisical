@@ -50,6 +50,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEyeSlash, faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -88,7 +89,7 @@ type Props = {
     }[];
   }[];
   isPending?: boolean;
-  pendingAction?: "create" | "update" | "delete";
+  pendingAction?: PendingAction;
 };
 
 export const SecretItem = memo(
@@ -201,6 +202,8 @@ export const SecretItem = memo(
           secretTags: selectedTagSlugs
         })
       );
+    const isReadOnlySecret =
+      isReadOnly || isRotatedSecret || (isPending && pendingAction !== PendingAction.Update);
 
     const { secretValueHidden } = secret;
 
@@ -289,9 +292,9 @@ export const SecretItem = memo(
             isDirty && "border-primary-400/50",
             isRotatedSecret && "bg-mineshaft-700/60",
             isPending && "bg-mineshaft-700/60",
-            pendingAction === "delete" && "border-l-2 border-l-red-600/75",
-            pendingAction === "update" && "border-l-2 border-l-yellow-600/75",
-            pendingAction === "create" && "border-l-2 border-l-green-600/75"
+            pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
+            pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
+            pendingAction === PendingAction.Create && "border-l-2 border-l-green-600/75"
           )}
         >
           <div className="group flex">
@@ -383,9 +386,7 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <InfisicalSecretInput
-                      isReadOnly={
-                        isReadOnly || isRotatedSecret || (isPending && pendingAction !== "update")
-                      }
+                      isReadOnly={isReadOnlySecret}
                       key="secret-value"
                       isVisible={isVisible && !secretValueHidden}
                       canEditButNotView={secretValueHidden && !isOverriden}
@@ -398,7 +399,8 @@ export const SecretItem = memo(
                   )}
                 />
               )}
-              {pendingAction !== "create" && pendingAction !== "delete" && (
+              {/* Only allow to open the side panel if the secret is not in a pending create or delete state */}
+              {pendingAction !== PendingAction.Create && pendingAction !== PendingAction.Delete && (
                 <div
                   key="actions"
                   className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"

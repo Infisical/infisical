@@ -17,7 +17,7 @@ import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 import {
   ChangeType,
   CommitType,
-  TCreateCommitChangeDTO,
+  TCommitResourceChangeDTO,
   TFolderCommitServiceFactory
 } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -251,14 +251,17 @@ export const secretFolderServiceFactory = ({
     folders,
     tx: providedTx,
     commitChanges
-  }: TUpdateManyFoldersDTO & { tx?: Knex; commitChanges?: TCreateCommitChangeDTO[]; projectId?: string }) => {
+  }: TUpdateManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[]; projectId?: string }) => {
     let projectId = providedProjectId;
-    if (!projectId) {
+    if (!projectId && projectSlug) {
       const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
       if (!project) {
         throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       }
       projectId = project.id;
+    }
+    if (!projectId) {
+      throw new BadRequestError({ message: "Must provide either project slug or projectId" });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -1010,7 +1013,7 @@ export const secretFolderServiceFactory = ({
     folders,
     tx: providedTx,
     commitChanges
-  }: TCreateManyFoldersDTO & { tx?: Knex; commitChanges?: TCreateCommitChangeDTO[] }) => {
+  }: TCreateManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1221,7 +1224,7 @@ export const secretFolderServiceFactory = ({
     folders,
     tx: providedTx,
     commitChanges
-  }: TDeleteManyFoldersDTO & { tx?: Knex; commitChanges?: TCreateCommitChangeDTO[] }) => {
+  }: TDeleteManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

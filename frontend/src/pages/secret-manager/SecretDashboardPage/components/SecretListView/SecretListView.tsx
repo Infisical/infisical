@@ -11,6 +11,7 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { commitKeys } from "@app/hooks/api/folderCommits/queries";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
@@ -300,12 +301,12 @@ export const SecretListView = ({
         // shared secret change
         if (!isSharedSecUnchanged && !personalAction) {
           if (isBatchMode) {
-            const isEditingPendingCreation = isPending && pendingAction === "create";
+            const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
 
             if (isEditingPendingCreation) {
               const updatedCreate: PendingSecretCreate = {
                 id: orgSecret.id,
-                type: "create",
+                type: PendingAction.Create,
                 secretKey: key,
                 secretValue: value || "",
                 secretComment: comment || "",
@@ -327,7 +328,7 @@ export const SecretListView = ({
 
               const updateChange: PendingSecretUpdate = {
                 id: orgSecret.id,
-                type: "update",
+                type: PendingAction.Update,
                 secretKey: trueOriginalSecret.key,
                 ...(key !== trueOriginalSecret.key && { newSecretName: key }),
                 ...(value !== trueOriginalSecret.value && {
@@ -457,7 +458,7 @@ export const SecretListView = ({
       if (isBatchMode) {
         const deleteChange: PendingSecretDelete = {
           id: `${secretId}`,
-          type: "delete",
+          type: PendingAction.Delete,
           secretKey: key,
           secretValue: value || "",
           timestamp: Date.now(),

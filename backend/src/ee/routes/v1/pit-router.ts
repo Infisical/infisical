@@ -432,11 +432,17 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectSlug: z.string().trim().optional(),
-        workspaceId: z.string().trim().optional(),
+        projectId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        message: z.string().trim(),
+        message: z
+          .string()
+          .trim()
+          .min(1)
+          .max(255)
+          .refine((message) => message.trim() !== "", {
+            message: "Commit message cannot be empty"
+          }),
         changes: z.object({
           secrets: z.object({
             create: z
@@ -500,7 +506,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                     .refine((name) => isValidFolderName(name), {
                       message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
                     }),
-                  description: z.string().optional(),
+                  description: z.string().nullable().optional(),
                   id: z.string()
                 })
               )
@@ -534,7 +540,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        projectId: req.body.workspaceId,
+        projectId: req.body.projectId,
         environment: req.body.environment,
         secretPath: req.body.secretPath,
         message: req.body.message,

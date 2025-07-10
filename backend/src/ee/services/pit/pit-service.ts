@@ -8,7 +8,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
 import {
   ResourceType,
-  TCreateCommitChangeDTO,
+  TCommitResourceChangeDTO,
   TFolderCommitServiceFactory
 } from "@app/services/folder-commit/folder-commit-service";
 import {
@@ -500,8 +500,7 @@ export const pitServiceFactory = ({
 
   const processNewCommitRaw = async ({
     actorId,
-    projectSlug,
-    projectId: optionalProjectId,
+    projectId,
     environment,
     actor,
     actorOrgId,
@@ -522,8 +521,7 @@ export const pitServiceFactory = ({
     }
   }: {
     actorId: string;
-    projectSlug?: string;
-    projectId?: string;
+    projectId: string;
     environment: string;
     actor: ActorType;
     actorOrgId: string;
@@ -532,16 +530,6 @@ export const pitServiceFactory = ({
     message: string;
     changes: TProcessNewCommitRawDTO;
   }) => {
-    if (!projectSlug && !optionalProjectId)
-      throw new BadRequestError({ message: "Must provide either project slug or projectId" });
-
-    let projectId = optionalProjectId as string;
-    if (!optionalProjectId && projectSlug) {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-      projectId = project.id;
-    }
-
     const policy =
       actor === ActorType.USER
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
@@ -581,7 +569,7 @@ export const pitServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
           name: "CreateManySecret"
         });
-      const commitChanges: TCreateCommitChangeDTO[] = [];
+      const commitChanges: TCommitResourceChangeDTO[] = [];
 
       if ((changes.folders?.create?.length ?? 0) > 0) {
         await folderService.createManyFolders({
@@ -605,7 +593,6 @@ export const pitServiceFactory = ({
       if ((changes.folders?.update?.length ?? 0) > 0) {
         await folderService.updateManyFolders({
           projectId,
-          projectSlug: projectSlug || "",
           actor,
           actorId,
           actorOrgId,

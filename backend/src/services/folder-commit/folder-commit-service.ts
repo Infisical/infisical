@@ -47,7 +47,7 @@ export enum ResourceType {
   FOLDER = "folder"
 }
 
-export type TCreateCommitChangeDTO = {
+export type TCommitResourceChangeDTO = {
   type: string;
   secretVersionId?: string;
   folderVersionId?: string;
@@ -65,7 +65,7 @@ type TCreateCommitDTO = {
   };
   message?: string;
   folderId: string;
-  changes: TCreateCommitChangeDTO[];
+  changes: TCommitResourceChangeDTO[];
   omitIgnoreFilter?: boolean;
 };
 
@@ -897,16 +897,16 @@ export const folderCommitServiceFactory = ({
         }
       }
 
-        const newCommit = await folderCommitDAL.create(
-          {
-            actorMetadata: metadata,
-            actorType: data.actor.type,
-            message: data.message,
-            folderId: data.folderId,
-            envId: folder.envId
-          },
-          tx
-        );
+      const newCommit = await folderCommitDAL.create(
+        {
+          actorMetadata: metadata,
+          actorType: data.actor.type,
+          message: data.message,
+          folderId: data.folderId,
+          envId: folder.envId
+        },
+        tx
+      );
 
       const batchSize = 500;
       const chunks = chunkArray(changes, batchSize);

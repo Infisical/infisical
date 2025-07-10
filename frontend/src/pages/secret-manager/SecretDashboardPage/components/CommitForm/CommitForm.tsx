@@ -12,6 +12,7 @@ import {
   Modal,
   ModalContent
 } from "@app/components/v2";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
 import {
   PendingChange,
@@ -106,11 +107,11 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
 }) => {
   const getChangeBadge = (type: PendingChange["type"]) => {
     switch (type) {
-      case "create":
+      case PendingAction.Create:
         return <Badge variant="success">Created</Badge>;
-      case "update":
+      case PendingAction.Update:
         return <Badge variant="primary">Updated</Badge>;
-      case "delete":
+      case PendingAction.Delete:
         return <Badge variant="danger">Deleted</Badge>;
       default:
         return null;
@@ -120,7 +121,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   const renderSecretChanges = () => {
     if (change.resourceType !== "secret") return null;
 
-    if (change.type === "create") {
+    if (change.type === PendingAction.Create) {
       return (
         <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
           <table className="w-full text-sm">
@@ -171,7 +172,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       );
     }
 
-    if (change.type === "update") {
+    if (change.type === PendingAction.Update) {
       const hasKeyChange = change.newSecretName && change.secretKey !== change.newSecretName;
       const hasValueChange = change.secretValue !== change.originalValue;
       const hasCommentChange = change.secretComment !== change.originalComment;
@@ -252,7 +253,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       );
     }
 
-    if (change.type === "delete") {
+    if (change.type === PendingAction.Delete) {
       return (
         <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
           <table className="w-full text-sm">
@@ -275,7 +276,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   const renderFolderChanges = () => {
     if (change.resourceType !== "folder") return null;
 
-    if (change.type === "create") {
+    if (change.type === PendingAction.Create) {
       return (
         <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
           <table className="w-full text-sm">
@@ -300,7 +301,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       );
     }
 
-    if (change.type === "update") {
+    if (change.type === PendingAction.Update) {
       const hasNameChange = change.folderName !== change.originalFolderName;
       const hasDescriptionChange = change.description !== change.originalDescription;
 
@@ -334,7 +335,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       );
     }
 
-    if (change.type === "delete") {
+    if (change.type === PendingAction.Delete) {
       return (
         <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
           <table className="w-full text-sm">
@@ -356,10 +357,12 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
 
   const getChangeName = () => {
     if (change.resourceType === "secret") {
-      return change.type === "update" ? change.newSecretName || change.secretKey : change.secretKey;
+      return change.type === PendingAction.Update
+        ? change.newSecretName || change.secretKey
+        : change.secretKey;
     }
     if (change.resourceType === "folder") {
-      return change.type === "update" ? change.originalFolderName : change.folderName;
+      return change.type === PendingAction.Update ? change.originalFolderName : change.folderName;
     }
     return "Unknown";
   };
@@ -417,19 +420,14 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     if (!commitMessage.trim()) {
       return;
     }
-
-    try {
-      await onCommit(pendingChanges, commitMessage);
-      clearAllPendingChanges({
-        workspaceId,
-        environment,
-        secretPath
-      });
-      setIsModalOpen(false);
-      setCommitMessage("");
-    } catch (error) {
-      console.error("Failed to commit changes:", error);
-    }
+    await onCommit(pendingChanges, commitMessage);
+    clearAllPendingChanges({
+      workspaceId,
+      environment,
+      secretPath
+    });
+    setIsModalOpen(false);
+    setCommitMessage("");
   };
 
   return (

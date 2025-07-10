@@ -9,6 +9,7 @@ import {
 
 import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
+import { PendingAction } from "../secretFolders/types";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretKeys } from "./queries";
 import {
@@ -440,9 +441,20 @@ export const useCreateCommit = () => {
   >({
     mutationFn: async ({ workspaceId, environment, secretPath, pendingChanges, message }) => {
       const transformedSecretUpdates = pendingChanges.secrets
-        .filter((change) => change.type === "update")
+        .filter((change) => change.type === PendingAction.Update)
         .map((change: PendingSecretUpdate) => {
-          const updatePayload: any = {
+          const updatePayload: {
+            secretKey: string;
+            newSecretName?: string;
+            secretValue?: string;
+            secretComment?: string;
+            skipMultilineEncoding?: boolean;
+            tagIds?: string[];
+            secretMetadata?: {
+              key: string;
+              value: string;
+            }[];
+          } = {
             secretKey: change.secretKey
           };
 
@@ -469,14 +481,14 @@ export const useCreateCommit = () => {
           return updatePayload;
         });
       const { data } = await apiRequest.post("/api/v1/pit/batch/commit", {
-        workspaceId,
+        projectId: workspaceId,
         environment,
         secretPath,
         changes: {
           secrets: {
             create:
               pendingChanges.secrets
-                .filter((change) => change.type === "create")
+                .filter((change) => change.type === PendingAction.Create)
                 .map((change) => ({
                   secretKey: change.secretKey,
                   secretValue: change.secretValue,
@@ -485,13 +497,22 @@ export const useCreateCommit = () => {
                   tagIds: change.tags?.map((tag) => tag.id),
                   secretMetadata: change.secretMetadata
                 })) || [],
-            update: transformedSecretUpdates,
-            delete: pendingChanges.secrets.filter((change) => change.type === "delete") || []
+            update: transformedSecretUpdates || [],
+            delete:
+              pendingChanges.secrets.filter((change) => change.type === PendingAction.Delete) || []
           },
           folders: {
-            create: pendingChanges.folders.filter((change) => change.type === "create") || [],
-            update: pendingChanges.folders.filter((change) => change.type === "update") || [],
-            delete: pendingChanges.folders.filter((change) => change.type === "delete") || []
+            create:
+              pendingChanges.folders.filter((change) => change.type === PendingAction.Create) || [],
+            update:
+              pendingChanges.folders
+                .filter((change) => change.type === PendingAction.Update)
+                .map((change) => ({
+                  ...change,
+                  description: change.description || null
+                })) || [],
+            delete:
+              pendingChanges.folders.filter((change) => change.type === PendingAction.Delete) || []
           }
         },
         message

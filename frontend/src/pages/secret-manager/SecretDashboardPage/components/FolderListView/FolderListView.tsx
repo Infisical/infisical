@@ -12,7 +12,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
-import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
+import { PendingAction, TSecretFolder } from "@app/hooks/api/secretFolders/types";
 
 import {
   PendingFolderCreate,
@@ -60,15 +60,17 @@ export const FolderListView = ({
     oldFolderDescription?: string
   ) => {
     try {
-      const { id: folderId, pendingAction, isPending } = popUp.updateFolder.data as TSecretFolder;
+      const updateFolderData = popUp.updateFolder.data;
+      if (!updateFolderData) throw new Error("Update folder data is required");
+      const { id: folderId, pendingAction, isPending } = updateFolderData as TSecretFolder;
 
       if (isBatchMode) {
-        const isEditingPendingCreation = isPending && pendingAction === "create";
+        const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
 
         if (isEditingPendingCreation) {
           const updatedCreate: PendingFolderCreate = {
             id: folderId,
-            type: "create",
+            type: PendingAction.Create,
             folderName: newFolderName,
             description: newFolderDescription || undefined,
             parentPath: secretPath,
@@ -84,7 +86,7 @@ export const FolderListView = ({
         } else {
           const updateChange: PendingFolderUpdate = {
             id: folderId,
-            type: "update",
+            type: PendingAction.Update,
             originalFolderName: oldFolderName || "",
             folderName: newFolderName,
             originalDescription: oldFolderDescription,
@@ -144,7 +146,7 @@ export const FolderListView = ({
           folderName: folderData.name,
           folderPath: secretPath,
           resourceType: "folder",
-          type: "delete",
+          type: PendingAction.Delete,
           timestamp: Date.now()
         };
 
@@ -197,9 +199,9 @@ export const FolderListView = ({
           className={twMerge(
             "group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700",
             isPending && "bg-mineshaft-700/60",
-            pendingAction === "delete" && "border-l-2 border-l-red-600/75",
-            pendingAction === "update" && "border-l-2 border-l-yellow-600/75",
-            pendingAction === "create" && "border-l-2 border-l-green-600/75"
+            pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
+            pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
+            pendingAction === PendingAction.Create && "border-l-2 border-l-green-600/75"
           )}
         >
           <div className="flex w-11 items-center px-5 py-3 text-yellow-700">

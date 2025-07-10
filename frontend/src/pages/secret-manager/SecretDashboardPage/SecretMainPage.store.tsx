@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { createStore, StateCreator, StoreApi, useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 // akhilmhdh: Don't remove this file if ur thinking why use zustand just for selected selects state
@@ -19,7 +20,7 @@ export interface BasePendingChange {
 // Secret-related change types
 export interface PendingSecretCreate extends BasePendingChange {
   resourceType: "secret";
-  type: "create";
+  type: PendingAction.Create;
   secretKey: string;
   secretValue: string;
   secretComment?: string;
@@ -31,7 +32,7 @@ export interface PendingSecretCreate extends BasePendingChange {
 
 export interface PendingSecretUpdate extends BasePendingChange {
   resourceType: "secret";
-  type: "update";
+  type: PendingAction.Update;
   secretKey: string;
   newSecretName?: string;
   originalValue?: string;
@@ -48,7 +49,7 @@ export interface PendingSecretUpdate extends BasePendingChange {
 
 export interface PendingSecretDelete extends BasePendingChange {
   resourceType: "secret";
-  type: "delete";
+  type: PendingAction.Delete;
   secretKey: string;
   secretValue: string;
 }
@@ -56,7 +57,7 @@ export interface PendingSecretDelete extends BasePendingChange {
 // Folder-related change types
 export interface PendingFolderCreate extends BasePendingChange {
   resourceType: "folder";
-  type: "create";
+  type: PendingAction.Create;
   id: string;
   folderName: string;
   description?: string;
@@ -65,7 +66,7 @@ export interface PendingFolderCreate extends BasePendingChange {
 
 export interface PendingFolderUpdate extends BasePendingChange {
   resourceType: "folder";
-  type: "update";
+  type: PendingAction.Update;
   originalFolderName: string;
   folderName: string;
   id: string;
@@ -75,7 +76,7 @@ export interface PendingFolderUpdate extends BasePendingChange {
 
 export interface PendingFolderDelete extends BasePendingChange {
   resourceType: "folder";
-  type: "delete";
+  type: PendingAction.Delete;
   id: string;
   folderName: string;
   folderPath: string;
@@ -248,43 +249,45 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         const newChanges = { ...state.pendingChanges };
 
         if (change.resourceType === "folder") {
-          if (
-            change.type === "create" &&
-            (state.existingFolderNames.has(change.folderName) ||
-              newChanges.folders.some((f) => f.folderName === change.folderName))
-          ) {
+          const existingFolder =
+            state.existingFolderNames.has(change.folderName) ||
+            newChanges.folders.some((f) => f.folderName === change.folderName);
+
+          if (change.type === PendingAction.Create && existingFolder) {
             return { pendingChanges: newChanges };
           }
           if (
-            change.type === "update" &&
+            change.type === PendingAction.Update &&
             change.folderName !== change.originalFolderName &&
-            (state.existingFolderNames.has(change.folderName) ||
-              newChanges.folders.some((f) => f.folderName === change.folderName))
+            existingFolder
           ) {
             return { pendingChanges: newChanges };
           }
         }
 
         if (change.resourceType === "secret") {
-          if (
-            change.type === "create" &&
-            (state.existingSecretKeys.has(change.secretKey) ||
-              newChanges.secrets.some((s) => s.secretKey === change.secretKey))
-          ) {
+          const existingSecret =
+            state.existingSecretKeys.has(change.secretKey) ||
+            newChanges.secrets.some((s) => s.secretKey === change.secretKey);
+
+          if (change.type === PendingAction.Create && existingSecret) {
             return { pendingChanges: newChanges };
           }
-          if (
-            change.type === "update" &&
+
+          const existingNewSecretName =
+            change.type === PendingAction.Update &&
             change.newSecretName &&
             change.newSecretName !== change.secretKey &&
             (state.existingSecretKeys.has(change.newSecretName) ||
               newChanges.secrets.some(
                 (s) =>
                   (s.secretKey === change.newSecretName ||
-                    (s.type === "update" && s.newSecretName === change.newSecretName)) &&
+                    (s.type === PendingAction.Update &&
+                      s.newSecretName === change.newSecretName)) &&
                   s.id !== change.id
-              ))
-          ) {
+              ));
+
+          if (existingNewSecretName) {
             return { pendingChanges: newChanges };
           }
         }
@@ -292,10 +295,10 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         if (change.resourceType === "secret") {
           const secretChanges = [...newChanges.secrets];
 
-          if (change.type === "create") {
+          if (change.type === PendingAction.Create) {
             const existingCreateIndex = secretChanges.findIndex(
               (c) =>
-                c.type === "create" &&
+                c.type === PendingAction.Create &&
                 (c.secretKey === change.secretKey || c.secretKey === change.originalKey)
             );
 
@@ -308,9 +311,9 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
             } else {
               secretChanges.push(change);
             }
-          } else if (change.type === "update") {
+          } else if (change.type === PendingAction.Update) {
             const existingCreateIndex = secretChanges.findIndex(
-              (c) => c.type === "create" && c.id === change.id
+              (c) => c.type === PendingAction.Create && c.id === change.id
             );
 
             if (existingCreateIndex >= 0) {
@@ -339,7 +342,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               };
             } else {
               const existingUpdateIndex = secretChanges.findIndex(
-                (c) => c.type === "update" && c.id === change.id
+                (c) => c.type === PendingAction.Update && c.id === change.id
               );
 
               if (existingUpdateIndex >= 0) {
@@ -394,9 +397,9 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         } else if (change.resourceType === "folder") {
           const folderChanges = [...newChanges.folders];
 
-          if (change.type === "create") {
+          if (change.type === PendingAction.Create) {
             const existingCreateIndex = folderChanges.findIndex(
-              (c) => c.type === "create" && c.folderName === change.folderName
+              (c) => c.type === PendingAction.Create && c.folderName === change.folderName
             );
 
             if (existingCreateIndex >= 0) {
@@ -408,9 +411,9 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
             } else {
               folderChanges.push(change);
             }
-          } else if (change.type === "update") {
+          } else if (change.type === PendingAction.Update) {
             const existingCreateIndex = folderChanges.findIndex(
-              (c) => c.type === "create" && c.folderName === change.originalFolderName
+              (c) => c.type === PendingAction.Create && c.folderName === change.originalFolderName
             );
 
             if (existingCreateIndex >= 0) {
@@ -426,7 +429,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               };
             } else {
               const existingUpdateIndex = folderChanges.findIndex(
-                (c) => c.type === "update" && c.id === change.id
+                (c) => c.type === PendingAction.Update && c.id === change.id
               );
 
               if (existingUpdateIndex >= 0) {
