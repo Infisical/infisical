@@ -45,7 +45,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalRequest}.statusChangedByUserId`,
         `statusChangedByUser.id`
       )
-      .join<TUsers>(
+      .leftJoin<TUsers>(
         db(TableName.Users).as("committerUser"),
         `${TableName.SecretApprovalRequest}.committerUserId`,
         `committerUser.id`
@@ -173,13 +173,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 username: el.statusChangedByUserUsername
               }
             : undefined,
-          committerUser: {
-            userId: el.committerUserId,
-            email: el.committerUserEmail,
-            firstName: el.committerUserFirstName,
-            lastName: el.committerUserLastName,
-            username: el.committerUserUsername
-          },
+          committerUser: el.committerUserId
+            ? {
+                userId: el.committerUserId,
+                email: el.committerUserEmail,
+                firstName: el.committerUserFirstName,
+                lastName: el.committerUserLastName,
+                username: el.committerUserUsername
+              }
+            : null,
           policy: {
             id: el.policyId,
             name: el.policyName,
@@ -377,7 +379,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalPolicyBypasser}.bypasserGroupId`,
           `bypasserUserGroupMembership.groupId`
         )
-        .join<TUsers>(
+        .leftJoin<TUsers>(
           db(TableName.Users).as("committerUser"),
           `${TableName.SecretApprovalRequest}.committerUserId`,
           `committerUser.id`
@@ -488,13 +490,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             enforcementLevel: el.policyEnforcementLevel,
             allowedSelfApprovals: el.policyAllowedSelfApprovals
           },
-          committerUser: {
-            userId: el.committerUserId,
-            email: el.committerUserEmail,
-            firstName: el.committerUserFirstName,
-            lastName: el.committerUserLastName,
-            username: el.committerUserUsername
-          }
+          committerUser: el.committerUserId
+            ? {
+                userId: el.committerUserId,
+                email: el.committerUserEmail,
+                firstName: el.committerUserFirstName,
+                lastName: el.committerUserLastName,
+                username: el.committerUserUsername
+              }
+            : null
         }),
         childrenMapper: [
           {
@@ -581,7 +585,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalPolicyBypasser}.bypasserGroupId`,
           `bypasserUserGroupMembership.groupId`
         )
-        .join<TUsers>(
+        .leftJoin<TUsers>(
           db(TableName.Users).as("committerUser"),
           `${TableName.SecretApprovalRequest}.committerUserId`,
           `committerUser.id`
@@ -693,13 +697,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             enforcementLevel: el.policyEnforcementLevel,
             allowedSelfApprovals: el.policyAllowedSelfApprovals
           },
-          committerUser: {
-            userId: el.committerUserId,
-            email: el.committerUserEmail,
-            firstName: el.committerUserFirstName,
-            lastName: el.committerUserLastName,
-            username: el.committerUserUsername
-          }
+          committerUser: el.committerUserId
+            ? {
+                userId: el.committerUserId,
+                email: el.committerUserEmail,
+                firstName: el.committerUserFirstName,
+                lastName: el.committerUserLastName,
+                username: el.committerUserUsername
+              }
+            : null
         }),
         childrenMapper: [
           {
