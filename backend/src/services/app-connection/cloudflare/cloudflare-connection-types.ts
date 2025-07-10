@@ -29,6 +29,6 @@ export type TCloudflarePagesProject = {
   name: string;
 };
 
-export type TCloudflareWorkersProject = {
+export type TCloudflareWorkersScript = {
   id: string;
 };

@@ -53,7 +53,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
 
   server.route({
     method: "GET",
-    url: `/:connectionId/cloudflare-workers-projects`,
+    url: `/:connectionId/cloudflare-workers-scripts`,
     config: {
       rateLimit: readLimit
     },
@@ -73,7 +73,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.cloudflare.listWorkersProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.cloudflare.listWorkersScripts(connectionId, req.permission);
 
       return projects;
     }

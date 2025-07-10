@@ -3,14 +3,14 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { appConnectionKeys } from "../queries";
-import { TCloudflarePagesProject, TCloudflareWorkersProject } from "./types";
+import { TCloudflarePagesProject, TCloudflareWorkersScript } from "./types";
 
 const cloudflareConnectionKeys = {
   all: [...appConnectionKeys.all, "cloudflare"] as const,
   listPagesProjects: (connectionId: string) =>
     [...cloudflareConnectionKeys.all, "pages-projects", connectionId] as const,
-  listWorkersProjects: (connectionId: string) =>
-    [...cloudflareConnectionKeys.all, "workers-projects", connectionId] as const
+  listWorkersScripts: (connectionId: string) =>
+    [...cloudflareConnectionKeys.all, "workers-scripts", connectionId] as const
 };
 
 export const useCloudflareConnectionListPagesProjects = (
@@ -38,23 +38,23 @@ export const useCloudflareConnectionListPagesProjects = (
   });
 };
 
-export const useCloudflareConnectionListWorkersProjects = (
+export const useCloudflareConnectionListWorkersScripts = (
   connectionId: string,
   options?: Omit<
     UseQueryOptions<
-      TCloudflareWorkersProject[],
+      TCloudflareWorkersScript[],
       unknown,
-      TCloudflareWorkersProject[],
-      ReturnType<typeof cloudflareConnectionKeys.listWorkersProjects>
+      TCloudflareWorkersScript[],
+      ReturnType<typeof cloudflareConnectionKeys.listWorkersScripts>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: cloudflareConnectionKeys.listWorkersProjects(connectionId),
+    queryKey: cloudflareConnectionKeys.listWorkersScripts(connectionId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TCloudflareWorkersProject[]>(
-        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-workers-projects`
+      const { data } = await apiRequest.get<TCloudflareWorkersScript[]>(
+        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-workers-scripts`
       );
 
       return data;

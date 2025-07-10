@@ -4,8 +4,8 @@ import { SingleValue } from "react-select";
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
-  TCloudflareWorkersProject,
-  useCloudflareConnectionListWorkersProjects
+  TCloudflareWorkersScript,
+  useCloudflareConnectionListWorkersScripts
 } from "@app/hooks/api/appConnections/cloudflare";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -18,8 +18,8 @@ export const CloudflareWorkersSyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
 
-  const { data: projects = [], isPending: isProjectsPending } =
-    useCloudflareConnectionListWorkersProjects(connectionId, {
+  const { data: scripts = [], isPending: isScriptsPending } =
+    useCloudflareConnectionListWorkersScripts(connectionId, {
       enabled: Boolean(connectionId)
     });
 
@@ -40,13 +40,13 @@ export const CloudflareWorkersSyncFields = () => {
             label="Worker Script"
           >
             <FilterableSelect
-              isLoading={isProjectsPending && Boolean(connectionId)}
+              isLoading={isScriptsPending && Boolean(connectionId)}
               isDisabled={!connectionId}
-              value={projects ? (projects.find((project) => project.id === value) ?? []) : []}
+              value={scripts?.find((script) => script.id === value) || []}
               onChange={(option) => {
-                onChange((option as SingleValue<TCloudflareWorkersProject>)?.id ?? null);
+                onChange((option as SingleValue<TCloudflareWorkersScript>)?.id ?? null);
               }}
-              options={projects}
+              options={scripts}
               placeholder="Select a worker script..."
               getOptionLabel={(option) => option.id}
               getOptionValue={(option) => option.id}

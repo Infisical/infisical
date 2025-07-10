@@ -10,7 +10,7 @@ import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflarePagesProject,
-  TCloudflareWorkersProject
+  TCloudflareWorkersScript
 } from "./cloudflare-connection-types";
 
 export const getCloudflareConnectionListItem = () => {
@@ -44,9 +44,9 @@ export const listCloudflarePagesProjects = async (
   }));
 };
 
-export const listCloudflareWorkersProjects = async (
+export const listCloudflareWorkersScripts = async (
   appConnection: TCloudflareConnection
-): Promise<TCloudflareWorkersProject[]> => {
+): Promise<TCloudflareWorkersScript[]> => {
   const {
     credentials: { apiToken, accountId }
   } = appConnection;
