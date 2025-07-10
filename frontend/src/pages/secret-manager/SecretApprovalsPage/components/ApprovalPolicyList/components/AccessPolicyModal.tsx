@@ -55,7 +55,7 @@ const formSchema = z
   .object({
     environment: z.object({ slug: z.string(), name: z.string() }),
     name: z.string().optional(),
-    secretPath: z.string().trim().optional(),
+    secretPath: z.string().trim().min(1),
     approvals: z.number().min(1).default(1),
     userApprovers: z
       .object({ type: z.literal(ApproverType.User), id: z.string() })
@@ -104,14 +104,6 @@ const formSchema = z
           path: ["groupApprovers"],
           code: z.ZodIssueCode.custom,
           message: "At least one approver should be provided"
-        });
-      }
-    } else if (data.policyType === PolicyType.AccessPolicy) {
-      if (!data.secretPath) {
-        ctx.addIssue({
-          path: ["secretPath"],
-          code: z.ZodIssueCode.custom,
-          message: "Secret path cannot be empty"
         });
       }
     }
@@ -477,6 +469,7 @@ const Form = ({
               <FormControl
                 tooltipText="Secret paths support glob patterns. For example, '/**' will match all paths."
                 label="Secret Path"
+                isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
                 className="flex-1"
