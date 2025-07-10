@@ -119,7 +119,14 @@ export type TQueueSecretScanningSendNotification = {
   resourceName: string;
 } & (
   | { status: SecretScanningScanStatus.Failed; errorMessage: string }
-  | { status: SecretScanningScanStatus.Completed; numberOfSecrets: number; scanId: string; isDiffScan: boolean }
+  | {
+      status: SecretScanningScanStatus.Completed;
+      numberOfSecrets: number;
+      scanId: string;
+      isDiffScan: boolean;
+      authorName?: string;
+      authorEmail?: string;
+    }
 );
 
 export type TCloneRepository = {
