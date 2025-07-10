@@ -36,6 +36,8 @@ import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
+import { applyJitter } from "@app/lib/dates";
+import { delay as delayMs } from "@app/lib/delay";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -44,9 +46,10 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
-import { TQueueServiceFactory } from "@app/queue";
+import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -1438,6 +1441,8 @@ export const orgServiceFactory = ({
    * Re-send emails to users who haven't accepted an invite yet
    */
   const notifyInvitedUsers = async () => {
+    logger.info(`${QueueName.DailyResourceCleanUp}: notify invited users started`);
+
     const invitedUsers = await orgMembershipDAL.findRecentInvitedMemberships();
     const appCfg = getConfig();
 
@@ -1461,24 +1466,32 @@ export const orgServiceFactory = ({
         });
 
         if (invitedUser.inviteEmail) {
-          await smtpService.sendMail({
-            template: SmtpTemplates.OrgInvite,
-            subjectLine: `Reminder: You have been invited to ${org.name} on Infisical`,
-            recipients: [invitedUser.inviteEmail],
-            substitutions: {
-              organizationName: org.name,
-              email: invitedUser.inviteEmail,
-              organizationId: org.id.toString(),
-              token,
-              callback_url: `${appCfg.SITE_URL}/signupinvite`
-            }
-          });
-          notifiedUsers.push(invitedUser.id);
+          await delayMs(Math.max(0, applyJitter(0, 2000)));
+
+          try {
+            await smtpService.sendMail({
+              template: SmtpTemplates.OrgInvite,
+              subjectLine: `Reminder: You have been invited to ${org.name} on Infisical`,
+              recipients: [invitedUser.inviteEmail],
+              substitutions: {
+                organizationName: org.name,
+                email: invitedUser.inviteEmail,
+                organizationId: org.id.toString(),
+                token,
+                callback_url: `${appCfg.SITE_URL}/signupinvite`
+              }
+            });
+            notifiedUsers.push(invitedUser.id);
+          } catch (err) {
+            logger.error(err, `${QueueName.DailyResourceCleanUp}: notify invited users failed to send email`);
+          }
         }
       })
     );
 
     await orgMembershipDAL.updateLastInvitedAtByIds(notifiedUsers);
+
+    logger.info(`${QueueName.DailyResourceCleanUp}: notify invited users completed`);
   };
 
   return {
