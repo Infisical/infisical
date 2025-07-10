@@ -227,7 +227,7 @@ class RailwayPublicClient {
     variables: { input: { projectId: string; environmentId: string; name: string; value: string; serviceId?: string } }
   ) {
     await this.send<TRailwayResponse<{ variables: Record<string, string> }>>(
-      `mutation variableDelete($input: VariableDeleteInput!) { variableDelete(input: $input) }`,
+      `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
       config,
       variables
     );
