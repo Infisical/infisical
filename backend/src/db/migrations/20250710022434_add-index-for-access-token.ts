@@ -13,12 +13,12 @@ export async function up(knex: Knex): Promise<void> {
 
     // iat means IdentityAccessToken
     await knex.raw(`
-          CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_iat_identity_id 
+          CREATE INDEX IF NOT EXISTS idx_iat_identity_id 
           ON ${TableName.IdentityAccessToken} ("identityId")
         `);
 
     await knex.raw(`
-          CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_iat_ua_client_secret_id 
+          CREATE INDEX IF NOT EXISTS idx_iat_ua_client_secret_id 
           ON ${TableName.IdentityAccessToken} ("identityUAClientSecretId")
         `);
   } finally {
@@ -44,5 +44,3 @@ export async function down(knex: Knex): Promise<void> {
     await knex.raw(`SET statement_timeout = '${originalTimeout}'`);
   }
 }
-
-export const config = { transaction: false };
