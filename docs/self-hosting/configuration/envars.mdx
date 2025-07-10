@@ -59,6 +59,15 @@ Example values:
   connect with internal/private IP addresses.
 </ParamField>
 
+<ParamField
+  query="KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN"
+  type="bool"
+  default="false"
+  optional
+>
+  Determines whether your Infisical instance can automatically read the service account token of the pod it's running on. Used for features such as the IRSA auth method.
+</ParamField>
+
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.
