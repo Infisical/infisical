@@ -463,7 +463,7 @@ export const overwriteSchema: {
       },
       {
         key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_ID",
-        description: "The ID of your GitHub application."
+        description: "The App ID of your GitHub application."
       },
       {
         key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY",
