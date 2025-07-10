@@ -2,6 +2,10 @@ import { MutationOptions, useMutation, useQueryClient } from "@tanstack/react-qu
 
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import {
+  PendingChanges,
+  PendingSecretUpdate
+} from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
@@ -420,3 +424,100 @@ export const useBackfillSecretReference = () =>
       return data.message;
     }
   });
+
+export const useCreateCommit = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    object,
+    object,
+    {
+      workspaceId: string;
+      environment: string;
+      secretPath: string;
+      pendingChanges: PendingChanges;
+      message: string;
+    }
+  >({
+    mutationFn: async ({ workspaceId, environment, secretPath, pendingChanges, message }) => {
+      const transformedSecretUpdates = pendingChanges.secrets
+        .filter((change) => change.type === "update")
+        .map((change: PendingSecretUpdate) => {
+          const updatePayload: any = {
+            secretKey: change.secretKey
+          };
+
+          // Only include fields that actually changed
+          if (change.newSecretName) {
+            updatePayload.newSecretName = change.newSecretName;
+          }
+          if (change.secretValue !== undefined) {
+            updatePayload.secretValue = change.secretValue;
+          }
+          if (change.secretComment !== undefined) {
+            updatePayload.secretComment = change.secretComment;
+          }
+          if (change.skipMultilineEncoding !== undefined) {
+            updatePayload.skipMultilineEncoding = change.skipMultilineEncoding;
+          }
+          if (change.tags) {
+            updatePayload.tagIds = change.tags.map((tag) => tag.id);
+          }
+          if (change.secretMetadata) {
+            updatePayload.secretMetadata = change.secretMetadata;
+          }
+
+          return updatePayload;
+        });
+      const { data } = await apiRequest.post("/api/v1/pit/batch/commit", {
+        workspaceId,
+        environment,
+        secretPath,
+        changes: {
+          secrets: {
+            create:
+              pendingChanges.secrets
+                .filter((change) => change.type === "create")
+                .map((change) => ({
+                  secretKey: change.secretKey,
+                  secretValue: change.secretValue,
+                  secretComment: change.secretComment,
+                  skipMultilineEncoding: change.skipMultilineEncoding,
+                  tagIds: change.tags?.map((tag) => tag.id),
+                  secretMetadata: change.secretMetadata
+                })) || [],
+            update: transformedSecretUpdates,
+            delete: pendingChanges.secrets.filter((change) => change.type === "delete") || []
+          },
+          folders: {
+            create: pendingChanges.folders.filter((change) => change.type === "create") || [],
+            update: pendingChanges.folders.filter((change) => change.type === "update") || [],
+            delete: pendingChanges.folders.filter((change) => change.type === "delete") || []
+          }
+        },
+        message
+      });
+      return data;
+    },
+    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
+    }
+  });
+};

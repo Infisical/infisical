@@ -9,6 +9,8 @@ export type TSecretFolder = {
   name: string;
   description?: string;
   parentId?: string | null;
+  isPending?: boolean;
+  pendingAction?: string;
 };
 
 export type TSecretFolderWithPath = TSecretFolder & { path: string };

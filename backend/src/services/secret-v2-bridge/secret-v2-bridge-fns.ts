@@ -67,6 +67,7 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
 export const fnSecretBulkInsert = async ({
   // TODO: Pick types here
   folderId,
+  commitChanges,
   orgId,
   inputSecrets,
   secretDAL,
@@ -134,28 +135,32 @@ export const fnSecretBulkInsert = async ({
     tx
   );
 
-  const commitChanges = secretVersions
+  const changes = secretVersions
     .filter(({ type }) => type === SecretType.Shared)
     .map((sv) => ({
       type: CommitType.ADD,
       secretVersionId: sv.id
     }));
 
-  if (commitChanges.length > 0) {
-    await folderCommitService.createCommit(
-      {
-        actor: {
-          type: actorType || ActorType.PLATFORM,
-          metadata: {
-            id: actor?.actorId
-          }
+  if (changes.length > 0) {
+    if (commitChanges) {
+      commitChanges.push(...changes);
+    } else {
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: actorType || ActorType.PLATFORM,
+            metadata: {
+              id: actor?.actorId
+            }
+          },
+          message: "Secret Created",
+          folderId,
+          changes
         },
-        message: "Secret Created",
-        folderId,
-        changes: commitChanges
-      },
-      tx
-    );
+        tx
+      );
+    }
   }
 
   await secretDAL.upsertSecretReferences(
@@ -209,6 +214,7 @@ export const fnSecretBulkUpdate = async ({
   tx,
   inputSecrets,
   folderId,
+  commitChanges,
   orgId,
   secretDAL,
   secretVersionDAL,
@@ -359,28 +365,32 @@ export const fnSecretBulkUpdate = async ({
     { tx }
   );
 
-  const commitChanges = secretVersions
+  const changes = secretVersions
     .filter(({ type }) => type === SecretType.Shared)
     .map((sv) => ({
       type: CommitType.ADD,
       isUpdate: true,
       secretVersionId: sv.id
     }));
-  if (commitChanges.length > 0) {
-    await folderCommitService.createCommit(
-      {
-        actor: {
-          type: actorType || ActorType.PLATFORM,
-          metadata: {
-            id: actor?.actorId
-          }
+  if (changes.length > 0) {
+    if (commitChanges) {
+      commitChanges.push(...changes);
+    } else {
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: actorType || ActorType.PLATFORM,
+            metadata: {
+              id: actor?.actorId
+            }
+          },
+          message: "Secret Updated",
+          folderId,
+          changes
         },
-        message: "Secret Updated",
-        folderId,
-        changes: commitChanges
-      },
-      tx
-    );
+        tx
+      );
+    }
   }
 
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));
@@ -395,7 +405,8 @@ export const fnSecretBulkDelete = async ({
   secretDAL,
   secretQueueService,
   folderCommitService,
-  secretVersionDAL
+  secretVersionDAL,
+  commitChanges
 }: TFnSecretBulkDelete) => {
   const deletedSecrets = await secretDAL.deleteMany(
     inputSecrets.map(({ type, secretKey }) => ({
@@ -421,27 +432,31 @@ export const fnSecretBulkDelete = async ({
     tx
   );
 
-  const commitChanges = deletedSecrets
+  const changes = deletedSecrets
     .filter(({ type }) => type === SecretType.Shared)
     .map(({ id }) => ({
       type: CommitType.DELETE,
       secretVersionId: secretVersions[id].id
     }));
-  if (commitChanges.length > 0) {
-    await folderCommitService.createCommit(
-      {
-        actor: {
-          type: actorType || ActorType.PLATFORM,
-          metadata: {
-            id: actorId
-          }
+  if (changes.length > 0) {
+    if (commitChanges) {
+      commitChanges.push(...changes);
+    } else {
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: actorType || ActorType.PLATFORM,
+            metadata: {
+              id: actorId
+            }
+          },
+          message: "Secret Deleted",
+          folderId,
+          changes
         },
-        message: "Secret Deleted",
-        folderId,
-        changes: commitChanges
-      },
-      tx
-    );
+        tx
+      );
+    }
   }
 
   return deletedSecrets;

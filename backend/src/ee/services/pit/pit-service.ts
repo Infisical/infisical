@@ -2,28 +2,50 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { ResourceType, TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { TFolderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
+import {
+  ResourceType,
+  TCreateCommitChangeDTO,
+  TFolderCommitServiceFactory
+} from "@app/services/folder-commit/folder-commit-service";
 import {
   isFolderCommitChange,
   isSecretCommitChange
 } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
+import { SecretProtectionType, TProcessNewCommitRawDTO } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
+import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
+import { SecretOperations, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { TSecretApprovalPolicyServiceFactory } from "../secret-approval-policy/secret-approval-policy-service";
+import { TSecretApprovalRequestServiceFactory } from "../secret-approval-request/secret-approval-request-service";
 
 type TPitServiceFactoryDep = {
   folderCommitService: TFolderCommitServiceFactory;
   secretService: Pick<TSecretServiceFactory, "getSecretVersionsV2ByIds" | "getChangeVersions">;
-  folderService: Pick<TSecretFolderServiceFactory, "getFolderById" | "getFolderVersions">;
+  folderService: Pick<
+    TSecretFolderServiceFactory,
+    "getFolderById" | "getFolderVersions" | "createManyFolders" | "updateManyFolders" | "deleteManyFolders"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  secretApprovalRequestService: Pick<
+    TSecretApprovalRequestServiceFactory,
+    "generateSecretApprovalRequest" | "generateSecretApprovalRequestV2Bridge"
+  >;
+  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
+  secretV2BridgeService: TSecretV2BridgeServiceFactory;
+  folderCommitDAL: Pick<TFolderCommitDALFactory, "transaction">;
 };
 
 export type TPitServiceFactory = ReturnType<typeof pitServiceFactory>;
@@ -34,7 +56,12 @@ export const pitServiceFactory = ({
   folderService,
   permissionService,
   folderDAL,
-  projectEnvDAL
+  projectEnvDAL,
+  secretApprovalRequestService,
+  secretApprovalPolicyService,
+  projectDAL,
+  secretV2BridgeService,
+  folderCommitDAL
 }: TPitServiceFactoryDep) => {
   const getCommitsCount = async ({
     actor,
@@ -471,6 +498,251 @@ export const pitServiceFactory = ({
     });
   };
 
+  const processNewCommitRaw = async ({
+    actorId,
+    projectSlug,
+    projectId: optionalProjectId,
+    environment,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    secretPath,
+    message,
+    changes = {
+      secrets: {
+        create: [],
+        update: [],
+        delete: []
+      },
+      folders: {
+        create: [],
+        update: [],
+        delete: []
+      }
+    }
+  }: {
+    actorId: string;
+    projectSlug?: string;
+    projectId?: string;
+    environment: string;
+    actor: ActorType;
+    actorOrgId: string;
+    actorAuthMethod: ActorAuthMethod;
+    secretPath: string;
+    message: string;
+    changes: TProcessNewCommitRawDTO;
+  }) => {
+    if (!projectSlug && !optionalProjectId)
+      throw new BadRequestError({ message: "Must provide either project slug or projectId" });
+
+    let projectId = optionalProjectId as string;
+    if (!optionalProjectId && projectSlug) {
+      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+      projectId = project.id;
+    }
+
+    const policy =
+      actor === ActorType.USER
+        ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
+        : undefined;
+
+    const project = await projectDAL.findById(projectId);
+    if (project.enforceCapitalization) {
+      const caseViolatingSecretKeys = [
+        // Check create operations
+        ...(changes.secrets?.create
+          ?.filter((sec) => sec.secretKey !== sec.secretKey.toUpperCase())
+          .map((sec) => sec.secretKey) ?? []),
+
+        // Check update operations
+        ...(changes.secrets?.update
+          ?.filter(
+            (sec) =>
+              sec.secretKey !== sec.secretKey.toUpperCase() ||
+              (sec.newSecretKey && sec.newSecretKey !== sec.newSecretKey.toUpperCase())
+          )
+          .map((sec) => sec.secretKey) ?? [])
+      ];
+
+      if (caseViolatingSecretKeys.length) {
+        throw new BadRequestError({
+          message: `Secret names must be in UPPERCASE per project requirements: ${caseViolatingSecretKeys.join(
+            ", "
+          )}. You can disable this requirement in project settings`
+        });
+      }
+    }
+
+    await folderCommitDAL.transaction(async (trx) => {
+      const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+      if (!targetFolder)
+        throw new NotFoundError({
+          message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
+          name: "CreateManySecret"
+        });
+      const commitChanges: TCreateCommitChangeDTO[] = [];
+
+      if ((changes.folders?.create?.length ?? 0) > 0) {
+        await folderService.createManyFolders({
+          projectId,
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          folders:
+            changes.folders?.create?.map((folder) => ({
+              name: folder.folderName,
+              environment,
+              path: secretPath,
+              description: folder.description
+            })) ?? [],
+          tx: trx,
+          commitChanges
+        });
+      }
+
+      if ((changes.folders?.update?.length ?? 0) > 0) {
+        await folderService.updateManyFolders({
+          projectId,
+          projectSlug: projectSlug || "",
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          folders:
+            changes.folders?.update?.map((folder) => ({
+              environment,
+              path: secretPath,
+              id: folder.id,
+              name: folder.folderName,
+              description: folder.description
+            })) ?? [],
+          tx: trx,
+          commitChanges
+        });
+      }
+
+      if ((changes.folders?.delete?.length ?? 0) > 0) {
+        await folderService.deleteManyFolders({
+          projectId,
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          folders:
+            changes.folders?.delete?.map((folder) => ({
+              environment,
+              path: secretPath,
+              idOrName: folder.id
+            })) ?? [],
+          tx: trx,
+          commitChanges
+        });
+      }
+
+      if (policy) {
+        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+          policy,
+          secretPath,
+          environment,
+          projectId,
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          data: {
+            [SecretOperations.Create]:
+              changes.secrets?.create?.map((el) => ({
+                tagIds: el.tagIds,
+                secretValue: el.secretValue,
+                secretComment: el.secretComment,
+                metadata: el.metadata,
+                skipMultilineEncoding: el.skipMultilineEncoding,
+                secretKey: el.secretKey,
+                secretMetadata: el.secretMetadata
+              })) ?? [],
+            [SecretOperations.Update]:
+              changes.secrets?.update?.map((el) => ({
+                tagIds: el.tagIds,
+                secretValue: el.secretValue,
+                secretComment: el.secretComment,
+                metadata: el.metadata,
+                skipMultilineEncoding: el.skipMultilineEncoding,
+                secretKey: el.secretKey,
+                secretMetadata: el.secretMetadata
+              })) ?? [],
+            [SecretOperations.Delete]:
+              changes.secrets?.delete?.map((el) => ({
+                secretKey: el.secretKey
+              })) ?? []
+          }
+        });
+        return { type: SecretProtectionType.Approval as const, approval };
+      }
+
+      if ((changes.secrets?.create?.length ?? 0) > 0) {
+        await secretV2BridgeService.createManySecret({
+          secretPath,
+          environment,
+          projectId,
+          actorAuthMethod,
+          actorOrgId,
+          actor,
+          actorId,
+          secrets: changes.secrets?.create ?? [],
+          tx: trx,
+          commitChanges
+        });
+      }
+      if ((changes.secrets?.update?.length ?? 0) > 0) {
+        await secretV2BridgeService.updateManySecret({
+          secretPath,
+          environment,
+          projectId,
+          actorAuthMethod,
+          actorOrgId,
+          actor,
+          actorId,
+          secrets: changes.secrets?.update ?? [],
+          mode: SecretUpdateMode.FailOnNotFound,
+          tx: trx,
+          commitChanges
+        });
+      }
+      if ((changes.secrets?.delete?.length ?? 0) > 0) {
+        await secretV2BridgeService.deleteManySecret({
+          secretPath,
+          environment,
+          projectId,
+          actorAuthMethod,
+          actorOrgId,
+          actor,
+          actorId,
+          secrets: changes.secrets?.delete ?? [],
+          tx: trx,
+          commitChanges
+        });
+      }
+      if (commitChanges?.length > 0) {
+        await folderCommitService.createCommit(
+          {
+            actor: {
+              type: actor || ActorType.PLATFORM,
+              metadata: {
+                id: actorId
+              }
+            },
+            message,
+            folderId: targetFolder.id,
+            changes: commitChanges
+          },
+          trx
+        );
+      }
+    });
+  };
+
   return {
     getCommitsCount,
     getCommitsForFolder,
@@ -478,6 +750,7 @@ export const pitServiceFactory = ({
     compareCommitChanges,
     rollbackToCommit,
     revertCommit,
-    getFolderStateAtCommit
+    getFolderStateAtCommit,
+    processNewCommitRaw
   };
 };

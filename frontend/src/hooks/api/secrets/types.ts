@@ -66,6 +66,8 @@ export type SecretV3RawSanitized = {
   isRotatedSecret?: boolean;
   secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
+  isPending?: boolean;
+  pendingAction?: "create" | "update" | "delete";
 };
 
 export type SecretV3Raw = {

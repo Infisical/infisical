@@ -79,7 +79,9 @@ import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/typ
 import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
 
 import {
+  PendingFolderCreate,
   PopUpNames,
+  useBatchModeActions,
   usePopUpAction,
   useSelectedSecretActions,
   useSelectedSecrets
@@ -109,6 +111,7 @@ type Props = {
   filter: Filter;
   tags?: WsTag[];
   isVisible?: boolean;
+  isBatchMode?: boolean;
   snapshotCount: number;
   isSnapshotCountLoading?: boolean;
   protectedBranchPolicyName?: string;
@@ -137,6 +140,7 @@ export const ActionBar = ({
   filter,
   tags = [],
   isVisible,
+  isBatchMode,
   snapshotCount,
   isSnapshotCountLoading,
   onSearchChange,
@@ -174,6 +178,7 @@ export const ActionBar = ({
     options: { onSuccess: undefined }
   });
   const queryClient = useQueryClient();
+  const { addPendingChange } = useBatchModeActions();
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
@@ -183,6 +188,28 @@ export const ActionBar = ({
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
+      if (isBatchMode) {
+        const folderId = `${folderName}`;
+        const pendingFolderCreate: PendingFolderCreate = {
+          id: folderId,
+          resourceType: "folder",
+          type: "create",
+          folderName,
+          description: description || undefined,
+          parentPath: secretPath,
+          timestamp: Date.now()
+        };
+
+        addPendingChange(pendingFolderCreate, {
+          workspaceId,
+          environment,
+          secretPath
+        });
+
+        handlePopUpClose("addFolder");
+        return;
+      }
+
       await createFolder({
         name: folderName,
         path: secretPath,
