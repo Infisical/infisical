@@ -513,6 +513,7 @@
                   "integrations/secret-syncs/azure-key-vault",
                   "integrations/secret-syncs/camunda",
                   "integrations/secret-syncs/cloudflare-pages",
+                  "integrations/secret-syncs/cloudflare-workers",
                   "integrations/secret-syncs/databricks",
                   "integrations/secret-syncs/flyio",
                   "integrations/secret-syncs/gcp-secret-manager",
@@ -853,30 +854,30 @@
               {
                 "group": "Organizations",
                 "pages": [
-                {
-                  "group": "OIDC SSO",
-                  "pages": [
-                    "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
-                    "api-reference/endpoints/organizations/oidc-sso/update-oidc-config",
-                    "api-reference/endpoints/organizations/oidc-sso/create-oidc-config"
-                  ]
-                },
-                {
-                  "group": "LDAP SSO",
-                  "pages": [
-                    "api-reference/endpoints/organizations/ldap-sso/get-ldap-config",
-                    "api-reference/endpoints/organizations/ldap-sso/update-ldap-config",
-                    "api-reference/endpoints/organizations/ldap-sso/create-ldap-config"
-                  ]
-                },
-                {
-                  "group": "SAML SSO",
-                  "pages": [
-                    "api-reference/endpoints/organizations/saml-sso/get-saml-config",
-                    "api-reference/endpoints/organizations/saml-sso/update-saml-config",
-                    "api-reference/endpoints/organizations/saml-sso/create-saml-config"
-                  ]
-                },
+                  {
+                    "group": "OIDC SSO",
+                    "pages": [
+                      "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
+                      "api-reference/endpoints/organizations/oidc-sso/update-oidc-config",
+                      "api-reference/endpoints/organizations/oidc-sso/create-oidc-config"
+                    ]
+                  },
+                  {
+                    "group": "LDAP SSO",
+                    "pages": [
+                      "api-reference/endpoints/organizations/ldap-sso/get-ldap-config",
+                      "api-reference/endpoints/organizations/ldap-sso/update-ldap-config",
+                      "api-reference/endpoints/organizations/ldap-sso/create-ldap-config"
+                    ]
+                  },
+                  {
+                    "group": "SAML SSO",
+                    "pages": [
+                      "api-reference/endpoints/organizations/saml-sso/get-saml-config",
+                      "api-reference/endpoints/organizations/saml-sso/update-saml-config",
+                      "api-reference/endpoints/organizations/saml-sso/create-saml-config"
+                    ]
+                  },
                   "api-reference/endpoints/organizations/memberships",
                   "api-reference/endpoints/organizations/update-membership",
                   "api-reference/endpoints/organizations/delete-membership",
@@ -1704,6 +1705,19 @@
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/delete",
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/sync-secrets",
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Cloudflare Workers",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/list",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/get-by-id",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/get-by-name",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/create",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/update",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/delete",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/remove-secrets"
                     ]
                   },
                   {
