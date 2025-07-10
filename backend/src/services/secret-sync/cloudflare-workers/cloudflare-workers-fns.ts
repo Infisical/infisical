@@ -31,22 +31,13 @@ const getProjectEnvironmentSecretNames = async (
   return data.result.map((s) => s.name);
 };
 
-const getSecretEndpointForSingle = (secretSync: TCloudflareWorkersSyncWithCredentials, secretName: string) => {
-  const {
-    destinationConfig,
-    connection: {
-      credentials: { accountId }
-    }
-  } = secretSync;
-  return `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${destinationConfig.scriptId}/secrets/${secretName}`;
-};
-
 export const CloudflareWorkersSyncFns = {
   syncSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection: {
-        credentials: { apiToken }
-      }
+        credentials: { apiToken, accountId }
+      },
+      destinationConfig: { scriptId }
     } = secretSync;
 
     const existingSecretNames = await getProjectEnvironmentSecretNames(secretSync);
@@ -54,8 +45,8 @@ export const CloudflareWorkersSyncFns = {
 
     const secretsToCreateOrUpdatePromises = Object.entries(secretMap).map(async ([key, val]) => {
       await request.put(
-        getSecretEndpointForSingle(secretSync, key),
-        { value: val.value },
+        `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
+        { name: key, text: val.value, type: "secret_text" },
         {
           headers: {
             Authorization: `Bearer ${apiToken}`,
@@ -78,11 +69,14 @@ export const CloudflareWorkersSyncFns = {
           return !isInNewSecretMap && isManagedBySchema;
         })
         .map(async (key) => {
-          await request.delete(getSecretEndpointForSingle(secretSync, key), {
-            headers: {
-              Authorization: `Bearer ${apiToken}`
+          await request.delete(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${key}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`
+              }
             }
-          });
+          );
         });
       await Promise.all(secretsToDeletePromises);
     }
@@ -95,8 +89,9 @@ export const CloudflareWorkersSyncFns = {
   removeSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection: {
-        credentials: { apiToken }
-      }
+        credentials: { apiToken, accountId }
+      },
+      destinationConfig: { scriptId }
     } = secretSync;
 
     const existingSecretNames = await getProjectEnvironmentSecretNames(secretSync);
@@ -111,11 +106,14 @@ export const CloudflareWorkersSyncFns = {
       const isInSecretMapToRemove = secretMapToRemoveKeys.has(existingKey);
 
       if (isInSecretMapToRemove && isManagedBySchema) {
-        await request.delete(getSecretEndpointForSingle(secretSync, existingKey), {
-          headers: {
-            Authorization: `Bearer ${apiToken}`
+        await request.delete(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${existingKey}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`
+            }
           }
-        });
+        );
       }
     });
     await Promise.all(deletePromises);
