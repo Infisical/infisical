@@ -130,7 +130,7 @@ export const OverviewPage = () => {
                       }}
                       variant="plain"
                       size="xs"
-                      ariaLabel="Copy project ID"
+                      ariaLabel="Copy project slug"
                     >
                       <FontAwesomeIcon className="text-mineshaft-400" icon={faCopy} />
                     </IconButton>
@@ -165,7 +165,7 @@ export const OverviewPage = () => {
                   count: overview.accessControl.machineIdentityCount,
                   label: "Machine Identities"
                 },
-                { icon: faUserGroup, count: overview.accessControl.groupCount, label: "Group" }
+                { icon: faUserGroup, count: overview.accessControl.groupCount, label: "Groups" }
               ].map(({ icon, count, label }, index) => (
                 <Fragment key={`${index + 1}-label`}>
                   <div className="flex items-center gap-1.5 whitespace-nowrap text-sm text-mineshaft-300">
@@ -264,7 +264,7 @@ export const OverviewPage = () => {
                       key: "dataSourceCount"
                     },
                     {
-                      label: `${secretScanning.resourceCount} Resource`,
+                      label: `${secretScanning.resourceCount} Resources`,
                       key: "resourceCount"
                     }
                   ]}
