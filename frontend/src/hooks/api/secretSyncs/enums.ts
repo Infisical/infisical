@@ -21,7 +21,8 @@ export enum SecretSync {
   Flyio = "flyio",
   GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages",
-  Zabbix = "zabbix"
+  Zabbix = "zabbix",
+  Railway = "railway"
 }
 
 export enum SecretSyncStatus {
