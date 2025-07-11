@@ -7,7 +7,6 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { getInstanceIntegrationsConfig } from "@app/services/super-admin/super-admin-service";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
