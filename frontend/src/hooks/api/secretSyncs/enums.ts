@@ -21,6 +21,8 @@ export enum SecretSync {
   Flyio = "flyio",
   GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages",
+  CloudflareWorkers = "cloudflare-workers",
+
   Zabbix = "zabbix",
   Railway = "railway"
 }

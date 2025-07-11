@@ -145,6 +145,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectName;
       secondaryText = destinationConfig.environment;
       break;
+    case SecretSync.CloudflareWorkers:
+      primaryText = destinationConfig.scriptId;
+      secondaryText = "Script ID";
+      break;
     case SecretSync.Zabbix:
       if (destinationConfig.scope === ZabbixSyncScope.Host) {
         primaryText = destinationConfig.hostName;
