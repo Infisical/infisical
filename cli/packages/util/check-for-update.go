@@ -20,7 +20,7 @@ func CheckForUpdate() {
 	if checkEnv := os.Getenv("INFISICAL_DISABLE_UPDATE_CHECK"); checkEnv != "" {
 		return
 	}
-	latestVersion, _, err := getLatestTag("Infisical", "infisical")
+	latestVersion, _, err := getLatestTag("Infisical", "cli")
 	if err != nil {
 		log.Debug().Err(err)
 		// do nothing and continue
@@ -98,7 +98,7 @@ func getLatestTag(repoOwner string, repoName string) (string, string, error) {
 		return "", "", fmt.Errorf("failed to unmarshal github response: %w", err)
 	}
 
-	tag_prefix := "infisical-cli/v"
+	tag_prefix := "v"
 
 	// Extract the version from the first valid tag
 	version := strings.TrimPrefix(releaseDetails.TagName, tag_prefix)
