@@ -5,7 +5,6 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useGetAdminIntegrationsConfig } from "@app/hooks/api";
 import { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
-import { GitHubAppConnectionForm } from "./GitHubAppConnectionForm";
 import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
 import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
@@ -18,20 +17,10 @@ interface WorkflowTabProps {
   adminIntegrationsConfig: AdminIntegrationsConfig;
 }
 
-interface AppConnectionsTabProps {
-  adminIntegrationsConfig: AdminIntegrationsConfig;
-}
-
 const WorkflowTab = ({ adminIntegrationsConfig }: WorkflowTabProps) => (
   <div className="flex flex-col gap-2">
     <SlackIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
     <MicrosoftTeamsIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
-  </div>
-);
-
-const AppConnectionsTab = ({ adminIntegrationsConfig }: AppConnectionsTabProps) => (
-  <div className="flex flex-col gap-2">
-    <GitHubAppConnectionForm adminIntegrationsConfig={adminIntegrationsConfig} />
   </div>
 );
 
@@ -59,11 +48,6 @@ export const IntegrationsPageForm = () => {
       key: IntegrationTabSections.Workflow,
       label: "Workflows",
       component: WorkflowTab
-    },
-    {
-      key: IntegrationTabSections.AppConnections,
-      label: "App Connections",
-      component: AppConnectionsTab
     }
   ];
 
