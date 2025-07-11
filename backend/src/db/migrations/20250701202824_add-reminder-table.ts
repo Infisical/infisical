@@ -39,6 +39,6 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.Reminder);
   await dropOnUpdateTrigger(knex, TableName.ReminderRecipient);
-  await knex.schema.dropTableIfExists(TableName.Reminder);
   await knex.schema.dropTableIfExists(TableName.ReminderRecipient);
+  await knex.schema.dropTableIfExists(TableName.Reminder);
 }
