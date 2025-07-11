@@ -49,15 +49,6 @@ export const SignUpPage = () => {
     // avoid multi submission
     if (isSubmitting) return;
     try {
-      console.log(
-        "Creating admin user...",
-        JSON.stringify({
-          email,
-          password,
-          fipsEnabled: config.fipsEnabled
-        })
-      );
-
       const { privateKey, ...userPass } = await generateUserPassKey(
         email,
         password,

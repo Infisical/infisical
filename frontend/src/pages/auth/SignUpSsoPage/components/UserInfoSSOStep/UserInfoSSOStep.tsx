@@ -95,6 +95,7 @@ export const UserInfoSSOStep = ({
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
       const { publicKey, privateKey } = await generateKeyPair(config.fipsEnabled);
+      localStorage.setItem("PRIVATE_KEY", privateKey);
 
       client.init(
         {

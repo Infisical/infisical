@@ -66,7 +66,6 @@ export const useDeleteCmek = () => {
 export const useCmekEncrypt = () => {
   return useMutation({
     mutationFn: async ({ keyId, plaintext, isBase64Encoded }: TCmekEncrypt) => {
-      console.log("CALLING CMEK ENCRYPT");
       const { data } = await apiRequest.post<TCmekEncryptResponse>(
         `/api/v1/kms/keys/${keyId}/encrypt`,
         {
