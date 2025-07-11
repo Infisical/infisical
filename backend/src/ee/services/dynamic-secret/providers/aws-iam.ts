@@ -21,7 +21,7 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { AwsIamAuthType, DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
@@ -81,6 +81,21 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
       return client;
     }
 
+    if (providerInputs.method === AwsIamAuthType.IRSA) {
+      // Allow instances to disable automatic service account token fetching (e.g. for shared cloud)
+      if (!appCfg.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN) {
+        throw new UnauthorizedError({
+          message: "Failed to get AWS credentials via IRSA: KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN is not enabled."
+        });
+      }
+
+      // The SDK will automatically pick up credentials from the environment
+      const client = new IAMClient({
+        region: providerInputs.region
+      });
+      return client;
+    }
+
     const client = new IAMClient({
       region: providerInputs.region,
       credentials: {
@@ -101,7 +116,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
       .catch((err) => {
         const message = (err as Error)?.message;
         if (
-          providerInputs.method === AwsIamAuthType.AssumeRole &&
+          (providerInputs.method === AwsIamAuthType.AssumeRole || providerInputs.method === AwsIamAuthType.IRSA) &&
           // assume role will throw an error asking to provider username, but if so this has access in aws correctly
           message.includes("Must specify userName when calling with non-User credentials")
         ) {

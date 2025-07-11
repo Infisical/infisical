@@ -3,13 +3,13 @@ title: "AWS IAM"
 description: "Learn how to dynamically generate AWS IAM Users."
 ---
 
-The Infisical AWS IAM dynamic secret allows you to generate AWS IAM Users on demand based on configured AWS policy.
+The Infisical AWS IAM dynamic secret allows you to generate AWS IAM Users on demand based on a configured AWS policy. Infisical supports several authentication methods to connect to your AWS account, including assuming an IAM Role, using IAM Roles for Service Accounts (IRSA) on EKS, or static Access Keys.
 
 ## Prerequisite
 
-Infisical needs an initial AWS IAM user with the required permissions to create sub IAM users. This IAM user will be responsible for managing the lifecycle of new IAM users.
+Infisical needs an AWS IAM principal (a user or a role) with the required permissions to create and manage other IAM users. This principal will be responsible for the lifecycle of the dynamically generated users.
 
-<Accordion title="Managing AWS IAM User minimum permission policy">
+<Accordion title="Required IAM Permissions">
 
 ```json
 {
@@ -235,7 +235,169 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
         ![Provision Lease](/images/platform/dynamic-secrets/lease-values-aws-iam.png)
       </Step>
     </Steps>
+  </Tab>
+  <Tab title="IRSA (EKS)">
+    This method is recommended for self-hosted Infisical instances running on AWS EKS. It uses [IAM Roles for Service Accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) to securely grant permissions to the Infisical pods without managing static credentials.
 
+    <Warning type="warning" title="IRSA Configuration Prerequisite">
+        In order to use IRSA, the `KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN` environment variable must be set to `true` for your self-hosted Infisical instance.
+    </Warning>
+
+    <Steps>
+        <Step title="Create an IAM OIDC provider for your cluster">
+            If you don't already have one, you need to create an IAM OIDC provider for your EKS cluster. This allows IAM to trust authentication tokens from your Kubernetes cluster.
+            1. Find your cluster's OIDC provider URL from the EKS console or by using the AWS CLI:
+               `aws eks describe-cluster --name <your-cluster-name> --query "cluster.identity.oidc.issuer" --output text`
+            2. Navigate to the [IAM Identity Providers](https://console.aws.amazon.com/iam/home#/providers) page in your AWS Console and create a new OpenID Connect provider with the URL and `sts.amazonaws.com` as the audience.
+
+            ![Create OIDC Provider Placeholder](/images/integrations/aws/irsa-create-oidc-provider.png)
+        </Step>
+        <Step title="Create the Managing User IAM Role for Infisical">
+            1. Navigate to the [Create IAM Role](https://console.aws.amazon.com/iamv2/home#/roles/create?step=selectEntities) page in your AWS Console.
+            2. Select **Web identity** as the **Trusted Entity Type**.
+            3. Choose the OIDC provider you created in the previous step.
+            4. For the **Audience**, select `sts.amazonaws.com`.
+            ![IAM Role Creation for IRSA](/images/integrations/aws/irsa-iam-role-creation.png)
+            5. Attach the permission policy detailed in the **Prerequisite** section at the top of this page.
+            6. After creating the role, edit its **Trust relationship** to specify the service account Infisical is using in your cluster. This ensures only the Infisical pod can assume this role.
+
+            ```json
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/oidc.eks.<REGION>.amazonaws.com/id/<OIDC_ID>"
+                        },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                            "StringEquals": {
+                                "oidc.eks.<REGION>.amazonaws.com/id/<OIDC_ID>:sub": "system:serviceaccount:<K8S_NAMESPACE>:<INFISICAL_SERVICE_ACCOUNT_NAME>",
+                                "oidc.eks.<REGION>.amazonaws.com/id/<OIDC_ID>:aud": "sts.amazonaws.com"
+                            }
+                        }
+                    }
+                ]
+            }
+            ```
+            Replace `<ACCOUNT_ID>`, `<REGION>`, `<OIDC_ID>`, `<K8S_NAMESPACE>`, and `<INFISICAL_SERVICE_ACCOUNT_NAME>` with your specific values.
+        </Step>
+        <Step title="Annotate the Infisical Kubernetes Service Account">
+            For the IRSA mechanism to work, the Infisical service account in your Kubernetes cluster must be annotated with the ARN of the IAM role you just created.
+
+            Run the following command, replacing the placeholders with your values:
+            ```bash
+            kubectl annotate serviceaccount -n <infisical-namespace> <infisical-service-account> \
+            eks.amazonaws.com/role-arn=arn:aws:iam::<account-id>:role/<iam-role-name>
+            ```
+            This annotation tells the EKS Pod Identity Webhook to inject the necessary environment variables and tokens into the Infisical pod, allowing it to assume the specified IAM role.
+        </Step>
+        <Step title="Secret Overview Dashboard">
+            Navigate to the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret to.
+        </Step>
+        <Step title="Click on the 'Add Dynamic Secret' button">
+            ![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
+        </Step>
+        <Step title="Select AWS IAM">
+            ![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-iam.png)
+        </Step>
+        <Step title="Provide the inputs for dynamic secret parameters">
+            ![Dynamic Secret Setup Modal for IRSA](/images/platform/dynamic-secrets/dynamic-secret-setup-modal-aws-iam-irsa.png)
+            <ParamField path="Secret Name" type="string" required>
+                Name by which you want the secret to be referenced
+            </ParamField>
+            <ParamField path="Default TTL" type="string" required>
+                Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+            </ParamField>
+            <ParamField path="Max TTL" type="string" required>
+                Maximum time-to-live for a generated secret
+            </ParamField>
+            <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+                Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+                Allowed template variables are
+                - `{{randomUsername}}`: Random username string
+                - `{{unixTimestamp}}`: Current Unix timestamp
+                - `{{identity.name}}`: Name of the identity that is generating the secret
+                - `{{random N}}`: Random string of N characters
+
+                Allowed template functions are
+                - `truncate`: Truncates a string to a specified length
+                - `replace`: Replaces a substring with another value
+
+                Examples:
+                ```
+                {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
+                {{unixTimestamp}}                               // 17490641580
+                {{identity.name}}                               // testuser
+                {{random-5}}                                    // x9k2m
+                {{truncate identity.name 4}}                    // test
+                {{replace identity.name 'user' 'replace'}}      // testreplace
+                ```
+            </ParamField>
+            <ParamField path="Tags" type="map<string, string>[]">
+                Tags to be added to the created IAM User resource.
+            </ParamField>
+            <ParamField path="Method" type="string" required>
+                Select *IRSA* method.
+            </ParamField>
+            <ParamField path="Aws Role ARN" type="string" required>
+                The ARN of the AWS IAM Role for the service account to assume.
+            </ParamField>
+            <ParamField path="AWS IAM Path" type="string">
+                [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
+            </ParamField>
+            <ParamField path="AWS Region" type="string" required>
+                The AWS data center region.
+            </ParamField>
+            <ParamField path="IAM User Permission Boundary" type="string" required>
+                The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
+            </ParamField>
+            <ParamField path="AWS IAM Groups" type="string">
+                The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas
+            </ParamField>
+            <ParamField path="AWS Policy ARNs" type="string">
+                The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas
+            </ParamField>
+            <ParamField path="AWS IAM Policy Document" type="string">
+                The AWS IAM inline policy that should be attached to the created users.
+                Multiple values can be provided by separating them with commas
+            </ParamField>
+            <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+                Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+                Allowed template variables are
+
+                - `{{randomUsername}}`: Random username string
+                - `{{unixTimestamp}}`: Current Unix timestamp
+            </ParamField>
+        </Step>
+        <Step title="Click 'Submit'">
+            After submitting the form, you will see a dynamic secret created in the dashboard.
+            ![Dynamic Secret](../../../images/platform/dynamic-secrets/dynamic-secret.png)
+        </Step>
+        <Step title="Generate dynamic secrets">
+            Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
+            To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+            Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
+
+            ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
+            ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
+
+            When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
+
+            ![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
+
+            <Tip>
+                Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret in step 4.
+            </Tip>
+
+            Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
+
+            ![Provision Lease](/images/platform/dynamic-secrets/lease-values-aws-iam.png)
+        </Step>
+    </Steps>
   </Tab>
   <Tab title="Access Key">
         Infisical will use the provided **Access Key ID** and **Secret Key** to connect to your AWS instance.
@@ -263,9 +425,9 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
           Maximum time-to-live for a generated secret
         </ParamField>
 
-    			<ParamField path="Method" type="string" required>
-    			   Select *Access Key* method.
-    			</ParamField>
+       <ParamField path="Method" type="string" required>
+          Select *Access Key* method.
+       </ParamField>
 
         <ParamField path="AWS Access Key" type="string" required>
           The managing AWS IAM User Access Key

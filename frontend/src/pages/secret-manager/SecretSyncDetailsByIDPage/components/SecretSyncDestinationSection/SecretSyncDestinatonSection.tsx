@@ -29,6 +29,7 @@ import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
+import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
@@ -121,6 +122,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Zabbix:
       DestinationComponents = <ZabbixSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Railway:
+      DestinationComponents = <RailwaySyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

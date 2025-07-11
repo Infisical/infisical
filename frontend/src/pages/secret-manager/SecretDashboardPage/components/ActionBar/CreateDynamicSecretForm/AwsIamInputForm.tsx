@@ -15,6 +15,7 @@ import {
   TextArea
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
+import { useGetServerConfig } from "@app/hooks/api/admin";
 import {
   DynamicSecretAwsIamAuth,
   DynamicSecretProviders
@@ -47,6 +48,23 @@ const formSchema = z.object({
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
       roleArn: z.string().trim().min(1),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional(),
+      tags: z
+        .array(
+          z.object({
+            key: z.string().trim().min(1).max(128),
+            value: z.string().trim().min(1).max(256)
+          })
+        )
+        .optional()
+    }),
+    z.object({
+      method: z.literal(DynamicSecretAwsIamAuth.IRSA),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
       permissionBoundaryPolicyArn: z.string().trim().optional(),
@@ -106,6 +124,8 @@ export const AwsIamInputForm = ({
   projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
+  const { data: serverConfig } = useGetServerConfig();
+
   const {
     control,
     formState: { isSubmitting },
@@ -123,7 +143,7 @@ export const AwsIamInputForm = ({
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
-  const isAccessKeyMethod = watch("provider.method") === DynamicSecretAwsIamAuth.AccessKey;
+  const method = watch("provider.method");
 
   const handleCreateDynamicSecret = async ({
     name,
@@ -237,11 +257,14 @@ export const AwsIamInputForm = ({
                         Assume Role (Recommended)
                       </SelectItem>
                       <SelectItem value={DynamicSecretAwsIamAuth.AccessKey}>Access Key</SelectItem>
+                      {serverConfig?.kubernetesAutoFetchServiceAccountToken && (
+                        <SelectItem value={DynamicSecretAwsIamAuth.IRSA}>IRSA (EKS)</SelectItem>
+                      )}
                     </Select>
                   </FormControl>
                 )}
               />
-              {isAccessKeyMethod ? (
+              {method === DynamicSecretAwsIamAuth.AccessKey && (
                 <div className="flex items-center space-x-2">
                   <Controller
                     control={control}
@@ -274,7 +297,8 @@ export const AwsIamInputForm = ({
                     )}
                   />
                 </div>
-              ) : (
+              )}
+              {method === DynamicSecretAwsIamAuth.AssumeRole && (
                 <div className="flex items-center space-x-2">
                   <Controller
                     control={control}

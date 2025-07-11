@@ -34,6 +34,7 @@ ARG INFISICAL_PLATFORM_VERSION
 ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 ARG CAPTCHA_SITE_KEY
 ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 
 # Build
 RUN npm run build
@@ -77,6 +78,7 @@ RUN npm ci --only-production
 COPY /backend .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
 RUN npm i -D tsconfig-paths
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN npm run build
 
 # Production stage

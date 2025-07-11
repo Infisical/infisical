@@ -31,6 +31,7 @@ import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
+import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
@@ -131,6 +132,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Zabbix:
       DestinationFieldsComponent = <ZabbixSyncReviewFields />;
+      break;
+    case SecretSync.Railway:
+      DestinationFieldsComponent = <RailwaySyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

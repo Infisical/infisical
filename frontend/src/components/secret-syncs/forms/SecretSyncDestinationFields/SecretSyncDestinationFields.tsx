@@ -21,6 +21,7 @@ import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
+import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
@@ -82,6 +83,8 @@ export const SecretSyncDestinationFields = () => {
       return <CloudflareWorkersSyncFields />;
     case SecretSync.Zabbix:
       return <ZabbixSyncFields />;
+    case SecretSync.Railway:
+      return <RailwaySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

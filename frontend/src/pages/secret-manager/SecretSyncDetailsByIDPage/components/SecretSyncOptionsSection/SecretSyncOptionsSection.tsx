@@ -62,6 +62,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.CloudflarePages:
     case SecretSync.CloudflareWorkers:
     case SecretSync.Zabbix:
+    case SecretSync.Railway:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

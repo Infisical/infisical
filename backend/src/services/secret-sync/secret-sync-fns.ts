@@ -40,6 +40,8 @@ import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
+import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
@@ -72,7 +74,9 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
-  [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION
+
+  [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
+  [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -244,6 +248,8 @@ export const SecretSyncFns = {
         return CloudflareWorkersSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Railway:
+        return RailwaySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -342,6 +348,9 @@ export const SecretSyncFns = {
       case SecretSync.Zabbix:
         secretMap = await ZabbixSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Railway:
+        secretMap = await RailwaySyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -423,6 +432,8 @@ export const SecretSyncFns = {
         return CloudflareWorkersSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Railway:
+        return RailwaySyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
