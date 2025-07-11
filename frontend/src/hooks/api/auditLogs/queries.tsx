@@ -30,8 +30,8 @@ export const useGetAuditLogs = (
             params: {
               ...filters,
               offset: pageParam,
-              startDate: filters?.startDate?.toISOString(),
-              endDate: filters?.endDate?.toISOString(),
+              startDate: filters.startDate.toISOString(),
+              endDate: filters.endDate.toISOString(),
               ...(filters.eventMetadata && Object.keys(filters.eventMetadata).length
                 ? {
                     eventMetadata: Object.entries(filters.eventMetadata)

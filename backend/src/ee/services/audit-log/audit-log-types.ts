@@ -56,8 +56,8 @@ export type TListProjectAuditLogDTO = {
     eventType?: EventType[];
     offset?: number;
     limit: number;
-    endDate?: string;
-    startDate?: string;
+    endDate: string;
+    startDate: string;
     projectId?: string;
     environment?: string;
     auditLogActorId?: string;
@@ -114,6 +114,15 @@ interface BaseAuthData {
   ipAddress?: string;
   userAgent?: string;
   userAgentType?: UserAgentType;
+}
+
+export enum SecretApprovalEvent {
+  Create = "create",
+  Update = "update",
+  Delete = "delete",
+  CreateMany = "create-many",
+  UpdateMany = "update-many",
+  DeleteMany = "delete-many"
 }
 
 export enum UserAgentType {
@@ -1709,6 +1718,17 @@ interface SecretApprovalRequest {
     committedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
+    eventType: SecretApprovalEvent;
+    secretKey?: string;
+    secretId?: string;
+    secrets?: {
+      secretKey?: string;
+      secretId?: string;
+      environment?: string;
+      secretPath?: string;
+    }[];
+    environment: string;
+    secretPath: string;
   };
 }
 

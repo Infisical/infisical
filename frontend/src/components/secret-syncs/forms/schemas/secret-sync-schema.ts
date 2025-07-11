@@ -17,11 +17,13 @@ import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema
 import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
+import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 import { WindmillSyncDestinationSchema } from "./windmill-sync-destination-schema";
+import { ZabbixSyncDestinationSchema } from "./zabbix-sync-destination-schema";
 
 const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncDestinationSchema,
@@ -45,7 +47,9 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   RenderSyncDestinationSchema,
   FlyioSyncDestinationSchema,
   GitlabSyncDestinationSchema,
-  CloudflarePagesSyncDestinationSchema
+  CloudflarePagesSyncDestinationSchema,
+  ZabbixSyncDestinationSchema,
+  RailwaySyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

@@ -34,11 +34,13 @@ import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
+import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
+import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";
 
 const SecretSyncSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncSchema,
@@ -62,7 +64,9 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   RenderSyncSchema,
   FlyioSyncSchema,
   GitLabSyncSchema,
-  CloudflarePagesSyncSchema
+  CloudflarePagesSyncSchema,
+  ZabbixSyncSchema,
+  RailwaySyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -87,7 +91,9 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   RenderSyncListItemSchema,
   FlyioSyncListItemSchema,
   GitLabSyncListItemSchema,
-  CloudflarePagesSyncListItemSchema
+  CloudflarePagesSyncListItemSchema,
+  ZabbixSyncListItemSchema,
+  RailwaySyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

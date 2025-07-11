@@ -3921,9 +3921,9 @@ const syncSecretsCloudflareWorkers = async ({
 };
 
 /**
- * Sync/push [secrets] to BitBucket repo with name [integration.app]
+ * Sync/push [secrets] to Bitbucket repo with name [integration.app]
  */
-const syncSecretsBitBucket = async ({
+const syncSecretsBitbucket = async ({
   integration,
   secrets,
   accessToken
@@ -4832,7 +4832,7 @@ export const syncIntegrationSecrets = async ({
       });
       break;
     case Integrations.BITBUCKET:
-      await syncSecretsBitBucket({
+      await syncSecretsBitbucket({
         integration,
         secrets,
         accessToken

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
@@ -58,6 +58,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { HeaderResizer } from "@app/components/v2/HeaderResizer/HeaderResizer";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -73,7 +74,14 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useDebounce, usePagination, usePopUp, useResetPageHelper, useToggle } from "@app/hooks";
+import {
+  useDebounce,
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useResizableHeaderHeight,
+  useToggle
+} from "@app/hooks";
 import {
   useCreateFolder,
   useCreateSecretV3,
@@ -97,6 +105,7 @@ import {
   useSecretRotationOverview
 } from "@app/hooks/utils";
 import { SecretOverviewSecretRotationRow } from "@app/pages/secret-manager/OverviewPage/components/SecretOverviewSecretRotationRow";
+import { getHeaderStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
@@ -142,6 +151,8 @@ const DEFAULT_FILTER_STATE = {
   [RowType.SecretRotation]: true
 };
 
+const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
+
 export const OverviewPage = () => {
   const { t } = useTranslation();
 
@@ -159,7 +170,7 @@ export const OverviewPage = () => {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const { permission } = useProjectPermission();
-
+  const tableRef = useRef<HTMLDivElement>(null);
   const { currentWorkspace } = useWorkspace();
   const isProjectV3 = currentWorkspace?.version === ProjectVersion.V3;
   const workspaceId = currentWorkspace?.id as string;
@@ -861,10 +872,26 @@ export const OverviewPage = () => {
     );
   }, [importedByEnvs, selectedEntries, selectedKeysCount]);
 
+  const storedHeight = Number.parseInt(
+    localStorage.getItem("overview-header-height") ?? DEFAULT_COLLAPSED_HEADER_HEIGHT.toString(),
+    10
+  );
+  const { headerHeight, handleMouseDown, isResizing } = useResizableHeaderHeight({
+    initialHeight: Number.isNaN(storedHeight) ? DEFAULT_COLLAPSED_HEADER_HEIGHT : storedHeight,
+    minHeight: DEFAULT_COLLAPSED_HEADER_HEIGHT,
+    maxHeight: 288
+  });
+
+  const debouncedHeaderHeight = useDebounce(headerHeight);
+
+  useEffect(() => {
+    localStorage.setItem("overview-header-height", debouncedHeaderHeight.toString());
+  }, [debouncedHeaderHeight]);
+
   if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
-        <Lottie icon="infisical_loading" className="h-32 w-32" />
+        <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
       </div>
     );
   }
@@ -892,7 +919,7 @@ export const OverviewPage = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="relative mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             title="Secrets Overview"
@@ -959,7 +986,10 @@ export const OverviewPage = () => {
                     </Tooltip>
                   </IconButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent
+                  className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                  align="end"
+                >
                   {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
                       size="xs"
@@ -1176,21 +1206,20 @@ export const OverviewPage = () => {
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
         />
-        <div className="thin-scrollbar mt-4">
+        <div ref={tableRef} className="thin-scrollbar mt-4">
           <TableContainer
             onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
             className="thin-scrollbar rounded-b-none"
           >
             <Table>
-              <THead className={collapseEnvironments ? "h-24" : ""}>
+              <THead style={{ height: collapseEnvironments ? headerHeight : undefined }}>
                 <Tr
-                  className={twMerge("sticky top-0 z-20 border-0", collapseEnvironments && "h-24")}
+                  className="sticky top-0 z-20 border-0"
+                  style={{ height: collapseEnvironments ? headerHeight : undefined }}
                 >
                   <Th
-                    className={twMerge(
-                      "sticky left-0 z-20 min-w-[20rem] border-b-0 p-0",
-                      collapseEnvironments && "h-24"
-                    )}
+                    className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0"
+                    style={{ height: collapseEnvironments ? headerHeight : undefined }}
                   >
                     <div
                       className={twMerge(
@@ -1264,13 +1293,23 @@ export const OverviewPage = () => {
                     const importedSecKeyCount = getEnvImportedSecretKeyCount(slug);
                     const missingKeyCount = secKeys.length - envSecKeyCount - importedSecKeyCount;
 
+                    const isLast = index === visibleEnvs.length - 1;
+
                     return (
                       <Th
                         className={twMerge(
                           "min-table-row border-b-0 p-0 text-xs",
-                          collapseEnvironments && index === visibleEnvs.length - 1 && "mr-8",
-                          collapseEnvironments ? "h-24 w-[1rem]" : "min-w-[11rem] text-center"
+                          collapseEnvironments && index === visibleEnvs.length - 1 && "!mr-8",
+                          !collapseEnvironments && "min-w-[11rem] text-center"
                         )}
+                        style={
+                          collapseEnvironments
+                            ? {
+                                height: headerHeight,
+                                width: "w-[1rem]"
+                              }
+                            : undefined
+                        }
                         key={`secret-overview-${name}-${index + 1}`}
                       >
                         <Tooltip
@@ -1293,33 +1332,41 @@ export const OverviewPage = () => {
                             className={twMerge(
                               "border-b border-mineshaft-600",
                               collapseEnvironments
-                                ? "relative h-24 w-[2.9rem]"
+                                ? "relative"
                                 : "flex items-center justify-center px-5 pb-[0.82rem] pt-3.5",
-                              collapseEnvironments &&
-                                index === visibleEnvs.length - 1 &&
-                                "overflow-clip"
+                              collapseEnvironments && isLast && "overflow-clip"
                             )}
+                            style={{
+                              height: collapseEnvironments ? headerHeight : undefined,
+                              minWidth: collapseEnvironments ? "2.9rem" : undefined,
+                              width: collapseEnvironments && isLast ? headerHeight * 0.3 : undefined
+                            }}
                           >
                             <div
                               className={twMerge(
                                 "border-mineshaft-600",
                                 collapseEnvironments
-                                  ? "ml-[0.85rem] h-24 -skew-x-[16rad] transform border-l text-xs"
+                                  ? "-skew-x-[16rad] transform border-l text-xs"
                                   : "flex items-center justify-center"
                               )}
+                              style={{
+                                height: collapseEnvironments ? headerHeight : undefined,
+                                marginLeft: collapseEnvironments ? headerHeight * 0.145 : undefined
+                              }}
                             />
                             <button
                               type="button"
                               className={twMerge(
                                 "duration-100 hover:text-mineshaft-100",
-                                collapseEnvironments &&
-                                  (index === visibleEnvs.length - 1
-                                    ? "bottom-[1.75rem] w-14"
-                                    : "bottom-10 w-20"),
                                 collapseEnvironments
-                                  ? "absolute -rotate-[72.25deg] text-left !text-[12px] font-normal"
+                                  ? "absolute -rotate-[72.75deg] text-left text-sm font-normal"
                                   : "flex items-center text-center text-sm font-medium"
                               )}
+                              style={getHeaderStyle({
+                                collapseEnvironments,
+                                isLast,
+                                headerHeight
+                              })}
                               onClick={() => handleExploreEnvClick(slug)}
                             >
                               <p className="truncate font-medium">{name}</p>
@@ -1340,6 +1387,14 @@ export const OverviewPage = () => {
                     );
                   })}
                 </Tr>
+                {collapseEnvironments && (
+                  <HeaderResizer
+                    onMouseDown={handleMouseDown}
+                    isActive={isResizing}
+                    scrollOffset={scrollOffset}
+                    heightOffset={(tableRef.current?.clientTop ?? 0) + headerHeight - 2.5}
+                  />
+                )}
               </THead>
               <TBody>
                 {canViewOverviewPage && isOverviewLoading && (
@@ -1499,9 +1554,9 @@ export const OverviewPage = () => {
                       style={{ height: "45px" }}
                     />
                   </Td>
-                  {visibleEnvs?.map(({ name, slug }) => (
+                  {visibleEnvs?.map(({ name, slug }, i) => (
                     <Td
-                      key={`explore-${name}-btn`}
+                      key={`explore-${name}-btn-${i + 1}`}
                       className="border-0 border-r border-mineshaft-600 p-0"
                     >
                       <div

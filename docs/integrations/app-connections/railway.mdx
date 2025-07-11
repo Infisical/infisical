@@ -1,0 +1,164 @@
+---
+title: "Railway Connection"
+description: "Learn how to configure a Railway Connection for Infisical."
+---
+
+Infisical supports the use of [API Tokens](https://docs.railway.com/guides/public-api#creating-a-token) to connect with Railway.
+
+## Create a Railway API Token
+
+<Tabs>
+  <Tab title="Team Token">
+    A team token provides access to all resources within a team. It cannot be used to access personal resources in Railway.
+
+    <Steps>
+      <Step title="Click the profile image in the top-right corner and select 'Account Settings'">
+        ![Dashboard Page](/images/app-connections/railway/railway-app-connection-account-settings.png)
+      </Step>
+      <Step title="In the personal settings sidebar, click on 'Tokens'">
+        ![Account Settings Page](/images/app-connections/railway/railway-app-connection-account-settings-tokens.png)
+      </Step>
+      <Step title="Enter a token name and select a team">
+        Make sure to provide a descriptive name and select the correct team.
+
+        ![Enter Name and Select Team](/images/app-connections/railway/railway-app-connection-team-token-form.png)
+      </Step>
+      <Step title="Click on 'Create'">
+        ![Create Token](/images/app-connections/railway/railway-app-connection-team-token-create.png)
+      </Step>
+      <Step title="Save the token">
+        After clicking 'Create', your access token will be displayed. Save it securely for later use.
+
+        ![Copy Token Modal](/images/app-connections/railway/railway-app-connection-team-token-created.png)
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Account Token">
+    If no team is selected, the token will be associated with your personal Railway account and will have access to all your individual and team resources.
+
+    <Steps>
+      <Step title="Click the profile image in the top-right corner and select 'Account Settings'">
+        ![Dashboard Page](/images/app-connections/railway/railway-app-connection-account-settings.png)
+      </Step>
+      <Step title="In the personal settings sidebar, click on 'Tokens'">
+        ![Account Settings Page](/images/app-connections/railway/railway-app-connection-account-settings-tokens.png)
+      </Step>
+      <Step title="Enter a token name and select 'No workspace'">
+        Provide a descriptive name and ensure no team is selected. This will create an account-level token.
+
+        ![Enter Name](/images/app-connections/railway/railway-app-connection-account-token-form.png)
+      </Step>
+      <Step title="Click on 'Create'">
+        ![Create Token](/images/app-connections/railway/railway-app-connection-account-token-create.png)
+      </Step>
+      <Step title="Save the token">
+        After clicking 'Create', your access token will be shown. Save it for future use.
+
+        ![Copy Token Modal](/images/app-connections/railway/railway-app-connection-account-token-created.png)
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Project Token">
+    Project tokens are limited to a specific environment within a project and can only be used to authenticate requests to that environment.
+
+    <Steps>
+      <Step title="Open your Railway dashboard and click on a project">
+        ![Dashboard Page](/images/app-connections/railway/railway-app-connection-project-token-dashboard.png)
+      </Step>
+      <Step title="On the project page, click 'Settings' in the top-right corner">
+        ![Project Settings Page](/images/app-connections/railway/railway-app-connection-project-token-project.png)
+      </Step>
+      <Step title="In the left sidebar, scroll to the bottom and click on 'Tokens'">
+        ![Project Token Settings Page](/images/app-connections/railway/railway-app-connection-project-token-settings.png)
+      </Step>
+      <Step title="Enter a token name and select an environment">
+        Provide a descriptive name and select the appropriate environment for the token.
+
+        ![Enter Name and Select environment](/images/app-connections/railway/railway-app-connection-project-token-form.png)
+      </Step>
+      <Step title="Click on 'Create'">
+        ![Create Token](/images/app-connections/railway/railway-app-connection-project-token-create.png)
+      </Step>
+      <Step title="Save the token">
+        After clicking 'Create', the access token will be displayed. Be sure to save it for later use.
+
+        ![Copy Token Modal](/images/app-connections/railway/railway-app-connection-project-token-created.png)
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Create a Railway Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, go to **Organization Settings** and open the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select Railway Connection">
+        Click **+ Add Connection** and choose **Railway Connection** from the list of integrations.
+
+        ![Select Railway Connection](/images/app-connections/railway/railway-app-connection-option.png)
+      </Step>
+      <Step title="Fill out the Railway Connection form">
+        Complete the form by providing:
+        - A descriptive name for the connection
+        - An optional description
+        - The type of token you created earlier
+        - The token value from the previous step
+
+        ![Railway Connection Modal](/images/app-connections/railway/railway-app-connection-form.png)
+      </Step>
+      <Step title="Connection created">
+        After submitting the form, your **Railway Connection** will be successfully created and ready to use with your Infisical projects.
+
+        ![Railway Connection Created](/images/app-connections/railway/railway-app-connection-generated.png)
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="API">
+    To create a Railway Connection via API, send a request to the [Create Railway Connection](/api-reference/endpoints/app-connections/railway/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/railway \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-railway-connection",
+                "method": "team-token",
+                "credentials": {
+                    "apiToken": "[TEAM TOKEN]"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+          "name": "my-railway-connection",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2025-04-23T19:46:34.831Z",
+          "updatedAt": "2025-04-23T19:46:34.831Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+          "app": "railway",
+          "method": "team-token",
+          "credentials": {}
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

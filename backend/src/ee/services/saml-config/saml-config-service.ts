@@ -148,10 +148,18 @@ export const samlConfigServiceFactory = ({
     let samlConfig: TSamlConfigs | undefined;
     if (dto.type === "org") {
       samlConfig = await samlConfigDAL.findOne({ orgId: dto.orgId });
-      if (!samlConfig) return;
+      if (!samlConfig) {
+        throw new NotFoundError({
+          message: `SAML configuration for organization with ID '${dto.orgId}' not found`
+        });
+      }
     } else if (dto.type === "orgSlug") {
       const org = await orgDAL.findOne({ slug: dto.orgSlug });
-      if (!org) return;
+      if (!org) {
+        throw new NotFoundError({
+          message: `Organization with slug '${dto.orgSlug}' not found`
+        });
+      }
       samlConfig = await samlConfigDAL.findOne({ orgId: org.id });
     } else if (dto.type === "ssoId") {
       // TODO:

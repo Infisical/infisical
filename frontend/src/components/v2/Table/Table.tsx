@@ -45,10 +45,14 @@ export const Table = ({ children, className }: TableProps): JSX.Element => (
 export type THeadProps = {
   children: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 };
 
-export const THead = ({ children, className }: THeadProps): JSX.Element => (
-  <thead className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}>
+export const THead = ({ children, className, style }: THeadProps): JSX.Element => (
+  <thead
+    className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}
+    style={style}
+  >
     {children}
   </thead>
 );
@@ -96,14 +100,16 @@ export const Tr = ({
 export type ThProps = {
   children?: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 };
 
-export const Th = ({ children, className }: ThProps): JSX.Element => (
+export const Th = ({ children, className, style }: ThProps): JSX.Element => (
   <th
     className={twMerge(
       "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pb-3.5 pt-4 font-semibold",
       className
     )}
+    style={style}
   >
     {children}
   </th>

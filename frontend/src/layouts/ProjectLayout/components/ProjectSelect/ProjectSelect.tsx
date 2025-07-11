@@ -113,7 +113,7 @@ export const ProjectSelect = () => {
             <div>
               <FontAwesomeIcon icon={faCube} className="text-xs" />
             </div>
-            <Tooltip content={currentWorkspace.name}>
+            <Tooltip content={currentWorkspace.name} className="max-w-96">
               <div className="max-w-32 overflow-hidden text-ellipsis whitespace-nowrap">
                 {currentWorkspace?.name}
               </div>
@@ -176,7 +176,7 @@ export const ProjectSelect = () => {
                   >
                     <div className="flex items-center">
                       <div className="flex flex-1 items-center justify-between overflow-hidden">
-                        <Tooltip content={workspace.name}>
+                        <Tooltip side="right" className="break-words" content={workspace.name}>
                           <div className="max-w-40 overflow-hidden truncate whitespace-nowrap">
                             {workspace.name}
                           </div>

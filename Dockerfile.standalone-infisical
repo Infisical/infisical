@@ -20,7 +20,7 @@ WORKDIR /app
 
 # Copy dependencies
 COPY --from=frontend-dependencies /app/node_modules ./node_modules
-# Copy all files 
+# Copy all files
 COPY /frontend .
 
 ENV NODE_ENV production
@@ -33,7 +33,8 @@ ENV VITE_INTERCOM_ID $INTERCOM_ID
 ARG INFISICAL_PLATFORM_VERSION
 ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 ARG CAPTCHA_SITE_KEY
-ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY 
+ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 
 # Build
 RUN npm run build
@@ -77,6 +78,7 @@ RUN npm ci --only-production
 COPY /backend .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
 RUN npm i -D tsconfig-paths
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN npm run build
 
 # Production stage
@@ -128,7 +130,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.41.2 \
+    && apt-get update && apt-get install -y infisical=0.41.89 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
@@ -164,9 +166,9 @@ ENV INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 
 ENV PORT 8080
 ENV HOST=0.0.0.0
-ENV HTTPS_ENABLED false 
+ENV HTTPS_ENABLED false
 ENV NODE_ENV production
-ENV STANDALONE_BUILD true 
+ENV STANDALONE_BUILD true
 ENV STANDALONE_MODE true
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 

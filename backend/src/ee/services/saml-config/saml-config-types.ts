@@ -61,20 +61,17 @@ export type TSamlLoginDTO = {
 export type TSamlConfigServiceFactory = {
   createSamlCfg: (arg: TCreateSamlCfgDTO) => Promise<TSamlConfigs>;
   updateSamlCfg: (arg: TUpdateSamlCfgDTO) => Promise<TSamlConfigs>;
-  getSaml: (arg: TGetSamlCfgDTO) => Promise<
-    | {
-        id: string;
-        organization: string;
-        orgId: string;
-        authProvider: string;
-        isActive: boolean;
-        entryPoint: string;
-        issuer: string;
-        cert: string;
-        lastUsed: Date | null | undefined;
-      }
-    | undefined
-  >;
+  getSaml: (arg: TGetSamlCfgDTO) => Promise<{
+    id: string;
+    organization: string;
+    orgId: string;
+    authProvider: string;
+    isActive: boolean;
+    entryPoint: string;
+    issuer: string;
+    cert: string;
+    lastUsed: Date | null | undefined;
+  }>;
   samlLogin: (arg: TSamlLoginDTO) => Promise<{
     isUserCompleted: boolean;
     providerAuthToken: string;

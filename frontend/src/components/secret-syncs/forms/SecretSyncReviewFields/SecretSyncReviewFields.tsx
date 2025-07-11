@@ -30,11 +30,13 @@ import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
+import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
+import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -123,6 +125,12 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflarePages:
       DestinationFieldsComponent = <CloudflarePagesSyncReviewFields />;
+      break;
+    case SecretSync.Zabbix:
+      DestinationFieldsComponent = <ZabbixSyncReviewFields />;
+      break;
+    case SecretSync.Railway:
+      DestinationFieldsComponent = <RailwaySyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

@@ -32,6 +32,10 @@ import {
   SanitizedAzureKeyVaultConnectionSchema
 } from "@app/services/app-connection/azure-key-vault";
 import {
+  BitbucketConnectionListItemSchema,
+  SanitizedBitbucketConnectionSchema
+} from "@app/services/app-connection/bitbucket";
+import {
   CamundaConnectionListItemSchema,
   SanitizedCamundaConnectionSchema
 } from "@app/services/app-connection/camunda";
@@ -68,6 +72,10 @@ import {
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
 import {
+  RailwayConnectionListItemSchema,
+  SanitizedRailwayConnectionSchema
+} from "@app/services/app-connection/railway";
+import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
@@ -84,6 +92,7 @@ import {
   SanitizedWindmillConnectionSchema,
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
+import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
@@ -116,7 +125,10 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRenderConnectionSchema.options,
   ...SanitizedFlyioConnectionSchema.options,
   ...SanitizedGitLabConnectionSchema.options,
-  ...SanitizedCloudflareConnectionSchema.options
+  ...SanitizedCloudflareConnectionSchema.options,
+  ...SanitizedBitbucketConnectionSchema.options,
+  ...SanitizedZabbixConnectionSchema.options,
+  ...SanitizedRailwayConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -148,7 +160,10 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RenderConnectionListItemSchema,
   FlyioConnectionListItemSchema,
   GitLabConnectionListItemSchema,
-  CloudflareConnectionListItemSchema
+  CloudflareConnectionListItemSchema,
+  BitbucketConnectionListItemSchema,
+  ZabbixConnectionListItemSchema,
+  RailwayConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

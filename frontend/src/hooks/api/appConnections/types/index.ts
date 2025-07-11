@@ -7,6 +7,7 @@ import { TAzureAppConfigurationConnection } from "./azure-app-configuration-conn
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
+import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
@@ -24,11 +25,13 @@ import { TMySqlConnection } from "./mysql-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TRailwayConnection } from "./railway-connection";
 import { TRenderConnection } from "./render-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
+import { TZabbixConnection } from "./zabbix-connection";
 
 export * from "./1password-connection";
 export * from "./auth0-connection";
@@ -37,6 +40,7 @@ export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
+export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
@@ -59,6 +63,7 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./zabbix-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -89,7 +94,10 @@ export type TAppConnection =
   | TRenderConnection
   | TFlyioConnection
   | TGitLabConnection
-  | TCloudflareConnection;
+  | TCloudflareConnection
+  | TBitbucketConnection
+  | TZabbixConnection
+  | TRailwayConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -146,4 +154,7 @@ export type TAppConnectionMap = {
   [AppConnection.Flyio]: TFlyioConnection;
   [AppConnection.Gitlab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
+  [AppConnection.Bitbucket]: TBitbucketConnection;
+  [AppConnection.Zabbix]: TZabbixConnection;
+  [AppConnection.Railway]: TRailwayConnection;
 };

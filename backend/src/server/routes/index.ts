@@ -304,6 +304,7 @@ import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { registerV1Routes } from "./v1";
+import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 
@@ -1631,7 +1632,8 @@ export const registerRoutes = async (
     secretSharingDAL,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
-    serviceTokenService
+    serviceTokenService,
+    orgService
   });
 
   const dailyReminderQueueService = dailyReminderQueueServiceFactory({
@@ -1932,6 +1934,7 @@ export const registerRoutes = async (
   await hsmService.startService();
 
   await telemetryQueue.startTelemetryCheck();
+  await telemetryQueue.startAggregatedEventsJob();
   await dailyResourceCleanUp.startCleanUp();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
@@ -2069,6 +2072,16 @@ export const registerRoutes = async (
     if (adminIntegrationsSyncJob) {
       cronJobs.push(adminIntegrationsSyncJob);
     }
+  }
+
+  const configSyncJob = await superAdminService.initializeEnvConfigSync();
+  if (configSyncJob) {
+    cronJobs.push(configSyncJob);
+  }
+
+  const oauthConfigSyncJob = await initializeOauthConfigSync();
+  if (oauthConfigSyncJob) {
+    cronJobs.push(oauthConfigSyncJob);
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {

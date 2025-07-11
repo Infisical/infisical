@@ -64,7 +64,7 @@ type ExchangeCodeGitlabResponse = {
   created_at: number;
 };
 
-type ExchangeCodeBitBucketResponse = {
+type ExchangeCodeBitbucketResponse = {
   access_token: string;
   token_type: string;
   expires_in: number;
@@ -392,10 +392,10 @@ const exchangeCodeGitlab = async ({ code, url }: { code: string; url?: string })
 };
 
 /**
- * Return [accessToken], [accessExpiresAt], and [refreshToken] for BitBucket
+ * Return [accessToken], [accessExpiresAt], and [refreshToken] for Bitbucket
  * code-token exchange
  */
-const exchangeCodeBitBucket = async ({ code }: { code: string }) => {
+const exchangeCodeBitbucket = async ({ code }: { code: string }) => {
   const accessExpiresAt = new Date();
   const appCfg = getConfig();
   if (!appCfg.CLIENT_SECRET_BITBUCKET || !appCfg.CLIENT_ID_BITBUCKET) {
@@ -403,7 +403,7 @@ const exchangeCodeBitBucket = async ({ code }: { code: string }) => {
   }
 
   const res = (
-    await request.post<ExchangeCodeBitBucketResponse>(
+    await request.post<ExchangeCodeBitbucketResponse>(
       IntegrationUrls.BITBUCKET_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -490,7 +490,7 @@ export const exchangeCode = async ({
         url
       });
     case Integrations.BITBUCKET:
-      return exchangeCodeBitBucket({
+      return exchangeCodeBitbucket({
         code
       });
     default:
@@ -524,7 +524,7 @@ type RefreshTokenGitLabResponse = {
   created_at: number;
 };
 
-type RefreshTokenBitBucketResponse = {
+type RefreshTokenBitbucketResponse = {
   access_token: string;
   token_type: string;
   expires_in: number;
@@ -653,9 +653,9 @@ const exchangeRefreshGitLab = async ({ refreshToken, url }: { url?: string | nul
 
 /**
  * Return new access token by exchanging refresh token [refreshToken] for the
- * BitBucket integration
+ * Bitbucket integration
  */
-const exchangeRefreshBitBucket = async ({ refreshToken }: { refreshToken: string }) => {
+const exchangeRefreshBitbucket = async ({ refreshToken }: { refreshToken: string }) => {
   const accessExpiresAt = new Date();
   const appCfg = getConfig();
   if (!appCfg.CLIENT_SECRET_BITBUCKET || !appCfg.CLIENT_ID_BITBUCKET) {
@@ -664,7 +664,7 @@ const exchangeRefreshBitBucket = async ({ refreshToken }: { refreshToken: string
   const {
     data
   }: {
-    data: RefreshTokenBitBucketResponse;
+    data: RefreshTokenBitbucketResponse;
   } = await request.post(
     IntegrationUrls.BITBUCKET_TOKEN_URL,
     new URLSearchParams({
@@ -794,7 +794,7 @@ export const exchangeRefresh = async (
         url
       });
     case Integrations.BITBUCKET:
-      return exchangeRefreshBitBucket({
+      return exchangeRefreshBitbucket({
         refreshToken
       });
     case Integrations.GCP_SECRET_MANAGER:

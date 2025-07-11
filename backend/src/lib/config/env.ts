@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { QueueWorkerProfile } from "@app/lib/types";
 
+import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
@@ -27,6 +28,7 @@ const databaseReadReplicaSchema = z
 const envSchema = z
   .object({
     INFISICAL_PLATFORM_VERSION: zpStr(z.string().optional()),
+    KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN: zodStrBool.default("false"),
     PORT: z.coerce.number().default(IS_PACKAGED ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
@@ -341,8 +343,11 @@ const envSchema = z
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
 let envCfg: TEnvConfig;
+let originalEnvConfig: TEnvConfig;
 
 export const getConfig = () => envCfg;
+export const getOriginalConfig = () => originalEnvConfig;
+
 // cannot import singleton logger directly as it needs config to load various transport
 export const initEnvConfig = (logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
@@ -352,8 +357,215 @@ export const initEnvConfig = (logger?: CustomLogger) => {
     process.exit(-1);
   }
 
-  envCfg = Object.freeze(parsedEnv.data);
+  const config = Object.freeze(parsedEnv.data);
+  envCfg = config;
+
+  if (!originalEnvConfig) {
+    originalEnvConfig = config;
+  }
+
   return envCfg;
+};
+
+// A list of environment variables that can be overwritten
+export const overwriteSchema: {
+  [key: string]: {
+    name: string;
+    fields: { key: keyof TEnvConfig; description?: string }[];
+  };
+} = {
+  aws: {
+    name: "AWS",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_AWS_ACCESS_KEY_ID",
+        description: "The Access Key ID of your AWS account."
+      },
+      {
+        key: "INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY",
+        description: "The Client Secret of your AWS application."
+      }
+    ]
+  },
+  azure: {
+    name: "Azure",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      }
+    ]
+  },
+  gcp: {
+    name: "GCP",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL",
+        description: "The GCP Service Account JSON credentials."
+      }
+    ]
+  },
+  github_app: {
+    name: "GitHub App",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID",
+        description: "The Client ID of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET",
+        description: "The Client Secret of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_SLUG",
+        description: "The Slug of your GitHub application. This is the one found in the URL."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_ID",
+        description: "The App ID of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY",
+        description: "The Private Key of your GitHub application."
+      }
+    ]
+  },
+  github_oauth: {
+    name: "GitHub OAuth",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID",
+        description: "The Client ID of your GitHub OAuth application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET",
+        description: "The Client Secret of your GitHub OAuth application."
+      }
+    ]
+  },
+  github_radar_app: {
+    name: "GitHub Radar App",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID",
+        description: "The Client ID of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET",
+        description: "The Client Secret of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG",
+        description: "The Slug of your GitHub application. This is the one found in the URL."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_ID",
+        description: "The App ID of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY",
+        description: "The Private Key of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET",
+        description: "The Webhook Secret of your GitHub application."
+      }
+    ]
+  },
+  github_sso: {
+    name: "GitHub SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GITHUB_LOGIN",
+        description: "The Client ID of your GitHub OAuth application."
+      },
+      {
+        key: "CLIENT_SECRET_GITHUB_LOGIN",
+        description: "The Client Secret of your GitHub OAuth application."
+      }
+    ]
+  },
+  gitlab_oauth: {
+    name: "GitLab OAuth",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID",
+        description: "The Client ID of your GitLab OAuth application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET",
+        description: "The Client Secret of your GitLab OAuth application."
+      }
+    ]
+  },
+  gitlab_sso: {
+    name: "GitLab SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GITLAB_LOGIN",
+        description: "The Client ID of your GitLab application."
+      },
+      {
+        key: "CLIENT_SECRET_GITLAB_LOGIN",
+        description: "The Secret of your GitLab application."
+      },
+      {
+        key: "CLIENT_GITLAB_LOGIN_URL",
+        description:
+          "The URL of your self-hosted instance of GitLab where the OAuth application is registered. If no URL is passed in, this will default to https://gitlab.com."
+      }
+    ]
+  },
+  google_sso: {
+    name: "Google SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GOOGLE_LOGIN",
+        description: "The Client ID of your GCP OAuth2 application."
+      },
+      {
+        key: "CLIENT_SECRET_GOOGLE_LOGIN",
+        description: "The Client Secret of your GCP OAuth2 application."
+      }
+    ]
+  }
+};
+
+export const overridableKeys = new Set(
+  Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
+);
+
+export const validateOverrides = (config: Record<string, string>) => {
+  const allowedOverrides = Object.fromEntries(
+    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
+  );
+
+  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
+  const parsedResult = envSchema.safeParse(tempEnv);
+
+  if (!parsedResult.success) {
+    const errorDetails = parsedResult.error.issues
+      .map((issue) => `Key: "${issue.path.join(".")}", Error: ${issue.message}`)
+      .join("\n");
+    throw new BadRequestError({ message: errorDetails });
+  }
+};
+
+export const overrideEnvConfig = (config: Record<string, string>) => {
+  const allowedOverrides = Object.fromEntries(
+    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
+  );
+
+  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
+  const parsedResult = envSchema.safeParse(tempEnv);
+
+  if (parsedResult.success) {
+    envCfg = Object.freeze(parsedResult.data);
+  }
 };
 
 export const formatSmtpConfig = () => {

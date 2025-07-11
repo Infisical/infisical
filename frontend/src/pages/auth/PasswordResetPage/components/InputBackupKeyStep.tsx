@@ -43,18 +43,15 @@ export const InputBackupKeyStep = ({ verificationToken, onComplete }: Props) => 
   return (
     <form
       onSubmit={handleSubmit(getEncryptedKeyHandler)}
-      className="mx-1 my-32 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pb-3 pt-6 drop-shadow-xl md:max-w-lg md:px-6"
+      className="mx-auto flex w-full flex-col items-center justify-center"
     >
-      <p className="mx-auto mb-4 flex w-max justify-center text-2xl font-semibold text-bunker-100">
+      <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Enter your backup key
+      </h1>
+      <p className="w-max justify-center text-center text-sm text-gray-400">
+        You can find it in your emergency kit you downloaded during signup.
       </p>
-      <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
-        <p className="flex w-full px-4 text-center text-sm text-gray-400 sm:max-w-md">
-          You can find it in your emergency kit. You had to download the emergency kit during
-          signup.
-        </p>
-      </div>
-      <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
+      <div className="mt-8 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Controller
           control={control}
           name="backupKey"
@@ -75,12 +72,17 @@ export const InputBackupKeyStep = ({ verificationToken, onComplete }: Props) => 
           )}
         />
       </div>
-      <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
-        <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
-          <Button type="submit" colorSchema="secondary">
-            Submit Backup Key
-          </Button>
-        </div>
+      <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+        <Button
+          type="submit"
+          size="sm"
+          isFullWidth
+          className="h-10"
+          colorSchema="primary"
+          variant="solid"
+        >
+          Submit Backup Key
+        </Button>
       </div>
     </form>
   );

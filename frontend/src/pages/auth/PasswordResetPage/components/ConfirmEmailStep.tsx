@@ -19,17 +19,21 @@ export const ConfirmEmailStep = ({ onComplete }: Props) => {
     isPending: isVerifyPasswordResetLoading
   } = useVerifyPasswordResetCode();
   return (
-    <div className="mx-1 my-32 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 py-6 drop-shadow-xl md:max-w-lg md:px-6">
-      <p className="mb-8 flex justify-center bg-gradient-to-br from-sky-400 to-primary bg-clip-text text-center text-4xl font-semibold text-transparent">
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
+      <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Confirm your email
+      </h1>
+      <p className="mb-8 w-max justify-center text-center text-sm text-gray-400">
+        Reset password for <span className="italic">{email}</span>.
       </p>
-      <img
-        src="/images/envelope.svg"
-        style={{ height: "262px", width: "410px" }}
-        alt="verify email"
-      />
-      <div className="mx-auto mb-2 mt-4 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
+      <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
+          type="submit"
+          size="sm"
+          isFullWidth
+          className="h-10"
+          colorSchema="primary"
+          variant="solid"
           onClick={async () => {
             try {
               const response = await verifyPasswordResetCodeMutateAsync({
@@ -44,7 +48,6 @@ export const ConfirmEmailStep = ({ onComplete }: Props) => {
             }
           }}
           isLoading={isVerifyPasswordResetLoading}
-          size="lg"
         >
           Confirm Email
         </Button>

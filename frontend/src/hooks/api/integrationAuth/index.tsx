@@ -4,7 +4,7 @@ export {
   useDeleteIntegrationAuth,
   useDeleteIntegrationAuths,
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthBitBucketWorkspaces,
+  useGetIntegrationAuthBitbucketWorkspaces,
   useGetIntegrationAuthById,
   useGetIntegrationAuthChecklyGroups,
   useGetIntegrationAuthCircleCIOrganizations,

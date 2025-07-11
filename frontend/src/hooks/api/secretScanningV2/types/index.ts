@@ -8,9 +8,10 @@ import {
   SecretScanningScanStatus,
   SecretScanningScanType
 } from "../enums";
+import { TBitbucketDataSource, TBitbucketDataSourceOption } from "./bitbucket-data-source";
 import { TGitHubDataSource, TGitHubDataSourceOption } from "./github-data-source";
 
-export type TSecretScanningDataSource = TGitHubDataSource;
+export type TSecretScanningDataSource = TGitHubDataSource | TBitbucketDataSource;
 
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScannedAt: string | null;
@@ -23,7 +24,7 @@ export type TListSecretScanningDataSources = {
   dataSources: TSecretScanningDataSourceWithDetails[];
 };
 
-export type TSecretScanningDataSourceOption = TGitHubDataSourceOption;
+export type TSecretScanningDataSourceOption = TGitHubDataSourceOption | TBitbucketDataSourceOption;
 
 export type TListSecretScanningDataSourceOptions = {
   dataSourceOptions: TSecretScanningDataSourceOption[];

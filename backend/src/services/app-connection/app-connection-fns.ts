@@ -50,6 +50,11 @@ import {
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault";
+import {
+  BitbucketConnectionMethod,
+  getBitbucketConnectionListItem,
+  validateBitbucketConnectionCredentials
+} from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
@@ -86,6 +91,7 @@ import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import {
@@ -105,6 +111,7 @@ import {
   validateWindmillConnectionCredentials,
   WindmillConnectionMethod
 } from "./windmill";
+import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -136,7 +143,10 @@ export const listAppConnectionOptions = () => {
     getRenderConnectionListItem(),
     getFlyioConnectionListItem(),
     getGitLabConnectionListItem(),
-    getCloudflareConnectionListItem()
+    getCloudflareConnectionListItem(),
+    getZabbixConnectionListItem(),
+    getRailwayConnectionListItem(),
+    getBitbucketConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -216,7 +226,10 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -253,6 +266,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
     case CloudflareConnectionMethod.APIToken:
+    case BitbucketConnectionMethod.ApiToken:
+    case ZabbixConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -332,7 +347,10 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Render]: platformManagedCredentialsNotSupported,
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
-  [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported
+  [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
+  [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
+  [AppConnection.Railway]: platformManagedCredentialsNotSupported,
+  [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

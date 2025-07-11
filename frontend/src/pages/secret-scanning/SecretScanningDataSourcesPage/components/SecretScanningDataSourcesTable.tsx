@@ -294,7 +294,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th className="w-60">Platform</Th>
+              <Th className="min-w-36">Platform</Th>
               <Th className="w-1/3">
                 <div className="flex items-center">
                   Name

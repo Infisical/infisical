@@ -19,10 +19,12 @@ import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
+import { TRailwaySync } from "./railway-sync";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
+import { TZabbixSync } from "./zabbix-sync";
 
 export type TSecretSyncOption = {
   name: string;
@@ -53,7 +55,9 @@ export type TSecretSync =
   | TRenderSync
   | TFlyioSync
   | TGitLabSync
-  | TCloudflarePagesSync;
+  | TCloudflarePagesSync
+  | TZabbixSync
+  | TRailwaySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

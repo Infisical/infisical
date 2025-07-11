@@ -57,6 +57,12 @@ import {
   TValidateAzureKeyVaultConnectionCredentialsSchema
 } from "./azure-key-vault";
 import {
+  TBitbucketConnection,
+  TBitbucketConnectionConfig,
+  TBitbucketConnectionInput,
+  TValidateBitbucketConnectionCredentialsSchema
+} from "./bitbucket";
+import {
   TCamundaConnection,
   TCamundaConnectionConfig,
   TCamundaConnectionInput,
@@ -136,6 +142,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TRailwayConnection,
+  TRailwayConnectionConfig,
+  TRailwayConnectionInput,
+  TValidateRailwayConnectionCredentialsSchema
+} from "./railway";
+import {
   TRenderConnection,
   TRenderConnectionConfig,
   TRenderConnectionInput,
@@ -165,6 +177,12 @@ import {
   TWindmillConnectionConfig,
   TWindmillConnectionInput
 } from "./windmill";
+import {
+  TValidateZabbixConnectionCredentialsSchema,
+  TZabbixConnection,
+  TZabbixConnectionConfig,
+  TZabbixConnectionInput
+} from "./zabbix";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -196,6 +214,9 @@ export type TAppConnection = { id: string } & (
   | TFlyioConnection
   | TGitLabConnection
   | TCloudflareConnection
+  | TBitbucketConnection
+  | TZabbixConnection
+  | TRailwayConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -232,6 +253,9 @@ export type TAppConnectionInput = { id: string } & (
   | TFlyioConnectionInput
   | TGitLabConnectionInput
   | TCloudflareConnectionInput
+  | TBitbucketConnectionInput
+  | TZabbixConnectionInput
+  | TRailwayConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -275,7 +299,10 @@ export type TAppConnectionConfig =
   | TRenderConnectionConfig
   | TFlyioConnectionConfig
   | TGitLabConnectionConfig
-  | TCloudflareConnectionConfig;
+  | TCloudflareConnectionConfig
+  | TBitbucketConnectionConfig
+  | TZabbixConnectionConfig
+  | TRailwayConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -306,7 +333,10 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateRenderConnectionCredentialsSchema
   | TValidateFlyioConnectionCredentialsSchema
   | TValidateGitLabConnectionCredentialsSchema
-  | TValidateCloudflareConnectionCredentialsSchema;
+  | TValidateCloudflareConnectionCredentialsSchema
+  | TValidateBitbucketConnectionCredentialsSchema
+  | TValidateZabbixConnectionCredentialsSchema
+  | TValidateRailwayConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

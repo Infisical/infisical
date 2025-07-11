@@ -23,11 +23,11 @@ import { TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 import { LogsTableRow } from "./LogsTableRow";
 
 type Props = {
-  filter?: TGetAuditLogsFilter;
+  filter: TGetAuditLogsFilter;
   refetchInterval?: number;
 };
 
-const AUDIT_LOG_LIMIT = 15;
+const AUDIT_LOG_LIMIT = 30;
 
 export const LogsTable = ({ filter, refetchInterval }: Props) => {
   // Determine the project ID for filtering

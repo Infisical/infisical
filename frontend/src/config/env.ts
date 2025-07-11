@@ -26,6 +26,7 @@ export const envConfig = {
       import.meta.env.VITE_TELEMETRY_CAPTURING_ENABLED === true
     );
   },
+
   get PLATFORM_VERSION() {
     return import.meta.env.VITE_INFISICAL_PLATFORM_VERSION;
   }

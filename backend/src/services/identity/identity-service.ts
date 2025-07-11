@@ -69,23 +69,25 @@ export const identityServiceFactory = ({
       orgId
     );
     const isCustomRole = Boolean(customRole);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.GrantPrivileges,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to create identity",
-          membership.shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.GrantPrivileges,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+    if (role !== OrgMembershipRole.NoAccess) {
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        membership.shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.GrantPrivileges,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create identity",
+            membership.shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.GrantPrivileges,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
 
     const plan = await licenseService.getPlan(orgId);
 
@@ -187,6 +189,7 @@ export const identityServiceFactory = ({
           ),
           details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
         });
+
       if (isCustomRole) customRole = customOrgRole;
     }
 

@@ -8,7 +8,7 @@ import {
   SuperAdminSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -42,13 +42,15 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             encryptedGitHubAppConnectionClientSecret: true,
             encryptedGitHubAppConnectionSlug: true,
             encryptedGitHubAppConnectionId: true,
-            encryptedGitHubAppConnectionPrivateKey: true
+            encryptedGitHubAppConnectionPrivateKey: true,
+            encryptedEnvOverrides: true
           }).extend({
             isMigrationModeOn: z.boolean(),
             defaultAuthOrgSlug: z.string().nullable(),
             defaultAuthOrgAuthEnforced: z.boolean().nullish(),
             defaultAuthOrgAuthMethod: z.string().nullish(),
-            isSecretScanningDisabled: z.boolean()
+            isSecretScanningDisabled: z.boolean(),
+            kubernetesAutoFetchServiceAccountToken: z.boolean()
           })
         })
       }
@@ -60,7 +62,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         config: {
           ...config,
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
-          isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING
+          isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
+          kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN
         }
       };
     }
@@ -110,11 +113,14 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           .refine((content) => DOMPurify.sanitize(content) === content, {
             message: "Page frame content contains unsafe HTML."
           })
-          .optional()
+          .optional(),
+        envOverrides: z.record(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string()).optional()
       }),
       response: {
         200: z.object({
-          config: SuperAdminSchema.extend({
+          config: SuperAdminSchema.omit({
+            encryptedEnvOverrides: true
+          }).extend({
             defaultAuthOrgSlug: z.string().nullable()
           })
         })
@@ -378,6 +384,41 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const adminIntegrationsConfig = await server.services.superAdmin.getAdminIntegrationsConfig();
 
       return adminIntegrationsConfig;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/env-overrides",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.record(
+          z.string(),
+          z.object({
+            name: z.string(),
+            fields: z
+              .object({
+                key: z.string(),
+                value: z.string(),
+                hasEnvEntry: z.boolean(),
+                description: z.string().optional()
+              })
+              .array()
+          })
+        )
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const envOverrides = await server.services.superAdmin.getEnvOverridesOrganized();
+      return envOverrides;
     }
   });
 

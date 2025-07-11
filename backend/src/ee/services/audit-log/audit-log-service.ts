@@ -67,7 +67,8 @@ export const auditLogServiceFactory = ({
       secretPath: filter.secretPath,
       secretKey: filter.secretKey,
       environment: filter.environment,
-      ...(filter.projectId ? { projectId: filter.projectId } : { orgId: actorOrgId })
+      orgId: actorOrgId,
+      ...(filter.projectId ? { projectId: filter.projectId } : {})
     });
 
     return auditLogs.map(({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({

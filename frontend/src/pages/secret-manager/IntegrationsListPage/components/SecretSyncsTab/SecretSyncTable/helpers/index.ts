@@ -1,4 +1,5 @@
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
+import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
@@ -143,6 +144,21 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.CloudflarePages:
       primaryText = destinationConfig.projectName;
       secondaryText = destinationConfig.environment;
+      break;
+    case SecretSync.Zabbix:
+      if (destinationConfig.scope === ZabbixSyncScope.Host) {
+        primaryText = destinationConfig.hostName;
+        secondaryText = destinationConfig.hostId;
+      } else if (destinationConfig.scope === ZabbixSyncScope.Global) {
+        primaryText = "Global";
+        secondaryText = "";
+      } else {
+        throw new Error(`Unhandled Zabbix Scope Destination Col Values ${destination}`);
+      }
+      break;
+    case SecretSync.Railway:
+      primaryText = "Railway Project";
+      secondaryText = destinationConfig.projectName;
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

@@ -4,6 +4,7 @@ import "ts-node/register";
 import dotenv from "dotenv";
 import type { Knex } from "knex";
 import path from "path";
+import { initLogger } from "@app/lib/logger";
 
 // Update with your config settings. .
 dotenv.config({
@@ -12,6 +13,8 @@ dotenv.config({
 dotenv.config({
   path: path.join(__dirname, "../../../.env")
 });
+
+initLogger();
 
 export default {
   development: {
