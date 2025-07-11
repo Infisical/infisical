@@ -19,11 +19,21 @@ export const reminderDALFactory = (db: TDbClient) => {
   const reminderOrm = ormify(db, TableName.Reminder);
 
   const getTodayDateRange = () => {
-    const now = new Date();
-    const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-    const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+    const today = new Date();
+    const year = today.getUTCFullYear();
+    const month = today.getUTCMonth();
+    const date = today.getUTCDate();
 
-    return { startOfDay, endOfDay };
+    // Start of day: 00:00:00.000 UTC
+    const startOfDay = new Date(Date.UTC(year, month, date, 0, 0, 0, 0));
+
+    // End of day: 23:59:59.999 UTC
+    const endOfDay = new Date(Date.UTC(year, month, date, 23, 59, 59, 999));
+
+    return {
+      startOfDay,
+      endOfDay
+    };
   };
 
   const findSecretDailyReminders = async (tx?: Knex) => {

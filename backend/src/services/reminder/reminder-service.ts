@@ -13,7 +13,7 @@ import { TReminderRecipientDALFactory } from "../reminder-recipients/reminder-re
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TReminderDALFactory } from "./reminder-dal";
-import { TBatchCreateReminderDTO, TCreateReminderDTO } from "./reminder-types";
+import { TBatchCreateReminderDTO, TCreateReminderDTO, TReminderServiceFactory } from "./reminder-types";
 
 type TReminderServiceFactoryDep = {
   reminderDAL: TReminderDALFactory;
@@ -24,8 +24,6 @@ type TReminderServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
 };
 
-export type TReminderServiceFactory = ReturnType<typeof reminderServiceFactory>;
-
 export const reminderServiceFactory = ({
   reminderDAL,
   reminderRecipientDAL,
@@ -33,8 +31,8 @@ export const reminderServiceFactory = ({
   projectMembershipDAL,
   permissionService,
   secretV2BridgeDAL
-}: TReminderServiceFactoryDep) => {
-  const addDays = (days: number, fromDate: Date = new Date()): Date => {
+}: TReminderServiceFactoryDep): TReminderServiceFactory => {
+  const $addDays = (days: number, fromDate: Date = new Date()): Date => {
     const result = new Date(fromDate);
     result.setDate(result.getDate() + days);
     return result;
@@ -74,7 +72,7 @@ export const reminderServiceFactory = ({
     }
   };
 
-  const createReminderInternal = async ({
+  const createReminderInternal: TReminderServiceFactory["createReminderInternal"] = async ({
     secretId,
     message,
     repeatDays,
@@ -98,7 +96,7 @@ export const reminderServiceFactory = ({
     }
 
     if (repeatDays && repeatDays > 0) {
-      nextReminderDate = addDays(repeatDays);
+      nextReminderDate = $addDays(repeatDays);
     }
 
     if (!nextReminderDate) {
@@ -133,7 +131,7 @@ export const reminderServiceFactory = ({
     return { id: reminderId, created: !existingReminder };
   };
 
-  const createReminder = async ({
+  const createReminder: TReminderServiceFactory["createReminder"] = async ({
     actor,
     actorId,
     actorOrgId,
@@ -157,7 +155,7 @@ export const reminderServiceFactory = ({
     return response;
   };
 
-  const getReminder = async ({
+  const getReminder: TReminderServiceFactory["getReminder"] = async ({
     secretId,
     projectId,
     actor,
@@ -187,7 +185,7 @@ export const reminderServiceFactory = ({
     return reminder;
   };
 
-  const sendDailyReminders = async () => {
+  const sendDailyReminders: TReminderServiceFactory["sendDailyReminders"] = async () => {
     const remindersToSend = await reminderDAL.findSecretDailyReminders();
 
     for (const reminder of remindersToSend) {
@@ -211,7 +209,7 @@ export const reminderServiceFactory = ({
             }
           });
           if (reminder.repeatDays) {
-            await reminderDAL.updateById(reminder.id, { nextReminderDate: addDays(reminder.repeatDays) }, tx);
+            await reminderDAL.updateById(reminder.id, { nextReminderDate: $addDays(reminder.repeatDays) }, tx);
           } else {
             await reminderDAL.deleteById(reminder.id, tx);
           }
@@ -225,7 +223,7 @@ export const reminderServiceFactory = ({
     }
   };
 
-  const deleteReminder = async ({
+  const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({
     actor,
     actorId,
     actorOrgId,
@@ -253,7 +251,11 @@ export const reminderServiceFactory = ({
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
-  const removeReminderRecipients = async (secretId: string, projectId: string, tx?: Knex) => {
+  const removeReminderRecipients: TReminderServiceFactory["removeReminderRecipients"] = async (
+    secretId: string,
+    projectId: string,
+    tx?: Knex
+  ) => {
     const reminder = await reminderDAL.findOne({ secretId }, tx);
     if (!reminder) {
       return;
@@ -262,12 +264,19 @@ export const reminderServiceFactory = ({
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
-  const deleteReminderBySecretId = async (secretId: string, projectId: string, tx?: Knex) => {
+  const deleteReminderBySecretId: TReminderServiceFactory["deleteReminderBySecretId"] = async (
+    secretId: string,
+    projectId: string,
+    tx?: Knex
+  ) => {
     await reminderDAL.delete({ secretId }, tx);
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
-  const batchCreateReminders = async (remindersData: TBatchCreateReminderDTO, tx?: Knex) => {
+  const batchCreateReminders: TReminderServiceFactory["batchCreateReminders"] = async (
+    remindersData: TBatchCreateReminderDTO,
+    tx?: Knex
+  ) => {
     if (!remindersData || remindersData.length === 0) {
       return { created: 0, reminderIds: [] };
     }
@@ -280,7 +289,7 @@ export const reminderServiceFactory = ({
         }
 
         if (repeatDays && repeatDays > 0 && !nextReminderDate) {
-          nextReminderDate = addDays(repeatDays);
+          nextReminderDate = $addDays(repeatDays);
         }
 
         if (!nextReminderDate) {

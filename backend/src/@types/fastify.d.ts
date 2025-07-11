@@ -93,7 +93,7 @@ import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TProjectRoleServiceFactory } from "@app/services/project-role/project-role-service";
-import { TReminderServiceFactory } from "@app/services/reminder/reminder-service";
+import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";

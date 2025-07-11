@@ -32,7 +32,7 @@ import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-serv
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TReminderServiceFactory } from "../reminder/reminder-service";
+import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TGetASecretByIdDTO } from "../secret/secret-types";

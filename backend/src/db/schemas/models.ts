@@ -173,7 +173,6 @@ export enum TableName {
   SecretScanningScan = "secret_scanning_scans",
   SecretScanningFinding = "secret_scanning_findings",
   SecretScanningConfig = "secret_scanning_configs",
-
   // reminders
   Reminder = "reminders",
   ReminderRecipient = "reminders_recipients"

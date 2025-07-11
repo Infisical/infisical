@@ -48,7 +48,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
-import { TReminderServiceFactory } from "../reminder/reminder-service";
+import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -1044,7 +1044,7 @@ export const secretQueueFactory = ({
     }
   });
 
-  // TODO: remove this queue (needed for queue initialization and perform the migration)
+  // TODO(Carlos): remove this queue (needed for queue initialization and perform the migration)
   queueService.start(QueueName.SecretReminder, async ({ data }) => {
     logger.info(`(deprecated) secretReminderQueue.process: [secretDocument=${data.secretId}]`);
   });

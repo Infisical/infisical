@@ -6,7 +6,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { TReminderServiceFactory } from "./reminder-service";
+import { TReminderServiceFactory } from "./reminder-types";
 
 type TDailyReminderQueueServiceFactoryDep = {
   reminderService: TReminderServiceFactory;

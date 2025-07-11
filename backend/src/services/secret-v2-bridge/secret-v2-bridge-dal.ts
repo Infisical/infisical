@@ -466,6 +466,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  // This method currently uses too many joins which is not performant, in case we need to add more filters we should consider refactoring this method
   const findByFolderIds = async (dto: {
     folderIds: string[];
     userId?: string;

@@ -389,7 +389,7 @@ export const fnSecretBulkDelete = async ({
     tx
   );
 
-  await Promise.allSettled(
+  await Promise.all(
     deletedSecrets
       .filter(({ reminderRepeatDays }) => Boolean(reminderRepeatDays))
       .map(({ id, reminderRepeatDays }) =>
