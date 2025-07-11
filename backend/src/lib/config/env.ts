@@ -360,6 +360,13 @@ export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logge
     process.exit(-1);
   }
 
+  const config = Object.freeze(parsedEnv.data);
+  envCfg = config;
+
+  if (!originalEnvConfig) {
+    originalEnvConfig = config;
+  }
+
   if (superAdminDAL) {
     const fipsEnabled = await crypto.initialize(superAdminDAL);
 
@@ -372,15 +379,6 @@ export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logge
       delete newEnvCfg.ENCRYPTION_KEY;
 
       envCfg = Object.freeze(newEnvCfg);
-    }
-  }
-
-  if (!envCfg) {
-    const config = Object.freeze(parsedEnv.data);
-    envCfg = config;
-
-    if (!originalEnvConfig) {
-      originalEnvConfig = config;
     }
   }
 
