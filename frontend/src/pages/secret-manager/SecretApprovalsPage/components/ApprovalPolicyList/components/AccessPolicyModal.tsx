@@ -471,7 +471,11 @@ const Form = ({
                 errorText={error?.message}
                 className="flex-1"
               >
-                <SecretPathInput {...field} value={field.value} environment={formEnvironment} />
+                <SecretPathInput
+                  {...field}
+                  value={field.value || ""}
+                  environment={formEnvironment}
+                />
               </FormControl>
             )}
           />
