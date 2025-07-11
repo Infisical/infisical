@@ -73,6 +73,12 @@ import {
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
 import {
+  TChecklySync,
+  TChecklySyncInput,
+  TChecklySyncListItem,
+  TChecklySyncWithCredentials
+} from "./checkly/checkly-sync-types";
+import {
   TCloudflarePagesSync,
   TCloudflarePagesSyncInput,
   TCloudflarePagesSyncListItem,
@@ -145,7 +151,8 @@ export type TSecretSync =
   | TGitLabSync
   | TCloudflarePagesSync
   | TZabbixSync
-  | TRailwaySync;
+  | TRailwaySync
+  | TChecklySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -171,7 +178,8 @@ export type TSecretSyncWithCredentials =
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
   | TZabbixSyncWithCredentials
-  | TRailwaySyncWithCredentials;
+  | TRailwaySyncWithCredentials
+  | TChecklySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -197,7 +205,8 @@ export type TSecretSyncInput =
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
   | TZabbixSyncInput
-  | TRailwaySyncInput;
+  | TRailwaySyncInput
+  | TChecklySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -223,7 +232,8 @@ export type TSecretSyncListItem =
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
   | TZabbixSyncListItem
-  | TRailwaySyncListItem;
+  | TRailwaySyncListItem
+  | TChecklySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

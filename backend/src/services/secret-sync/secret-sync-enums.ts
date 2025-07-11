@@ -22,7 +22,8 @@ export enum SecretSync {
   GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages",
   Zabbix = "zabbix",
-  Railway = "railway"
+  Railway = "railway",
+  Checkly = "checkly"
 }
 
 export enum SecretSyncInitialSyncBehavior {
