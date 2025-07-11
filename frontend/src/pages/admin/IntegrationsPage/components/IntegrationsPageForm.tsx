@@ -1,7 +1,6 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useGetAdminIntegrationsConfig } from "@app/hooks/api";
 import { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
@@ -10,8 +9,7 @@ import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
 import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
 enum IntegrationTabSections {
-  Workflow = "workflow",
-  AppConnections = "app-connections"
+  Workflow = "workflow"
 }
 
 interface WorkflowTabProps {
@@ -23,19 +21,6 @@ const WorkflowTab = ({ adminIntegrationsConfig }: WorkflowTabProps) => (
     <SlackIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
     <MicrosoftTeamsIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
   </div>
-);
-
-const AppConnectionsTab = () => (
-  <NoticeBannerV2 className="mx-auto mb-4" title="Integration Connections have been migrated">
-    <p className="mt-1 text-xs text-mineshaft-300">
-      Since 12th July 2025, App Connection configurations have been migrated to{" "}
-      <Link to="/admin/environment" className="text-primary-400">
-        Environment Variables
-      </Link>
-      .
-      <br />
-    </p>
-  </NoticeBannerV2>
 );
 
 export const IntegrationsPageForm = () => {
@@ -62,11 +47,6 @@ export const IntegrationsPageForm = () => {
       key: IntegrationTabSections.Workflow,
       label: "Workflows",
       component: WorkflowTab
-    },
-    {
-      key: IntegrationTabSections.AppConnections,
-      label: "App Connections",
-      component: AppConnectionsTab
     }
   ];
 
