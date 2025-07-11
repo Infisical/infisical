@@ -47,7 +47,6 @@ import { Route as adminEnvironmentPageRouteImport } from './pages/admin/Environm
 import { Route as adminEncryptionPageRouteImport } from './pages/admin/EncryptionPage/route'
 import { Route as adminCachingPageRouteImport } from './pages/admin/CachingPage/route'
 import { Route as adminAuthenticationPageRouteImport } from './pages/admin/AuthenticationPage/route'
-import { Route as organizationSsoPageRouteImport } from './pages/organization/SsoPage/route'
 import { Route as organizationProjectsPageRouteImport } from './pages/organization/ProjectsPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
@@ -590,12 +589,6 @@ const adminAuthenticationPageRouteRoute =
     path: '/authentication',
     getParentRoute: () => adminLayoutRoute,
   } as any)
-
-const organizationSsoPageRouteRoute = organizationSsoPageRouteImport.update({
-  id: '/sso',
-  path: '/sso',
-  getParentRoute: () => AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
-} as any)
 
 const organizationProjectsPageRouteRoute =
   organizationProjectsPageRouteImport.update({
@@ -2159,13 +2152,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationProjectsPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organization/sso': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organization/sso'
-      path: '/sso'
-      fullPath: '/organization/sso'
-      preLoaderRoute: typeof organizationSsoPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
-    }
     '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': {
       id: '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
       path: '/authentication'
@@ -3428,7 +3414,6 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRoute
-  organizationSsoPageRouteRoute: typeof organizationSsoPageRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren
@@ -3447,7 +3432,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
     organizationAuditLogsPageRouteRoute: organizationAuditLogsPageRouteRoute,
     organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
     organizationProjectsPageRouteRoute: organizationProjectsPageRouteRoute,
-    organizationSsoPageRouteRoute: organizationSsoPageRouteRoute,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute:
@@ -4345,7 +4329,6 @@ export interface FileRoutesByFullPath {
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
-  '/organization/sso': typeof organizationSsoPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
   '/admin/encryption': typeof adminEncryptionPageRouteRoute
@@ -4542,7 +4525,6 @@ export interface FileRoutesByTo {
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
-  '/organization/sso': typeof organizationSsoPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
   '/admin/encryption': typeof adminEncryptionPageRouteRoute
@@ -4739,7 +4721,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/billing': typeof organizationBillingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/projects': typeof organizationProjectsPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organization/sso': typeof organizationSsoPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': typeof adminAuthenticationPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/caching': typeof adminCachingPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/encryption': typeof adminEncryptionPageRouteRoute
@@ -4949,7 +4930,6 @@ export interface FileRouteTypes {
     | '/organization/audit-logs'
     | '/organization/billing'
     | '/organization/projects'
-    | '/organization/sso'
     | '/admin/authentication'
     | '/admin/caching'
     | '/admin/encryption'
@@ -5145,7 +5125,6 @@ export interface FileRouteTypes {
     | '/organization/audit-logs'
     | '/organization/billing'
     | '/organization/projects'
-    | '/organization/sso'
     | '/admin/authentication'
     | '/admin/caching'
     | '/admin/encryption'
@@ -5340,7 +5319,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organization/billing'
     | '/_authenticate/_inject-org-details/_org-layout/organization/projects'
-    | '/_authenticate/_inject-org-details/_org-layout/organization/sso'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/caching'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/encryption'
@@ -5732,7 +5710,6 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/organization/billing",
         "/_authenticate/_inject-org-details/_org-layout/organization/projects",
-        "/_authenticate/_inject-org-details/_org-layout/organization/sso",
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections",
         "/_authenticate/_inject-org-details/_org-layout/organization/gateways",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing",
@@ -5780,10 +5757,6 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/projects": {
       "filePath": "organization/ProjectsPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organization/sso": {
-      "filePath": "organization/SsoPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/authentication": {
