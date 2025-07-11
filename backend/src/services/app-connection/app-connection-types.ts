@@ -69,6 +69,12 @@ import {
   TValidateCamundaConnectionCredentialsSchema
 } from "./camunda";
 import {
+  TChecklyConnection,
+  TChecklyConnectionConfig,
+  TChecklyConnectionInput,
+  TValidateChecklyConnectionCredentialsSchema
+} from "./checkly";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -217,6 +223,7 @@ export type TAppConnection = { id: string } & (
   | TBitbucketConnection
   | TZabbixConnection
   | TRailwayConnection
+  | TChecklyConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -256,6 +263,7 @@ export type TAppConnectionInput = { id: string } & (
   | TBitbucketConnectionInput
   | TZabbixConnectionInput
   | TRailwayConnectionInput
+  | TChecklyConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -302,7 +310,8 @@ export type TAppConnectionConfig =
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
   | TZabbixConnectionConfig
-  | TRailwayConnectionConfig;
+  | TRailwayConnectionConfig
+  | TChecklyConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -336,7 +345,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
-  | TValidateRailwayConnectionCredentialsSchema;
+  | TValidateRailwayConnectionCredentialsSchema
+  | TValidateChecklyConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
