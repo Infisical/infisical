@@ -6,17 +6,19 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerReminderRouter = async (server: FastifyZodProvider) => {
+export const registerSecretReminderRouter = async (server: FastifyZodProvider) => {
   server.route({
-    url: "/:projectId/reminder/:secretId",
+    url: "/:secretId",
     method: "POST",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        projectId: z.string().uuid(),
         secretId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string().uuid()
       }),
       body: z
         .object({
@@ -41,7 +43,7 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        projectId: req.params.projectId,
+        projectId: req.query.projectId,
         reminder: {
           secretId: req.params.secretId,
           message: req.body.message,
@@ -54,7 +56,7 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: req.query.projectId,
         event: {
           type: EventType.CREATE_SECRET_REMINDER,
           metadata: {
@@ -72,15 +74,17 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:projectId/reminder/:secretId",
+    url: "/:secretId",
     method: "GET",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        projectId: z.string().uuid(),
         secretId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -100,13 +104,13 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         secretId: req.params.secretId,
-        projectId: req.params.projectId
+        projectId: req.query.projectId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: req.query.projectId,
         event: {
           type: EventType.GET_SECRET_REMINDER,
           metadata: {
@@ -119,15 +123,17 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/:projectId/reminder/:secretId",
+    url: "/:secretId",
     method: "DELETE",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        projectId: z.string().uuid(),
         secretId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectId: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -143,13 +149,13 @@ export const registerReminderRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         secretId: req.params.secretId,
-        projectId: req.params.projectId
+        projectId: req.query.projectId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: req.query.projectId,
         event: {
           type: EventType.DELETE_SECRET_REMINDER,
           metadata: {

@@ -15,7 +15,7 @@ export const useCreateReminder = (secretId: string, projectId: string) => {
   return useMutation<Reminder, object, CreateReminderDTO>({
     mutationFn: async ({ message, repeatDays, nextReminderDate, recipients }) => {
       const { data } = await apiRequest.post<{ reminder: Reminder }>(
-        `/api/v1/reminders/${projectId}/reminder/${secretId}`,
+        `/api/v1/reminders/secrets/${secretId}?projectId=${projectId}`,
         {
           message,
           repeatDays,
@@ -37,7 +37,7 @@ export const useDeleteReminder = (secretId: string, projectId: string) => {
   return useMutation<Reminder, object, DeleteReminderDTO>({
     mutationFn: async () => {
       const { data } = await apiRequest.delete<{ reminder: Reminder }>(
-        `/api/v1/reminders/${projectId}/reminder/${secretId}`
+        `/api/v1/reminders/secrets/${secretId}?projectId=${projectId}`
       );
       return data.reminder;
     },
@@ -52,7 +52,7 @@ export const useGetReminder = (secretId: string, projectId: string) => {
     queryKey: reminderKeys.getReminder(secretId, projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ reminder: Reminder }>(
-        `/api/v1/reminders/${projectId}/reminder/${secretId}`
+        `/api/v1/reminders/secrets/${secretId}?projectId=${projectId}`
       );
       return data.reminder;
     },

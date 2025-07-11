@@ -42,7 +42,7 @@ import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
 import { registerProjectRouter } from "./project-router";
-import { registerReminderRouter } from "./reminder-router";
+import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
@@ -85,7 +85,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
-  await server.register(registerReminderRouter, { prefix: "/reminders" });
   await server.register(registerSecretFolderRouter, { prefix: "/folders" });
 
   await server.register(
@@ -173,5 +172,15 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       }
     },
     { prefix: "/secret-syncs" }
+  );
+
+  await server.register(
+    async (reminderRouter) => {
+      // register service specific reminder endpoints (reminders/secret)
+      for await (const [reminderType, router] of Object.entries(SECRET_REMINDER_REGISTER_ROUTER_MAP)) {
+        await reminderRouter.register(router, { prefix: `/${reminderType}` });
+      }
+    },
+    { prefix: "/reminders" }
   );
 };
