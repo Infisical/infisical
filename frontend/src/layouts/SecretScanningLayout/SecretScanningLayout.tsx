@@ -1,11 +1,34 @@
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Menu, MenuItem } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { Badge, Menu, MenuItem } from "@app/components/v2";
+import {
+  ProjectPermissionSub,
+  useProjectPermission,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
+import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
+import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
 
 export const SecretScanningLayout = () => {
   const { currentWorkspace } = useWorkspace();
+
+  const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
+
+  const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(
+    currentWorkspace.id,
+    {
+      enabled:
+        subscription.secretScanning &&
+        permission.can(
+          ProjectPermissionSecretScanningFindingActions.Read,
+          ProjectPermissionSub.SecretScanningFindings
+        ),
+      refetchInterval: 30000
+    }
+  );
 
   return (
     <div className="dark hidden h-full w-full flex-col overflow-x-hidden md:flex">
@@ -38,7 +61,18 @@ export const SecretScanningLayout = () => {
                     projectId: currentWorkspace.id
                   }}
                 >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>Findings</MenuItem>}
+                  {({ isActive }) => (
+                    <MenuItem isSelected={isActive}>
+                      <div className="flex w-full items-center justify-between">
+                        <span>Findings</span>
+                        {Boolean(unresolvedFindings) && (
+                          <Badge variant="primary" className="mr-2">
+                            {unresolvedFindings}
+                          </Badge>
+                        )}
+                      </div>
+                    </MenuItem>
+                  )}
                 </Link>
                 <Link
                   to="/projects/$projectId/secret-scanning/settings"

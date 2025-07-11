@@ -375,6 +375,26 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     };
   };
 
+  const getProjectKeyCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const keys = await kmsDAL.find(
+      {
+        projectId
+      },
+      { count: true }
+    );
+
+    return Number(keys?.[0]?.count ?? 0);
+  };
+
   return {
     createCmek,
     updateCmekById,
@@ -387,6 +407,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     cmekSign,
     cmekVerify,
     listSigningAlgorithms,
-    getPublicKey
+    getPublicKey,
+    getProjectKeyCount
   };
 };

@@ -811,6 +811,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
 
   return {
     ...secretOrm,
+    rawFind: secretOrm.find,
     update,
     bulkUpdate,
     deleteMany,

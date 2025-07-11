@@ -59,15 +59,18 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
 
   return project;
 };
-export const getProjectHomePage = (type: ProjectType) => {
-  switch (type) {
-    case ProjectType.CertificateManager:
-      return `/projects/$projectId/${type}/subscribers` as const;
-    case ProjectType.SecretScanning:
-      return `/projects/$projectId/${type}/data-sources` as const;
-    default:
-      return `/projects/$projectId/${type}/overview` as const;
-  }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const getProjectHomePage = (_type: ProjectType) => {
+  return "/projects/$projectId/overview";
+
+  // switch (type) {
+  //   case ProjectType.CertificateManager:
+  //     return `/projects/$projectId/${type}/subscribers` as const;
+  //   case ProjectType.SecretScanning:
+  //     return `/projects/$projectId/${type}/data-sources` as const;
+  //   default:
+  //     return `/projects/$projectId/${type}/overview` as const;
+  // }
 };
 
 export const getProjectTitle = (type: ProjectType) => {

@@ -13,6 +13,7 @@ import { TSshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ss
 import { TSshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -60,6 +61,7 @@ type TSshHostServiceFactoryDep = {
     | "findOne"
     | "findSshHostByIdWithLoginMappings"
     | "findUserAccessibleSshHosts"
+    | "find"
   >;
   sshHostLoginUserDAL: TSshHostLoginUserDALFactory;
   sshHostLoginUserMappingDAL: TSshHostLoginUserMappingDALFactory;
@@ -637,6 +639,26 @@ export const sshHostServiceFactory = ({
     return publicKey;
   };
 
+  const getProjectHostCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const hosts = await sshHostDAL.find(
+      {
+        projectId
+      },
+      { count: true }
+    );
+
+    return Number(hosts?.[0]?.count ?? 0);
+  };
+
   return {
     listSshHosts,
     createSshHost,
@@ -646,6 +668,7 @@ export const sshHostServiceFactory = ({
     issueSshHostUserCert,
     issueSshHostHostCert,
     getSshHostUserCaPk,
-    getSshHostHostCaPk
+    getSshHostHostCaPk,
+    getProjectHostCount
   };
 };

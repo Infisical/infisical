@@ -69,6 +69,7 @@ import { Route as organizationSecretSharingPageRouteImport } from './pages/organ
 import { Route as organizationGatewaysGatewayListPageRouteImport } from './pages/organization/Gateways/GatewayListPage/route'
 import { Route as organizationAppConnectionsAppConnectionsPageRouteImport } from './pages/organization/AppConnections/AppConnectionsPage/route'
 import { Route as projectLayoutGeneralImport } from './pages/project/layout-general'
+import { Route as projectOverviewPageRouteImport } from './pages/project/OverviewPage/route'
 import { Route as organizationSettingsPageOauthCallbackPageRouteImport } from './pages/organization/SettingsPage/OauthCallbackPage/route'
 import { Route as sshLayoutImport } from './pages/ssh/layout'
 import { Route as secretScanningLayoutImport } from './pages/secret-scanning/layout'
@@ -807,6 +808,12 @@ const AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutCertMan
 
 const projectLayoutGeneralRoute = projectLayoutGeneralImport.update({
   id: '/_project-general-layout',
+  getParentRoute: () => projectLayoutRoute,
+} as any)
+
+const projectOverviewPageRouteRoute = projectOverviewPageRouteImport.update({
+  id: '/overview',
+  path: '/overview',
   getParentRoute: () => projectLayoutRoute,
 } as any)
 
@@ -2347,6 +2354,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organization/settings/oauth/callback'
       preLoaderRoute: typeof organizationSettingsPageOauthCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/overview': {
+      id: '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/overview'
+      path: '/overview'
+      fullPath: '/projects/$projectId/overview'
+      preLoaderRoute: typeof projectOverviewPageRouteImport
+      parentRoute: typeof projectLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout'
@@ -4053,6 +4067,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutSshRout
   )
 
 interface projectLayoutRouteChildren {
+  projectOverviewPageRouteRoute: typeof projectOverviewPageRouteRoute
   projectLayoutGeneralRoute: typeof projectLayoutGeneralRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutCertManagerRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutCertManagerRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutIntegrationsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutIntegrationsRouteWithChildren
@@ -4063,6 +4078,7 @@ interface projectLayoutRouteChildren {
 }
 
 const projectLayoutRouteChildren: projectLayoutRouteChildren = {
+  projectOverviewPageRouteRoute: projectOverviewPageRouteRoute,
   projectLayoutGeneralRoute: projectLayoutGeneralRouteWithChildren,
   AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutCertManagerRoute:
     AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutCertManagerRouteWithChildren,
@@ -4371,6 +4387,7 @@ export interface FileRoutesByFullPath {
   '/admin/resources/user-identities': typeof adminUserIdentitiesResourcesPageRouteRoute
   '/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organization/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
+  '/projects/$projectId/overview': typeof projectOverviewPageRouteRoute
   '/projects/$projectId/cert-manager': typeof certManagerLayoutRouteWithChildren
   '/projects/$projectId/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutIntegrationsRouteWithChildren
   '/projects/$projectId/kms': typeof kmsLayoutRouteWithChildren
@@ -4564,6 +4581,7 @@ export interface FileRoutesByTo {
   '/admin/resources/user-identities': typeof adminUserIdentitiesResourcesPageRouteRoute
   '/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organization/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
+  '/projects/$projectId/overview': typeof projectOverviewPageRouteRoute
   '/projects/$projectId/cert-manager': typeof certManagerLayoutRouteWithChildren
   '/projects/$projectId/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutIntegrationsRouteWithChildren
   '/projects/$projectId/kms': typeof kmsLayoutRouteWithChildren
@@ -4766,6 +4784,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout': typeof projectLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/overview': typeof projectOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout': typeof projectLayoutGeneralRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutCertManagerRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsProjectIdProjectLayoutIntegrationsRouteWithChildren
@@ -4975,6 +4994,7 @@ export interface FileRouteTypes {
     | '/admin/resources/user-identities'
     | '/secret-manager/$projectId/approval'
     | '/organization/settings/oauth/callback'
+    | '/projects/$projectId/overview'
     | '/projects/$projectId/cert-manager'
     | '/projects/$projectId/integrations'
     | '/projects/$projectId/kms'
@@ -5167,6 +5187,7 @@ export interface FileRouteTypes {
     | '/admin/resources/user-identities'
     | '/secret-manager/$projectId/approval'
     | '/organization/settings/oauth/callback'
+    | '/projects/$projectId/overview'
     | '/projects/$projectId/cert-manager'
     | '/projects/$projectId/integrations'
     | '/projects/$projectId/kms'
@@ -5367,6 +5388,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId/approval'
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout'
     | '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager'
     | '/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/integrations'
@@ -5903,6 +5925,7 @@ export const routeTree = rootRoute
       "filePath": "project/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/projects/$projectId",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/overview",
         "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout",
         "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/cert-manager",
         "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/integrations",
@@ -5919,6 +5942,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback": {
       "filePath": "organization/SettingsPage/OauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization/settings"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/overview": {
+      "filePath": "project/OverviewPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout": {
       "filePath": "project/layout-general.tsx",

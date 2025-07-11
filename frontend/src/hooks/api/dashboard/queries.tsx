@@ -15,7 +15,9 @@ import {
   TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
-  TGetDashboardProjectSecretsQuickSearchDTO
+  TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetProjectOverview,
+  TProjectOverview
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
@@ -72,7 +74,13 @@ export const dashboardKeys = {
       ...dashboardKeys.all(),
       "accessible-secrets",
       { projectId, secretPath, environment, filterByAction }
-    ] as const
+    ] as const,
+  getProjectOverview: ({ projectId, projectSlug }: TGetProjectOverview) => [
+    ...dashboardKeys.all(),
+    "project-overview",
+    projectId,
+    projectSlug
+  ]
 };
 
 export const fetchProjectSecretsOverview = async ({
@@ -462,5 +470,37 @@ export const useGetAccessibleSecrets = ({
     }),
     queryFn: () =>
       fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction, recursive })
+  });
+};
+
+export const useGetProjectOverview = (
+  { projectId, projectSlug }: TGetProjectOverview,
+  options?: Omit<
+    UseQueryOptions<
+      TProjectOverview,
+      unknown,
+      TProjectOverview,
+      ReturnType<typeof dashboardKeys.getProjectOverview>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    ...options,
+    refetchOnMount: "always",
+    queryKey: dashboardKeys.getProjectOverview({
+      projectId,
+      projectSlug
+    }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TProjectOverview>(
+        "/api/v1/dashboard/project-overview",
+        {
+          params: { projectId, projectSlug }
+        }
+      );
+
+      return data;
+    }
   });
 };

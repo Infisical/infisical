@@ -10,6 +10,7 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
+import { OrgServiceActor } from "@app/lib/types";
 
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -403,12 +404,33 @@ export const identityProjectServiceFactory = ({
     return identityMembership;
   };
 
+  const getProjectIdentityCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const identityMemberships = await identityProjectDAL.find(
+      {
+        projectId
+      },
+      { count: true }
+    );
+
+    return Number(identityMemberships?.[0]?.count ?? 0);
+  };
+
   return {
     createProjectIdentity,
     updateProjectIdentity,
     deleteProjectIdentity,
     listProjectIdentities,
     getProjectIdentityByIdentityId,
-    getProjectIdentityByMembershipId
+    getProjectIdentityByMembershipId,
+    getProjectIdentityCount
   };
 };

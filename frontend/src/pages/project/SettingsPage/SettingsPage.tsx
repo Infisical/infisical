@@ -18,7 +18,7 @@ export const SettingsPage = () => {
       <div className="w-full max-w-7xl">
         <PageHeader
           title={t("settings.project.title")}
-          description="Configure your project details and  project-specific settings"
+          description="Configure your project details and project-specific settings"
         />
         <Tabs defaultValue={tabs[0].key}>
           <TabList>

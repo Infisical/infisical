@@ -5,6 +5,7 @@ import crypto, { KeyObject } from "crypto";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
 import { ms } from "@app/lib/ms";
+import { OrgServiceActor } from "@app/lib/types";
 import { isFQDN } from "@app/lib/validator/validate-url";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
@@ -795,6 +796,26 @@ export const kmipServiceFactory = ({
     };
   };
 
+  const getProjectClientCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const clients = await kmipClientDAL.find(
+      {
+        projectId
+      },
+      { count: true }
+    );
+
+    return Number(clients?.[0]?.count ?? 0);
+  };
+
   return {
     createKmipClient,
     updateKmipClient,
@@ -806,6 +827,7 @@ export const kmipServiceFactory = ({
     generateOrgKmipServerCertificate,
     getOrgKmip,
     getServerCertificateBySerialNumber,
-    registerServer
+    registerServer,
+    getProjectClientCount
   };
 };

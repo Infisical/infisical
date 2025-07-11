@@ -13,6 +13,7 @@ import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
+import { OrgServiceActor } from "@app/lib/types";
 import { isUuidV4 } from "@app/lib/validator";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
@@ -33,7 +34,10 @@ import {
 } from "./group-project-types";
 
 type TGroupProjectServiceFactoryDep = {
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "findOne" | "transaction" | "create" | "delete" | "findByProjectId">;
+  groupProjectDAL: Pick<
+    TGroupProjectDALFactory,
+    "findOne" | "transaction" | "create" | "delete" | "findByProjectId" | "find"
+  >;
   groupProjectMembershipRoleDAL: Pick<
     TGroupProjectMembershipRoleDALFactory,
     "create" | "transaction" | "insertMany" | "delete"
@@ -508,12 +512,33 @@ export const groupProjectServiceFactory = ({
     return { users: members, totalCount };
   };
 
+  const getProjectGroupCount = async (projectId: string, actor: OrgServiceActor) => {
+    // Anyone in the project should be able to get count.
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    const projectGroups = await groupProjectDAL.find(
+      {
+        projectId
+      },
+      { count: true }
+    );
+
+    return Number(projectGroups?.[0]?.count ?? 0);
+  };
+
   return {
     addGroupToProject,
     updateGroupInProject,
     removeGroupFromProject,
     listGroupsInProject,
     getGroupInProject,
-    listProjectGroupUsers
+    listProjectGroupUsers,
+    getProjectGroupCount
   };
 };

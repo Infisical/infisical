@@ -156,3 +156,39 @@ export type TGetAccessibleSecretsDTO = {
     | ProjectPermissionSecretActions.DescribeSecret
     | ProjectPermissionSecretActions.ReadValue;
 };
+
+export type TGetProjectOverview = {
+  projectId: string;
+  projectSlug: string;
+};
+
+export type TProjectOverview = {
+  accessControl: {
+    userCount: number;
+    machineIdentityCount: number;
+    groupCount: number;
+  };
+  secretsManagement: {
+    secretCount: number;
+    environmentCount: number;
+    pendingApprovalCount: number;
+  };
+  certificateManagement: {
+    internalCaCount: number;
+    externalCaCount: number;
+    expiryCount: number;
+  };
+  kms: {
+    keyCount: number;
+    kmipClientCount: number;
+  };
+  ssh: {
+    hostCount: number;
+    hostGroupCount: number;
+  };
+  secretScanning: {
+    dataSourceCount: number;
+    resourceCount: number;
+    findingCount: number;
+  };
+};

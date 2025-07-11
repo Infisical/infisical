@@ -437,6 +437,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   return {
     dataSources: {
       ...dataSourceOrm,
+      findRaw: dataSourceOrm.find,
       find: findDataSource,
       findById: findDataSourceById,
       findOne: findOneDataSource,

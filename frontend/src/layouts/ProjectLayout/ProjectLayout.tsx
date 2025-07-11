@@ -55,7 +55,7 @@ export const ProjectLayout = () => {
   const isKms = currentProductType === ProjectType.KMS;
   const isSsh = currentProductType === ProjectType.SSH;
   const isSecretScanning = currentProductType === ProjectType.SecretScanning;
-
+  const isOverview = !currentProductType;
   return (
     <>
       <div
@@ -83,6 +83,28 @@ export const ProjectLayout = () => {
           >
             <nav className="items-between flex h-full flex-col justify-between">
               <Menu>
+                <ShouldWrap
+                  wrapper={Tooltip}
+                  isWrapped={sidebarStyle === SidebarStyle.Collapsed}
+                  content="Project Overview"
+                  position="right"
+                >
+                  <Link
+                    to="/projects/$projectId/overview"
+                    params={{ projectId: currentWorkspace.id }}
+                  >
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                      isSelected={isOverview}
+                      leftIcon={<Lottie className="inline-block h-6 w-6 shrink-0" icon="home" />}
+                    >
+                      {isOverview && (
+                        <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
+                      )}
+                      Overview
+                    </MenuItem>
+                  </Link>
+                </ShouldWrap>
                 <ShouldWrap
                   wrapper={Tooltip}
                   isWrapped={sidebarStyle === SidebarStyle.Collapsed}
