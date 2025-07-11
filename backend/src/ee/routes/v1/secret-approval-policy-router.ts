@@ -23,10 +23,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         environment: z.string(),
         secretPath: z
           .string()
-          .optional()
-          .nullable()
-          .default("/")
-          .transform((val) => (val ? removeTrailingSlash(val) : val)),
+          .min(1, { message: "Secret path cannot be empty" })
+          .transform((val) => removeTrailingSlash(val)),
         approvers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
@@ -100,10 +98,10 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         approvals: z.number().min(1).default(1),
         secretPath: z
           .string()
+          .trim()
+          .min(1, { message: "Secret path cannot be empty" })
           .optional()
-          .nullable()
-          .transform((val) => (val ? removeTrailingSlash(val) : val))
-          .transform((val) => (val === "" ? "/" : val)),
+          .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true)
       }),

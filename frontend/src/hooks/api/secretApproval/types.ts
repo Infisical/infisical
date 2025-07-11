@@ -49,7 +49,7 @@ export type TCreateSecretPolicyDTO = {
   workspaceId: string;
   name?: string;
   environment: string;
-  secretPath?: string | null;
+  secretPath: string;
   approvers?: Approver[];
   bypassers?: Bypasser[];
   approvals?: number;
@@ -62,7 +62,7 @@ export type TUpdateSecretPolicyDTO = {
   name?: string;
   approvers?: Approver[];
   bypassers?: Bypasser[];
-  secretPath?: string | null;
+  secretPath?: string;
   approvals?: number;
   allowedSelfApprovals?: boolean;
   enforcementLevel?: EnforcementLevel;
