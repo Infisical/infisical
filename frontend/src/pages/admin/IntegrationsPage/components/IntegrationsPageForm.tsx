@@ -28,9 +28,9 @@ const WorkflowTab = ({ adminIntegrationsConfig }: WorkflowTabProps) => (
 const AppConnectionsTab = () => (
   <NoticeBannerV2 className="mx-auto mb-4" title="Integration Connections have been migrated">
     <p className="mt-1 text-xs text-mineshaft-300">
-      Since 12th July 2025, all app connection integrations have been migrated to the new{" "}
+      Since 12th July 2025, App Connection configurations have been migrated to{" "}
       <Link to="/admin/environment" className="text-primary-400">
-        environment overrides system
+        Environment Variables
       </Link>
       .
       <br />
