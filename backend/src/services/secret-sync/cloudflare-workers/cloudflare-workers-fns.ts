@@ -43,7 +43,7 @@ export const CloudflareWorkersSyncFns = {
     const existingSecretNames = await getSecretKeys(secretSync);
     const secretMapKeys = new Set(Object.keys(secretMap));
 
-    const secretsToCreateOrUpdatePromises = Object.entries(secretMap).map(async ([key, val]) => {
+    for await (const [key, val] of Object.entries(secretMap)) {
       await delayMs(Math.max(0, applyJitter(100, 200)));
       await request.put(
         `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
@@ -55,32 +55,30 @@ export const CloudflareWorkersSyncFns = {
           }
         }
       );
-    });
-    await Promise.all(secretsToCreateOrUpdatePromises);
+    }
 
     if (!secretSync.syncOptions.disableSecretDeletion) {
-      const secretsToDeletePromises = existingSecretNames
-        .filter((existingKey) => {
-          const isManagedBySchema = matchesSchema(
-            existingKey,
-            secretSync.environment?.slug || "",
-            secretSync.syncOptions.keySchema
-          );
-          const isInNewSecretMap = secretMapKeys.has(existingKey);
-          return !isInNewSecretMap && isManagedBySchema;
-        })
-        .map(async (key) => {
-          await delayMs(Math.max(0, applyJitter(100, 200)));
-          await request.delete(
-            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${key}`,
-            {
-              headers: {
-                Authorization: `Bearer ${apiToken}`
-              }
+      const secretsToDelete = existingSecretNames.filter((existingKey) => {
+        const isManagedBySchema = matchesSchema(
+          existingKey,
+          secretSync.environment?.slug || "",
+          secretSync.syncOptions.keySchema
+        );
+        const isInNewSecretMap = secretMapKeys.has(existingKey);
+        return !isInNewSecretMap && isManagedBySchema;
+      });
+
+      for await (const key of secretsToDelete) {
+        await delayMs(Math.max(0, applyJitter(100, 200)));
+        await request.delete(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${key}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`
             }
-          );
-        });
-      await Promise.all(secretsToDeletePromises);
+          }
+        );
+      }
     }
   },
 
@@ -99,7 +97,7 @@ export const CloudflareWorkersSyncFns = {
     const existingSecretNames = await getSecretKeys(secretSync);
     const secretMapToRemoveKeys = new Set(Object.keys(secretMap));
 
-    const deletePromises = existingSecretNames.map(async (existingKey) => {
+    for await (const existingKey of existingSecretNames) {
       const isManagedBySchema = matchesSchema(
         existingKey,
         secretSync.environment?.slug || "",
@@ -118,7 +116,6 @@ export const CloudflareWorkersSyncFns = {
           }
         );
       }
-    });
-    await Promise.all(deletePromises);
+    }
   }
 };
