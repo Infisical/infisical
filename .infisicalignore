@@ -48,3 +48,4 @@ backend/src/services/smtp/smtp-service.ts:generic-api-key:79
 frontend/src/components/secret-syncs/forms/SecretSyncDestinationFields/CloudflarePagesSyncFields.tsx:cloudflare-api-key:7
 docs/integrations/app-connections/zabbix.mdx:generic-api-key:91
 docs/integrations/app-connections/bitbucket.mdx:generic-api-key:123
+docs/integrations/app-connections/railway.mdx:generic-api-key:156
