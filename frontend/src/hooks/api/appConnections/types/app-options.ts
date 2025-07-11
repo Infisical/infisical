@@ -140,6 +140,10 @@ export type TZabbixConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Zabbix;
 };
 
+export type TRailwayConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Railway;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -169,7 +173,8 @@ export type TAppConnectionOption =
   | TGitlabConnectionOption
   | TCloudflareConnectionOption
   | TBitbucketConnectionOption
-  | TZabbixConnectionOption;
+  | TZabbixConnectionOption
+  | TRailwayConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -203,4 +208,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Cloudflare]: TCloudflareConnectionOption;
   [AppConnection.Bitbucket]: TBitbucketConnectionOption;
   [AppConnection.Zabbix]: TZabbixConnectionOption;
+  [AppConnection.Railway]: TRailwayConnectionOption;
 };

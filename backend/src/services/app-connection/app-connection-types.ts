@@ -142,6 +142,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TRailwayConnection,
+  TRailwayConnectionConfig,
+  TRailwayConnectionInput,
+  TValidateRailwayConnectionCredentialsSchema
+} from "./railway";
+import {
   TRenderConnection,
   TRenderConnectionConfig,
   TRenderConnectionInput,
@@ -210,6 +216,7 @@ export type TAppConnection = { id: string } & (
   | TCloudflareConnection
   | TBitbucketConnection
   | TZabbixConnection
+  | TRailwayConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -248,6 +255,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
   | TZabbixConnectionInput
+  | TRailwayConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -293,7 +301,8 @@ export type TAppConnectionConfig =
   | TGitLabConnectionConfig
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
-  | TZabbixConnectionConfig;
+  | TZabbixConnectionConfig
+  | TRailwayConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -326,7 +335,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateGitLabConnectionCredentialsSchema
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
-  | TValidateZabbixConnectionCredentialsSchema;
+  | TValidateZabbixConnectionCredentialsSchema
+  | TValidateRailwayConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

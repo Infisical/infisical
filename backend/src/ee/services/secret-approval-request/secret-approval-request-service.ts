@@ -10,6 +10,7 @@ import {
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
+import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -523,7 +524,7 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { policy, folderId, projectId, bypassers } = secretApprovalRequest;
+    const { policy, folderId, projectId, bypassers, environment } = secretApprovalRequest;
     if (policy.deletedAt) {
       throw new BadRequestError({
         message: "The policy associated with this secret approval request has been deleted."
@@ -959,7 +960,112 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    return mergeStatus;
+    const { created, updated, deleted } = mergeStatus.secrets;
+
+    const secretMutationEvents: Event[] = [];
+
+    if (created.length) {
+      if (created.length > 1) {
+        secretMutationEvents.push({
+          type: EventType.CREATE_SECRETS,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secrets: created.map((secret) => ({
+              secretId: secret.id,
+              secretVersion: 1,
+              // @ts-expect-error not present on v1 secrets
+              secretKey: secret.key as string,
+              // @ts-expect-error not present on v1 secrets
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            }))
+          }
+        });
+      } else {
+        const [secret] = created;
+        secretMutationEvents.push({
+          type: EventType.CREATE_SECRET,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secretId: secret.id,
+            secretVersion: 1,
+            // @ts-expect-error not present on v1 secrets
+            secretKey: secret.key as string,
+            // @ts-expect-error not present on v1 secrets
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+          }
+        });
+      }
+    }
+
+    if (updated.length) {
+      if (updated.length > 1) {
+        secretMutationEvents.push({
+          type: EventType.UPDATE_SECRETS,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secrets: updated.map((secret) => ({
+              secretId: secret.id,
+              secretVersion: secret.version,
+              // @ts-expect-error not present on v1 secrets
+              secretKey: secret.key as string,
+              // @ts-expect-error not present on v1 secrets
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            }))
+          }
+        });
+      } else {
+        const [secret] = updated;
+        secretMutationEvents.push({
+          type: EventType.UPDATE_SECRET,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secretId: secret.id,
+            secretVersion: secret.version,
+            // @ts-expect-error not present on v1 secrets
+            secretKey: secret.key as string,
+            // @ts-expect-error not present on v1 secrets
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+          }
+        });
+      }
+    }
+
+    if (deleted.length) {
+      if (deleted.length > 1) {
+        secretMutationEvents.push({
+          type: EventType.DELETE_SECRETS,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secrets: deleted.map((secret) => ({
+              secretId: secret.id,
+              secretVersion: secret.version,
+              // @ts-expect-error not present on v1 secrets
+              secretKey: secret.key as string
+            }))
+          }
+        });
+      } else {
+        const [secret] = deleted;
+        secretMutationEvents.push({
+          type: EventType.DELETE_SECRET,
+          metadata: {
+            environment,
+            secretPath: folder.path,
+            secretId: secret.id,
+            secretVersion: secret.version,
+            // @ts-expect-error not present on v1 secrets
+            secretKey: secret.key as string
+          }
+        });
+      }
+    }
+
+    return { ...mergeStatus, projectId, secretMutationEvents };
   };
 
   // function to save secret change to secret approval

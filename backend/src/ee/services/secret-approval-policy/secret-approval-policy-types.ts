@@ -4,7 +4,7 @@ import { ApproverType, BypasserType } from "../access-approval-policy/access-app
 
 export type TCreateSapDTO = {
   approvals: number;
-  secretPath?: string | null;
+  secretPath: string;
   environment: string;
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
   bypassers?: (
@@ -20,7 +20,7 @@ export type TCreateSapDTO = {
 export type TUpdateSapDTO = {
   secretPolicyId: string;
   approvals?: number;
-  secretPath?: string | null;
+  secretPath?: string;
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
   bypassers?: (
     | { type: BypasserType.Group; id: string }

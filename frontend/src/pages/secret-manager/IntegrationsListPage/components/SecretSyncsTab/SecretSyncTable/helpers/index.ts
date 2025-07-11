@@ -156,6 +156,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         throw new Error(`Unhandled Zabbix Scope Destination Col Values ${destination}`);
       }
       break;
+    case SecretSync.Railway:
+      primaryText = "Railway Project";
+      secondaryText = destinationConfig.projectName;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

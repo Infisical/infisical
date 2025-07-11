@@ -37,7 +37,8 @@ import {
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
   TQueueSecretScanningSendNotification,
-  TSecretScanningDataSourceWithConnection
+  TSecretScanningDataSourceWithConnection,
+  TSecretScanningFinding
 } from "./secret-scanning-v2-types";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
@@ -459,13 +460,16 @@ export const secretScanningV2QueueServiceFactory = async ({
         const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
 
         if (newFindings.length) {
+          const finding = newFindings[0] as TSecretScanningFinding;
           await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
             status: SecretScanningScanStatus.Completed,
             resourceName: resource.name,
             isDiffScan: true,
             dataSource,
             numberOfSecrets: newFindings.length,
-            scanId
+            scanId,
+            authorName: finding?.details?.author,
+            authorEmail: finding?.details?.email
           });
         }
 
@@ -582,8 +586,8 @@ export const secretScanningV2QueueServiceFactory = async ({
           substitutions:
             payload.status === SecretScanningScanStatus.Completed
               ? {
-                  authorName: "Jim",
-                  authorEmail: "jim@infisical.com",
+                  authorName: payload.authorName,
+                  authorEmail: payload.authorEmail,
                   resourceName,
                   numberOfSecrets: payload.numberOfSecrets,
                   isDiffScan: payload.isDiffScan,

@@ -30,6 +30,7 @@ const databaseReadReplicaSchema = z
 const envSchema = z
   .object({
     INFISICAL_PLATFORM_VERSION: zpStr(z.string().optional()),
+    KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN: zodStrBool.default("false"),
     PORT: z.coerce.number().default(IS_PACKAGED ? 8080 : 4000),
     DISABLE_SECRET_SCANNING: z
       .enum(["true", "false"])
@@ -439,6 +440,19 @@ export const overwriteSchema: {
     fields: { key: keyof TEnvConfig; description?: string }[];
   };
 } = {
+  aws: {
+    name: "AWS",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_AWS_ACCESS_KEY_ID",
+        description: "The Access Key ID of your AWS account."
+      },
+      {
+        key: "INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY",
+        description: "The Client Secret of your AWS application."
+      }
+    ]
+  },
   azure: {
     name: "Azure",
     fields: [
@@ -452,16 +466,79 @@ export const overwriteSchema: {
       }
     ]
   },
-  google_sso: {
-    name: "Google SSO",
+  gcp: {
+    name: "GCP",
     fields: [
       {
-        key: "CLIENT_ID_GOOGLE_LOGIN",
-        description: "The Client ID of your GCP OAuth2 application."
+        key: "INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL",
+        description: "The GCP Service Account JSON credentials."
+      }
+    ]
+  },
+  github_app: {
+    name: "GitHub App",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID",
+        description: "The Client ID of your GitHub application."
       },
       {
-        key: "CLIENT_SECRET_GOOGLE_LOGIN",
-        description: "The Client Secret of your GCP OAuth2 application."
+        key: "INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET",
+        description: "The Client Secret of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_SLUG",
+        description: "The Slug of your GitHub application. This is the one found in the URL."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_ID",
+        description: "The App ID of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY",
+        description: "The Private Key of your GitHub application."
+      }
+    ]
+  },
+  github_oauth: {
+    name: "GitHub OAuth",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID",
+        description: "The Client ID of your GitHub OAuth application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET",
+        description: "The Client Secret of your GitHub OAuth application."
+      }
+    ]
+  },
+  github_radar_app: {
+    name: "GitHub Radar App",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID",
+        description: "The Client ID of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET",
+        description: "The Client Secret of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG",
+        description: "The Slug of your GitHub application. This is the one found in the URL."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_ID",
+        description: "The App ID of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY",
+        description: "The Private Key of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET",
+        description: "The Webhook Secret of your GitHub application."
       }
     ]
   },
@@ -475,6 +552,19 @@ export const overwriteSchema: {
       {
         key: "CLIENT_SECRET_GITHUB_LOGIN",
         description: "The Client Secret of your GitHub OAuth application."
+      }
+    ]
+  },
+  gitlab_oauth: {
+    name: "GitLab OAuth",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID",
+        description: "The Client ID of your GitLab OAuth application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET",
+        description: "The Client Secret of your GitLab OAuth application."
       }
     ]
   },
@@ -493,6 +583,19 @@ export const overwriteSchema: {
         key: "CLIENT_GITLAB_LOGIN_URL",
         description:
           "The URL of your self-hosted instance of GitLab where the OAuth application is registered. If no URL is passed in, this will default to https://gitlab.com."
+      }
+    ]
+  },
+  google_sso: {
+    name: "Google SSO",
+    fields: [
+      {
+        key: "CLIENT_ID_GOOGLE_LOGIN",
+        description: "The Client ID of your GCP OAuth2 application."
+      },
+      {
+        key: "CLIENT_SECRET_GOOGLE_LOGIN",
+        description: "The Client Secret of your GCP OAuth2 application."
       }
     ]
   }

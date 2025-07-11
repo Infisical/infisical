@@ -25,6 +25,7 @@ import { TMySqlConnection } from "./mysql-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TRailwayConnection } from "./railway-connection";
 import { TRenderConnection } from "./render-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
@@ -95,7 +96,8 @@ export type TAppConnection =
   | TGitLabConnection
   | TCloudflareConnection
   | TBitbucketConnection
-  | TZabbixConnection;
+  | TZabbixConnection
+  | TRailwayConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -154,4 +156,5 @@ export type TAppConnectionMap = {
   [AppConnection.Cloudflare]: TCloudflareConnection;
   [AppConnection.Bitbucket]: TBitbucketConnection;
   [AppConnection.Zabbix]: TZabbixConnection;
+  [AppConnection.Railway]: TRailwayConnection;
 };

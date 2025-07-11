@@ -141,14 +141,39 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { approval } = await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        approvalId: req.params.id,
-        bypassReason: req.body.bypassReason
+      const { approval, projectId, secretMutationEvents } =
+        await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          approvalId: req.params.id,
+          bypassReason: req.body.bypassReason
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.SECRET_APPROVAL_MERGED,
+          metadata: {
+            mergedBy: req.permission.id,
+            secretApprovalRequestSlug: approval.slug,
+            secretApprovalRequestId: approval.id
+          }
+        }
       });
+
+      for await (const event of secretMutationEvents) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event
+        });
+      }
+
       return { approval };
     }
   });

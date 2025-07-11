@@ -54,33 +54,55 @@ const getPlan = (subscription: SubscriptionPlan) => {
   return "Free";
 };
 
+const getFormattedSupportEmailLink = (variables: { org_id: string; domain: string }) => {
+  const email = "support@infisical.com";
+
+  const body = `Hello Infisical Support Team,
+
+Issue Details:
+[What you did]
+[What you expected to happen]
+[What actually happened]
+[Any error request IDs]
+[Any supporting screenshots or video recording of the issue/request at hand]
+
+Account Info:
+- Organization ID: ${variables.org_id}
+- Domain: ${variables.domain}
+
+Thank you,
+[Your Name]`;
+
+  return `mailto:${email}?body=${encodeURIComponent(body)}`;
+};
+
 export const INFISICAL_SUPPORT_OPTIONS = [
   [
     <FontAwesomeIcon key={1} className="pr-4 text-sm" icon={faSlack} />,
     "Support Forum",
-    "https://infisical.com/slack"
+    () => "https://infisical.com/slack"
   ],
   [
     <FontAwesomeIcon key={2} className="pr-4 text-sm" icon={faBook} />,
     "Read Docs",
-    "https://infisical.com/docs/documentation/getting-started/introduction"
+    () => "https://infisical.com/docs/documentation/getting-started/introduction"
   ],
   [
     <FontAwesomeIcon key={3} className="pr-4 text-sm" icon={faGithub} />,
     "GitHub Issues",
-    "https://github.com/Infisical/infisical/issues"
+    () => "https://github.com/Infisical/infisical/issues"
   ],
   [
     <FontAwesomeIcon key={4} className="pr-4 text-sm" icon={faEnvelope} />,
     "Email Support",
-    "mailto:support@infisical.com"
+    getFormattedSupportEmailLink
   ],
   [
     <FontAwesomeIcon key={5} className="pr-4 text-sm" icon={faUsers} />,
     "Instance Admins",
-    "server-admins"
+    () => "server-admins"
   ]
-];
+] as const;
 
 export const Navbar = () => {
   const { user } = useUser();
@@ -258,7 +280,15 @@ export const Navbar = () => {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="bottom" className="mt-3 p-1">
-          {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, url]) => {
+          {INFISICAL_SUPPORT_OPTIONS.map(([icon, text, getUrl]) => {
+            const url =
+              text === "Email Support"
+                ? getUrl({
+                    org_id: currentOrg.id,
+                    domain: window.location.origin
+                  })
+                : getUrl();
+
             if (url === "server-admins" && isInfisicalCloud()) {
               return null;
             }

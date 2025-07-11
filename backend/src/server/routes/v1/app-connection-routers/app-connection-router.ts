@@ -72,6 +72,10 @@ import {
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
 import {
+  RailwayConnectionListItemSchema,
+  SanitizedRailwayConnectionSchema
+} from "@app/services/app-connection/railway";
+import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
@@ -123,7 +127,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedGitLabConnectionSchema.options,
   ...SanitizedCloudflareConnectionSchema.options,
   ...SanitizedBitbucketConnectionSchema.options,
-  ...SanitizedZabbixConnectionSchema.options
+  ...SanitizedZabbixConnectionSchema.options,
+  ...SanitizedRailwayConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -157,7 +162,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   GitLabConnectionListItemSchema,
   CloudflareConnectionListItemSchema,
   BitbucketConnectionListItemSchema,
-  ZabbixConnectionListItemSchema
+  ZabbixConnectionListItemSchema,
+  RailwayConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
