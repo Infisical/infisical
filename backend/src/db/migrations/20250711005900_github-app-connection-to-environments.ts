@@ -2,23 +2,16 @@ import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
 import { selectAllTableCols } from "@app/lib/knex";
-import { initLogger } from "@app/lib/logger";
 
 import { TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
 import { getMigrationEncryptionServices } from "./utils/services";
 
-export async function up(knex: Knex): Promise<void> {
-  // eslint-disable-next-line no-param-reassign
-  knex.replicaNode = () => {
-    return knex;
-  };
-
+export async function up(knex: Knex) {
   const existingSuperAdminsWithGithubConnection = await knex(TableName.SuperAdmin)
     .select(selectAllTableCols(TableName.SuperAdmin))
     .whereNotNull(`${TableName.SuperAdmin}.encryptedGitHubAppConnectionClientId`);
 
-  initLogger();
   const envConfig = getMigrationEnvConfig();
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
@@ -57,14 +50,17 @@ export async function up(knex: Knex): Promise<void> {
       overrides.INF_APP_CONNECTION_GITHUB_APP_ID = decryptor(admin.encryptedGitHubAppConnectionId).toString();
     }
 
-    const encryptedOverrides = encryptor(Buffer.from(JSON.stringify(overrides)));
+    const encryptedEnvOverrides = encryptor(Buffer.from(JSON.stringify(overrides)));
 
     await knex(TableName.SuperAdmin).where({ id: admin.id }).update({
-      encryptedEnvOverrides: encryptedOverrides
+      encryptedEnvOverrides
     });
   });
 
   await Promise.all(tasks);
 }
 
-export async function down(): Promise<void> {}
+export async function down() {
+  // No down migration needed as this migration is only for data transformation
+  // and does not change the schema.
+}
