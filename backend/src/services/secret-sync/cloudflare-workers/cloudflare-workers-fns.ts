@@ -1,4 +1,6 @@
 import { request } from "@app/lib/config/request";
+import { applyJitter } from "@app/lib/dates";
+import { delay as delayMs } from "@app/lib/delay";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -6,9 +8,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
 
-const getProjectEnvironmentSecretNames = async (
-  secretSync: TCloudflareWorkersSyncWithCredentials
-): Promise<string[]> => {
+const getSecretKeys = async (secretSync: TCloudflareWorkersSyncWithCredentials): Promise<string[]> => {
   const {
     destinationConfig,
     connection: {
@@ -40,10 +40,11 @@ export const CloudflareWorkersSyncFns = {
       destinationConfig: { scriptId }
     } = secretSync;
 
-    const existingSecretNames = await getProjectEnvironmentSecretNames(secretSync);
+    const existingSecretNames = await getSecretKeys(secretSync);
     const secretMapKeys = new Set(Object.keys(secretMap));
 
     const secretsToCreateOrUpdatePromises = Object.entries(secretMap).map(async ([key, val]) => {
+      await delayMs(Math.max(0, applyJitter(100, 200)));
       await request.put(
         `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
         { name: key, text: val.value, type: "secret_text" },
@@ -69,6 +70,7 @@ export const CloudflareWorkersSyncFns = {
           return !isInNewSecretMap && isManagedBySchema;
         })
         .map(async (key) => {
+          await delayMs(Math.max(0, applyJitter(100, 200)));
           await request.delete(
             `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${key}`,
             {
@@ -94,7 +96,7 @@ export const CloudflareWorkersSyncFns = {
       destinationConfig: { scriptId }
     } = secretSync;
 
-    const existingSecretNames = await getProjectEnvironmentSecretNames(secretSync);
+    const existingSecretNames = await getSecretKeys(secretSync);
     const secretMapToRemoveKeys = new Set(Object.keys(secretMap));
 
     const deletePromises = existingSecretNames.map(async (existingKey) => {
@@ -106,6 +108,7 @@ export const CloudflareWorkersSyncFns = {
       const isInSecretMapToRemove = secretMapToRemoveKeys.has(existingKey);
 
       if (isInSecretMapToRemove && isManagedBySchema) {
+        await delayMs(Math.max(0, applyJitter(100, 200)));
         await request.delete(
           `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${existingKey}`,
           {

@@ -16,7 +16,10 @@ const CloudflareWorkersSyncDestinationConfigSchema = z.object({
     .string()
     .min(1, "Script ID is required")
     .max(64)
-    .regex(new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/), "Invalid script ID format")
+    .refine((val) => {
+      const re2 = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/);
+      return re2.test(val);
+    }, "Invalid script ID format")
     .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.scriptId)
 });
 
