@@ -17,11 +17,8 @@ export type TCloudflareConnectionInput = z.infer<typeof CreateCloudflareConnecti
 
 export type TValidateCloudflareConnectionCredentialsSchema = typeof ValidateCloudflareConnectionCredentialsSchema;
 
-export type TCloudflareConnectionConfig = DiscriminativePick<
-  TCloudflareConnectionInput,
-  "method" | "app" | "credentials"
-> & {
-  orgId: string;
+export type TCloudflareConnectionConfig = {
+  apiToken: string;
 };
 
 export type TCloudflarePagesProject = {
