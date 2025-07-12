@@ -225,15 +225,17 @@ const renderJsonWithDiffs = (
 
   const getLineClass = (different: boolean) => {
     if (!different) return "flex";
-    return isOldVersion ? "flex bg-red-950 text-red-300" : "flex bg-green-950 text-green-300";
+    return isOldVersion
+      ? "flex bg-red-500/50 rounded-sm text-red-300"
+      : "flex bg-green-500/50 rounded-sm text-green-300";
   };
 
-  const getHighlightClass = (different: boolean) => {
-    if (!different) return "";
-    return isOldVersion ? "bg-red-900 rounded px-1" : "bg-green-900 rounded px-1";
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const getHighlightClass = (_different: boolean) => {
+    return "";
   };
 
-  const prefix = isDifferent ? (isOldVersion ? "-" : "+") : " ";
+  const prefix = isDifferent ? (isOldVersion ? " -" : " +") : " ";
   const keyDisplay = keyName ? `"${keyName}": ` : "";
   const comma = !isLastItem ? "," : "";
 
@@ -320,7 +322,7 @@ const renderJsonWithDiffs = (
       <div key={reactKey}>
         <div className={getLineClass(isContainerAddedOrRemoved)}>
           <div className="w-4 flex-shrink-0">
-            {isContainerAddedOrRemoved ? (isOldVersion ? "-" : "+") : " "}
+            {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
             {indent}
@@ -625,12 +627,11 @@ export const SecretVersionDiffView = ({
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border border-mineshaft-600 bg-mineshaft-800">
+    <div className="overflow-hidden border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t last:rounded-b last:border-b">
       {showHeader && renderHeader()}
-
       {!collapsed && (
-        <div className="border-t border-mineshaft-700 bg-mineshaft-900 px-6 py-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="border-t border-mineshaft-700 bg-bunker-900 p-3 text-mineshaft-100">
+          <div className="grid grid-cols-2 gap-3">
             <div
               ref={oldContainerRef}
               className="thin-scrollbar max-h-96 overflow-auto whitespace-pre rounded border border-mineshaft-600 bg-mineshaft-900 p-4"
