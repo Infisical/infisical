@@ -12,8 +12,8 @@ export const CertificateAuthoritiesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   projectId: z.string(),
-  enableDirectIssuance: z.boolean().default(true),
   status: z.string(),
+  enableDirectIssuance: z.boolean().default(true),
   name: z.string()
 });
 

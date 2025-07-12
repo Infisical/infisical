@@ -338,8 +338,14 @@ export const SecretApprovalRequest = () => {
                     </div>
                     <span className="text-xs leading-3 text-gray-500">
                       Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
-                      {committerUser?.firstName || ""} {committerUser?.lastName || ""} (
-                      {committerUser?.email})
+                      {committerUser ? (
+                        <>
+                          {committerUser?.firstName || ""} {committerUser?.lastName || ""} (
+                          {committerUser?.email})
+                        </>
+                      ) : (
+                        <span className="text-gray-600">Deleted User</span>
+                      )}
                       {!isReviewed && status === "open" && " - Review required"}
                     </span>
                   </div>

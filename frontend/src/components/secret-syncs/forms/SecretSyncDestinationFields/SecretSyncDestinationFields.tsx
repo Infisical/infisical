@@ -12,6 +12,7 @@ import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
 import { ChecklySyncFields } from "./ChecklySyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
+import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
@@ -79,6 +80,8 @@ export const SecretSyncDestinationFields = () => {
       return <GitLabSyncFields />;
     case SecretSync.CloudflarePages:
       return <CloudflarePagesSyncFields />;
+    case SecretSync.CloudflareWorkers:
+      return <CloudflareWorkersSyncFields />;
     case SecretSync.Zabbix:
       return <ZabbixSyncFields />;
     case SecretSync.Railway:

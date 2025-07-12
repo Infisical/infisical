@@ -9,6 +9,7 @@ import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncC
 import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { ChecklySyncDestinationCol } from "./ChecklySyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
+import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
@@ -76,6 +77,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <GitLabSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.CloudflarePages:
       return <CloudflarePagesSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.CloudflareWorkers:
+      return <CloudflareWorkersSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Zabbix:
       return <ZabbixSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Railway:

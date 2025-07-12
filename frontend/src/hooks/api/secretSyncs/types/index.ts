@@ -11,6 +11,7 @@ import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TCamundaSync } from "./camunda-sync";
 import { TChecklySync } from "./checkly-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
+import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
@@ -57,6 +58,7 @@ export type TSecretSync =
   | TFlyioSync
   | TGitLabSync
   | TCloudflarePagesSync
+  | TCloudflareWorkersSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync;

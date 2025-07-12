@@ -442,9 +442,7 @@ export const licenseServiceFactory = ({
         rows: data.rows.map((el) => {
           let used = "-";
 
-          if (el.name === BillingPlanRows.MemberLimit.name) {
-            used = orgMembersUsed.toString();
-          } else if (el.name === BillingPlanRows.WorkspaceLimit.name) {
+          if (el.name === BillingPlanRows.WorkspaceLimit.name) {
             used = projectCount.toString();
           } else if (el.name === BillingPlanRows.IdentityLimit.name) {
             used = (identityUsed + orgMembersUsed).toString();
@@ -464,12 +462,10 @@ export const licenseServiceFactory = ({
         const allowed = onPremFeatures[field as keyof TFeatureSet];
         let used = "-";
 
-        if (field === BillingPlanRows.MemberLimit.field) {
-          used = orgMembersUsed.toString();
-        } else if (field === BillingPlanRows.WorkspaceLimit.field) {
+        if (field === BillingPlanRows.WorkspaceLimit.field) {
           used = projectCount.toString();
         } else if (field === BillingPlanRows.IdentityLimit.field) {
-          used = identityUsed.toString();
+          used = (identityUsed + orgMembersUsed).toString();
         }
 
         return {

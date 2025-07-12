@@ -250,10 +250,17 @@ export const SecretApprovalRequestChanges = ({
                 secretApprovalRequestDetails.isReplicated
               )}
             </div>
-            <span className="-mt-1 flex items-center space-x-2 text-xs text-gray-400">
-              By {secretApprovalRequestDetails?.committerUser?.firstName} (
-              {secretApprovalRequestDetails?.committerUser?.email})
-            </span>
+            <p className="-mt-1 text-xs text-gray-400">
+              By{" "}
+              {secretApprovalRequestDetails?.committerUser ? (
+                <>
+                  {secretApprovalRequestDetails?.committerUser?.firstName} (
+                  {secretApprovalRequestDetails?.committerUser?.email})
+                </>
+              ) : (
+                <span className="text-gray-500">Deleted User</span>
+              )}
+            </p>
           </div>
           {!hasMerged &&
             secretApprovalRequestDetails.status === "open" &&

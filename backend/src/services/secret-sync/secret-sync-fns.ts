@@ -33,6 +33,7 @@ import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
 import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
+import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
@@ -74,6 +75,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
+  [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
+
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
   [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
   [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION
@@ -244,6 +247,8 @@ export const SecretSyncFns = {
         return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.CloudflareWorkers:
+        return CloudflareWorkersSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
@@ -342,6 +347,9 @@ export const SecretSyncFns = {
       case SecretSync.CloudflarePages:
         secretMap = await CloudflarePagesSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.CloudflareWorkers:
+        secretMap = await CloudflareWorkersSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Zabbix:
         secretMap = await ZabbixSyncFns.getSecrets(secretSync);
         break;
@@ -428,6 +436,8 @@ export const SecretSyncFns = {
         return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.CloudflareWorkers:
+        return CloudflareWorkersSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
