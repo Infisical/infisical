@@ -4,11 +4,19 @@ export enum ReservedFolders {
   SecretReplication = "__reserve_replication_"
 }
 
+export enum PendingAction {
+  Create = "create",
+  Update = "update",
+  Delete = "delete"
+}
+
 export type TSecretFolder = {
   id: string;
   name: string;
   description?: string;
   parentId?: string | null;
+  isPending?: boolean;
+  pendingAction?: PendingAction;
 };
 
 export type TSecretFolderWithPath = TSecretFolder & { path: string };

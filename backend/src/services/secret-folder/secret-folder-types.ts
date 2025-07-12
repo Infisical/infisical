@@ -1,6 +1,8 @@
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+
 export enum ReservedFolders {
   SecretReplication = "__reserve_replication_"
 }
@@ -21,7 +23,7 @@ export type TUpdateFolderDTO = {
 } & TProjectPermission;
 
 export type TUpdateManyFoldersDTO = {
-  projectSlug: string;
+  projectSlug?: string;
   folders: {
     environment: string;
     path: string;
@@ -61,4 +63,31 @@ export type TGetFoldersDeepByEnvsDTO = {
 
 export type TFindFoldersDeepByParentIdsDTO = {
   parentIds: string[];
+};
+
+export type TCreateManyFoldersDTO = {
+  projectId: string;
+  actor: ActorType;
+  actorId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId?: string;
+  folders: Array<{
+    name: string;
+    environment: string;
+    path: string;
+    description?: string | null;
+  }>;
+};
+
+export type TDeleteManyFoldersDTO = {
+  projectId: string;
+  actor: ActorType;
+  actorId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId?: string;
+  folders: Array<{
+    environment: string;
+    path: string;
+    idOrName: string;
+  }>;
 };
