@@ -1,6 +1,7 @@
 import axios from "axios";
 import jwt from "jsonwebtoken";
 
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -40,7 +41,7 @@ export const GithubProvider = (): TDynamicProviderFns => {
 
     let appJwt: string;
     try {
-      appJwt = jwt.sign(jwtPayload, privateKey, { algorithm: "RS256" });
+      appJwt = crypto.jwt().sign(jwtPayload, privateKey, { algorithm: "RS256" });
     } catch (error) {
       let message = "Failed to sign JWT.";
       if (error instanceof jwt.JsonWebTokenError) {

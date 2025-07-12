@@ -1,5 +1,9 @@
 import { Knex } from "knex";
 
+import { crypto } from "@app/lib/crypto";
+import { initLogger } from "@app/lib/logger";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+
 import { AuthMethod } from "../../services/auth/auth-type";
 import { TableName } from "../schemas";
 import { generateUserSrpKeys, seedData1 } from "../seed-data";
@@ -9,6 +13,11 @@ export async function seed(knex: Knex): Promise<void> {
   await knex(TableName.Users).del();
   await knex(TableName.UserEncryptionKey).del();
   await knex(TableName.SuperAdmin).del();
+
+  initLogger();
+
+  const superAdminDAL = superAdminDALFactory(knex);
+  await crypto.initialize(superAdminDAL);
 
   await knex(TableName.SuperAdmin).insert([
     // eslint-disable-next-line

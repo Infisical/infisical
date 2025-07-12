@@ -49,7 +49,11 @@ export const SignUpPage = () => {
     // avoid multi submission
     if (isSubmitting) return;
     try {
-      const { privateKey, ...userPass } = await generateUserPassKey(email, password);
+      const { privateKey, ...userPass } = await generateUserPassKey(
+        email,
+        password,
+        config.fipsEnabled
+      );
       const res = await createAdminUser({
         email,
         password,

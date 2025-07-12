@@ -3,35 +3,8 @@ import crypto from "crypto";
 import { NavigateFn } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  decryptAssymmetric,
-  encryptAssymmetric
-} from "@app/components/utilities/cryptography/crypto";
 import { localStorageService } from "@app/helpers/localStorage";
-import { TCloudIntegration, UserWsKeyPair } from "@app/hooks/api/types";
-
-export const generateBotKey = (botPublicKey: string, latestKey: UserWsKeyPair) => {
-  const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
-
-  if (!PRIVATE_KEY) {
-    throw new Error("Private Key missing");
-  }
-
-  const WORKSPACE_KEY = decryptAssymmetric({
-    ciphertext: latestKey.encryptedKey,
-    nonce: latestKey.nonce,
-    publicKey: latestKey.sender.publicKey,
-    privateKey: PRIVATE_KEY
-  });
-
-  const { ciphertext, nonce } = encryptAssymmetric({
-    plaintext: WORKSPACE_KEY,
-    publicKey: botPublicKey,
-    privateKey: PRIVATE_KEY
-  });
-
-  return { encryptedKey: ciphertext, nonce };
-};
+import { TCloudIntegration } from "@app/hooks/api/types";
 
 export const createIntegrationMissingEnvVarsNotification = (
   slug: string,

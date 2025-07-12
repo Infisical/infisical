@@ -51,7 +51,7 @@ export const CaCertificatesTable = ({ caId }: Props) => {
         <TBody>
           {isPending && <TableSkeleton columns={4} innerKey="ca-certificates" />}
           {!isPending &&
-            caCerts?.map((caCert, index) => {
+            caCerts?.map?.((caCert, index) => {
               const isLastItem = index === caCerts.length - 1;
               const caCertObj = new x509.X509Certificate(caCert.certificate);
               return (

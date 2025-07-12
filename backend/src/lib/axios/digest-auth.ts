@@ -1,6 +1,6 @@
-import crypto from "node:crypto";
-
 import { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
+
+import { crypto, DigestType } from "../crypto/cryptography";
 
 export const createDigestAuthRequestInterceptor = (
   axiosInstance: AxiosInstance,
@@ -30,18 +30,13 @@ export const createDigestAuthRequestInterceptor = (
       const cnonce = crypto.randomBytes(24).toString("hex");
       const realm = authDetails.find((el) => el[0].toLowerCase().indexOf("realm") > -1)?.[1]?.replaceAll('"', "") || "";
       const nonce = authDetails.find((el) => el[0].toLowerCase().indexOf("nonce") > -1)?.[1]?.replaceAll('"', "") || "";
-      const ha1 = crypto.createHash("md5").update(`${username}:${realm}:${password}`).digest("hex");
+      const ha1 = crypto.hashing().md5(`${username}:${realm}:${password}`, DigestType.Hex);
       const path = opts.url;
 
-      const ha2 = crypto
-        .createHash("md5")
-        .update(`${opts.method ?? "GET"}:${path}`)
-        .digest("hex");
+      const ha2 = crypto.hashing().md5(`${opts.method ?? "GET"}:${path}`, DigestType.Hex);
 
-      const response = crypto
-        .createHash("md5")
-        .update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
-        .digest("hex");
+      const response = crypto.hashing().md5(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`, DigestType.Hex);
+
       const authorization = `Digest username="${username}",realm="${realm}",nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
 
       if (opts.headers) {

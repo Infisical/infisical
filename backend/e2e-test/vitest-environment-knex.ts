@@ -2,11 +2,11 @@
 import "ts-node/register";
 
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
+import { crypto } from "@app/lib/crypto/cryptography";
 import path from "path";
 
 import { seedData1 } from "@app/db/seed-data";
-import { initEnvConfig } from "@app/lib/config/env";
+import { getDatabaseCredentials, initEnvConfig } from "@app/lib/config/env";
 import { initLogger } from "@app/lib/logger";
 import { main } from "@app/server/app";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
@@ -17,6 +17,7 @@ import { queueServiceFactory } from "@app/queue";
 import { keyStoreFactory } from "@app/keystore/keystore";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -24,13 +25,17 @@ export default {
   transformMode: "ssr",
   async setup() {
     const logger = initLogger();
-    const envConfig = initEnvConfig(logger);
+    const databaseCredentials = getDatabaseCredentials(logger);
+
     const db = initDbConnection({
-      dbConnectionUri: envConfig.DB_CONNECTION_URI,
-      dbRootCert: envConfig.DB_ROOT_CERT
+      dbConnectionUri: databaseCredentials.dbConnectionUri,
+      dbRootCert: databaseCredentials.dbRootCert
     });
 
-    const redis = buildRedisFromConfig(envConfig);
+    const superAdminDAL = superAdminDALFactory(db);
+    const envCfg = await initEnvConfig(superAdminDAL, logger);
+
+    const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");
 
     try {
@@ -55,10 +60,10 @@ export default {
       });
 
       const smtp = mockSmtpServer();
-      const queue = queueServiceFactory(envConfig, { dbConnectionUrl: envConfig.DB_CONNECTION_URI });
-      const keyStore = keyStoreFactory(envConfig);
+      const queue = queueServiceFactory(envCfg, { dbConnectionUrl: envCfg.DB_CONNECTION_URI });
+      const keyStore = keyStoreFactory(envCfg);
 
-      const hsmModule = initializeHsmModule(envConfig);
+      const hsmModule = initializeHsmModule(envCfg);
       hsmModule.initialize();
 
       const server = await main({
@@ -68,14 +73,17 @@ export default {
         queue,
         keyStore,
         hsmModule: hsmModule.getModule(),
+        superAdminDAL,
         redis,
-        envConfig
+        envConfig: envCfg
       });
 
       // @ts-expect-error type
       globalThis.testServer = server;
       // @ts-expect-error type
-      globalThis.jwtAuthToken = jwt.sign(
+      globalThis.testSuperAdminDAL = superAdminDAL;
+      // @ts-expect-error type
+      globalThis.jwtAuthToken = crypto.jwt().sign(
         {
           authTokenType: AuthTokenType.ACCESS_TOKEN,
           userId: seedData1.id,
@@ -84,8 +92,8 @@ export default {
           organizationId: seedData1.organization.id,
           accessVersion: 1
         },
-        envConfig.AUTH_SECRET,
-        { expiresIn: envConfig.JWT_AUTH_LIFETIME }
+        envCfg.AUTH_SECRET,
+        { expiresIn: envCfg.JWT_AUTH_LIFETIME }
       );
     } catch (error) {
       // eslint-disable-next-line
@@ -101,6 +109,8 @@ export default {
         await globalThis.testServer.close();
         // @ts-expect-error type
         delete globalThis.testServer;
+        // @ts-expect-error type
+        delete globalThis.testSuperAdminDAL;
         // @ts-expect-error type
         delete globalThis.jwtToken;
         // called after all tests with this env have been run

@@ -1,11 +1,12 @@
 import { requestContext } from "@fastify/request-context";
 import { FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
 
 import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
@@ -72,7 +73,7 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     } as const;
   }
 
-  const decodedToken = jwt.verify(authTokenValue, jwtSecret) as JwtPayload;
+  const decodedToken = crypto.jwt().verify(authTokenValue, jwtSecret) as JwtPayload;
 
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN:

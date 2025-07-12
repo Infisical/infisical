@@ -1,5 +1,6 @@
-import bcrypt from "bcrypt";
 import { Knex } from "knex";
+
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
@@ -54,7 +55,9 @@ export async function seed(knex: Knex): Promise<void> {
       }
     ])
     .returning("*");
-  const clientSecretHash = await bcrypt.hash(seedData1.machineIdentity.clientCredentials.secret, 10);
+
+  const clientSecretHash = await crypto.hashing().createHash(seedData1.machineIdentity.clientCredentials.secret, 10);
+
   await knex(TableName.IdentityUaClientSecret).insert([
     {
       identityUAId: identityUa[0].id,

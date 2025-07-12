@@ -1,5 +1,4 @@
 export {
-  useAddUserToWsE2EE,
   useAddUserToWsNonE2EE,
   useRemoveMyDuplicateAccounts,
   useRevokeMySessionById,

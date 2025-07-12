@@ -4,6 +4,7 @@ import { inMemoryKeyStore } from "@app/keystore/memory";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -39,7 +40,8 @@ export async function up(knex: Knex): Promise<void> {
       );
 
     initLogger();
-    const envConfig = getMigrationEnvConfig();
+    const superAdminDAL = superAdminDALFactory(knex);
+    const envConfig = await getMigrationEnvConfig(superAdminDAL);
     const keyStore = inMemoryKeyStore();
     const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
 

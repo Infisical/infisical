@@ -1,7 +1,6 @@
-import jwt from "jsonwebtoken";
-
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
 import { Integrations, IntegrationUrls } from "./integration-list";
@@ -718,7 +717,7 @@ const exchangeRefreshGCPSecretManager = async ({
       exp: Math.floor(Date.now() / 1000) + 3600
     };
 
-    const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: "RS256" });
+    const token = crypto.jwt().sign(payload, serviceAccount.private_key, { algorithm: "RS256" });
 
     const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } = await request.post(
       IntegrationUrls.GCP_TOKEN_URL,

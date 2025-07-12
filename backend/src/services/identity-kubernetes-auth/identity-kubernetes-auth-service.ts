@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import axios, { AxiosError } from "axios";
 import https from "https";
-import jwt from "jsonwebtoken";
 import RE2 from "re2";
 
 import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
@@ -19,6 +18,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
@@ -396,7 +396,7 @@ export const identityKubernetesAuthServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         identityId: identityKubernetesAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,

@@ -1,5 +1,4 @@
 import { execFile } from "child_process";
-import crypto from "crypto";
 import { promises as fs } from "fs";
 import { Knex } from "knex";
 import os from "os";
@@ -9,6 +8,7 @@ import { promisify } from "util";
 
 import { TSshCertificateTemplates } from "@app/db/schemas";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";

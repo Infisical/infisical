@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
-import { decryptSymmetric, infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -10,6 +10,7 @@ import { SecretKeyEncoding, TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
 import { getMigrationEncryptionServices } from "./utils/services";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 const BATCH_SIZE = 500;
 const reencryptSamlConfig = async (knex: Knex) => {
@@ -27,7 +28,8 @@ const reencryptSamlConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const envConfig = getMigrationEnvConfig();
+  const superAdminDAL = superAdminDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
@@ -58,7 +60,8 @@ const reencryptSamlConfig = async (knex: Knex) => {
           );
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
-        const key = infisicalSymmetricDecrypt({
+
+        const key = crypto.encryption().decryptWithRootEncryptionKey({
           ciphertext: encryptedSymmetricKey,
           iv: symmetricKeyIV,
           tag: symmetricKeyTag,
@@ -69,8 +72,9 @@ const reencryptSamlConfig = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedEntryPoint && el.entryPointIV && el.entryPointTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.entryPointIV,
@@ -87,8 +91,9 @@ const reencryptSamlConfig = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedIssuer && el.issuerIV && el.issuerTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.issuerIV,
@@ -105,8 +110,9 @@ const reencryptSamlConfig = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedCert && el.certIV && el.certTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.certIV,
@@ -185,7 +191,8 @@ const reencryptLdapConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const envConfig = getMigrationEnvConfig();
+  const superAdminDAL = superAdminDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
@@ -216,7 +223,8 @@ const reencryptLdapConfig = async (knex: Knex) => {
           );
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
-        const key = infisicalSymmetricDecrypt({
+
+        const key = crypto.encryption().decryptWithRootEncryptionKey({
           ciphertext: encryptedSymmetricKey,
           iv: symmetricKeyIV,
           tag: symmetricKeyTag,
@@ -227,8 +235,9 @@ const reencryptLdapConfig = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedBindDN && el.bindDNIV && el.bindDNTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.bindDNIV,
@@ -245,8 +254,9 @@ const reencryptLdapConfig = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedBindPass && el.bindPassIV && el.bindPassTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.bindPassIV,
@@ -263,8 +273,9 @@ const reencryptLdapConfig = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedCACert && el.caCertIV && el.caCertTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.caCertIV,
@@ -337,7 +348,8 @@ const reencryptOidcConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const envConfig = getMigrationEnvConfig();
+  const superAdminDAL = superAdminDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL);
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
@@ -368,7 +380,8 @@ const reencryptOidcConfig = async (knex: Knex) => {
           );
           orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
         }
-        const key = infisicalSymmetricDecrypt({
+
+        const key = crypto.encryption().decryptWithRootEncryptionKey({
           ciphertext: encryptedSymmetricKey,
           iv: symmetricKeyIV,
           tag: symmetricKeyTag,
@@ -379,8 +392,9 @@ const reencryptOidcConfig = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedClientId && el.clientIdIV && el.clientIdTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.clientIdIV,
@@ -397,8 +411,9 @@ const reencryptOidcConfig = async (knex: Knex) => {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedClientSecret && el.clientSecretIV && el.clientSecretTag
-            ? decryptSymmetric({
+            ? crypto.encryption().decryptSymmetric({
                 key,
+                keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore This will be removed in next cycle so ignore the ts missing error
                 iv: el.clientSecretIV,

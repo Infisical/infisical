@@ -24,6 +24,8 @@ import {
   Tag
 } from "aws-sdk/clients/secretsmanager";
 
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
+import { crypto } from "@app/lib/crypto";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -46,6 +48,8 @@ const getSecretsManagerClient = async (secretSync: TAwsSecretsManagerSyncWithCre
 
   const secretsManagerClient = new SecretsManagerClient({
     region: config.region,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher,
     credentials: config.credentials!
   });
 

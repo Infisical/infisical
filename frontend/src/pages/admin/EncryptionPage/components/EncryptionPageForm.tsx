@@ -1,12 +1,14 @@
 import { useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Select, SelectItem } from "@app/components/v2";
-import { useSubscription } from "@app/context";
+import { Badge, Button, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useGetServerRootKmsEncryptionDetails,
@@ -29,6 +31,7 @@ export const EncryptionPageForm = () => {
   const { data: rootKmsDetails } = useGetServerRootKmsEncryptionDetails();
 
   const { mutateAsync: updateEncryptionStrategy } = useUpdateServerEncryptionStrategy();
+  const { config } = useServerConfig();
   const { subscription } = useSubscription();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
@@ -117,14 +120,27 @@ export const EncryptionPageForm = () => {
           )}
         </div>
 
-        <Button
-          className="mt-2"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting || !isDirty}
-        >
-          Save
-        </Button>
+        <div className="flex w-full items-center justify-between">
+          <Button
+            className="mt-2"
+            type="submit"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting || !isDirty}
+          >
+            Save
+          </Button>
+
+          {config.fipsEnabled && (
+            <Tooltip content="FIPS mode of operation is enabled for your instance. All cryptographic operations within the FIPS boundaries are validated to be FIPS compliant.">
+              <div>
+                <Badge className="flex items-center gap-2" variant="primary">
+                  FIPS Mode: Enabled
+                  <FontAwesomeIcon icon={faInfoCircle} />
+                </Badge>
+              </div>
+            </Tooltip>
+          )}
+        </div>
       </form>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

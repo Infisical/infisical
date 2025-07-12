@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError } from "@casl/ability";
-import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
@@ -12,6 +11,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
@@ -153,7 +153,7 @@ export const identityLdapAuthServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         identityId: identityLdapAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,

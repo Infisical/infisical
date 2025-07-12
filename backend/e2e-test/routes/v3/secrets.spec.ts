@@ -1,6 +1,8 @@
 import { SecretType, TSecrets } from "@app/db/schemas";
 import { decryptSecret, encryptSecret, getUserPrivateKey, seedData1 } from "@app/db/seed-data";
-import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
+import { initEnvConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { initLogger, logger } from "@app/lib/logger";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const createSecret = async (dto: {
@@ -155,6 +157,9 @@ describe("Secret V3 Router", async () => {
   let projectKey = "";
   let folderId = "";
   beforeAll(async () => {
+    initLogger();
+    await initEnvConfig(testSuperAdminDAL, logger);
+
     const projectKeyRes = await testServer.inject({
       method: "GET",
       url: `/api/v2/workspace/${seedData1.project.id}/encrypted-key`,
@@ -173,7 +178,7 @@ describe("Secret V3 Router", async () => {
     });
     const { user: userInfo } = JSON.parse(userInfoRes.payload);
     const privateKey = await getUserPrivateKey(seedData1.password, userInfo);
-    projectKey = decryptAsymmetric({
+    projectKey = crypto.encryption().asymmetric().decrypt({
       ciphertext: projectKeyEncryptionDetails.encryptedKey,
       nonce: projectKeyEncryptionDetails.nonce,
       publicKey: projectKeyEncryptionDetails.sender.publicKey,
@@ -669,7 +674,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       const { user: userInfo } = JSON.parse(userInfoRes.payload);
 
       const privateKey = await getUserPrivateKey(seedData1.password, userInfo);
-      const projectKey = decryptAsymmetric({
+      const projectKey = crypto.encryption().asymmetric().decrypt({
         ciphertext: projectKeyEnc.encryptedKey,
         nonce: projectKeyEnc.nonce,
         publicKey: projectKeyEnc.sender.publicKey,
@@ -685,7 +690,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       });
       expect(projectBotRes.statusCode).toEqual(200);
       const projectBot = JSON.parse(projectBotRes.payload).bot;
-      const botKey = encryptAsymmetric(projectKey, projectBot.publicKey, privateKey);
+      const botKey = crypto.encryption().asymmetric().encrypt(projectKey, projectBot.publicKey, privateKey);
 
       // set bot as active
       const setBotActive = await testServer.inject({

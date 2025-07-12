@@ -1,10 +1,7 @@
-import crypto from "node:crypto";
-
-import bcrypt from "bcrypt";
-
 import { TSecretSharing } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { SecretSharingAccessType } from "@app/lib/types";
@@ -136,7 +133,7 @@ export const secretSharingServiceFactory = ({
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
     const id = crypto.randomBytes(32).toString("hex");
-    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+    const hashedPassword = password ? await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
       identifier: id,
@@ -386,8 +383,10 @@ export const secretSharingServiceFactory = ({
     const encryptWithRoot = kmsService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
+    const appCfg = getConfig();
+
     const id = crypto.randomBytes(32).toString("hex");
-    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+    const hashedPassword = password ? await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS) : null;
 
     const newSharedSecret = await secretSharingDAL.create({
       identifier: id,
@@ -529,7 +528,7 @@ export const secretSharingServiceFactory = ({
     const hasProvidedPassword = Boolean(password);
     if (isPasswordProtected) {
       if (hasProvidedPassword) {
-        const isMatch = await bcrypt.compare(password as string, sharedSecret.password as string);
+        const isMatch = await crypto.hashing().compareHash(password as string, sharedSecret.password as string);
         if (!isMatch) throw new UnauthorizedError({ message: "Invalid credentials" });
       } else {
         return { isPasswordProtected };

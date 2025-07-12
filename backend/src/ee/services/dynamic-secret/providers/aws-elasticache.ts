@@ -12,6 +12,8 @@ import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
@@ -39,8 +41,11 @@ type TDeleteElastiCacheUserInput = z.infer<typeof DeleteElasticCacheUserSchema>;
 const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: string) => {
   const elastiCache = new ElastiCache({
     region,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher,
     credentials
   });
+
   const infisicalGroup = "infisical-managed-group-elasticache";
 
   const ensureInfisicalGroupExists = async (clusterName: string) => {

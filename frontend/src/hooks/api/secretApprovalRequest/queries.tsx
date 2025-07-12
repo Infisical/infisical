@@ -1,15 +1,9 @@
 /* eslint-disable no-param-reassign */
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
-import {
-  decryptAssymmetric,
-  decryptSymmetric
-} from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
-import { UserWsKeyPair } from "../keys/types";
-import { EncryptedSecret, SecretType, SecretV3RawSanitized } from "../secrets/types";
 import {
   TGetSecretApprovalRequestCount,
   TGetSecretApprovalRequestDetails,
@@ -39,79 +33,6 @@ export const secretApprovalRequestKeys = {
     "secret-approval-request-count",
     ...(policyId ? [policyId] : [])
   ]
-};
-
-export const decryptSecrets = (
-  encryptedSecrets: EncryptedSecret[],
-  decryptFileKey: UserWsKeyPair
-) => {
-  const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-  const key = decryptAssymmetric({
-    ciphertext: decryptFileKey.encryptedKey,
-    nonce: decryptFileKey.nonce,
-    publicKey: decryptFileKey.sender.publicKey,
-    privateKey: PRIVATE_KEY
-  });
-
-  const personalSecrets: Record<string, { id: string; value: string }> = {};
-  const secrets: SecretV3RawSanitized[] = [];
-  encryptedSecrets.forEach((encSecret) => {
-    const secretKey = decryptSymmetric({
-      ciphertext: encSecret.secretKeyCiphertext,
-      iv: encSecret.secretKeyIV,
-      tag: encSecret.secretKeyTag,
-      key
-    });
-
-    const secretValue = decryptSymmetric({
-      ciphertext: encSecret.secretValueCiphertext,
-      iv: encSecret.secretValueIV,
-      tag: encSecret.secretValueTag,
-      key
-    });
-
-    const secretComment = decryptSymmetric({
-      ciphertext: encSecret.secretCommentCiphertext,
-      iv: encSecret.secretCommentIV,
-      tag: encSecret.secretCommentTag,
-      key
-    });
-
-    const decryptedSecret: SecretV3RawSanitized = {
-      id: encSecret.id,
-      env: encSecret.environment,
-      key: secretKey,
-      secretValueHidden: encSecret.secretValueHidden,
-      value: secretValue,
-      tags: encSecret.tags,
-      comment: secretComment,
-      reminderRepeatDays: encSecret.secretReminderRepeatDays,
-      reminderNote: encSecret.secretReminderNote,
-      createdAt: encSecret.createdAt,
-      updatedAt: encSecret.updatedAt,
-      version: encSecret.version,
-      skipMultilineEncoding: encSecret.skipMultilineEncoding
-    };
-
-    if (encSecret.type === SecretType.Personal) {
-      personalSecrets[decryptedSecret.key] = {
-        id: encSecret.id,
-        value: secretValue
-      };
-    } else {
-      secrets.push(decryptedSecret);
-    }
-  });
-
-  secrets.forEach((sec) => {
-    if (personalSecrets?.[sec.key]) {
-      sec.idOverride = personalSecrets[sec.key].id;
-      sec.valueOverride = personalSecrets[sec.key].value;
-      sec.overrideAction = "modified";
-    }
-  });
-
-  return secrets;
 };
 
 const fetchSecretApprovalRequestList = async ({

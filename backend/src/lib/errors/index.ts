@@ -171,3 +171,15 @@ export class OidcAuthError extends Error {
     this.error = error;
   }
 }
+
+export class CryptographyError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message || "Cryptographic operation failed");
+    this.name = name || "CryptographyError";
+    this.error = error;
+  }
+}

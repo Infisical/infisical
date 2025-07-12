@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { ForbiddenError } from "@casl/ability";
-import jwt from "jsonwebtoken";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
 import { OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
@@ -13,6 +12,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
@@ -406,7 +406,7 @@ export const oidcConfigServiceFactory = ({
 
     const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const isUserCompleted = Boolean(user.isAccepted);
-    const providerAuthToken = jwt.sign(
+    const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,

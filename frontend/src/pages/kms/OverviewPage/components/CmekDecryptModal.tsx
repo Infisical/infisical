@@ -3,10 +3,10 @@ import { useForm } from "react-hook-form";
 import { faCheckCircle, faCopy, faInfoCircle, faLockOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { decodeBase64 } from "tweetnacl-util";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { decodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   FormControl,

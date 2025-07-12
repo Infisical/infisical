@@ -2,46 +2,53 @@
 // eslint-disable-next-line
 import argon2 from "argon2-browser/dist/argon2-bundled.min.js";
 import nacl from "tweetnacl";
-import { decodeBase64, decodeUTF8, encodeBase64, encodeUTF8 } from "tweetnacl-util";
-
+import { encodeBase64 as naclEncodeBase64 } from "tweetnacl-util";
 import aes from "./aes-256-gcm";
 
-/**
- * Return new base64, NaCl, public-private key pair.
- * @returns {Object} obj
- * @returns {String} obj.publicKey - base64, NaCl, public key
- * @returns {String} obj.privateKey - base64, NaCl, private key
- */
-const generateKeyPair = () => {
+const encodeBase64 = (uint8Array: Uint8Array) => btoa(String.fromCharCode(...uint8Array));
+const decodeBase64 = (base64String: string) =>
+  new Uint8Array([...atob(base64String)].map((c) => c.charCodeAt(0)));
+
+const generateKeyPair = async (fipsEnabled: boolean) => {
+  if (fipsEnabled) {
+    if (!crypto || !crypto.subtle) {
+      throw new Error("Web Crypto API not available");
+    }
+
+    // browser version of how the key format we expect on the backend for asymmetric encryption
+    const result = await crypto.subtle.generateKey(
+      {
+        name: "X25519"
+      },
+      true, // extractable
+      ["deriveKey", "deriveBits"]
+    );
+
+    // Type guard
+    if (!("publicKey" in result)) {
+      throw new Error("Expected CryptoKeyPair but got CryptoKey");
+    }
+
+    const keyPair = result as CryptoKeyPair;
+    const publicKeyBytes = await crypto.subtle.exportKey("spki", keyPair.publicKey);
+    const privateKeyBytes = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+
+    return {
+      publicKey: btoa(String.fromCharCode(...new Uint8Array(publicKeyBytes))),
+      privateKey: btoa(String.fromCharCode(...new Uint8Array(privateKeyBytes)))
+    };
+  }
+
   const pair = nacl.box.keyPair();
+  const secretKeyUint8Array = pair.secretKey;
+  const publicKeyUint8Array = pair.publicKey;
+  const privateKey = naclEncodeBase64(secretKeyUint8Array);
+  const publicKey = naclEncodeBase64(publicKeyUint8Array);
 
   return {
-    publicKey: encodeBase64(pair.publicKey),
-    privateKey: encodeBase64(pair.secretKey)
+    publicKey,
+    privateKey
   };
-};
-
-type EncryptAsymmetricProps = {
-  plaintext: string;
-  publicKey: string;
-  privateKey: string;
-};
-
-/**
- * Verify that private key [privateKey] is the one that corresponds to
- * the public key [publicKey]
- * @param {Object}
- * @param {String} - base64-encoded Nacl private key
- * @param {String} - base64-encoded Nacl public key
- */
-const verifyPrivateKey = ({ privateKey, publicKey }: { privateKey: string; publicKey: string }) => {
-  const derivedPublicKey = encodeBase64(
-    nacl.box.keyPair.fromSecretKey(decodeBase64(privateKey)).publicKey
-  );
-
-  if (derivedPublicKey !== publicKey) {
-    throw new Error("Failed to verify private key");
-  }
 };
 
 /**
@@ -86,71 +93,6 @@ const deriveArgonKey = async ({
   }
 
   return derivedKey;
-};
-
-/**
- * Return assymmetrically encrypted [plaintext] using [publicKey] where
- * [publicKey] likely belongs to the recipient.
- * @param {Object} obj
- * @param {String} obj.plaintext - plaintext to encrypt
- * @param {String} obj.publicKey - public key of the recipient
- * @param {String} obj.privateKey - private key of the sender (current user)
- * @returns {Object} obj
- * @returns {String} ciphertext - base64-encoded ciphertext
- * @returns {String} nonce - base64-encoded nonce
- */
-const encryptAssymmetric = ({
-  plaintext,
-  publicKey,
-  privateKey
-}: EncryptAsymmetricProps): {
-  ciphertext: string;
-  nonce: string;
-} => {
-  const nonce = nacl.randomBytes(24);
-  const ciphertext = nacl.box(
-    decodeUTF8(plaintext),
-    nonce,
-    decodeBase64(publicKey),
-    decodeBase64(privateKey)
-  );
-
-  return {
-    ciphertext: encodeBase64(ciphertext),
-    nonce: encodeBase64(nonce)
-  };
-};
-
-type DecryptAsymmetricProps = {
-  ciphertext: string;
-  nonce: string;
-  publicKey: string;
-  privateKey: string;
-};
-
-/**
- * Return assymmetrically decrypted [ciphertext] using [privateKey] where
- * [privateKey] likely belongs to the recipient.
- * @param {Object} obj
- * @param {String} obj.ciphertext - ciphertext to decrypt
- * @param {String} obj.nonce - nonce
- * @param {String} obj.publicKey - base64-encoded public key of the sender
- * @param {String} obj.privateKey - base64-encoded private key of the receiver (current user)
- */
-const decryptAssymmetric = ({
-  ciphertext,
-  nonce,
-  publicKey,
-  privateKey
-}: DecryptAsymmetricProps): string => {
-  const plaintext = nacl.box.open(
-    decodeBase64(ciphertext),
-    decodeBase64(nonce),
-    decodeBase64(publicKey),
-    decodeBase64(privateKey)
-  );
-
-  return encodeUTF8(plaintext!);
 };
 
 type EncryptSymmetricProps = {
@@ -226,11 +168,10 @@ const decryptSymmetric = ({ ciphertext, iv, tag, key }: DecryptSymmetricProps): 
 };
 
 export {
-  decryptAssymmetric,
+  decodeBase64,
   decryptSymmetric,
   deriveArgonKey,
-  encryptAssymmetric,
+  encodeBase64,
   encryptSymmetric,
-  generateKeyPair,
-  verifyPrivateKey
+  generateKeyPair
 };

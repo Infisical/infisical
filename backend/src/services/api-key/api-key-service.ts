@@ -1,9 +1,6 @@
-import crypto from "node:crypto";
-
-import bcrypt from "bcrypt";
-
 import { TApiKeys } from "@app/db/schemas/api-keys";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
 import { TUserDALFactory } from "../user/user-dal";
@@ -27,7 +24,7 @@ export const apiKeyServiceFactory = ({ apiKeyDAL, userDAL }: TApiKeyServiceFacto
   const createApiKey = async (userId: string, name: string, expiresIn: number) => {
     const appCfg = getConfig();
     const secret = crypto.randomBytes(16).toString("hex");
-    const secretHash = await bcrypt.hash(secret, appCfg.SALT_ROUNDS);
+    const secretHash = await crypto.hashing().createHash(secret, appCfg.SALT_ROUNDS);
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
 
@@ -59,7 +56,7 @@ export const apiKeyServiceFactory = ({ apiKeyDAL, userDAL }: TApiKeyServiceFacto
       throw new UnauthorizedError();
     }
 
-    const isMatch = await bcrypt.compare(TOKEN_SECRET, apiKey.secretHash);
+    const isMatch = await crypto.hashing().compareHash(TOKEN_SECRET, apiKey.secretHash);
     if (!isMatch) throw new UnauthorizedError();
     await apiKeyDAL.updateById(apiKey.id, { lastUsed: new Date() });
     const user = await userDAL.findById(apiKey.userId);

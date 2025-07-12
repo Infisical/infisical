@@ -1,11 +1,8 @@
-import crypto from "node:crypto";
-
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 
@@ -81,7 +78,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
   const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
-    const tokenHash = await bcrypt.hash(token, appCfg.SALT_ROUNDS);
+    const tokenHash = await crypto.hashing().createHash(token, appCfg.SALT_ROUNDS);
     await tokenDAL.transaction(async (tx) => {
       await tokenDAL.delete({ userId, type, orgId: orgId || null }, tx);
       const newToken = await tokenDAL.create(
@@ -115,7 +112,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
       throw new Error("Token expired. Please try again");
     }
 
-    const isValidToken = await bcrypt.compare(code, token.tokenHash);
+    const isValidToken = await crypto.hashing().compareHash(code, token.tokenHash);
     if (!isValidToken) {
       if (token?.triesLeft) {
         if (token.triesLeft === 1) {
@@ -162,7 +159,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
         message: "Failed to find refresh token"
       });
 
-    const decodedToken = jwt.verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
+    const decodedToken = crypto.jwt().verify(refreshToken, appCfg.AUTH_SECRET) as AuthModeRefreshJwtTokenPayload;
 
     if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
       throw new UnauthorizedError({

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
-import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -13,6 +12,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
@@ -103,7 +103,7 @@ export const identityAliCloudAuthServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         identityId: identityAliCloudAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,

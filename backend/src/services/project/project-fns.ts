@@ -1,10 +1,8 @@
-import crypto from "crypto";
-
 import { ProjectVersion, TProjects } from "@app/db/schemas";
 import { createSshCaHelper } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCaKeySource } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { decryptAsymmetric, encryptAsymmetric } from "@app/lib/crypto";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -12,7 +10,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { AddUserToWsDTO, TBootstrapSshProjectDTO } from "./project-types";
 
 export const assignWorkspaceKeysToMembers = ({ members, decryptKey, userPrivateKey }: AddUserToWsDTO) => {
-  const plaintextProjectKey = decryptAsymmetric({
+  const plaintextProjectKey = crypto.encryption().asymmetric().decrypt({
     ciphertext: decryptKey.encryptedKey,
     nonce: decryptKey.nonce,
     publicKey: decryptKey.sender.publicKey,
@@ -20,11 +18,10 @@ export const assignWorkspaceKeysToMembers = ({ members, decryptKey, userPrivateK
   });
 
   const newWsMembers = members.map(({ orgMembershipId, userPublicKey }) => {
-    const { ciphertext: inviteeCipherText, nonce: inviteeNonce } = encryptAsymmetric(
-      plaintextProjectKey,
-      userPublicKey,
-      userPrivateKey
-    );
+    const { ciphertext: inviteeCipherText, nonce: inviteeNonce } = crypto
+      .encryption()
+      .asymmetric()
+      .encrypt(plaintextProjectKey, userPublicKey, userPrivateKey);
 
     return {
       orgMembershipId,
@@ -47,11 +44,10 @@ export const createProjectKey = ({ publicKey, privateKey, plainProjectKey }: TCr
   const randomBytes = plainProjectKey || crypto.randomBytes(16).toString("hex");
 
   // 4. Encrypt the project key with the users key pair.
-  const { ciphertext: encryptedProjectKey, nonce: encryptedProjectKeyIv } = encryptAsymmetric(
-    randomBytes,
-    publicKey,
-    privateKey
-  );
+  const { ciphertext: encryptedProjectKey, nonce: encryptedProjectKeyIv } = crypto
+    .encryption()
+    .asymmetric()
+    .encrypt(randomBytes, publicKey, privateKey);
 
   return { key: encryptedProjectKey, iv: encryptedProjectKeyIv };
 };

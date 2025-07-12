@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { encodeBase64 } from "tweetnacl-util";
 
+import { encodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 import { cmekKeys } from "@app/hooks/api/cmeks/queries";
 import {

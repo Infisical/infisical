@@ -1,6 +1,5 @@
-import jwt from "jsonwebtoken";
-
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { AuthModeProviderJwtTokenPayload, AuthModeProviderSignUpTokenPayload, AuthTokenType } from "./auth-type";
@@ -8,7 +7,7 @@ import { AuthModeProviderJwtTokenPayload, AuthModeProviderSignUpTokenPayload, Au
 export const validateProviderAuthToken = (providerToken: string, username?: string) => {
   if (!providerToken) throw new UnauthorizedError();
   const appCfg = getConfig();
-  const decodedToken = jwt.verify(providerToken, appCfg.AUTH_SECRET) as AuthModeProviderJwtTokenPayload;
+  const decodedToken = crypto.jwt().verify(providerToken, appCfg.AUTH_SECRET) as AuthModeProviderJwtTokenPayload;
 
   if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new UnauthorizedError();
 
@@ -38,7 +37,7 @@ export const validateSignUpAuthorization = (token: string, userId: string, valid
     });
   }
 
-  const decodedToken = jwt.verify(AUTH_TOKEN_VALUE, appCfg.AUTH_SECRET) as AuthModeProviderSignUpTokenPayload;
+  const decodedToken = crypto.jwt().verify(AUTH_TOKEN_VALUE, appCfg.AUTH_SECRET) as AuthModeProviderSignUpTokenPayload;
   if (!validate) return decodedToken;
 
   if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new UnauthorizedError();
@@ -64,7 +63,7 @@ export const validatePasswordResetAuthorization = (token?: string) => {
     });
   }
 
-  const decodedToken = jwt.verify(AUTH_TOKEN_VALUE, appCfg.AUTH_SECRET) as AuthModeProviderSignUpTokenPayload;
+  const decodedToken = crypto.jwt().verify(AUTH_TOKEN_VALUE, appCfg.AUTH_SECRET) as AuthModeProviderSignUpTokenPayload;
 
   if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) {
     throw new UnauthorizedError({

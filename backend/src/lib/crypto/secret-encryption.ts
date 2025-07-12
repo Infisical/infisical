@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import nodeCrypto from "crypto";
 import { z } from "zod";
 
 import {
@@ -12,7 +12,7 @@ import {
   TSecrets,
   TSecretVersions
 } from "../../db/schemas";
-import { decryptAsymmetric } from "./encryption";
+import { crypto } from "./cryptography";
 
 const DecryptedValuesSchema = z.object({
   id: z.string(),
@@ -68,7 +68,7 @@ const decryptCipher = ({
   tag: string;
   key: string | Buffer;
 }) => {
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
+  const decipher = nodeCrypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
   decipher.setAuthTag(Buffer.from(tag, "base64"));
 
   let cleartext = decipher.update(ciphertext, "base64", "utf8");
@@ -91,7 +91,7 @@ const getDecryptedValues = (data: Array<{ ciphertext: string; iv: string; tag: s
   return results;
 };
 export const decryptSecrets = (encryptedSecrets: TSecrets[], privateKey: string, latestKey: TLatestKey) => {
-  const key = decryptAsymmetric({
+  const key = crypto.encryption().asymmetric().decrypt({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,
     publicKey: latestKey.sender.publicKey,
@@ -143,7 +143,7 @@ export const decryptSecretVersions = (
   privateKey: string,
   latestKey: TLatestKey
 ) => {
-  const key = decryptAsymmetric({
+  const key = crypto.encryption().asymmetric().decrypt({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,
     publicKey: latestKey.sender.publicKey,
@@ -195,7 +195,7 @@ export const decryptSecretApprovals = (
   privateKey: string,
   latestKey: TLatestKey
 ) => {
-  const key = decryptAsymmetric({
+  const key = crypto.encryption().asymmetric().decrypt({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,
     publicKey: latestKey.sender.publicKey,
@@ -247,7 +247,7 @@ export const decryptIntegrationAuths = (
   privateKey: string,
   latestKey: TLatestKey
 ) => {
-  const key = decryptAsymmetric({
+  const key = crypto.encryption().asymmetric().decrypt({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,
     publicKey: latestKey.sender.publicKey,

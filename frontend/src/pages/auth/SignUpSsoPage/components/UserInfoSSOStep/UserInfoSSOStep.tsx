@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import jsrp from "jsrp";
-import nacl from "tweetnacl";
-import { encodeBase64 } from "tweetnacl-util";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
+import { deriveArgonKey, generateKeyPair } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
+import { useServerConfig } from "@app/context";
 import { initProjectHelper } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
@@ -65,6 +64,7 @@ export const UserInfoSSOStep = ({
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const navigate = useNavigate();
+  const { config } = useServerConfig();
 
   useEffect(() => {
     const randomPassword = crypto.randomBytes(32).toString("hex");
@@ -94,11 +94,7 @@ export const UserInfoSSOStep = ({
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
-      const pair = nacl.box.keyPair();
-      const secretKeyUint8Array = pair.secretKey;
-      const publicKeyUint8Array = pair.publicKey;
-      const privateKey = encodeBase64(secretKeyUint8Array);
-      const publicKey = encodeBase64(publicKeyUint8Array);
+      const { publicKey, privateKey } = await generateKeyPair(config.fipsEnabled);
       localStorage.setItem("PRIVATE_KEY", privateKey);
 
       client.init(
