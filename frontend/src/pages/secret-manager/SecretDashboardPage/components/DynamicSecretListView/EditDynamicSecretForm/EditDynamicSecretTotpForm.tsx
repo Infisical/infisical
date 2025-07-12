@@ -1,6 +1,4 @@
 import { Controller, useForm } from "react-hook-form";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -138,20 +136,6 @@ export const EditDynamicSecretTotpForm = ({
           <div>
             <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
-              <a
-                href="https://infisical.com/docs/documentation/platform/dynamic-secrets/totp"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-xxs"
-                  />
-                </div>
-              </a>
             </div>
             <div className="flex flex-col">
               <Controller

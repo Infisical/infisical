@@ -12,7 +12,12 @@ import {
 } from "react-icons/si";
 import { VscAzure } from "react-icons/vsc";
 import { faAws, faGithub, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faClock, faDatabase } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowUpRightFromSquare,
+  faBookOpen,
+  faClock,
+  faDatabase
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -152,6 +157,15 @@ const DYNAMIC_SECRET_LIST = [
   }
 ];
 
+const DynamicSecretDetails = Object.fromEntries(
+  DYNAMIC_SECRET_LIST.map((ds) => [ds.provider, ds.title])
+);
+
+const UniqueLinks: Record<string, string> = {
+  [DynamicSecretProviders.SqlDatabase]: "postgresql", // gotta pick one...
+  [DynamicSecretProviders.MongoAtlas]: "mongo-atlas"
+};
+
 export const CreateDynamicSecretForm = ({
   isOpen,
   onToggle,
@@ -169,10 +183,31 @@ export const CreateDynamicSecretForm = ({
     setSelectedProvider(null);
   };
 
+  const modalTitle = selectedProvider ? DynamicSecretDetails[selectedProvider] : null;
+
   return (
     <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
       <ModalContent
-        title="Dynamic secret setup"
+        title={
+          <div className="flex items-center">
+            <span>{modalTitle ? `${modalTitle} Dynamic Secret` : "Dynamic Secrets"} </span>
+            <a
+              href={`https://infisical.com/docs/documentation/platform/dynamic-secrets/${selectedProvider ? (UniqueLinks[selectedProvider] ?? selectedProvider) : "overview"}`}
+              target="_blank"
+              className="mb-0.5 ml-1.5"
+              rel="noopener noreferrer"
+            >
+              <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
+                <span>Docs</span>
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="mb-[0.07rem] ml-1 text-[10px]"
+                />
+              </div>
+            </a>
+          </div>
+        }
         subTitle="Configure dynamic secret parameters"
         className="my-4 max-w-3xl"
       >
