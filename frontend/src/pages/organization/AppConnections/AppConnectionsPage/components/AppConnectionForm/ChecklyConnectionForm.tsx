@@ -33,7 +33,7 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.nativeEnum(ChecklyConnectionMethod),
+    method: z.literal(ChecklyConnectionMethod.ApiKey),
     credentials: z.object({
       apiKey: z.string().trim().min(1, "Service API Key required"),
       accountId: z.string().min(1, "Account ID required")
