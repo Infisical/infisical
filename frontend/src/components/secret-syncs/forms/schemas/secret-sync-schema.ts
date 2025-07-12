@@ -7,6 +7,7 @@ import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configur
 import { AzureDevOpsSyncDestinationSchema } from "./azure-devops-sync-destination-schema";
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
+import { ChecklySyncDestinationSchema } from "./checkly-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
@@ -49,7 +50,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GitlabSyncDestinationSchema,
   CloudflarePagesSyncDestinationSchema,
   ZabbixSyncDestinationSchema,
-  RailwaySyncDestinationSchema
+  RailwaySyncDestinationSchema,
+  ChecklySyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

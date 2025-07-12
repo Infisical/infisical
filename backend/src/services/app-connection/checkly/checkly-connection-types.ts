@@ -27,3 +27,9 @@ export type TChecklyVariable = {
   locked: boolean;
   secret: boolean;
 };
+
+export type TChecklyAccount = {
+  id: string;
+  name: string;
+  runtimeId: string;
+};

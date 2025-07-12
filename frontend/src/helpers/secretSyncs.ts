@@ -89,6 +89,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Railway]: {
     name: "Railway",
     image: "Railway.png"
+  },
+  [SecretSync.Checkly]: {
+    name: "Checkly",
+    image: "Checkly.png"
   }
 };
 
@@ -116,7 +120,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GitLab]: AppConnection.Gitlab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
-  [SecretSync.Railway]: AppConnection.Railway
+  [SecretSync.Railway]: AppConnection.Railway,
+  [SecretSync.Checkly]: AppConnection.Checkly
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

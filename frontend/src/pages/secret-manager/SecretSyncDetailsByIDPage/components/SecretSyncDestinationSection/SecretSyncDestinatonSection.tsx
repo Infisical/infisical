@@ -18,6 +18,7 @@ import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigura
 import { AzureDevOpsSyncDestinationSection } from "./AzureDevOpsSyncDestinationSection";
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
+import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
@@ -121,6 +122,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Railway:
       DestinationComponents = <RailwaySyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Checkly:
+      DestinationComponents = <ChecklySyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);
