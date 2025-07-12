@@ -31,9 +31,10 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token started`);
 
     const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
+    const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
-    try {
-      const docs = (tx || db)(TableName.IdentityAccessToken)
+    const performDelete = (dbClient: Knex | Knex.Transaction) =>
+      dbClient(TableName.IdentityAccessToken)
         .where({
           isAccessTokenRevoked: true
         })
@@ -47,30 +48,24 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             );
         })
         .orWhere((qb) => {
-          void qb.where("accessTokenTTL", ">", 0).andWhere((qb2) => {
-            void qb2
-              .where((qb3) => {
-                void qb3
-                  .whereNotNull("accessTokenLastRenewedAt")
-                  // accessTokenLastRenewedAt + convert_integer_to_seconds(accessTokenTTL) < present_date
-                  .andWhereRaw(
-                    `"${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt" + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
-                    [MAX_TTL]
-                  );
-              })
-              .orWhere((qb3) => {
-                void qb3
-                  .whereNull("accessTokenLastRenewedAt")
-                  // created + convert_integer_to_seconds(accessTokenTTL) < present_date
-                  .andWhereRaw(
-                    `"${TableName.IdentityAccessToken}"."createdAt" + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
-                    [MAX_TTL]
-                  );
-              });
-          });
+          void qb
+            .where("accessTokenTTL", ">", 0)
+            .andWhereRaw(
+              `COALESCE("${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", "${TableName.IdentityAccessToken}"."createdAt") + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
+              [MAX_TTL]
+            );
         })
         .delete();
-      await docs;
+
+    try {
+      if (tx) {
+        await performDelete(tx);
+      } else {
+        await db.transaction(async (trx) => {
+          await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+          await performDelete(trx);
+        });
+      }
       logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token completed`);
     } catch (error) {
       throw new DatabaseError({ error, name: "IdentityAccessTokenPrune" });
