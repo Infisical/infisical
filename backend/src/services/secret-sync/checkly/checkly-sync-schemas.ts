@@ -14,7 +14,7 @@ const ChecklySyncDestinationConfigSchema = z.object({
   accountName: z.string().min(1, "Account Name is required")
 });
 
-const ChecklySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
+const ChecklySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
 export const ChecklySyncSchema = BaseSecretSyncSchema(SecretSync.Checkly, ChecklySyncOptionsConfig).extend({
   destination: z.literal(SecretSync.Checkly),
