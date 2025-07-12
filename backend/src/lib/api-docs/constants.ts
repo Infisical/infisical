@@ -2490,7 +2490,9 @@ export const SecretSyncs = {
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
     },
-    CHECKLY: {}
+    CHECKLY: {
+      accountId: "The ID of the Checkly account to sync secrets to."
+    }
   }
 };
 
