@@ -41,6 +41,7 @@ import {
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
+import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
@@ -94,7 +95,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
   [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
   [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
-  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" }
+  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
+  [AppConnection.Checkly]: { name: "Checkly", image: "Checkly.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -155,7 +157,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RailwayConnectionMethod.ProjectToken:
       return { name: "Project Token", icon: faKey };
     case RenderConnectionMethod.ApiKey:
+    case ChecklyConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
+
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

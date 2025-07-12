@@ -164,6 +164,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = "Railway Project";
       secondaryText = destinationConfig.projectName;
       break;
+    case SecretSync.Checkly:
+      primaryText = "Checkly Account";
+      secondaryText = destinationConfig.accountName;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

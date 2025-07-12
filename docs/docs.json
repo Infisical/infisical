@@ -78,10 +78,7 @@
               },
               {
                 "group": "Infisical SSH",
-                "pages": [
-                  "documentation/platform/ssh/overview",
-                  "documentation/platform/ssh/host-groups"
-                ]
+                "pages": ["documentation/platform/ssh/overview", "documentation/platform/ssh/host-groups"]
               },
               {
                 "group": "Key Management (KMS)",
@@ -378,10 +375,7 @@
               },
               {
                 "group": "Architecture",
-                "pages": [
-                  "internals/architecture/components",
-                  "internals/architecture/cloud"
-                ]
+                "pages": ["internals/architecture/components", "internals/architecture/cloud"]
               },
               "internals/security",
               "internals/service-tokens"
@@ -472,6 +466,7 @@
                   "integrations/app-connections/azure-key-vault",
                   "integrations/app-connections/bitbucket",
                   "integrations/app-connections/camunda",
+                  "integrations/app-connections/checkly",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/databricks",
                   "integrations/app-connections/flyio",
@@ -513,6 +508,7 @@
                   "integrations/secret-syncs/azure-devops",
                   "integrations/secret-syncs/azure-key-vault",
                   "integrations/secret-syncs/camunda",
+                  "integrations/secret-syncs/checkly",
                   "integrations/secret-syncs/cloudflare-pages",
                   "integrations/secret-syncs/cloudflare-workers",
                   "integrations/secret-syncs/databricks",
@@ -553,10 +549,7 @@
               "integrations/cloud/gcp-secret-manager",
               {
                 "group": "Cloudflare",
-                "pages": [
-                  "integrations/cloud/cloudflare-pages",
-                  "integrations/cloud/cloudflare-workers"
-                ]
+                "pages": ["integrations/cloud/cloudflare-pages", "integrations/cloud/cloudflare-workers"]
               },
               "integrations/cloud/terraform-cloud",
               "integrations/cloud/databricks",
@@ -668,11 +661,7 @@
                   "cli/commands/reset",
                   {
                     "group": "infisical scan",
-                    "pages": [
-                      "cli/commands/scan",
-                      "cli/commands/scan-git-changes",
-                      "cli/commands/scan-install"
-                    ]
+                    "pages": ["cli/commands/scan", "cli/commands/scan-git-changes", "cli/commands/scan-install"]
                   }
                 ]
               },
@@ -996,9 +985,7 @@
                 "pages": [
                   {
                     "group": "Kubernetes",
-                    "pages": [
-                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
-                    ]
+                    "pages": ["api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"]
                   },
                   "api-reference/endpoints/dynamic-secrets/create",
                   "api-reference/endpoints/dynamic-secrets/update",
@@ -1326,6 +1313,20 @@
                       "api-reference/endpoints/app-connections/camunda/create",
                       "api-reference/endpoints/app-connections/camunda/update",
                       "api-reference/endpoints/app-connections/camunda/delete"
+                    ]
+                  },
+                  {
+                    "group": "Checkly",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/checkly/list",
+                      "api-reference/endpoints/app-connections/checkly/get-by-id",
+                      "api-reference/endpoints/app-connections/checkly/get-by-name",
+                      "api-reference/endpoints/app-connections/checkly/create",
+                      "api-reference/endpoints/app-connections/checkly/update",
+                      "api-reference/endpoints/app-connections/checkly/delete",
+                      "api-reference/endpoints/app-connections/checkly/sync-secrets",
+                      "api-reference/endpoints/app-connections/checkly/import-secrets",
+                      "api-reference/endpoints/app-connections/checkly/remove-secrets"
                     ]
                   },
                   {
@@ -1706,6 +1707,19 @@
                       "api-reference/endpoints/secret-syncs/camunda/delete",
                       "api-reference/endpoints/secret-syncs/camunda/sync-secrets",
                       "api-reference/endpoints/secret-syncs/camunda/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Checkly",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/checkly/list",
+                      "api-reference/endpoints/secret-syncs/checkly/get-by-id",
+                      "api-reference/endpoints/secret-syncs/checkly/get-by-name",
+                      "api-reference/endpoints/secret-syncs/checkly/create",
+                      "api-reference/endpoints/secret-syncs/checkly/update",
+                      "api-reference/endpoints/secret-syncs/checkly/delete",
+                      "api-reference/endpoints/secret-syncs/checkly/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/checkly/remove-secrets"
                     ]
                   },
                   {

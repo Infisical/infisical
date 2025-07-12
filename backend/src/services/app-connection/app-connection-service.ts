@@ -49,6 +49,8 @@ import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
 import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
+import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
+import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
@@ -128,7 +130,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
   [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema,
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
-  [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema
+  [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
+  [AppConnection.Checkly]: ValidateChecklyConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -541,6 +544,7 @@ export const appConnectionServiceFactory = ({
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
-    bitbucket: bitbucketConnectionService(connectAppConnectionById)
+    bitbucket: bitbucketConnectionService(connectAppConnectionById),
+    checkly: checklyConnectionService(connectAppConnectionById)
   };
 };

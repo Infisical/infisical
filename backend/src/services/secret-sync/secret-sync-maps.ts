@@ -27,7 +27,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.CloudflareWorkers]: "Cloudflare Workers",
 
   [SecretSync.Zabbix]: "Zabbix",
-  [SecretSync.Railway]: "Railway"
+  [SecretSync.Railway]: "Railway",
+  [SecretSync.Checkly]: "Checkly"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -56,7 +57,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
 
   [SecretSync.Zabbix]: AppConnection.Zabbix,
-  [SecretSync.Railway]: AppConnection.Railway
+  [SecretSync.Railway]: AppConnection.Railway,
+  [SecretSync.Checkly]: AppConnection.Checkly
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -85,5 +87,6 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.CloudflareWorkers]: SecretSyncPlanType.Regular,
 
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular,
-  [SecretSync.Railway]: SecretSyncPlanType.Regular
+  [SecretSync.Railway]: SecretSyncPlanType.Regular,
+  [SecretSync.Checkly]: SecretSyncPlanType.Regular
 };
