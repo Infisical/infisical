@@ -168,7 +168,7 @@ export const SecretApprovalRequestAction = ({
                 isChecked={byPassApproval}
                 id="byPassApproval"
                 checkIndicatorBg="text-white"
-                className={twMerge("mr-2", byPassApproval ? "!border-red/30 !bg-red/10" : "")}
+                className={twMerge("mr-2", byPassApproval ? "!border-red/50 !bg-red/30" : "")}
               >
                 <span className="text-sm">
                   Merge without waiting for approval (bypass secret change policy)

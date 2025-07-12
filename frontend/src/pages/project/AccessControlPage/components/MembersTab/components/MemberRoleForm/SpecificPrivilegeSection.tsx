@@ -347,7 +347,7 @@ export const SpecificPrivilegeSecretForm = ({
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-read"
-                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "hover:bg-primary/40" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
@@ -378,7 +378,7 @@ export const SpecificPrivilegeSecretForm = ({
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-change"
-                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "hover:bg-primary/40" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
@@ -411,7 +411,7 @@ export const SpecificPrivilegeSecretForm = ({
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-modify"
-                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "hover:bg-primary/40" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
@@ -442,7 +442,7 @@ export const SpecificPrivilegeSecretForm = ({
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-delete"
-                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "hover:bg-primary/40" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />

@@ -42,7 +42,7 @@ export const Checkbox = ({
         className={twMerge(
           "flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border border-mineshaft-400/50 bg-mineshaft-600 shadow transition-all hover:bg-mineshaft-500",
           isDisabled && "bg-bunker-400 hover:bg-bunker-400",
-          isChecked && "border-primary/30 bg-primary/10",
+          isChecked && "border-primary/50 bg-primary/30",
           Boolean(children) && "mr-3",
           className
         )}

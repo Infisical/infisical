@@ -445,7 +445,7 @@ export const ReviewAccessRequestModal = ({
                     onCheckedChange={(checked) => setBypassApproval(checked === true)}
                     isChecked={bypassApproval}
                     id="byPassApproval"
-                    className={twMerge("mr-2", bypassApproval ? "!border-red/30 !bg-red/10" : "")}
+                    className={twMerge("mr-2", bypassApproval ? "!border-red/50 !bg-red/30" : "")}
                   >
                     <span className="text-xs text-red">
                       Approve without waiting for requirements to be met (bypass policy protection)
