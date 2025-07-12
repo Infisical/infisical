@@ -60,7 +60,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
           ? undefined
           : SecretSyncInitialSyncBehavior.OverwriteDestination
       }
-    },
+    } as Partial<TSecretSyncForm>,
     reValidateMode: "onChange"
   });
 
