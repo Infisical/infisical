@@ -245,6 +245,10 @@ import { projectMembershipServiceFactory } from "@app/services/project-membershi
 import { projectUserMembershipRoleDALFactory } from "@app/services/project-membership/project-user-membership-role-dal";
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
+import { reminderDALFactory } from "@app/services/reminder/reminder-dal";
+import { dailyReminderQueueServiceFactory } from "@app/services/reminder/reminder-queue";
+import { reminderServiceFactory } from "@app/services/reminder/reminder-service";
+import { reminderRecipientDALFactory } from "@app/services/reminder-recipients/reminder-recipient-dal";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
@@ -368,6 +372,9 @@ export const registerRoutes = async (
   const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
   const secretVersionTagV2BridgeDAL = secretVersionV2TagBridgeDALFactory(db);
+
+  const reminderDAL = reminderDALFactory(db);
+  const reminderRecipientDAL = reminderRecipientDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
@@ -732,9 +739,17 @@ export const registerRoutes = async (
 
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
 
+  const reminderService = reminderServiceFactory({
+    reminderDAL,
+    reminderRecipientDAL,
+    smtpService,
+    projectMembershipDAL,
+    permissionService,
+    secretV2BridgeDAL
+  });
+
   const orgService = orgServiceFactory({
     userAliasDAL,
-    queueService,
     identityMetadataDAL,
     secretDAL,
     secretV2BridgeDAL,
@@ -760,7 +775,8 @@ export const registerRoutes = async (
     orgBotDAL,
     oidcConfigDAL,
     loginService,
-    projectBotService
+    projectBotService,
+    reminderService
   });
   const signupService = authSignupServiceFactory({
     tokenService,
@@ -1058,7 +1074,6 @@ export const registerRoutes = async (
     secretImportDAL,
     projectEnvDAL,
     webhookDAL,
-    orgDAL,
     auditLogService,
     userDAL,
     projectMembershipDAL,
@@ -1080,11 +1095,11 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     projectKeyDAL,
     projectUserMembershipRoleDAL,
-    secretReminderRecipientsDAL,
     orgService,
     resourceMetadataDAL,
     folderCommitService,
-    secretSyncQueue
+    secretSyncQueue,
+    reminderService
   });
 
   const projectService = projectServiceFactory({
@@ -1093,7 +1108,6 @@ export const registerRoutes = async (
     projectSshConfigDAL,
     secretDAL,
     secretV2BridgeDAL,
-    queueService,
     projectQueue: projectQueueService,
     projectBotService,
     identityProjectDAL,
@@ -1130,7 +1144,8 @@ export const registerRoutes = async (
     microsoftTeamsIntegrationDAL,
     projectTemplateService,
     groupProjectDAL,
-    smtpService
+    smtpService,
+    reminderService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -1229,6 +1244,7 @@ export const registerRoutes = async (
     kmsService,
     snapshotService,
     resourceMetadataDAL,
+    reminderService,
     keyStore
   });
 
@@ -1282,7 +1298,8 @@ export const registerRoutes = async (
     secretApprovalRequestSecretDAL,
     secretV2BridgeService,
     secretApprovalRequestService,
-    licenseService
+    licenseService,
+    reminderService
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -1609,7 +1626,6 @@ export const registerRoutes = async (
     auditLogDAL,
     queueService,
     secretVersionDAL,
-    secretDAL,
     secretFolderVersionDAL: folderVersionDAL,
     snapshotDAL,
     identityAccessTokenDAL,
@@ -1618,6 +1634,13 @@ export const registerRoutes = async (
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
     serviceTokenService,
     orgService
+  });
+
+  const dailyReminderQueueService = dailyReminderQueueServiceFactory({
+    reminderService,
+    queueService,
+    secretDAL: secretV2BridgeDAL,
+    secretReminderRecipientsDAL
   });
 
   const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
@@ -1913,6 +1936,8 @@ export const registerRoutes = async (
   await telemetryQueue.startTelemetryCheck();
   await telemetryQueue.startAggregatedEventsJob();
   await dailyResourceCleanUp.startCleanUp();
+  await dailyReminderQueueService.startDailyRemindersJob();
+  await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await kmsService.startService();
@@ -2023,7 +2048,8 @@ export const registerRoutes = async (
     assumePrivileges: assumePrivilegeService,
     githubOrgSync: githubOrgSyncConfigService,
     folderCommit: folderCommitService,
-    secretScanningV2: secretScanningV2Service
+    secretScanningV2: secretScanningV2Service,
+    reminder: reminderService
   });
 
   const cronJobs: CronJob[] = [];
