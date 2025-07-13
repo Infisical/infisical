@@ -9,13 +9,21 @@ on:
     workflow_call:
 
 jobs:
-    check-be-pr:
+    validate-db-schemas:
         name: Validate DB schemas
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        env:
+            NODE_OPTIONS: "--max-old-space-size=8192"
+            REDIS_URL: redis://172.17.0.1:6379
+            DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
+            AUTH_SECRET: something-random
+            ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
         steps:
             - name: ☁️ Checkout source
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
             - uses: KengoTODA/actions-setup-docker-compose@v1
               if: ${{ env.ACT }}
               name: Install `docker compose` for local simulations
@@ -28,32 +36,19 @@ jobs:
                   cache: "npm"
                   cache-dependency-path: backend/package-lock.json
 
+            - name: Start PostgreSQL and Redis
+              run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
             - name: Install dependencies
               run: npm install
               working-directory: backend
 
-            - name: Start PostgreSQL and Redis
-              run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
-
             - name: Apply migrations
               run: npm run migration:latest-dev
               working-directory: backend
-              env:
-                  NODE_OPTIONS: "--max-old-space-size=8192"
-                  REDIS_URL: redis://172.17.0.1:6379
-                  DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
-                  AUTH_SECRET: something-random
-                  ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
 
             - name: Run schema generation
               run: npm run generate:schema
               working-directory: backend
-              env:
-                  NODE_OPTIONS: "--max-old-space-size=8192"
-                  REDIS_URL: redis://172.17.0.1:6379
-                  DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
-                  AUTH_SECRET: something-random
-                  ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
 
             - name: Check for schema changes
               run: |
