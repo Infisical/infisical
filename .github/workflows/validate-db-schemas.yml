@@ -67,5 +67,6 @@ jobs:
               working-directory: backend
 
             - name: Cleanup
+              if: always()
               run: |
                   docker compose -f "docker-compose.dev.yml" down
