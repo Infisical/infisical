@@ -1,1 +1,0 @@
-export { SsoTabGroup } from "./SsoTabGroup";

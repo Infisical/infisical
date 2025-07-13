@@ -37,6 +37,17 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
 
             Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
           </Accordion>
+          <Accordion title="Cloudflare Workers">
+            Use the following permissions to grant Infisical access to sync secrets to Cloudflare Workers:
+
+            ![Configure Token](/images/app-connections/cloudflare/cloudflare-workers-configure-permissions.png)
+
+            **Required Permissions:**
+            - **Account** - **Workers Scripts** - **Edit**
+            - **Account** - **Account Settings** - **Read**
+
+            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+          </Accordion>
         </AccordionGroup>
       </Tab>
     </Tabs>
@@ -44,7 +55,7 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
   </Step>
   <Step title="Save Your API Token">
     After creation, copy and securely store your API token as it will not be shown again.
-    
+
     ![Generated API Token](/images/app-connections/cloudflare/cloudflare-generated-token.png)
 
     <Warning>

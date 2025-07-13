@@ -8,6 +8,7 @@ import { AzureDevOpsSyncDestinationSchema } from "./azure-devops-sync-destinatio
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
+import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
 import { GcpSyncDestinationSchema } from "./gcp-sync-destination-schema";
@@ -48,6 +49,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   FlyioSyncDestinationSchema,
   GitlabSyncDestinationSchema,
   CloudflarePagesSyncDestinationSchema,
+  CloudflareWorkersSyncDestinationSchema,
+
   ZabbixSyncDestinationSchema,
   RailwaySyncDestinationSchema
 ]);

@@ -1322,7 +1322,7 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const env = await projectEnvDAL.findOne({ id: policy.envId });
-    const user = await userDAL.findById(secretApprovalRequest.committerUserId);
+    const user = await userDAL.findById(actorId);
 
     await triggerWorkflowIntegrationNotification({
       input: {
@@ -1659,7 +1659,7 @@ export const secretApprovalRequestServiceFactory = ({
       return { ...doc, commits: approvalCommits };
     });
 
-    const user = await userDAL.findById(secretApprovalRequest.committerUserId);
+    const user = await userDAL.findById(actorId);
     const env = await projectEnvDAL.findOne({ id: policy.envId });
 
     await triggerWorkflowIntegrationNotification({

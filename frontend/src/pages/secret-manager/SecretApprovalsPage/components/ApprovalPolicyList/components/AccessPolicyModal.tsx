@@ -21,6 +21,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
+import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useWorkspace } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
@@ -203,6 +204,7 @@ const Form = ({
 
   const formUserBypassers = watch("userBypassers");
   const formGroupBypassers = watch("groupBypassers");
+  const formEnvironment = watch("environment")?.slug;
   const bypasserCount = (formUserBypassers || []).length + (formGroupBypassers || []).length;
 
   const handleCreatePolicy = async ({
@@ -474,7 +476,11 @@ const Form = ({
                 errorText={error?.message}
                 className="flex-1"
               >
-                <Input {...field} value={field.value || ""} />
+                <SecretPathInput
+                  {...field}
+                  value={field.value || ""}
+                  environment={formEnvironment}
+                />
               </FormControl>
             )}
           />
