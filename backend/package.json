@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "test",
+  "description": "",
   "main": "./dist/main.mjs",
   "bin": "dist/main.js",
   "pkg": {
