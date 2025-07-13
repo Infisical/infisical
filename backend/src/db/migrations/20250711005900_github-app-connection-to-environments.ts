@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-// test
+
 import { inMemoryKeyStore } from "@app/keystore/memory";
 import { selectAllTableCols } from "@app/lib/knex";
 
