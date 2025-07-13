@@ -55,6 +55,11 @@ export const getMigrationEnvConfig = async (superAdminDAL: TSuperAdminDALFactory
 
   const fipsEnabled = await crypto.initialize(superAdminDAL);
 
+  // Fix for 128-bit entropy encryption key expansion issue:
+  // In FIPS it is not ideal to expand a 128-bit key into 256-bit. We solved this issue in the past by creating the ROOT_ENCRYPTION_KEY.
+  // If FIPS mode is enabled, we set the value of ROOT_ENCRYPTION_KEY to the value of ENCRYPTION_KEY.
+  // ROOT_ENCRYPTION_KEY is expected to be a 256-bit base64-encoded key, unlike the 32-byte key of ENCRYPTION_KEY.
+  // When ROOT_ENCRYPTION_KEY is set, our cryptography will always use a 256-bit entropy encryption key. So for the sake of FIPS we should just roll over the value of ENCRYPTION_KEY to ROOT_ENCRYPTION_KEY.
   if (fipsEnabled) {
     const newEnvCfg = {
       ...envCfg,

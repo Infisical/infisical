@@ -1,4 +1,4 @@
-import crypto, { KeyObject } from "crypto";
+import crypto, { KeyObject } from "node:crypto";
 
 import { SecretEncryptionAlgo } from "@app/db/schemas";
 import { CryptographyError } from "@app/lib/errors";

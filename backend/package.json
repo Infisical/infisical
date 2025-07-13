@@ -190,7 +190,7 @@
     "cassandra-driver": "^4.7.2",
     "connect-redis": "^7.1.1",
     "cron": "^3.1.7",
-    "crypto-js": "^4.2.0",
+    "crypto-js": "4.2.0",
     "dd-trace": "^5.40.0",
     "dotenv": "^16.4.1",
     "fastify": "^4.28.1",
