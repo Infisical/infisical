@@ -255,6 +255,11 @@ export const ReviewAccessRequestModal = ({
     return "You are not the reviewer in this step.";
   };
 
+  // users can always reject (cancel) their own request
+  const isRejectionDisabled = request.isRequestedByCurrentUser
+    ? false
+    : !(request.isApprover && request.isSelfApproveAllowed) && !bypassApproval;
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -489,14 +494,7 @@ export const ReviewAccessRequestModal = ({
                 </Button>
                 <Button
                   isLoading={isLoading === "rejected"}
-                  isDisabled={
-                    !!isLoading ||
-                    (!(
-                      request.isApprover &&
-                      (!request.isRequestedByCurrentUser || request.isSelfApproveAllowed)
-                    ) &&
-                      !bypassApproval)
-                  }
+                  isDisabled={!!isLoading || isRejectionDisabled}
                   onClick={() => handleReview("rejected")}
                   className="mt-4 border-transparent bg-transparent text-mineshaft-200 hover:border-red hover:bg-red/20 hover:text-mineshaft-200"
                   size="sm"
