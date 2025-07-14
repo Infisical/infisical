@@ -54,12 +54,24 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             );
         })
         .orWhere((qb) => {
-          void qb
-            .where("accessTokenTTL", ">", 0)
-            .andWhereRaw(
-              `COALESCE("${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", "${TableName.IdentityAccessToken}"."createdAt") + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
-              [MAX_TTL]
-            );
+          void qb.where("accessTokenTTL", ">", 0).andWhereRaw(
+            `
+              -- Check if the token's effective expiration time has passed.
+              -- The expiration time is calculated by adding its TTL to its last renewal/creation time.
+              COALESCE(
+                "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", -- Use last renewal time if available
+                "${TableName.IdentityAccessToken}"."createdAt"                 -- Otherwise, use creation time
+              )
+              + make_interval(
+                  secs => LEAST(
+                    "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
+                    ?                                                         -- Capped by MAX_TTL (parameterized value)
+                  )
+                )
+              < NOW()                                                         -- Check if the calculated time is before now
+              `,
+            [MAX_TTL]
+          );
         });
 
     do {
