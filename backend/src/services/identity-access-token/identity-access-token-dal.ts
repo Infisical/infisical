@@ -30,10 +30,16 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
   const removeExpiredTokens = async (tx?: Knex) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token started`);
 
-    const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
+    const BATCH_SIZE = 10000;
+    const MAX_RETRY_ON_FAILURE = 3;
     const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
 
-    const performDelete = (dbClient: Knex | Knex.Transaction) =>
+    let deletedTokenIds: { id: string }[] = [];
+    let numberOfRetryOnFailure = 0;
+    let isRetrying = false;
+
+    const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction) =>
       dbClient(TableName.IdentityAccessToken)
         .where({
           isAccessTokenRevoked: true
@@ -54,22 +60,46 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
               `COALESCE("${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", "${TableName.IdentityAccessToken}"."createdAt") + make_interval(secs => LEAST("${TableName.IdentityAccessToken}"."accessTokenTTL", ?)) < NOW()`,
               [MAX_TTL]
             );
-        })
-        .delete();
+        });
 
-    try {
-      if (tx) {
-        await performDelete(tx);
-      } else {
-        await db.transaction(async (trx) => {
-          await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
-          await performDelete(trx);
+    do {
+      try {
+        const deleteBatch = async (dbClient: Knex | Knex.Transaction) => {
+          const idsToDeleteQuery = getExpiredTokensQuery(dbClient).select("id").limit(BATCH_SIZE);
+          return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
+        };
+
+        if (tx) {
+          // eslint-disable-next-line no-await-in-loop
+          deletedTokenIds = await deleteBatch(tx);
+        } else {
+          // eslint-disable-next-line no-await-in-loop
+          deletedTokenIds = await db.transaction(async (trx) => {
+            await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+            return deleteBatch(trx);
+          });
+        }
+
+        numberOfRetryOnFailure = 0; // reset
+      } catch (error) {
+        numberOfRetryOnFailure += 1;
+        logger.error(error, "Failed to delete a batch of expired identity access tokens on pruning");
+      } finally {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, 10); // time to breathe for db
         });
       }
-      logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token completed`);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "IdentityAccessTokenPrune" });
+      isRetrying = numberOfRetryOnFailure > 0;
+    } while (deletedTokenIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
+
+    if (numberOfRetryOnFailure >= MAX_RETRY_ON_FAILURE) {
+      logger.error(
+        `IdentityAccessTokenPrune: Pruning failed and stopped after ${MAX_RETRY_ON_FAILURE} consecutive retries.`
+      );
     }
+
+    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token completed`);
   };
 
   return { ...identityAccessTokenOrm, findOne, removeExpiredTokens };
