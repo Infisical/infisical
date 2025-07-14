@@ -1,10 +1,14 @@
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { z } from "zod";
+
+import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { createNotification } from "@app/components/notifications";
 // TODO(akhilmhdh): rewrite this into module functions in lib
@@ -33,6 +37,9 @@ type TFormSchema = z.infer<typeof formSchema>;
 export const SignUpPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const {
     control,
     handleSubmit,
@@ -156,7 +163,21 @@ export const SignUpPage = () => {
                       errorText={error?.message}
                       isError={Boolean(error)}
                     >
-                      <Input isFullWidth size="md" type="password" {...field} />
+                      <div className="relative">
+                        <Input 
+                          isFullWidth 
+                          size="md" 
+                          type={showPassword ? "text" : "password"} 
+                          {...field} 
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-bunker-300 hover:text-bunker-200"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+                        </button>
+                      </div>
                     </FormControl>
                   )}
                 />
@@ -169,7 +190,21 @@ export const SignUpPage = () => {
                       errorText={error?.message}
                       isError={Boolean(error)}
                     >
-                      <Input isFullWidth size="md" type="password" {...field} />
+                      <div className="relative">
+                        <Input 
+                          isFullWidth 
+                          size="md" 
+                          type={showConfirmPassword ? "text" : "password"} 
+                          {...field} 
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-bunker-300 hover:text-bunker-200"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          <FontAwesomeIcon icon={showConfirmPassword ? faEyeSlash : faEye} />
+                        </button>
+                      </div>
                     </FormControl>
                   )}
                 />
