@@ -4,8 +4,8 @@ metadata:
   name: {{ include "secrets-operator.fullname" . }}-leader-election-role
   labels:
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: k8-operator
-    app.kubernetes.io/part-of: k8-operator
+    app.kubernetes.io/created-by: infisical-operator
+    app.kubernetes.io/part-of: infisical-operator
   {{- include "secrets-operator.labels" . | nindent 4 }}
 rules:
 - apiGroups:
@@ -46,8 +46,8 @@ metadata:
   name: {{ include "secrets-operator.fullname" . }}-leader-election-rolebinding
   labels:
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: k8-operator
-    app.kubernetes.io/part-of: k8-operator
+    app.kubernetes.io/created-by: infisical-operator
+    app.kubernetes.io/part-of: infisical-operator
   {{- include "secrets-operator.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io

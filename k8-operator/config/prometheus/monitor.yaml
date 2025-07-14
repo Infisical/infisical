@@ -1,4 +1,3 @@
-
 # Prometheus Monitor Service (Metrics)
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -8,8 +7,8 @@ metadata:
     app.kubernetes.io/name: servicemonitor
     app.kubernetes.io/instance: controller-manager-metrics-monitor
     app.kubernetes.io/component: metrics
-    app.kubernetes.io/created-by: k8-operator
-    app.kubernetes.io/part-of: k8-operator
+    app.kubernetes.io/created-by: infisical-operator
+    app.kubernetes.io/part-of: infisical-operator
     app.kubernetes.io/managed-by: kustomize
   name: controller-manager-metrics-monitor
   namespace: system
