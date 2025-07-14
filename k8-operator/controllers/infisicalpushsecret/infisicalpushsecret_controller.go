@@ -19,11 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
-	"github.com/Infisical/infisical/k8-operator/packages/api"
-	"github.com/Infisical/infisical/k8-operator/packages/constants"
-	controllerhelpers "github.com/Infisical/infisical/k8-operator/packages/controllerhelpers"
-	"github.com/Infisical/infisical/k8-operator/packages/util"
+	secretsv1alpha1 "github.com/Infisical/infisical/infisical-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/infisical-operator/packages/api"
+	"github.com/Infisical/infisical/infisical-operator/packages/constants"
+	controllerhelpers "github.com/Infisical/infisical/infisical-operator/packages/controllerhelpers"
+	"github.com/Infisical/infisical/infisical-operator/packages/util"
 	"github.com/go-logr/logr"
 )
 

@@ -1,4 +1,4 @@
-module github.com/Infisical/infisical/k8-operator
+module github.com/Infisical/infisical/infisical-operator
 
 go 1.21
 

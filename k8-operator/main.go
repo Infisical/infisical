@@ -18,11 +18,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
-	infisicalDynamicSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicaldynamicsecret"
-	infisicalPushSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicalpushsecret"
-	infisicalSecretController "github.com/Infisical/infisical/k8-operator/controllers/infisicalsecret"
-	"github.com/Infisical/infisical/k8-operator/packages/template"
+	secretsv1alpha1 "github.com/Infisical/infisical/infisical-operator/api/v1alpha1"
+	infisicalDynamicSecretController "github.com/Infisical/infisical/infisical-operator/controllers/infisicaldynamicsecret"
+	infisicalPushSecretController "github.com/Infisical/infisical/infisical-operator/controllers/infisicalpushsecret"
+	infisicalSecretController "github.com/Infisical/infisical/infisical-operator/controllers/infisicalsecret"
+	"github.com/Infisical/infisical/infisical-operator/packages/template"
 	//+kubebuilder:scaffold:imports
 )
 

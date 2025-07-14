@@ -10,7 +10,7 @@ import (
 
 	authenticationv1 "k8s.io/api/authentication/v1"
 
-	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/infisical-operator/api/v1alpha1"
 	"github.com/aws/smithy-go/ptr"
 	infisicalSdk "github.com/infisical/go-sdk"
 	"sigs.k8s.io/controller-runtime/pkg/client"

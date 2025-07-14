@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
-	"github.com/Infisical/infisical/k8-operator/packages/util"
+	"github.com/Infisical/infisical/infisical-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/infisical-operator/packages/util"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
