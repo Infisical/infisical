@@ -74,11 +74,14 @@ export const generateUserSrpKeys = async (
     ciphertext: encryptedPrivateKey,
     iv: encryptedPrivateKeyIV,
     tag: encryptedPrivateKeyTag
-  } = crypto.encryption().encryptSymmetric({
-    plaintext: privateKey,
-    key: key.toString("base64"),
-    keySize: SymmetricKeySize.Bits256
-  });
+  } = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({
+      plaintext: privateKey,
+      key: key.toString("base64"),
+      keySize: SymmetricKeySize.Bits256
+    });
 
   // create the protected key by encrypting the symmetric key
   // [key] with the derived key
@@ -86,11 +89,14 @@ export const generateUserSrpKeys = async (
     ciphertext: protectedKey,
     iv: protectedKeyIV,
     tag: protectedKeyTag
-  } = crypto.encryption().encryptSymmetric({
-    plaintext: key.toString("hex"),
-    key: derivedKey.toString("base64"),
-    keySize: SymmetricKeySize.Bits256
-  });
+  } = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({
+      plaintext: key.toString("hex"),
+      key: derivedKey.toString("base64"),
+      keySize: SymmetricKeySize.Bits256
+    });
 
   return {
     protectedKey,
@@ -121,13 +127,16 @@ export const getUserPrivateKey = async (
   >
 ) => {
   if (user.encryptionVersion === UserEncryption.V1) {
-    return crypto.encryption().decryptSymmetric({
-      ciphertext: user.encryptedPrivateKey,
-      iv: user.iv,
-      tag: user.tag,
-      key: password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0"),
-      keySize: SymmetricKeySize.Bits128
-    });
+    return crypto
+      .encryption()
+      .symmetric()
+      .decrypt({
+        ciphertext: user.encryptedPrivateKey,
+        iv: user.iv,
+        tag: user.tag,
+        key: password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0"),
+        keySize: SymmetricKeySize.Bits128
+      });
   }
   if (
     user.encryptionVersion === UserEncryption.V2 &&
@@ -145,7 +154,7 @@ export const getUserPrivateKey = async (
       raw: true
     });
     if (!derivedKey) throw new Error("Failed to derive key from password");
-    const key = crypto.encryption().decryptSymmetric({
+    const key = crypto.encryption().symmetric().decrypt({
       ciphertext: user.protectedKey,
       iv: user.protectedKeyIV,
       tag: user.protectedKeyTag,
@@ -153,13 +162,16 @@ export const getUserPrivateKey = async (
       keySize: SymmetricKeySize.Bits128
     });
 
-    const privateKey = crypto.encryption().decryptSymmetric({
-      ciphertext: user.encryptedPrivateKey,
-      iv: user.iv,
-      tag: user.tag,
-      key: Buffer.from(key, "hex"),
-      keySize: SymmetricKeySize.Bits128
-    });
+    const privateKey = crypto
+      .encryption()
+      .symmetric()
+      .decrypt({
+        ciphertext: user.encryptedPrivateKey,
+        iv: user.iv,
+        tag: user.tag,
+        key: Buffer.from(key, "hex"),
+        keySize: SymmetricKeySize.Bits128
+      });
     return privateKey;
   }
   throw new Error(`GetUserPrivateKey: Encryption version not found`);

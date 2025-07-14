@@ -75,18 +75,21 @@ const reencryptIdentityOidcAuth = async (knex: Knex) => {
           orgEncryptionRingBuffer.push(orgId, orgKmsService);
         }
 
-        const key = crypto.encryption().decryptWithRootEncryptionKey({
-          ciphertext: encryptedSymmetricKey,
-          iv: symmetricKeyIV,
-          tag: symmetricKeyTag,
-          keyEncoding: symmetricKeyKeyEncoding as SecretKeyEncoding
-        });
+        const key = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            ciphertext: encryptedSymmetricKey,
+            iv: symmetricKeyIV,
+            tag: symmetricKeyTag,
+            keyEncoding: symmetricKeyKeyEncoding as SecretKeyEncoding
+          });
 
         const decryptedCertificate =
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore This will be removed in next cycle so ignore the ts missing error
           el.encryptedCaCert && el.caCertIV && el.caCertTag
-            ? crypto.encryption().decryptSymmetric({
+            ? crypto.encryption().symmetric().decrypt({
                 key,
                 keySize: SymmetricKeySize.Bits256,
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

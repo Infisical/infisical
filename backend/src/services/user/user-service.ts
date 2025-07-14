@@ -218,12 +218,15 @@ export const userServiceFactory = ({
       throw new NotFoundError({ message: `Private key for user with ID '${userId}' not found` });
     }
 
-    const privateKey = crypto.encryption().decryptWithRootEncryptionKey({
-      ciphertext: user.serverEncryptedPrivateKey,
-      tag: user.serverEncryptedPrivateKeyTag,
-      iv: user.serverEncryptedPrivateKeyIV,
-      keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-    });
+    const privateKey = crypto
+      .encryption()
+      .symmetric()
+      .decryptWithRootEncryptionKey({
+        ciphertext: user.serverEncryptedPrivateKey,
+        tag: user.serverEncryptedPrivateKeyTag,
+        iv: user.serverEncryptedPrivateKeyIV,
+        keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+      });
 
     return privateKey;
   };

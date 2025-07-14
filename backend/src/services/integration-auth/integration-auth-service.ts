@@ -218,7 +218,7 @@ export const integrationAuthServiceFactory = ({
     } else {
       if (!botKey) throw new NotFoundError({ message: `Project bot key for project with ID '${projectId}' not found` });
       if (tokenExchange.refreshToken) {
-        const refreshEncToken = crypto.encryption().encryptSymmetric({
+        const refreshEncToken = crypto.encryption().symmetric().encrypt({
           plaintext: tokenExchange.refreshToken,
           key: botKey,
           keySize: SymmetricKeySize.Bits128
@@ -229,7 +229,7 @@ export const integrationAuthServiceFactory = ({
         updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
       }
       if (tokenExchange.accessToken) {
-        const accessEncToken = crypto.encryption().encryptSymmetric({
+        const accessEncToken = crypto.encryption().symmetric().encrypt({
           plaintext: tokenExchange.accessToken,
           key: botKey,
           keySize: SymmetricKeySize.Bits128
@@ -355,7 +355,7 @@ export const integrationAuthServiceFactory = ({
           url,
           updateDoc.metadata as Record<string, string>
         );
-        const refreshEncToken = crypto.encryption().encryptSymmetric({
+        const refreshEncToken = crypto.encryption().symmetric().encrypt({
           plaintext: tokenDetails.refreshToken,
           key: botKey,
           keySize: SymmetricKeySize.Bits128
@@ -363,7 +363,7 @@ export const integrationAuthServiceFactory = ({
         updateDoc.refreshIV = refreshEncToken.iv;
         updateDoc.refreshTag = refreshEncToken.tag;
         updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
-        const accessEncToken = crypto.encryption().encryptSymmetric({
+        const accessEncToken = crypto.encryption().symmetric().encrypt({
           plaintext: tokenDetails.accessToken,
           key: botKey,
           keySize: SymmetricKeySize.Bits128
@@ -377,7 +377,7 @@ export const integrationAuthServiceFactory = ({
 
       if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
         if (accessToken) {
-          const accessEncToken = crypto.encryption().encryptSymmetric({
+          const accessEncToken = crypto.encryption().symmetric().encrypt({
             plaintext: accessToken,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
@@ -387,7 +387,7 @@ export const integrationAuthServiceFactory = ({
           updateDoc.accessCiphertext = accessEncToken.ciphertext;
         }
         if (accessId) {
-          const accessEncToken = crypto.encryption().encryptSymmetric({
+          const accessEncToken = crypto.encryption().symmetric().encrypt({
             plaintext: accessId,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
@@ -397,7 +397,7 @@ export const integrationAuthServiceFactory = ({
           updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
         }
         if (awsAssumeIamRoleArn) {
-          const awsAssumeIamRoleArnEnc = crypto.encryption().encryptSymmetric({
+          const awsAssumeIamRoleArnEnc = crypto.encryption().symmetric().encrypt({
             plaintext: awsAssumeIamRoleArn,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
@@ -516,7 +516,7 @@ export const integrationAuthServiceFactory = ({
           url,
           updateDoc.metadata as Record<string, string>
         );
-        const refreshEncToken = crypto.encryption().encryptSymmetric({
+        const refreshEncToken = crypto.encryption().symmetric().encrypt({
           plaintext: tokenDetails.refreshToken,
           key: botKey,
           keySize: SymmetricKeySize.Bits128
@@ -525,7 +525,7 @@ export const integrationAuthServiceFactory = ({
         updateDoc.refreshTag = refreshEncToken.tag;
         updateDoc.refreshCiphertext = refreshEncToken.ciphertext;
 
-        const accessEncToken = crypto.encryption().encryptSymmetric({
+        const accessEncToken = crypto.encryption().symmetric().encrypt({
           plaintext: tokenDetails.accessToken,
           key: botKey,
           keySize: SymmetricKeySize.Bits128
@@ -540,7 +540,7 @@ export const integrationAuthServiceFactory = ({
 
       if (!refreshToken && (accessId || accessToken || awsAssumeIamRoleArn)) {
         if (accessToken) {
-          const accessEncToken = crypto.encryption().encryptSymmetric({
+          const accessEncToken = crypto.encryption().symmetric().encrypt({
             plaintext: accessToken,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
@@ -550,7 +550,7 @@ export const integrationAuthServiceFactory = ({
           updateDoc.accessCiphertext = accessEncToken.ciphertext;
         }
         if (accessId) {
-          const accessEncToken = crypto.encryption().encryptSymmetric({
+          const accessEncToken = crypto.encryption().symmetric().encrypt({
             plaintext: accessId,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
@@ -560,7 +560,7 @@ export const integrationAuthServiceFactory = ({
           updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
         }
         if (awsAssumeIamRoleArn) {
-          const awsAssumeIamRoleArnEnc = crypto.encryption().encryptSymmetric({
+          const awsAssumeIamRoleArnEnc = crypto.encryption().symmetric().encrypt({
             plaintext: awsAssumeIamRoleArn,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
@@ -648,7 +648,7 @@ export const integrationAuthServiceFactory = ({
     } else {
       if (!botKey) throw new NotFoundError({ message: "Project bot key not found" });
       if (integrationAuth.accessTag && integrationAuth.accessIV && integrationAuth.accessCiphertext) {
-        accessToken = crypto.encryption().decryptSymmetric({
+        accessToken = crypto.encryption().symmetric().decrypt({
           ciphertext: integrationAuth.accessCiphertext,
           iv: integrationAuth.accessIV,
           tag: integrationAuth.accessTag,
@@ -658,7 +658,7 @@ export const integrationAuthServiceFactory = ({
       }
 
       if (integrationAuth.refreshCiphertext && integrationAuth.refreshIV && integrationAuth.refreshTag) {
-        const refreshToken = crypto.encryption().decryptSymmetric({
+        const refreshToken = crypto.encryption().symmetric().decrypt({
           key: botKey,
           ciphertext: integrationAuth.refreshCiphertext,
           iv: integrationAuth.refreshIV,
@@ -675,13 +675,13 @@ export const integrationAuthServiceFactory = ({
             integrationAuth.metadata as Record<string, string>
           );
 
-          const refreshEncToken = crypto.encryption().encryptSymmetric({
+          const refreshEncToken = crypto.encryption().symmetric().encrypt({
             plaintext: tokenDetails.refreshToken,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
           });
 
-          const accessEncToken = crypto.encryption().encryptSymmetric({
+          const accessEncToken = crypto.encryption().symmetric().encrypt({
             plaintext: tokenDetails.accessToken,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
@@ -701,7 +701,7 @@ export const integrationAuthServiceFactory = ({
       if (!accessToken) throw new BadRequestError({ message: "Missing access token" });
 
       if (integrationAuth.accessIdTag && integrationAuth.accessIdIV && integrationAuth.accessIdCiphertext) {
-        accessId = crypto.encryption().decryptSymmetric({
+        accessId = crypto.encryption().symmetric().decrypt({
           key: botKey,
           ciphertext: integrationAuth.accessIdCiphertext,
           iv: integrationAuth.accessIdIV,

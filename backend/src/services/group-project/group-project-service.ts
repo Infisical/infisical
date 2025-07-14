@@ -212,12 +212,15 @@ export const groupProjectServiceFactory = ({
           });
         }
 
-        const botPrivateKey = crypto.encryption().decryptWithRootEncryptionKey({
-          keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-          iv: bot.iv,
-          tag: bot.tag,
-          ciphertext: bot.encryptedPrivateKey
-        });
+        const botPrivateKey = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            keyEncoding: bot.keyEncoding as SecretKeyEncoding,
+            iv: bot.iv,
+            tag: bot.tag,
+            ciphertext: bot.encryptedPrivateKey
+          });
 
         const plaintextProjectKey = crypto.encryption().asymmetric().decrypt({
           ciphertext: ghostUserLatestKey.encryptedKey,

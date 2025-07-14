@@ -237,7 +237,7 @@ export const secretSnapshotServiceFactory = ({
       snapshotDetails = {
         ...encryptedSnapshotDetails,
         secretVersions: encryptedSnapshotDetails.secretVersions.map((el) => {
-          const secretKey = crypto.encryption().decryptSymmetric({
+          const secretKey = crypto.encryption().symmetric().decrypt({
             ciphertext: el.secretKeyCiphertext,
             iv: el.secretKeyIV,
             tag: el.secretKeyTag,
@@ -259,7 +259,7 @@ export const secretSnapshotServiceFactory = ({
           let secretValue = "";
 
           if (canReadValue) {
-            secretValue = crypto.encryption().decryptSymmetric({
+            secretValue = crypto.encryption().symmetric().decrypt({
               ciphertext: el.secretValueCiphertext,
               iv: el.secretValueIV,
               tag: el.secretValueTag,
@@ -277,7 +277,7 @@ export const secretSnapshotServiceFactory = ({
             secretValue,
             secretComment:
               el.secretCommentTag && el.secretCommentIV && el.secretCommentCiphertext
-                ? crypto.encryption().decryptSymmetric({
+                ? crypto.encryption().symmetric().decrypt({
                     ciphertext: el.secretCommentCiphertext,
                     iv: el.secretCommentIV,
                     tag: el.secretCommentTag,

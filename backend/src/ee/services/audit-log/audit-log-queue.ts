@@ -114,12 +114,15 @@ export const auditLogQueueServiceFactory = async ({
               const streamHeaders =
                 encryptedHeadersIV && encryptedHeadersCiphertext && encryptedHeadersTag
                   ? (JSON.parse(
-                      crypto.encryption().decryptWithRootEncryptionKey({
-                        keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
-                        iv: encryptedHeadersIV,
-                        tag: encryptedHeadersTag,
-                        ciphertext: encryptedHeadersCiphertext
-                      })
+                      crypto
+                        .encryption()
+                        .symmetric()
+                        .decryptWithRootEncryptionKey({
+                          keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
+                          iv: encryptedHeadersIV,
+                          tag: encryptedHeadersTag,
+                          ciphertext: encryptedHeadersCiphertext
+                        })
                     ) as LogStreamHeaders[])
                   : [];
 
@@ -216,12 +219,15 @@ export const auditLogQueueServiceFactory = async ({
           const streamHeaders =
             encryptedHeadersIV && encryptedHeadersCiphertext && encryptedHeadersTag
               ? (JSON.parse(
-                  crypto.encryption().decryptWithRootEncryptionKey({
-                    keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
-                    iv: encryptedHeadersIV,
-                    tag: encryptedHeadersTag,
-                    ciphertext: encryptedHeadersCiphertext
-                  })
+                  crypto
+                    .encryption()
+                    .symmetric()
+                    .decryptWithRootEncryptionKey({
+                      keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
+                      iv: encryptedHeadersIV,
+                      tag: encryptedHeadersTag,
+                      ciphertext: encryptedHeadersCiphertext
+                    })
                 ) as LogStreamHeaders[])
               : [];
 

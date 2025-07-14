@@ -56,20 +56,23 @@ export async function up(knex: Knex): Promise<void> {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore This will be removed in next cycle so ignore the ts missing error
         el.encryptedDataTag && el.encryptedDataIV && el.encryptedData && el.keyEncoding
-          ? crypto.encryption().decryptWithRootEncryptionKey({
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              keyEncoding: el.keyEncoding as SecretKeyEncoding,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              iv: el.encryptedDataIV,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              tag: el.encryptedDataTag,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              ciphertext: el.encryptedData
-            })
+          ? crypto
+              .encryption()
+              .symmetric()
+              .decryptWithRootEncryptionKey({
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+                keyEncoding: el.keyEncoding as SecretKeyEncoding,
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+                iv: el.encryptedDataIV,
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+                tag: el.encryptedDataTag,
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+                ciphertext: el.encryptedData
+              })
           : "";
 
       const encryptedRotationData = projectKmsService.encryptor({

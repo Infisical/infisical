@@ -70,7 +70,7 @@ export async function seed(knex: Knex): Promise<void> {
   const encKey = process.env.ENCRYPTION_KEY;
   if (!encKey) throw new Error("Missing ENCRYPTION_KEY");
   const salt = crypto.randomBytes(16).toString("base64");
-  const secretBlindIndex = crypto.encryption().encryptSymmetric({
+  const secretBlindIndex = crypto.encryption().symmetric().encrypt({
     plaintext: salt,
     key: encKey,
     keySize: SymmetricKeySize.Bits128

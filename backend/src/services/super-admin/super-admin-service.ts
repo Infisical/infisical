@@ -501,7 +501,7 @@ export const superAdminServiceFactory = ({
 
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
-    const { iv, tag, ciphertext, encoding } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
+    const { iv, tag, ciphertext, encoding } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(
         {
@@ -587,7 +587,7 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
-      const { tag, encoding, ciphertext, iv } = crypto.encryption().encryptWithRootEncryptionKey(password);
+      const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(password);
       const encKeys = await generateUserSrpKeys(sanitizedEmail, password);
 
       const userEnc = await userDAL.createUserEncryption(

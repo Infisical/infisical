@@ -88,7 +88,7 @@ export const auditLogStreamServiceFactory = ({
       });
 
     const encryptedHeaders = headers
-      ? crypto.encryption().encryptWithRootEncryptionKey(JSON.stringify(headers))
+      ? crypto.encryption().symmetric().encryptWithRootEncryptionKey(JSON.stringify(headers))
       : undefined;
     const logStream = await auditLogStreamDAL.create({
       orgId: actorOrgId,
@@ -156,7 +156,7 @@ export const auditLogStreamServiceFactory = ({
       });
 
     const encryptedHeaders = headers
-      ? crypto.encryption().encryptWithRootEncryptionKey(JSON.stringify(headers))
+      ? crypto.encryption().symmetric().encryptWithRootEncryptionKey(JSON.stringify(headers))
       : undefined;
     const updatedLogStream = await auditLogStreamDAL.updateById(id, {
       url,
@@ -210,12 +210,15 @@ export const auditLogStreamServiceFactory = ({
     const headers =
       logStream?.encryptedHeadersCiphertext && logStream?.encryptedHeadersIV && logStream?.encryptedHeadersTag
         ? (JSON.parse(
-            crypto.encryption().decryptWithRootEncryptionKey({
-              tag: logStream.encryptedHeadersTag,
-              iv: logStream.encryptedHeadersIV,
-              ciphertext: logStream.encryptedHeadersCiphertext,
-              keyEncoding: logStream.encryptedHeadersKeyEncoding as SecretKeyEncoding
-            })
+            crypto
+              .encryption()
+              .symmetric()
+              .decryptWithRootEncryptionKey({
+                tag: logStream.encryptedHeadersTag,
+                iv: logStream.encryptedHeadersIV,
+                ciphertext: logStream.encryptedHeadersCiphertext,
+                keyEncoding: logStream.encryptedHeadersKeyEncoding as SecretKeyEncoding
+              })
           ) as LogStreamHeaders[])
         : undefined;
 

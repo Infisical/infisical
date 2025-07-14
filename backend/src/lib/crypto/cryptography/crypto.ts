@@ -221,122 +221,134 @@ const cryptographyFactory = () => {
       };
     };
 
-    const decryptSymmetric = ({ ciphertext, iv, tag, key, keySize }: TDecryptSymmetricInput): string => {
-      let decipher;
+    const symmetric = () => {
+      const decrypt = ({ ciphertext, iv, tag, key, keySize }: TDecryptSymmetricInput): string => {
+        let decipher;
 
-      if (keySize === SymmetricKeySize.Bits128) {
-        // Not ideal: 128-bit hex key (32 chars) gets interpreted as 32 UTF-8 bytes (256 bits)
-        // This works but reduces effective key entropy from 256 to 128 bits
-        decipher = crypto.createDecipheriv(SecretEncryptionAlgo.AES_256_GCM, key, Buffer.from(iv, "base64"));
-      } else {
-        const secretKey = crypto.createSecretKey(key, "base64");
-        decipher = crypto.createDecipheriv(SecretEncryptionAlgo.AES_256_GCM, secretKey, Buffer.from(iv, "base64"));
-      }
+        if (keySize === SymmetricKeySize.Bits128) {
+          // Not ideal: 128-bit hex key (32 chars) gets interpreted as 32 UTF-8 bytes (256 bits)
+          // This works but reduces effective key entropy from 256 to 128 bits
+          decipher = crypto.createDecipheriv(SecretEncryptionAlgo.AES_256_GCM, key, Buffer.from(iv, "base64"));
+        } else {
+          const secretKey = crypto.createSecretKey(key, "base64");
+          decipher = crypto.createDecipheriv(SecretEncryptionAlgo.AES_256_GCM, secretKey, Buffer.from(iv, "base64"));
+        }
 
-      decipher.setAuthTag(Buffer.from(tag, "base64"));
-      let cleartext = decipher.update(ciphertext, "base64", "utf8");
-      cleartext += decipher.final("utf8");
+        decipher.setAuthTag(Buffer.from(tag, "base64"));
+        let cleartext = decipher.update(ciphertext, "base64", "utf8");
+        cleartext += decipher.final("utf8");
 
-      return cleartext;
-    };
+        return cleartext;
+      };
 
-    const encryptSymmetric = ({ plaintext, key, keySize }: TEncryptSymmetricInput) => {
-      let iv;
-      let cipher;
+      const encrypt = ({ plaintext, key, keySize }: TEncryptSymmetricInput) => {
+        let iv;
+        let cipher;
 
-      if (keySize === SymmetricKeySize.Bits128) {
-        iv = crypto.randomBytes(BLOCK_SIZE_BYTES_16);
-        cipher = crypto.createCipheriv(SecretEncryptionAlgo.AES_256_GCM, key, iv);
-      } else {
-        iv = crypto.randomBytes(IV_BYTES_SIZE);
-        cipher = crypto.createCipheriv(SecretEncryptionAlgo.AES_256_GCM, crypto.createSecretKey(key, "base64"), iv);
-      }
+        if (keySize === SymmetricKeySize.Bits128) {
+          iv = crypto.randomBytes(BLOCK_SIZE_BYTES_16);
+          cipher = crypto.createCipheriv(SecretEncryptionAlgo.AES_256_GCM, key, iv);
+        } else {
+          iv = crypto.randomBytes(IV_BYTES_SIZE);
+          cipher = crypto.createCipheriv(SecretEncryptionAlgo.AES_256_GCM, crypto.createSecretKey(key, "base64"), iv);
+        }
 
-      let ciphertext = cipher.update(plaintext, "utf8", "base64");
-      ciphertext += cipher.final("base64");
+        let ciphertext = cipher.update(plaintext, "utf8", "base64");
+        ciphertext += cipher.final("base64");
+
+        return {
+          ciphertext,
+          iv: iv.toString("base64"),
+          tag: cipher.getAuthTag().toString("base64")
+        };
+      };
+
+      const encryptWithRootEncryptionKey = (data: string) => {
+        const appCfg = getConfig();
+        const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
+        const encryptionKey = appCfg.ENCRYPTION_KEY;
+
+        if (rootEncryptionKey) {
+          const { iv, tag, ciphertext } = encrypt({
+            plaintext: data,
+            key: rootEncryptionKey,
+            keySize: SymmetricKeySize.Bits256
+          });
+          return {
+            iv,
+            tag,
+            ciphertext,
+            algorithm: SecretEncryptionAlgo.AES_256_GCM,
+            encoding: SecretKeyEncoding.BASE64
+          };
+        }
+        if (encryptionKey) {
+          const { iv, tag, ciphertext } = encrypt({
+            plaintext: data,
+            key: encryptionKey,
+            keySize: SymmetricKeySize.Bits128
+          });
+          return {
+            iv,
+            tag,
+            ciphertext,
+            algorithm: SecretEncryptionAlgo.AES_256_GCM,
+            encoding: SecretKeyEncoding.UTF8
+          };
+        }
+        throw new CryptographyError({
+          message: "Missing both encryption keys"
+        });
+      };
+
+      const decryptWithRootEncryptionKey = <T = string>({
+        keyEncoding,
+        ciphertext,
+        tag,
+        iv
+      }: Omit<TDecryptSymmetricInput, "key" | "keySize"> & {
+        keyEncoding: SecretKeyEncoding;
+      }) => {
+        const appCfg = getConfig();
+        // the or gate is used used in migration
+        const rootEncryptionKey = appCfg?.ROOT_ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY;
+        const encryptionKey = appCfg?.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
+        if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
+          const data = symmetric().decrypt({
+            key: rootEncryptionKey,
+            iv,
+            tag,
+            ciphertext,
+            keySize: SymmetricKeySize.Bits256
+          });
+          return data as T;
+        }
+        if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
+          const data = symmetric().decrypt({
+            key: encryptionKey,
+            iv,
+            tag,
+            ciphertext,
+            keySize: SymmetricKeySize.Bits128
+          });
+          return data as T;
+        }
+        throw new CryptographyError({
+          message: "Missing both encryption keys"
+        });
+      };
 
       return {
-        ciphertext,
-        iv: iv.toString("base64"),
-        tag: cipher.getAuthTag().toString("base64")
+        decrypt,
+        encrypt,
+        encryptWithRootEncryptionKey,
+        decryptWithRootEncryptionKey
       };
-    };
-
-    const encryptWithRootEncryptionKey = (data: string) => {
-      const appCfg = getConfig();
-      const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
-      const encryptionKey = appCfg.ENCRYPTION_KEY;
-
-      if (rootEncryptionKey) {
-        const { iv, tag, ciphertext } = encryptSymmetric({
-          plaintext: data,
-          key: rootEncryptionKey,
-          keySize: SymmetricKeySize.Bits256
-        });
-        return {
-          iv,
-          tag,
-          ciphertext,
-          algorithm: SecretEncryptionAlgo.AES_256_GCM,
-          encoding: SecretKeyEncoding.BASE64
-        };
-      }
-      if (encryptionKey) {
-        const { iv, tag, ciphertext } = encryptSymmetric({
-          plaintext: data,
-          key: encryptionKey,
-          keySize: SymmetricKeySize.Bits128
-        });
-        return {
-          iv,
-          tag,
-          ciphertext,
-          algorithm: SecretEncryptionAlgo.AES_256_GCM,
-          encoding: SecretKeyEncoding.UTF8
-        };
-      }
-      throw new CryptographyError({
-        message: "Missing both encryption keys"
-      });
-    };
-
-    const decryptWithRootEncryptionKey = <T = string>({
-      keyEncoding,
-      ciphertext,
-      tag,
-      iv
-    }: Omit<TDecryptSymmetricInput, "key" | "keySize"> & {
-      keyEncoding: SecretKeyEncoding;
-    }) => {
-      const appCfg = getConfig();
-      // the or gate is used used in migration
-      const rootEncryptionKey = appCfg?.ROOT_ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY;
-      const encryptionKey = appCfg?.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
-      if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
-        const data = decryptSymmetric({
-          key: rootEncryptionKey,
-          iv,
-          tag,
-          ciphertext,
-          keySize: SymmetricKeySize.Bits256
-        });
-        return data as T;
-      }
-      if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
-        const data = decryptSymmetric({ key: encryptionKey, iv, tag, ciphertext, keySize: SymmetricKeySize.Bits128 });
-        return data as T;
-      }
-      throw new CryptographyError({
-        message: "Missing both encryption keys"
-      });
     };
 
     return {
       asymmetric,
-      encryptWithRootEncryptionKey,
-      decryptWithRootEncryptionKey,
-      encryptSymmetric,
-      decryptSymmetric
+      symmetric
     };
   };
 

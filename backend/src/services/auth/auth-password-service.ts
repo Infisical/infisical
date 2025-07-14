@@ -222,12 +222,15 @@ export const authPaswordServiceFactory = ({
       user.serverEncryptedPrivateKeyEncoding &&
       user.encryptionVersion === UserEncryption.V2
     ) {
-      privateKey = crypto.encryption().decryptWithRootEncryptionKey({
-        iv: user.serverEncryptedPrivateKeyIV,
-        tag: user.serverEncryptedPrivateKeyTag,
-        ciphertext: user.serverEncryptedPrivateKey,
-        keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-      });
+      privateKey = crypto
+        .encryption()
+        .symmetric()
+        .decryptWithRootEncryptionKey({
+          iv: user.serverEncryptedPrivateKeyIV,
+          tag: user.serverEncryptedPrivateKeyTag,
+          ciphertext: user.serverEncryptedPrivateKey,
+          keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+        });
     } else {
       throw new BadRequestError({
         message: "Cannot reset password without current credentials or recovery method",
@@ -240,7 +243,7 @@ export const authPaswordServiceFactory = ({
       privateKey
     });
 
-    const { tag, iv, ciphertext, encoding } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
+    const { tag, iv, ciphertext, encoding } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
 
     await userDAL.updateUserEncryptionByUserId(userId, {
       hashedPassword: newHashedPassword,

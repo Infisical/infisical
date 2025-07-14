@@ -144,12 +144,15 @@ export const orgAdminServiceFactory = ({
       });
     }
 
-    const botPrivateKey = crypto.encryption().decryptWithRootEncryptionKey({
-      keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-      iv: bot.iv,
-      tag: bot.tag,
-      ciphertext: bot.encryptedPrivateKey
-    });
+    const botPrivateKey = crypto
+      .encryption()
+      .symmetric()
+      .decryptWithRootEncryptionKey({
+        keyEncoding: bot.keyEncoding as SecretKeyEncoding,
+        iv: bot.iv,
+        tag: bot.tag,
+        ciphertext: bot.encryptedPrivateKey
+      });
 
     const userEncryptionKey = await userDAL.findUserEncKeyByUserId(actorId);
     if (!userEncryptionKey)

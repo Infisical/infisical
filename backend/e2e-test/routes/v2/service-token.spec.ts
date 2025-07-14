@@ -37,7 +37,7 @@ const createServiceToken = async (
 
   const randomBytes = crypto.randomBytes(16).toString("hex");
 
-  const { ciphertext, iv, tag } = crypto.encryption().encryptSymmetric({
+  const { ciphertext, iv, tag } = crypto.encryption().symmetric().encrypt({
     plaintext: projectKey,
     key: randomBytes,
     keySize: SymmetricKeySize.Bits128
@@ -165,7 +165,7 @@ describe("Service token secret ops", async () => {
     const serviceTokenInfo = serviceTokenInfoRes.json();
     const serviceTokenParts = serviceToken.split(".");
 
-    projectKey = crypto.encryption().decryptSymmetric({
+    projectKey = crypto.encryption().symmetric().decrypt({
       key: serviceTokenParts[3],
       tag: serviceTokenInfo.tag,
       ciphertext: serviceTokenInfo.encryptedKey,

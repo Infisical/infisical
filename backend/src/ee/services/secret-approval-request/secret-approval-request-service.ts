@@ -820,7 +820,7 @@ export const secretApprovalRequestServiceFactory = ({
                 type: SecretType.Shared,
                 references: botKey
                   ? getAllNestedSecretReferences(
-                      crypto.encryption().decryptSymmetric({
+                      crypto.encryption().symmetric().decrypt({
                         ciphertext: el.secretValueCiphertext,
                         iv: el.secretValueIV,
                         tag: el.secretValueTag,
@@ -866,7 +866,7 @@ export const secretApprovalRequestServiceFactory = ({
                   ]),
                   references: botKey
                     ? getAllNestedSecretReferences(
-                        crypto.encryption().decryptSymmetric({
+                        crypto.encryption().symmetric().decrypt({
                           ciphertext: el.secretValueCiphertext,
                           iv: el.secretValueIV,
                           tag: el.secretValueTag,

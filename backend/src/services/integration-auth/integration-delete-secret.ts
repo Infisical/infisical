@@ -111,7 +111,7 @@ const getIntegrationSecretsV1 = async (
   const secrets = await secretDAL.findByFolderId(dto.folderId);
 
   secrets.forEach((secret) => {
-    const secretKey = crypto.encryption().decryptSymmetric({
+    const secretKey = crypto.encryption().symmetric().decrypt({
       ciphertext: secret.secretKeyCiphertext,
       iv: secret.secretKeyIV,
       tag: secret.secretKeyTag,

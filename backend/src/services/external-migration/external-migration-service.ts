@@ -56,7 +56,7 @@ export const externalMigrationServiceFactory = ({
       actorAuthMethod
     });
 
-    const encrypted = crypto.encryption().encryptWithRootEncryptionKey(stringifiedJson);
+    const encrypted = crypto.encryption().symmetric().encryptWithRootEncryptionKey(stringifiedJson);
 
     await externalMigrationQueue.startImport({
       actorEmail: user.email!,

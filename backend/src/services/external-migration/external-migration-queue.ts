@@ -98,7 +98,7 @@ export const externalMigrationQueueFactory = ({
         template: SmtpTemplates.ExternalImportStarted
       });
 
-      const decrypted = crypto.encryption().decryptWithRootEncryptionKey({
+      const decrypted = crypto.encryption().symmetric().decryptWithRootEncryptionKey({
         ciphertext: data.ciphertext,
         iv: data.iv,
         keyEncoding: data.encoding,

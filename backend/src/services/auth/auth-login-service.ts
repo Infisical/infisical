@@ -336,7 +336,10 @@ export const authLoginServiceFactory = ({
 
       const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
 
-      const { iv, tag, ciphertext, encoding } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
+      const { iv, tag, ciphertext, encoding } = crypto
+        .encryption()
+        .symmetric()
+        .encryptWithRootEncryptionKey(privateKey);
 
       await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
         serverPrivateKey: null,

@@ -503,7 +503,7 @@ export const secretQueueFactory = ({
     const secrets = await secretDAL.findByFolderId(dto.folderId);
     await Promise.allSettled(
       secrets.map(async (secret) => {
-        const secretKey = crypto.encryption().decryptSymmetric({
+        const secretKey = crypto.encryption().symmetric().decrypt({
           ciphertext: secret.secretKeyCiphertext,
           iv: secret.secretKeyIV,
           tag: secret.secretKeyTag,
@@ -511,7 +511,7 @@ export const secretQueueFactory = ({
           keySize: SymmetricKeySize.Bits128
         });
 
-        const secretValue = crypto.encryption().decryptSymmetric({
+        const secretValue = crypto.encryption().symmetric().decrypt({
           ciphertext: secret.secretValueCiphertext,
           iv: secret.secretValueIV,
           tag: secret.secretValueTag,
@@ -528,7 +528,7 @@ export const secretQueueFactory = ({
         content[secretKey] = { value: expandedSecretValue || "" };
 
         if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
-          const commentValue = crypto.encryption().decryptSymmetric({
+          const commentValue = crypto.encryption().symmetric().decrypt({
             ciphertext: secret.secretCommentCiphertext,
             iv: secret.secretCommentIV,
             tag: secret.secretCommentTag,
@@ -954,13 +954,16 @@ export const secretQueueFactory = ({
             integrationAuth.awsAssumeIamRoleArnIV &&
             integrationAuth.awsAssumeIamRoleArnCipherText
           ) {
-            awsAssumeRoleArn = crypto.encryption().decryptSymmetric({
-              ciphertext: integrationAuth.awsAssumeIamRoleArnCipherText,
-              iv: integrationAuth.awsAssumeIamRoleArnIV,
-              tag: integrationAuth.awsAssumeIamRoleArnTag,
-              key: botKey as string,
-              keySize: SymmetricKeySize.Bits128
-            });
+            awsAssumeRoleArn = crypto
+              .encryption()
+              .symmetric()
+              .decrypt({
+                ciphertext: integrationAuth.awsAssumeIamRoleArnCipherText,
+                iv: integrationAuth.awsAssumeIamRoleArnIV,
+                tag: integrationAuth.awsAssumeIamRoleArnTag,
+                key: botKey as string,
+                keySize: SymmetricKeySize.Bits128
+              });
           }
 
           const suffixedSecrets: typeof secrets = {};
@@ -1241,6 +1244,7 @@ export const secretQueueFactory = ({
         );
         const { iv, tag, ciphertext, encoding, algorithm } = crypto
           .encryption()
+          .symmetric()
           .encryptWithRootEncryptionKey(ghostUser.keys.plainPrivateKey);
         await projectBotDAL.updateById(
           bot.id,
@@ -1275,14 +1279,14 @@ export const secretQueueFactory = ({
 
           await secretV2BridgeDAL.batchInsert(
             projectV1Secrets.map((el) => {
-              const key = crypto.encryption().decryptSymmetric({
+              const key = crypto.encryption().symmetric().decrypt({
                 ciphertext: el.secretKeyCiphertext,
                 iv: el.secretKeyIV,
                 tag: el.secretKeyTag,
                 key: botKey,
                 keySize: SymmetricKeySize.Bits128
               });
-              const value = crypto.encryption().decryptSymmetric({
+              const value = crypto.encryption().symmetric().decrypt({
                 ciphertext: el.secretValueCiphertext,
                 iv: el.secretValueIV,
                 tag: el.secretValueTag,
@@ -1291,7 +1295,7 @@ export const secretQueueFactory = ({
               });
               const comment =
                 el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-                  ? crypto.encryption().decryptSymmetric({
+                  ? crypto.encryption().symmetric().decrypt({
                       ciphertext: el.secretCommentCiphertext,
                       iv: el.secretCommentIV,
                       tag: el.secretCommentTag,
@@ -1346,14 +1350,14 @@ export const secretQueueFactory = ({
             });
             if (projectV3SecretVersionsGroupById[el.id]) return;
 
-            const key = crypto.encryption().decryptSymmetric({
+            const key = crypto.encryption().symmetric().decrypt({
               ciphertext: el.secretKeyCiphertext,
               iv: el.secretKeyIV,
               tag: el.secretKeyTag,
               key: botKey,
               keySize: SymmetricKeySize.Bits128
             });
-            const value = crypto.encryption().decryptSymmetric({
+            const value = crypto.encryption().symmetric().decrypt({
               ciphertext: el.secretValueCiphertext,
               iv: el.secretValueIV,
               tag: el.secretValueTag,
@@ -1362,7 +1366,7 @@ export const secretQueueFactory = ({
             });
             const comment =
               el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-                ? crypto.encryption().decryptSymmetric({
+                ? crypto.encryption().symmetric().decrypt({
                     ciphertext: el.secretCommentCiphertext,
                     iv: el.secretCommentIV,
                     tag: el.secretCommentTag,
@@ -1408,14 +1412,14 @@ export const secretQueueFactory = ({
         );
         Object.values(latestSecretVersionByFolder).forEach((el) => {
           if (projectV3SecretVersionsGroupById[el.id]) return;
-          const key = crypto.encryption().decryptSymmetric({
+          const key = crypto.encryption().symmetric().decrypt({
             ciphertext: el.secretKeyCiphertext,
             iv: el.secretKeyIV,
             tag: el.secretKeyTag,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
           });
-          const value = crypto.encryption().decryptSymmetric({
+          const value = crypto.encryption().symmetric().decrypt({
             ciphertext: el.secretValueCiphertext,
             iv: el.secretValueIV,
             tag: el.secretValueTag,
@@ -1424,7 +1428,7 @@ export const secretQueueFactory = ({
           });
           const comment =
             el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-              ? crypto.encryption().decryptSymmetric({
+              ? crypto.encryption().symmetric().decrypt({
                   ciphertext: el.secretCommentCiphertext,
                   iv: el.secretCommentIV,
                   tag: el.secretCommentTag,
@@ -1496,7 +1500,7 @@ export const secretQueueFactory = ({
         projectV1IntegrationAuths.map((el) => {
           const accessToken =
             el.accessIV && el.accessTag && el.accessCiphertext
-              ? crypto.encryption().decryptSymmetric({
+              ? crypto.encryption().symmetric().decrypt({
                   ciphertext: el.accessCiphertext,
                   iv: el.accessIV,
                   tag: el.accessTag,
@@ -1506,7 +1510,7 @@ export const secretQueueFactory = ({
               : undefined;
           const accessId =
             el.accessIdIV && el.accessIdTag && el.accessIdCiphertext
-              ? crypto.encryption().decryptSymmetric({
+              ? crypto.encryption().symmetric().decrypt({
                   ciphertext: el.accessIdCiphertext,
                   iv: el.accessIdIV,
                   tag: el.accessIdTag,
@@ -1516,7 +1520,7 @@ export const secretQueueFactory = ({
               : undefined;
           const refreshToken =
             el.refreshIV && el.refreshTag && el.refreshCiphertext
-              ? crypto.encryption().decryptSymmetric({
+              ? crypto.encryption().symmetric().decrypt({
                   ciphertext: el.refreshCiphertext,
                   iv: el.refreshIV,
                   tag: el.refreshTag,
@@ -1526,7 +1530,7 @@ export const secretQueueFactory = ({
               : undefined;
           const awsAssumeRoleArn =
             el.awsAssumeIamRoleArnCipherText && el.awsAssumeIamRoleArnIV && el.awsAssumeIamRoleArnTag
-              ? crypto.encryption().decryptSymmetric({
+              ? crypto.encryption().symmetric().decrypt({
                   ciphertext: el.awsAssumeIamRoleArnCipherText,
                   iv: el.awsAssumeIamRoleArnIV,
                   tag: el.awsAssumeIamRoleArnTag,

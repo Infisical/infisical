@@ -84,7 +84,7 @@ export const generateUserSrpKeys = async (password: string) => {
     ciphertext: encryptedPrivateKey,
     iv: encryptedPrivateKeyIV,
     tag: encryptedPrivateKeyTag
-  } = crypto.encryption().encryptSymmetric({
+  } = crypto.encryption().symmetric().encrypt({
     plaintext: privateKey,
     key,
     keySize: SymmetricKeySize.Bits128
@@ -98,7 +98,8 @@ export const generateUserSrpKeys = async (password: string) => {
     tag: protectedKeyTag
   } = crypto
     .encryption()
-    .encryptSymmetric({ plaintext: key.toString("hex"), key: derivedKey, keySize: SymmetricKeySize.Bits128 });
+    .symmetric()
+    .encrypt({ plaintext: key.toString("hex"), key: derivedKey, keySize: SymmetricKeySize.Bits128 });
 
   return {
     protectedKey,
@@ -125,21 +126,27 @@ export const getUserPrivateKey = async (password: string, user: TUserEncryptionK
   });
   if (!derivedKey) throw new Error("Failed to derive key from password");
 
-  const key = crypto.encryption().decryptSymmetric({
-    ciphertext: user.protectedKey as string,
-    iv: user.protectedKeyIV as string,
-    tag: user.protectedKeyTag as string,
-    key: derivedKey,
-    keySize: SymmetricKeySize.Bits128
-  });
+  const key = crypto
+    .encryption()
+    .symmetric()
+    .decrypt({
+      ciphertext: user.protectedKey as string,
+      iv: user.protectedKeyIV as string,
+      tag: user.protectedKeyTag as string,
+      key: derivedKey,
+      keySize: SymmetricKeySize.Bits128
+    });
 
-  const privateKey = crypto.encryption().decryptSymmetric({
-    ciphertext: user.encryptedPrivateKey,
-    iv: user.iv,
-    tag: user.tag,
-    key: Buffer.from(key, "hex"),
-    keySize: SymmetricKeySize.Bits128
-  });
+  const privateKey = crypto
+    .encryption()
+    .symmetric()
+    .decrypt({
+      ciphertext: user.encryptedPrivateKey,
+      iv: user.iv,
+      tag: user.tag,
+      key: Buffer.from(key, "hex"),
+      keySize: SymmetricKeySize.Bits128
+    });
   return privateKey;
 };
 
@@ -164,7 +171,7 @@ export const encryptSecret = (encKey: string, key: string, value?: string, comme
     ciphertext: secretKeyCiphertext,
     iv: secretKeyIV,
     tag: secretKeyTag
-  } = crypto.encryption().encryptSymmetric({
+  } = crypto.encryption().symmetric().encrypt({
     plaintext: key,
     key: encKey,
     keySize: SymmetricKeySize.Bits128
@@ -175,22 +182,28 @@ export const encryptSecret = (encKey: string, key: string, value?: string, comme
     ciphertext: secretValueCiphertext,
     iv: secretValueIV,
     tag: secretValueTag
-  } = crypto.encryption().encryptSymmetric({
-    plaintext: value ?? "",
-    key: encKey,
-    keySize: SymmetricKeySize.Bits128
-  });
+  } = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({
+      plaintext: value ?? "",
+      key: encKey,
+      keySize: SymmetricKeySize.Bits128
+    });
 
   // encrypt comment
   const {
     ciphertext: secretCommentCiphertext,
     iv: secretCommentIV,
     tag: secretCommentTag
-  } = crypto.encryption().encryptSymmetric({
-    plaintext: comment ?? "",
-    key: encKey,
-    keySize: SymmetricKeySize.Bits128
-  });
+  } = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({
+      plaintext: comment ?? "",
+      key: encKey,
+      keySize: SymmetricKeySize.Bits128
+    });
 
   return {
     secretKeyCiphertext,
@@ -206,7 +219,7 @@ export const encryptSecret = (encKey: string, key: string, value?: string, comme
 };
 
 export const decryptSecret = (decryptKey: string, encSecret: TSecrets) => {
-  const secretKey = crypto.encryption().decryptSymmetric({
+  const secretKey = crypto.encryption().symmetric().decrypt({
     key: decryptKey,
     ciphertext: encSecret.secretKeyCiphertext,
     tag: encSecret.secretKeyTag,
@@ -214,7 +227,7 @@ export const decryptSecret = (decryptKey: string, encSecret: TSecrets) => {
     keySize: SymmetricKeySize.Bits128
   });
 
-  const secretValue = crypto.encryption().decryptSymmetric({
+  const secretValue = crypto.encryption().symmetric().decrypt({
     key: decryptKey,
     ciphertext: encSecret.secretValueCiphertext,
     tag: encSecret.secretValueTag,
@@ -224,7 +237,7 @@ export const decryptSecret = (decryptKey: string, encSecret: TSecrets) => {
 
   const secretComment =
     encSecret.secretCommentIV && encSecret.secretCommentTag && encSecret.secretCommentCiphertext
-      ? crypto.encryption().decryptSymmetric({
+      ? crypto.encryption().symmetric().decrypt({
           key: decryptKey,
           ciphertext: encSecret.secretCommentCiphertext,
           tag: encSecret.secretCommentTag,

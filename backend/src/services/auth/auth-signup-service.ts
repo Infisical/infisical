@@ -201,7 +201,7 @@ export const authSignupServiceFactory = ({
       tag: encryptedPrivateKeyTag,
       encryptionVersion: UserEncryption.V2
     });
-    const { tag, encoding, ciphertext, iv } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
+    const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
@@ -222,12 +222,15 @@ export const authSignupServiceFactory = ({
         systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
       ) {
         // get server generated password
-        const serverGeneratedPassword = crypto.encryption().decryptWithRootEncryptionKey({
-          iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
-          tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
-          ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
-          keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-        });
+        const serverGeneratedPassword = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
+            tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
+            ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
+            keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+          });
         const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
           ...systemGeneratedUserEncryptionKey
         });
@@ -444,7 +447,7 @@ export const authSignupServiceFactory = ({
       tag: encryptedPrivateKeyTag,
       encryptionVersion: 2
     });
-    const { tag, encoding, ciphertext, iv } = crypto.encryption().encryptWithRootEncryptionKey(privateKey);
+    const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
@@ -461,12 +464,15 @@ export const authSignupServiceFactory = ({
         systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
       ) {
         // get server generated password
-        const serverGeneratedPassword = crypto.encryption().decryptWithRootEncryptionKey({
-          iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
-          tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
-          ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
-          keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-        });
+        const serverGeneratedPassword = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
+            tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
+            ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
+            keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+          });
         const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
           ...systemGeneratedUserEncryptionKey
         });

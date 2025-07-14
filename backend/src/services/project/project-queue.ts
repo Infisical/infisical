@@ -114,7 +114,7 @@ export const projectQueueFactory = ({
 
       await projectDAL.setProjectUpgradeStatus(data.projectId, ProjectUpgradeStatus.InProgress); // Set the status to in progress. This is important to prevent multiple upgrades at the same time.
 
-      const userPrivateKey = crypto.encryption().decryptWithRootEncryptionKey({
+      const userPrivateKey = crypto.encryption().symmetric().decryptWithRootEncryptionKey({
         keyEncoding: data.encryptedPrivateKey.keyEncoding,
         ciphertext: data.encryptedPrivateKey.encryptedKey,
         iv: data.encryptedPrivateKey.encryptedKeyIv,
@@ -316,6 +316,7 @@ export const projectQueueFactory = ({
         // Encrypt the bot private key (which is the same as the ghost user)
         const { iv, tag, ciphertext, encoding, algorithm } = crypto
           .encryption()
+          .symmetric()
           .encryptWithRootEncryptionKey(ghostUser.keys.plainPrivateKey);
 
         // 5. Create a bot for the project
@@ -337,12 +338,15 @@ export const projectQueueFactory = ({
           tx
         );
 
-        const botPrivateKey = crypto.encryption().decryptWithRootEncryptionKey({
-          keyEncoding: newBot.keyEncoding as SecretKeyEncoding,
-          iv: newBot.iv,
-          tag: newBot.tag,
-          ciphertext: newBot.encryptedPrivateKey
-        });
+        const botPrivateKey = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            keyEncoding: newBot.keyEncoding as SecretKeyEncoding,
+            iv: newBot.iv,
+            tag: newBot.tag,
+            ciphertext: newBot.encryptedPrivateKey
+          });
 
         const botKey = crypto.encryption().asymmetric().decrypt({
           ciphertext: newBot.encryptedProjectKey!,
@@ -356,23 +360,29 @@ export const projectQueueFactory = ({
         const updatedSecretApprovals: TSecretApprovalRequestsSecrets[] = [];
         const updatedIntegrationAuths: TIntegrationAuths[] = [];
         for (const rawSecret of decryptedSecrets) {
-          const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
+          const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
             plaintext: rawSecret.decrypted.secretKey,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
           });
 
-          const secretValueEncrypted = crypto.encryption().encryptSymmetric({
-            plaintext: rawSecret.decrypted.secretValue || "",
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          });
+          const secretValueEncrypted = crypto
+            .encryption()
+            .symmetric()
+            .encrypt({
+              plaintext: rawSecret.decrypted.secretValue || "",
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
+            });
 
-          const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
-            plaintext: rawSecret.decrypted.secretComment || "",
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          });
+          const secretCommentEncrypted = crypto
+            .encryption()
+            .symmetric()
+            .encrypt({
+              plaintext: rawSecret.decrypted.secretComment || "",
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
+            });
 
           const payload: TSecrets = {
             ...rawSecret.original,
@@ -399,23 +409,29 @@ export const projectQueueFactory = ({
         }
 
         for (const rawSecretVersion of decryptedSecretVersions) {
-          const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
+          const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
             plaintext: rawSecretVersion.decrypted.secretKey,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
           });
 
-          const secretValueEncrypted = crypto.encryption().encryptSymmetric({
-            plaintext: rawSecretVersion.decrypted.secretValue || "",
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          });
+          const secretValueEncrypted = crypto
+            .encryption()
+            .symmetric()
+            .encrypt({
+              plaintext: rawSecretVersion.decrypted.secretValue || "",
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
+            });
 
-          const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
-            plaintext: rawSecretVersion.decrypted.secretComment || "",
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          });
+          const secretCommentEncrypted = crypto
+            .encryption()
+            .symmetric()
+            .encrypt({
+              plaintext: rawSecretVersion.decrypted.secretComment || "",
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
+            });
 
           const payload: TSecretVersions = {
             ...rawSecretVersion.original,
@@ -442,21 +458,27 @@ export const projectQueueFactory = ({
         }
 
         for (const rawSecretApproval of decryptedApprovalSecrets) {
-          const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
+          const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
             plaintext: rawSecretApproval.decrypted.secretKey,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
           });
-          const secretValueEncrypted = crypto.encryption().encryptSymmetric({
-            plaintext: rawSecretApproval.decrypted.secretValue || "",
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          });
-          const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
-            plaintext: rawSecretApproval.decrypted.secretComment || "",
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          });
+          const secretValueEncrypted = crypto
+            .encryption()
+            .symmetric()
+            .encrypt({
+              plaintext: rawSecretApproval.decrypted.secretValue || "",
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
+            });
+          const secretCommentEncrypted = crypto
+            .encryption()
+            .symmetric()
+            .encrypt({
+              plaintext: rawSecretApproval.decrypted.secretComment || "",
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
+            });
 
           const payload: TSecretApprovalRequestsSecrets = {
             ...rawSecretApproval.original,
@@ -483,17 +505,17 @@ export const projectQueueFactory = ({
         }
 
         for (const integrationAuth of decryptedIntegrationAuths) {
-          const access = crypto.encryption().encryptSymmetric({
+          const access = crypto.encryption().symmetric().encrypt({
             plaintext: integrationAuth.decrypted.access,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
           });
-          const accessId = crypto.encryption().encryptSymmetric({
+          const accessId = crypto.encryption().symmetric().encrypt({
             plaintext: integrationAuth.decrypted.accessId,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
           });
-          const refresh = crypto.encryption().encryptSymmetric({
+          const refresh = crypto.encryption().symmetric().encrypt({
             plaintext: integrationAuth.decrypted.refresh,
             key: botKey,
             keySize: SymmetricKeySize.Bits128

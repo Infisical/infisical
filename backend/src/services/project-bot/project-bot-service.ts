@@ -58,6 +58,7 @@ export const projectBotServiceFactory = ({
 
       const { iv, tag, ciphertext, encoding, algorithm } = crypto
         .encryption()
+        .symmetric()
         .encryptWithRootEncryptionKey(keys.privateKey);
 
       const project = await projectDAL.findById(projectId, tx);

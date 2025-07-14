@@ -7,12 +7,15 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TGetPrivateKeyDTO } from "./project-bot-types";
 
 export const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) => {
-  return crypto.encryption().decryptWithRootEncryptionKey({
-    keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-    iv: bot.iv,
-    tag: bot.tag,
-    ciphertext: bot.encryptedPrivateKey
-  });
+  return crypto
+    .encryption()
+    .symmetric()
+    .decryptWithRootEncryptionKey({
+      keyEncoding: bot.keyEncoding as SecretKeyEncoding,
+      iv: bot.iv,
+      tag: bot.tag,
+      ciphertext: bot.encryptedPrivateKey
+    });
 };
 
 export const getBotKeyFnFactory = (
@@ -46,12 +49,15 @@ export const getBotKeyFnFactory = (
         projectV1Keys.serverEncryptedPrivateKeyTag &&
         projectV1Keys.serverEncryptedPrivateKeyEncoding
       ) {
-        userPrivateKey = crypto.encryption().decryptWithRootEncryptionKey({
-          iv: projectV1Keys.serverEncryptedPrivateKeyIV,
-          tag: projectV1Keys.serverEncryptedPrivateKeyTag,
-          ciphertext: projectV1Keys.serverEncryptedPrivateKey,
-          keyEncoding: projectV1Keys.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-        });
+        userPrivateKey = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            iv: projectV1Keys.serverEncryptedPrivateKeyIV,
+            tag: projectV1Keys.serverEncryptedPrivateKeyTag,
+            ciphertext: projectV1Keys.serverEncryptedPrivateKey,
+            keyEncoding: projectV1Keys.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+          });
       }
       const workspaceKey = crypto.encryption().asymmetric().decrypt({
         ciphertext: projectV1Keys.projectEncryptedKey,
@@ -62,6 +68,7 @@ export const getBotKeyFnFactory = (
       const botKey = await crypto.encryption().asymmetric().generateKeyPair();
       const { iv, tag, ciphertext, encoding, algorithm } = crypto
         .encryption()
+        .symmetric()
         .encryptWithRootEncryptionKey(botKey.privateKey);
       const encryptedWorkspaceKey = crypto
         .encryption()

@@ -372,14 +372,17 @@ export const secretRotationQueueFactory = ({
 
         const encryptedSecrets = rotationOutputs.map(({ key: outputKey, secretId }) => ({
           secretId,
-          value: crypto.encryption().encryptSymmetric({
-            plaintext:
-              typeof newCredential.outputs[outputKey] === "object"
-                ? JSON.stringify(newCredential.outputs[outputKey])
-                : String(newCredential.outputs[outputKey]),
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          })
+          value: crypto
+            .encryption()
+            .symmetric()
+            .encrypt({
+              plaintext:
+                typeof newCredential.outputs[outputKey] === "object"
+                  ? JSON.stringify(newCredential.outputs[outputKey])
+                  : String(newCredential.outputs[outputKey]),
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
+            })
         }));
 
         // map the final values to output keys in the board

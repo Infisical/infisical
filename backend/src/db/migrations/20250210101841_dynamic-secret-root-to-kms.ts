@@ -63,20 +63,23 @@ export async function up(knex: Knex): Promise<void> {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore This will be removed in next cycle so ignore the ts missing error
         el.inputIV && el.inputTag && el.inputCiphertext && el.keyEncoding
-          ? crypto.encryption().decryptWithRootEncryptionKey({
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              keyEncoding: el.keyEncoding as SecretKeyEncoding,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              iv: el.inputIV,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              tag: el.inputTag,
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore This will be removed in next cycle so ignore the ts missing error
-              ciphertext: el.inputCiphertext
-            })
+          ? crypto
+              .encryption()
+              .symmetric()
+              .decryptWithRootEncryptionKey({
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+                keyEncoding: el.keyEncoding as SecretKeyEncoding,
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+                iv: el.inputIV,
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+                tag: el.inputTag,
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore This will be removed in next cycle so ignore the ts missing error
+                ciphertext: el.inputCiphertext
+              })
           : "";
 
       const encryptedInput = projectKmsService.encryptor({

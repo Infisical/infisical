@@ -235,7 +235,7 @@ export const secretRotationServiceFactory = ({
         secret: {
           id: output.secret.id,
           version: output.secret.version,
-          secretKey: crypto.encryption().decryptSymmetric({
+          secretKey: crypto.encryption().symmetric().decrypt({
             ciphertext: output.secret.secretKeyCiphertext,
             iv: output.secret.secretKeyIV,
             tag: output.secret.secretKeyTag,

@@ -32,11 +32,13 @@ export const buildSecretBlindIndexFromName = async ({
   if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
     salt = crypto
       .encryption()
-      .decryptSymmetric({ iv, ciphertext, key: rootEncryptionKey, tag, keySize: SymmetricKeySize.Bits256 });
+      .symmetric()
+      .decrypt({ iv, ciphertext, key: rootEncryptionKey, tag, keySize: SymmetricKeySize.Bits256 });
   } else if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
     salt = crypto
       .encryption()
-      .decryptSymmetric({ iv, ciphertext, key: encryptionKey, tag, keySize: SymmetricKeySize.Bits128 });
+      .symmetric()
+      .decrypt({ iv, ciphertext, key: encryptionKey, tag, keySize: SymmetricKeySize.Bits128 });
   }
   if (!salt) throw new Error("Missing secret blind index key");
 

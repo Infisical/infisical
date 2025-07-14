@@ -69,12 +69,15 @@ export async function up(knex: Knex): Promise<void> {
 
       let encryptedSecretKey = null;
       if (el.encryptedSecretKey && el.iv && el.tag && el.keyEncoding) {
-        const decyptedSecretKey = crypto.encryption().decryptWithRootEncryptionKey({
-          keyEncoding: el.keyEncoding as SecretKeyEncoding,
-          iv: el.iv,
-          tag: el.tag,
-          ciphertext: el.encryptedSecretKey
-        });
+        const decyptedSecretKey = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            keyEncoding: el.keyEncoding as SecretKeyEncoding,
+            iv: el.iv,
+            tag: el.tag,
+            ciphertext: el.encryptedSecretKey
+          });
         encryptedSecretKey = projectKmsService.encryptor({
           plainText: Buffer.from(decyptedSecretKey, "utf8")
         }).cipherTextBlob;
@@ -82,12 +85,15 @@ export async function up(knex: Knex): Promise<void> {
 
       const decryptedUrl =
         el.urlIV && el.urlTag && el.urlCipherText && el.keyEncoding
-          ? crypto.encryption().decryptWithRootEncryptionKey({
-              keyEncoding: el.keyEncoding as SecretKeyEncoding,
-              iv: el.urlIV,
-              tag: el.urlTag,
-              ciphertext: el.urlCipherText
-            })
+          ? crypto
+              .encryption()
+              .symmetric()
+              .decryptWithRootEncryptionKey({
+                keyEncoding: el.keyEncoding as SecretKeyEncoding,
+                iv: el.urlIV,
+                tag: el.urlTag,
+                ciphertext: el.urlCipherText
+              })
           : null;
 
       const encryptedUrl = projectKmsService.encryptor({

@@ -158,13 +158,16 @@ export const secretServiceFactory = ({
     return (el: { ciphertext?: string; iv: string; tag: string }) =>
       projectBot?.botKey
         ? getAllNestedSecretReferences(
-            crypto.encryption().decryptSymmetric({
-              ciphertext: el.ciphertext || "",
-              iv: el.iv,
-              tag: el.tag,
-              key: projectBot.botKey,
-              keySize: SymmetricKeySize.Bits128
-            })
+            crypto
+              .encryption()
+              .symmetric()
+              .decrypt({
+                ciphertext: el.ciphertext || "",
+                iv: el.iv,
+                tag: el.tag,
+                key: projectBot.botKey,
+                keySize: SymmetricKeySize.Bits128
+              })
           )
         : undefined;
   };
@@ -1695,21 +1698,27 @@ export const secretServiceFactory = ({
         name: "bot_not_found_error"
       });
 
-    const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
+    const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
       plaintext: secretName,
       key: botKey,
       keySize: SymmetricKeySize.Bits128
     });
-    const secretValueEncrypted = crypto.encryption().encryptSymmetric({
-      plaintext: secretValue || "",
-      key: botKey,
-      keySize: SymmetricKeySize.Bits128
-    });
-    const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
-      plaintext: secretComment || "",
-      key: botKey,
-      keySize: SymmetricKeySize.Bits128
-    });
+    const secretValueEncrypted = crypto
+      .encryption()
+      .symmetric()
+      .encrypt({
+        plaintext: secretValue || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
+    const secretCommentEncrypted = crypto
+      .encryption()
+      .symmetric()
+      .encrypt({
+        plaintext: secretComment || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
     if (policy) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
@@ -1875,22 +1884,31 @@ export const secretServiceFactory = ({
         name: "bot_not_found_error"
       });
 
-    const secretValueEncrypted = crypto.encryption().encryptSymmetric({
-      plaintext: secretValue || "",
-      key: botKey,
-      keySize: SymmetricKeySize.Bits128
-    });
-    const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
-      plaintext: secretComment || "",
-      key: botKey,
-      keySize: SymmetricKeySize.Bits128
-    });
+    const secretValueEncrypted = crypto
+      .encryption()
+      .symmetric()
+      .encrypt({
+        plaintext: secretValue || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
+    const secretCommentEncrypted = crypto
+      .encryption()
+      .symmetric()
+      .encrypt({
+        plaintext: secretComment || "",
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
 
-    const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
-      plaintext: newSecretName || secretName,
-      key: botKey,
-      keySize: SymmetricKeySize.Bits128
-    });
+    const secretKeyEncrypted = crypto
+      .encryption()
+      .symmetric()
+      .encrypt({
+        plaintext: newSecretName || secretName,
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      });
 
     if (policy) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
@@ -2137,21 +2155,27 @@ export const secretServiceFactory = ({
 
     const sanitizedSecrets = inputSecrets.map(
       ({ secretComment, secretKey, metadata, tagIds, secretValue, skipMultilineEncoding }) => {
-        const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
+        const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
           plaintext: secretKey,
           key: botKey,
           keySize: SymmetricKeySize.Bits128
         });
-        const secretValueEncrypted = crypto.encryption().encryptSymmetric({
-          plaintext: secretValue || "",
-          key: botKey,
-          keySize: SymmetricKeySize.Bits128
-        });
-        const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
-          plaintext: secretComment || "",
-          key: botKey,
-          keySize: SymmetricKeySize.Bits128
-        });
+        const secretValueEncrypted = crypto
+          .encryption()
+          .symmetric()
+          .encrypt({
+            plaintext: secretValue || "",
+            key: botKey,
+            keySize: SymmetricKeySize.Bits128
+          });
+        const secretCommentEncrypted = crypto
+          .encryption()
+          .symmetric()
+          .encrypt({
+            plaintext: secretComment || "",
+            key: botKey,
+            keySize: SymmetricKeySize.Bits128
+          });
         return {
           secretName: secretKey,
           skipMultilineEncoding,
@@ -2303,21 +2327,30 @@ export const secretServiceFactory = ({
         secretReminderNote,
         secretReminderRepeatDays
       }) => {
-        const secretKeyEncrypted = crypto.encryption().encryptSymmetric({
-          plaintext: newSecretName || secretKey,
-          key: botKey,
-          keySize: SymmetricKeySize.Bits128
-        });
-        const secretValueEncrypted = crypto.encryption().encryptSymmetric({
-          plaintext: secretValue || "",
-          key: botKey,
-          keySize: SymmetricKeySize.Bits128
-        });
-        const secretCommentEncrypted = crypto.encryption().encryptSymmetric({
-          plaintext: secretComment || "",
-          key: botKey,
-          keySize: SymmetricKeySize.Bits128
-        });
+        const secretKeyEncrypted = crypto
+          .encryption()
+          .symmetric()
+          .encrypt({
+            plaintext: newSecretName || secretKey,
+            key: botKey,
+            keySize: SymmetricKeySize.Bits128
+          });
+        const secretValueEncrypted = crypto
+          .encryption()
+          .symmetric()
+          .encrypt({
+            plaintext: secretValue || "",
+            key: botKey,
+            keySize: SymmetricKeySize.Bits128
+          });
+        const secretCommentEncrypted = crypto
+          .encryption()
+          .symmetric()
+          .encrypt({
+            plaintext: secretComment || "",
+            key: botKey,
+            keySize: SymmetricKeySize.Bits128
+          });
         return {
           secretName: secretKey,
           newSecretName,
@@ -2528,7 +2561,7 @@ export const secretServiceFactory = ({
     });
 
     return secretVersions.map((el) => {
-      const secretKey = crypto.encryption().decryptSymmetric({
+      const secretKey = crypto.encryption().symmetric().decrypt({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
@@ -2850,7 +2883,7 @@ export const secretServiceFactory = ({
         secrets.map(({ id, secretValueCiphertext, secretValueIV, secretValueTag }) => ({
           secretId: id,
           references: getAllNestedSecretReferences(
-            crypto.encryption().decryptSymmetric({
+            crypto.encryption().symmetric().decrypt({
               ciphertext: secretValueCiphertext,
               iv: secretValueIV,
               tag: secretValueTag,
@@ -2955,7 +2988,7 @@ export const secretServiceFactory = ({
     const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
 
     const decryptedSourceSecrets = sourceSecrets.map((secret) => {
-      const secretKey = crypto.encryption().decryptSymmetric({
+      const secretKey = crypto.encryption().symmetric().decrypt({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
@@ -2996,7 +3029,7 @@ export const secretServiceFactory = ({
       return {
         ...secret,
         secretKey,
-        secretValue: crypto.encryption().decryptSymmetric({
+        secretValue: crypto.encryption().symmetric().decrypt({
           ciphertext: secret.secretValueCiphertext,
           iv: secret.secretValueIV,
           tag: secret.secretValueTag,
@@ -3022,14 +3055,14 @@ export const secretServiceFactory = ({
       const decryptedDestinationSecrets = destinationSecretsFromDB.map((secret) => {
         return {
           ...secret,
-          secretKey: crypto.encryption().decryptSymmetric({
+          secretKey: crypto.encryption().symmetric().decrypt({
             ciphertext: secret.secretKeyCiphertext,
             iv: secret.secretKeyIV,
             tag: secret.secretKeyTag,
             key: botKey,
             keySize: SymmetricKeySize.Bits128
           }),
-          secretValue: crypto.encryption().decryptSymmetric({
+          secretValue: crypto.encryption().symmetric().decrypt({
             ciphertext: secret.secretValueCiphertext,
             iv: secret.secretValueIV,
             tag: secret.secretValueTag,

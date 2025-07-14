@@ -379,6 +379,7 @@ export const projectServiceFactory = ({
 
       const { iv, tag, ciphertext, encoding, algorithm } = crypto
         .encryption()
+        .symmetric()
         .encryptWithRootEncryptionKey(ghostUser.keys.plainPrivateKey);
 
       // 5. Create & a bot for the project
@@ -822,7 +823,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const encryptedPrivateKey = crypto.encryption().encryptWithRootEncryptionKey(userPrivateKey);
+    const encryptedPrivateKey = crypto.encryption().symmetric().encryptWithRootEncryptionKey(userPrivateKey);
 
     await projectQueue.upgradeProject({
       projectId,

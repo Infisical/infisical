@@ -100,7 +100,7 @@ const getReplicationKeyLockPrefix = (projectId: string, environmentSlug: string,
 export const getReplicationFolderName = (importId: string) => `${ReservedFolders.SecretReplication}${importId}`;
 
 const getDecryptedKeyValue = (key: string, secret: TSecrets) => {
-  const secretKey = crypto.encryption().decryptSymmetric({
+  const secretKey = crypto.encryption().symmetric().decrypt({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
     tag: secret.secretKeyTag,
@@ -108,7 +108,7 @@ const getDecryptedKeyValue = (key: string, secret: TSecrets) => {
     keySize: SymmetricKeySize.Bits128
   });
 
-  const secretValue = crypto.encryption().decryptSymmetric({
+  const secretValue = crypto.encryption().symmetric().decrypt({
     ciphertext: secret.secretValueCiphertext,
     iv: secret.secretValueIV,
     tag: secret.secretValueTag,
