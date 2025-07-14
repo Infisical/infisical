@@ -913,14 +913,6 @@ export const orgServiceFactory = ({
 
         // if there exist no org membership we set is as given by the request
         if (!inviteeOrgMembership) {
-          if (plan?.slug !== "enterprise" && plan?.memberLimit && plan.membersUsed >= plan.memberLimit) {
-            // limit imposed on number of members allowed / number of members used exceeds the number of members allowed
-            throw new BadRequestError({
-              name: "InviteUser",
-              message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-            });
-          }
-
           if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
             // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
             throw new BadRequestError({
