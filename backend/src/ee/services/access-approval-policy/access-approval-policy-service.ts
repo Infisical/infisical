@@ -60,6 +60,26 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   orgMembershipDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
+  const $policyExists = async ({
+    envId,
+    secretPath,
+    policyId
+  }: {
+    envId: string;
+    secretPath: string;
+    policyId?: string;
+  }) => {
+    const policy = await accessApprovalPolicyDAL
+      .findOne({
+        envId,
+        secretPath,
+        deletedAt: null
+      })
+      .catch(() => null);
+
+    return policyId ? policy && policy.id !== policyId : Boolean(policy);
+  };
+
   const createAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["createAccessApprovalPolicy"] = async ({
     name,
     actor,
@@ -105,6 +125,12 @@ export const accessApprovalPolicyServiceFactory = ({
     );
     const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id });
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
+
+    if (await $policyExists({ envId: env.id, secretPath })) {
+      throw new BadRequestError({
+        message: `A policy for secret path '${secretPath}' already exists in environment '${environment}'`
+      });
+    }
 
     let approverUserIds = userApprovers;
     if (userApproverNames.length) {
@@ -279,7 +305,11 @@ export const accessApprovalPolicyServiceFactory = ({
     ) as { username: string; sequence?: number }[];
 
     const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
-    if (!accessApprovalPolicy) throw new BadRequestError({ message: "Approval policy not found" });
+    if (!accessApprovalPolicy) {
+      throw new NotFoundError({
+        message: `Access approval policy with ID '${policyId}' not found`
+      });
+    }
 
     const currentApprovals = approvals || accessApprovalPolicy.approvals;
     if (
@@ -290,9 +320,18 @@ export const accessApprovalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
     }
 
-    if (!accessApprovalPolicy) {
-      throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
+    if (
+      await $policyExists({
+        envId: accessApprovalPolicy.envId,
+        secretPath: secretPath || accessApprovalPolicy.secretPath,
+        policyId: accessApprovalPolicy.id
+      })
+    ) {
+      throw new BadRequestError({
+        message: `A policy for secret path '${secretPath}' already exists in environment '${accessApprovalPolicy.environment.slug}'`
+      });
     }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

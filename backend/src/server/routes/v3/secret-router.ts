@@ -2,7 +2,7 @@ import picomatch from "picomatch";
 import { z } from "zod";
 
 import { SecretApprovalRequestsSchema, SecretsSchema, SecretType, ServiceTokenScopes } from "@app/db/schemas";
-import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -594,6 +594,23 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretReminderRepeatDays: req.body.secretReminderRepeatDays
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
+        await server.services.auditLog.createAuditLog({
+          projectId: req.body.workspaceId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath: req.body.secretPath,
+              environment: req.body.environment,
+              secretKey: req.params.secretName,
+              eventType: SecretApprovalEvent.Create
+            }
+          }
+        });
+
         return { approval: secretOperation.approval };
       }
 
@@ -730,6 +747,23 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       });
 
       if (secretOperation.type === SecretProtectionType.Approval) {
+        await server.services.auditLog.createAuditLog({
+          projectId: req.body.workspaceId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath: req.body.secretPath,
+              environment: req.body.environment,
+              secretKey: req.params.secretName,
+              eventType: SecretApprovalEvent.Update
+            }
+          }
+        });
+
         return { approval: secretOperation.approval };
       }
       const { secret } = secretOperation;
@@ -831,6 +865,23 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: req.body.type
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
+        await server.services.auditLog.createAuditLog({
+          projectId: req.body.workspaceId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath: req.body.secretPath,
+              environment: req.body.environment,
+              secretKey: req.params.secretName,
+              eventType: SecretApprovalEvent.Delete
+            }
+          }
+        });
+
         return { approval: secretOperation.approval };
       }
 
@@ -1165,7 +1216,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               metadata: {
                 committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug
+                secretApprovalRequestSlug: approval.slug,
+                secretPath,
+                environment,
+                eventType: SecretApprovalEvent.Create
               }
             }
           });
@@ -1351,7 +1405,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               metadata: {
                 committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug
+                secretApprovalRequestSlug: approval.slug,
+                secretPath,
+                environment,
+                secretKey: req.params.secretName,
+                eventType: SecretApprovalEvent.Update
               }
             }
           });
@@ -1489,7 +1547,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               metadata: {
                 committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug
+                secretApprovalRequestSlug: approval.slug,
+                secretPath,
+                environment,
+                secretKey: req.params.secretName,
+                eventType: SecretApprovalEvent.Delete
               }
             }
           });
@@ -1673,7 +1735,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               metadata: {
                 committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug
+                secretApprovalRequestSlug: approval.slug,
+                secretPath,
+                environment,
+                eventType: SecretApprovalEvent.CreateMany
               }
             }
           });
@@ -1801,7 +1866,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               metadata: {
                 committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug
+                secretApprovalRequestSlug: approval.slug,
+                secretPath,
+                environment,
+                eventType: SecretApprovalEvent.UpdateMany,
+                secrets: inputSecrets.map((secret) => ({
+                  secretKey: secret.secretName
+                }))
               }
             }
           });
@@ -1920,7 +1991,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               metadata: {
                 committedBy: approval.committerUserId,
                 secretApprovalRequestId: approval.id,
-                secretApprovalRequestSlug: approval.slug
+                secretApprovalRequestSlug: approval.slug,
+                secretPath,
+                environment,
+                secrets: inputSecrets.map((secret) => ({
+                  secretKey: secret.secretName
+                })),
+                eventType: SecretApprovalEvent.DeleteMany
               }
             }
           });
@@ -2038,6 +2115,24 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secrets: inputSecrets
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
+        await server.services.auditLog.createAuditLog({
+          projectId: req.body.workspaceId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath,
+              environment,
+              secrets: inputSecrets.map((secret) => ({
+                secretKey: secret.secretKey
+              })),
+              eventType: SecretApprovalEvent.CreateMany
+            }
+          }
+        });
         return { approval: secretOperation.approval };
       }
       const { secrets } = secretOperation;
@@ -2170,6 +2265,25 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         mode: req.body.mode
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
+        await server.services.auditLog.createAuditLog({
+          projectId: req.body.workspaceId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath,
+              environment,
+              secrets: inputSecrets.map((secret) => ({
+                secretKey: secret.secretKey,
+                secretPath: secret.secretPath
+              })),
+              eventType: SecretApprovalEvent.UpdateMany
+            }
+          }
+        });
         return { approval: secretOperation.approval };
       }
       const { secrets } = secretOperation;
@@ -2298,6 +2412,25 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secrets: inputSecrets
       });
       if (secretOperation.type === SecretProtectionType.Approval) {
+        await server.services.auditLog.createAuditLog({
+          projectId: req.body.workspaceId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath,
+              environment,
+              secrets: inputSecrets.map((secret) => ({
+                secretKey: secret.secretKey
+              })),
+              eventType: SecretApprovalEvent.DeleteMany
+            }
+          }
+        });
+
         return { approval: secretOperation.approval };
       }
       const { secrets } = secretOperation;

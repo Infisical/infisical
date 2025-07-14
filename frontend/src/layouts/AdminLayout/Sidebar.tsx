@@ -2,7 +2,7 @@ import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 
-import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
+import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 
 const generalTabs = [
   {
@@ -50,7 +50,7 @@ const resourceTabs = [
   },
   {
     label: "Machine Identities",
-    icon: "key-user",
+    icon: "wrench",
     link: "/admin/resources/machine-identities"
   }
 ];
@@ -61,30 +61,6 @@ export const AdminSidebar = () => {
   return (
     <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
       <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
-        <div className="flex-grow">
-          <Menu>
-            <MenuGroup title="General">
-              {generalTabs.map((tab) => {
-                const isActive = matchRoute({ to: tab.link, fuzzy: false });
-                return (
-                  <Link key={tab.link} to={tab.link}>
-                    <MenuItem isSelected={Boolean(isActive)}>{tab.label}</MenuItem>
-                  </Link>
-                );
-              })}
-            </MenuGroup>
-            <MenuGroup title="Resources">
-              {resourceTabs.map((tab) => {
-                const isActive = matchRoute({ to: tab.link, fuzzy: false });
-                return (
-                  <Link key={tab.link} to={tab.link}>
-                    <MenuItem isSelected={Boolean(isActive)}>{tab.label}</MenuItem>
-                  </Link>
-                );
-              })}
-            </MenuGroup>
-          </Menu>
-        </div>
         <Menu>
           <Link to="/organization/projects">
             <MenuItem
@@ -101,6 +77,46 @@ export const AdminSidebar = () => {
             </MenuItem>
           </Link>
         </Menu>
+        <div className="flex-grow">
+          <Menu>
+            <MenuGroup title="General">
+              {generalTabs.map((tab) => {
+                const isActive = matchRoute({ to: tab.link, fuzzy: false });
+                return (
+                  <Link key={tab.link} to={tab.link}>
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                      leftIcon={
+                        <Lottie className="inline-block h-6 w-6 shrink-0" icon={tab.icon} />
+                      }
+                      isSelected={Boolean(isActive)}
+                    >
+                      {tab.label}
+                    </MenuItem>
+                  </Link>
+                );
+              })}
+            </MenuGroup>
+            <MenuGroup title="Resources">
+              {resourceTabs.map((tab) => {
+                const isActive = matchRoute({ to: tab.link, fuzzy: false });
+                return (
+                  <Link key={tab.link} to={tab.link}>
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden rounded-none"
+                      leftIcon={
+                        <Lottie className="inline-block h-6 w-6 shrink-0" icon={tab.icon} />
+                      }
+                      isSelected={Boolean(isActive)}
+                    >
+                      {tab.label}
+                    </MenuItem>
+                  </Link>
+                );
+              })}
+            </MenuGroup>
+          </Menu>
+        </div>
       </nav>
     </aside>
   );

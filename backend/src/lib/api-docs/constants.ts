@@ -2272,9 +2272,16 @@ export const AppConnections = {
       code: "The OAuth code to use to connect with GitLab.",
       accessTokenType: "The type of token used to connect with GitLab."
     },
+    BITBUCKET: {
+      email: "The email used to access Bitbucket.",
+      apiToken: "The API token used to access Bitbucket."
+    },
     ZABBIX: {
       apiToken: "The API Token used to access Zabbix.",
       instanceUrl: "The Zabbix instance URL to connect with."
+    },
+    RAILWAY: {
+      apiToken: "The API token used to authenticate with Railway."
     }
   }
 };
@@ -2470,6 +2477,14 @@ export const SecretSyncs = {
       hostId: "The ID of the Zabbix host to sync secrets to.",
       hostName: "The name of the Zabbix host to sync secrets to.",
       macroType: "The type of macro to sync secrets to. (0: Text, 1: Secret)"
+    },
+    RAILWAY: {
+      projectId: "The ID of the Railway project to sync secrets to.",
+      projectName: "The name of the Railway project to sync secrets to.",
+      environmentId: "The Railway environment to sync secrets to.",
+      environmentName: "The Railway environment to sync secrets to.",
+      serviceId: "The Railway service that secrets should be synced to.",
+      serviceName: "The Railway service that secrets should be synced to."
     }
   }
 };
@@ -2590,7 +2605,9 @@ export const SecretRotations = {
 
 export const SecretScanningDataSources = {
   LIST: (type?: SecretScanningDataSource) => ({
-    projectId: `The ID of the project to list ${type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"} Data Sources from.`
+    projectId: `The ID of the project to list ${
+      type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
+    } Data Sources from.`
   }),
   GET_BY_ID: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
@@ -2640,6 +2657,10 @@ export const SecretScanningDataSources = {
   }),
   CONFIG: {
     GITHUB: {
+      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+    },
+    BITBUCKET: {
+      workspaceSlug: "The workspace to scan.",
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
     }
   }

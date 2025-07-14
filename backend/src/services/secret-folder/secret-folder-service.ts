@@ -223,7 +223,7 @@ export const secretFolderServiceFactory = ({
             }
           },
           message: "Folder created",
-          folderId: doc.id,
+          folderId: parentFolder.id,
           changes: [
             {
               type: CommitType.ADD,

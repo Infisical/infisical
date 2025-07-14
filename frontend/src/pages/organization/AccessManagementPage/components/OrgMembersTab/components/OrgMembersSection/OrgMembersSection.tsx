@@ -39,10 +39,6 @@ export const OrgMembersSection = () => {
   const { mutateAsync: deleteMutateAsync } = useDeleteOrgMembership();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
-  const isMoreUsersAllowed = subscription?.memberLimit
-    ? subscription.membersUsed < subscription.memberLimit
-    : true;
-
   const isMoreIdentitiesAllowed = subscription?.identityLimit
     ? subscription.identitiesUsed < subscription.identityLimit
     : true;
@@ -58,7 +54,7 @@ export const OrgMembersSection = () => {
       return;
     }
 
-    if ((!isMoreUsersAllowed || !isMoreIdentitiesAllowed) && !isEnterprise) {
+    if (!isMoreIdentitiesAllowed && !isEnterprise) {
       handlePopUpOpen("upgradePlan", {
         description: "You can add more members if you upgrade your Infisical plan."
       });

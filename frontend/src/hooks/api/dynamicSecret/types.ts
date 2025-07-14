@@ -54,7 +54,8 @@ export enum SqlProviders {
 
 export enum DynamicSecretAwsIamAuth {
   AssumeRole = "assume-role",
-  AccessKey = "access-key"
+  AccessKey = "access-key",
+  IRSA = "irsa"
 }
 
 export type TDynamicSecretProvider =
@@ -106,6 +107,14 @@ export type TDynamicSecretProvider =
         | {
             method: DynamicSecretAwsIamAuth.AssumeRole;
             roleArn: string;
+            region: string;
+            awsPath?: string;
+            policyDocument?: string;
+            userGroups?: string;
+            policyArns?: string;
+          }
+        | {
+            method: DynamicSecretAwsIamAuth.IRSA;
             region: string;
             awsPath?: string;
             policyDocument?: string;

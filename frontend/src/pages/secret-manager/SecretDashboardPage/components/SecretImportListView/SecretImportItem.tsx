@@ -9,6 +9,7 @@ import {
   faInfoCircle,
   faKey,
   faRotate,
+  faSearch,
   faUpDown,
   faWarning,
   faXmark
@@ -139,6 +140,10 @@ export const SecretImportItem = ({
       setIsExpanded.toggle();
     }
   };
+
+  const filteredImportedSecrets = importedSecrets.filter((secret) =>
+    secret.key.toUpperCase().includes(searchTerm.toUpperCase())
+  );
 
   return (
     <>
@@ -305,21 +310,26 @@ export const SecretImportItem = ({
                       </td>
                     </tr>
                   )}
-                  {importedSecrets
-                    .filter((secret) => secret.key.toUpperCase().includes(searchTerm.toUpperCase()))
-                    .map(({ key, value }, index) => (
-                      <tr key={`${id}-${key}-${index + 1}`}>
-                        <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                          {key}
-                        </td>
-                        <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                          <SecretInput value={value} isReadOnly />
-                        </td>
-                        {/* <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
+                  {filteredImportedSecrets.length === 0 && importedSecrets?.length !== 0 && (
+                    <tr>
+                      <td colSpan={3}>
+                        <EmptyState title="No secrets match search" icon={faSearch} />
+                      </td>
+                    </tr>
+                  )}
+                  {filteredImportedSecrets.map(({ key, value }, index) => (
+                    <tr key={`${id}-${key}-${index + 1}`}>
+                      <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
+                        {key}
+                      </td>
+                      <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
+                        <SecretInput value={value} isReadOnly />
+                      </td>
+                      {/* <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           <EnvFolderIcon env={overriden?.env} secretPath={overriden?.secretPath} />
                         </td> */}
-                      </tr>
-                    ))}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </TableContainer>

@@ -28,5 +28,7 @@ export enum AppConnection {
   Flyio = "flyio",
   Gitlab = "gitlab",
   Cloudflare = "cloudflare",
-  Zabbix = "zabbix"
+  Bitbucket = "bitbucket",
+  Zabbix = "zabbix",
+  Railway = "railway"
 }

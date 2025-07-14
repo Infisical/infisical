@@ -45,6 +45,8 @@ import { azureClientSecretsConnectionService } from "./azure-client-secrets/azur
 import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/azure-devops-schemas";
 import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-service";
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
+import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
+import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
@@ -70,6 +72,8 @@ import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
+import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
@@ -122,7 +126,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
-  [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema
+  [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema,
+  [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
+  [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -533,6 +539,8 @@ export const appConnectionServiceFactory = ({
     flyio: flyioConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
-    zabbix: zabbixConnectionService(connectAppConnectionById)
+    zabbix: zabbixConnectionService(connectAppConnectionById),
+    railway: railwayConnectionService(connectAppConnectionById),
+    bitbucket: bitbucketConnectionService(connectAppConnectionById)
   };
 };

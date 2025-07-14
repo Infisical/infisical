@@ -9,6 +9,7 @@ import { APIKeyDataV2 } from "../apiKeys/types";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
 import { setAuthToken } from "../reactQuery";
+import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { workspaceKeys } from "../workspace";
 import { userKeys } from "./query-keys";
 import {
@@ -188,6 +189,9 @@ export const useAddUsersToOrg = () => {
     },
     onSuccess: (_, { organizationId, projects }) => {
       queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(organizationId) });
+      queryClient.invalidateQueries({
+        queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId)
+      });
 
       projects?.forEach((project) => {
         if (project.slug) {

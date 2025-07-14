@@ -366,6 +366,7 @@ export const LogsFilter = ({ presets, setFilter, filter }: Props) => {
                     </LogFilterItem>
                     <LogFilterItem
                       label="Secret Path"
+                      tooltipText="Enter the exact secret path (wildcards like * are not supported)"
                       hoverTooltip={
                         !selectedProject
                           ? "Select a project before filtering by secret path."
@@ -380,10 +381,7 @@ export const LogsFilter = ({ presets, setFilter, filter }: Props) => {
                         control={control}
                         name="secretPath"
                         render={({ field: { onChange, value, ...field } }) => (
-                          <FormControl
-                            tooltipText="Filter audit logs related to events that occurred on a specific secret path."
-                            className="w-full"
-                          >
+                          <FormControl className="w-full">
                             <Input
                               placeholder="Enter secret path"
                               className="disabled:cursor-not-allowed"
@@ -403,6 +401,7 @@ export const LogsFilter = ({ presets, setFilter, filter }: Props) => {
                           ? "Select a project before filtering by secret key."
                           : undefined
                       }
+                      tooltipText="Enter the exact secret key name (wildcards like * are not supported)"
                       className={twMerge(!selectedProject && "opacity-50")}
                       label="Secret Key"
                       onClear={() => {
@@ -413,10 +412,7 @@ export const LogsFilter = ({ presets, setFilter, filter }: Props) => {
                         control={control}
                         name="secretKey"
                         render={({ field: { onChange, value, ...field } }) => (
-                          <FormControl
-                            tooltipText="Filter audit logs related to a specific secret."
-                            className="w-full"
-                          >
+                          <FormControl className="w-full">
                             <Input
                               isDisabled={!selectedProject}
                               {...field}

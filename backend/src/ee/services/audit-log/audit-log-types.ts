@@ -116,6 +116,15 @@ interface BaseAuthData {
   userAgentType?: UserAgentType;
 }
 
+export enum SecretApprovalEvent {
+  Create = "create",
+  Update = "update",
+  Delete = "delete",
+  CreateMany = "create-many",
+  UpdateMany = "update-many",
+  DeleteMany = "delete-many"
+}
+
 export enum UserAgentType {
   WEB = "web",
   CLI = "cli",
@@ -1705,6 +1714,17 @@ interface SecretApprovalRequest {
     committedBy: string;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
+    eventType: SecretApprovalEvent;
+    secretKey?: string;
+    secretId?: string;
+    secrets?: {
+      secretKey?: string;
+      secretId?: string;
+      environment?: string;
+      secretPath?: string;
+    }[];
+    environment: string;
+    secretPath: string;
   };
 }
 

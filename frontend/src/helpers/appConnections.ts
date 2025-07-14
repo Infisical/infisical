@@ -40,8 +40,10 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 
 export const APP_CONNECTION_MAP: Record<
@@ -90,7 +92,9 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
-  [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" }
+  [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
+  [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
+  [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -122,6 +126,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case VercelConnectionMethod.ApiToken:
     case OnePassConnectionMethod.ApiToken:
     case CloudflareConnectionMethod.ApiToken:
+    case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
@@ -143,6 +148,12 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Simple Bind", icon: faLink };
     case HerokuConnectionMethod.AuthToken:
       return { name: "Auth Token", icon: faKey };
+    case RailwayConnectionMethod.AccountToken:
+      return { name: "Account Token", icon: faKey };
+    case RailwayConnectionMethod.TeamToken:
+      return { name: "Team Token", icon: faKey };
+    case RailwayConnectionMethod.ProjectToken:
+      return { name: "Project Token", icon: faKey };
     case RenderConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     default:

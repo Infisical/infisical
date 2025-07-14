@@ -16,6 +16,7 @@ import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConn
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
+import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
@@ -33,6 +34,7 @@ import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
+import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
@@ -135,8 +137,12 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <GitLabConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Bitbucket:
+      return <BitbucketConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Zabbix:
       return <ZabbixConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Railway:
+      return <RailwayConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -231,8 +237,12 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <GitLabConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Bitbucket:
+      return <BitbucketConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Zabbix:
       return <ZabbixConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Railway:
+      return <RailwayConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

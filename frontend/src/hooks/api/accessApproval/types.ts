@@ -170,7 +170,7 @@ export type TCreateAccessPolicyDTO = {
   approvers?: Approver[];
   bypassers?: Bypasser[];
   approvals?: number;
-  secretPath?: string;
+  secretPath: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];

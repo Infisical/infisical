@@ -4,17 +4,20 @@ description: "Read how to run Infisical with Docker Compose template."
 ---
 This self-hosting guide will walk you through the steps to self-host Infisical using Docker Compose.
 
-## Prerequisites
-- [Docker](https://docs.docker.com/engine/install/)
-- [Docker compose](https://docs.docker.com/compose/install/)
 
-<Warning>
-This Docker Compose configuration is not designed for high-availability production scenarios. 
-It includes just the essential components needed to set up an Infisical proof of concept (POC). 
-To run Infisical in a highly available manner, give the [Docker Swarm guide](/self-hosting/deployment-options/docker-swarm).
-</Warning>
+<Tabs>
+  <Tab title="Docker Compose">
+    ## Prerequisites
+    - [Docker](https://docs.docker.com/engine/install/)
+    - [Docker compose](https://docs.docker.com/compose/install/)
 
-## Verify prerequisites
+    <Warning>
+      This Docker Compose configuration is not designed for high-availability production scenarios. 
+      It includes just the essential components needed to set up an Infisical proof of concept (POC). 
+      To run Infisical in a highly available manner, give the [Docker Swarm guide](/self-hosting/deployment-options/docker-swarm).
+    </Warning>
+
+    ## Verify prerequisites
     To verify that Docker compose and Docker are installed on the machine where you plan to install Infisical, run the following commands.
 
     Check for docker installation
@@ -27,55 +30,145 @@ To run Infisical in a highly available manner, give the [Docker Swarm guide](/se
     docker-compose 
     ```
 
-## Download docker compose file
-You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`.
-If your system doesn't have either of these, you can use a equivalent command that works with your machine.
+    ## Download docker compose file
+    You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`.
+    If your system doesn't have either of these, you can use a equivalent command that works with your machine.
 
-<Tabs>
-  <Tab title="curl">
+    <Tabs>
+      <Tab title="curl">
+        ```bash
+        curl -o docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
+        ```
+      </Tab>
+      <Tab title="wget">
+        ```bash 
+        wget -O docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
+        ```
+      </Tab>
+    </Tabs>
+
+    ## Configure instance credentials
+    Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc.
+    The default credentials can be downloaded using the one of the commands listed below. 
+
+    <Tabs>
+      <Tab title="curl">
+        ```bash
+          curl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+        ```
+      </Tab>
+      <Tab title="wget">
+        ```bash 
+          wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+        ```
+      </Tab>
+    </Tabs>
+
+    Once downloaded, the credentials file will be saved to your working directly as `.env` file.
+    View all available configurations [here](/self-hosting/configuration/envars).
+
+    <Warning>
+      The default .env file contains credentials that are intended solely for testing purposes.
+      Please generate a new `ENCRYPTION_KEY` and `AUTH_SECRET` for use outside of testing. 
+      Instructions to do so, can be found [here](/self-hosting/configuration/envars).
+    </Warning>
+
+    ## Start Infisical
+    Run the command below to start Infisical and all related services. 
+
     ```bash
-    curl -o docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
+    docker-compose -f docker-compose.prod.yml up
     ```
+
   </Tab>
-  <Tab title="wget">
-    ```bash 
-    wget -O docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
+  <Tab title="Podman Compose">
+  Podman Compose is an alternative way to run Infisical using Podman as a replacement for Docker. Podman is backwards compatible with Docker Compose files.
+
+      ## Prerequisites
+    - [Podman](https://podman-desktop.io/docs/installation)
+    - [Podman Compose](https://podman-desktop.io/docs/compose)
+
+    <Warning>
+      This Docker Compose configuration is not designed for high-availability production scenarios. 
+      It includes just the essential components needed to set up an Infisical proof of concept (POC). 
+      To run Infisical in a highly available manner, give the [Docker Swarm guide](/self-hosting/deployment-options/docker-swarm).
+    </Warning>
+
+
+    ## Verify prerequisites
+    To verify that Podman compose and Podman are installed on the machine where you plan to install Infisical, run the following commands.
+
+    Check for podman installation
+    ```bash
+    podman version 
+    ```
+
+    Check for podman compose installation
+    ```bash
+    podman-compose version
+    ```
+
+    ## Download Docker Compose file
+    You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`.
+    If your system doesn't have either of these, you can use a equivalent command that works with your machine.
+
+    <Tabs>
+      <Tab title="curl">
+        ```bash
+        curl -o docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
+        ```
+      </Tab>
+      <Tab title="wget">
+        ```bash 
+        wget -O docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
+        ```
+      </Tab>
+    </Tabs>
+
+    ## Configure instance credentials
+    Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc.
+    The default credentials can be downloaded using the one of the commands listed below. 
+
+    <Tabs>
+      <Tab title="curl">
+        ```bash
+          curl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+        ```
+      </Tab>
+      <Tab title="wget">
+        ```bash 
+          wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+        ```
+      </Tab>
+    </Tabs>
+
+    <Note>
+      Make sure to rename the `.env.example` file to `.env` before starting Infisical. Additionally it's important that the `.env` file is in the same directory as the `docker-compose.prod.yml` file.
+    </Note>
+
+    ## Setup Podman
+    Run the commands below to setup Podman for first time use.
+    ```bash
+    podman machine init --now
+    podman machine set --rootful
+    podman machine start
+    ``` 
+
+    <Note>
+      If you are using a rootless podman installation, you can skip the `podman machine set --rootful` command.
+    </Note>
+
+    ## Start Infisical
+    Run the command below to start Infisical and all related services. 
+
+    ```bash
+    podman-compose -f docker-compose.prod.yml up
     ```
   </Tab>
 </Tabs>
 
-## Configure instance credentials
-Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc.
-The default credentials can be downloaded using the one of the commands listed below. 
 
-<Tabs>
-  <Tab title="curl">
-    ```bash
-      curl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
-    ```
-  </Tab>
-  <Tab title="wget">
-    ```bash 
-      wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
-    ```
-  </Tab>
-</Tabs>
 
-Once downloaded, the credentials file will be saved to your working directly as `.env` file.
-View all available configurations [here](/self-hosting/configuration/envars).
-
-<Warning>
-  The default .env file contains credentials that are intended solely for testing purposes.
-  Please generate a new `ENCRYPTION_KEY` and `AUTH_SECRET` for use outside of testing. 
-  Instructions to do so, can be found [here](/self-hosting/configuration/envars).
-</Warning>
-
-## Start Infisical
-Run the command below to start Infisical and all related services. 
-
-```bash
-docker-compose -f docker-compose.prod.yml up
-```
 
 Your Infisical instance should now be running on port `80`. To access your instance, visit `http://localhost:80`.
 
