@@ -5,8 +5,9 @@ export enum ChecklyConnectionMethod {
   ApiKey = "api-key"
 }
 
-export type TChecklyConnection = TRootAppConnection & { app: AppConnection.Checkly } & {
-  method: ChecklyConnectionMethod;
+export type TChecklyConnection = TRootAppConnection & {
+  app: AppConnection.Checkly;
+  method: ChecklyConnectionMethod.ApiKey;
   credentials: {
     apiKey: string;
     accountId: string;
