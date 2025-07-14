@@ -35,8 +35,7 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(ChecklyConnectionMethod.ApiKey),
     credentials: z.object({
-      apiKey: z.string().trim().min(1, "Service API Key required"),
-      accountId: z.string().min(1, "Account ID required")
+      apiKey: z.string().trim().min(1, "Service API Key required")
     })
   })
 ]);
@@ -64,24 +63,6 @@ export const ChecklyConnectionForm = ({ appConnection, onSubmit }: Props) => {
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         {!isUpdate && <GenericAppConnectionsFields />}
-        <Controller
-          name="credentials.accountId"
-          control={control}
-          shouldUnregister
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Account ID"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
-          )}
-        />
         <Controller
           name="method"
           control={control}
