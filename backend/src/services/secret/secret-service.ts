@@ -1859,7 +1859,6 @@ export const secretServiceFactory = ({
           actorId,
           actorOrgId,
           actorAuthMethod,
-          projectId,
           reminder: {
             secretId: secret.id,
             message: secretReminderNote,
@@ -2269,7 +2268,6 @@ export const secretServiceFactory = ({
               actorId,
               actorOrgId,
               actorAuthMethod,
-              projectId,
               reminder: {
                 secretId: secrets.find(
                   (el) =>

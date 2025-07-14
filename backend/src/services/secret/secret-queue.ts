@@ -111,10 +111,7 @@ type TSecretQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
-  reminderService: Pick<
-    TReminderServiceFactory,
-    "createReminderInternal" | "deleteReminderBySecretId" | "removeReminderRecipients"
-  >;
+  reminderService: Pick<TReminderServiceFactory, "createReminderInternal" | "deleteReminderBySecretId">;
 };
 
 export type TGetSecrets = {

@@ -17,7 +17,6 @@ export type TCreateReminderDTO = {
   actorId: string;
   actorOrgId: string;
   actorAuthMethod: ActorAuthMethod;
-  projectId: string;
   reminder: {
     secretId?: string;
     message?: string | null;
@@ -37,28 +36,19 @@ export type TBatchCreateReminderDTO = {
 }[];
 
 export interface TReminderServiceFactory {
-  createReminder: ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    reminder
-  }: TCreateReminderDTO) => Promise<{
+  createReminder: ({ actor, actorId, actorOrgId, actorAuthMethod, reminder }: TCreateReminderDTO) => Promise<{
     id: string;
     created: boolean;
   }>;
 
   getReminder: ({
     secretId,
-    projectId,
     actor,
     actorId,
     actorOrgId,
     actorAuthMethod
   }: {
     secretId: string;
-    projectId: string;
     actor: ActorType;
     actorId: string;
     actorOrgId: string;
@@ -72,18 +62,14 @@ export interface TReminderServiceFactory {
     actorId,
     actorOrgId,
     actorAuthMethod,
-    secretId,
-    projectId
+    secretId
   }: {
     actor: ActorType;
     actorId: string;
     actorOrgId: string;
     actorAuthMethod: ActorAuthMethod;
     secretId: string;
-    projectId: string;
   }) => Promise<void>;
-
-  removeReminderRecipients: (secretId: string, projectId: string, tx?: Knex) => Promise<void>;
 
   deleteReminderBySecretId: (secretId: string, projectId: string, tx?: Knex) => Promise<void>;
 

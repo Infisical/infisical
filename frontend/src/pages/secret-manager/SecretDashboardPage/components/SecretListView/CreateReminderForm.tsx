@@ -143,8 +143,8 @@ export const CreateReminderForm = ({
   const { memberOptions } = useWorkspaceMembers();
 
   // API mutations
-  const { mutateAsync: createReminder } = useCreateReminder(secretId, workspaceId);
-  const { mutateAsync: deleteReminder } = useDeleteReminder(secretId, workspaceId);
+  const { mutateAsync: createReminder } = useCreateReminder(secretId);
+  const { mutateAsync: deleteReminder } = useDeleteReminder(secretId);
 
   // Form setup
   const form = useForm<TReminderFormSchema>({
@@ -183,7 +183,7 @@ export const CreateReminderForm = ({
       queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
     });
     queryClient.invalidateQueries({
-      queryKey: reminderKeys.getReminder(secretId, workspaceId)
+      queryKey: reminderKeys.getReminder(secretId)
     });
   };
 

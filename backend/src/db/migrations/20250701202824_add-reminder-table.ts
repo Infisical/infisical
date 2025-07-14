@@ -13,7 +13,6 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("repeatDays").checkPositive().nullable();
       t.timestamp("nextReminderDate").notNullable();
       t.timestamps(true, true, true);
-      t.index("secretId");
       t.unique("secretId");
     });
   }

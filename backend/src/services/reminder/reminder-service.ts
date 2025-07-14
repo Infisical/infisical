@@ -2,6 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
+import { TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
@@ -21,7 +22,7 @@ type TReminderServiceFactoryDep = {
   smtpService: TSmtpService;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags">;
 };
 
 export const reminderServiceFactory = ({
@@ -136,13 +137,16 @@ export const reminderServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    projectId,
     reminder
   }: TCreateReminderDTO) => {
+    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: reminder.secretId });
+    if (!secret) {
+      throw new BadRequestError({ message: `Secret ${reminder.secretId} not found` });
+    }
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId,
+      projectId: secret.projectId,
       actorAuthMethod,
       actorOrgId
     });
@@ -150,30 +154,32 @@ export const reminderServiceFactory = ({
 
     const response = await createReminderInternal({
       ...reminder,
-      projectId
+      projectId: secret.projectId
     });
     return response;
   };
 
   const getReminder: TReminderServiceFactory["getReminder"] = async ({
     secretId,
-    projectId,
     actor,
     actorId,
     actorOrgId,
     actorAuthMethod
   }: {
     secretId: string;
-    projectId: string;
     actor: ActorType;
     actorId: string;
     actorOrgId: string;
     actorAuthMethod: ActorAuthMethod;
   }) => {
+    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
+    if (!secret) {
+      throw new BadRequestError({ message: `Secret ${secretId} not found` });
+    }
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId,
+      projectId: secret.projectId,
       actorAuthMethod,
       actorOrgId
     });
@@ -228,40 +234,29 @@ export const reminderServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    secretId,
-    projectId
+    secretId
   }: {
     actor: ActorType;
     actorId: string;
     actorOrgId: string;
     actorAuthMethod: ActorAuthMethod;
     secretId: string;
-    projectId: string;
   }) => {
+    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
+    if (!secret) {
+      throw new BadRequestError({ message: `Secret ${secretId} not found` });
+    }
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId,
+      projectId: secret.projectId,
       actorAuthMethod,
       actorOrgId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
     await reminderDAL.delete({ secretId });
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-  };
-
-  const removeReminderRecipients: TReminderServiceFactory["removeReminderRecipients"] = async (
-    secretId: string,
-    projectId: string,
-    tx?: Knex
-  ) => {
-    const reminder = await reminderDAL.findOne({ secretId }, tx);
-    if (!reminder) {
-      return;
-    }
-    await reminderRecipientDAL.delete({ reminderId: reminder.id }, tx);
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secret.projectId);
   };
 
   const deleteReminderBySecretId: TReminderServiceFactory["deleteReminderBySecretId"] = async (
@@ -354,7 +349,6 @@ export const reminderServiceFactory = ({
     getReminder,
     sendDailyReminders,
     deleteReminder,
-    removeReminderRecipients,
     deleteReminderBySecretId,
     batchCreateReminders,
     createReminderInternal

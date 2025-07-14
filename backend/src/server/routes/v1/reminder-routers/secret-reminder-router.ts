@@ -17,9 +17,6 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
       params: z.object({
         secretId: z.string().uuid()
       }),
-      querystring: z.object({
-        projectId: z.string().uuid()
-      }),
       body: z
         .object({
           message: z.string().trim().max(1024).optional(),
@@ -43,7 +40,6 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        projectId: req.query.projectId,
         reminder: {
           secretId: req.params.secretId,
           message: req.body.message,
@@ -56,7 +52,6 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.query.projectId,
         event: {
           type: EventType.CREATE_SECRET_REMINDER,
           metadata: {
@@ -83,9 +78,6 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
       params: z.object({
         secretId: z.string().uuid()
       }),
-      querystring: z.object({
-        projectId: z.string().uuid()
-      }),
       response: {
         200: z.object({
           reminder: RemindersSchema.extend({
@@ -103,14 +95,12 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        secretId: req.params.secretId,
-        projectId: req.query.projectId
+        secretId: req.params.secretId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.query.projectId,
         event: {
           type: EventType.GET_SECRET_REMINDER,
           metadata: {
@@ -132,9 +122,6 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
       params: z.object({
         secretId: z.string().uuid()
       }),
-      querystring: z.object({
-        projectId: z.string().uuid()
-      }),
       response: {
         200: z.object({
           message: z.string()
@@ -148,14 +135,12 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        secretId: req.params.secretId,
-        projectId: req.query.projectId
+        secretId: req.params.secretId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.query.projectId,
         event: {
           type: EventType.DELETE_SECRET_REMINDER,
           metadata: {

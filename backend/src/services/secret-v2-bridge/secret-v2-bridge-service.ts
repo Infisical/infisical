@@ -344,7 +344,6 @@ export const secretV2BridgeServiceFactory = ({
         actorId,
         actorOrgId,
         actorAuthMethod,
-        projectId,
         reminder: {
           secretId: secret.id,
           message: inputSecret.secretReminderNote,
@@ -558,7 +557,6 @@ export const secretV2BridgeServiceFactory = ({
         actorId,
         actorOrgId,
         actorAuthMethod,
-        projectId,
         reminder: {
           secretId: secret.id,
           message: inputSecret.secretReminderNote,

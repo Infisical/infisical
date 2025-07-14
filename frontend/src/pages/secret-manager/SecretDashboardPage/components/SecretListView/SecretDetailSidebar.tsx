@@ -115,7 +115,7 @@ export const SecretDetailSidebar = ({
 
   const { permission } = useProjectPermission();
   const { currentWorkspace } = useWorkspace();
-  const { data: reminderData } = useGetReminder(secret?.id, currentWorkspace.id);
+  const { data: reminderData } = useGetReminder(secret?.id);
 
   const tagFields = useFieldArray({
     control,
