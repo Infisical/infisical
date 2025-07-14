@@ -239,7 +239,7 @@ export const CommitHistoryTab = ({
       {isLoading && offset === 0 ? (
         <ContentLoader className="h-80" />
       ) : (
-        <div className="">
+        <div>
           {Object.keys(groupedCommits).length > 0 ? (
             <>
               {Object.entries(groupedCommits).map(([date, dateCommits]) => (

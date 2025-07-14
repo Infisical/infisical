@@ -350,7 +350,7 @@ const renderJsonWithDiffs = (
 
         <div className={getLineClass(isContainerAddedOrRemoved)}>
           <div className="w-4 flex-shrink-0">
-            {isContainerAddedOrRemoved ? (isOldVersion ? "-" : "+") : " "}
+            {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
             {indent}
@@ -369,7 +369,7 @@ const renderJsonWithDiffs = (
       <div key={reactKey}>
         <div className={getLineClass(isContainerAddedOrRemoved)}>
           <div className="w-4 flex-shrink-0">
-            {isContainerAddedOrRemoved ? (isOldVersion ? "-" : "+") : " "}
+            {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
             {indent}
@@ -403,7 +403,7 @@ const renderJsonWithDiffs = (
 
         <div className={getLineClass(isContainerAddedOrRemoved)}>
           <div className="w-4 flex-shrink-0">
-            {isContainerAddedOrRemoved ? (isOldVersion ? "-" : "+") : " "}
+            {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
             {indent}
