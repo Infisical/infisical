@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: metrics-reader
 rules:
-  - nonResourceURLs:
-      - "/metrics"
-    verbs:
-      - get
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
