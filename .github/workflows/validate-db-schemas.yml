@@ -1,0 +1,67 @@
+name: "Validate DB schemas"
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+        paths:
+            - "backend/**"
+
+    workflow_call:
+
+jobs:
+    validate-db-schemas:
+        name: Validate DB schemas
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        env:
+            NODE_OPTIONS: "--max-old-space-size=8192"
+            REDIS_URL: redis://172.17.0.1:6379
+            DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
+            AUTH_SECRET: something-random
+            ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
+        steps:
+            - name: ☁️ Checkout source
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - uses: KengoTODA/actions-setup-docker-compose@v1
+              if: ${{ env.ACT }}
+              name: Install `docker compose` for local simulations
+              with:
+                  version: "2.14.2"
+            - name: 🔧 Setup Node 20
+              uses: actions/setup-node@v3
+              with:
+                  node-version: "20"
+                  cache: "npm"
+                  cache-dependency-path: backend/package-lock.json
+
+            - name: Start PostgreSQL and Redis
+              run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
+            - name: Install dependencies
+              run: npm install
+              working-directory: backend
+
+            - name: Apply migrations
+              run: npm run migration:latest-dev
+              working-directory: backend
+
+            - name: Run schema generation
+              run: npm run generate:schema
+              working-directory: backend
+
+            - name: Check for schema changes
+              run: |
+                  if ! git diff --exit-code --quiet src/db/schemas; then
+                    echo "❌ Generated schemas differ from committed schemas!"
+                    echo "Run 'npm run generate:schema' locally and commit the changes."
+                    git diff src/db/schemas
+                    exit 1
+                  fi
+                  echo "✅ Schemas are up to date"
+              working-directory: backend
+
+            - name: Cleanup
+              if: always()
+              run: |
+                  docker compose -f "docker-compose.dev.yml" down

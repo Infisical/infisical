@@ -2189,6 +2189,7 @@
               "sdks/languages/python",
               "sdks/languages/java",
               "sdks/languages/csharp",
+              "sdks/languages/cpp",
               "sdks/languages/go",
               "sdks/languages/ruby"
             ]
