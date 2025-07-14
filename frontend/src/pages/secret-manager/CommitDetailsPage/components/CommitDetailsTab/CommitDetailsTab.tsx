@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { faAngleDown, faCodeCommit, faWarning } from "@fortawesome/free-solid-svg-icons";
+import {
+  faAngleDown,
+  faChevronLeft,
+  faCodeCommit,
+  faWarning
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
 import { useSearch } from "@tanstack/react-router";
@@ -244,6 +249,16 @@ export const CommitDetailsTab = ({
 
   return (
     <>
+      <Button
+        variant="link"
+        type="submit"
+        leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
+        onClick={() => {
+          goBackToHistory();
+        }}
+      >
+        Commit History
+      </Button>
       <PageHeader
         title={`${parsedCommitDetails.changes?.message}` || "No message"}
         description={

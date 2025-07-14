@@ -230,11 +230,6 @@ const renderJsonWithDiffs = (
       : "flex bg-green-500/50 rounded-sm text-green-300";
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getHighlightClass = (_different: boolean) => {
-    return "";
-  };
-
   const prefix = isDifferent ? (isOldVersion ? " -" : " +") : " ";
   const keyDisplay = keyName ? `"${keyName}": ` : "";
   const comma = !isLastItem ? "," : "";
@@ -257,8 +252,8 @@ const renderJsonWithDiffs = (
         <div className="w-4 flex-shrink-0">{prefix}</div>
         <div>
           {indent}
-          {keyName && <span className={getHighlightClass(isDifferent)}>{keyDisplay}</span>}
-          <span className={getHighlightClass(isDifferent)}>{valueDisplay}</span>
+          {keyName && <span>{keyDisplay}</span>}
+          <span>{valueDisplay}</span>
           {comma}
         </div>
       </div>
@@ -271,8 +266,8 @@ const renderJsonWithDiffs = (
         <div className="w-4 flex-shrink-0">{prefix}</div>
         <div>
           {indent}
-          {keyName && <span className={getHighlightClass(isDifferent)}>{keyDisplay}</span>}
-          <span className={getHighlightClass(isDifferent)}>[]</span>
+          {keyName && <span>{keyDisplay}</span>}
+          <span>[]</span>
           {comma}
         </div>
       </div>
@@ -285,8 +280,8 @@ const renderJsonWithDiffs = (
         <div className="w-4 flex-shrink-0">{prefix}</div>
         <div>
           {indent}
-          {keyName && <span className={getHighlightClass(isDifferent)}>{keyDisplay}</span>}
-          <span className={getHighlightClass(isDifferent)}>{"{}"}</span>
+          {keyName && <span>{keyDisplay}</span>}
+          <span>{"{}"}</span>
           {comma}
         </div>
       </div>
@@ -326,12 +321,8 @@ const renderJsonWithDiffs = (
           </div>
           <div>
             {indent}
-            {keyName && (
-              <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>
-                {keyDisplay}
-              </span>
-            )}
-            <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>[</span>
+            {keyName && <span>{keyDisplay}</span>}
+            <span>[</span>
           </div>
         </div>
 
@@ -363,7 +354,7 @@ const renderJsonWithDiffs = (
           </div>
           <div>
             {indent}
-            <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>]</span>
+            <span>]</span>
             {comma}
           </div>
         </div>
@@ -382,12 +373,8 @@ const renderJsonWithDiffs = (
           </div>
           <div>
             {indent}
-            {keyName && (
-              <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>
-                {keyDisplay}
-              </span>
-            )}
-            <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>{"{"}</span>
+            {keyName && <span>{keyDisplay}</span>}
+            <span>{"{"}</span>
           </div>
         </div>
 
@@ -420,7 +407,7 @@ const renderJsonWithDiffs = (
           </div>
           <div>
             {indent}
-            <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>{"}"}</span>
+            <span>{"}"}</span>
             {comma}
           </div>
         </div>
@@ -630,18 +617,18 @@ export const SecretVersionDiffView = ({
     <div className="overflow-hidden border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t last:rounded-b last:border-b">
       {showHeader && renderHeader()}
       {!collapsed && (
-        <div className="border-t border-mineshaft-700 bg-bunker-900 p-3 text-mineshaft-100">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="border-t border-mineshaft-700 bg-mineshaft-900 p-3 text-mineshaft-100">
+          <div className="flex gap-3">
             <div
               ref={oldContainerRef}
-              className="thin-scrollbar max-h-96 overflow-auto whitespace-pre rounded border border-mineshaft-600 bg-mineshaft-900 p-4"
+              className="thin-scrollbar max-h-96 flex-1 overflow-auto whitespace-pre"
             >
               {oldVersionContent}
             </div>
-
+            <div className="max-h-96 w-[0.05rem] self-stretch bg-mineshaft-600" />
             <div
               ref={newContainerRef}
-              className="thin-scrollbar max-h-96 overflow-auto whitespace-pre rounded border border-mineshaft-600 bg-mineshaft-900 p-4"
+              className="thin-scrollbar max-h-96 flex-1 overflow-auto whitespace-pre"
             >
               {newVersionContent}
             </div>

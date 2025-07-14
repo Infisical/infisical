@@ -265,7 +265,8 @@ export const useGetFolderCommitHistory = ({
     ],
     queryFn: () =>
       fetchFolderCommitHistory(workspaceId, environment, directory, offset, limit, search, sort),
-    enabled: Boolean(workspaceId && environment)
+    enabled: Boolean(workspaceId && environment),
+    placeholderData: (prev) => prev
   });
 };
 
