@@ -119,6 +119,12 @@ import {
   TRenderSyncWithCredentials
 } from "./render/render-sync-types";
 import {
+  TSupabaseSync,
+  TSupabaseSyncInput,
+  TSupabaseSyncListItem,
+  TSupabaseSyncWithCredentials
+} from "./supabase/supabase-sync-types";
+import {
   TTeamCitySync,
   TTeamCitySyncInput,
   TTeamCitySyncListItem,
@@ -159,7 +165,8 @@ export type TSecretSync =
   | TCloudflareWorkersSync
   | TZabbixSync
   | TRailwaySync
-  | TChecklySync;
+  | TChecklySync
+  | TSupabaseSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -187,7 +194,8 @@ export type TSecretSyncWithCredentials =
   | TCloudflareWorkersSyncWithCredentials
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
-  | TChecklySyncWithCredentials;
+  | TChecklySyncWithCredentials
+  | TSupabaseSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -215,7 +223,8 @@ export type TSecretSyncInput =
   | TCloudflareWorkersSyncInput
   | TZabbixSyncInput
   | TRailwaySyncInput
-  | TChecklySyncInput;
+  | TChecklySyncInput
+  | TSupabaseSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -243,7 +252,8 @@ export type TSecretSyncListItem =
   | TCloudflareWorkersSyncListItem
   | TZabbixSyncListItem
   | TRailwaySyncListItem
-  | TChecklySyncListItem;
+  | TChecklySyncListItem
+  | TSupabaseSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

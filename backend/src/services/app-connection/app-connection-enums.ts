@@ -31,7 +31,8 @@ export enum AppConnection {
   Zabbix = "zabbix",
   Railway = "railway",
   Bitbucket = "bitbucket",
-  Checkly = "checkly"
+  Checkly = "checkly",
+  Supabase = "supabase"
 }
 
 export enum AWSRegion {

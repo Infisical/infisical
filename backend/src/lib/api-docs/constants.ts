@@ -2286,6 +2286,10 @@ export const AppConnections = {
     CHECKLY: {
       apiKey: "The API key used to authenticate with Checkly.",
       accountId: "The account ID used to authenticate with Checkly."
+    },
+    SUPABASE: {
+      apiKey: "The Key used to access Supabase.",
+      instanceUrl: "The URL used to access Supabase."
     }
   }
 };
@@ -2495,6 +2499,10 @@ export const SecretSyncs = {
     },
     CHECKLY: {
       accountId: "The ID of the Checkly account to sync secrets to."
+    },
+    SUPABASE: {
+      projectId: "The ID of the Supabase project to sync secrets to.",
+      projectName: "The name of the Supabase project to sync secrets to."
     }
   }
 };

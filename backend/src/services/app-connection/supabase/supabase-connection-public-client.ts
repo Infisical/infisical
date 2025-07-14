@@ -1,0 +1,135 @@
+/* eslint-disable no-await-in-loop */
+/* eslint-disable class-methods-use-this */
+import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode } from "axios";
+
+import { createRequestClient } from "@app/lib/config/request";
+import { delay } from "@app/lib/delay";
+
+import { SupabaseConnectionMethod } from "./supabase-connection-constants";
+import { TSupabaseConnectionConfig, TSupabaseProject, TSupabaseSecret } from "./supabase-connection-types";
+
+export function getSupabaseAuthHeaders(connection: TSupabaseConnectionConfig): Record<string, string> {
+  switch (connection.method) {
+    case SupabaseConnectionMethod.AccountToken:
+      return {
+        Authorization: `Bearer ${connection.credentials.apiKey}`
+      };
+    default:
+      throw new Error(`Unsupported Supabase connection method`);
+  }
+}
+
+export function getSupabaseRatelimiter(response: AxiosResponse): {
+  maxAttempts: number;
+  isRatelimited: boolean;
+  wait: () => Promise<void>;
+} {
+  const wait = () => {
+    return delay(60 * 1000);
+  };
+
+  return {
+    isRatelimited: response.status === HttpStatusCode.TooManyRequests,
+    wait,
+    maxAttempts: 3
+  };
+}
+
+class SupabasePublicClient {
+  private client: AxiosInstance;
+
+  constructor() {
+    this.client = createRequestClient({
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  }
+
+  async send<T>(
+    connection: TSupabaseConnectionConfig,
+    config: AxiosRequestConfig,
+    retryAttempt = 0
+  ): Promise<T | undefined> {
+    const response = await this.client.request<T>({
+      ...config,
+      baseURL: connection.credentials.instanceUrl,
+      validateStatus: (status) => (status >= 200 && status < 300) || status === HttpStatusCode.TooManyRequests,
+      headers: getSupabaseAuthHeaders(connection)
+    });
+
+    const limiter = getSupabaseRatelimiter(response);
+
+    if (limiter.isRatelimited && retryAttempt <= limiter.maxAttempts) {
+      await limiter.wait();
+      return this.send(connection, config, retryAttempt + 1);
+    }
+
+    return response.data;
+  }
+
+  async healthcheck(connection: TSupabaseConnectionConfig) {
+    switch (connection.method) {
+      case SupabaseConnectionMethod.AccountToken:
+        return void (await this.getProjects(connection));
+      default:
+        throw new Error(`Unsupported Supabase connection method`);
+    }
+  }
+
+  async getVariables(connection: TSupabaseConnectionConfig, projectRef: string) {
+    const res = await this.send<TSupabaseSecret[]>(connection, {
+      method: "GET",
+      url: `/v1/projects/${projectRef}/secrets`
+    });
+
+    return res;
+  }
+
+  async createVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variable: TSupabaseSecret[]) {
+    const res = await this.send<TSupabaseSecret>(connection, {
+      method: "POST",
+      url: `/v1/projects/${projectRef}/secrets`,
+      data: variable
+    });
+
+    return res;
+  }
+
+  // Supabase does not support updating variables directly
+  // Instead, delete the existing variables and create new ones
+  // This might cause a few ms of dead-zone time where the variables are not available
+  // but we will try to minimize this time by using a batch operation
+  async updateVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variables: TSupabaseSecret[]) {
+    const names = variables.map((v) => v.name);
+
+    await this.deleteVariables(connection, projectRef, ...names);
+
+    await this.send<TSupabaseSecret>(connection, {
+      method: "PUT",
+      url: `/v1/projects/${projectRef}/secrets`,
+      data: variables
+    });
+  }
+
+  async deleteVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variables: string[]) {
+    const res = await this.send(connection, {
+      method: "DELETE",
+      url: `/v1/projects/${projectRef}/secrets`,
+      data: variables
+    });
+
+    return res;
+  }
+
+  async getProjects(connection: TSupabaseConnectionConfig) {
+    const res = await this.send<TSupabaseProject[]>(connection, {
+      method: "GET",
+      url: `/v1/projects`
+    });
+
+    return res;
+  }
+}
+
+export const SupabasePublicAPI = new SupabasePublicClient();

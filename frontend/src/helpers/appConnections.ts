@@ -46,6 +46,7 @@ import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/hero
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -96,7 +97,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
   [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
   [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
-  [AppConnection.Checkly]: { name: "Checkly", image: "Checkly.png" }
+  [AppConnection.Checkly]: { name: "Checkly", image: "Checkly.png" },
+  [AppConnection.Supabase]: { name: "Supabase", image: "Supabase.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -151,6 +153,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HerokuConnectionMethod.AuthToken:
       return { name: "Auth Token", icon: faKey };
     case RailwayConnectionMethod.AccountToken:
+    case SupabaseConnectionMethod.AccountToken:
       return { name: "Account Token", icon: faKey };
     case RailwayConnectionMethod.TeamToken:
       return { name: "Team Token", icon: faKey };

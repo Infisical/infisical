@@ -96,6 +96,11 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import {
+  getSupabaseConnectionListItem,
+  SupabaseConnectionMethod,
+  validateSupabaseConnectionCredentials
+} from "./supabase";
+import {
   getTeamCityConnectionListItem,
   TeamCityConnectionMethod,
   validateTeamCityConnectionCredentials
@@ -148,7 +153,8 @@ export const listAppConnectionOptions = () => {
     getZabbixConnectionListItem(),
     getRailwayConnectionListItem(),
     getBitbucketConnectionListItem(),
-    getChecklyConnectionListItem()
+    getChecklyConnectionListItem(),
+    getSupabaseConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -232,7 +238,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -292,6 +299,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
       return "API Key";
+    case SupabaseConnectionMethod.AccountToken:
+      return "Account Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -355,7 +364,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,
   [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
-  [AppConnection.Checkly]: platformManagedCredentialsNotSupported
+  [AppConnection.Checkly]: platformManagedCredentialsNotSupported,
+  [AppConnection.Supabase]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

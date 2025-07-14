@@ -31,5 +31,6 @@ export enum AppConnection {
   Bitbucket = "bitbucket",
   Zabbix = "zabbix",
   Railway = "railway",
-  Checkly = "checkly"
+  Checkly = "checkly",
+  Supabase = "supabase"
 }

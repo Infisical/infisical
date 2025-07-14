@@ -21,6 +21,7 @@ import { registerHerokuSyncRouter } from "./heroku-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
+import { registerSupabaseSyncRouter } from "./supabase-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
 import { registerVercelSyncRouter } from "./vercel-sync-router";
@@ -53,7 +54,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.GitLab]: registerGitLabSyncRouter,
   [SecretSync.CloudflarePages]: registerCloudflarePagesSyncRouter,
   [SecretSync.CloudflareWorkers]: registerCloudflareWorkersSyncRouter,
-
+  [SecretSync.Supabase]: registerSupabaseSyncRouter,
   [SecretSync.Zabbix]: registerZabbixSyncRouter,
   [SecretSync.Railway]: registerRailwaySyncRouter,
   [SecretSync.Checkly]: registerChecklySyncRouter

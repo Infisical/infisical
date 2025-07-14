@@ -28,6 +28,7 @@ import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
+import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -70,5 +71,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,
-    [AppConnection.Checkly]: registerChecklyConnectionRouter
+    [AppConnection.Checkly]: registerChecklyConnectionRouter,
+    [AppConnection.Supabase]: registerSupabaseConnectionRouter
   };

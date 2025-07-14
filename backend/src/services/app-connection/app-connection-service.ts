@@ -78,6 +78,8 @@ import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
+import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
+import { supabaseConnectionService } from "./supabase/supabase-connection-service";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
 import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-cloud";
@@ -131,7 +133,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema,
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
   [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
-  [AppConnection.Checkly]: ValidateChecklyConnectionCredentialsSchema
+  [AppConnection.Checkly]: ValidateChecklyConnectionCredentialsSchema,
+  [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -545,6 +548,7 @@ export const appConnectionServiceFactory = ({
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
-    checkly: checklyConnectionService(connectAppConnectionById)
+    checkly: checklyConnectionService(connectAppConnectionById),
+    supabase: supabaseConnectionService(connectAppConnectionById)
   };
 };
