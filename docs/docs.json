@@ -1324,9 +1324,6 @@
                       "api-reference/endpoints/app-connections/checkly/create",
                       "api-reference/endpoints/app-connections/checkly/update",
                       "api-reference/endpoints/app-connections/checkly/delete",
-                      "api-reference/endpoints/app-connections/checkly/sync-secrets",
-                      "api-reference/endpoints/app-connections/checkly/import-secrets",
-                      "api-reference/endpoints/app-connections/checkly/remove-secrets"
                     ]
                   },
                   {
