@@ -78,7 +78,10 @@
               },
               {
                 "group": "Infisical SSH",
-                "pages": ["documentation/platform/ssh/overview", "documentation/platform/ssh/host-groups"]
+                "pages": [
+                  "documentation/platform/ssh/overview",
+                  "documentation/platform/ssh/host-groups"
+                ]
               },
               {
                 "group": "Key Management (KMS)",
@@ -375,7 +378,10 @@
               },
               {
                 "group": "Architecture",
-                "pages": ["internals/architecture/components", "internals/architecture/cloud"]
+                "pages": [
+                  "internals/architecture/components",
+                  "internals/architecture/cloud"
+                ]
               },
               "internals/security",
               "internals/service-tokens"
@@ -549,7 +555,10 @@
               "integrations/cloud/gcp-secret-manager",
               {
                 "group": "Cloudflare",
-                "pages": ["integrations/cloud/cloudflare-pages", "integrations/cloud/cloudflare-workers"]
+                "pages": [
+                  "integrations/cloud/cloudflare-pages",
+                  "integrations/cloud/cloudflare-workers"
+                ]
               },
               "integrations/cloud/terraform-cloud",
               "integrations/cloud/databricks",
@@ -661,7 +670,11 @@
                   "cli/commands/reset",
                   {
                     "group": "infisical scan",
-                    "pages": ["cli/commands/scan", "cli/commands/scan-git-changes", "cli/commands/scan-install"]
+                    "pages": [
+                      "cli/commands/scan",
+                      "cli/commands/scan-git-changes",
+                      "cli/commands/scan-install"
+                    ]
                   }
                 ]
               },
@@ -985,7 +998,9 @@
                 "pages": [
                   {
                     "group": "Kubernetes",
-                    "pages": ["api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"]
+                    "pages": [
+                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
+                    ]
                   },
                   "api-reference/endpoints/dynamic-secrets/create",
                   "api-reference/endpoints/dynamic-secrets/update",
@@ -1323,7 +1338,7 @@
                       "api-reference/endpoints/app-connections/checkly/get-by-name",
                       "api-reference/endpoints/app-connections/checkly/create",
                       "api-reference/endpoints/app-connections/checkly/update",
-                      "api-reference/endpoints/app-connections/checkly/delete",
+                      "api-reference/endpoints/app-connections/checkly/delete"
                     ]
                   },
                   {
