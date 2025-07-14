@@ -1274,6 +1274,8 @@ export const orgServiceFactory = ({
         message: "No pending invitation found"
       });
 
+    const organization = await orgDAL.findById(orgId);
+
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
       userId: user.id,
@@ -1293,6 +1295,13 @@ export const orgServiceFactory = ({
         status: OrgMembershipStatus.Accepted
       });
       await licenseService.updateSubscriptionOrgMemberCount(orgId);
+      return { user };
+    }
+
+    if (
+      organization.authEnforced &&
+      !(organization.bypassOrgAuthEnabled && orgMembership.role === OrgMembershipRole.Admin)
+    ) {
       return { user };
     }
 
