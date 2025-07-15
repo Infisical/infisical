@@ -357,14 +357,16 @@ export const SecretApprovalRequest = () => {
                       </span>
                     </div>
                     {status === "close" && (
-                      <Tooltip content={format(updatedAt, "M/dd/yyyy h:mm a")}>
+                      <Tooltip
+                        content={updatedAt ? format(new Date(updatedAt), "M/dd/yyyy h:mm a") : ""}
+                      >
                         <div className="my-auto ml-auto">
                           <Badge
                             variant={hasMerged ? "success" : "danger"}
                             className="flex h-min items-center gap-1"
                           >
                             <FontAwesomeIcon icon={hasMerged ? faCodeMerge : faXmark} />
-                            {hasMerged ? "Merged" : "Closed"}
+                            {hasMerged ? "Merged" : "Rejected"}
                           </Badge>
                         </div>
                       </Tooltip>
