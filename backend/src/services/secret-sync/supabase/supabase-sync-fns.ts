@@ -39,7 +39,7 @@ export const SupabaseSyncFns = {
 
     for await (const batch of chunkArray(toCreate, 100)) {
       try {
-        await SupabasePublicAPI.upsertVariables(secretSync.connection, config.projectRef, ...batch);
+        await SupabasePublicAPI.createVariables(secretSync.connection, config.projectRef, ...batch);
       } catch (error) {
         throw new SecretSyncError({
           error,
@@ -52,7 +52,7 @@ export const SupabaseSyncFns = {
 
     const toDelete: string[] = [];
 
-    for (const key of Object.keys(supabaseSecrets)) {
+    for (const key of supabaseSecrets.keys()) {
       // eslint-disable-next-line no-continue
       if (!matchesSchema(key, environment?.slug || "", keySchema) || SUPABASE_INTERNAL_SECRETS.includes(key)) continue;
 
@@ -82,7 +82,7 @@ export const SupabaseSyncFns = {
 
     const toDelete: string[] = [];
 
-    for (const key of Object.keys(supabaseSecrets)) {
+    for (const key of supabaseSecrets.keys()) {
       if (SUPABASE_INTERNAL_SECRETS.includes(key) || !(key in secretMap)) continue;
 
       toDelete.push(key);

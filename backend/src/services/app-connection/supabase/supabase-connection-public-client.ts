@@ -86,30 +86,16 @@ class SupabasePublicClient {
     return res;
   }
 
-  async createVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variable: TSupabaseSecret[]) {
+  // Supabase does not support updating variables directly
+  // Instead, just call create again with the same key and it will overwrite the existing variable
+  async createVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variables: TSupabaseSecret[]) {
     const res = await this.send<TSupabaseSecret>(connection, {
       method: "POST",
       url: `/v1/projects/${projectRef}/secrets`,
-      data: variable
+      data: variables
     });
 
     return res;
-  }
-
-  // Supabase does not support updating variables directly
-  // Instead, delete the existing variables and create new ones
-  // This might cause a few ms of dead-zone time where the variables are not available
-  // but we will try to minimize this time by using a batch operation
-  async upsertVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variables: TSupabaseSecret[]) {
-    const names = variables.map((v) => v.name);
-
-    await this.deleteVariables(connection, projectRef, ...names);
-
-    await this.send<TSupabaseSecret>(connection, {
-      method: "PUT",
-      url: `/v1/projects/${projectRef}/secrets`,
-      data: variables
-    });
   }
 
   async deleteVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variables: string[]) {
