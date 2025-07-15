@@ -20,17 +20,10 @@ export const ChecklySyncFns = {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
+
     const config = secretSync.destinationConfig;
 
-    const connectionWithDestinationAccountId = {
-      ...secretSync.connection,
-      credentials: {
-        ...secretSync.connection.credentials,
-        accountId: config.accountId
-      }
-    };
-
-    const variables = await ChecklyPublicAPI.getVariables(connectionWithDestinationAccountId);
+    const variables = await ChecklyPublicAPI.getVariables(secretSync.connection, config.accountId);
 
     const checklySecrets = Object.fromEntries(variables!.map((variable) => [variable.key, variable]));
 
@@ -38,8 +31,8 @@ export const ChecklySyncFns = {
       try {
         const existing = checklySecrets[key];
 
-        if (existing === undefined || existing.value !== secretMap[key].value) {
-          await ChecklyPublicAPI.upsertVariable(connectionWithDestinationAccountId, {
+        if (existing === undefined) {
+          await ChecklyPublicAPI.upsertVariable(secretSync.connection, config.accountId, {
             key,
             value: secretMap[key].value ?? "",
             secret: true,
@@ -62,7 +55,7 @@ export const ChecklySyncFns = {
         if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
 
         if (!secretMap[key]) {
-          await ChecklyPublicAPI.deleteVariable(connectionWithDestinationAccountId, {
+          await ChecklyPublicAPI.deleteVariable(secretSync.connection, config.accountId, {
             key
           });
         }
@@ -78,22 +71,14 @@ export const ChecklySyncFns = {
   async removeSecrets(secretSync: TChecklySyncWithCredentials, secretMap: TSecretMap) {
     const config = secretSync.destinationConfig;
 
-    const connectionWithDestinationAccountId = {
-      ...secretSync.connection,
-      credentials: {
-        ...secretSync.connection.credentials,
-        accountId: config.accountId
-      }
-    };
-
-    const variables = await ChecklyPublicAPI.getVariables(connectionWithDestinationAccountId);
+    const variables = await ChecklyPublicAPI.getVariables(secretSync.connection, config.accountId);
 
     const checklySecrets = Object.fromEntries(variables!.map((variable) => [variable.key, variable]));
 
     for await (const secret of Object.keys(checklySecrets)) {
       try {
         if (secret in secretMap) {
-          await ChecklyPublicAPI.deleteVariable(connectionWithDestinationAccountId, {
+          await ChecklyPublicAPI.deleteVariable(secretSync.connection, config.accountId, {
             key: secret
           });
         }

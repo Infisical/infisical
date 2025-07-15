@@ -8,12 +8,15 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { ChecklyConnectionMethod } from "./checkly-connection-constants";
 import { TChecklyAccount, TChecklyConnectionConfig, TChecklyVariable } from "./checkly-connection-types";
 
-export function getChecklyAuthHeaders(connection: TChecklyConnectionConfig): Record<string, string> {
+export function getChecklyAuthHeaders(
+  connection: TChecklyConnectionConfig,
+  accountId?: string
+): Record<string, string> {
   switch (connection.method) {
     case ChecklyConnectionMethod.ApiKey:
       return {
         Authorization: `Bearer ${connection.credentials.apiKey}`,
-        "X-Checkly-Account": connection.credentials.accountId
+        ...(accountId && { "X-Checkly-Account": accountId })
       };
     default:
       throw new Error(`Unsupported Checkly connection method`);
@@ -52,13 +55,14 @@ class ChecklyPublicClient {
 
   async send<T>(
     connection: TChecklyConnectionConfig,
-    config: AxiosRequestConfig,
+    config: AxiosRequestConfig & { accountId?: string },
     retryAttempt = 0
   ): Promise<T | undefined> {
     const response = await this.client.request<T>({
       ...config,
+      timeout: 1000 * 60, // 60 seconds timeout
       validateStatus: (status) => (status >= 200 && status < 300) || status === HttpStatusCode.TooManyRequests,
-      headers: getChecklyAuthHeaders(connection)
+      headers: getChecklyAuthHeaders(connection, config.accountId)
     });
 
     const limiter = getChecklyRatelimiter(response);
@@ -74,14 +78,15 @@ class ChecklyPublicClient {
   healthcheck(connection: TChecklyConnectionConfig) {
     switch (connection.method) {
       case ChecklyConnectionMethod.ApiKey:
-        return this.getVariables(connection, 1, 1);
+        return this.getChecklyAccounts(connection);
       default:
         throw new Error(`Unsupported Checkly connection method`);
     }
   }
 
-  async getVariables(connection: TChecklyConnectionConfig, limit: number = 50, page: number = 1) {
+  async getVariables(connection: TChecklyConnectionConfig, accountId: string, limit: number = 50, page: number = 1) {
     const res = await this.send<TChecklyVariable[]>(connection, {
+      accountId,
       method: "GET",
       url: `/v1/variables`,
       params: {
@@ -93,8 +98,9 @@ class ChecklyPublicClient {
     return res;
   }
 
-  async createVariable(connection: TChecklyConnectionConfig, variable: TChecklyVariable) {
+  async createVariable(connection: TChecklyConnectionConfig, accountId: string, variable: TChecklyVariable) {
     const res = await this.send<TChecklyVariable>(connection, {
+      accountId,
       method: "POST",
       url: `/v1/variables`,
       data: variable
@@ -103,8 +109,9 @@ class ChecklyPublicClient {
     return res;
   }
 
-  async updateVariable(connection: TChecklyConnectionConfig, variable: TChecklyVariable) {
+  async updateVariable(connection: TChecklyConnectionConfig, accountId: string, variable: TChecklyVariable) {
     const res = await this.send<TChecklyVariable>(connection, {
+      accountId,
       method: "PUT",
       url: `/v1/variables`,
       data: variable
@@ -113,9 +120,10 @@ class ChecklyPublicClient {
     return res;
   }
 
-  async getVariable(connection: TChecklyConnectionConfig, variable: Pick<TChecklyVariable, "key">) {
+  async getVariable(connection: TChecklyConnectionConfig, accountId: string, variable: Pick<TChecklyVariable, "key">) {
     try {
       const res = await this.send<TChecklyVariable>(connection, {
+        accountId,
         method: "GET",
         url: `/v1/variables/${variable.key}`
       });
@@ -130,19 +138,26 @@ class ChecklyPublicClient {
     }
   }
 
-  async upsertVariable(connection: TChecklyConnectionConfig, variable: TChecklyVariable) {
-    const res = await this.getVariable(connection, variable);
+  async upsertVariable(connection: TChecklyConnectionConfig, accountId: string, variable: TChecklyVariable) {
+    const res = await this.getVariable(connection, accountId, variable);
 
     if (!res) {
-      return this.createVariable(connection, variable);
+      return this.createVariable(connection, accountId, variable);
     }
+
+    await this.updateVariable(connection, accountId, variable);
 
     return res;
   }
 
-  async deleteVariable(connection: TChecklyConnectionConfig, variable: Pick<TChecklyVariable, "key">) {
+  async deleteVariable(
+    connection: TChecklyConnectionConfig,
+    accountId: string,
+    variable: Pick<TChecklyVariable, "key">
+  ) {
     try {
       const res = await this.send<TChecklyVariable>(connection, {
+        accountId,
         method: "DELETE",
         url: `/v1/variables/${variable.key}`
       });

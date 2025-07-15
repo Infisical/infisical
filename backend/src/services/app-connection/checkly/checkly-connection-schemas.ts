@@ -15,13 +15,7 @@ export const ChecklyConnectionMethodSchema = z
   .describe(AppConnections.CREATE(AppConnection.Checkly).method);
 
 export const ChecklyConnectionAccessTokenCredentialsSchema = z.object({
-  apiKey: z.string().trim().min(1, "API Key required").max(255).describe(AppConnections.CREDENTIALS.CHECKLY.apiKey),
-  accountId: z
-    .string()
-    .trim()
-    .min(1, "Account ID required")
-    .max(255)
-    .describe(AppConnections.CREDENTIALS.CHECKLY.accountId)
+  apiKey: z.string().trim().min(1, "API Key required").max(255).describe(AppConnections.CREDENTIALS.CHECKLY.apiKey)
 });
 
 const BaseChecklyConnectionSchema = BaseAppConnectionSchema.extend({

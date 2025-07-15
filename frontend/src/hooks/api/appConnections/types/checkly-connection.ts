@@ -10,6 +10,5 @@ export type TChecklyConnection = TRootAppConnection & {
   method: ChecklyConnectionMethod.ApiKey;
   credentials: {
     apiKey: string;
-    accountId: string;
   };
 };

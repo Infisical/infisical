@@ -2284,8 +2284,7 @@ export const AppConnections = {
       apiToken: "The API token used to authenticate with Railway."
     },
     CHECKLY: {
-      apiKey: "The API key used to authenticate with Checkly.",
-      accountId: "The account ID used to authenticate with Checkly."
+      apiKey: "The API key used to authenticate with Checkly."
     },
     SUPABASE: {
       apiKey: "The Key used to access Supabase.",
