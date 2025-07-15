@@ -60,6 +60,7 @@ class ChecklyPublicClient {
   ): Promise<T | undefined> {
     const response = await this.client.request<T>({
       ...config,
+      timeout: 1000 * 60, // 60 seconds timeout
       validateStatus: (status) => (status >= 200 && status < 300) || status === HttpStatusCode.TooManyRequests,
       headers: getChecklyAuthHeaders(connection, config.accountId)
     });
