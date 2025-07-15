@@ -8,10 +8,7 @@ export const AzureDevOpsSyncDestinationSchema = BaseSecretSyncSchema().merge(
     destination: z.literal(SecretSync.AzureDevOps),
     destinationConfig: z.object({
       devopsProjectId: z.string().trim().min(1, { message: "Azure DevOps Project ID is required" }),
-      devopsProjectName: z
-        .string()
-        .trim()
-        .min(1, { message: "Azure DevOps Project Name is required" })
+      devopsProjectName: z.string().trim().optional()
     })
   })
 );
