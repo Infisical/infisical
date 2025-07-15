@@ -148,6 +148,10 @@ export type TChecklyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Checkly;
 };
 
+export type TSupabaseConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Supabase;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -215,4 +219,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Zabbix]: TZabbixConnectionOption;
   [AppConnection.Railway]: TRailwayConnectionOption;
   [AppConnection.Checkly]: TChecklyConnectionOption;
+  [AppConnection.Supabase]: TSupabaseConnectionOption;
 };
