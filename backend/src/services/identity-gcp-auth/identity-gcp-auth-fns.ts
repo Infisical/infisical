@@ -1,7 +1,7 @@
 import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
-import jwt from "jsonwebtoken";
 
+import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
 
 import { TDecodedGcpIamAuthJwt, TGcpIdTokenPayload } from "./identity-gcp-auth-types";
@@ -48,7 +48,7 @@ export const validateIamIdentity = async ({
   identityId: string;
   jwt: string;
 }) => {
-  const decodedJwt = jwt.decode(serviceAccountJwt, { complete: true }) as TDecodedGcpIamAuthJwt;
+  const decodedJwt = crypto.jwt().decode(serviceAccountJwt, { complete: true }) as TDecodedGcpIamAuthJwt;
   const { sub, aud } = decodedJwt.payload;
 
   const {
@@ -61,7 +61,7 @@ export const validateIamIdentity = async ({
 
   const publicKey = data[decodedJwt.header.kid];
 
-  jwt.verify(serviceAccountJwt, publicKey, {
+  crypto.jwt().verify(serviceAccountJwt, publicKey, {
     algorithms: ["RS256"]
   });
 

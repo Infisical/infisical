@@ -7,6 +7,7 @@ import { ZodError } from "zod";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
+  CryptographyError,
   DatabaseError,
   ForbiddenRequestError,
   GatewayTimeoutError,
@@ -144,6 +145,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       void res.status(HttpStatusCodes.InternalServerError).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.InternalServerError,
+        message: error.message,
+        error: error.name
+      });
+    } else if (error instanceof CryptographyError) {
+      void res.status(HttpStatusCodes.BadRequest).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.BadRequest,
         message: error.message,
         error: error.name
       });

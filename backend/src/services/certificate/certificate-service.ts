@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
-import { createPrivateKey, createPublicKey, sign, verify } from "crypto";
 
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -8,6 +7,7 @@ import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -373,16 +373,16 @@ export const certificateServiceFactory = ({
     // Verify private key matches the certificate
     let privateKey;
     try {
-      privateKey = createPrivateKey(privateKeyPem);
+      privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
     } catch (err) {
       throw new BadRequestError({ message: "Invalid private key format" });
     }
 
     try {
       const message = Buffer.from(Buffer.alloc(32));
-      const publicKey = createPublicKey(certificatePem);
-      const signature = sign(null, message, privateKey);
-      const isValid = verify(null, message, publicKey, signature);
+      const publicKey = crypto.nativeCrypto.createPublicKey(certificatePem);
+      const signature = crypto.nativeCrypto.sign(null, message, privateKey);
+      const isValid = crypto.nativeCrypto.verify(null, message, publicKey, signature);
 
       if (!isValid) {
         throw new BadRequestError({ message: "Private key does not match certificate" });

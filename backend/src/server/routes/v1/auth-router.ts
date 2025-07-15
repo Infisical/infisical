@@ -1,7 +1,7 @@
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { getMinExpiresIn } from "@app/lib/fn";
 import { authRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -93,7 +93,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         }
       }
 
-      const token = jwt.sign(
+      const token = crypto.jwt().sign(
         {
           authMethod: decodedToken.authMethod,
           authTokenType: AuthTokenType.ACCESS_TOKEN,

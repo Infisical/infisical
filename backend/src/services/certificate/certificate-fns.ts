@@ -1,8 +1,7 @@
-import crypto from "node:crypto";
-
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
@@ -87,10 +86,10 @@ export const getCertificateCredentials = async ({
   });
 
   try {
-    const skObj = crypto.createPrivateKey({ key: decryptedPrivateKey, format: "pem", type: "pkcs8" });
+    const skObj = crypto.nativeCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "pem", type: "pkcs8" });
     const certPrivateKey = skObj.export({ format: "pem", type: "pkcs8" }).toString();
 
-    const pkObj = crypto.createPublicKey(skObj);
+    const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
     const certPublicKey = pkObj.export({ format: "pem", type: "spki" }).toString();
 
     return {

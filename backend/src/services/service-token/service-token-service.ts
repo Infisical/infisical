@@ -1,7 +1,4 @@
-import crypto from "node:crypto";
-
 import { ForbiddenError, subject } from "@casl/ability";
-import bcrypt from "bcrypt";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -10,6 +7,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -87,7 +85,7 @@ export const serviceTokenServiceFactory = ({
       throw new NotFoundError({ message: `One or more selected environments not found` });
 
     const secret = crypto.randomBytes(16).toString("hex");
-    const secretHash = await bcrypt.hash(secret, appCfg.SALT_ROUNDS);
+    const secretHash = await crypto.hashing().createHash(secret, appCfg.SALT_ROUNDS);
     let expiresAt: Date | null = null;
     if (expiresIn) {
       expiresAt = new Date();
@@ -178,7 +176,7 @@ export const serviceTokenServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Service token has expired" });
     }
 
-    const isMatch = await bcrypt.compare(tokenSecret, serviceToken.secretHash);
+    const isMatch = await crypto.hashing().compareHash(tokenSecret, serviceToken.secretHash);
     if (!isMatch) throw new UnauthorizedError({ message: "Invalid service token" });
     await accessTokenQueue.updateServiceTokenStatus(serviceToken.id);
 

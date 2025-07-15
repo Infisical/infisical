@@ -1,7 +1,7 @@
-import bcrypt from "bcrypt";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
@@ -85,7 +85,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, estConfig.hashedPassphrase);
+    const isPasswordValid = await crypto.hashing().compareHash(password, estConfig.hashedPassphrase);
     if (!isPasswordValid) {
       throw new UnauthorizedError({
         message: "Invalid credentials"

@@ -1,8 +1,4 @@
-import crypto from "node:crypto";
-
 import { ForbiddenError } from "@casl/ability";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -13,6 +9,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 
@@ -76,7 +73,8 @@ export const identityUaServiceFactory = ({
 
     let validClientSecretInfo: (typeof clientSecrtInfo)[0] | null = null;
     for await (const info of clientSecrtInfo) {
-      const isMatch = await bcrypt.compare(clientSecret, info.clientSecretHash);
+      const isMatch = await crypto.hashing().compareHash(clientSecret, info.clientSecretHash);
+
       if (isMatch) {
         validClientSecretInfo = info;
         break;
@@ -148,7 +146,7 @@ export const identityUaServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         identityId: identityUa.identityId,
         clientSecretId: validClientSecretInfo.id,
@@ -250,7 +248,7 @@ export const identityUaServiceFactory = ({
       const doc = await identityUaDAL.create(
         {
           identityId: identityMembershipOrg.identityId,
-          clientId: crypto.randomUUID(),
+          clientId: crypto.nativeCrypto.randomUUID(),
           clientSecretTrustedIps: JSON.stringify(reformattedClientSecretTrustedIps),
           accessTokenMaxTTL,
           accessTokenTTL,
@@ -494,7 +492,7 @@ export const identityUaServiceFactory = ({
 
     const appCfg = getConfig();
     const clientSecret = crypto.randomBytes(32).toString("hex");
-    const clientSecretHash = await bcrypt.hash(clientSecret, appCfg.SALT_ROUNDS);
+    const clientSecretHash = await crypto.hashing().createHash(clientSecret, appCfg.SALT_ROUNDS);
 
     const identityUaAuth = await identityUaDAL.findOne({ identityId: identityMembershipOrg.identityId });
     if (!identityUaAuth) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });

@@ -1,5 +1,5 @@
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
@@ -98,7 +98,7 @@ export const externalMigrationQueueFactory = ({
         template: SmtpTemplates.ExternalImportStarted
       });
 
-      const decrypted = infisicalSymmetricDecrypt({
+      const decrypted = crypto.encryption().symmetric().decryptWithRootEncryptionKey({
         ciphertext: data.ciphertext,
         iv: data.iv,
         keyEncoding: data.encoding,

@@ -1,8 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
-import jwt from "jsonwebtoken";
 
 import { OrgMembershipStatus, TableName, TSamlConfigs, TSamlConfigsUpdate, TUsers } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -412,7 +412,7 @@ export const samlConfigServiceFactory = ({
 
     const isUserCompleted = Boolean(user.isAccepted);
     const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
-    const providerAuthToken = jwt.sign(
+    const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,

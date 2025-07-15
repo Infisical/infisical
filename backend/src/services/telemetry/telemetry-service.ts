@@ -1,4 +1,3 @@
-import { createHash, randomUUID } from "crypto";
 import { PostHog } from "posthog-node";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -6,6 +5,7 @@ import { InstanceType } from "@app/ee/services/license/license-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 
 import { PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
@@ -42,7 +42,7 @@ export type TTelemetryServiceFactoryDep = {
 
 const getBucketForDistinctId = (distinctId: string): string => {
   // Use SHA-256 hash for consistent distribution
-  const hash = createHash("sha256").update(distinctId).digest("hex");
+  const hash = crypto.nativeCrypto.createHash("sha256").update(distinctId).digest("hex");
 
   // Take first 8 characters and convert to number for better distribution
   const hashNumber = parseInt(hash.substring(0, 8), 16);
@@ -53,7 +53,7 @@ const getBucketForDistinctId = (distinctId: string): string => {
 
 export const createTelemetryEventKey = (event: string, distinctId: string): string => {
   const bucketId = getBucketForDistinctId(distinctId);
-  return `telemetry-event-${event}-${bucketId}-${distinctId}-${randomUUID()}`;
+  return `telemetry-event-${event}-${bucketId}-${distinctId}-${crypto.nativeCrypto.randomUUID()}`;
 };
 
 export const telemetryServiceFactory = ({ keyStore, licenseService }: TTelemetryServiceFactoryDep) => {

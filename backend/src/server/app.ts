@@ -22,6 +22,7 @@ import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
+import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { addErrorsToResponseSchemas } from "./plugins/add-errors-to-response-schemas";
@@ -44,10 +45,22 @@ type TMain = {
   hsmModule: HsmModule;
   redis: Redis;
   envConfig: TEnvConfig;
+  superAdminDAL: TSuperAdminDALFactory;
 };
 
 // Run the server!
-export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, keyStore, redis, envConfig }: TMain) => {
+export const main = async ({
+  db,
+  hsmModule,
+  auditLogDb,
+  smtp,
+  logger,
+  queue,
+  keyStore,
+  redis,
+  envConfig,
+  superAdminDAL
+}: TMain) => {
   const appCfg = getConfig();
 
   const server = fastify({
@@ -128,7 +141,16 @@ export const main = async ({ db, hsmModule, auditLogDb, smtp, logger, queue, key
       })
     });
 
-    await server.register(registerRoutes, { smtp, queue, db, auditLogDb, keyStore, hsmModule, envConfig });
+    await server.register(registerRoutes, {
+      smtp,
+      queue,
+      db,
+      auditLogDb,
+      keyStore,
+      hsmModule,
+      envConfig,
+      superAdminDAL
+    });
 
     await server.register(registerServeUI, {
       standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,

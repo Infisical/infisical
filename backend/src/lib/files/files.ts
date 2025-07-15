@@ -1,8 +1,8 @@
-import crypto from "crypto";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 
 const baseDir = path.join(os.tmpdir(), "infisical");

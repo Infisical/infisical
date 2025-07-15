@@ -115,6 +115,12 @@ FROM base AS production
 
 # Install necessary packages including ODBC
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    autoconf \
+    automake \
+    libtool \
+    wget \
+    libssl-dev \
     ca-certificates \
     curl \
     git \
@@ -131,6 +137,15 @@ RUN apt-get update && apt-get install -y \
 
 # Configure ODBC in production
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+
+
+WORKDIR /openssl-build
+RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
+    && tar -xf openssl-3.1.2.tar.gz \
+    && cd openssl-3.1.2 \
+    && ./Configure enable-fips \
+    && make \
+    && make install_fips
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
@@ -173,12 +188,23 @@ ENV STANDALONE_MODE true
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
+# FIPS mode of operation:
+ENV OPENSSL_CONF=/backend/nodejs.fips.cnf
+ENV OPENSSL_MODULES=/usr/local/lib/ossl-modules
+ENV NODE_OPTIONS=--force-fips
+ENV FIPS_ENABLED=true
+  
+
 WORKDIR /backend
 
 ENV TELEMETRY_ENABLED true
 
 EXPOSE 8080
 EXPOSE 443
+
+# Remove telemetry. dd-trace uses BullMQ with MD5 hashing, which breaks when FIPS mode is enabled.
+RUN grep -v 'import "./lib/telemetry/instrumentation.mjs";' dist/main.mjs > dist/main.mjs.tmp && \
+    mv dist/main.mjs.tmp dist/main.mjs
 
 USER non-root-user
 

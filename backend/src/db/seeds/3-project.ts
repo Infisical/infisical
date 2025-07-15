@@ -1,8 +1,6 @@
-import crypto from "node:crypto";
-
 import { Knex } from "knex";
 
-import { encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 
 import { ProjectMembershipRole, ProjectType, SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
 import { buildUserProjectKey, getUserPrivateKey, seedData1 } from "../seed-data";
@@ -72,7 +70,11 @@ export async function seed(knex: Knex): Promise<void> {
   const encKey = process.env.ENCRYPTION_KEY;
   if (!encKey) throw new Error("Missing ENCRYPTION_KEY");
   const salt = crypto.randomBytes(16).toString("base64");
-  const secretBlindIndex = encryptSymmetric128BitHexKeyUTF8(salt, encKey);
+  const secretBlindIndex = crypto.encryption().symmetric().encrypt({
+    plaintext: salt,
+    key: encKey,
+    keySize: SymmetricKeySize.Bits128
+  });
   // insert secret blind index for project
   await knex(TableName.SecretBlindIndex).insert({
     projectId: project.id,

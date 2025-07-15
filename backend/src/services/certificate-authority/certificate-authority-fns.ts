@@ -1,6 +1,6 @@
 import * as x509 from "@peculiar/x509";
-import crypto from "crypto";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -133,8 +133,8 @@ export const getCaCredentials = async ({
   });
 
   const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-  const skObj = crypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
-  const caPrivateKey = await crypto.subtle.importKey(
+  const skObj = crypto.nativeCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
+  const caPrivateKey = await crypto.nativeCrypto.subtle.importKey(
     "pkcs8",
     skObj.export({ format: "der", type: "pkcs8" }),
     alg,
@@ -142,10 +142,14 @@ export const getCaCredentials = async ({
     ["sign"]
   );
 
-  const pkObj = crypto.createPublicKey(skObj);
-  const caPublicKey = await crypto.subtle.importKey("spki", pkObj.export({ format: "der", type: "spki" }), alg, true, [
-    "verify"
-  ]);
+  const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
+  const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
+    "spki",
+    pkObj.export({ format: "der", type: "spki" }),
+    alg,
+    true,
+    ["verify"]
+  );
 
   return {
     caSecret,
@@ -277,10 +281,14 @@ export const rebuildCaCrl = async ({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
-  const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-  const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
-    "sign"
-  ]);
+  const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
+  const sk = await crypto.nativeCrypto.subtle.importKey(
+    "pkcs8",
+    skObj.export({ format: "der", type: "pkcs8" }),
+    alg,
+    true,
+    ["sign"]
+  );
 
   const revokedCerts = await certificateDAL.find({
     caId: ca.id,

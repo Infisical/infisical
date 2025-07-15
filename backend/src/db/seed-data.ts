@@ -1,18 +1,8 @@
 /* eslint-disable import/no-mutable-exports */
-import crypto from "node:crypto";
-
 import argon2, { argon2id } from "argon2";
 import jsrp from "jsrp";
-import nacl from "tweetnacl";
-import { encodeBase64 } from "tweetnacl-util";
 
-import {
-  decryptAsymmetric,
-  // decryptAsymmetric,
-  decryptSymmetric128BitHexKeyUTF8,
-  encryptAsymmetric,
-  encryptSymmetric128BitHexKeyUTF8
-} from "@app/lib/crypto";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 
 import { TSecrets, TUserEncryptionKeys } from "./schemas";
 
@@ -62,11 +52,7 @@ export const seedData1 = {
 };
 
 export const generateUserSrpKeys = async (password: string) => {
-  const pair = nacl.box.keyPair();
-  const secretKeyUint8Array = pair.secretKey;
-  const publicKeyUint8Array = pair.publicKey;
-  const privateKey = encodeBase64(secretKeyUint8Array);
-  const publicKey = encodeBase64(publicKeyUint8Array);
+  const { publicKey, privateKey } = await crypto.encryption().asymmetric().generateKeyPair();
 
   // eslint-disable-next-line
   const client = new jsrp.client();
@@ -98,7 +84,11 @@ export const generateUserSrpKeys = async (password: string) => {
     ciphertext: encryptedPrivateKey,
     iv: encryptedPrivateKeyIV,
     tag: encryptedPrivateKeyTag
-  } = encryptSymmetric128BitHexKeyUTF8(privateKey, key);
+  } = crypto.encryption().symmetric().encrypt({
+    plaintext: privateKey,
+    key,
+    keySize: SymmetricKeySize.Bits128
+  });
 
   // create the protected key by encrypting the symmetric key
   // [key] with the derived key
@@ -106,7 +96,10 @@ export const generateUserSrpKeys = async (password: string) => {
     ciphertext: protectedKey,
     iv: protectedKeyIV,
     tag: protectedKeyTag
-  } = encryptSymmetric128BitHexKeyUTF8(key.toString("hex"), derivedKey);
+  } = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({ plaintext: key.toString("hex"), key: derivedKey, keySize: SymmetricKeySize.Bits128 });
 
   return {
     protectedKey,
@@ -133,30 +126,38 @@ export const getUserPrivateKey = async (password: string, user: TUserEncryptionK
   });
   if (!derivedKey) throw new Error("Failed to derive key from password");
 
-  const key = decryptSymmetric128BitHexKeyUTF8({
-    ciphertext: user.protectedKey as string,
-    iv: user.protectedKeyIV as string,
-    tag: user.protectedKeyTag as string,
-    key: derivedKey
-  });
+  const key = crypto
+    .encryption()
+    .symmetric()
+    .decrypt({
+      ciphertext: user.protectedKey as string,
+      iv: user.protectedKeyIV as string,
+      tag: user.protectedKeyTag as string,
+      key: derivedKey,
+      keySize: SymmetricKeySize.Bits128
+    });
 
-  const privateKey = decryptSymmetric128BitHexKeyUTF8({
-    ciphertext: user.encryptedPrivateKey,
-    iv: user.iv,
-    tag: user.tag,
-    key: Buffer.from(key, "hex")
-  });
+  const privateKey = crypto
+    .encryption()
+    .symmetric()
+    .decrypt({
+      ciphertext: user.encryptedPrivateKey,
+      iv: user.iv,
+      tag: user.tag,
+      key: Buffer.from(key, "hex"),
+      keySize: SymmetricKeySize.Bits128
+    });
   return privateKey;
 };
 
 export const buildUserProjectKey = (privateKey: string, publickey: string) => {
   const randomBytes = crypto.randomBytes(16).toString("hex");
-  const { nonce, ciphertext } = encryptAsymmetric(randomBytes, publickey, privateKey);
+  const { nonce, ciphertext } = crypto.encryption().asymmetric().encrypt(randomBytes, publickey, privateKey);
   return { nonce, ciphertext };
 };
 
 export const getUserProjectKey = async (privateKey: string, ciphertext: string, nonce: string, publicKey: string) => {
-  return decryptAsymmetric({
+  return crypto.encryption().asymmetric().decrypt({
     ciphertext,
     nonce,
     publicKey,
@@ -170,21 +171,39 @@ export const encryptSecret = (encKey: string, key: string, value?: string, comme
     ciphertext: secretKeyCiphertext,
     iv: secretKeyIV,
     tag: secretKeyTag
-  } = encryptSymmetric128BitHexKeyUTF8(key, encKey);
+  } = crypto.encryption().symmetric().encrypt({
+    plaintext: key,
+    key: encKey,
+    keySize: SymmetricKeySize.Bits128
+  });
 
   // encrypt value
   const {
     ciphertext: secretValueCiphertext,
     iv: secretValueIV,
     tag: secretValueTag
-  } = encryptSymmetric128BitHexKeyUTF8(value ?? "", encKey);
+  } = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({
+      plaintext: value ?? "",
+      key: encKey,
+      keySize: SymmetricKeySize.Bits128
+    });
 
   // encrypt comment
   const {
     ciphertext: secretCommentCiphertext,
     iv: secretCommentIV,
     tag: secretCommentTag
-  } = encryptSymmetric128BitHexKeyUTF8(comment ?? "", encKey);
+  } = crypto
+    .encryption()
+    .symmetric()
+    .encrypt({
+      plaintext: comment ?? "",
+      key: encKey,
+      keySize: SymmetricKeySize.Bits128
+    });
 
   return {
     secretKeyCiphertext,
@@ -200,27 +219,30 @@ export const encryptSecret = (encKey: string, key: string, value?: string, comme
 };
 
 export const decryptSecret = (decryptKey: string, encSecret: TSecrets) => {
-  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+  const secretKey = crypto.encryption().symmetric().decrypt({
     key: decryptKey,
     ciphertext: encSecret.secretKeyCiphertext,
     tag: encSecret.secretKeyTag,
-    iv: encSecret.secretKeyIV
+    iv: encSecret.secretKeyIV,
+    keySize: SymmetricKeySize.Bits128
   });
 
-  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+  const secretValue = crypto.encryption().symmetric().decrypt({
     key: decryptKey,
     ciphertext: encSecret.secretValueCiphertext,
     tag: encSecret.secretValueTag,
-    iv: encSecret.secretValueIV
+    iv: encSecret.secretValueIV,
+    keySize: SymmetricKeySize.Bits128
   });
 
   const secretComment =
     encSecret.secretCommentIV && encSecret.secretCommentTag && encSecret.secretCommentCiphertext
-      ? decryptSymmetric128BitHexKeyUTF8({
+      ? crypto.encryption().symmetric().decrypt({
           key: decryptKey,
           ciphertext: encSecret.secretCommentCiphertext,
           tag: encSecret.secretCommentTag,
-          iv: encSecret.secretCommentIV
+          iv: encSecret.secretCommentIV,
+          keySize: SymmetricKeySize.Bits128
         })
       : "";
 
