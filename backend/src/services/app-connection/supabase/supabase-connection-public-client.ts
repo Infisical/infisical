@@ -100,7 +100,7 @@ class SupabasePublicClient {
   // Instead, delete the existing variables and create new ones
   // This might cause a few ms of dead-zone time where the variables are not available
   // but we will try to minimize this time by using a batch operation
-  async updateVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variables: TSupabaseSecret[]) {
+  async upsertVariables(connection: TSupabaseConnectionConfig, projectRef: string, ...variables: TSupabaseSecret[]) {
     const names = variables.map((v) => v.name);
 
     await this.deleteVariables(connection, projectRef, ...names);

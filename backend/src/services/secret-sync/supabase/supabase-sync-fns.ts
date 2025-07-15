@@ -12,6 +12,8 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { TSecretMap } from "../secret-sync-types";
 import { TSupabaseSyncWithCredentials } from "./supabase-sync-types";
 
+const SUPABASE_INTERNAL_SECRETS = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_URL"];
+
 export const SupabaseSyncFns = {
   async getSecrets(secretSync: TSupabaseSyncWithCredentials) {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
@@ -31,16 +33,13 @@ export const SupabaseSyncFns = {
     const toCreate: TSupabaseSecret[] = [];
 
     for (const key of Object.keys(secretMap)) {
-      const existing = supabaseSecrets.get(key);
-
-      if (existing) {
-        toCreate.push(existing);
-      }
+      const variable: TSupabaseSecret = { name: key, value: secretMap[key].value ?? "" };
+      toCreate.push(variable);
     }
 
     for await (const batch of chunkArray(toCreate, 100)) {
       try {
-        await SupabasePublicAPI.updateVariables(secretSync.connection, config.projectRef, ...batch);
+        await SupabasePublicAPI.upsertVariables(secretSync.connection, config.projectRef, ...batch);
       } catch (error) {
         throw new SecretSyncError({
           error,
@@ -55,7 +54,7 @@ export const SupabaseSyncFns = {
 
     for (const key of Object.keys(supabaseSecrets)) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
+      if (!matchesSchema(key, environment?.slug || "", keySchema) || SUPABASE_INTERNAL_SECRETS.includes(key)) continue;
 
       if (!secretMap[key]) {
         toDelete.push(key);
@@ -84,9 +83,9 @@ export const SupabaseSyncFns = {
     const toDelete: string[] = [];
 
     for (const key of Object.keys(supabaseSecrets)) {
-      if (key in secretMap) {
-        toDelete.push(key);
-      }
+      if (SUPABASE_INTERNAL_SECRETS.includes(key) || !(key in secretMap)) continue;
+
+      toDelete.push(key);
     }
 
     for await (const batch of chunkArray(toDelete, 100)) {

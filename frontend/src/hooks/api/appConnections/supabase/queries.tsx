@@ -5,10 +5,10 @@ import { appConnectionKeys } from "@app/hooks/api/appConnections";
 
 import { TSupabaseProject } from "./types";
 
-const checklyConnectionKeys = {
+const supabaseConnectionKeys = {
   all: [...appConnectionKeys.all, "supabase"] as const,
   listProjects: (connectionId: string) =>
-    [...checklyConnectionKeys.all, "workspace-scopes", connectionId] as const
+    [...supabaseConnectionKeys.all, "workspace-scopes", connectionId] as const
 };
 
 export const useSupabaseConnectionListProjects = (
@@ -18,16 +18,16 @@ export const useSupabaseConnectionListProjects = (
       TSupabaseProject[],
       unknown,
       TSupabaseProject[],
-      ReturnType<typeof checklyConnectionKeys.listProjects>
+      ReturnType<typeof supabaseConnectionKeys.listProjects>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: checklyConnectionKeys.listProjects(connectionId),
+    queryKey: supabaseConnectionKeys.listProjects(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ projects: TSupabaseProject[] }>(
-        `/api/v1/app-connections/checkly/${connectionId}/projects`
+        `/api/v1/app-connections/supabase/${connectionId}/projects`
       );
 
       return data.projects;

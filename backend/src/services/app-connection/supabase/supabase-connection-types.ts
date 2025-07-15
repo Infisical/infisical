@@ -41,5 +41,4 @@ type TSupabaseDatabase = {
 export type TSupabaseSecret = {
   name: string;
   value: string;
-  updated_at: string;
 };

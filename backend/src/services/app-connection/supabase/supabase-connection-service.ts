@@ -13,7 +13,7 @@ type TGetAppConnectionFunc = (
 
 export const supabaseConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
-    const appConnection = await getAppConnection(AppConnection.Railway, connectionId, actor);
+    const appConnection = await getAppConnection(AppConnection.Supabase, connectionId, actor);
     try {
       const projects = await getSupabaseProjects(appConnection);
 

@@ -39,6 +39,7 @@ import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
+import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -139,6 +140,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Checkly:
       DestinationFieldsComponent = <ChecklySyncReviewFields />;
+      break;
+    case SecretSync.Supabase:
+      DestinationFieldsComponent = <SupabaseSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
