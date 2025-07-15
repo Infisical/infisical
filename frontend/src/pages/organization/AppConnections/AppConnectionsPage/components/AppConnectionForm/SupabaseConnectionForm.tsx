@@ -50,6 +50,9 @@ export const SupabaseConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Supabase,
+      credentials: {
+        instanceUrl: "https://api.supabase.com"
+      },
       method: SupabaseConnectionMethod.AccountToken
     }
   });
