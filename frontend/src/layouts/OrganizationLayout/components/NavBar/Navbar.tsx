@@ -180,7 +180,7 @@ export const Navbar = () => {
   }
 
   return (
-    <div className="z-10 flex h-12 items-center border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
+    <div className="z-10 flex min-h-12 items-center border-b border-mineshaft-600 bg-mineshaft-800 px-4">
       <div>
         <Link to="/organization/projects">
           <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
@@ -194,7 +194,7 @@ export const Navbar = () => {
               <div>
                 <FontAwesomeIcon icon={faBuilding} className="text-xs text-bunker-300" />
               </div>
-              <div className="max-w-32 overflow-hidden text-ellipsis">{currentOrg?.name}</div>
+              <div className="whitespace-nowrap">{currentOrg?.name}</div>
               <div className="mr-1 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300 !no-underline">
                 {getPlan(subscription)}
               </div>
