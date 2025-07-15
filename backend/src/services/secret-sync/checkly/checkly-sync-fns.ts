@@ -29,16 +29,12 @@ export const ChecklySyncFns = {
 
     for await (const key of Object.keys(secretMap)) {
       try {
-        const existing = checklySecrets[key];
-
-        if (existing === undefined) {
-          await ChecklyPublicAPI.upsertVariable(secretSync.connection, config.accountId, {
-            key,
-            value: secretMap[key].value ?? "",
-            secret: true,
-            locked: true
-          });
-        }
+        await ChecklyPublicAPI.upsertVariable(secretSync.connection, config.accountId, {
+          key,
+          value: secretMap[key].value ?? "",
+          secret: true,
+          locked: true
+        });
       } catch (error) {
         throw new SecretSyncError({
           error,

@@ -64,7 +64,6 @@ class ChecklyPublicClient {
       validateStatus: (status) => (status >= 200 && status < 300) || status === HttpStatusCode.TooManyRequests,
       headers: getChecklyAuthHeaders(connection, config.accountId)
     });
-
     const limiter = getChecklyRatelimiter(response);
 
     if (limiter.isRatelimited && retryAttempt <= limiter.maxAttempts) {
@@ -113,7 +112,7 @@ class ChecklyPublicClient {
     const res = await this.send<TChecklyVariable>(connection, {
       accountId,
       method: "PUT",
-      url: `/v1/variables`,
+      url: `/v1/variables/${variable.key}`,
       data: variable
     });
 
