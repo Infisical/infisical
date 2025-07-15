@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
+  faCaretDown,
   faCheck,
-  faCube,
   faMagnifyingGlass,
   faPlus,
-  faSort,
-  faStar as faSolidStar
+  faStar as faSolidStar,
+  faTable
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, linkOptions } from "@tanstack/react-router";
@@ -99,7 +99,7 @@ export const ProjectSelect = () => {
   }, [workspaces, projectFavorites, currentWorkspace]);
 
   return (
-    <div className="flex w-full items-center gap-2">
+    <div className="-mr-2 flex w-full items-center gap-1">
       <DropdownMenu modal={false}>
         <Link
           to={getProjectHomePage(
@@ -109,9 +109,9 @@ export const ProjectSelect = () => {
             projectId: currentWorkspace.id
           }}
         >
-          <div className="flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary-400">
+          <div className="flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
             <div>
-              <FontAwesomeIcon icon={faCube} className="text-xs" />
+              <FontAwesomeIcon icon={faTable} className="text-xs text-bunker-300" />
             </div>
             <Tooltip content={currentWorkspace.name} className="max-w-96">
               <div className="max-w-32 overflow-hidden text-ellipsis whitespace-nowrap">
@@ -125,10 +125,10 @@ export const ProjectSelect = () => {
             <IconButton
               variant="plain"
               colorSchema="secondary"
-              ariaLabel="switch-org"
+              ariaLabel="switch-project"
               className="px-2 py-1"
             >
-              <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
+              <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
             </IconButton>
           </div>
         </DropdownMenuTrigger>
