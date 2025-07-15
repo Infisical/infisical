@@ -32,8 +32,8 @@ export const ChecklySyncFns = {
         await ChecklyPublicAPI.upsertVariable(secretSync.connection, config.accountId, {
           key,
           value: secretMap[key].value ?? "",
-          secret: false,
-          locked: false
+          secret: true,
+          locked: true
         });
       } catch (error) {
         throw new SecretSyncError({
