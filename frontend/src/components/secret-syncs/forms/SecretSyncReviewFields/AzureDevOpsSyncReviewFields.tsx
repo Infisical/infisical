@@ -11,7 +11,9 @@ export const AzureDevOpsSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Project">{devopsProjectName}</GenericFieldLabel>
+      {devopsProjectName && (
+        <GenericFieldLabel label="Project">{devopsProjectName}</GenericFieldLabel>
+      )}
       <GenericFieldLabel label="Project ID">{devopsProjectId}</GenericFieldLabel>
     </>
   );

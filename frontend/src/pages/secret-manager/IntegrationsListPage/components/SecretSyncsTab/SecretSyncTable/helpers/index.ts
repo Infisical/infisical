@@ -115,8 +115,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = "Vault ID";
       break;
     case SecretSync.AzureDevOps:
-      primaryText = destinationConfig.devopsProjectName;
-      secondaryText = destinationConfig.devopsProjectId;
+      primaryText = destinationConfig.devopsProjectName || destinationConfig.devopsProjectId;
+      secondaryText = destinationConfig.devopsProjectName
+        ? destinationConfig.devopsProjectId
+        : "Project ID";
       break;
     case SecretSync.Heroku:
       primaryText = destinationConfig.appName;
