@@ -809,7 +809,7 @@ const syncSecretsAWSParameterStore = async ({
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsAssumeRoleArn,
-      RoleSessionName: `infisical-parameter-store-${crypto.rawCrypto.randomUUID()}`,
+      RoleSessionName: `infisical-parameter-store-${crypto.nativeCrypto.randomUUID()}`,
       DurationSeconds: 900, // 15mins
       ExternalId: projectId
     });
@@ -1129,7 +1129,7 @@ const syncSecretsAWSSecretManager = async ({
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsAssumeRoleArn,
-      RoleSessionName: `infisical-sm-${crypto.rawCrypto.randomUUID()}`,
+      RoleSessionName: `infisical-sm-${crypto.nativeCrypto.randomUUID()}`,
       DurationSeconds: 900, // 15mins
       ExternalId: projectId
     });

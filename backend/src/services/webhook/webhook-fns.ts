@@ -41,7 +41,10 @@ export const triggerWebhookRequest = async (
   const payload = { ...data, timestamp: Date.now() };
   const { secretKey, url } = decryptWebhookDetails(webhook, decryptor);
   if (secretKey) {
-    const webhookSign = crypto.rawCrypto.createHmac("sha256", secretKey).update(JSON.stringify(payload)).digest("hex");
+    const webhookSign = crypto.nativeCrypto
+      .createHmac("sha256", secretKey)
+      .update(JSON.stringify(payload))
+      .digest("hex");
     headers["x-infisical-signature"] = `t=${payload.timestamp};${webhookSign}`;
   }
 

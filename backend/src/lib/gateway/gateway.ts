@@ -49,8 +49,8 @@ const createQuicConnection = async (
       verifyPeer: true,
       verifyCallback: async (certs) => {
         if (!certs || certs.length === 0) return quic.native.CryptoError.CertificateRequired;
-        const serverCertificate = new crypto.rawCrypto.X509Certificate(Buffer.from(certs[0]));
-        const caCertificate = new crypto.rawCrypto.X509Certificate(tlsOptions.ca);
+        const serverCertificate = new crypto.nativeCrypto.X509Certificate(Buffer.from(certs[0]));
+        const caCertificate = new crypto.nativeCrypto.X509Certificate(tlsOptions.ca);
         const isValidServerCertificate = serverCertificate.verify(caCertificate.publicKey);
         if (!isValidServerCertificate) return quic.native.CryptoError.BadCertificate;
 
@@ -73,7 +73,7 @@ const createQuicConnection = async (
     crypto: {
       ops: {
         randomBytes: async (data) => {
-          crypto.rawCrypto.getRandomValues(new Uint8Array(data));
+          crypto.nativeCrypto.getRandomValues(new Uint8Array(data));
         }
       }
     }

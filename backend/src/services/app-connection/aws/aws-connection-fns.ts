@@ -49,7 +49,7 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 
       const command = new AssumeRoleCommand({
         RoleArn: credentials.roleArn,
-        RoleSessionName: `infisical-app-connection-${crypto.rawCrypto.randomUUID()}`,
+        RoleSessionName: `infisical-app-connection-${crypto.nativeCrypto.randomUUID()}`,
         DurationSeconds: 900, // 15 mins
         ExternalId: orgId
       });

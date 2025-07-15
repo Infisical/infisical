@@ -171,7 +171,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
-    const keys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const newCa = await certificateAuthorityDAL.transaction(async (tx) => {
       const notBeforeDate = notBefore ? new Date(notBefore) : new Date();
@@ -226,7 +226,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
 
       // https://nodejs.org/api/crypto.html#static-method-keyobjectfromkey
-      const skObj = crypto.rawCrypto.KeyObject.from(keys.privateKey);
+      const skObj = crypto.nativeCrypto.KeyObject.from(keys.privateKey);
 
       const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
         plainText: skObj.export({
@@ -1102,9 +1102,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       kmsService
     });
 
-    const isCaAndCertPublicKeySame = Buffer.from(await crypto.rawCrypto.subtle.exportKey("spki", caPublicKey)).equals(
-      Buffer.from(certObj.publicKey.rawData)
-    );
+    const isCaAndCertPublicKeySame = Buffer.from(
+      await crypto.nativeCrypto.subtle.exportKey("spki", caPublicKey)
+    ).equals(Buffer.from(certObj.publicKey.rawData));
 
     if (!isCaAndCertPublicKeySame) {
       throw new BadRequestError({ message: "CA and certificate public key do not match" });
@@ -1265,7 +1265,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${commonName}`,
@@ -1412,7 +1412,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       extensions
     });
 
-    const skLeafObj = crypto.rawCrypto.KeyObject.from(leafKeys.privateKey);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const kmsEncryptor = await kmsService.encryptWithKmsKey({

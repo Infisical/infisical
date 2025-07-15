@@ -198,8 +198,8 @@ export const certificateAuthorityQueueFactory = ({
       cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
-    const skObj = crypto.rawCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-    const sk = await crypto.rawCrypto.subtle.importKey(
+    const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
+    const sk = await crypto.nativeCrypto.subtle.importKey(
       "pkcs8",
       skObj.export({ format: "der", type: "pkcs8" }),
       alg,

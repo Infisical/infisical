@@ -86,7 +86,7 @@
     "@babel/preset-react": "^7.24.7",
     "@smithy/types": "^4.3.1",
     "@types/bcrypt": "^5.0.2",
-    "@types/crypto-js": "^4.2.2",
+    "@types/crypto-js": "4.2.2",
     "@types/jmespath": "^0.15.2",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/jsrp": "^0.2.6",

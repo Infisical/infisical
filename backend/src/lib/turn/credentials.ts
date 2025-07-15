@@ -5,7 +5,7 @@ export const getTurnCredentials = (id: string, authSecret: string, ttl = TURN_TO
   const timestamp = Math.floor((Date.now() + ttl) / 1000);
   const username = `${timestamp}:${id}`;
 
-  const hmac = crypto.rawCrypto.createHmac("sha1", authSecret);
+  const hmac = crypto.nativeCrypto.createHmac("sha1", authSecret);
   hmac.update(username);
   const password = hmac.digest("base64");
 

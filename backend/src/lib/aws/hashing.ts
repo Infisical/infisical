@@ -27,9 +27,9 @@ export class CustomAWSHasher {
       } else if (ArrayBuffer.isView && ArrayBuffer.isView(this.secret)) {
         secretBuffer = Buffer.from(this.secret.buffer, this.secret.byteOffset, this.secret.byteLength);
       }
-      this._hash = crypto.rawCrypto.createHmac(this.algorithmIdentifier, secretBuffer);
+      this._hash = crypto.nativeCrypto.createHmac(this.algorithmIdentifier, secretBuffer);
     } else {
-      this._hash = crypto.rawCrypto.createHash(this.algorithmIdentifier);
+      this._hash = crypto.nativeCrypto.createHash(this.algorithmIdentifier);
     }
     return this;
   }

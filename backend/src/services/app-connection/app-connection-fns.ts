@@ -305,7 +305,7 @@ export const decryptAppConnection = async (
       orgId: appConnection.orgId,
       kmsService
     }),
-    credentialsHash: crypto.rawCrypto.createHash("sha256").update(appConnection.encryptedCredentials).digest("hex")
+    credentialsHash: crypto.nativeCrypto.createHash("sha256").update(appConnection.encryptedCredentials).digest("hex")
   } as TAppConnection;
 };
 

@@ -298,7 +298,7 @@ export const kmipServiceFactory = ({
     }
 
     const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
-    const leafKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
@@ -317,13 +317,13 @@ export const kmipServiceFactory = ({
 
     const caAlg = keyAlgorithmToAlgCfg(kmipConfig.caKeyAlgorithm as CertKeyAlgorithm);
 
-    const caSkObj = crypto.rawCrypto.createPrivateKey({
+    const caSkObj = crypto.nativeCrypto.createPrivateKey({
       key: decryptor({ cipherTextBlob: kmipConfig.encryptedClientIntermediateCaPrivateKey }),
       format: "der",
       type: "pkcs8"
     });
 
-    const caPrivateKey = await crypto.rawCrypto.subtle.importKey(
+    const caPrivateKey = await crypto.nativeCrypto.subtle.importKey(
       "pkcs8",
       caSkObj.export({ format: "der", type: "pkcs8" }),
       caAlg,
@@ -344,7 +344,7 @@ export const kmipServiceFactory = ({
       extensions
     });
 
-    const skLeafObj = crypto.rawCrypto.KeyObject.from(leafKeys.privateKey);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
 
     const rootCaCert = new x509.X509Certificate(decryptor({ cipherTextBlob: kmipConfig.encryptedRootCaCertificate }));
     const serverIntermediateCaCert = new x509.X509Certificate(
@@ -423,8 +423,8 @@ export const kmipServiceFactory = ({
 
     // generate root CA
     const rootCaSerialNumber = createSerialNumber();
-    const rootCaKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const rootCaSkObj = crypto.rawCrypto.KeyObject.from(rootCaKeys.privateKey);
+    const rootCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const rootCaSkObj = crypto.nativeCrypto.KeyObject.from(rootCaKeys.privateKey);
     const rootCaIssuedAt = new Date();
     const rootCaExpiration = new Date(new Date().setFullYear(new Date().getFullYear() + 20));
 
@@ -446,8 +446,8 @@ export const kmipServiceFactory = ({
     const serverIntermediateCaSerialNumber = createSerialNumber();
     const serverIntermediateCaIssuedAt = new Date();
     const serverIntermediateCaExpiration = new Date(new Date().setFullYear(new Date().getFullYear() + 10));
-    const serverIntermediateCaKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const serverIntermediateCaSkObj = crypto.rawCrypto.KeyObject.from(serverIntermediateCaKeys.privateKey);
+    const serverIntermediateCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const serverIntermediateCaSkObj = crypto.nativeCrypto.KeyObject.from(serverIntermediateCaKeys.privateKey);
 
     const serverIntermediateCaCert = await x509.X509CertificateGenerator.create({
       serialNumber: serverIntermediateCaSerialNumber,
@@ -477,8 +477,8 @@ export const kmipServiceFactory = ({
     const clientIntermediateCaSerialNumber = createSerialNumber();
     const clientIntermediateCaIssuedAt = new Date();
     const clientIntermediateCaExpiration = new Date(new Date().setFullYear(new Date().getFullYear() + 10));
-    const clientIntermediateCaKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const clientIntermediateCaSkObj = crypto.rawCrypto.KeyObject.from(clientIntermediateCaKeys.privateKey);
+    const clientIntermediateCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const clientIntermediateCaSkObj = crypto.nativeCrypto.KeyObject.from(clientIntermediateCaKeys.privateKey);
 
     const clientIntermediateCaCert = await x509.X509CertificateGenerator.create({
       serialNumber: clientIntermediateCaSerialNumber,
@@ -644,7 +644,7 @@ export const kmipServiceFactory = ({
 
     const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
 
-    const leafKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
@@ -692,13 +692,13 @@ export const kmipServiceFactory = ({
       cipherTextBlob: kmipOrgConfig.encryptedServerIntermediateCaChain
     }).toString("utf-8");
 
-    const caSkObj = crypto.rawCrypto.createPrivateKey({
+    const caSkObj = crypto.nativeCrypto.createPrivateKey({
       key: decryptor({ cipherTextBlob: kmipOrgConfig.encryptedServerIntermediateCaPrivateKey }),
       format: "der",
       type: "pkcs8"
     });
 
-    const caPrivateKey = await crypto.rawCrypto.subtle.importKey(
+    const caPrivateKey = await crypto.nativeCrypto.subtle.importKey(
       "pkcs8",
       caSkObj.export({ format: "der", type: "pkcs8" }),
       caAlg,
@@ -719,7 +719,7 @@ export const kmipServiceFactory = ({
       extensions
     });
 
-    const skLeafObj = crypto.rawCrypto.KeyObject.from(leafKeys.privateKey);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
     const certificateChain = `${caCertObj.toString("pem")}\n${decryptedCaCertChain}`.trim();
 
     await kmipOrgServerCertificateDAL.create({

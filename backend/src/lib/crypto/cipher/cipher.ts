@@ -11,7 +11,7 @@ export const symmetricCipherService = (
 ): TSymmetricEncryptionFns => {
   const encrypt = (text: Buffer, key: Buffer) => {
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.rawCrypto.createCipheriv(type, key, iv);
+    const cipher = crypto.nativeCrypto.createCipheriv(type, key, iv);
 
     let encrypted = cipher.update(text);
     encrypted = Buffer.concat([encrypted, cipher.final()]);
@@ -30,7 +30,7 @@ export const symmetricCipherService = (
     const tag = ciphertextBlob.subarray(-TAG_LENGTH);
     const encrypted = ciphertextBlob.subarray(IV_LENGTH, -TAG_LENGTH);
 
-    const decipher = crypto.rawCrypto.createDecipheriv(type, key, iv);
+    const decipher = crypto.nativeCrypto.createDecipheriv(type, key, iv);
     decipher.setAuthTag(tag);
 
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);

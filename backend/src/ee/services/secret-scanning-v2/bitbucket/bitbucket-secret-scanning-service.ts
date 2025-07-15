@@ -66,7 +66,7 @@ export const bitbucketSecretScanningService = (
 
     const credentials = JSON.parse(decryptedCredentials.toString()) as TBitbucketDataSourceCredentials;
 
-    const hmac = crypto.rawCrypto.createHmac("sha256", credentials.webhookSecret);
+    const hmac = crypto.nativeCrypto.createHmac("sha256", credentials.webhookSecret);
     hmac.update(bodyString);
     const calculatedSignature = hmac.digest("hex");
 

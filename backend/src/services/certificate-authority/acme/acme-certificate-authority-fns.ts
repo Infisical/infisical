@@ -414,8 +414,8 @@ export const AcmeCertificateAuthorityFns = ({
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
 
-    const leafKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const skLeafObj = crypto.rawCrypto.KeyObject.from(leafKeys.privateKey);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const [, certificateCsr] = await acme.crypto.createCsr(

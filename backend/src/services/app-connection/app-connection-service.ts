@@ -281,7 +281,7 @@ export const appConnectionServiceFactory = ({
 
       return {
         ...connection,
-        credentialsHash: crypto.rawCrypto.createHash("sha256").update(connection.encryptedCredentials).digest("hex"),
+        credentialsHash: crypto.nativeCrypto.createHash("sha256").update(connection.encryptedCredentials).digest("hex"),
         credentials: validatedCredentials
       } as TAppConnection;
     } catch (err) {

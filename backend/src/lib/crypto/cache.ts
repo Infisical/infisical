@@ -1,7 +1,7 @@
 import { crypto } from "@app/lib/crypto/cryptography";
 
 export const generateCacheKeyFromData = (data: unknown) =>
-  crypto.rawCrypto
+  crypto.nativeCrypto
     .createHash("sha256")
     .update(JSON.stringify(data))
     .digest("base64")

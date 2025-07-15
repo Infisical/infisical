@@ -99,7 +99,7 @@ export const InternalCertificateAuthorityFns = ({
     }
 
     const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${subscriber.commonName}`,
@@ -184,7 +184,7 @@ export const InternalCertificateAuthorityFns = ({
       extensions
     });
 
-    const skLeafObj = crypto.rawCrypto.KeyObject.from(leafKeys.privateKey);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const kmsEncryptor = await kmsService.encryptWithKmsKey({
@@ -331,7 +331,7 @@ export const InternalCertificateAuthorityFns = ({
     });
 
     const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${commonName}`,
@@ -450,7 +450,7 @@ export const InternalCertificateAuthorityFns = ({
       extensions
     });
 
-    const skLeafObj = crypto.rawCrypto.KeyObject.from(leafKeys.privateKey);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const kmsEncryptor = await kmsService.encryptWithKmsKey({

@@ -248,7 +248,7 @@ export const identityUaServiceFactory = ({
       const doc = await identityUaDAL.create(
         {
           identityId: identityMembershipOrg.identityId,
-          clientId: crypto.rawCrypto.randomUUID(),
+          clientId: crypto.nativeCrypto.randomUUID(),
           clientSecretTrustedIps: JSON.stringify(reformattedClientSecretTrustedIps),
           accessTokenMaxTTL,
           accessTokenTTL,

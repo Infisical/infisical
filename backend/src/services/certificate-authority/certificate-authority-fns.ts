@@ -133,8 +133,8 @@ export const getCaCredentials = async ({
   });
 
   const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-  const skObj = crypto.rawCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
-  const caPrivateKey = await crypto.rawCrypto.subtle.importKey(
+  const skObj = crypto.nativeCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
+  const caPrivateKey = await crypto.nativeCrypto.subtle.importKey(
     "pkcs8",
     skObj.export({ format: "der", type: "pkcs8" }),
     alg,
@@ -142,8 +142,8 @@ export const getCaCredentials = async ({
     ["sign"]
   );
 
-  const pkObj = crypto.rawCrypto.createPublicKey(skObj);
-  const caPublicKey = await crypto.rawCrypto.subtle.importKey(
+  const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
+  const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
     "spki",
     pkObj.export({ format: "der", type: "spki" }),
     alg,
@@ -281,8 +281,8 @@ export const rebuildCaCrl = async ({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
-  const skObj = crypto.rawCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-  const sk = await crypto.rawCrypto.subtle.importKey(
+  const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
+  const sk = await crypto.nativeCrypto.subtle.importKey(
     "pkcs8",
     skObj.export({ format: "der", type: "pkcs8" }),
     alg,

@@ -42,7 +42,7 @@ export type TTelemetryServiceFactoryDep = {
 
 const getBucketForDistinctId = (distinctId: string): string => {
   // Use SHA-256 hash for consistent distribution
-  const hash = crypto.rawCrypto.createHash("sha256").update(distinctId).digest("hex");
+  const hash = crypto.nativeCrypto.createHash("sha256").update(distinctId).digest("hex");
 
   // Take first 8 characters and convert to number for better distribution
   const hashNumber = parseInt(hash.substring(0, 8), 16);
@@ -53,7 +53,7 @@ const getBucketForDistinctId = (distinctId: string): string => {
 
 export const createTelemetryEventKey = (event: string, distinctId: string): string => {
   const bucketId = getBucketForDistinctId(distinctId);
-  return `telemetry-event-${event}-${bucketId}-${distinctId}-${crypto.rawCrypto.randomUUID()}`;
+  return `telemetry-event-${event}-${bucketId}-${distinctId}-${crypto.nativeCrypto.randomUUID()}`;
 };
 
 export const telemetryServiceFactory = ({ keyStore, licenseService }: TTelemetryServiceFactoryDep) => {

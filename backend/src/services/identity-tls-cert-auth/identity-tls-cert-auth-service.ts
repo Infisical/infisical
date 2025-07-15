@@ -85,8 +85,8 @@ export const identityTlsCertAuthServiceFactory = ({
       throw new BadRequestError({ message: "Missing client certificate" });
     }
 
-    const clientCertificateX509 = new crypto.rawCrypto.X509Certificate(leafCertificate);
-    const caCertificateX509 = new crypto.rawCrypto.X509Certificate(caCertificate);
+    const clientCertificateX509 = new crypto.nativeCrypto.X509Certificate(leafCertificate);
+    const caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
 
     const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
     if (!isValidCertificate)

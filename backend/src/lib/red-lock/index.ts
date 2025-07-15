@@ -251,7 +251,7 @@ export class Redlock extends EventEmitter {
    * Generate a sha1 hash compatible with redis evalsha.
    */
   private _hash(value: string): string {
-    return crypto.rawCrypto.createHash("sha1").update(value).digest("hex");
+    return crypto.nativeCrypto.createHash("sha1").update(value).digest("hex");
   }
 
   /**

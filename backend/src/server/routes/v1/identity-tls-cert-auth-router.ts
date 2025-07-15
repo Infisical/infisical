@@ -27,7 +27,7 @@ const validateCaCertificate = (caCert: string) => {
   if (!caCert) return true;
   try {
     // eslint-disable-next-line no-new
-    new crypto.rawCrypto.X509Certificate(caCert);
+    new crypto.nativeCrypto.X509Certificate(caCert);
     return true;
   } catch {
     return false;

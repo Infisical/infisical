@@ -63,7 +63,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
       const command = new AssumeRoleCommand({
         RoleArn: providerInputs.roleArn,
-        RoleSessionName: `infisical-dynamic-secret-${crypto.rawCrypto.randomUUID()}`,
+        RoleSessionName: `infisical-dynamic-secret-${crypto.nativeCrypto.randomUUID()}`,
         DurationSeconds: 900, // 15 mins
         ExternalId: projectId
       });

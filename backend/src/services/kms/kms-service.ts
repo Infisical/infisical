@@ -994,7 +994,7 @@ export const kmsServiceFactory = ({
       "base64"
     )}`;
 
-    const verificationHash = crypto.rawCrypto.createHash("sha256").update(secretManagerBackup).digest("hex");
+    const verificationHash = crypto.nativeCrypto.createHash("sha256").update(secretManagerBackup).digest("hex");
     secretManagerBackup = `${secretManagerBackup}.${verificationHash}`;
 
     return {
@@ -1012,7 +1012,7 @@ export const kmsServiceFactory = ({
 
     const [, backupProjectId, , backupKmsKeyId, backupBase64EncryptedDataKey, backupHash] = backup.split(".");
 
-    const computedHash = crypto.rawCrypto
+    const computedHash = crypto.nativeCrypto
       .createHash("sha256")
       .update(backup.substring(0, backup.lastIndexOf(".")))
       .digest("hex");

@@ -86,10 +86,10 @@ export const getCertificateCredentials = async ({
   });
 
   try {
-    const skObj = crypto.rawCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "pem", type: "pkcs8" });
+    const skObj = crypto.nativeCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "pem", type: "pkcs8" });
     const certPrivateKey = skObj.export({ format: "pem", type: "pkcs8" }).toString();
 
-    const pkObj = crypto.rawCrypto.createPublicKey(skObj);
+    const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
     const certPublicKey = pkObj.export({ format: "pem", type: "spki" }).toString();
 
     return {

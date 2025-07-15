@@ -160,7 +160,7 @@ const cryptographyFactory = () => {
     }
 
     if (process.env.FIPS_ENABLED !== "true") {
-      logger.info("[FIPS]: Instance is running in non-FIPS mode.");
+      logger.info("Cryptography module initialized in normal operation mode.");
       $setFipsModeEnabled(false);
       return false;
     }
@@ -412,7 +412,7 @@ const cryptographyFactory = () => {
     jwt,
     randomBytes: crypto.randomBytes,
     randomInt: crypto.randomInt,
-    rawCrypto: {
+    nativeCrypto: {
       createHash: crypto.createHash,
       createHmac: crypto.createHmac,
       sign: crypto.sign,

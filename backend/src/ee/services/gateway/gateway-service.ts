@@ -148,9 +148,9 @@ export const gatewayServiceFactory = ({
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       // generate root CA
-      const rootCaKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const rootCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
       const rootCaSerialNumber = createSerialNumber();
-      const rootCaSkObj = crypto.rawCrypto.KeyObject.from(rootCaKeys.privateKey);
+      const rootCaSkObj = crypto.nativeCrypto.KeyObject.from(rootCaKeys.privateKey);
       const rootCaIssuedAt = new Date();
       const rootCaKeyAlgorithm = CertKeyAlgorithm.RSA_2048;
       const rootCaExpiration = new Date(new Date().setFullYear(2045));
@@ -172,8 +172,8 @@ export const gatewayServiceFactory = ({
       const clientCaSerialNumber = createSerialNumber();
       const clientCaIssuedAt = new Date();
       const clientCaExpiration = new Date(new Date().setFullYear(2045));
-      const clientCaKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-      const clientCaSkObj = crypto.rawCrypto.KeyObject.from(clientCaKeys.privateKey);
+      const clientCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const clientCaSkObj = crypto.nativeCrypto.KeyObject.from(clientCaKeys.privateKey);
 
       const clientCaCert = await x509.X509CertificateGenerator.create({
         serialNumber: clientCaSerialNumber,
@@ -199,7 +199,7 @@ export const gatewayServiceFactory = ({
         ]
       });
 
-      const clientKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
       const clientCertSerialNumber = createSerialNumber();
       const clientCert = await x509.X509CertificateGenerator.create({
         serialNumber: clientCertSerialNumber,
@@ -225,14 +225,14 @@ export const gatewayServiceFactory = ({
           new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
         ]
       });
-      const clientSkObj = crypto.rawCrypto.KeyObject.from(clientKeys.privateKey);
+      const clientSkObj = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
 
       // generate gateway ca
       const gatewayCaSerialNumber = createSerialNumber();
       const gatewayCaIssuedAt = new Date();
       const gatewayCaExpiration = new Date(new Date().setFullYear(2045));
-      const gatewayCaKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-      const gatewayCaSkObj = crypto.rawCrypto.KeyObject.from(gatewayCaKeys.privateKey);
+      const gatewayCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const gatewayCaSkObj = crypto.nativeCrypto.KeyObject.from(gatewayCaKeys.privateKey);
       const gatewayCaCert = await x509.X509CertificateGenerator.create({
         serialNumber: gatewayCaSerialNumber,
         subject: `O=${identityOrg},CN=Gateway CA`,
@@ -325,7 +325,7 @@ export const gatewayServiceFactory = ({
     );
 
     const gatewayCaAlg = keyAlgorithmToAlgCfg(orgGatewayConfig.rootCaKeyAlgorithm as CertKeyAlgorithm);
-    const gatewayCaSkObj = crypto.rawCrypto.createPrivateKey({
+    const gatewayCaSkObj = crypto.nativeCrypto.createPrivateKey({
       key: orgKmsDecryptor({ cipherTextBlob: orgGatewayConfig.encryptedGatewayCaPrivateKey }),
       format: "der",
       type: "pkcs8"
@@ -336,7 +336,7 @@ export const gatewayServiceFactory = ({
       })
     );
 
-    const gatewayCaPrivateKey = await crypto.rawCrypto.subtle.importKey(
+    const gatewayCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
       "pkcs8",
       gatewayCaSkObj.export({ format: "der", type: "pkcs8" }),
       gatewayCaAlg,
@@ -345,7 +345,7 @@ export const gatewayServiceFactory = ({
     );
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
-    const gatewayKeys = await crypto.rawCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const gatewayKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const certIssuedAt = new Date();
     // then need to periodically init
     const certExpireAt = new Date(new Date().setMonth(new Date().getMonth() + 1));
@@ -366,7 +366,7 @@ export const gatewayServiceFactory = ({
     ];
 
     const serialNumber = createSerialNumber();
-    const privateKey = crypto.rawCrypto.KeyObject.from(gatewayKeys.privateKey);
+    const privateKey = crypto.nativeCrypto.KeyObject.from(gatewayKeys.privateKey);
     const gatewayCertificate = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: `CN=${identityId},O=${identityOrg},OU=Gateway`,
@@ -453,7 +453,7 @@ export const gatewayServiceFactory = ({
       })
     );
 
-    const privateKey = crypto.rawCrypto
+    const privateKey = crypto.nativeCrypto
       .createPrivateKey({
         key: orgKmsDecryptor({ cipherTextBlob: orgGatewayConfig.encryptedClientPrivateKey }),
         format: "der",
@@ -587,7 +587,7 @@ export const gatewayServiceFactory = ({
       })
     );
 
-    const clientSkObj = crypto.rawCrypto.createPrivateKey({
+    const clientSkObj = crypto.nativeCrypto.createPrivateKey({
       key: orgKmsDecryptor({ cipherTextBlob: orgGatewayConfig.encryptedClientPrivateKey }),
       format: "der",
       type: "pkcs8"
