@@ -29,9 +29,22 @@ export const ChecklySyncFns = {
 
     for await (const key of Object.keys(secretMap)) {
       try {
+        const entry = secretMap[key];
+
+        // If value is empty, we skip the upsert - checkly does not allow empty values
+        if (entry.value.trim() === "") {
+          // Delete the secret from Checkly if its empty
+          if (!disableSecretDeletion) {
+            await ChecklyPublicAPI.deleteVariable(secretSync.connection, config.accountId, {
+              key
+            });
+          }
+          continue; // Skip empty values
+        }
+
         await ChecklyPublicAPI.upsertVariable(secretSync.connection, config.accountId, {
           key,
-          value: secretMap[key].value ?? "",
+          value: entry.value,
           secret: true,
           locked: true
         });
