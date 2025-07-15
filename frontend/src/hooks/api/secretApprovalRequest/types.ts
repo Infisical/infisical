@@ -43,6 +43,7 @@ export type TSecretApprovalRequest = {
   isReplicated?: boolean;
   slug: string;
   createdAt: string;
+  updatedAt: string;
   committerUserId: string;
   reviewers: {
     userId: string;
