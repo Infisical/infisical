@@ -1,7 +1,7 @@
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Spinner } from "@app/components/v2";
+import { ContentLoader } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useListSecretScanningFindings } from "@app/hooks/api/secretScanningV2";
 
@@ -17,12 +17,7 @@ export const SecretScanningFindingsSection = () => {
     }
   );
 
-  if (isFindingsPending)
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-2">
-        <Spinner />
-      </div>
-    );
+  if (isFindingsPending) return <ContentLoader />;
 
   return (
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
