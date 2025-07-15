@@ -9,6 +9,7 @@ import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
+import { TChecklyConnection } from "./checkly-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TFlyioConnection } from "./flyio-connection";
@@ -97,7 +98,8 @@ export type TAppConnection =
   | TCloudflareConnection
   | TBitbucketConnection
   | TZabbixConnection
-  | TRailwayConnection;
+  | TRailwayConnection
+  | TChecklyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -157,4 +159,5 @@ export type TAppConnectionMap = {
   [AppConnection.Bitbucket]: TBitbucketConnection;
   [AppConnection.Zabbix]: TZabbixConnection;
   [AppConnection.Railway]: TRailwayConnection;
+  [AppConnection.Checkly]: TChecklyConnection;
 };

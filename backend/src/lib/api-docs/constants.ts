@@ -2282,6 +2282,9 @@ export const AppConnections = {
     },
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
+    },
+    CHECKLY: {
+      apiKey: "The API key used to authenticate with Checkly."
     }
   }
 };
@@ -2488,6 +2491,9 @@ export const SecretSyncs = {
       environmentName: "The Railway environment to sync secrets to.",
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
+    },
+    CHECKLY: {
+      accountId: "The ID of the Checkly account to sync secrets to."
     }
   }
 };

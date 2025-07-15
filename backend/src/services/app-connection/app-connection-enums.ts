@@ -30,7 +30,8 @@ export enum AppConnection {
   Cloudflare = "cloudflare",
   Zabbix = "zabbix",
   Railway = "railway",
-  Bitbucket = "bitbucket"
+  Bitbucket = "bitbucket",
+  Checkly = "checkly"
 }
 
 export enum AWSRegion {

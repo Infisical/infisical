@@ -29,6 +29,8 @@ import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFact
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
+import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
+import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
@@ -76,7 +78,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
 
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
-  [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION
+  [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
+  [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -250,6 +253,8 @@ export const SecretSyncFns = {
         return ZabbixSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
         return RailwaySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Checkly:
+        return ChecklySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -351,6 +356,9 @@ export const SecretSyncFns = {
       case SecretSync.Railway:
         secretMap = await RailwaySyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Checkly:
+        secretMap = await ChecklySyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -434,6 +442,8 @@ export const SecretSyncFns = {
         return ZabbixSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
         return RailwaySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Checkly:
+        return ChecklySyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

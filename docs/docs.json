@@ -472,6 +472,7 @@
                   "integrations/app-connections/azure-key-vault",
                   "integrations/app-connections/bitbucket",
                   "integrations/app-connections/camunda",
+                  "integrations/app-connections/checkly",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/databricks",
                   "integrations/app-connections/flyio",
@@ -513,6 +514,7 @@
                   "integrations/secret-syncs/azure-devops",
                   "integrations/secret-syncs/azure-key-vault",
                   "integrations/secret-syncs/camunda",
+                  "integrations/secret-syncs/checkly",
                   "integrations/secret-syncs/cloudflare-pages",
                   "integrations/secret-syncs/cloudflare-workers",
                   "integrations/secret-syncs/databricks",
@@ -1329,6 +1331,17 @@
                     ]
                   },
                   {
+                    "group": "Checkly",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/checkly/list",
+                      "api-reference/endpoints/app-connections/checkly/get-by-id",
+                      "api-reference/endpoints/app-connections/checkly/get-by-name",
+                      "api-reference/endpoints/app-connections/checkly/create",
+                      "api-reference/endpoints/app-connections/checkly/update",
+                      "api-reference/endpoints/app-connections/checkly/delete"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare",
                     "pages": [
                       "api-reference/endpoints/app-connections/cloudflare/list",
@@ -1706,6 +1719,19 @@
                       "api-reference/endpoints/secret-syncs/camunda/delete",
                       "api-reference/endpoints/secret-syncs/camunda/sync-secrets",
                       "api-reference/endpoints/secret-syncs/camunda/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Checkly",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/checkly/list",
+                      "api-reference/endpoints/secret-syncs/checkly/get-by-id",
+                      "api-reference/endpoints/secret-syncs/checkly/get-by-name",
+                      "api-reference/endpoints/secret-syncs/checkly/create",
+                      "api-reference/endpoints/secret-syncs/checkly/update",
+                      "api-reference/endpoints/secret-syncs/checkly/delete",
+                      "api-reference/endpoints/secret-syncs/checkly/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/checkly/remove-secrets"
                     ]
                   },
                   {

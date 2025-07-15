@@ -24,7 +24,8 @@ export enum SecretSync {
   CloudflareWorkers = "cloudflare-workers",
 
   Zabbix = "zabbix",
-  Railway = "railway"
+  Railway = "railway",
+  Checkly = "checkly"
 }
 
 export enum SecretSyncStatus {

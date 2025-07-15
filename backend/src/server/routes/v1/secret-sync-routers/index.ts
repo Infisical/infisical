@@ -8,6 +8,7 @@ import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configurati
 import { registerAzureDevOpsSyncRouter } from "./azure-devops-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
+import { registerChecklySyncRouter } from "./checkly-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
@@ -54,5 +55,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.CloudflareWorkers]: registerCloudflareWorkersSyncRouter,
 
   [SecretSync.Zabbix]: registerZabbixSyncRouter,
-  [SecretSync.Railway]: registerRailwaySyncRouter
+  [SecretSync.Railway]: registerRailwaySyncRouter,
+  [SecretSync.Checkly]: registerChecklySyncRouter
 };
