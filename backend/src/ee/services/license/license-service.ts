@@ -8,7 +8,6 @@ import { ForbiddenError } from "@casl/ability";
 import { CronJob } from "cron";
 import { Knex } from "knex";
 
-import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { NotFoundError } from "@app/lib/errors";
@@ -47,7 +46,6 @@ type TLicenseServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById" | "countAllOrgMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   projectDAL: TProjectDALFactory;
 };
@@ -57,14 +55,10 @@ export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
 const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 
-const LICENSE_SERVER_CLOUD_PLAN_TTL = 5 * 60; // 5 mins
-const FEATURE_CACHE_KEY = (orgId: string) => `infisical-cloud-plan-${orgId}`;
-
 export const licenseServiceFactory = ({
   orgDAL,
   permissionService,
   licenseDAL,
-  keyStore,
   identityOrgMembershipDAL,
   projectDAL
 }: TLicenseServiceFactoryDep) => {
@@ -178,12 +172,6 @@ export const licenseServiceFactory = ({
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
-        const cachedPlan = await keyStore.getItem(FEATURE_CACHE_KEY(orgId));
-        if (cachedPlan) {
-          logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
-          return JSON.parse(cachedPlan) as TFeatureSet;
-        }
-
         const org = await orgDAL.findOrgById(orgId);
         if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
         const {
@@ -199,23 +187,12 @@ export const licenseServiceFactory = ({
         const identityUsed = await licenseDAL.countOrgUsersAndIdentities(orgId);
         currentPlan.identitiesUsed = identityUsed;
 
-        await keyStore.setItemWithExpiry(
-          FEATURE_CACHE_KEY(org.id),
-          LICENSE_SERVER_CLOUD_PLAN_TTL,
-          JSON.stringify(currentPlan)
-        );
-
         return currentPlan;
       }
     } catch (error) {
       logger.error(
         error,
         `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`
-      );
-      await keyStore.setItemWithExpiry(
-        FEATURE_CACHE_KEY(orgId),
-        LICENSE_SERVER_CLOUD_PLAN_TTL,
-        JSON.stringify(onPremFeatures)
       );
       return onPremFeatures;
     } finally {
@@ -226,7 +203,6 @@ export const licenseServiceFactory = ({
 
   const refreshPlan = async (orgId: string) => {
     if (instanceType === InstanceType.Cloud) {
-      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
       await getPlan(orgId);
     }
   };
@@ -264,7 +240,6 @@ export const licenseServiceFactory = ({
           quantityIdentities
         });
       }
-      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
       const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
       const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
@@ -328,7 +303,6 @@ export const licenseServiceFactory = ({
       `/api/license-server/v1/customers/${organization.customerId}/session/trial`,
       { success_url }
     );
-    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     return { url };
   };
 
@@ -705,10 +679,6 @@ export const licenseServiceFactory = ({
     return licenses;
   };
 
-  const invalidateGetPlan = async (orgId: string) => {
-    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
-  };
-
   return {
     generateOrgCustomerId,
     removeOrgCustomer,
@@ -723,7 +693,6 @@ export const licenseServiceFactory = ({
       return onPremFeatures;
     },
     getPlan,
-    invalidateGetPlan,
     updateSubscriptionOrgMemberCount,
     refreshPlan,
     getOrgPlan,
