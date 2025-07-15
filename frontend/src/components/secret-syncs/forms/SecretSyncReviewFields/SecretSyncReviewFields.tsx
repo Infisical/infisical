@@ -34,12 +34,12 @@ import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
-import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
