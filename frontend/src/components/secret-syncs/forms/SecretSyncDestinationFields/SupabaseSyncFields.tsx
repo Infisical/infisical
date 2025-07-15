@@ -40,7 +40,7 @@ export const SupabaseSyncFields = () => {
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Select an account"
+            label="Select a project"
             tooltipClassName="max-w-md"
           >
             <FilterableSelect
@@ -53,7 +53,7 @@ export const SupabaseSyncFields = () => {
                 setValue("destinationConfig.projectName", v?.name ?? "");
               }}
               options={projects}
-              placeholder="Select an project..."
+              placeholder="Select project..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />

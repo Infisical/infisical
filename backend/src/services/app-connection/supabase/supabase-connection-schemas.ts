@@ -36,7 +36,9 @@ export const SupabaseConnectionSchema = BaseSupabaseConnectionSchema.extend({
 export const SanitizedSupabaseConnectionSchema = z.discriminatedUnion("method", [
   BaseSupabaseConnectionSchema.extend({
     method: SupabaseConnectionMethodSchema,
-    credentials: SupabaseConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: SupabaseConnectionAccessTokenCredentialsSchema.pick({
+      instanceUrl: true
+    })
   })
 ]);
 

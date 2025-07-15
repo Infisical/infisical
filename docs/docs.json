@@ -78,10 +78,7 @@
               },
               {
                 "group": "Infisical SSH",
-                "pages": [
-                  "documentation/platform/ssh/overview",
-                  "documentation/platform/ssh/host-groups"
-                ]
+                "pages": ["documentation/platform/ssh/overview", "documentation/platform/ssh/host-groups"]
               },
               {
                 "group": "Key Management (KMS)",
@@ -378,10 +375,7 @@
               },
               {
                 "group": "Architecture",
-                "pages": [
-                  "internals/architecture/components",
-                  "internals/architecture/cloud"
-                ]
+                "pages": ["internals/architecture/components", "internals/architecture/cloud"]
               },
               "internals/security",
               "internals/service-tokens"
@@ -491,6 +485,7 @@
                   "integrations/app-connections/postgres",
                   "integrations/app-connections/railway",
                   "integrations/app-connections/render",
+                  "integrations/app-connections/supabase",
                   "integrations/app-connections/teamcity",
                   "integrations/app-connections/terraform-cloud",
                   "integrations/app-connections/vercel",
@@ -528,6 +523,7 @@
                   "integrations/secret-syncs/oci-vault",
                   "integrations/secret-syncs/railway",
                   "integrations/secret-syncs/render",
+                  "integrations/secret-syncs/supabase",
                   "integrations/secret-syncs/teamcity",
                   "integrations/secret-syncs/terraform-cloud",
                   "integrations/secret-syncs/vercel",
@@ -555,10 +551,7 @@
               "integrations/cloud/gcp-secret-manager",
               {
                 "group": "Cloudflare",
-                "pages": [
-                  "integrations/cloud/cloudflare-pages",
-                  "integrations/cloud/cloudflare-workers"
-                ]
+                "pages": ["integrations/cloud/cloudflare-pages", "integrations/cloud/cloudflare-workers"]
               },
               "integrations/cloud/terraform-cloud",
               "integrations/cloud/databricks",
@@ -670,11 +663,7 @@
                   "cli/commands/reset",
                   {
                     "group": "infisical scan",
-                    "pages": [
-                      "cli/commands/scan",
-                      "cli/commands/scan-git-changes",
-                      "cli/commands/scan-install"
-                    ]
+                    "pages": ["cli/commands/scan", "cli/commands/scan-git-changes", "cli/commands/scan-install"]
                   }
                 ]
               },
@@ -998,9 +987,7 @@
                 "pages": [
                   {
                     "group": "Kubernetes",
-                    "pages": [
-                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
-                    ]
+                    "pages": ["api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"]
                   },
                   "api-reference/endpoints/dynamic-secrets/create",
                   "api-reference/endpoints/dynamic-secrets/update",
@@ -1558,6 +1545,18 @@
                     ]
                   },
                   {
+                    "group": "Supabase",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/supabase/list",
+                      "api-reference/endpoints/app-connections/supabase/available",
+                      "api-reference/endpoints/app-connections/supabase/get-by-id",
+                      "api-reference/endpoints/app-connections/supabase/get-by-name",
+                      "api-reference/endpoints/app-connections/supabase/create",
+                      "api-reference/endpoints/app-connections/supabase/update",
+                      "api-reference/endpoints/app-connections/supabase/delete"
+                    ]
+                  },
+                  {
                     "group": "TeamCity",
                     "pages": [
                       "api-reference/endpoints/app-connections/teamcity/list",
@@ -1906,6 +1905,19 @@
                       "api-reference/endpoints/secret-syncs/render/sync-secrets",
                       "api-reference/endpoints/secret-syncs/render/import-secrets",
                       "api-reference/endpoints/secret-syncs/render/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Supabase",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/supabase/list",
+                      "api-reference/endpoints/secret-syncs/supabase/get-by-id",
+                      "api-reference/endpoints/secret-syncs/supabase/get-by-name",
+                      "api-reference/endpoints/secret-syncs/supabase/create",
+                      "api-reference/endpoints/secret-syncs/supabase/update",
+                      "api-reference/endpoints/secret-syncs/supabase/delete",
+                      "api-reference/endpoints/secret-syncs/supabase/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/supabase/remove-secrets"
                     ]
                   },
                   {
