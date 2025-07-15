@@ -31,7 +31,7 @@ export const ChecklySyncFns = {
       try {
         const existing = checklySecrets[key];
 
-        if (existing === undefined || existing.value !== secretMap[key].value) {
+        if (existing === undefined) {
           await ChecklyPublicAPI.upsertVariable(secretSync.connection, config.accountId, {
             key,
             value: secretMap[key].value ?? "",
