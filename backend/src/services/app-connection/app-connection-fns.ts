@@ -6,7 +6,7 @@ import {
 } from "@app/ee/services/app-connections/oci";
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { generateHash } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
@@ -318,7 +318,7 @@ export const decryptAppConnection = async (
       orgId: appConnection.orgId,
       kmsService
     }),
-    credentialsHash: generateHash(appConnection.encryptedCredentials)
+    credentialsHash: crypto.nativeCrypto.createHash("sha256").update(appConnection.encryptedCredentials).digest("hex")
   } as TAppConnection;
 };
 

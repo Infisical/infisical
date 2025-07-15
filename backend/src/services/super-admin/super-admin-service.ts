@@ -1,6 +1,4 @@
-import bcrypt from "bcrypt";
 import { CronJob } from "cron";
-import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod, OrgMembershipRole, TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -12,7 +10,7 @@ import {
   overwriteSchema,
   validateOverrides
 } from "@app/lib/config/env";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -164,6 +162,7 @@ export const superAdminServiceFactory = ({
       const newCfg = await serverCfgDAL.create({
         // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
         id: ADMIN_CONFIG_DB_UUID,
+        fipsEnabled: crypto.isFipsModeEnabled(),
         initialized: false,
         allowSignUp: true,
         defaultAuthOrgId: null
@@ -277,6 +276,7 @@ export const superAdminServiceFactory = ({
 
   const $syncEnvConfig = async () => {
     const config = await getEnvOverrides();
+
     overrideEnvConfig(config);
   };
 
@@ -483,6 +483,7 @@ export const superAdminServiceFactory = ({
     userAgent
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
+
     const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
@@ -497,8 +498,10 @@ export const superAdminServiceFactory = ({
       iv: encryptedPrivateKeyIV,
       tag: encryptedPrivateKeyTag
     });
-    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
-    const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
+
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
+
+    const { iv, tag, ciphertext, encoding } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(
         {
@@ -584,7 +587,7 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
-      const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(password);
+      const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(password);
       const encKeys = await generateUserSrpKeys(sanitizedEmail, password);
 
       const userEnc = await userDAL.createUserEncryption(
@@ -666,7 +669,7 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      const generatedAccessToken = jwt.sign(
+      const generatedAccessToken = crypto.jwt().sign(
         {
           identityId: newIdentity.id,
           identityAccessTokenId: newToken.id,

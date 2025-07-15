@@ -1,6 +1,6 @@
 import axios from "axios";
-import jwt from "jsonwebtoken";
 
+import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
 
 import { TAzureAuthJwtPayload, TAzureJwksUriResponse, TDecodedAzureAuthJwt } from "./identity-azure-auth-types";
@@ -16,7 +16,7 @@ export const validateAzureIdentity = async ({
 }) => {
   const jwksUri = `https://login.microsoftonline.com/${tenantId}/discovery/keys`;
 
-  const decodedJwt = jwt.decode(azureJwt, { complete: true }) as TDecodedAzureAuthJwt;
+  const decodedJwt = crypto.jwt().decode(azureJwt, { complete: true }) as TDecodedAzureAuthJwt;
 
   const { kid } = decodedJwt.header;
 
@@ -35,7 +35,7 @@ export const validateAzureIdentity = async ({
     resource = resource.slice(0, -1);
   }
 
-  return jwt.verify(azureJwt, publicKey, {
+  return crypto.jwt().verify(azureJwt, publicKey, {
     audience: resource,
     issuer: `https://sts.windows.net/${tenantId}/`
   }) as TAzureAuthJwtPayload;

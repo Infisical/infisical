@@ -5,9 +5,8 @@ import { useTranslation } from "react-i18next";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import jsrp from "jsrp";
-import nacl from "tweetnacl";
-import { encodeBase64 } from "tweetnacl-util";
 
+import { useServerConfig } from "@app/context";
 import { initProjectHelper } from "@app/helpers/project";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -16,7 +15,7 @@ import { onRequestError } from "@app/hooks/api/reactQuery";
 import InputField from "../basic/InputField";
 import checkPassword from "../utilities/checks/password/checkPassword";
 import Aes256Gcm from "../utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey } from "../utilities/cryptography/crypto";
+import { deriveArgonKey, generateKeyPair } from "../utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "../utilities/saveTokenToLocalStorage";
 import SecurityClient from "../utilities/SecurityClient";
 import { Button, Input } from "../v2";
@@ -77,6 +76,7 @@ export default function UserInfoStep({
 }: UserInfoStepProps): JSX.Element {
   const [nameError, setNameError] = useState(false);
   const [organizationNameError, setOrganizationNameError] = useState(false);
+  const { config } = useServerConfig();
 
   const [errors, setErrors] = useState<Errors>({});
 
@@ -109,12 +109,9 @@ export default function UserInfoStep({
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
-      const pair = nacl.box.keyPair();
-      const secretKeyUint8Array = pair.secretKey;
-      const publicKeyUint8Array = pair.publicKey;
-      const privateKey = encodeBase64(secretKeyUint8Array);
-      const publicKey = encodeBase64(publicKeyUint8Array);
-      localStorage.setItem("PRIVATE_KEY", privateKey);
+      const pair = await generateKeyPair(config.fipsEnabled);
+
+      localStorage.setItem("PRIVATE_KEY", pair.privateKey);
 
       client.init(
         {
@@ -145,7 +142,7 @@ export default function UserInfoStep({
                 iv: encryptedPrivateKeyIV,
                 tag: encryptedPrivateKeyTag
               } = Aes256Gcm.encrypt({
-                text: privateKey,
+                text: pair.privateKey,
                 secret: key
               });
 
@@ -168,7 +165,7 @@ export default function UserInfoStep({
                 protectedKey,
                 protectedKeyIV,
                 protectedKeyTag,
-                publicKey,
+                publicKey: pair.publicKey,
                 encryptedPrivateKey,
                 encryptedPrivateKeyIV,
                 encryptedPrivateKeyTag,
@@ -189,11 +186,11 @@ export default function UserInfoStep({
               }
 
               saveTokenToLocalStorage({
-                publicKey,
+                publicKey: pair.publicKey,
                 encryptedPrivateKey,
                 iv: encryptedPrivateKeyIV,
                 tag: encryptedPrivateKeyTag,
-                privateKey
+                privateKey: pair.privateKey
               });
 
               const userOrgs = await fetchOrganizations();

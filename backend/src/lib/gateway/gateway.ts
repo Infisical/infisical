@@ -1,10 +1,11 @@
 /* eslint-disable no-await-in-loop */
-import crypto from "node:crypto";
 import net from "node:net";
 
 import quicDefault, * as quicModule from "@infisical/quic";
 import axios from "axios";
 import https from "https";
+
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { BadRequestError } from "../errors";
 import { logger } from "../logger";
@@ -48,8 +49,8 @@ const createQuicConnection = async (
       verifyPeer: true,
       verifyCallback: async (certs) => {
         if (!certs || certs.length === 0) return quic.native.CryptoError.CertificateRequired;
-        const serverCertificate = new crypto.X509Certificate(Buffer.from(certs[0]));
-        const caCertificate = new crypto.X509Certificate(tlsOptions.ca);
+        const serverCertificate = new crypto.nativeCrypto.X509Certificate(Buffer.from(certs[0]));
+        const caCertificate = new crypto.nativeCrypto.X509Certificate(tlsOptions.ca);
         const isValidServerCertificate = serverCertificate.verify(caCertificate.publicKey);
         if (!isValidServerCertificate) return quic.native.CryptoError.BadCertificate;
 
@@ -72,7 +73,7 @@ const createQuicConnection = async (
     crypto: {
       ops: {
         randomBytes: async (data) => {
-          crypto.getRandomValues(new Uint8Array(data));
+          crypto.nativeCrypto.getRandomValues(new Uint8Array(data));
         }
       }
     }

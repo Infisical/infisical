@@ -1,9 +1,9 @@
 import { execFile } from "child_process";
-import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { promisify } from "util";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { cleanTemporaryDirectory, createTemporaryDirectory, writeToTemporaryFile } from "@app/lib/files";
 import { logger } from "@app/lib/logger";
@@ -43,19 +43,19 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       case SigningAlgorithm.RSASSA_PSS_SHA_512:
         return {
           hashAlgorithm: SupportedHashAlgorithm.SHA512,
-          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+          padding: crypto.nativeCrypto.constants.RSA_PKCS1_PSS_PADDING,
           saltLength: SHA512_DIGEST_LENGTH
         };
       case SigningAlgorithm.RSASSA_PSS_SHA_256:
         return {
           hashAlgorithm: SupportedHashAlgorithm.SHA256,
-          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+          padding: crypto.nativeCrypto.constants.RSA_PKCS1_PSS_PADDING,
           saltLength: SHA256_DIGEST_LENGTH
         };
       case SigningAlgorithm.RSASSA_PSS_SHA_384:
         return {
           hashAlgorithm: SupportedHashAlgorithm.SHA384,
-          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+          padding: crypto.nativeCrypto.constants.RSA_PKCS1_PSS_PADDING,
           saltLength: SHA384_DIGEST_LENGTH
         };
 
@@ -63,17 +63,17 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       case SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_512:
         return {
           hashAlgorithm: SupportedHashAlgorithm.SHA512,
-          padding: crypto.constants.RSA_PKCS1_PADDING
+          padding: crypto.nativeCrypto.constants.RSA_PKCS1_PADDING
         };
       case SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_384:
         return {
           hashAlgorithm: SupportedHashAlgorithm.SHA384,
-          padding: crypto.constants.RSA_PKCS1_PADDING
+          padding: crypto.nativeCrypto.constants.RSA_PKCS1_PADDING
         };
       case SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256:
         return {
           hashAlgorithm: SupportedHashAlgorithm.SHA256,
-          padding: crypto.constants.RSA_PKCS1_PADDING
+          padding: crypto.nativeCrypto.constants.RSA_PKCS1_PADDING
         };
 
       // ECDSA
@@ -389,7 +389,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       return signature;
     }
 
-    const privateKeyObject = crypto.createPrivateKey({
+    const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
       key: privateKey,
       format: "pem",
       type: "pkcs8"
@@ -397,7 +397,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
     // For RSA signatures
     if (signingAlgorithm.startsWith("RSA")) {
-      const signer = crypto.createSign(hashAlgorithm);
+      const signer = crypto.nativeCrypto.createSign(hashAlgorithm);
       signer.update(data);
 
       return signer.sign({
@@ -408,7 +408,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     }
     if (signingAlgorithm.startsWith("ECDSA")) {
       // For ECDSA signatures
-      const signer = crypto.createSign(hashAlgorithm);
+      const signer = crypto.nativeCrypto.createSign(hashAlgorithm);
       signer.update(data);
       return signer.sign({
         key: privateKeyObject,
@@ -452,7 +452,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
         return signatureValid;
       }
 
-      const publicKeyObject = crypto.createPublicKey({
+      const publicKeyObject = crypto.nativeCrypto.createPublicKey({
         key: publicKey,
         format: "der",
         type: "spki"
@@ -460,7 +460,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
       // For RSA signatures
       if (signingAlgorithm.startsWith("RSA")) {
-        const verifier = crypto.createVerify(hashAlgorithm);
+        const verifier = crypto.nativeCrypto.createVerify(hashAlgorithm);
         verifier.update(data);
 
         return verifier.verify(
@@ -474,7 +474,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       }
       // For ECDSA signatures
       if (signingAlgorithm.startsWith("ECDSA")) {
-        const verifier = crypto.createVerify(hashAlgorithm);
+        const verifier = crypto.nativeCrypto.createVerify(hashAlgorithm);
         verifier.update(data);
         return verifier.verify(
           {
@@ -499,7 +499,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   const generateAsymmetricPrivateKey = async () => {
     const { privateKey } = await new Promise<{ privateKey: string }>((resolve, reject) => {
       if (algorithm.startsWith("RSA")) {
-        crypto.generateKeyPair(
+        crypto.nativeCrypto.generateKeyPair(
           "rsa",
           {
             modulusLength: Number(algorithm.split("_")[1]),
@@ -517,7 +517,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       } else {
         const { full: namedCurve } = $getEcCurveName(algorithm);
 
-        crypto.generateKeyPair(
+        crypto.nativeCrypto.generateKeyPair(
           "ec",
           {
             namedCurve,
@@ -541,13 +541,13 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   };
 
   const getPublicKeyFromPrivateKey = (privateKey: Buffer) => {
-    const privateKeyObj = crypto.createPrivateKey({
+    const privateKeyObj = crypto.nativeCrypto.createPrivateKey({
       key: privateKey,
       format: "pem",
       type: "pkcs8"
     });
 
-    const publicKey = crypto.createPublicKey(privateKeyObj).export({
+    const publicKey = crypto.nativeCrypto.createPublicKey(privateKeyObj).export({
       type: "spki",
       format: "der"
     });

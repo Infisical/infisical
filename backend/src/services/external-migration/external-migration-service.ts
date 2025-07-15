@@ -1,7 +1,7 @@
 import { OrgMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 
 import { TUserDALFactory } from "../user/user-dal";
 import { decryptEnvKeyDataFn, parseEnvKeyDataFn } from "./external-migration-fns";
@@ -29,6 +29,10 @@ export const externalMigrationServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TImportEnvKeyDataCreate) => {
+    if (crypto.isFipsModeEnabled()) {
+      throw new BadRequestError({ message: "EnvKey migration is not supported when running in FIPS mode." });
+    }
+
     const { membership } = await permissionService.getOrgPermission(
       actor,
       actorId,
@@ -52,7 +56,7 @@ export const externalMigrationServiceFactory = ({
       actorAuthMethod
     });
 
-    const encrypted = infisicalSymmetricEncypt(stringifiedJson);
+    const encrypted = crypto.encryption().symmetric().encryptWithRootEncryptionKey(stringifiedJson);
 
     await externalMigrationQueue.startImport({
       actorEmail: user.email!,

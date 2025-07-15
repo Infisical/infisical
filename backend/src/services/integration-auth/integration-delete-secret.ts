@@ -5,7 +5,7 @@ import { Octokit } from "@octokit/rest";
 
 import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -109,12 +109,14 @@ const getIntegrationSecretsV1 = async (
 
   // process secrets in current folder
   const secrets = await secretDAL.findByFolderId(dto.folderId);
+
   secrets.forEach((secret) => {
-    const secretKey = decryptSymmetric128BitHexKeyUTF8({
+    const secretKey = crypto.encryption().symmetric().decrypt({
       ciphertext: secret.secretKeyCiphertext,
       iv: secret.secretKeyIV,
       tag: secret.secretKeyTag,
-      key: dto.key
+      key: dto.key,
+      keySize: SymmetricKeySize.Bits128
     });
 
     content[secretKey] = true;

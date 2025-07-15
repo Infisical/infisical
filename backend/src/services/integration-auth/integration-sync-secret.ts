@@ -23,7 +23,6 @@ import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import AWS, { AWSError } from "aws-sdk";
 import { AxiosError } from "axios";
-import { randomUUID } from "crypto";
 import https from "https";
 import sodium from "libsodium-wrappers";
 import isEqual from "lodash.isequal";
@@ -31,8 +30,10 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
@@ -796,6 +797,8 @@ const syncSecretsAWSParameterStore = async ({
   if (awsAssumeRoleArn) {
     const client = new STSClient({
       region: integration.region as string,
+      useFipsEndpoint: crypto.isFipsModeEnabled(),
+      sha256: CustomAWSHasher,
       credentials:
         appCfg.CLIENT_ID_AWS_INTEGRATION && appCfg.CLIENT_SECRET_AWS_INTEGRATION
           ? {
@@ -806,7 +809,7 @@ const syncSecretsAWSParameterStore = async ({
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsAssumeRoleArn,
-      RoleSessionName: `infisical-parameter-store-${randomUUID()}`,
+      RoleSessionName: `infisical-parameter-store-${crypto.nativeCrypto.randomUUID()}`,
       DurationSeconds: 900, // 15mins
       ExternalId: projectId
     });
@@ -1126,7 +1129,7 @@ const syncSecretsAWSSecretManager = async ({
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsAssumeRoleArn,
-      RoleSessionName: `infisical-sm-${randomUUID()}`,
+      RoleSessionName: `infisical-sm-${crypto.nativeCrypto.randomUUID()}`,
       DurationSeconds: 900, // 15mins
       ExternalId: projectId
     });

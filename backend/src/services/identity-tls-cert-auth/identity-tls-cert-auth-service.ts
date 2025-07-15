@@ -1,7 +1,4 @@
-import crypto from "node:crypto";
-
 import { ForbiddenError } from "@casl/ability";
-import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -13,6 +10,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
@@ -87,8 +85,8 @@ export const identityTlsCertAuthServiceFactory = ({
       throw new BadRequestError({ message: "Missing client certificate" });
     }
 
-    const clientCertificateX509 = new crypto.X509Certificate(leafCertificate);
-    const caCertificateX509 = new crypto.X509Certificate(caCertificate);
+    const clientCertificateX509 = new crypto.nativeCrypto.X509Certificate(leafCertificate);
+    const caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
 
     const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
     if (!isValidCertificate)
@@ -136,7 +134,7 @@ export const identityTlsCertAuthServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         identityId: identityTlsCertAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,

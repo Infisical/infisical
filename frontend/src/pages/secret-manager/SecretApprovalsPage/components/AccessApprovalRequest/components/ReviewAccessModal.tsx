@@ -255,6 +255,11 @@ export const ReviewAccessRequestModal = ({
     return "You are not the reviewer in this step.";
   };
 
+  // users can always reject (cancel) their own request
+  const isRejectionDisabled = request.isRequestedByCurrentUser
+    ? false
+    : !(request.isApprover && request.isSelfApproveAllowed) && !bypassApproval;
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -445,7 +450,7 @@ export const ReviewAccessRequestModal = ({
                     onCheckedChange={(checked) => setBypassApproval(checked === true)}
                     isChecked={bypassApproval}
                     id="byPassApproval"
-                    className={twMerge("mr-2", bypassApproval ? "!border-red/30 !bg-red/10" : "")}
+                    className={twMerge("mr-2", bypassApproval ? "!border-red/50 !bg-red/30" : "")}
                   >
                     <span className="text-xs text-red">
                       Approve without waiting for requirements to be met (bypass policy protection)
@@ -489,14 +494,7 @@ export const ReviewAccessRequestModal = ({
                 </Button>
                 <Button
                   isLoading={isLoading === "rejected"}
-                  isDisabled={
-                    !!isLoading ||
-                    (!(
-                      request.isApprover &&
-                      (!request.isRequestedByCurrentUser || request.isSelfApproveAllowed)
-                    ) &&
-                      !bypassApproval)
-                  }
+                  isDisabled={!!isLoading || isRejectionDisabled}
                   onClick={() => handleReview("rejected")}
                   className="mt-4 border-transparent bg-transparent text-mineshaft-200 hover:border-red hover:bg-red/20 hover:text-mineshaft-200"
                   size="sm"

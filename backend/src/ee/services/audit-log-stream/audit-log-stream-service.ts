@@ -4,7 +4,7 @@ import { RawAxiosRequestHeaders } from "axios";
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
@@ -86,7 +86,10 @@ export const auditLogStreamServiceFactory = ({
       .catch((err) => {
         throw new BadRequestError({ message: `Failed to connect with upstream source: ${(err as Error)?.message}` });
       });
-    const encryptedHeaders = headers ? infisicalSymmetricEncypt(JSON.stringify(headers)) : undefined;
+
+    const encryptedHeaders = headers
+      ? crypto.encryption().symmetric().encryptWithRootEncryptionKey(JSON.stringify(headers))
+      : undefined;
     const logStream = await auditLogStreamDAL.create({
       orgId: actorOrgId,
       url,
@@ -152,7 +155,9 @@ export const auditLogStreamServiceFactory = ({
         throw new Error(`Failed to connect with the source ${(err as Error)?.message}`);
       });
 
-    const encryptedHeaders = headers ? infisicalSymmetricEncypt(JSON.stringify(headers)) : undefined;
+    const encryptedHeaders = headers
+      ? crypto.encryption().symmetric().encryptWithRootEncryptionKey(JSON.stringify(headers))
+      : undefined;
     const updatedLogStream = await auditLogStreamDAL.updateById(id, {
       url,
       ...(encryptedHeaders
@@ -205,12 +210,15 @@ export const auditLogStreamServiceFactory = ({
     const headers =
       logStream?.encryptedHeadersCiphertext && logStream?.encryptedHeadersIV && logStream?.encryptedHeadersTag
         ? (JSON.parse(
-            infisicalSymmetricDecrypt({
-              tag: logStream.encryptedHeadersTag,
-              iv: logStream.encryptedHeadersIV,
-              ciphertext: logStream.encryptedHeadersCiphertext,
-              keyEncoding: logStream.encryptedHeadersKeyEncoding as SecretKeyEncoding
-            })
+            crypto
+              .encryption()
+              .symmetric()
+              .decryptWithRootEncryptionKey({
+                tag: logStream.encryptedHeadersTag,
+                iv: logStream.encryptedHeadersIV,
+                ciphertext: logStream.encryptedHeadersCiphertext,
+                keyEncoding: logStream.encryptedHeadersKeyEncoding as SecretKeyEncoding
+              })
           ) as LogStreamHeaders[])
         : undefined;
 

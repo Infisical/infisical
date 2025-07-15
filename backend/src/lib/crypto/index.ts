@@ -1,17 +1,5 @@
-export {
-  buildSecretBlindIndexFromName,
-  createSecretBlindIndex,
-  decodeBase64,
-  decryptAsymmetric,
-  decryptSymmetric,
-  decryptSymmetric128BitHexKeyUTF8,
-  encodeBase64,
-  encryptAsymmetric,
-  encryptSymmetric,
-  encryptSymmetric128BitHexKeyUTF8,
-  generateAsymmetricKeyPair,
-  randomSecureBytes
-} from "./encryption";
+export { crypto, SymmetricKeySize } from "./cryptography";
+export { buildSecretBlindIndexFromName } from "./encryption";
 export {
   decryptIntegrationAuths,
   decryptSecretApprovals,

@@ -1,7 +1,7 @@
 /* eslint-disable */
 // Source code credits: https://github.com/mike-marcacci/node-redlock
 // Taken to avoid external dependency
-import { randomBytes, createHash } from "crypto";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { EventEmitter } from "events";
 
 // AbortController became available as a global in node version 16. Once version
@@ -251,14 +251,14 @@ export class Redlock extends EventEmitter {
    * Generate a sha1 hash compatible with redis evalsha.
    */
   private _hash(value: string): string {
-    return createHash("sha1").update(value).digest("hex");
+    return crypto.nativeCrypto.createHash("sha1").update(value).digest("hex");
   }
 
   /**
    * Generate a cryptographically random string.
    */
   private _random(): string {
-    return randomBytes(16).toString("hex");
+    return crypto.randomBytes(16).toString("hex");
   }
 
   /**

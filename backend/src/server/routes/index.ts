@@ -119,6 +119,7 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -278,7 +279,7 @@ import { slackIntegrationDALFactory } from "@app/services/slack/slack-integratio
 import { slackServiceFactory } from "@app/services/slack/slack-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
@@ -311,6 +312,7 @@ export const registerRoutes = async (
   server: FastifyZodProvider,
   {
     auditLogDb,
+    superAdminDAL,
     db,
     hsmModule,
     smtp: smtpService,
@@ -319,6 +321,7 @@ export const registerRoutes = async (
     envConfig
   }: {
     auditLogDb?: Knex;
+    superAdminDAL: TSuperAdminDALFactory;
     db: Knex;
     hsmModule: HsmModule;
     smtp: TSmtpService;
@@ -342,7 +345,6 @@ export const registerRoutes = async (
   const orgBotDAL = orgBotDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const orgRoleDAL = orgRoleDALFactory(db);
-  const superAdminDAL = superAdminDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
 
@@ -1902,10 +1904,13 @@ export const registerRoutes = async (
     kmsService
   });
 
-  await superAdminService.initServerCfg();
-
   // setup the communication with license key server
   await licenseService.init();
+
+  // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
+  crypto.verifyFipsLicense(licenseService);
+
+  await superAdminService.initServerCfg();
 
   // Start HSM service if it's configured/enabled.
   await hsmService.startService();

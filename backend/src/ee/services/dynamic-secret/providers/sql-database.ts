@@ -1,8 +1,8 @@
-import { randomInt } from "crypto";
 import handlebars from "handlebars";
 import knex from "knex";
 import { z } from "zod";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
@@ -50,7 +50,7 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
       parts.push(
         ...Array(required.lowercase)
           .fill(0)
-          .map(() => chars.lowercase[randomInt(chars.lowercase.length)])
+          .map(() => chars.lowercase[crypto.randomInt(chars.lowercase.length)])
       );
     }
 
@@ -58,7 +58,7 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
       parts.push(
         ...Array(required.uppercase)
           .fill(0)
-          .map(() => chars.uppercase[randomInt(chars.uppercase.length)])
+          .map(() => chars.uppercase[crypto.randomInt(chars.uppercase.length)])
       );
     }
 
@@ -66,7 +66,7 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
       parts.push(
         ...Array(required.digits)
           .fill(0)
-          .map(() => chars.digits[randomInt(chars.digits.length)])
+          .map(() => chars.digits[crypto.randomInt(chars.digits.length)])
       );
     }
 
@@ -74,7 +74,7 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
       parts.push(
         ...Array(required.symbols)
           .fill(0)
-          .map(() => chars.symbols[randomInt(chars.symbols.length)])
+          .map(() => chars.symbols[crypto.randomInt(chars.symbols.length)])
       );
     }
 
@@ -89,12 +89,12 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
     parts.push(
       ...Array(remainingLength)
         .fill(0)
-        .map(() => allowedChars[randomInt(allowedChars.length)])
+        .map(() => allowedChars[crypto.randomInt(allowedChars.length)])
     );
 
     // shuffle the array to mix up the characters
     for (let i = parts.length - 1; i > 0; i -= 1) {
-      const j = randomInt(i + 1);
+      const j = crypto.randomInt(i + 1);
       [parts[i], parts[j]] = [parts[j], parts[i]];
     }
 

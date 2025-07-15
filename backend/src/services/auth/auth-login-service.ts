@@ -1,5 +1,3 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
 import { OrgMembershipRole, OrgMembershipStatus, TableName, TUsers, UserDeviceSchema } from "@app/db/schemas";
@@ -7,8 +5,7 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
@@ -157,7 +154,7 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         authMethod,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
@@ -172,7 +169,7 @@ export const authLoginServiceFactory = ({
       { expiresIn: tokenSessionExpiresIn }
     );
 
-    const refreshToken = jwt.sign(
+    const refreshToken = crypto.jwt().sign(
       {
         authMethod,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
@@ -336,8 +333,14 @@ export const authLoginServiceFactory = ({
         );
         return "";
       });
-      const hashedPassword = await bcrypt.hash(password, cfg.BCRYPT_SALT_ROUND);
-      const { iv, tag, ciphertext, encoding } = infisicalSymmetricEncypt(privateKey);
+
+      const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
+
+      const { iv, tag, ciphertext, encoding } = crypto
+        .encryption()
+        .symmetric()
+        .encryptWithRootEncryptionKey(privateKey);
+
       await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
         serverPrivateKey: null,
         clientPublicKey: null,
@@ -388,7 +391,7 @@ export const authLoginServiceFactory = ({
     authJwtToken = authJwtToken.replace("Bearer ", ""); // remove bearer from token
 
     // The decoded JWT token, which contains the auth method.
-    const decodedToken = jwt.verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
+    const decodedToken = crypto.jwt().verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
     const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
@@ -413,7 +416,7 @@ export const authLoginServiceFactory = ({
     if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
 
-      const mfaToken = jwt.sign(
+      const mfaToken = crypto.jwt().sign(
         {
           authMethod: decodedToken.authMethod,
           authTokenType: AuthTokenType.MFA_TOKEN,
@@ -624,7 +627,7 @@ export const authLoginServiceFactory = ({
       throw err;
     }
 
-    const decodedToken = jwt.verify(mfaJwtToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
+    const decodedToken = crypto.jwt().verify(mfaJwtToken, getConfig().AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
 
     const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
@@ -774,7 +777,7 @@ export const authLoginServiceFactory = ({
 
     const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const isUserCompleted = user.isAccepted;
-    const providerAuthToken = jwt.sign(
+    const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,

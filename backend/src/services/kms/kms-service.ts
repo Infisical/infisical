@@ -14,9 +14,8 @@ import {
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
-import { randomSecureBytes } from "@app/lib/crypto";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
-import { generateHash } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { AsymmetricKeyAlgorithm, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -101,7 +100,7 @@ export const kmsServiceFactory = ({
 
     let kmsKeyMaterial: Buffer | null = null;
     if (keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
-      kmsKeyMaterial = randomSecureBytes(
+      kmsKeyMaterial = crypto.randomBytes(
         getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm as SymmetricKeyAlgorithm)
       );
     } else if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
@@ -618,7 +617,7 @@ export const kmsServiceFactory = ({
               return;
             }
 
-            const dataKey = randomSecureBytes();
+            const dataKey = crypto.randomBytes(32);
             const kmsEncryptor = await encryptWithKmsKey(
               {
                 kmsId: kmsKeyId
@@ -761,7 +760,7 @@ export const kmsServiceFactory = ({
               return;
             }
 
-            const dataKey = randomSecureBytes();
+            const dataKey = crypto.randomBytes(32);
             const kmsEncryptor = await encryptWithKmsKey(
               {
                 kmsId: kmsKeyId
@@ -831,6 +830,7 @@ export const kmsServiceFactory = ({
 
   const $getBasicEncryptionKey = () => {
     const encryptionKey = envConfig.ENCRYPTION_KEY || envConfig.ROOT_ENCRYPTION_KEY;
+
     const isBase64 = !envConfig.ENCRYPTION_KEY;
     if (!encryptionKey)
       throw new Error(
@@ -994,7 +994,7 @@ export const kmsServiceFactory = ({
       "base64"
     )}`;
 
-    const verificationHash = generateHash(secretManagerBackup);
+    const verificationHash = crypto.nativeCrypto.createHash("sha256").update(secretManagerBackup).digest("hex");
     secretManagerBackup = `${secretManagerBackup}.${verificationHash}`;
 
     return {
@@ -1011,7 +1011,12 @@ export const kmsServiceFactory = ({
     }
 
     const [, backupProjectId, , backupKmsKeyId, backupBase64EncryptedDataKey, backupHash] = backup.split(".");
-    const computedHash = generateHash(backup.substring(0, backup.lastIndexOf(".")));
+
+    const computedHash = crypto.nativeCrypto
+      .createHash("sha256")
+      .update(backup.substring(0, backup.lastIndexOf(".")))
+      .digest("hex");
+
     if (computedHash !== backupHash) {
       throw new BadRequestError({
         message: "Invalid backup"
@@ -1075,7 +1080,7 @@ export const kmsServiceFactory = ({
       if (existingRootConfig) return existingRootConfig;
 
       logger.info("KMS: Generating new ROOT Key");
-      const newRootKey = randomSecureBytes(32);
+      const newRootKey = crypto.randomBytes(32);
       const encryptedRootKey = await $encryptRootKey(newRootKey, RootKeyEncryptionStrategy.Software).catch((err) => {
         logger.error({ hsmEnabled: hsmService.isActive() }, "KMS: Failed to encrypt ROOT Key");
         throw err;

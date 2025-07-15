@@ -9,6 +9,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -58,9 +59,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async () => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
+
       return {
         config: {
           ...config,
+          fipsEnabled: crypto.isFipsModeEnabled(),
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN

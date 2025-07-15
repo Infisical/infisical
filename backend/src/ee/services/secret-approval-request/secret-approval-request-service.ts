@@ -12,7 +12,7 @@ import {
 } from "@app/db/schemas";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
-import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
@@ -820,11 +820,12 @@ export const secretApprovalRequestServiceFactory = ({
                 type: SecretType.Shared,
                 references: botKey
                   ? getAllNestedSecretReferences(
-                      decryptSymmetric128BitHexKeyUTF8({
+                      crypto.encryption().symmetric().decrypt({
                         ciphertext: el.secretValueCiphertext,
                         iv: el.secretValueIV,
                         tag: el.secretValueTag,
-                        key: botKey
+                        key: botKey,
+                        keySize: SymmetricKeySize.Bits128
                       })
                     )
                   : undefined
@@ -865,11 +866,12 @@ export const secretApprovalRequestServiceFactory = ({
                   ]),
                   references: botKey
                     ? getAllNestedSecretReferences(
-                        decryptSymmetric128BitHexKeyUTF8({
+                        crypto.encryption().symmetric().decrypt({
                           ciphertext: el.secretValueCiphertext,
                           iv: el.secretValueIV,
                           tag: el.secretValueTag,
-                          key: botKey
+                          key: botKey,
+                          keySize: SymmetricKeySize.Bits128
                         })
                       )
                     : undefined

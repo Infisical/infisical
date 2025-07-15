@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { faEllipsis, faSort } from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, ReactNode } from "@tanstack/react-router";
 import { LinkComponentProps } from "node_modules/@tanstack/react-router/dist/esm/link";
@@ -27,7 +27,7 @@ const BreadcrumbList = React.forwardRef<HTMLOListElement, React.ComponentPropsWi
     <ol
       ref={ref}
       className={twMerge(
-        "flex flex-wrap items-center gap-1.5 break-words text-sm text-bunker-100 sm:gap-2.5",
+        "flex flex-wrap items-center break-words text-sm text-bunker-100",
         className
       )}
       {...props}
@@ -56,7 +56,7 @@ const BreadcrumbLink = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={twMerge("transition-colors hover:text-primary-400", className)}
+      className={twMerge("transition-colors hover:text-primary", className)}
       {...props}
     />
   );
@@ -79,7 +79,7 @@ BreadcrumbPage.displayName = "BreadcrumbPage";
 
 const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentProps<"li">) => (
   <li role="presentation" aria-hidden="true" className={twMerge("", className)} {...props}>
-    {children ?? <p className="px-2 text-lg text-mineshaft-400/70">/</p>}
+    {children ?? <p className="px-3 text-lg text-mineshaft-400/70">/</p>}
   </li>
 );
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator";
@@ -121,7 +121,7 @@ export type TBreadcrumbFormat =
     };
 
 const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[] }) => (
-  <div className="mx-auto max-w-7xl py-4 text-white">
+  <div className="mx-auto max-w-7xl text-white">
     <Breadcrumb>
       <BreadcrumbList>
         {(breadcrumbs as TBreadcrumbFormat[]).map((el, index) => {
@@ -134,12 +134,17 @@ const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[]
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <BreadcrumbItem>
-                      <BreadcrumbSegment className="rounded-md px-2 py-1 py-2 hover:bg-mineshaft-600">
-                        {el.label} <FontAwesomeIcon icon={faSort} size="sm" />
+                      <BreadcrumbSegment className="rounded-md py-1 py-2">
+                        {el.label}{" "}
+                        <FontAwesomeIcon
+                          icon={faCaretDown}
+                          size="sm"
+                          className="ml-2 text-bunker-300"
+                        />
                       </BreadcrumbSegment>
                     </BreadcrumbItem>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuContent side="bottom" sideOffset={8} align="start">
                     {el?.dropdownTitle && <DropdownMenuLabel>{el.dropdownTitle}</DropdownMenuLabel>}
                     {el.links.map((i, dropIndex) => (
                       <Link

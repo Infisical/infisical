@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
-import { decryptAsymmetric, encryptAsymmetric, infisicalSymmetricDecrypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 
 import {
@@ -94,14 +94,17 @@ const addAcceptedUsersToGroup = async ({
         });
       }
 
-      const botPrivateKey = infisicalSymmetricDecrypt({
-        keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-        iv: bot.iv,
-        tag: bot.tag,
-        ciphertext: bot.encryptedPrivateKey
-      });
+      const botPrivateKey = crypto
+        .encryption()
+        .symmetric()
+        .decryptWithRootEncryptionKey({
+          keyEncoding: bot.keyEncoding as SecretKeyEncoding,
+          iv: bot.iv,
+          tag: bot.tag,
+          ciphertext: bot.encryptedPrivateKey
+        });
 
-      const plaintextProjectKey = decryptAsymmetric({
+      const plaintextProjectKey = crypto.encryption().asymmetric().decrypt({
         ciphertext: ghostUserLatestKey.encryptedKey,
         nonce: ghostUserLatestKey.nonce,
         publicKey: ghostUserLatestKey.sender.publicKey,
@@ -109,11 +112,10 @@ const addAcceptedUsersToGroup = async ({
       });
 
       const projectKeysToAdd = usersToAddProjectKeyFor.map((user) => {
-        const { ciphertext: encryptedKey, nonce } = encryptAsymmetric(
-          plaintextProjectKey,
-          user.publicKey,
-          botPrivateKey
-        );
+        const { ciphertext: encryptedKey, nonce } = crypto
+          .encryption()
+          .asymmetric()
+          .encrypt(plaintextProjectKey, user.publicKey, botPrivateKey);
         return {
           encryptedKey,
           nonce,

@@ -1,11 +1,9 @@
 import crypto from "crypto";
 
 import jsrp from "jsrp";
-import nacl from "tweetnacl";
-import { encodeBase64 } from "tweetnacl-util";
 
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
+import { deriveArgonKey, generateKeyPair } from "@app/components/utilities/cryptography/crypto";
 import { issueBackupPrivateKey, srp1 } from "@app/hooks/api/auth/queries";
 
 export const generateUserBackupKey = async (email: string, password: string) => {
@@ -54,15 +52,15 @@ export const generateUserBackupKey = async (email: string, password: string) => 
   return generatedKey;
 };
 
-export const generateUserPassKey = async (email: string, password: string) => {
+export const generateUserPassKey = async (
+  email: string,
+  password: string,
+  fipsEnabled: boolean
+) => {
   // eslint-disable-next-line new-cap
   const client = new jsrp.client();
 
-  const pair = nacl.box.keyPair();
-  const secretKeyUint8Array = pair.secretKey;
-  const publicKeyUint8Array = pair.publicKey;
-  const privateKey = encodeBase64(secretKeyUint8Array);
-  const publicKey = encodeBase64(publicKeyUint8Array);
+  const { publicKey, privateKey } = await generateKeyPair(fipsEnabled);
 
   await new Promise((resolve) => {
     client.init({ username: email, password }, () => resolve(null));
