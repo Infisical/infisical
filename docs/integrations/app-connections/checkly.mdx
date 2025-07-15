@@ -4,6 +4,9 @@ description: "Learn how to configure a Checkly Connection for Infisical."
 ---
 
 Infisical supports the use of [API Keys](https://app.checklyhq.com/settings/user/api-keys) to connect with Checkly.
+<Note>
+  Checkly requires the account user to have Read/Write or Admin permissions
+</Note>
 
 ## Create a Checkly API Token
 
@@ -25,9 +28,6 @@ Infisical supports the use of [API Keys](https://app.checklyhq.com/settings/user
   </Step>
   <Step title="Copy the generated key and save it">
     ![Create Token](/images/app-connections/checkly/checkly-app-connection-key-generated.png)
-  </Step>
-    <Step title="Select and save the Checkly Account ID">
-    ![Create Token](/images/app-connections/checkly/checkly-app-connection-copy-account-id.png)
   </Step>
 </Steps>
 
@@ -51,7 +51,6 @@ Infisical supports the use of [API Keys](https://app.checklyhq.com/settings/user
         - A descriptive name for the connection
         - An optional description
         - The API Key value from the previous step
-        - The Account ID from the previous step
 
         ![Checkly Connection Modal](/images/app-connections/checkly/checkly-app-connection-form.png)
       </Step>
