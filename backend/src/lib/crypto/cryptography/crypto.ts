@@ -4,7 +4,6 @@
 import crypto, { subtle } from "node:crypto";
 
 import bcrypt from "bcrypt";
-import cryptoJs from "crypto-js";
 import jwtDep from "jsonwebtoken";
 import nacl from "tweetnacl";
 import naclUtils from "tweetnacl-util";
@@ -72,24 +71,6 @@ export const generateAsymmetricKeyPair = () => {
     publicKey: naclUtils.encodeBase64(pair.publicKey),
     privateKey: naclUtils.encodeBase64(pair.secretKey)
   };
-};
-
-export const computeMd5 = (message: string, digest: DigestType = DigestType.Hex) => {
-  let encoder;
-  switch (digest) {
-    case DigestType.Hex:
-      encoder = cryptoJs.enc.Hex;
-      break;
-    case DigestType.Base64:
-      encoder = cryptoJs.enc.Base64;
-      break;
-    default:
-      throw new CryptographyError({
-        message: `Invalid digest type: ${digest as string}`
-      });
-  }
-
-  return cryptoJs.MD5(message).toString(encoder);
 };
 
 const cryptographyFactory = () => {
@@ -354,15 +335,15 @@ const cryptographyFactory = () => {
 
   const hashing = () => {
     $checkIsInitialized();
-    // mark this function as deprecated
     /**
      * @deprecated Do not use MD5 unless you absolutely have to. It is considered an unsafe hashing algorithm, and should only be used if absolutely necessary.
      */
     const md5 = (message: string, digest: DigestType = DigestType.Hex) => {
-      // If FIPS is enabled and we need MD5, we use the crypto-js implementation.
-      // Avoid this at all costs unless strictly necessary, like for mongo atlas digest auth.
+      // If FIPS is enabled, we block MD5 directly.
       if (isFipsModeEnabled()) {
-        return computeMd5(message, digest);
+        throw new CryptographyError({
+          message: "MD5 is not supported in FIPS mode of operation"
+        });
       }
       return crypto.createHash("md5").update(message).digest(digest);
     };

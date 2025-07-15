@@ -6,6 +6,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -89,6 +90,12 @@ export const dynamicSecretServiceFactory = ({
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to create dynamic secret due to plan restriction. Upgrade plan to create dynamic secret."
+      });
+    }
+
+    if (provider.type === DynamicSecretProviders.MongoAtlas && crypto.isFipsModeEnabled()) {
+      throw new BadRequestError({
+        message: "MongoDB Atlas dynamic secret is not supported in FIPS mode of operation"
       });
     }
 
