@@ -247,10 +247,9 @@ var secretsSetCmd = &cobra.Command{
 				Type:  "",
 				Token: loggedInUserDetails.UserCredentials.JTWToken,
 			}, file)
-		}
-
-		if err != nil {
-			util.HandleError(err, "Unable to set secrets")
+			if err != nil {
+				util.HandleError(err, "Unable to set secrets")
+			}
 		}
 
 		// Print secret operations
