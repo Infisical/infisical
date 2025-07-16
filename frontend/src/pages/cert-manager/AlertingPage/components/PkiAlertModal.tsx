@@ -31,10 +31,10 @@ enum TimeUnit {
 
 const schema = z.object({
   name: z.string().trim().min(1),
-  pkiCollectionId: z.string(),
-  alertBefore: z.string(),
+  pkiCollectionId: z.string().min(1),
+  alertBefore: z.string().min(1),
   alertUnit: z.nativeEnum(TimeUnit),
-  emails: z.string().trim()
+  emails: z.string().trim().min(1)
 });
 
 const convertToDays = (unit: TimeUnit, value: number) => {
