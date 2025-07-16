@@ -6,7 +6,7 @@ import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 export type TSupabaseSync = TRootSecretSync & {
   destination: SecretSync.Supabase;
   destinationConfig: {
-    projectRef: string;
+    projectId: string;
     projectName: string;
   };
   connection: {

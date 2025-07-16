@@ -19,7 +19,7 @@ export const supabaseConnectionService = (getAppConnection: TGetAppConnectionFun
 
       return projects ?? [];
     } catch (error) {
-      logger.error(error, "Failed to establish connection with Railway");
+      logger.error(error, "Failed to establish connection with Supabase");
       return [];
     }
   };

@@ -10,9 +10,9 @@ import { TSupabaseConnectionConfig, TSupabaseProject, TSupabaseSecret } from "./
 
 export function getSupabaseAuthHeaders(connection: TSupabaseConnectionConfig): Record<string, string> {
   switch (connection.method) {
-    case SupabaseConnectionMethod.AccountToken:
+    case SupabaseConnectionMethod.AccessToken:
       return {
-        Authorization: `Bearer ${connection.credentials.apiKey}`
+        Authorization: `Bearer ${connection.credentials.accessKey}`
       };
     default:
       throw new Error(`Unsupported Supabase connection method`);
@@ -70,7 +70,7 @@ class SupabasePublicClient {
 
   async healthcheck(connection: TSupabaseConnectionConfig) {
     switch (connection.method) {
-      case SupabaseConnectionMethod.AccountToken:
+      case SupabaseConnectionMethod.AccessToken:
         return void (await this.getProjects(connection));
       default:
         throw new Error(`Unsupported Supabase connection method`);

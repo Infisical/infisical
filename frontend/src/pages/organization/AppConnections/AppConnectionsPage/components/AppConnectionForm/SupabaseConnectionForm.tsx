@@ -33,10 +33,10 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(SupabaseConnectionMethod.AccountToken),
+    method: z.literal(SupabaseConnectionMethod.AccessToken),
     credentials: z.object({
-      apiKey: z.string().trim().min(1, "API Key required"),
-      instanceUrl: z.string().min(1, "Instance URL required")
+      accessKey: z.string().trim().min(1, "Access Key required"),
+      instanceUrl: z.string().url()
     })
   })
 ]);
@@ -53,7 +53,7 @@ export const SupabaseConnectionForm = ({ appConnection, onSubmit }: Props) => {
       credentials: {
         instanceUrl: "https://api.supabase.com"
       },
-      method: SupabaseConnectionMethod.AccountToken
+      method: SupabaseConnectionMethod.AccessToken
     }
   });
 
@@ -118,14 +118,14 @@ export const SupabaseConnectionForm = ({ appConnection, onSubmit }: Props) => {
           )}
         />
         <Controller
-          name="credentials.apiKey"
+          name="credentials.accessKey"
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="API Key Value"
+              label="Access Key Value"
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"

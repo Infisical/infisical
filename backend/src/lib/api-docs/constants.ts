@@ -2287,7 +2287,7 @@ export const AppConnections = {
       apiKey: "The API key used to authenticate with Checkly."
     },
     SUPABASE: {
-      apiKey: "The Key used to access Supabase.",
+      accessKey: "The Key used to access Supabase.",
       instanceUrl: "The URL used to access Supabase."
     }
   }

@@ -10,7 +10,7 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const SupabaseSyncDestinationConfigSchema = z.object({
-  projectRef: z.string().max(255).min(1, "Project Ref is required"),
+  projectId: z.string().max(255).min(1, "Project ID is required"),
   projectName: z.string().max(255).min(1, "Project Name is required")
 });
 

@@ -26,7 +26,7 @@ export const SupabaseSyncFns = {
     } = secretSync;
     const config = secretSync.destinationConfig;
 
-    const variables = await SupabasePublicAPI.getVariables(secretSync.connection, config.projectRef);
+    const variables = await SupabasePublicAPI.getVariables(secretSync.connection, config.projectId);
 
     const supabaseSecrets = new Map(variables!.map((variable) => [variable.name, variable]));
 
@@ -39,7 +39,7 @@ export const SupabaseSyncFns = {
 
     for await (const batch of chunkArray(toCreate, 100)) {
       try {
-        await SupabasePublicAPI.createVariables(secretSync.connection, config.projectRef, ...batch);
+        await SupabasePublicAPI.createVariables(secretSync.connection, config.projectId, ...batch);
       } catch (error) {
         throw new SecretSyncError({
           error,
@@ -63,7 +63,7 @@ export const SupabaseSyncFns = {
 
     for await (const batch of chunkArray(toDelete, 100)) {
       try {
-        await SupabasePublicAPI.deleteVariables(secretSync.connection, config.projectRef, ...batch);
+        await SupabasePublicAPI.deleteVariables(secretSync.connection, config.projectId, ...batch);
       } catch (error) {
         throw new SecretSyncError({
           error,
@@ -76,7 +76,7 @@ export const SupabaseSyncFns = {
   async removeSecrets(secretSync: TSupabaseSyncWithCredentials, secretMap: TSecretMap) {
     const config = secretSync.destinationConfig;
 
-    const variables = await SupabasePublicAPI.getVariables(secretSync.connection, config.projectRef);
+    const variables = await SupabasePublicAPI.getVariables(secretSync.connection, config.projectId);
 
     const supabaseSecrets = new Map(variables!.map((variable) => [variable.name, variable]));
 
@@ -90,7 +90,7 @@ export const SupabaseSyncFns = {
 
     for await (const batch of chunkArray(toDelete, 100)) {
       try {
-        await SupabasePublicAPI.deleteVariables(secretSync.connection, config.projectRef, ...batch);
+        await SupabasePublicAPI.deleteVariables(secretSync.connection, config.projectId, ...batch);
       } catch (error) {
         throw new SecretSyncError({
           error,

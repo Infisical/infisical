@@ -30,11 +30,11 @@ export const SupabaseSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectName", "");
-          setValue("destinationConfig.projectRef", "");
+          setValue("destinationConfig.projectId", "");
         }}
       />
       <Controller
-        name="destinationConfig.projectRef"
+        name="destinationConfig.projectId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl

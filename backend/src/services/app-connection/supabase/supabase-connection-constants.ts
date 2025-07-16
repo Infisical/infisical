@@ -1,3 +1,3 @@
 export enum SupabaseConnectionMethod {
-  AccountToken = "account-token"
+  AccessToken = "access-token"
 }
