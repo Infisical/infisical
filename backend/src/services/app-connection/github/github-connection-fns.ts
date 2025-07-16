@@ -199,7 +199,7 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
         client_id: clientId,
         client_secret: clientSecret,
         code: credentials.code,
-        redirect_uri: `${SITE_URL}-test/organization/app-connections/github/oauth/callback`
+        redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
       },
       headers: {
         Accept: "application/json",
