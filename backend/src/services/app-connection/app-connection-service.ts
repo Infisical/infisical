@@ -242,12 +242,15 @@ export const appConnectionServiceFactory = ({
       "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     );
 
-    const validatedCredentials = await validateAppConnectionCredentials({
-      app,
-      credentials,
-      method,
-      orgId: actor.orgId
-    } as TAppConnectionConfig);
+    const validatedCredentials = await validateAppConnectionCredentials(
+      {
+        app,
+        credentials,
+        method,
+        orgId: actor.orgId
+      } as TAppConnectionConfig,
+      gatewayService
+    );
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
@@ -349,12 +352,15 @@ export const appConnectionServiceFactory = ({
           } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
-      updatedCredentials = await validateAppConnectionCredentials({
-        app,
-        orgId: actor.orgId,
-        credentials,
-        method
-      } as TAppConnectionConfig);
+      updatedCredentials = await validateAppConnectionCredentials(
+        {
+          app,
+          orgId: actor.orgId,
+          credentials,
+          method
+        } as TAppConnectionConfig,
+        gatewayService
+      );
 
       if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });

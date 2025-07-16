@@ -1805,7 +1805,8 @@ export const registerRoutes = async (
     snapshotService,
     secretQueueService,
     queueService,
-    appConnectionDAL
+    appConnectionDAL,
+    gatewayService
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({

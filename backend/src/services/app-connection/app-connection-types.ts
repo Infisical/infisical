@@ -350,7 +350,8 @@ export type TListAwsConnectionIamUsers = {
 };
 
 export type TAppConnectionCredentialsValidator = (
-  appConnection: TAppConnectionConfig
+  appConnection: TAppConnectionConfig,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => Promise<TAppConnection["credentials"]>;
 
 export type TAppConnectionTransitionCredentialsToPlatform = (

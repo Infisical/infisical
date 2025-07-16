@@ -100,7 +100,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
   return client;
 };
 
-const executeWithPotentialGateway = async <T>(
+export const executeWithPotentialGateway = async <T>(
   config: TSqlConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   operation: (client: Knex) => Promise<T>
@@ -159,7 +159,7 @@ const executeWithPotentialGateway = async <T>(
 };
 
 export const validateSqlConnectionCredentials = async (
-  config: TSqlConnectionConfig & { gatewayId?: string },
+  config: TSqlConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => {
   try {
