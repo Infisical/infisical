@@ -199,7 +199,7 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
         client_id: clientId,
         client_secret: clientSecret,
         code: credentials.code,
-        redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
+        redirect_uri: `${SITE_URL}-test/organization/app-connections/github/oauth/callback`
       },
       headers: {
         Accept: "application/json",
@@ -209,7 +209,7 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
 
     if (isErrorResponse(tokenResp?.data)) {
       throw new BadRequestError({
-        message: `Unable to validate credentials: GitHub responded with an error: ${tokenResp.data.error} - ${tokenResp.data.error_description}.`
+        message: `Unable to validate credentials: GitHub responded with an error: ${tokenResp.data.error} - ${tokenResp.data.error_description}`
       });
     }
   } catch (e: unknown) {
