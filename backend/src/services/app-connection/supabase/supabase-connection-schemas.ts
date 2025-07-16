@@ -21,13 +21,7 @@ export const SupabaseConnectionAccessTokenCredentialsSchema = z.object({
     .min(1, "Access Key required")
     .max(255)
     .describe(AppConnections.CREDENTIALS.SUPABASE.accessKey),
-  instanceUrl: z
-    .string()
-    .trim()
-    .url()
-    .max(255)
-    .describe(AppConnections.CREDENTIALS.SUPABASE.instanceUrl)
-    .default("https://api.supabase.com")
+  instanceUrl: z.string().trim().url().max(255).describe(AppConnections.CREDENTIALS.SUPABASE.instanceUrl).optional()
 });
 
 const BaseSupabaseConnectionSchema = BaseAppConnectionSchema.extend({

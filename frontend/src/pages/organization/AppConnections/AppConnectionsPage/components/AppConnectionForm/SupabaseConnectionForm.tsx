@@ -36,7 +36,7 @@ const formSchema = z.discriminatedUnion("method", [
     method: z.literal(SupabaseConnectionMethod.AccessToken),
     credentials: z.object({
       accessKey: z.string().trim().min(1, "Access Key required"),
-      instanceUrl: z.string().url()
+      instanceUrl: z.string().url().optional()
     })
   })
 ]);
@@ -50,9 +50,6 @@ export const SupabaseConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Supabase,
-      credentials: {
-        instanceUrl: "https://api.supabase.com"
-      },
       method: SupabaseConnectionMethod.AccessToken
     }
   });

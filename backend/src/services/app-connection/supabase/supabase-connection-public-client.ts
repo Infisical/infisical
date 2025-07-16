@@ -4,9 +4,21 @@ import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode } from
 
 import { createRequestClient } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
+import { removeTrailingSlash } from "@app/lib/fn";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { SupabaseConnectionMethod } from "./supabase-connection-constants";
 import { TSupabaseConnectionConfig, TSupabaseProject, TSupabaseSecret } from "./supabase-connection-types";
+
+export const getSupabaseInstanceUrl = async (config: TSupabaseConnectionConfig) => {
+  const instanceUrl = config.credentials.instanceUrl
+    ? removeTrailingSlash(config.credentials.instanceUrl)
+    : "https://api.supabase.com";
+
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return instanceUrl;
+};
 
 export function getSupabaseAuthHeaders(connection: TSupabaseConnectionConfig): Record<string, string> {
   switch (connection.method) {
@@ -53,7 +65,7 @@ class SupabasePublicClient {
   ): Promise<T | undefined> {
     const response = await this.client.request<T>({
       ...config,
-      baseURL: connection.credentials.instanceUrl,
+      baseURL: await getSupabaseInstanceUrl(connection),
       validateStatus: (status) => (status >= 200 && status < 300) || status === HttpStatusCode.TooManyRequests,
       headers: getSupabaseAuthHeaders(connection)
     });
