@@ -111,6 +111,32 @@ const Page = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={2} className="p-1">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      navigator.clipboard.writeText(data.id);
+
+                      createNotification({
+                        text: "Copied ID to clipboard",
+                        type: "info"
+                      });
+                    }}
+                    icon={<FontAwesomeIcon icon={faCopy} />}
+                  >
+                    Copy ID
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      navigator.clipboard.writeText(data.slug);
+
+                      createNotification({
+                        text: "Copied slug to clipboard",
+                        type: "info"
+                      });
+                    }}
+                    icon={<FontAwesomeIcon icon={faCopy} />}
+                  >
+                    Copy Slug
+                  </DropdownMenuItem>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={ProjectPermissionSub.Role}

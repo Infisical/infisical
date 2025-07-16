@@ -1,8 +1,10 @@
 import { useForm } from "react-hook-form";
+import { faSave } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Table, TableContainer, TBody, Th, THead, Tr } from "@app/components/v2";
+import { Button, Table, TableContainer, TBody } from "@app/components/v2";
 import { OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { OrgPermissionAppConnectionRow } from "@app/pages/organization/RoleByIDPage/components/RolePermissionsSection/OrgPermissionAppConnectionRow";
@@ -117,25 +119,32 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
       className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Permissions</h3>
+        <div>
+          <h3 className="text-lg font-semibold text-mineshaft-100">Policies</h3>
+          <p className="text-sm leading-3 text-mineshaft-400">Configure granular access policies</p>
+        </div>
         {isCustomRole && (
           <div className="flex items-center">
+            {isDirty && (
+              <Button
+                className="mr-4 text-mineshaft-300"
+                variant="link"
+                isDisabled={isSubmitting || !isDirty}
+                isLoading={isSubmitting}
+                onClick={() => reset()}
+              >
+                Discard
+              </Button>
+            )}
             <Button
-              colorSchema="primary"
+              colorSchema="secondary"
               type="submit"
+              className="h-10 border"
+              leftIcon={<FontAwesomeIcon icon={faSave} />}
               isDisabled={isSubmitting || !isDirty}
               isLoading={isSubmitting}
             >
               Save
-            </Button>
-            <Button
-              className="ml-4 text-mineshaft-300"
-              variant="link"
-              isDisabled={isSubmitting || !isDirty}
-              isLoading={isSubmitting}
-              onClick={() => reset()}
-            >
-              Cancel
             </Button>
           </div>
         )}
@@ -143,13 +152,6 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
       <div className="py-4">
         <TableContainer>
           <Table>
-            <THead>
-              <Tr>
-                <Th className="w-5" />
-                <Th>Resource</Th>
-                <Th>Permission</Th>
-              </Tr>
-            </THead>
             <TBody>
               {SIMPLE_PERMISSION_OPTIONS.map((permission) => {
                 return (
