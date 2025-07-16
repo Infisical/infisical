@@ -262,7 +262,7 @@ export const SecretDropzone = ({
         className={twMerge(
           "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 px-2 py-4 text-sm text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
           isDragActive && "opacity-100",
-          !isSmaller && "mx-auto w-full max-w-3xl flex-col space-y-4 py-20",
+          !isSmaller && "mx-auto mt-40 w-full max-w-3xl flex-col space-y-4 py-20",
           isLoading && "bg-bunker-800"
         )}
       >
