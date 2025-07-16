@@ -31,7 +31,7 @@ enum TimeUnit {
 
 const schema = z.object({
   name: z.string().trim().min(1),
-  pkiCollectionId: z.string(),
+  pkiCollectionId: z.string().min(1),
   alertBefore: z.string(),
   alertUnit: z.nativeEnum(TimeUnit),
   emails: z.string().trim()
