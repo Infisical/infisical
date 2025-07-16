@@ -28,7 +28,17 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
           .object({
             authorization: z.string(),
             host: z.string(),
-            "x-date": z.string()
+            "x-date": z.string().optional(),
+            date: z.string().optional()
+          })
+          .superRefine((val, ctx) => {
+            if (!val.date && !val["x-date"]) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Either date or x-date must be provided",
+                path: ["headers", "date"]
+              });
+            }
           })
           .describe(OCI_AUTH.LOGIN.headers)
       }),

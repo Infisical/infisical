@@ -6,7 +6,8 @@ export type TLoginOciAuthDTO = {
   headers: {
     authorization: string;
     host: string;
-    "x-date": string;
+    "x-date"?: string;
+    date?: string;
   };
 };
 
