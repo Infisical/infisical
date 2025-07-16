@@ -1,7 +1,7 @@
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { mfaRateLimit } from "@app/server/config/rateLimiter";
 import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
@@ -23,7 +23,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       return res;
     }
 
-    const decodedToken = jwt.verify(token, cfg.AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
+    const decodedToken = crypto.jwt().verify(token, cfg.AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
     if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN) throw new Error("Unauthorized access");
 
     const user = await server.store.user.findById(decodedToken.userId);

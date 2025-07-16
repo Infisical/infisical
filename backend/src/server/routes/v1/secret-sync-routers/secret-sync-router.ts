@@ -22,10 +22,15 @@ import {
 import { AzureDevOpsSyncListItemSchema, AzureDevOpsSyncSchema } from "@app/services/secret-sync/azure-devops";
 import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/services/secret-sync/azure-key-vault";
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
+import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
 import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema
 } from "@app/services/secret-sync/cloudflare-pages/cloudflare-pages-schema";
+import {
+  CloudflareWorkersSyncListItemSchema,
+  CloudflareWorkersSyncSchema
+} from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
@@ -65,8 +70,11 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   FlyioSyncSchema,
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
+  CloudflareWorkersSyncSchema,
+
   ZabbixSyncSchema,
-  RailwaySyncSchema
+  RailwaySyncSchema,
+  ChecklySyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -92,8 +100,11 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   FlyioSyncListItemSchema,
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,
+  CloudflareWorkersSyncListItemSchema,
+
   ZabbixSyncListItemSchema,
-  RailwaySyncListItemSchema
+  RailwaySyncListItemSchema,
+  ChecklySyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

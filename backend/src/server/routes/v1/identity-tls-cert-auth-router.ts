@@ -1,11 +1,10 @@
-import crypto from "node:crypto";
-
 import { z } from "zod";
 
 import { IdentityTlsCertAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -28,9 +27,9 @@ const validateCaCertificate = (caCert: string) => {
   if (!caCert) return true;
   try {
     // eslint-disable-next-line no-new
-    new crypto.X509Certificate(caCert);
+    new crypto.nativeCrypto.X509Certificate(caCert);
     return true;
-  } catch (err) {
+  } catch {
     return false;
   }
 };

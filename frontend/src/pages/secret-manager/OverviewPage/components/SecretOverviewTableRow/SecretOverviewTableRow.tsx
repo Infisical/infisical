@@ -174,7 +174,7 @@ export const SecretOverviewTableRow = ({
                   )}
                   {isSecretEmpty && (
                     <Tooltip content="Empty value">
-                      <FontAwesomeIcon size="sm" icon={faCircle} />
+                      <FontAwesomeIcon size="sm" icon={faCircle} className="text-yellow" />
                     </Tooltip>
                   )}
                 </div>

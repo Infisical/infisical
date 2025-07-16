@@ -1,5 +1,4 @@
 import { MfaMethod } from "../auth/types";
-import { UserWsKeyPair } from "../keys/types";
 import { ProjectType, ProjectUserMembershipTemporaryMode } from "../workspace/types";
 
 export enum AuthMethod {
@@ -127,16 +126,6 @@ export type TWorkspaceUser = {
   )[];
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
-};
-
-export type AddUserToWsDTOE2EE = {
-  workspaceId: string;
-  decryptKey: UserWsKeyPair;
-  userPrivateKey: string;
-  members: {
-    orgMembershipId: string;
-    userPublicKey: string;
-  }[];
 };
 
 export type AddUserToWsDTONonE2EE = {

@@ -2282,6 +2282,9 @@ export const AppConnections = {
     },
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
+    },
+    CHECKLY: {
+      apiKey: "The API key used to authenticate with Checkly."
     }
   }
 };
@@ -2472,6 +2475,9 @@ export const SecretSyncs = {
       projectName: "The name of the Cloudflare Pages project to sync secrets to.",
       environment: "The environment of the Cloudflare Pages project to sync secrets to."
     },
+    CLOUDFLARE_WORKERS: {
+      scriptId: "The ID of the Cloudflare Workers script to sync secrets to."
+    },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
       hostId: "The ID of the Zabbix host to sync secrets to.",
@@ -2485,6 +2491,9 @@ export const SecretSyncs = {
       environmentName: "The Railway environment to sync secrets to.",
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
+    },
+    CHECKLY: {
+      accountId: "The ID of the Checkly account to sync secrets to."
     }
   }
 };

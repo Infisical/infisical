@@ -6,7 +6,7 @@ export type TAzureDevOpsSync = TRootSecretSync & {
   destination: SecretSync.AzureDevOps;
   destinationConfig: {
     devopsProjectId: string;
-    devopsProjectName: string;
+    devopsProjectName?: string;
   };
   connection: {
     app: AppConnection.AzureDevOps;

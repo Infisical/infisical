@@ -6,8 +6,9 @@ import {
 } from "@aws-sdk/client-iam";
 
 import { SecretType } from "@app/db/schemas";
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
-import { encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto/encryption";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -117,6 +118,7 @@ export const secretRotationQueueFactory = ({
   queue.start(QueueName.SecretRotation, async (job) => {
     const { rotationId } = job.data;
     const appCfg = getConfig();
+
     logger.info(`secretRotationQueue.process: [rotationDocument=${rotationId}]`);
     const secretRotation = await secretRotationDAL.findById(rotationId);
     const rotationProvider = rotationTemplates.find(({ name }) => name === secretRotation?.provider);
@@ -225,6 +227,8 @@ export const secretRotationQueueFactory = ({
       if (provider.template.type === TProviderFunctionTypes.AWS) {
         if (provider.template.client === TAwsProviderSystems.IAM) {
           const client = new IAMClient({
+            useFipsEndpoint: crypto.isFipsModeEnabled(),
+            sha256: CustomAWSHasher,
             region: newCredential.inputs.manager_user_aws_region as string,
             credentials: {
               accessKeyId: newCredential.inputs.manager_user_access_key as string,
@@ -365,15 +369,22 @@ export const secretRotationQueueFactory = ({
           throw new NotFoundError({
             message: `Project bot not found for project with ID '${secretRotation.projectId}'`
           });
+
         const encryptedSecrets = rotationOutputs.map(({ key: outputKey, secretId }) => ({
           secretId,
-          value: encryptSymmetric128BitHexKeyUTF8(
-            typeof newCredential.outputs[outputKey] === "object"
-              ? JSON.stringify(newCredential.outputs[outputKey])
-              : String(newCredential.outputs[outputKey]),
-            botKey
-          )
+          value: crypto
+            .encryption()
+            .symmetric()
+            .encrypt({
+              plaintext:
+                typeof newCredential.outputs[outputKey] === "object"
+                  ? JSON.stringify(newCredential.outputs[outputKey])
+                  : String(newCredential.outputs[outputKey]),
+              key: botKey,
+              keySize: SymmetricKeySize.Bits128
+            })
         }));
+
         // map the final values to output keys in the board
         await secretRotationDAL.transaction(async (tx) => {
           await secretRotationDAL.updateById(

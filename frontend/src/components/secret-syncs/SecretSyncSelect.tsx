@@ -63,6 +63,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
           const { image, name } = SECRET_SYNC_MAP[destination];
           return (
             <button
+              key={name}
               type="button"
               onClick={() =>
                 enterprise && !subscription.enterpriseSecretSyncs

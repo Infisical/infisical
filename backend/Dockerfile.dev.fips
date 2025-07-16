@@ -78,8 +78,9 @@ RUN npm install
 COPY . .
 
 ENV HOST=0.0.0.0
-ENV OPENSSL_CONF=/app/nodejs.cnf
+ENV OPENSSL_CONF=/app/nodejs.fips.cnf
 ENV OPENSSL_MODULES=/usr/local/lib/ossl-modules
-ENV NODE_OPTIONS=--force-fips
+# ENV NODE_OPTIONS=--force-fips # Note(Daniel): We can't set this on the node options because it may break for existing folks using the infisical/infisical-fips image. Instead we call crypto.setFips(true) at runtime.
+ENV FIPS_ENABLED=true
 
 CMD ["npm", "run", "dev:docker"]

@@ -1,24 +1,17 @@
-import crypto from "crypto";
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { SymmetricKeyAlgorithm, TSymmetricEncryptionFns } from "./types";
 
-const getIvLength = () => {
-  return 12;
-};
+const IV_LENGTH = 12;
+const TAG_LENGTH = 16;
 
-const getTagLength = () => {
-  return 16;
-};
-
+// todo(daniel): Decide if we should move this into the cryptography module
 export const symmetricCipherService = (
   type: SymmetricKeyAlgorithm.AES_GCM_128 | SymmetricKeyAlgorithm.AES_GCM_256
 ): TSymmetricEncryptionFns => {
-  const IV_LENGTH = getIvLength();
-  const TAG_LENGTH = getTagLength();
-
   const encrypt = (text: Buffer, key: Buffer) => {
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(type, key, iv);
+    const cipher = crypto.nativeCrypto.createCipheriv(type, key, iv);
 
     let encrypted = cipher.update(text);
     encrypted = Buffer.concat([encrypted, cipher.final()]);
@@ -37,7 +30,7 @@ export const symmetricCipherService = (
     const tag = ciphertextBlob.subarray(-TAG_LENGTH);
     const encrypted = ciphertextBlob.subarray(IV_LENGTH, -TAG_LENGTH);
 
-    const decipher = crypto.createDecipheriv(type, key, iv);
+    const decipher = crypto.nativeCrypto.createDecipheriv(type, key, iv);
     decipher.setAuthTag(tag);
 
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);

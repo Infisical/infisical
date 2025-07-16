@@ -12,6 +12,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -79,7 +80,7 @@ export const identityJwtAuthServiceFactory = ({
       orgId: identityMembershipOrg.orgId
     });
 
-    const decodedToken = jwt.decode(jwtValue, { complete: true });
+    const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
     if (!decodedToken) {
       throw new UnauthorizedError({
         message: "Invalid JWT"
@@ -106,11 +107,11 @@ export const identityJwtAuthServiceFactory = ({
         });
       }
 
-      const { kid } = decodedToken.header;
+      const { kid } = decodedToken.header as { kid: string };
       const jwtSigningKey = await client.getSigningKey(kid);
 
       try {
-        tokenData = jwt.verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;
+        tokenData = crypto.jwt().verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;
       } catch (error) {
         if (error instanceof jwt.JsonWebTokenError) {
           throw new UnauthorizedError({
@@ -129,7 +130,7 @@ export const identityJwtAuthServiceFactory = ({
       let isMatchAnyKey = false;
       for (const publicKey of decryptedPublicKeys) {
         try {
-          tokenData = jwt.verify(jwtValue, publicKey) as Record<string, string>;
+          tokenData = crypto.jwt().verify(jwtValue, publicKey) as Record<string, string>;
           isMatchAnyKey = true;
         } catch (error) {
           if (error instanceof jwt.JsonWebTokenError) {
@@ -225,7 +226,7 @@ export const identityJwtAuthServiceFactory = ({
     });
 
     const appCfg = getConfig();
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         identityId: identityJwtAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,

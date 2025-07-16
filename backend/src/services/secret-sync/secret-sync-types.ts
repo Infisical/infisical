@@ -73,11 +73,23 @@ import {
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
 import {
+  TChecklySync,
+  TChecklySyncInput,
+  TChecklySyncListItem,
+  TChecklySyncWithCredentials
+} from "./checkly/checkly-sync-types";
+import {
   TCloudflarePagesSync,
   TCloudflarePagesSyncInput,
   TCloudflarePagesSyncListItem,
   TCloudflarePagesSyncWithCredentials
 } from "./cloudflare-pages/cloudflare-pages-types";
+import {
+  TCloudflareWorkersSync,
+  TCloudflareWorkersSyncInput,
+  TCloudflareWorkersSyncListItem,
+  TCloudflareWorkersSyncWithCredentials
+} from "./cloudflare-workers";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
@@ -144,8 +156,10 @@ export type TSecretSync =
   | TFlyioSync
   | TGitLabSync
   | TCloudflarePagesSync
+  | TCloudflareWorkersSync
   | TZabbixSync
-  | TRailwaySync;
+  | TRailwaySync
+  | TChecklySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -170,8 +184,10 @@ export type TSecretSyncWithCredentials =
   | TFlyioSyncWithCredentials
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
+  | TCloudflareWorkersSyncWithCredentials
   | TZabbixSyncWithCredentials
-  | TRailwaySyncWithCredentials;
+  | TRailwaySyncWithCredentials
+  | TChecklySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -196,8 +212,10 @@ export type TSecretSyncInput =
   | TFlyioSyncInput
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
+  | TCloudflareWorkersSyncInput
   | TZabbixSyncInput
-  | TRailwaySyncInput;
+  | TRailwaySyncInput
+  | TChecklySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -222,8 +240,10 @@ export type TSecretSyncListItem =
   | TFlyioSyncListItem
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
+  | TCloudflareWorkersSyncListItem
   | TZabbixSyncListItem
-  | TRailwaySyncListItem;
+  | TRailwaySyncListItem
+  | TChecklySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

@@ -17,7 +17,7 @@ export const AzureDevOpsSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_DEVOPS?.devopsProjectId || "Azure DevOps Project ID"),
   devopsProjectName: z
     .string()
-    .min(1, "Project name required")
+    .optional()
     .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_DEVOPS?.devopsProjectName || "Azure DevOps Project Name")
 });
 

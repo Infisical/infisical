@@ -3,7 +3,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -100,18 +100,20 @@ const getReplicationKeyLockPrefix = (projectId: string, environmentSlug: string,
 export const getReplicationFolderName = (importId: string) => `${ReservedFolders.SecretReplication}${importId}`;
 
 const getDecryptedKeyValue = (key: string, secret: TSecrets) => {
-  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+  const secretKey = crypto.encryption().symmetric().decrypt({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
     tag: secret.secretKeyTag,
-    key
+    key,
+    keySize: SymmetricKeySize.Bits128
   });
 
-  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+  const secretValue = crypto.encryption().symmetric().decrypt({
     ciphertext: secret.secretValueCiphertext,
     iv: secret.secretValueIV,
     tag: secret.secretValueTag,
-    key
+    key,
+    keySize: SymmetricKeySize.Bits128
   });
   return { key: secretKey, value: secretValue };
 };

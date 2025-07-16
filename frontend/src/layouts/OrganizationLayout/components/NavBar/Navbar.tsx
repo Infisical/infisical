@@ -4,13 +4,13 @@ import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-ic
 import {
   faArrowUpRightFromSquare,
   faBook,
+  faBuilding,
+  faCaretDown,
   faCheck,
-  faCubes,
   faEnvelope,
   faInfo,
   faInfoCircle,
   faSignOut,
-  faSort,
   faUser,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
@@ -180,22 +180,22 @@ export const Navbar = () => {
   }
 
   return (
-    <div className="z-10 flex h-12 items-center border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
+    <div className="z-10 flex min-h-12 items-center border-b border-mineshaft-600 bg-mineshaft-800 px-4">
       <div>
         <Link to="/organization/projects">
           <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
         </Link>
       </div>
+      <p className="pl-1 pr-3 text-lg text-mineshaft-400/70">/</p>
       <div className="flex items-center">
-        <p className="pl-2 pr-3 text-lg text-mineshaft-400/70">/</p>
         <DropdownMenu modal={false}>
           <Link to="/organization/projects">
-            <div className="flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary-400">
+            <div className="group flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary">
               <div>
-                <FontAwesomeIcon icon={faCubes} className="pr-1 text-xs" />
+                <FontAwesomeIcon icon={faBuilding} className="text-xs text-bunker-300" />
               </div>
-              <div className="max-w-32 overflow-hidden text-ellipsis">{currentOrg?.name}</div>
-              <div className="mr-2 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300">
+              <div className="whitespace-nowrap">{currentOrg?.name}</div>
+              <div className="mr-1 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300 !no-underline">
                 {getPlan(subscription)}
               </div>
             </div>
@@ -206,9 +206,9 @@ export const Navbar = () => {
                 variant="plain"
                 colorSchema="secondary"
                 ariaLabel="switch-org"
-                className="rounded-md px-2 py-2 hover:bg-mineshaft-600"
+                className="px-2 py-1"
               >
-                <FontAwesomeIcon icon={faSort} className="text-xs text-bunker-300" />
+                <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
               </IconButton>
             </div>
           </DropdownMenuTrigger>
@@ -265,13 +265,11 @@ export const Navbar = () => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <p className="px-2 text-lg text-mineshaft-400/70">/</p>
       </div>
-      <div className="pl-2">
-        {breadcrumbs ? (
-          <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
-        ) : null}
-      </div>
+      <p className="pl-1 pr-3 text-lg text-mineshaft-400/70">/</p>
+      {breadcrumbs ? (
+        <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
+      ) : null}
       <div className="flex-grow" />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>

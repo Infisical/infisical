@@ -4,7 +4,7 @@ import { SingleValue } from "react-select";
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import { FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
 import {
-  TCloudflareProject,
+  TCloudflarePagesProject,
   useCloudflareConnectionListPagesProjects
 } from "@app/hooks/api/appConnections/cloudflare";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -52,7 +52,7 @@ export const CloudflarePagesSyncFields = () => {
               isDisabled={!connectionId}
               value={projects ? (projects.find((project) => project.name === value) ?? []) : []}
               onChange={(option) => {
-                onChange((option as SingleValue<TCloudflareProject>)?.name ?? null);
+                onChange((option as SingleValue<TCloudflarePagesProject>)?.name ?? null);
               }}
               options={projects}
               placeholder="Select a project..."

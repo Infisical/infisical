@@ -1,13 +1,10 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-
 import { OrgMembershipStatus, SecretKeyEncoding, TableName } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
-import { infisicalSymmetricDecrypt, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getMinExpiresIn } from "@app/lib/fn";
@@ -132,7 +129,7 @@ export const authSignupServiceFactory = ({
     await userDAL.updateById(user.id, { isEmailVerified: true });
 
     // generate jwt token this is a temporary token
-    const jwtToken = jwt.sign(
+    const jwtToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
         userId: user.id.toString()
@@ -193,7 +190,7 @@ export const authSignupServiceFactory = ({
       validateSignUpAuthorization(authorization, user.id);
     }
 
-    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
     const privateKey = await getUserPrivateKey(password, {
       salt,
       protectedKey,
@@ -204,7 +201,7 @@ export const authSignupServiceFactory = ({
       tag: encryptedPrivateKeyTag,
       encryptionVersion: UserEncryption.V2
     });
-    const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
+    const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
@@ -225,12 +222,15 @@ export const authSignupServiceFactory = ({
         systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
       ) {
         // get server generated password
-        const serverGeneratedPassword = infisicalSymmetricDecrypt({
-          iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
-          tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
-          ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
-          keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-        });
+        const serverGeneratedPassword = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
+            tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
+            ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
+            keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+          });
         const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
           ...systemGeneratedUserEncryptionKey
         });
@@ -365,7 +365,7 @@ export const authSignupServiceFactory = ({
     });
     if (!tokenSession) throw new Error("Failed to create token");
 
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         authMethod: authMethod || AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
@@ -378,7 +378,7 @@ export const authSignupServiceFactory = ({
       { expiresIn: tokenSessionExpiresIn }
     );
 
-    const refreshToken = jwt.sign(
+    const refreshToken = crypto.jwt().sign(
       {
         authMethod: authMethod || AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,
@@ -436,7 +436,7 @@ export const authSignupServiceFactory = ({
       });
 
     const appCfg = getConfig();
-    const hashedPassword = await bcrypt.hash(password, appCfg.BCRYPT_SALT_ROUND);
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
     const privateKey = await getUserPrivateKey(password, {
       salt,
       protectedKey,
@@ -447,7 +447,7 @@ export const authSignupServiceFactory = ({
       tag: encryptedPrivateKeyTag,
       encryptionVersion: 2
     });
-    const { tag, encoding, ciphertext, iv } = infisicalSymmetricEncypt(privateKey);
+    const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
@@ -464,12 +464,15 @@ export const authSignupServiceFactory = ({
         systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
       ) {
         // get server generated password
-        const serverGeneratedPassword = infisicalSymmetricDecrypt({
-          iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
-          tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
-          ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
-          keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-        });
+        const serverGeneratedPassword = crypto
+          .encryption()
+          .symmetric()
+          .decryptWithRootEncryptionKey({
+            iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
+            tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
+            ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
+            keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
+          });
         const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
           ...systemGeneratedUserEncryptionKey
         });
@@ -552,7 +555,7 @@ export const authSignupServiceFactory = ({
     });
     if (!tokenSession) throw new Error("Failed to create token");
 
-    const accessToken = jwt.sign(
+    const accessToken = crypto.jwt().sign(
       {
         authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
@@ -564,7 +567,7 @@ export const authSignupServiceFactory = ({
       { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
     );
 
-    const refreshToken = jwt.sign(
+    const refreshToken = crypto.jwt().sign(
       {
         authMethod: AuthMethod.EMAIL,
         authTokenType: AuthTokenType.REFRESH_TOKEN,

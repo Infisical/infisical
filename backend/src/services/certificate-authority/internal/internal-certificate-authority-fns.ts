@@ -1,12 +1,12 @@
 /* eslint-disable no-bitwise */
 import * as x509 from "@peculiar/x509";
-import { KeyObject } from "crypto";
 import RE2 from "re2";
 import { z } from "zod";
 
 import { TCertificateTemplates, TPkiSubscribers } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isFQDN } from "@app/lib/validator/validate-url";
@@ -99,7 +99,7 @@ export const InternalCertificateAuthorityFns = ({
     }
 
     const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${subscriber.commonName}`,
@@ -184,7 +184,7 @@ export const InternalCertificateAuthorityFns = ({
       extensions
     });
 
-    const skLeafObj = KeyObject.from(leafKeys.privateKey);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const kmsEncryptor = await kmsService.encryptWithKmsKey({
@@ -331,7 +331,7 @@ export const InternalCertificateAuthorityFns = ({
     });
 
     const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${commonName}`,
@@ -450,7 +450,7 @@ export const InternalCertificateAuthorityFns = ({
       extensions
     });
 
-    const skLeafObj = KeyObject.from(leafKeys.privateKey);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
     const kmsEncryptor = await kmsService.encryptWithKmsKey({

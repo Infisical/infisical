@@ -1,3 +1,5 @@
+// Note(Daniel): Do not rename this import, as it is strictly removed from FIPS standalone builds to avoid FIPS mode issues.
+// If you rename the import, update the Dockerfile.fips.standalone-infisical file as well.
 import "./lib/telemetry/instrumentation";
 
 import dotenv from "dotenv";
@@ -7,7 +9,7 @@ import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { keyStoreFactory } from "./keystore/keystore";
-import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
+import { formatSmtpConfig, getDatabaseCredentials, initEnvConfig } from "./lib/config/env";
 import { buildRedisFromConfig } from "./lib/config/redis";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
@@ -15,23 +17,24 @@ import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
+import { superAdminDALFactory } from "./services/super-admin/super-admin-dal";
 
 dotenv.config();
 
 const run = async () => {
   const logger = initLogger();
-  const envConfig = initEnvConfig(logger);
-
   await removeTemporaryBaseDirectory();
 
+  const databaseCredentials = getDatabaseCredentials(logger);
+
   const db = initDbConnection({
-    dbConnectionUri: envConfig.DB_CONNECTION_URI,
-    dbRootCert: envConfig.DB_ROOT_CERT,
-    readReplicas: envConfig.DB_READ_REPLICAS?.map((el) => ({
-      dbRootCert: el.DB_ROOT_CERT,
-      dbConnectionUri: el.DB_CONNECTION_URI
-    }))
+    dbConnectionUri: databaseCredentials.dbConnectionUri,
+    dbRootCert: databaseCredentials.dbRootCert,
+    readReplicas: databaseCredentials.readReplicas
   });
+
+  const superAdminDAL = superAdminDALFactory(db);
+  const envConfig = await initEnvConfig(superAdminDAL, logger);
 
   const auditLogDb = envConfig.AUDIT_LOGS_DB_CONNECTION_URI
     ? initAuditLogDbConnection({
@@ -60,6 +63,7 @@ const run = async () => {
   const server = await main({
     db,
     auditLogDb,
+    superAdminDAL,
     hsmModule: hsmModule.getModule(),
     smtp,
     logger,

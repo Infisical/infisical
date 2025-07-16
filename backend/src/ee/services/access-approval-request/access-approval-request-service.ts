@@ -354,11 +354,17 @@ export const accessApprovalRequestServiceFactory = ({
       status === ApprovalStatus.APPROVED;
 
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
-    // If user is (not an approver OR cant self approve) AND can't bypass policy
-    if ((!isApprover || (!policy.allowedSelfApprovals && isSelfApproval)) && cannotBypassUnderSoftEnforcement) {
-      throw new BadRequestError({
-        message: "Failed to review access approval request. Users are not authorized to review their own request."
-      });
+
+    const isSelfRejection = isSelfApproval && status === ApprovalStatus.REJECTED;
+
+    // users can always reject (cancel) their own requests
+    if (!isSelfRejection) {
+      // If user is (not an approver OR cant self approve) AND can't bypass policy
+      if ((!isApprover || (!policy.allowedSelfApprovals && isSelfApproval)) && cannotBypassUnderSoftEnforcement) {
+        throw new BadRequestError({
+          message: "Failed to review access approval request. Users are not authorized to review their own request."
+        });
+      }
     }
 
     if (
@@ -414,7 +420,7 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       // Only throw if actor is not the approver and not bypassing
-      if (!isApproverOfTheSequence && !isBreakGlassApprovalAttempt) {
+      if (!isApproverOfTheSequence && !isBreakGlassApprovalAttempt && !isSelfRejection) {
         throw new BadRequestError({ message: "You are not a reviewer in this step" });
       }
     }

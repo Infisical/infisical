@@ -472,6 +472,7 @@
                   "integrations/app-connections/azure-key-vault",
                   "integrations/app-connections/bitbucket",
                   "integrations/app-connections/camunda",
+                  "integrations/app-connections/checkly",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/databricks",
                   "integrations/app-connections/flyio",
@@ -513,7 +514,9 @@
                   "integrations/secret-syncs/azure-devops",
                   "integrations/secret-syncs/azure-key-vault",
                   "integrations/secret-syncs/camunda",
+                  "integrations/secret-syncs/checkly",
                   "integrations/secret-syncs/cloudflare-pages",
+                  "integrations/secret-syncs/cloudflare-workers",
                   "integrations/secret-syncs/databricks",
                   "integrations/secret-syncs/flyio",
                   "integrations/secret-syncs/gcp-secret-manager",
@@ -1328,6 +1331,17 @@
                     ]
                   },
                   {
+                    "group": "Checkly",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/checkly/list",
+                      "api-reference/endpoints/app-connections/checkly/get-by-id",
+                      "api-reference/endpoints/app-connections/checkly/get-by-name",
+                      "api-reference/endpoints/app-connections/checkly/create",
+                      "api-reference/endpoints/app-connections/checkly/update",
+                      "api-reference/endpoints/app-connections/checkly/delete"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare",
                     "pages": [
                       "api-reference/endpoints/app-connections/cloudflare/list",
@@ -1708,6 +1722,19 @@
                     ]
                   },
                   {
+                    "group": "Checkly",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/checkly/list",
+                      "api-reference/endpoints/secret-syncs/checkly/get-by-id",
+                      "api-reference/endpoints/secret-syncs/checkly/get-by-name",
+                      "api-reference/endpoints/secret-syncs/checkly/create",
+                      "api-reference/endpoints/secret-syncs/checkly/update",
+                      "api-reference/endpoints/secret-syncs/checkly/delete",
+                      "api-reference/endpoints/secret-syncs/checkly/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/checkly/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare Pages",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/list",
@@ -1718,6 +1745,19 @@
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/delete",
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/sync-secrets",
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Cloudflare Workers",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/list",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/get-by-id",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/get-by-name",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/create",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/update",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/delete",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/cloudflare-workers/remove-secrets"
                     ]
                   },
                   {
@@ -2175,6 +2215,7 @@
               "sdks/languages/python",
               "sdks/languages/java",
               "sdks/languages/csharp",
+              "sdks/languages/cpp",
               "sdks/languages/go",
               "sdks/languages/ruby"
             ]

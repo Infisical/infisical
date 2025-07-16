@@ -1,8 +1,8 @@
-import crypto from "node:crypto";
+import { crypto } from "@app/lib/crypto/cryptography";
 
 export const generateCacheKeyFromData = (data: unknown) =>
-  crypto
-    .createHash("md5")
+  crypto.nativeCrypto
+    .createHash("sha256")
     .update(JSON.stringify(data))
     .digest("base64")
     .replace(/\+/g, "-")
