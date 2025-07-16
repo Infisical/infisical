@@ -645,7 +645,7 @@ const Page = () => {
                         icon={faInfoCircle}
                         className="ml-[0.15rem] mr-[1.65rem] text-primary"
                       />
-                      <span>You do not permission to read secrets for this path</span>
+                      <span>You do not have permission to read secrets in this folder</span>
                     </div>
                     <Button
                       variant="outline_bg"
@@ -669,9 +669,9 @@ const Page = () => {
                         className="ml-[0.15rem] mr-[1.65rem] text-primary"
                       />
                       <span>
-                        You do not permission to {!canEditSecrets ? "edit" : ""}
+                        You do not have permission to {!canEditSecrets ? "edit" : ""}
                         {!canEditSecrets && !canDeleteSecrets ? " or " : ""}
-                        {!canDeleteSecrets ? "delete" : ""} secrets for this path
+                        {!canDeleteSecrets ? "delete" : ""} secrets in this folder
                       </span>
                     </div>
                     <Button

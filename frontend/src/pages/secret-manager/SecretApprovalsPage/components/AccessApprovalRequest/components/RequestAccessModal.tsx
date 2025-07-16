@@ -31,7 +31,7 @@ export const RequestAccessModal = ({
             title="You do not have permission to perform this action"
           >
             <p className="text-sm text-mineshaft-300">
-              Request access to gain access to this action.
+              Request access to perform this action in this folder.
             </p>
           </NoticeBannerV2>
         )}

@@ -7,8 +7,6 @@ const matchesPath = (folderPath: string, pattern: string) => {
   const normalizedPath = folderPath === "/" ? "/" : folderPath.replace(/\/$/, "");
   const normalizedPattern = pattern === "/" ? "/" : pattern.replace(/\/$/, "");
 
-  console.log(normalizedPath, normalizedPattern);
-
   if (normalizedPath === normalizedPattern) {
     return true;
   }
