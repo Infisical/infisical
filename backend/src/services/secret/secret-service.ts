@@ -64,7 +64,6 @@ import {
   interpolateSecrets,
   recursivelyGetSecretPaths
 } from "./secret-fns";
-import { TSecretQueueFactory } from "./secret-queue";
 import {
   SecretOperations,
   SecretProtectionType,
@@ -87,6 +86,7 @@ import {
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
+  TSecretQueueFactory,
   TStartSecretsV2MigrationDTO,
   TUpdateBulkSecretDTO,
   TUpdateManySecretRawDTO,
