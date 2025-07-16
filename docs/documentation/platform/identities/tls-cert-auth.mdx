@@ -47,7 +47,7 @@ To be more specific:
 
 <Note>
   Infisical US/EU and dedicated instances are deployed with AWS ALB. TLS Certificate Auth must flow through our ALB mTLS pass-through in order to authenticate.
-  When you are authenticating with TLS Certificate Auth, you must use the port `8433` instead of the default `443`. Example: `https://app.infisical.com:8433/api/v1/auth/tls-cert-auth/login`
+  When you are authenticating with TLS Certificate Auth, you must use the port `8443` instead of the default `443`. Example: `https://app.infisical.com:8443/api/v1/auth/tls-cert-auth/login`
 </Note>
 
 ## Guide
@@ -127,7 +127,7 @@ try {
   const clientCertificate = fs.readFileSync("client-cert.pem", "utf8");
   const clientKeyCertificate = fs.readFileSync("client-key.pem", "utf8");
 
-  const infisicalUrl = "https://app.infisical.com:8433"; // or your self-hosted Infisical URL
+  const infisicalUrl = "https://app.infisical.com:8443"; // or your self-hosted Infisical URL
   const identityId = "<your-identity-id>";
 
   // Create HTTPS agent with client certificate and key
