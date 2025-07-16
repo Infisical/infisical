@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   faArrowDownWideShort,
   faArrowUpWideShort,
@@ -7,24 +7,11 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 
 import { Button, ContentLoader, EmptyState, IconButton, Input } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
-import { useGetFolderCommitHistory } from "@app/hooks/api/folderCommits";
-
-interface CommitActorMetadata {
-  email?: string;
-  name?: string;
-}
-
-interface Commit {
-  id: string;
-  message: string;
-  createdAt: string;
-  actorType: string;
-  actorMetadata?: CommitActorMetadata;
-}
+import { Commit, useGetFolderCommitHistory } from "@app/hooks/api/folderCommits";
 
 const formatTimeAgo = (timestamp: string): string => {
   return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
@@ -50,10 +37,10 @@ const CommitItem = ({
       className="w-full border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md last:border-b"
     >
       <div className="flex gap-2 px-4 py-3 transition-colors duration-200 hover:bg-zinc-800">
-        <div className="flex flex-1 flex-col items-start">
-          <span className="w-min whitespace-nowrap text-sm text-mineshaft-100">
+        <div className="flex min-w-0 flex-1 flex-col items-start">
+          <p className="block w-full truncate text-left text-sm text-mineshaft-100">
             {commit.message}
-          </span>
+          </p>
           <p className="text-left text-xs text-mineshaft-300">
             {commit.actorMetadata?.email || commit.actorMetadata?.name || commit.actorType}{" "}
             committed <time dateTime={commit.createdAt}>{formatTimeAgo(commit.createdAt)}</time>
@@ -122,8 +109,6 @@ export const CommitHistoryTab = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [offset, setOffset] = useState(0);
-  const [allCommits, setAllCommits] = useState<Commit[]>([]);
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
   const limit = 10;
 
@@ -145,54 +130,19 @@ export const CommitHistoryTab = ({
   }, [searchTerm]);
 
   const {
-    data: response,
+    data: groupedCommits,
     isLoading,
-    isFetching
+    fetchNextPage,
+    isFetchingNextPage,
+    hasNextPage
   } = useGetFolderCommitHistory({
     workspaceId: projectId,
     environment,
     directory: secretPath,
-    offset,
     limit,
     search: debouncedSearchTerm,
     sort: sortDirection
   });
-
-  const commits = response?.commits || [];
-  const hasMore = response?.hasMore || false;
-
-  // Reset accumulated commits when search or sort changes
-  useEffect(() => {
-    setAllCommits([]);
-    setOffset(0);
-  }, [debouncedSearchTerm, sortDirection]);
-
-  // Accumulate commits instead of replacing them
-  useEffect(() => {
-    if (commits.length > 0) {
-      if (offset === 0) {
-        // First load or after search/sort change - replace all commits
-        setAllCommits(commits);
-      } else {
-        // Subsequent loads - append new commits
-        setAllCommits((prev) => [...prev, ...commits]);
-      }
-    }
-  }, [commits, offset]);
-
-  const groupedCommits = useMemo(() => {
-    return allCommits.reduce(
-      (acc, commit) => {
-        const date = format(new Date(commit.createdAt), "MMM d, yyyy");
-        if (!acc[date]) {
-          acc[date] = [];
-        }
-        acc[date].push(commit);
-        return acc;
-      },
-      {} as Record<string, Commit[]>
-    );
-  }, [allCommits]);
 
   const handleSort = useCallback(() => {
     setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
@@ -201,12 +151,6 @@ export const CommitHistoryTab = ({
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);
   }, []);
-
-  const loadMoreCommits = useCallback(() => {
-    if (hasMore && !isFetching) {
-      setOffset((prev) => prev + limit);
-    }
-  }, [hasMore, isFetching, limit]);
 
   return (
     <div className="mt-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -236,11 +180,11 @@ export const CommitHistoryTab = ({
           </IconButton>
         </div>
       </div>
-      {isLoading && offset === 0 ? (
+      {isLoading ? (
         <ContentLoader className="h-80" />
       ) : (
         <div>
-          {Object.keys(groupedCommits).length > 0 ? (
+          {groupedCommits && Object.keys(groupedCommits).length > 0 ? (
             <>
               {Object.entries(groupedCommits).map(([date, dateCommits]) => (
                 <DateGroup
@@ -254,16 +198,15 @@ export const CommitHistoryTab = ({
           ) : (
             <EmptyState title="No commits found." icon={faCodeCommit} />
           )}
-
-          {hasMore && (
+          {hasNextPage && (
             <div className="flex justify-center pb-2">
               <Button
                 variant="outline_bg"
                 size="sm"
                 className="ml-10 mt-4 w-full"
-                onClick={loadMoreCommits}
-                disabled={isFetching}
-                isLoading={isFetching}
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                isLoading={isFetchingNextPage}
                 aria-label="Load more commits"
               >
                 Load More Commits

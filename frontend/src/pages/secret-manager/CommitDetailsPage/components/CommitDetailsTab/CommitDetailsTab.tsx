@@ -291,10 +291,10 @@ export const CommitDetailsTab = ({
                   Restore Options
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={2}>
+              <DropdownMenuContent align="end" className="max-w-sm bg-bunker-500" sideOffset={2}>
                 {!parsedCommitDetails.changes.isLatest && (
                   <DropdownMenuItem
-                    className="group cursor-pointer rounded-md px-3 py-3 transition-colors hover:bg-mineshaft-700"
+                    className="group cursor-pointer border-b border-mineshaft-600 px-3 py-3 transition-colors hover:bg-mineshaft-700"
                     onClick={() => goToRollbackPreview()}
                   >
                     <div className="flex items-center space-x-3">
@@ -311,7 +311,7 @@ export const CommitDetailsTab = ({
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
-                  className="group cursor-pointer rounded-md px-3 py-3 transition-colors hover:bg-mineshaft-700"
+                  className="group cursor-pointer px-3 py-3 transition-colors hover:bg-mineshaft-700"
                   onClick={() => handlePopUpOpen("revertChanges")}
                 >
                   <div className="flex items-center space-x-3">
