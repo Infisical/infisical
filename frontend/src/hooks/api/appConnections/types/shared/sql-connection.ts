@@ -1,5 +1,5 @@
 export type TBaseSqlConnectionCredentials = {
-  gatewayId?: string;
+  gatewayId?: string | null;
   host: string;
   port: number;
   username: string;
