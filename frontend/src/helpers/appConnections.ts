@@ -153,7 +153,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HerokuConnectionMethod.AuthToken:
       return { name: "Auth Token", icon: faKey };
     case RailwayConnectionMethod.AccountToken:
-    case SupabaseConnectionMethod.AccountToken:
+    case SupabaseConnectionMethod.AccessToken:
       return { name: "Account Token", icon: faKey };
     case RailwayConnectionMethod.TeamToken:
       return { name: "Team Token", icon: faKey };
