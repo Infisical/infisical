@@ -8,7 +8,8 @@ import {
   ModalClose,
   SecretInput,
   Select,
-  SelectItem
+  SelectItem,
+  Input
 } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -70,16 +71,12 @@ export const SupabaseConnectionForm = ({ appConnection, onSubmit }: Props) => {
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
+              isOptional
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="Instance"
+              label="Instance URL"
             >
-              <SecretInput
-                isVisible
-                containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
+              <Input value={value} onChange={(e) => onChange(e.target.value)} />
             </FormControl>
           )}
         />
