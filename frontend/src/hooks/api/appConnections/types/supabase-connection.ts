@@ -9,7 +9,7 @@ export type TSupabaseConnection = TRootAppConnection & {
   app: AppConnection.Supabase;
   method: SupabaseConnectionMethod.AccessToken;
   credentials: {
-    instanceUrl: string;
-    apiKey: string;
+    instanceUrl?: string;
+    accessKey: string;
   };
 };
