@@ -84,6 +84,10 @@ import {
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
 import {
+  SanitizedSupabaseConnectionSchema,
+  SupabaseConnectionListItemSchema
+} from "@app/services/app-connection/supabase";
+import {
   SanitizedTeamCityConnectionSchema,
   TeamCityConnectionListItemSchema
 } from "@app/services/app-connection/teamcity";
@@ -133,7 +137,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedBitbucketConnectionSchema.options,
   ...SanitizedZabbixConnectionSchema.options,
   ...SanitizedRailwayConnectionSchema.options,
-  ...SanitizedChecklyConnectionSchema.options
+  ...SanitizedChecklyConnectionSchema.options,
+  ...SanitizedSupabaseConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -169,7 +174,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   BitbucketConnectionListItemSchema,
   ZabbixConnectionListItemSchema,
   RailwayConnectionListItemSchema,
-  ChecklyConnectionListItemSchema
+  ChecklyConnectionListItemSchema,
+  SupabaseConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

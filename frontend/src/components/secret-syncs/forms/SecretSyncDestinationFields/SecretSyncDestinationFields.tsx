@@ -24,6 +24,7 @@ import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
+import { SupabaseSyncFields } from "./SupabaseSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
@@ -88,6 +89,8 @@ export const SecretSyncDestinationFields = () => {
       return <RailwaySyncFields />;
     case SecretSync.Checkly:
       return <ChecklySyncFields />;
+    case SecretSync.Supabase:
+      return <SupabaseSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

@@ -22,6 +22,7 @@ import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TRailwaySync } from "./railway-sync";
+import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
@@ -61,7 +62,8 @@ export type TSecretSync =
   | TCloudflareWorkersSync
   | TZabbixSync
   | TRailwaySync
-  | TChecklySync;
+  | TChecklySync
+  | TSupabaseSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
