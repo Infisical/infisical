@@ -652,10 +652,7 @@ const Page = () => {
                       size="xs"
                       className="ml-auto"
                       onClick={() =>
-                        handlePopUpOpen("requestAccess", {
-                          actions: [ProjectPermissionActions.Read],
-                          shouldShowBanner: false
-                        })
+                        handlePopUpOpen("requestAccess", [ProjectPermissionActions.Read])
                       }
                     >
                       Request Access
@@ -679,13 +676,10 @@ const Page = () => {
                       size="xs"
                       className="ml-auto"
                       onClick={() =>
-                        handlePopUpOpen("requestAccess", {
-                          actions: [
-                            ...(!canEditSecrets ? [ProjectPermissionActions.Edit] : []),
-                            ...(!canDeleteSecrets ? [ProjectPermissionActions.Delete] : [])
-                          ],
-                          shouldShowBanner: false
-                        })
+                        handlePopUpOpen("requestAccess", [
+                          ...(!canEditSecrets ? [ProjectPermissionActions.Edit] : []),
+                          ...(!canDeleteSecrets ? [ProjectPermissionActions.Delete] : [])
+                        ])
                       }
                     >
                       Request Access
@@ -788,8 +782,7 @@ const Page = () => {
               onOpenChange={() => {
                 handlePopUpClose("requestAccess");
               }}
-              selectedActions={popUp.requestAccess.data?.actions}
-              shouldShowBanner={popUp.requestAccess.data?.shouldShowBanner}
+              selectedActions={popUp.requestAccess.data}
               secretPath={pathPolicies?.[0]?.secretPath}
             />
           )}

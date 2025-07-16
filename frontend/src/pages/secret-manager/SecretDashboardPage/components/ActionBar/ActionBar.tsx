@@ -46,6 +46,7 @@ import {
   DropdownSubMenuTrigger,
   IconButton,
   Modal,
+  ModalClose,
   ModalContent,
   Tooltip
 } from "@app/components/v2";
@@ -129,10 +130,7 @@ type Props = {
     }[];
   }[];
   isPITEnabled: boolean;
-  onRequestAccess: (params: {
-    actions: ProjectPermissionActions[];
-    shouldShowBanner: boolean;
-  }) => void;
+  onRequestAccess: (actions: ProjectPermissionActions[]) => void;
   hasPathPolicies: boolean;
 };
 
@@ -168,7 +166,8 @@ export const ActionBar = ({
     "misc",
     "upgradePlan",
     "replicateFolder",
-    "confirmUpload"
+    "confirmUpload",
+    "requestAccess"
   ] as const);
   const isProtectedBranch = Boolean(protectedBranchPolicyName);
   const { subscription } = useSubscription();
@@ -832,10 +831,7 @@ export const ActionBar = ({
                   })
                 )
                   ? openPopUp(PopUpNames.CreateSecretForm)
-                  : onRequestAccess({
-                      actions: [ProjectPermissionActions.Create],
-                      shouldShowBanner: true
-                    })
+                  : handlePopUpOpen("requestAccess", [ProjectPermissionActions.Create])
               }
               className="h-10 rounded-r-none"
             >
@@ -1200,6 +1196,27 @@ export const ActionBar = ({
               </div>
             </div>
           )}
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={popUp?.requestAccess?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("requestAccess", open)}
+      >
+        <ModalContent title="Access Restricted">
+          <p className="mb-2 text-bunker-300">You do not have permission to perform this action.</p>
+          <p className="text-bunker-300">Request access to perform this action in this folder.</p>
+          <div className="mt-8 flex items-center gap-4">
+            <ModalClose asChild>
+              <Button onClick={() => onRequestAccess(popUp?.requestAccess.data)}>
+                Request Access
+              </Button>
+            </ModalClose>
+            <ModalClose asChild>
+              <Button variant="plain" colorSchema="secondary">
+                Cancel
+              </Button>
+            </ModalClose>
+          </div>
         </ModalContent>
       </Modal>
     </>
