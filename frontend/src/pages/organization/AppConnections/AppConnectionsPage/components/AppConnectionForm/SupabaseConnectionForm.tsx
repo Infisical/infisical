@@ -5,11 +5,11 @@ import { z } from "zod";
 import {
   Button,
   FormControl,
+  Input,
   ModalClose,
   SecretInput,
   Select,
-  SelectItem,
-  Input
+  SelectItem
 } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -75,8 +75,14 @@ export const SupabaseConnectionForm = ({ appConnection, onSubmit }: Props) => {
               errorText={error?.message}
               isError={Boolean(error?.message)}
               label="Instance URL"
+              tooltipClassName="max-w-sm"
+              tooltipText="Will default to Supabase Cloud if not specified."
             >
-              <Input value={value} onChange={(e) => onChange(e.target.value)} />
+              <Input
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder="https://api.supabase.com"
+              />
             </FormControl>
           )}
         />
