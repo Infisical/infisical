@@ -24,6 +24,7 @@ export const SanitizedOracleDBConnectionSchema = z.discriminatedUnion("method", 
   BaseOracleDBConnectionSchema.extend({
     method: z.literal(OracleDBConnectionMethod.UsernameAndPassword),
     credentials: OracleDBConnectionCredentialsSchema.pick({
+      gatewayId: true,
       host: true,
       database: true,
       port: true,

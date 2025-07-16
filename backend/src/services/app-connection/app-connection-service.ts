@@ -3,6 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -92,6 +93,7 @@ export type TAppConnectionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -135,7 +137,8 @@ export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
   kmsService,
-  licenseService
+  licenseService,
+  gatewayService
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnectionsByOrg = async (actor: OrgServiceActor, app?: AppConnection) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -273,7 +276,8 @@ export const appConnectionServiceFactory = ({
             credentials: validatedCredentials,
             method
           } as TAppConnectionConfig,
-          (platformCredentials) => createConnection(platformCredentials)
+          (platformCredentials) => createConnection(platformCredentials),
+          gatewayService
         );
       } else {
         connection = await createConnection(validatedCredentials);
@@ -387,7 +391,8 @@ export const appConnectionServiceFactory = ({
             credentials: updatedCredentials,
             method
           } as TAppConnectionConfig,
-          (platformCredentials) => updateConnection(platformCredentials)
+          (platformCredentials) => updateConnection(platformCredentials),
+          gatewayService
         );
       } else {
         updatedConnection = await updateConnection(updatedCredentials);

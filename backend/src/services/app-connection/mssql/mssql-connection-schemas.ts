@@ -26,6 +26,7 @@ export const SanitizedMsSqlConnectionSchema = z.discriminatedUnion("method", [
   BaseMsSqlConnectionSchema.extend({
     method: z.literal(MsSqlConnectionMethod.UsernameAndPassword),
     credentials: MsSqlConnectionAccessTokenCredentialsSchema.pick({
+      gatewayId: true,
       host: true,
       database: true,
       port: true,
