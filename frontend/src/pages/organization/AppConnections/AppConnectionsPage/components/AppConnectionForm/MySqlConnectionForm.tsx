@@ -149,7 +149,7 @@ export const MySqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <div>
                       <Select
                         isDisabled={!isAllowed}
-                        value={value}
+                        value={value as string}
                         onValueChange={onChange}
                         className="w-full border border-mineshaft-500"
                         dropdownContainerClassName="max-w-none"
