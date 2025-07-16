@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faBookOpen, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { PageHeader } from "@app/components/v2";
@@ -22,22 +22,28 @@ export const SecretSharingPage = () => {
       <div className="h-full">
         <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 text-white">
           <PageHeader
-            title="Secret Sharing"
+            title={
+              <div className="flex w-full items-center">
+                <span>Secret Sharing</span>
+                <a
+                  className="-mt-1.5"
+                  href="https://infisical.com/docs/documentation/platform/secret-sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <div className="ml-2 inline-block rounded-md bg-yellow/20 px-1.5 text-sm font-normal text-yellow opacity-80 hover:opacity-100">
+                    <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                    <span>Docs</span>
+                    <FontAwesomeIcon
+                      icon={faArrowUpRightFromSquare}
+                      className="mb-[0.07rem] ml-1.5 text-[10px]"
+                    />
+                  </div>
+                </a>
+              </div>
+            }
             description="Share secrets securely using a shareable link"
           >
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://infisical.com/docs/documentation/platform/secret-sharing"
-            >
-              <div className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
-                Documentation{" "}
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.06rem] ml-1 text-xs"
-                />
-              </div>
-            </a>
           </PageHeader>
           <ShareSecretSection />
         </div>
