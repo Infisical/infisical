@@ -46,6 +46,7 @@ import {
   DropdownSubMenuTrigger,
   IconButton,
   Modal,
+  ModalClose,
   ModalContent,
   Tooltip
 } from "@app/components/v2";
@@ -53,11 +54,13 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useProjectPermission,
   useSubscription,
   useWorkspace
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
+  ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -127,6 +130,8 @@ type Props = {
     }[];
   }[];
   isPITEnabled: boolean;
+  onRequestAccess: (actions: ProjectPermissionActions[]) => void;
+  hasPathPolicies: boolean;
 };
 
 export const ActionBar = ({
@@ -147,7 +152,9 @@ export const ActionBar = ({
   protectedBranchPolicyName,
   importedBy,
   isPITEnabled = false,
-  usedBySecretSyncs
+  usedBySecretSyncs,
+  onRequestAccess,
+  hasPathPolicies
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
@@ -159,7 +166,8 @@ export const ActionBar = ({
     "misc",
     "upgradePlan",
     "replicateFolder",
-    "confirmUpload"
+    "confirmUpload",
+    "requestAccess"
   ] as const);
   const isProtectedBranch = Boolean(protectedBranchPolicyName);
   const { subscription } = useSubscription();
@@ -180,6 +188,7 @@ export const ActionBar = ({
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   const { currentWorkspace } = useWorkspace();
+  const { permission } = useProjectPermission();
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
@@ -807,27 +816,50 @@ export const ActionBar = ({
           </ProjectPermissionCan>
         </div>
         <div className="flex items-center">
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={subject(ProjectPermissionSub.Secrets, {
-              environment,
-              secretPath,
-              secretName: "*",
-              secretTags: ["*"]
-            })}
-          >
-            {(isAllowed) => (
-              <Button
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => openPopUp(PopUpNames.CreateSecretForm)}
-                className="h-10 rounded-r-none"
-                isDisabled={!isAllowed}
-              >
-                Add Secret
-              </Button>
-            )}
-          </ProjectPermissionCan>
+          {hasPathPolicies ? (
+            <Button
+              variant="outline_bg"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() =>
+                permission.can(
+                  ProjectPermissionSecretActions.Create,
+                  subject(ProjectPermissionSub.Secrets, {
+                    environment,
+                    secretPath,
+                    secretName: "*",
+                    secretTags: ["*"]
+                  })
+                )
+                  ? openPopUp(PopUpNames.CreateSecretForm)
+                  : handlePopUpOpen("requestAccess", [ProjectPermissionActions.Create])
+              }
+              className="h-10 rounded-r-none"
+            >
+              Add Secret
+            </Button>
+          ) : (
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName: "*",
+                secretTags: ["*"]
+              })}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => openPopUp(PopUpNames.CreateSecretForm)}
+                  className="h-10 rounded-r-none"
+                  isDisabled={!isAllowed}
+                >
+                  Add Secret
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          )}
           <DropdownMenu
             open={popUp.misc.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
@@ -1164,6 +1196,27 @@ export const ActionBar = ({
               </div>
             </div>
           )}
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={popUp?.requestAccess?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("requestAccess", open)}
+      >
+        <ModalContent title="Access Restricted">
+          <p className="mb-2 text-bunker-300">You do not have permission to perform this action.</p>
+          <p className="text-bunker-300">Request access to perform this action in this folder.</p>
+          <div className="mt-8 flex items-center gap-4">
+            <ModalClose asChild>
+              <Button onClick={() => onRequestAccess(popUp?.requestAccess.data)}>
+                Request Access
+              </Button>
+            </ModalClose>
+            <ModalClose asChild>
+              <Button variant="plain" colorSchema="secondary">
+                Cancel
+              </Button>
+            </ModalClose>
+          </div>
         </ModalContent>
       </Modal>
     </>
