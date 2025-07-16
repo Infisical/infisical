@@ -1105,9 +1105,9 @@ export const secretV2BridgeServiceFactory = ({
 
     if (shouldExpandSecretReferences) {
       const secretsGroupByPath = groupBy(decryptedSecrets, (i) => i.secretPath);
-      await Promise.allSettled(
+      await Promise.all(
         Object.keys(secretsGroupByPath).map((groupedPath) =>
-          Promise.allSettled(
+          Promise.all(
             secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
               const expandedSecretValue = await expandSecretReferences({
                 value: decryptedSecret.secretValue,
