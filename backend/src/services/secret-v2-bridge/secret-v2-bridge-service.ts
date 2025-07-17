@@ -1113,7 +1113,8 @@ export const secretV2BridgeServiceFactory = ({
                 value: decryptedSecret.secretValue,
                 secretPath: groupedPath,
                 environment,
-                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding,
+                secretKey: decryptedSecret.secretKey
               });
               // eslint-disable-next-line no-param-reassign
               secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
@@ -1135,9 +1136,10 @@ export const secretV2BridgeServiceFactory = ({
           // Check inner promise results
           outerResult.value.forEach((innerResult: PromiseSettledResult<void>) => {
             if (innerResult.status === "rejected") {
+              const reason = innerResult.reason as ForbiddenRequestError;
               errors.push({
                 path: groupedPath,
-                error: `Failed to expand secret reference: ${innerResult.reason}`
+                error: reason.message
               });
             }
           });
@@ -1452,7 +1454,8 @@ export const secretV2BridgeServiceFactory = ({
         environment,
         secretPath: path,
         value: secretValue,
-        skipMultilineEncoding: secret.skipMultilineEncoding
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        secretKey: secret.key
       });
 
       secretValue = expandedSecretValue || "";
@@ -2750,7 +2753,8 @@ export const secretV2BridgeServiceFactory = ({
     const { expandedValue, stackTrace } = await getExpandedSecretStackTrace({
       environment,
       secretPath,
-      value: decryptedSecretValue
+      value: decryptedSecretValue,
+      secretKey: secretName
     });
 
     return { tree: stackTrace, value: expandedValue };

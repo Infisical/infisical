@@ -614,6 +614,7 @@ export const expandSecretReferencesFactory = ({
     secretPath: string;
     environment: string;
     shouldStackTrace?: boolean;
+    secretKey: string;
   }) => {
     const stackTrace = { ...dto, key: "root", children: [] } as TSecretReferenceTraceNode;
 
@@ -656,7 +657,7 @@ export const expandSecretReferencesFactory = ({
             const referredValue = await fetchSecret(environment, secretPath, secretKey);
             if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
               throw new ForbiddenRequestError({
-                message: `You are attempting to reference secret named ${secretKey} from environment ${environment} in path ${secretPath} which you do not have access to read value on.`
+                message: `You do not have permission to read secret '${secretKey}' in environment '${environment}' at path '${secretPath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
               });
 
             const cacheKey = getCacheUniqueKey(environment, secretPath);
@@ -675,7 +676,7 @@ export const expandSecretReferencesFactory = ({
             const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
             if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
               throw new ForbiddenRequestError({
-                message: `You are attempting to reference secret named ${secretReferenceKey} from environment ${secretReferenceEnvironment} in path ${secretReferencePath} which you do not have access to read value on.`
+                message: `You do not have permission to read secret '${secretReferenceKey}' in environment '${secretReferenceEnvironment}' at path '${secretReferencePath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
               });
 
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
@@ -692,6 +693,7 @@ export const expandSecretReferencesFactory = ({
             secretPath: referencedSecretPath,
             environment: referencedSecretEnvironmentSlug,
             depth: depth + 1,
+            secretKey: referencedSecretKey,
             trace
           };
 
@@ -726,6 +728,7 @@ export const expandSecretReferencesFactory = ({
     skipMultilineEncoding?: boolean | null;
     secretPath: string;
     environment: string;
+    secretKey: string;
   }) => {
     if (!inputSecret.value) return inputSecret.value;
 
@@ -741,6 +744,7 @@ export const expandSecretReferencesFactory = ({
     value?: string;
     secretPath: string;
     environment: string;
+    secretKey: string;
   }) => {
     const { stackTrace, expandedValue } = await recursivelyExpandSecret({ ...inputSecret, shouldStackTrace: true });
     return { stackTrace, expandedValue };
