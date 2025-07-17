@@ -1,4 +1,4 @@
-import { ClipboardEvent, useRef } from "react";
+import { ClipboardEvent, useMemo, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
@@ -203,6 +203,14 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     }
   };
 
+  const tags = watch("tags");
+
+  const tagOptions = useMemo(() => {
+    return projectTags
+      ?.filter((el) => !tags?.some((t) => t.value === el.id))
+      ?.map((el) => ({ label: el.slug, value: el.id }));
+  }, [tags, projectTags]);
+
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
       <FormControl
@@ -269,7 +277,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
               name="tagIds"
               isDisabled={!canReadTags}
               isLoading={isTagsLoading && canReadTags}
-              options={projectTags?.map((el) => ({ label: el.slug, value: el.id }))}
+              options={tagOptions}
               value={field.value}
               onChange={field.onChange}
               onCreateOption={createNewTag}
