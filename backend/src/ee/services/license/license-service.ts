@@ -192,7 +192,7 @@ export const licenseServiceFactory = ({
     } catch (error) {
       logger.error(
         error,
-        `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`
+        `getPlan: encountered an error when fetching plan [orgId=${orgId}] [projectId=${projectId}] [error]`
       );
       return onPremFeatures;
     } finally {
