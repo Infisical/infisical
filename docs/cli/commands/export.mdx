@@ -10,6 +10,7 @@ infisical export [options]
 ## Description
 
 Export environment variables from the platform into a file format.
+By default, secrets are saved to `.env` for dotenv formats or `secrets.{format}` for other formats in the current directory.
 
 ## Subcommands & flags
 
@@ -19,20 +20,29 @@ Export environment variables from the platform into a file format.
 ```bash
 $ infisical export
 
-# Export variables to a .env file
-infisical export > .env
+# Export variables to .env file (default behavior)
+infisical export
 
-# Export variables to a .env file (with export keyword)
-infisical export --format=dotenv-export > .env
+# Export variables to .env file with explicit format
+infisical export --format=dotenv
 
-# Export variables to a CSV file
-infisical export --format=csv > secrets.csv
+# Export variables to .env file (with export keyword)
+infisical export --format=dotenv-export
 
-# Export variables to a JSON file
-infisical export --format=json > secrets.json
+# Export variables to secrets.csv file
+infisical export --format=csv
 
-# Export variables to a YAML file
-infisical export --format=yaml > secrets.yaml
+# Export variables to secrets.json file
+infisical export --format=json
+
+# Export variables to secrets.yaml file
+infisical export --format=yaml
+
+# Export to custom file path
+infisical export --format=json --output-file=./config/prod-secrets.json
+
+# Export to directory (uses default filename)
+infisical export --format=yaml --output-file=./secrets/
 
 # Render secrets using a custom template file
 infisical export --template=<path to template>
@@ -72,6 +82,30 @@ infisical export --template=<path to template>
   </Accordion>
 
 ### flags
+
+  <Accordion title="--output-file">
+    The path to write the output file to. Can be a full file path, directory, or filename.
+
+    ```bash
+    # Export to specific file
+    infisical export --format=json --output-file=secrets.json
+
+    # Export to directory (uses default filename based on format)
+    infisical export --format=yaml --output-file=./config/
+
+    # Export with full path
+    infisical export --format=csv --output-file=/home/user/secrets/prod.csv
+
+    # Export with home directory expansion
+    infisical export --format=json --output-file=~/secrets/prod.json
+    ```
+
+    **Default behavior when not specified:**
+    - For `dotenv` and `dotenv-export` formats: defaults to `.env`
+    - For other formats: defaults to `secrets.{format}` (e.g., `secrets.json`, `secrets.csv`)
+    - All defaults save to the current working directory
+
+  </Accordion>
 
   <Accordion title="--template">
     The `--template` flag specifies the path to the template file used for rendering secrets. When using templates, you can omit the other format flags.
