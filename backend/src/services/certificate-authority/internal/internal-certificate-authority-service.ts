@@ -1068,11 +1068,11 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "Invalid certificate chain" });
 
     const parentCertObj = chainItems[1];
-    const parentCertSubject = parentCertObj.subject;
+    const parentSerialNumber = parentCertObj.serialNumber;
 
     const [parentCa] = await certificateAuthorityDAL.findWithAssociatedCa({
       [`${TableName.CertificateAuthority}.projectId` as "projectId"]: ca.projectId,
-      [`${TableName.InternalCertificateAuthority}.dn` as "dn"]: parentCertSubject
+      [`${TableName.InternalCertificateAuthority}.serialNumber` as "serialNumber"]: parentSerialNumber
     });
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({

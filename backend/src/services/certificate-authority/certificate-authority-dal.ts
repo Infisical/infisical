@@ -218,7 +218,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
   };
 
   const findWithAssociatedCa = async (
-    filter: Parameters<(typeof caOrm)["find"]>[0] & { dn?: string; type?: string },
+    filter: Parameters<(typeof caOrm)["find"]>[0] & { dn?: string; type?: string; serialNumber?: string },
     { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TCertificateAuthorities> = {},
     tx?: Knex
   ) => {
