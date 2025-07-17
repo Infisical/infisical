@@ -144,6 +144,14 @@ export type TRailwayConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Railway;
 };
 
+export type TChecklyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Checkly;
+};
+
+export type TSupabaseConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Supabase;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -174,7 +182,8 @@ export type TAppConnectionOption =
   | TCloudflareConnectionOption
   | TBitbucketConnectionOption
   | TZabbixConnectionOption
-  | TRailwayConnectionOption;
+  | TRailwayConnectionOption
+  | TChecklyConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -209,4 +218,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Bitbucket]: TBitbucketConnectionOption;
   [AppConnection.Zabbix]: TZabbixConnectionOption;
   [AppConnection.Railway]: TRailwayConnectionOption;
+  [AppConnection.Checkly]: TChecklyConnectionOption;
+  [AppConnection.Supabase]: TSupabaseConnectionOption;
 };

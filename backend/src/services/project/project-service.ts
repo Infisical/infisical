@@ -27,7 +27,7 @@ import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -377,7 +377,10 @@ export const projectServiceFactory = ({
         tx
       );
 
-      const { iv, tag, ciphertext, encoding, algorithm } = infisicalSymmetricEncypt(ghostUser.keys.plainPrivateKey);
+      const { iv, tag, ciphertext, encoding, algorithm } = crypto
+        .encryption()
+        .symmetric()
+        .encryptWithRootEncryptionKey(ghostUser.keys.plainPrivateKey);
 
       // 5. Create & a bot for the project
       await projectBotDAL.create(
@@ -820,7 +823,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const encryptedPrivateKey = infisicalSymmetricEncypt(userPrivateKey);
+    const encryptedPrivateKey = crypto.encryption().symmetric().encryptWithRootEncryptionKey(userPrivateKey);
 
     await projectQueue.upgradeProject({
       projectId,

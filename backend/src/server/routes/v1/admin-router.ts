@@ -9,8 +9,10 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -58,9 +60,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async () => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
+
       return {
         config: {
           ...config,
+          fipsEnabled: crypto.isFipsModeEnabled(),
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN
@@ -589,6 +593,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
+
+      addAuthOriginDomainCookie(res);
 
       return {
         message: "Successfully set up admin account",

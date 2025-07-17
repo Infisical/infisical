@@ -1,8 +1,9 @@
-import crypto from "node:crypto";
-
 import { SecretType, TSecrets } from "@app/db/schemas";
 import { decryptSecret, encryptSecret, getUserPrivateKey, seedData1 } from "@app/db/seed-data";
-import { decryptAsymmetric, decryptSymmetric128BitHexKeyUTF8, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { initEnvConfig } from "@app/lib/config/env";
+import { SymmetricKeySize } from "@app/lib/crypto";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { initLogger, logger } from "@app/lib/logger";
 
 const createServiceToken = async (
   scopes: { environment: string; secretPath: string }[],
@@ -26,7 +27,8 @@ const createServiceToken = async (
   });
   const { user: userInfo } = JSON.parse(userInfoRes.payload);
   const privateKey = await getUserPrivateKey(seedData1.password, userInfo);
-  const projectKey = decryptAsymmetric({
+
+  const projectKey = crypto.encryption().asymmetric().decrypt({
     ciphertext: projectKeyEnc.encryptedKey,
     nonce: projectKeyEnc.nonce,
     publicKey: projectKeyEnc.sender.publicKey,
@@ -34,7 +36,13 @@ const createServiceToken = async (
   });
 
   const randomBytes = crypto.randomBytes(16).toString("hex");
-  const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8(projectKey, randomBytes);
+
+  const { ciphertext, iv, tag } = crypto.encryption().symmetric().encrypt({
+    plaintext: projectKey,
+    key: randomBytes,
+    keySize: SymmetricKeySize.Bits128
+  });
+
   const serviceTokenRes = await testServer.inject({
     method: "POST",
     url: "/api/v2/service-token",
@@ -137,6 +145,9 @@ describe("Service token secret ops", async () => {
   let projectKey = "";
   let folderId = "";
   beforeAll(async () => {
+    initLogger();
+    await initEnvConfig(testSuperAdminDAL, logger);
+
     serviceToken = await createServiceToken(
       [{ secretPath: "/**", environment: seedData1.environment.slug }],
       ["read", "write"]
@@ -153,11 +164,13 @@ describe("Service token secret ops", async () => {
     expect(serviceTokenInfoRes.statusCode).toBe(200);
     const serviceTokenInfo = serviceTokenInfoRes.json();
     const serviceTokenParts = serviceToken.split(".");
-    projectKey = decryptSymmetric128BitHexKeyUTF8({
+
+    projectKey = crypto.encryption().symmetric().decrypt({
       key: serviceTokenParts[3],
       tag: serviceTokenInfo.tag,
       ciphertext: serviceTokenInfo.encryptedKey,
-      iv: serviceTokenInfo.iv
+      iv: serviceTokenInfo.iv,
+      keySize: SymmetricKeySize.Bits128
     });
 
     // create a deep folder

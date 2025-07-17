@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
-import jwt from "jsonwebtoken";
 import { scimPatch } from "scim-patch";
 
 import { OrgMembershipRole, OrgMembershipStatus, TableName, TGroups, TOrgMemberships, TUsers } from "@app/db/schemas";
@@ -9,6 +8,7 @@ import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { AuthTokenType } from "@app/services/auth/auth-type";
@@ -137,7 +137,7 @@ export const scimServiceFactory = ({
       ttlDays
     });
 
-    const scimToken = jwt.sign(
+    const scimToken = crypto.jwt().sign(
       {
         scimTokenId: scimTokenData.id,
         authTokenType: AuthTokenType.SCIM_TOKEN

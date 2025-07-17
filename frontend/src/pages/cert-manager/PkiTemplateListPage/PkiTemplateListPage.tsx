@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import {
   faCertificate,
+  faCog,
   faEllipsis,
   faPencil,
   faPlus,
@@ -12,6 +13,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -40,12 +42,14 @@ import {
 import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub,
+  useSubscription,
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplateV2 } from "@app/hooks/api";
 import { useListCertificateTemplates } from "@app/hooks/api/certificateTemplates/queries";
 
+import { CertificateTemplateEnrollmentModal } from "../CertificatesPage/components/CertificateTemplateEnrollmentModal";
 import { PkiTemplateForm } from "./components/PkiTemplateForm";
 
 const PER_PAGE_INIT = 25;
@@ -56,8 +60,12 @@ export const PkiTemplateListPage = () => {
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "certificateTemplate",
-    "deleteTemplate"
+    "deleteTemplate",
+    "enrollmentOptions",
+    "estUpgradePlan"
   ] as const);
+
+  const { subscription } = useSubscription();
 
   const { data, isPending } = useListCertificateTemplates({
     projectId: currentWorkspace.id,
@@ -92,7 +100,7 @@ export const PkiTemplateListPage = () => {
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: "PKI Subscribers" })}</title>
+        <title>{t("common.head-title", { title: "PKI Templates" })}</title>
       </Helmet>
       <div className="h-full bg-bunker-800">
         <div className="container mx-auto flex flex-col justify-between text-white">
@@ -177,7 +185,33 @@ export const PkiTemplateListPage = () => {
                                     </DropdownMenuItem>
                                   )}
                                 </ProjectPermissionCan>
-
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionPkiTemplateActions.Edit}
+                                  a={ProjectPermissionSub.CertificateTemplates}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      className={twMerge(
+                                        !isAllowed &&
+                                          "pointer-events-none cursor-not-allowed opacity-50"
+                                      )}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!subscription.pkiEst) {
+                                          handlePopUpOpen("estUpgradePlan");
+                                          return;
+                                        }
+                                        handlePopUpOpen("enrollmentOptions", {
+                                          id: template.id
+                                        });
+                                      }}
+                                      disabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faCog} />}
+                                    >
+                                      Manage Enrollment
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
                                 <ProjectPermissionCan
                                   I={ProjectPermissionPkiTemplateActions.Delete}
                                   a={ProjectPermissionSub.CertificateTemplates}
@@ -251,7 +285,13 @@ export const PkiTemplateListPage = () => {
             />
           </ModalContent>
         </Modal>
+        <CertificateTemplateEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       </div>
+      <UpgradePlanModal
+        isOpen={popUp.estUpgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("estUpgradePlan", isOpen)}
+        text="You can only configure template enrollment methods if you switch to Infisical's Enterprise plan."
+      />
     </>
   );
 };

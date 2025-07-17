@@ -11,6 +11,7 @@ import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-r
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
+import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
@@ -27,6 +28,7 @@ import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
+import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -68,5 +70,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
     [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
-    [AppConnection.Railway]: registerRailwayConnectionRouter
+    [AppConnection.Railway]: registerRailwayConnectionRouter,
+    [AppConnection.Checkly]: registerChecklyConnectionRouter,
+    [AppConnection.Supabase]: registerSupabaseConnectionRouter
   };

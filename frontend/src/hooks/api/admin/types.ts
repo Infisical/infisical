@@ -49,6 +49,7 @@ export type TServerConfig = {
   authConsentContent?: string;
   pageFrameContent?: string;
   invalidatingCache: boolean;
+  fipsEnabled: boolean;
   envOverrides?: Record<string, string>;
 };
 

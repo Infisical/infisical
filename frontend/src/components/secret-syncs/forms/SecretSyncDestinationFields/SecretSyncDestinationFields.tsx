@@ -10,7 +10,9 @@ import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFiel
 import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
+import { ChecklySyncFields } from "./ChecklySyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
+import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
@@ -22,6 +24,7 @@ import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
+import { SupabaseSyncFields } from "./SupabaseSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
@@ -78,10 +81,16 @@ export const SecretSyncDestinationFields = () => {
       return <GitLabSyncFields />;
     case SecretSync.CloudflarePages:
       return <CloudflarePagesSyncFields />;
+    case SecretSync.CloudflareWorkers:
+      return <CloudflareWorkersSyncFields />;
     case SecretSync.Zabbix:
       return <ZabbixSyncFields />;
     case SecretSync.Railway:
       return <RailwaySyncFields />;
+    case SecretSync.Checkly:
+      return <ChecklySyncFields />;
+    case SecretSync.Supabase:
+      return <SupabaseSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

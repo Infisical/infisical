@@ -6,16 +6,19 @@ import {
   faCheckCircle,
   faChevronDown,
   faCodeBranch,
+  faCodeMerge,
   faMagnifyingGlass,
-  faSearch
+  faSearch,
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSearch } from "@tanstack/react-router";
-import { formatDistance } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import {
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +28,8 @@ import {
   EmptyState,
   Input,
   Pagination,
-  Skeleton
+  Skeleton,
+  Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -308,7 +312,9 @@ export const SecretApprovalRequest = () => {
                   createdAt,
                   reviewers,
                   status,
-                  committerUser
+                  committerUser,
+                  hasMerged,
+                  updatedAt
                 } = secretApproval;
                 const isReviewed = reviewers.some(
                   ({ status: reviewStatus, userId }) =>
@@ -317,7 +323,7 @@ export const SecretApprovalRequest = () => {
                 return (
                   <div
                     key={reqId}
-                    className="flex flex-col border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700"
+                    className="flex border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700"
                     role="button"
                     tabIndex={0}
                     onClick={() => setSelectedApprovalId(secretApproval.id)}
@@ -325,23 +331,46 @@ export const SecretApprovalRequest = () => {
                       if (evt.key === "Enter") setSelectedApprovalId(secretApproval.id);
                     }}
                   >
-                    <div className="mb-1 text-sm">
-                      <FontAwesomeIcon
-                        icon={faCodeBranch}
-                        size="sm"
-                        className="mr-1.5 text-mineshaft-300"
-                      />
-                      {secretApproval.isReplicated
-                        ? `${commits.length} secret pending import`
-                        : generateCommitText(commits)}
-                      <span className="text-xs text-bunker-300"> #{secretApproval.slug}</span>
+                    <div className="flex flex-col">
+                      <div className="mb-1 text-sm">
+                        <FontAwesomeIcon
+                          icon={faCodeBranch}
+                          size="sm"
+                          className="mr-1.5 text-mineshaft-300"
+                        />
+                        {secretApproval.isReplicated
+                          ? `${commits.length} secret pending import`
+                          : generateCommitText(commits)}
+                        <span className="text-xs text-bunker-300"> #{secretApproval.slug}</span>
+                      </div>
+                      <span className="text-xs leading-3 text-gray-500">
+                        Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
+                        {committerUser ? (
+                          <>
+                            {committerUser?.firstName || ""} {committerUser?.lastName || ""} (
+                            {committerUser?.email})
+                          </>
+                        ) : (
+                          <span className="text-gray-600">Deleted User</span>
+                        )}
+                        {!isReviewed && status === "open" && " - Review required"}
+                      </span>
                     </div>
-                    <span className="text-xs leading-3 text-gray-500">
-                      Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
-                      {committerUser?.firstName || ""} {committerUser?.lastName || ""} (
-                      {committerUser?.email})
-                      {!isReviewed && status === "open" && " - Review required"}
-                    </span>
+                    {status === "close" && (
+                      <Tooltip
+                        content={updatedAt ? format(new Date(updatedAt), "M/dd/yyyy h:mm a") : ""}
+                      >
+                        <div className="my-auto ml-auto">
+                          <Badge
+                            variant={hasMerged ? "success" : "danger"}
+                            className="flex h-min items-center gap-1"
+                          >
+                            <FontAwesomeIcon icon={hasMerged ? faCodeMerge : faXmark} />
+                            {hasMerged ? "Merged" : "Rejected"}
+                          </Badge>
+                        </div>
+                      </Tooltip>
+                    )}
                   </div>
                 );
               })}

@@ -19,13 +19,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-RUN npm install -g mint@4.2.13
+RUN addgroup -g 1001 -S mintuser && \
+    adduser -S -D -H -u 1001 -s /sbin/nologin -G mintuser mintuser && \
+    npm install -g mint@4.2.13
 
-COPY . .
+COPY --chown=mintuser:mintuser . .
 
-COPY --from=builder /root/.mintlify /root/.mintlify
-COPY --from=builder /app/docs.json /app/docs.json
-COPY --from=builder /app/spec.json /app/spec.json
+COPY --from=builder --chown=mintuser:mintuser /root/.mintlify /home/mintuser/.mintlify
+COPY --from=builder --chown=mintuser:mintuser /app/docs.json /app/docs.json
+COPY --from=builder --chown=mintuser:mintuser /app/spec.json /app/spec.json
+
+USER mintuser
 
 EXPOSE 3000
 

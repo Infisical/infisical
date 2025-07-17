@@ -76,6 +76,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
   useEffect(() => {
     if (data) {
       reset({
+        method: EnrollmentMethod.EST,
         caChain: data.caChain,
         isEnabled: data.isEnabled,
         disableBootstrapCertValidation: data.disableBootstrapCertValidation

@@ -1715,7 +1715,7 @@ interface SecretApprovalReopened {
 interface SecretApprovalRequest {
   type: EventType.SECRET_APPROVAL_REQUEST;
   metadata: {
-    committedBy: string;
+    committedBy?: string | null;
     secretApprovalRequestSlug: string;
     secretApprovalRequestId: string;
     eventType: SecretApprovalEvent;

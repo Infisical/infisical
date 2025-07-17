@@ -8,17 +8,16 @@ import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import jsrp from "jsrp";
-import nacl from "tweetnacl";
-import { encodeBase64 } from "tweetnacl-util";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import InputField from "@app/components/basic/InputField";
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
+import { deriveArgonKey, generateKeyPair } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v2";
+import { useServerConfig } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
   completeAccountSignupInvite,
@@ -68,6 +67,7 @@ export const SignupInvitePage = () => {
   const metadata = queryParams.get("metadata") || undefined;
 
   const { mutateAsync: selectOrganization } = useSelectOrganization();
+  const { config } = useServerConfig();
 
   const loggedIn = isLoggedIn();
 
@@ -95,11 +95,7 @@ export const SignupInvitePage = () => {
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
-      const pair = nacl.box.keyPair();
-      const secretKeyUint8Array = pair.secretKey;
-      const publicKeyUint8Array = pair.publicKey;
-      const privateKey = encodeBase64(secretKeyUint8Array);
-      const publicKey = encodeBase64(publicKeyUint8Array);
+      const { publicKey, privateKey } = await generateKeyPair(config.fipsEnabled);
 
       localStorage.setItem("PRIVATE_KEY", privateKey);
 

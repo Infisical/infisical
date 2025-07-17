@@ -79,10 +79,14 @@ type TSecretPermissionForm = z.infer<typeof secretPermissionSchema>;
 export const SpecificPrivilegeSecretForm = ({
   privilege,
   policies,
-  onClose
+  onClose,
+  selectedActions = [],
+  secretPath: initialSecretPath
 }: {
   privilege?: TProjectUserPrivilege;
   policies?: TAccessApprovalPolicy[];
+  selectedActions?: ProjectPermissionActions[];
+  secretPath?: string;
   onClose?: () => void;
 }) => {
   const { currentWorkspace } = useWorkspace();
@@ -126,10 +130,11 @@ export const SpecificPrivilegeSecretForm = ({
           }
         : {
             environmentSlug: currentWorkspace.environments?.[0]?.slug,
-            read: false,
-            edit: false,
-            create: false,
-            delete: false,
+            secretPath: initialSecretPath,
+            read: selectedActions.includes(ProjectPermissionActions.Read),
+            edit: selectedActions.includes(ProjectPermissionActions.Edit),
+            create: selectedActions.includes(ProjectPermissionActions.Create),
+            delete: selectedActions.includes(ProjectPermissionActions.Delete),
             temporaryAccess: {
               isTemporary: false
             }
@@ -281,6 +286,8 @@ export const SpecificPrivilegeSecretForm = ({
                   isDisabled={isMemberEditDisabled}
                   className="w-full bg-mineshaft-900 hover:bg-mineshaft-800"
                   onValueChange={(e) => onChange(e)}
+                  position="popper"
+                  dropdownContainerClassName="max-w-none"
                 >
                   {currentWorkspace?.environments?.map(({ slug, id, name }) => (
                     <SelectItem value={slug} key={id}>
@@ -309,6 +316,8 @@ export const SpecificPrivilegeSecretForm = ({
                           className="w-full hover:bg-mineshaft-800"
                           placeholder="Select a secret path"
                           onValueChange={(e) => field.onChange(e)}
+                          position="popper"
+                          dropdownContainerClassName="max-w-none"
                         >
                           {selectablePaths.map((path) => (
                             <SelectItem value={path} key={path}>
@@ -347,7 +356,7 @@ export const SpecificPrivilegeSecretForm = ({
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-read"
-                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "hover:bg-primary/40" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
@@ -378,7 +387,7 @@ export const SpecificPrivilegeSecretForm = ({
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-change"
-                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "hover:bg-primary/40" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
@@ -411,7 +420,7 @@ export const SpecificPrivilegeSecretForm = ({
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-modify"
-                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "hover:bg-primary/40" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
@@ -442,7 +451,7 @@ export const SpecificPrivilegeSecretForm = ({
                       <Checkbox
                         isDisabled={isMemberEditDisabled}
                         id="secret-delete"
-                        className={`mx-2 h-5 w-5 ${field.value ? "bg-primary hover:bg-primary/80" : ""}`}
+                        className={`mx-2 h-5 w-5 ${field.value ? "hover:bg-primary/40" : ""}`}
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
@@ -636,6 +645,7 @@ export const SpecificPrivilegeSecretForm = ({
         {!!policies && (
           <Button
             type="submit"
+            variant="outline_bg"
             isLoading={privilegeForm.formState.isSubmitting || requestAccess.isPending}
             isDisabled={
               isMemberEditDisabled ||
@@ -647,7 +657,7 @@ export const SpecificPrivilegeSecretForm = ({
             className="mt-4"
             leftIcon={<FontAwesomeIcon icon={faLockOpen} />}
           >
-            Request access
+            Request Access
           </Button>
         )}
       </form>

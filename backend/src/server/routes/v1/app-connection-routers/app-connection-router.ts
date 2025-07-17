@@ -40,6 +40,10 @@ import {
   SanitizedCamundaConnectionSchema
 } from "@app/services/app-connection/camunda";
 import {
+  ChecklyConnectionListItemSchema,
+  SanitizedChecklyConnectionSchema
+} from "@app/services/app-connection/checkly";
+import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
@@ -79,6 +83,10 @@ import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
+import {
+  SanitizedSupabaseConnectionSchema,
+  SupabaseConnectionListItemSchema
+} from "@app/services/app-connection/supabase";
 import {
   SanitizedTeamCityConnectionSchema,
   TeamCityConnectionListItemSchema
@@ -128,7 +136,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedCloudflareConnectionSchema.options,
   ...SanitizedBitbucketConnectionSchema.options,
   ...SanitizedZabbixConnectionSchema.options,
-  ...SanitizedRailwayConnectionSchema.options
+  ...SanitizedRailwayConnectionSchema.options,
+  ...SanitizedChecklyConnectionSchema.options,
+  ...SanitizedSupabaseConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -163,7 +173,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   CloudflareConnectionListItemSchema,
   BitbucketConnectionListItemSchema,
   ZabbixConnectionListItemSchema,
-  RailwayConnectionListItemSchema
+  RailwayConnectionListItemSchema,
+  ChecklyConnectionListItemSchema,
+  SupabaseConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

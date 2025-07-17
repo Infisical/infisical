@@ -151,7 +151,7 @@ export default function NavHeader({
                 <div className="flex items-center space-x-2">
                   <span
                     className={twMerge(
-                      "text-sm font-semibold transition-all",
+                      "text-sm transition-all",
                       isHoveringCopyButton ? "text-bunker-200" : "text-bunker-300"
                     )}
                   >
@@ -198,7 +198,7 @@ export default function NavHeader({
                   }}
                   search={(query) => ({ ...query, secretPath: newSecretPath })}
                   className={twMerge(
-                    "text-sm font-semibold transition-all hover:text-primary",
+                    "text-sm transition-all hover:text-primary",
                     isHoveringCopyButton ? "text-primary" : "text-primary/80"
                   )}
                 >

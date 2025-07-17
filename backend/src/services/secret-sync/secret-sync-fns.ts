@@ -29,8 +29,11 @@ import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFact
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
+import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
+import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
+import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
@@ -43,6 +46,7 @@ import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
+import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
@@ -72,8 +76,11 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Flyio]: FLYIO_SYNC_LIST_OPTION,
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
+  [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
+  [SecretSync.Supabase]: SUPABASE_SYNC_LIST_OPTION,
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
-  [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION
+  [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
+  [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -241,10 +248,16 @@ export const SecretSyncFns = {
         return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.CloudflareWorkers:
+        return CloudflareWorkersSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
         return RailwaySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Checkly:
+        return ChecklySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Supabase:
+        return SupabaseSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -337,11 +350,20 @@ export const SecretSyncFns = {
       case SecretSync.CloudflarePages:
         secretMap = await CloudflarePagesSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.CloudflareWorkers:
+        secretMap = await CloudflareWorkersSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Zabbix:
         secretMap = await ZabbixSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.Railway:
         secretMap = await RailwaySyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Checkly:
+        secretMap = await ChecklySyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Supabase:
+        secretMap = await SupabaseSyncFns.getSecrets(secretSync);
         break;
       default:
         throw new Error(
@@ -420,10 +442,16 @@ export const SecretSyncFns = {
         return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
         return CloudflarePagesSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.CloudflareWorkers:
+        return CloudflareWorkersSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Railway:
         return RailwaySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Checkly:
+        return ChecklySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Supabase:
+        return SupabaseSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

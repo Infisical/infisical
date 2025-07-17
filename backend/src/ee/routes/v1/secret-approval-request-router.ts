@@ -58,7 +58,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               deletedAt: z.date().nullish(),
               allowedSelfApprovals: z.boolean()
             }),
-            committerUser: approvalRequestUser,
+            committerUser: approvalRequestUser.nullish(),
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
             environment: z.string(),
             reviewers: z.object({ userId: z.string(), status: z.string() }).array(),
@@ -308,7 +308,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               }),
               environment: z.string(),
               statusChangedByUser: approvalRequestUser.optional(),
-              committerUser: approvalRequestUser,
+              committerUser: approvalRequestUser.nullish(),
               reviewers: approvalRequestUser.extend({ status: z.string(), comment: z.string().optional() }).array(),
               secretPath: z.string(),
               commits: secretRawSchema

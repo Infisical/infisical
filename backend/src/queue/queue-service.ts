@@ -18,6 +18,7 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
+import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
 import { QueueWorkerProfile } from "@app/lib/types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -455,6 +456,14 @@ export const queueServiceFactory = (
 
     queueContainer[name] = new Queue(name as string, {
       ...queueSettings,
+      ...(crypto.isFipsModeEnabled()
+        ? {
+            settings: {
+              ...queueSettings?.settings,
+              repeatKeyHashAlgorithm: "sha256"
+            }
+          }
+        : {}),
       connection
     });
 
@@ -462,6 +471,14 @@ export const queueServiceFactory = (
     if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
       workerContainer[name] = new Worker(name, jobFn, {
         ...queueSettings,
+        ...(crypto.isFipsModeEnabled()
+          ? {
+              settings: {
+                ...queueSettings?.settings,
+                repeatKeyHashAlgorithm: "sha256"
+              }
+            }
+          : {}),
         connection
       });
     }

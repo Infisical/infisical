@@ -46,3 +46,7 @@ cli/detect/config/gitleaks.toml:gcp-api-key:582
 .github/workflows/helm-release-infisical-core.yml:generic-api-key:47
 backend/src/services/smtp/smtp-service.ts:generic-api-key:79
 frontend/src/components/secret-syncs/forms/SecretSyncDestinationFields/CloudflarePagesSyncFields.tsx:cloudflare-api-key:7
+docs/integrations/app-connections/zabbix.mdx:generic-api-key:91
+docs/integrations/app-connections/bitbucket.mdx:generic-api-key:123
+docs/integrations/app-connections/railway.mdx:generic-api-key:156
+.github/workflows/validate-db-schemas.yml:generic-api-key:21

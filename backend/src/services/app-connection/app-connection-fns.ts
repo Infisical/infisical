@@ -6,7 +6,7 @@ import {
 } from "@app/ee/services/app-connections/oci";
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { generateHash } from "@app/lib/crypto/encryption";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
@@ -56,6 +56,7 @@ import {
   validateBitbucketConnectionCredentials
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
+import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -94,6 +95,11 @@ import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postg
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import {
+  getSupabaseConnectionListItem,
+  SupabaseConnectionMethod,
+  validateSupabaseConnectionCredentials
+} from "./supabase";
 import {
   getTeamCityConnectionListItem,
   TeamCityConnectionMethod,
@@ -146,7 +152,9 @@ export const listAppConnectionOptions = () => {
     getCloudflareConnectionListItem(),
     getZabbixConnectionListItem(),
     getRailwayConnectionListItem(),
-    getBitbucketConnectionListItem()
+    getBitbucketConnectionListItem(),
+    getChecklyConnectionListItem(),
+    getSupabaseConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -229,7 +237,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -287,7 +297,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case LdapConnectionMethod.SimpleBind:
       return "Simple Bind";
     case RenderConnectionMethod.ApiKey:
+    case ChecklyConnectionMethod.ApiKey:
       return "API Key";
+    case SupabaseConnectionMethod.AccessToken:
+      return "Access Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -305,7 +318,7 @@ export const decryptAppConnection = async (
       orgId: appConnection.orgId,
       kmsService
     }),
-    credentialsHash: generateHash(appConnection.encryptedCredentials)
+    credentialsHash: crypto.nativeCrypto.createHash("sha256").update(appConnection.encryptedCredentials).digest("hex")
   } as TAppConnection;
 };
 
@@ -350,7 +363,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,
-  [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported
+  [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
+  [AppConnection.Checkly]: platformManagedCredentialsNotSupported,
+  [AppConnection.Supabase]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

@@ -1,11 +1,11 @@
 /* eslint-disable class-methods-use-this */
 import axios from "axios";
 import { TeamsActivityHandler, TurnContext } from "botbuilder";
-import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
@@ -71,7 +71,7 @@ export const verifyTenantFromCode = async (
   );
 
   // Verify application token
-  const { tid: tenantIdFromApplicationAccessToken } = jwt.decode(applicationAccessToken) as { tid: string };
+  const { tid: tenantIdFromApplicationAccessToken } = crypto.jwt().decode(applicationAccessToken) as { tid: string };
 
   if (tenantIdFromApplicationAccessToken !== tenantId) {
     throw new BadRequestError({
@@ -80,7 +80,9 @@ export const verifyTenantFromCode = async (
   }
 
   // Verify user authorization token
-  const { tid: tenantIdFromAuthorizationAccessToken } = jwt.decode(authorizationAccessToken) as { tid: string };
+  const { tid: tenantIdFromAuthorizationAccessToken } = crypto.jwt().decode(authorizationAccessToken) as {
+    tid: string;
+  };
 
   if (tenantIdFromAuthorizationAccessToken !== tenantId) {
     throw new BadRequestError({

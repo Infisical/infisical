@@ -1,11 +1,10 @@
-import crypto from "node:crypto";
-
 import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { request } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -41,9 +40,11 @@ export const triggerWebhookRequest = async (
   const headers: Record<string, string> = {};
   const payload = { ...data, timestamp: Date.now() };
   const { secretKey, url } = decryptWebhookDetails(webhook, decryptor);
-
   if (secretKey) {
-    const webhookSign = crypto.createHmac("sha256", secretKey).update(JSON.stringify(payload)).digest("hex");
+    const webhookSign = crypto.nativeCrypto
+      .createHmac("sha256", secretKey)
+      .update(JSON.stringify(payload))
+      .digest("hex");
     headers["x-infisical-signature"] = `t=${payload.timestamp};${webhookSign}`;
   }
 

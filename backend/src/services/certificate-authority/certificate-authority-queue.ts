@@ -1,8 +1,8 @@
 import * as x509 from "@peculiar/x509";
-import crypto from "crypto";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -198,10 +198,14 @@ export const certificateAuthorityQueueFactory = ({
       cipherTextBlob: caSecret.encryptedPrivateKey
     });
 
-    const skObj = crypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-    const sk = await crypto.subtle.importKey("pkcs8", skObj.export({ format: "der", type: "pkcs8" }), alg, true, [
-      "sign"
-    ]);
+    const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
+    const sk = await crypto.nativeCrypto.subtle.importKey(
+      "pkcs8",
+      skObj.export({ format: "der", type: "pkcs8" }),
+      alg,
+      true,
+      ["sign"]
+    );
 
     const revokedCerts = await certificateDAL.find({
       caId: ca.id,

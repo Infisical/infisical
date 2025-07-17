@@ -30,5 +30,7 @@ export enum AppConnection {
   Cloudflare = "cloudflare",
   Bitbucket = "bitbucket",
   Zabbix = "zabbix",
-  Railway = "railway"
+  Railway = "railway",
+  Checkly = "checkly",
+  Supabase = "supabase"
 }

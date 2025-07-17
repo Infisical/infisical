@@ -1,6 +1,8 @@
 import { CreateKeyCommand, DecryptCommand, DescribeKeyCommand, EncryptCommand, KMSClient } from "@aws-sdk/client-kms";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
-import { randomUUID } from "crypto";
+
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
+import { crypto } from "@app/lib/crypto/cryptography";
 
 import { ExternalKmsAwsSchema, KmsAwsCredentialType, TExternalKmsAwsSchema, TExternalKmsProviderFns } from "./model";
 
@@ -8,11 +10,13 @@ const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
   if (providerInputs.credential.type === KmsAwsCredentialType.AssumeRole) {
     const awsCredential = providerInputs.credential.data;
     const stsClient = new STSClient({
-      region: providerInputs.awsRegion
+      region: providerInputs.awsRegion,
+      useFipsEndpoint: crypto.isFipsModeEnabled(),
+      sha256: CustomAWSHasher
     });
     const command = new AssumeRoleCommand({
       RoleArn: awsCredential.assumeRoleArn,
-      RoleSessionName: `infisical-kms-${randomUUID()}`,
+      RoleSessionName: `infisical-kms-${crypto.nativeCrypto.randomUUID()}`,
       DurationSeconds: 900, // 15mins
       ExternalId: awsCredential.externalId
     });
@@ -22,6 +26,8 @@ const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
 
     const kmsClient = new KMSClient({
       region: providerInputs.awsRegion,
+      useFipsEndpoint: crypto.isFipsModeEnabled(),
+      sha256: CustomAWSHasher,
       credentials: {
         accessKeyId: response.Credentials.AccessKeyId,
         secretAccessKey: response.Credentials.SecretAccessKey,
@@ -34,6 +40,8 @@ const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
   const awsCredential = providerInputs.credential.data;
   const kmsClient = new KMSClient({
     region: providerInputs.awsRegion,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher,
     credentials: {
       accessKeyId: awsCredential.accessKey,
       secretAccessKey: awsCredential.secretKey

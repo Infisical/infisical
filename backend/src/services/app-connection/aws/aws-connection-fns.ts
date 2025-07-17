@@ -1,9 +1,10 @@
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import AWS from "aws-sdk";
 import { AxiosError } from "axios";
-import { randomUUID } from "crypto";
 
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -35,6 +36,8 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
     case AwsConnectionMethod.AssumeRole: {
       const client = new STSClient({
         region,
+        useFipsEndpoint: crypto.isFipsModeEnabled(),
+        sha256: CustomAWSHasher,
         credentials:
           appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID && appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
             ? {
@@ -46,7 +49,7 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
 
       const command = new AssumeRoleCommand({
         RoleArn: credentials.roleArn,
-        RoleSessionName: `infisical-app-connection-${randomUUID()}`,
+        RoleSessionName: `infisical-app-connection-${crypto.nativeCrypto.randomUUID()}`,
         DurationSeconds: 900, // 15 mins
         ExternalId: orgId
       });
