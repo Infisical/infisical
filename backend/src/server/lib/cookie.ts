@@ -1,22 +1,28 @@
 import { FastifyReply } from "fastify";
 
 import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 
 export function addAuthOriginDomainCookie(res: FastifyReply) {
-  const appCfg = getConfig();
+  try {
+    const appCfg = getConfig();
 
-  const siteUrl = appCfg.SITE_URL!;
-  let domain: string | undefined;
+    const siteUrl = appCfg.SITE_URL!;
+    let domain: string | undefined;
 
-  if (!siteUrl.includes("localhost")) {
-    domain = `.${siteUrl.split("//")[1].split("/")[0]}`;
+    if (!siteUrl.includes("localhost")) {
+      const url = new URL(siteUrl);
+      domain = `.${url.host}`;
+    }
+
+    void res.setCookie("aod", siteUrl, {
+      domain,
+      path: "/",
+      sameSite: "strict",
+      httpOnly: false,
+      secure: appCfg.HTTPS_ENABLED
+    });
+  } catch (error) {
+    logger.error(error, "Failed to set auth origin domain cookie");
   }
-
-  void res.setCookie("aod", siteUrl, {
-    domain,
-    path: "/",
-    sameSite: "strict",
-    httpOnly: false,
-    secure: appCfg.HTTPS_ENABLED
-  });
 }
