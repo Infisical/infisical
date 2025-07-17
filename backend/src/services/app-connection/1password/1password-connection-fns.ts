@@ -31,12 +31,16 @@ export const validateOnePassConnectionCredentials = async (config: TOnePassConne
   const { apiToken } = config.credentials;
 
   try {
-    await request.get(`${instanceUrl}/v1/vaults`, {
+    const res = await request.get(`${instanceUrl}/v1/vaults`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         Accept: "application/json"
       }
     });
+
+    if (!Array.isArray(res.data)) {
+      throw new AxiosError("Invalid response from 1Password API");
+    }
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
