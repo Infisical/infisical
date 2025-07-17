@@ -18,6 +18,7 @@ import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
+import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
@@ -36,6 +37,7 @@ import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
@@ -143,6 +145,10 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <ZabbixConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Railway:
       return <RailwayConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Checkly:
+      return <ChecklyConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Supabase:
+      return <SupabaseConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -243,6 +249,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <ZabbixConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Railway:
       return <RailwayConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Checkly:
+      return <ChecklyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Supabase:
+      return <SupabaseConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

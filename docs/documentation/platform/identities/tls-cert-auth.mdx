@@ -42,9 +42,13 @@ To be more specific:
   Most of the time, the Infisical server will be behind a load balancer or
   proxy. To propagate the TLS certificate from the load balancer to the
   instance, you can configure the TLS to send the client certificate as a header
-  that is set as an [environment
-  variable](/self-hosting/configuration/envars#param-identity-tls-cert-auth-client-certificate-header-key).
+  that is set as an [environment variable](/self-hosting/configuration/envars#param-identity-tls-cert-auth-client-certificate-header-key).
 </Accordion>
+
+<Note>
+  Infisical US/EU and dedicated instances are deployed with AWS ALB. TLS Certificate Auth must flow through our ALB mTLS pass-through in order to authenticate.
+  When you are authenticating with TLS Certificate Auth, you must use the port `8443` instead of the default `443`. Example: `https://app.infisical.com:8443/api/v1/auth/tls-cert-auth/login`
+</Note>
 
 ## Guide
 
@@ -123,7 +127,7 @@ try {
   const clientCertificate = fs.readFileSync("client-cert.pem", "utf8");
   const clientKeyCertificate = fs.readFileSync("client-key.pem", "utf8");
 
-  const infisicalUrl = "https://app.infisical.com"; // or your self-hosted Infisical URL
+  const infisicalUrl = "https://app.infisical.com:8443"; // or your self-hosted Infisical URL
   const identityId = "<your-identity-id>";
 
   // Create HTTPS agent with client certificate and key

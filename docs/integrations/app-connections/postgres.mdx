@@ -30,6 +30,14 @@ Infisical supports connecting to PostgreSQL using a database role.
                 -- enable permissions to alter login credentials
                 ALTER ROLE infisical_role WITH CREATEROLE;
                 ```
+                <Tip>
+                    In some configurations, the role performing the rotation must be explicitly granted access to manage each user. To do this, grant the user's role to the rotation role with:
+                    ```SQL
+                    -- grant each user role to admin user for password rotation
+                    GRANT <secret_rotation_user> TO <infisical_role> WITH ADMIN OPTION;
+                    ```
+                    Replace `<secret_rotation_user>` with each specific username whose credentials will be rotated, and `<infisical_role>` with the role that will perform the rotation.
+                </Tip>
             </Tab>
         </Tabs>
     </Step>

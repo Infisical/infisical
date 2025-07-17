@@ -1,0 +1,107 @@
+---
+title: "Supabase Connection"
+description: "Learn how to configure a Supabase Connection for Infisical."
+---
+
+Infisical supports the use of [Personal Access Tokens](https://supabase.com/dashboard/account/tokens) to connect with Supabase.
+
+## Create a Supabase Personal Access Token
+
+<Steps>
+  <Step title="Click the profile image in the top-right corner and select 'Account Preferences'">
+    ![Account Preferences](/images/app-connections/supabase/app-connection-user-settings.png)
+  </Step>
+  <Step title="In the sidebar, select 'Access Tokens'">
+    ![Settings Page](/images/app-connections/supabase/app-connection-api-keys.png)
+  </Step>
+   <Step title="In the access tokens page, click on 'Generate New Token'">
+    ![Access Tokens Page](/images/app-connections/supabase/app-connection-create-api-key.png)
+  </Step>
+  <Step title="Enter a token name and click on 'Generate Token'">
+    Provide a descriptive name for the token.
+
+    ![Enter Name](/images/app-connections/supabase/app-connection-create-form.png)
+
+  </Step>
+  <Step title="Copy the generated token and save it">
+    ![Create Token](/images/app-connections/supabase/app-connection-key-generated.png)
+  </Step>
+</Steps>
+
+## Create a Supabase Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, go to **Organization Settings** and open the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select Supabase Connection">
+        Click **+ Add Connection** and choose **Supabase Connection** from the list of integrations.
+
+        ![Select Supabase Connection](/images/app-connections/supabase/app-connection-option.png)
+      </Step>
+      <Step title="Fill out the Supabase Connection form">
+        Complete the form by providing:
+        - A descriptive name for the connection
+        - An optional description
+        - Supabase instance URL (e.g., `https://your-domain.com` or `https://api.supabase.com`)
+        - The Access Token value from the previous step
+
+        ![Supabase Connection Modal](/images/app-connections/supabase/app-connection-form.png)
+      </Step>
+      <Step title="Connection created">
+        After submitting the form, your **Supabase Connection** will be successfully created and ready to use with your Infisical projects.
+
+        ![Supabase Connection Created](/images/app-connections/supabase/app-connection-generated.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="API">
+    To create a Supabase Connection via API, send a request to the [Create Supabase Connection](/api-reference/endpoints/app-connections/supabase/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/supabase \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-supabase-connection",
+                "method": "access-token",
+                "credentials": {
+                    "accessToken": "[Access Token]",
+                    "instanceUrl": "https://api.supabase.com"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+          "name": "my-supabase-connection",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2025-04-23T19:46:34.831Z",
+          "updatedAt": "2025-04-23T19:46:34.831Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+          "app": "supabase",
+          "method": "access-token",
+          "credentials": {
+            "instanceUrl": "https://api.supabase.com"
+          }
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>

@@ -9,6 +9,7 @@ import { TAzureAppConfigurationSync } from "./azure-app-configuration-sync";
 import { TAzureDevOpsSync } from "./azure-devops-sync";
 import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TCamundaSync } from "./camunda-sync";
+import { TChecklySync } from "./checkly-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
@@ -21,6 +22,7 @@ import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TRailwaySync } from "./railway-sync";
+import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
@@ -59,7 +61,9 @@ export type TSecretSync =
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
   | TZabbixSync
-  | TRailwaySync;
+  | TRailwaySync
+  | TChecklySync
+  | TSupabaseSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

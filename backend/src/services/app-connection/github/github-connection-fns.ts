@@ -145,11 +145,19 @@ export const getGitHubEnvironments = async (appConnection: TGitHubConnection, ow
 };
 
 type TokenRespData = {
-  access_token: string;
+  access_token?: string;
   scope: string;
   token_type: string;
   error?: string;
 };
+
+function isErrorResponse(data: TokenRespData): data is TokenRespData & {
+  error: string;
+  error_description: string;
+  error_uri: string;
+} {
+  return "error" in data;
+}
 
 export const validateGitHubConnectionCredentials = async (config: TGitHubConnectionConfig) => {
   const { credentials, method } = config;
@@ -198,7 +206,17 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
         "Accept-Encoding": "application/json"
       }
     });
+
+    if (isErrorResponse(tokenResp?.data)) {
+      throw new BadRequestError({
+        message: `Unable to validate credentials: GitHub responded with an error: ${tokenResp.data.error} - ${tokenResp.data.error_description}`
+      });
+    }
   } catch (e: unknown) {
+    if (e instanceof BadRequestError) {
+      throw e;
+    }
+
     throw new BadRequestError({
       message: `Unable to validate connection: verify credentials`
     });
@@ -211,6 +229,10 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
   }
 
   if (method === GitHubConnectionMethod.App) {
+    if (!tokenResp.data.access_token) {
+      throw new InternalServerError({ message: `Missing access token: ${tokenResp.data.error}` });
+    }
+
     const installationsResp = await request.get<{
       installations: {
         id: number;
@@ -237,10 +259,6 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
         message: "User does not have access to the provided installation"
       });
     }
-  }
-
-  if (!tokenResp.data.access_token) {
-    throw new InternalServerError({ message: `Missing access token: ${tokenResp.data.error}` });
   }
 
   switch (method) {

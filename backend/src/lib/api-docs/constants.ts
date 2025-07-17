@@ -2283,6 +2283,13 @@ export const AppConnections = {
     },
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
+    },
+    CHECKLY: {
+      apiKey: "The API key used to authenticate with Checkly."
+    },
+    SUPABASE: {
+      accessKey: "The Key used to access Supabase.",
+      instanceUrl: "The URL used to access Supabase."
     }
   }
 };
@@ -2489,6 +2496,13 @@ export const SecretSyncs = {
       environmentName: "The Railway environment to sync secrets to.",
       serviceId: "The Railway service that secrets should be synced to.",
       serviceName: "The Railway service that secrets should be synced to."
+    },
+    CHECKLY: {
+      accountId: "The ID of the Checkly account to sync secrets to."
+    },
+    SUPABASE: {
+      projectId: "The ID of the Supabase project to sync secrets to.",
+      projectName: "The name of the Supabase project to sync secrets to."
     }
   }
 };

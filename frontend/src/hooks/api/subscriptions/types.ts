@@ -17,8 +17,8 @@ export type SubscriptionPlan = {
   rbac: boolean;
   secretVersioning: boolean;
   slug: string;
-  secretApproval: string;
-  secretRotation: string;
+  secretApproval: boolean;
+  secretRotation: boolean;
   tier: number;
   workspaceLimit: number;
   workspacesUsed: number;

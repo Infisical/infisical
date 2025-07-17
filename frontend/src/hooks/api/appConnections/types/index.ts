@@ -9,6 +9,7 @@ import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
+import { TChecklyConnection } from "./checkly-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TFlyioConnection } from "./flyio-connection";
@@ -27,6 +28,7 @@ import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRenderConnection } from "./render-connection";
+import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
@@ -97,7 +99,9 @@ export type TAppConnection =
   | TCloudflareConnection
   | TBitbucketConnection
   | TZabbixConnection
-  | TRailwayConnection;
+  | TRailwayConnection
+  | TChecklyConnection
+  | TSupabaseConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -157,4 +161,6 @@ export type TAppConnectionMap = {
   [AppConnection.Bitbucket]: TBitbucketConnection;
   [AppConnection.Zabbix]: TZabbixConnection;
   [AppConnection.Railway]: TRailwayConnection;
+  [AppConnection.Checkly]: TChecklyConnection;
+  [AppConnection.Supabase]: TSupabaseConnection;
 };

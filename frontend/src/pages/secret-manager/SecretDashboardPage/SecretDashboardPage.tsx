@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
@@ -10,10 +10,12 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
+  Button,
   Checkbox,
   ContentLoader,
   Modal,
   ModalContent,
+  PageHeader,
   Pagination,
   Tooltip
 } from "@app/components/v2";
@@ -46,7 +48,9 @@ import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { SecretRotationListView } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView";
 
 import { SecretTableResourceCount } from "../OverviewPage/components/SecretTableResourceCount";
@@ -114,7 +118,10 @@ const Page = () => {
 
   const [snapshotId, setSnapshotId] = useState<string | null>(null);
   const isRollbackMode = Boolean(snapshotId);
-  const { popUp, handlePopUpClose, handlePopUpToggle } = usePopUp(["snapshots"] as const);
+  const { popUp, handlePopUpClose, handlePopUpToggle, handlePopUpOpen } = usePopUp([
+    "snapshots",
+    "requestAccess"
+  ] as const);
 
   // env slug
   const workspaceId = currentWorkspace?.id || "";
@@ -130,6 +137,26 @@ const Page = () => {
       secretName: "*",
       secretTags: ["*"]
     }
+  );
+
+  const canEditSecrets = permission.can(
+    ProjectPermissionSecretActions.Edit,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    })
+  );
+
+  const canDeleteSecrets = permission.can(
+    ProjectPermissionSecretActions.Delete,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    })
   );
 
   const canReadSecretValue = hasSecretReadValueOrDescribePermission(
@@ -256,6 +283,8 @@ const Page = () => {
   const { data: tags } = useGetWsTags(
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
   );
+
+  const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({ secretPath, environment });
 
   const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
     workspaceId,
@@ -476,8 +505,55 @@ const Page = () => {
     setFilter(defaultFilterState);
     setDebouncedSearchFilter("");
   };
+
   return (
     <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:[color-scheme:dark]">
+      <PageHeader
+        title={
+          currentWorkspace.environments.find((env) => env.slug === environment)?.name ?? environment
+        }
+        description={
+          <p className="text-md text-bunker-300">
+            Inject your secrets using
+            <a
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+              href="https://infisical.com/docs/cli/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Infisical CLI
+            </a>
+            ,
+            <a
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+              href="https://infisical.com/docs/documentation/getting-started/api"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Infisical API
+            </a>
+            ,
+            <a
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+              href="https://infisical.com/docs/sdks/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Infisical SDKs
+            </a>
+            , and
+            <a
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+              href="https://infisical.com/docs/documentation/getting-started/introduction"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              more
+            </a>
+            .
+          </p>
+        }
+      />
       <SecretV2MigrationSection />
       {!isRollbackMode ? (
         <>
@@ -500,8 +576,15 @@ const Page = () => {
             importedBy={importedBy}
             usedBySecretSyncs={usedBySecretSyncs}
             isPITEnabled={isPITEnabled}
+            hasPathPolicies={hasPathPolicies}
+            onRequestAccess={(params) => handlePopUpOpen("requestAccess", params)}
           />
-          <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md rounded-b-none bg-mineshaft-800 text-left text-sm text-bunker-300">
+          <div
+            className={twMerge(
+              "thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300",
+              isNotEmpty && "rounded-b-none"
+            )}
+          >
             <div className="flex flex-col" id="dashboard">
               {isNotEmpty && (
                 <div
@@ -548,6 +631,62 @@ const Page = () => {
                   <div className="flex-grow px-4 py-2">Value</div>
                 </div>
               )}
+              {hasPathPolicies &&
+                // eslint-disable-next-line no-nested-ternary
+                (!canReadSecret ? (
+                  <div
+                    className={twMerge(
+                      "flex border-l-2 border-l-primary bg-mineshaft-700 px-4 py-2",
+                      isNotEmpty ? "border-b border-b-mineshaft-600" : ""
+                    )}
+                  >
+                    <div className="flex items-center text-sm">
+                      <FontAwesomeIcon
+                        icon={faInfoCircle}
+                        className="ml-[0.15rem] mr-[1.65rem] text-primary"
+                      />
+                      <span>You do not have permission to read secrets in this folder</span>
+                    </div>
+                    <Button
+                      variant="outline_bg"
+                      size="xs"
+                      className="ml-auto"
+                      onClick={() =>
+                        handlePopUpOpen("requestAccess", [ProjectPermissionActions.Read])
+                      }
+                    >
+                      Request Access
+                    </Button>
+                  </div>
+                ) : !canEditSecrets || !canDeleteSecrets ? (
+                  <div className="flex border-b border-l-2 border-b-mineshaft-600 border-l-primary bg-mineshaft-700 px-4 py-2">
+                    <div className="flex items-center text-sm">
+                      <FontAwesomeIcon
+                        icon={faInfoCircle}
+                        className="ml-[0.15rem] mr-[1.65rem] text-primary"
+                      />
+                      <span>
+                        You do not have permission to {!canEditSecrets ? "edit" : ""}
+                        {!canEditSecrets && !canDeleteSecrets ? " or " : ""}
+                        {!canDeleteSecrets ? "delete" : ""} secrets in this folder
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline_bg"
+                      size="xs"
+                      className="ml-auto"
+                      onClick={() =>
+                        handlePopUpOpen("requestAccess", [
+                          ...(!canEditSecrets ? [ProjectPermissionActions.Edit] : []),
+                          ...(!canDeleteSecrets ? [ProjectPermissionActions.Delete] : [])
+                        ])
+                      }
+                    >
+                      Request Access
+                    </Button>
+                  </div>
+                ) : null)}
+
               {canReadSecretImports && Boolean(imports?.length) && (
                 <SecretImportListView
                   searchTerm={debouncedSearchFilter}
@@ -636,6 +775,17 @@ const Page = () => {
               />
             </ModalContent>
           </Modal>
+          {!!pathPolicies && (
+            <RequestAccessModal
+              policies={pathPolicies}
+              isOpen={popUp.requestAccess.isOpen}
+              onOpenChange={() => {
+                handlePopUpClose("requestAccess");
+              }}
+              selectedActions={popUp.requestAccess.data}
+              secretPath={pathPolicies?.[0]?.secretPath}
+            />
+          )}
           <SecretDropzone
             environment={environment}
             workspaceId={workspaceId}

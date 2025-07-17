@@ -22,9 +22,10 @@ export enum SecretSync {
   GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages",
   CloudflareWorkers = "cloudflare-workers",
-
+  Supabase = "supabase",
   Zabbix = "zabbix",
-  Railway = "railway"
+  Railway = "railway",
+  Checkly = "checkly"
 }
 
 export enum SecretSyncStatus {

@@ -114,7 +114,7 @@ export const ProjectSelect = () => {
               <FontAwesomeIcon icon={faTable} className="text-xs text-bunker-300" />
             </div>
             <Tooltip content={currentWorkspace.name} className="max-w-96">
-              <div className="max-w-32 overflow-hidden text-ellipsis whitespace-nowrap">
+              <div className="max-w-44 overflow-hidden text-ellipsis whitespace-nowrap">
                 {currentWorkspace?.name}
               </div>
             </Tooltip>

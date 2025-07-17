@@ -57,6 +57,7 @@ import {
   validateBitbucketConnectionCredentials
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
+import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -95,6 +96,11 @@ import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postg
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import {
+  getSupabaseConnectionListItem,
+  SupabaseConnectionMethod,
+  validateSupabaseConnectionCredentials
+} from "./supabase";
 import {
   getTeamCityConnectionListItem,
   TeamCityConnectionMethod,
@@ -147,7 +153,9 @@ export const listAppConnectionOptions = () => {
     getCloudflareConnectionListItem(),
     getZabbixConnectionListItem(),
     getRailwayConnectionListItem(),
-    getBitbucketConnectionListItem()
+    getBitbucketConnectionListItem(),
+    getChecklyConnectionListItem(),
+    getSupabaseConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -231,7 +239,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService);
@@ -289,7 +299,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case LdapConnectionMethod.SimpleBind:
       return "Simple Bind";
     case RenderConnectionMethod.ApiKey:
+    case ChecklyConnectionMethod.ApiKey:
       return "API Key";
+    case SupabaseConnectionMethod.AccessToken:
+      return "Access Token";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -352,7 +365,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,
-  [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported
+  [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
+  [AppConnection.Checkly]: platformManagedCredentialsNotSupported,
+  [AppConnection.Supabase]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

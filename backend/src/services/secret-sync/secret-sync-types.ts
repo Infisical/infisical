@@ -73,6 +73,12 @@ import {
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
 import {
+  TChecklySync,
+  TChecklySyncInput,
+  TChecklySyncListItem,
+  TChecklySyncWithCredentials
+} from "./checkly/checkly-sync-types";
+import {
   TCloudflarePagesSync,
   TCloudflarePagesSyncInput,
   TCloudflarePagesSyncListItem,
@@ -113,6 +119,12 @@ import {
   TRenderSyncWithCredentials
 } from "./render/render-sync-types";
 import {
+  TSupabaseSync,
+  TSupabaseSyncInput,
+  TSupabaseSyncListItem,
+  TSupabaseSyncWithCredentials
+} from "./supabase/supabase-sync-types";
+import {
   TTeamCitySync,
   TTeamCitySyncInput,
   TTeamCitySyncListItem,
@@ -152,7 +164,9 @@ export type TSecretSync =
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
   | TZabbixSync
-  | TRailwaySync;
+  | TRailwaySync
+  | TChecklySync
+  | TSupabaseSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -179,7 +193,9 @@ export type TSecretSyncWithCredentials =
   | TCloudflarePagesSyncWithCredentials
   | TCloudflareWorkersSyncWithCredentials
   | TZabbixSyncWithCredentials
-  | TRailwaySyncWithCredentials;
+  | TRailwaySyncWithCredentials
+  | TChecklySyncWithCredentials
+  | TSupabaseSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -206,7 +222,9 @@ export type TSecretSyncInput =
   | TCloudflarePagesSyncInput
   | TCloudflareWorkersSyncInput
   | TZabbixSyncInput
-  | TRailwaySyncInput;
+  | TRailwaySyncInput
+  | TChecklySyncInput
+  | TSupabaseSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -233,7 +251,9 @@ export type TSecretSyncListItem =
   | TCloudflarePagesSyncListItem
   | TCloudflareWorkersSyncListItem
   | TZabbixSyncListItem
-  | TRailwaySyncListItem;
+  | TRailwaySyncListItem
+  | TChecklySyncListItem
+  | TSupabaseSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

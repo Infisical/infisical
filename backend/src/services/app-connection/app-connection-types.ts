@@ -70,6 +70,12 @@ import {
   TValidateCamundaConnectionCredentialsSchema
 } from "./camunda";
 import {
+  TChecklyConnection,
+  TChecklyConnectionConfig,
+  TChecklyConnectionInput,
+  TValidateChecklyConnectionCredentialsSchema
+} from "./checkly";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -155,6 +161,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TSupabaseConnection,
+  TSupabaseConnectionConfig,
+  TSupabaseConnectionInput,
+  TValidateSupabaseConnectionCredentialsSchema
+} from "./supabase";
+import {
   TTeamCityConnection,
   TTeamCityConnectionConfig,
   TTeamCityConnectionInput,
@@ -218,6 +230,8 @@ export type TAppConnection = { id: string } & (
   | TBitbucketConnection
   | TZabbixConnection
   | TRailwayConnection
+  | TChecklyConnection
+  | TSupabaseConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -257,6 +271,8 @@ export type TAppConnectionInput = { id: string } & (
   | TBitbucketConnectionInput
   | TZabbixConnectionInput
   | TRailwayConnectionInput
+  | TChecklyConnectionInput
+  | TSupabaseConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -303,7 +319,9 @@ export type TAppConnectionConfig =
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
   | TZabbixConnectionConfig
-  | TRailwayConnectionConfig;
+  | TRailwayConnectionConfig
+  | TChecklyConnectionConfig
+  | TSupabaseConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -337,7 +355,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
-  | TValidateRailwayConnectionCredentialsSchema;
+  | TValidateRailwayConnectionCredentialsSchema
+  | TValidateChecklyConnectionCredentialsSchema
+  | TValidateSupabaseConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

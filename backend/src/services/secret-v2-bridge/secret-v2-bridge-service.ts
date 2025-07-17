@@ -1105,7 +1105,7 @@ export const secretV2BridgeServiceFactory = ({
 
     if (shouldExpandSecretReferences) {
       const secretsGroupByPath = groupBy(decryptedSecrets, (i) => i.secretPath);
-      await Promise.allSettled(
+      const settledPromises = await Promise.allSettled(
         Object.keys(secretsGroupByPath).map((groupedPath) =>
           Promise.allSettled(
             secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
@@ -1113,7 +1113,8 @@ export const secretV2BridgeServiceFactory = ({
                 value: decryptedSecret.secretValue,
                 secretPath: groupedPath,
                 environment,
-                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding,
+                secretKey: decryptedSecret.secretKey
               });
               // eslint-disable-next-line no-param-reassign
               secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
@@ -1121,6 +1122,35 @@ export const secretV2BridgeServiceFactory = ({
           )
         )
       );
+      const errors: { path: string; error: string }[] = [];
+
+      settledPromises.forEach((outerResult: PromiseSettledResult<PromiseSettledResult<void>[]>, outerIndex) => {
+        const groupedPath = Object.keys(secretsGroupByPath)[outerIndex];
+
+        if (outerResult.status === "rejected") {
+          errors.push({
+            path: groupedPath,
+            error: `Failed to process secret group: ${outerResult.reason}`
+          });
+        } else {
+          // Check inner promise results
+          outerResult.value.forEach((innerResult: PromiseSettledResult<void>) => {
+            if (innerResult.status === "rejected") {
+              const reason = innerResult.reason as ForbiddenRequestError;
+              errors.push({
+                path: groupedPath,
+                error: reason.message
+              });
+            }
+          });
+        }
+      });
+      if (errors.length > 0) {
+        throw new ForbiddenRequestError({
+          message: "Failed to expand one or more secret references",
+          details: errors.map((err) => err.error)
+        });
+      }
     }
 
     if (!includeImports) {
@@ -1424,7 +1454,8 @@ export const secretV2BridgeServiceFactory = ({
         environment,
         secretPath: path,
         value: secretValue,
-        skipMultilineEncoding: secret.skipMultilineEncoding
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        secretKey: secret.key
       });
 
       secretValue = expandedSecretValue || "";
@@ -2722,7 +2753,8 @@ export const secretV2BridgeServiceFactory = ({
     const { expandedValue, stackTrace } = await getExpandedSecretStackTrace({
       environment,
       secretPath,
-      value: decryptedSecretValue
+      value: decryptedSecretValue,
+      secretKey: secretName
     });
 
     return { tree: stackTrace, value: expandedValue };
