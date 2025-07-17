@@ -174,6 +174,7 @@ export const fnSecretsV2FromImports = async ({
     skipMultilineEncoding?: boolean | null;
     secretPath: string;
     environment: string;
+    secretKey: string;
   }) => Promise<string | undefined>;
   hasSecretAccess: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
 }) => {
@@ -293,7 +294,8 @@ export const fnSecretsV2FromImports = async ({
               value: decryptedSecret.secretValue,
               secretPath: processedImport.secretPath,
               environment: processedImport.environment,
-              skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+              skipMultilineEncoding: decryptedSecret.skipMultilineEncoding,
+              secretKey: decryptedSecret.secretKey
             });
             // eslint-disable-next-line no-param-reassign
             processedImport.secrets[index].secretValue = expandedSecretValue || "";
