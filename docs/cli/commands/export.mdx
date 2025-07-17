@@ -9,7 +9,7 @@ infisical export [options]
 
 ## Description
 
-Export environment variables from the platform into a file format.
+Export environment variables from the platform into a file format. By default, output is sent to stdout (standard output), but you can use the `--output-file` flag to save directly to a file.
 
 ## Subcommands & flags
 
@@ -21,18 +21,19 @@ $ infisical export
 
 # Export variables to a .env file
 infisical export > .env
+infisical export --output-file=./.env
 
 # Export variables to a .env file (with export keyword)
 infisical export --format=dotenv-export > .env
-
-# Export variables to a CSV file
-infisical export --format=csv > secrets.csv
+infisical export --format=dotenv-export --output-file=./.env
 
 # Export variables to a JSON file
 infisical export --format=json > secrets.json
+infisical export --format=json --output-file=./secrets.json
 
 # Export variables to a YAML file
 infisical export --format=yaml > secrets.yaml
+infisical export --format=yaml --output-file=./secrets.yaml
 
 # Render secrets using a custom template file
 infisical export --template=<path to template>
@@ -73,6 +74,34 @@ infisical export --template=<path to template>
 
 ### flags
 
+  <Accordion title="--output-file">
+    The path to write the output file to. Can be a full file path, directory, or filename.
+
+    ```bash
+    # Export to specific file
+    infisical export --format=json --output-file=./secrets.json
+
+    # Export to directory (uses default filename based on format)
+    infisical export --format=yaml --output-file=./
+    ```
+
+    **When `--output-file` is specified:**
+    - Secrets are saved directly to the specified file
+    - A success message is displayed showing the file path
+    - For directories: adds default filename `secrets.{format}` (e.g., `secrets.json`, `secrets.yaml`)
+    - For dotenv formats in directories: uses `.env` as the filename
+
+    **When `--output-file` is NOT specified (default behavior):**
+    - Output is sent to stdout (standard output)
+    - You can use shell redirection like `infisical export > secrets.json`
+    - Maintains backwards compatibility with existing scripts
+
+    <Warning>
+      If you're using shell redirection and your token expires, re-authentication will fail because the prompt can't display properly due to the redirection.
+    </Warning>
+
+  </Accordion>
+
   <Accordion title="--template">
     The `--template` flag specifies the path to the template file used for rendering secrets. When using templates, you can omit the other format flags.
 
@@ -94,6 +123,7 @@ infisical export --template=<path to template>
     ```
 
   </Accordion>
+  
   <Accordion title="--env">
     Used to set the environment that secrets are pulled from.
 
@@ -162,7 +192,7 @@ infisical export --template=<path to template>
 
     ```bash
     # Example
-    infisical run --tags=tag1,tag2,tag3 -- npm run dev
+    infisical export --tags=tag1,tag2,tag3 --env=dev
     ```
 
     Note: you must reference the tag by its slug name not its fully qualified name. Go to project settings to view all tag slugs.
