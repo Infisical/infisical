@@ -160,7 +160,7 @@ export enum TableName {
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
-  SecretReminderRecipients = "secret_reminder_recipients",
+  SecretReminderRecipients = "secret_reminder_recipients", // TODO(Carlos): Remove this in the future after migrating to the new reminder recipients table
   GithubOrgSyncConfig = "github_org_sync_configs",
   FolderCommit = "folder_commits",
   FolderCommitChanges = "folder_commit_changes",
