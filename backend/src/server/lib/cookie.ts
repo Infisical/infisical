@@ -11,18 +11,18 @@ export function addAuthOriginDomainCookie(res: FastifyReply) {
     if (!appCfg.isCloud) return;
 
     const siteUrl = appCfg.SITE_URL!;
-    let domain: string | undefined;
+    let domain: string;
 
-    if (!siteUrl.includes("localhost")) {
-      const { hostname } = new URL(siteUrl);
-      const parts = hostname.split(".");
-      if (parts.length >= 2) {
-        // For `app.infisical.com` => `.infisical.com`
-        domain = `.${parts.slice(-2).join(".")}`;
-      } else {
-        // If somehow only "example", fallback to itself
-        domain = `.${hostname}`;
-      }
+    const { hostname } = new URL(siteUrl);
+
+    const parts = hostname.split(".");
+
+    if (parts.length >= 2) {
+      // For `app.infisical.com` => `.infisical.com`
+      domain = `.${parts.slice(-2).join(".")}`;
+    } else {
+      // If somehow only "example", fallback to itself
+      domain = `.${hostname}`;
     }
 
     void res.setCookie("aod", siteUrl, {
