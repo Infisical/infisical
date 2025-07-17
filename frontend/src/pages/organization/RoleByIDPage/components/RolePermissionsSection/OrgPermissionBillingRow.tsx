@@ -134,10 +134,7 @@ export const OrgPermissionBillingRow = ({ isEditable, control, setValue }: Props
       </Tr>
       {isRowExpanded && (
         <Tr>
-          <Td
-            colSpan={3}
-            className={`bg-mineshaft-900 px-0 py-0 ${isRowExpanded && "border-mineshaft-500 p-8"}`}
-          >
+          <Td colSpan={3} className="border-mineshaft-500 bg-mineshaft-900 p-8">
             <div className="flex flex-grow flex-wrap justify-start gap-x-8 gap-y-4">
               {PERMISSION_ACTIONS.map(({ action, label }) => {
                 return (
