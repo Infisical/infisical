@@ -7,9 +7,12 @@ import { useToggle } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { AuditLog } from "@app/hooks/api/auditLogs/types";
 
+import { Timezone } from "./types";
+
 type Props = {
   auditLog: AuditLog;
   rowNumber: number;
+  timezone: Timezone;
 };
 
 type TagProps = {
@@ -27,7 +30,17 @@ const Tag = ({ label, value }: TagProps) => {
   );
 };
 
-export const LogsTableRow = ({ auditLog, rowNumber }: Props) => {
+const formatDateTime = (timestamp: string | Date, timezone: Timezone) => {
+  const date = new Date(timestamp);
+
+  if (timezone === Timezone.UTC) {
+    const utcDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+    return `${format(utcDate, "MMM do yyyy, hh:mm a")} UTC`;
+  }
+  return format(date, "MMM do yyyy, hh:mm a");
+};
+
+export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
   const [isOpen, setIsOpen] = useToggle();
 
   return (
@@ -46,9 +59,7 @@ export const LogsTableRow = ({ auditLog, rowNumber }: Props) => {
           <FontAwesomeIcon icon={isOpen ? faCaretDown : faCaretRight} />
           {rowNumber}
         </Td>
-        <Td className="align-top">
-          {format(new Date(auditLog.createdAt), "MMM do yyyy, hh:mm a")}
-        </Td>
+        <Td className="align-top">{formatDateTime(auditLog.createdAt, timezone)}</Td>
         <Td>
           <div className="flex flex-wrap gap-4 text-sm">
             <Tag label="event" value={auditLog.event.type} />

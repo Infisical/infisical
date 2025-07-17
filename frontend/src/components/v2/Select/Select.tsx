@@ -19,6 +19,7 @@ type Props = {
   icon?: IconProp;
   isMulti?: boolean;
   iconClassName?: string;
+  dropdownContainerStyle?: React.CSSProperties;
 };
 
 export type SelectProps = Omit<SelectPrimitive.SelectProps, "disabled"> & Props;
@@ -35,6 +36,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       position,
       containerClassName,
       iconClassName,
+      dropdownContainerStyle,
       ...props
     },
     ref
@@ -82,7 +84,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                 dropdownContainerClassName
               )}
               position={position}
-              style={{ width: "var(--radix-select-trigger-width)" }}
+              style={dropdownContainerStyle ?? { width: "var(--radix-select-trigger-width)" }}
             >
               <SelectPrimitive.ScrollUpButton>
                 <div className="flex items-center justify-center">
