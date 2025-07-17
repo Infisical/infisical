@@ -7,6 +7,9 @@ export function addAuthOriginDomainCookie(res: FastifyReply) {
   try {
     const appCfg = getConfig();
 
+    // Only set the cookie if the app is running in cloud mode
+    if (!appCfg.isCloud) return;
+
     const siteUrl = appCfg.SITE_URL!;
     let domain: string | undefined;
 
