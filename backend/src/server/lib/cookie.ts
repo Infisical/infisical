@@ -11,8 +11,15 @@ export function addAuthOriginDomainCookie(res: FastifyReply) {
     let domain: string | undefined;
 
     if (!siteUrl.includes("localhost")) {
-      const url = new URL(siteUrl);
-      domain = `.${url.host}`;
+      const { hostname } = new URL(siteUrl);
+      const parts = hostname.split(".");
+      if (parts.length >= 2) {
+        // For `app.infisical.com` => `.infisical.com`
+        domain = `.${parts.slice(-2).join(".")}`;
+      } else {
+        // If somehow only "example", fallback to itself
+        domain = `.${hostname}`;
+      }
     }
 
     void res.setCookie("aod", siteUrl, {
