@@ -3,6 +3,7 @@ import { z } from "zod";
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 
 export const registerLoginRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -93,6 +94,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         secure: cfg.HTTPS_ENABLED
       });
 
+      addAuthOriginDomainCookie(res);
+
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
         path: "/",
@@ -154,6 +157,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
+
+      addAuthOriginDomainCookie(res);
 
       void res.cookie("infisical-project-assume-privileges", "", {
         httpOnly: true,
