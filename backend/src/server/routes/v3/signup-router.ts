@@ -4,6 +4,7 @@ import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -170,6 +171,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         secure: appCfg.HTTPS_ENABLED
       });
 
+      addAuthOriginDomainCookie(res);
+
       return { message: "Successfully set up account", user, token: accessToken, organizationId };
     }
   });
@@ -238,6 +241,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         secure: appCfg.HTTPS_ENABLED
       });
       // TODO(akhilmhdh-pg): add telemetry service
+
+      addAuthOriginDomainCookie(res);
 
       return { message: "Successfully set up account", user, token: accessToken };
     }

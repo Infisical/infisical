@@ -22,6 +22,7 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -474,6 +475,8 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
+
+      addAuthOriginDomainCookie(res);
 
       return {
         encryptionVersion: data.user.encryptionVersion,

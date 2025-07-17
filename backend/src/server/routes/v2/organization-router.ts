@@ -10,6 +10,7 @@ import {
 import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -395,6 +396,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: cfg.HTTPS_ENABLED
       });
+
+      addAuthOriginDomainCookie(res);
 
       return { organization, accessToken: tokens.accessToken };
     }

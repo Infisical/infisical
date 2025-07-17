@@ -12,6 +12,7 @@ import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -592,6 +593,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
+
+      addAuthOriginDomainCookie(res);
 
       return {
         message: "Successfully set up admin account",
