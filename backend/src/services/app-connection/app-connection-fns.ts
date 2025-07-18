@@ -118,6 +118,7 @@ import {
   WindmillConnectionMethod
 } from "./windmill";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
+import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
 
 export const listAppConnectionOptions = () => {
   return [
@@ -154,7 +155,8 @@ export const listAppConnectionOptions = () => {
     getRailwayConnectionListItem(),
     getBitbucketConnectionListItem(),
     getChecklyConnectionListItem(),
-    getSupabaseConnectionListItem()
+    getSupabaseConnectionListItem(),
+    getOktaConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -239,7 +241,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection);
@@ -278,6 +281,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CloudflareConnectionMethod.APIToken:
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
+    case OktaConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -365,7 +369,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,
   [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
   [AppConnection.Checkly]: platformManagedCredentialsNotSupported,
-  [AppConnection.Supabase]: platformManagedCredentialsNotSupported
+  [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
+  [AppConnection.Okta]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

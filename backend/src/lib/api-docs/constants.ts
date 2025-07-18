@@ -2289,6 +2289,10 @@ export const AppConnections = {
     SUPABASE: {
       accessKey: "The Key used to access Supabase.",
       instanceUrl: "The URL used to access Supabase."
+    },
+    OKTA: {
+      instanceUrl: "The URL used to access your Okta organization.",
+      apiToken: "The API token used to authenticate with Okta."
     }
   }
 };

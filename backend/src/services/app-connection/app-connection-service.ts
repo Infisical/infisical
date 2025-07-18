@@ -47,6 +47,8 @@ import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-servic
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
 import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
+import { ValidateOktaConnectionCredentialsSchema } from "./okta";
+import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
@@ -134,7 +136,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
   [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
   [AppConnection.Checkly]: ValidateChecklyConnectionCredentialsSchema,
-  [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema
+  [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
+  [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -549,6 +552,7 @@ export const appConnectionServiceFactory = ({
     railway: railwayConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
-    supabase: supabaseConnectionService(connectAppConnectionById)
+    supabase: supabaseConnectionService(connectAppConnectionById),
+    okta: oktaConnectionService(connectAppConnectionById)
   };
 };

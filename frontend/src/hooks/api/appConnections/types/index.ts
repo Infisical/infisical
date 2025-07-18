@@ -24,6 +24,7 @@ import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
 import { TOCIConnection } from "./oci-connection";
+import { TOktaConnection } from "./okta-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
@@ -44,6 +45,7 @@ export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
+export * from "./checkly-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./flyio-connection";
@@ -58,9 +60,12 @@ export * from "./ldap-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
 export * from "./oci-connection";
+export * from "./okta-connection";
 export * from "./oracledb-connection";
 export * from "./postgres-connection";
+export * from "./railway-connection";
 export * from "./render-connection";
+export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
@@ -101,7 +106,8 @@ export type TAppConnection =
   | TZabbixConnection
   | TRailwayConnection
   | TChecklyConnection
-  | TSupabaseConnection;
+  | TSupabaseConnection
+  | TOktaConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -163,4 +169,5 @@ export type TAppConnectionMap = {
   [AppConnection.Railway]: TRailwayConnection;
   [AppConnection.Checkly]: TChecklyConnection;
   [AppConnection.Supabase]: TSupabaseConnection;
+  [AppConnection.Okta]: TOktaConnection;
 };
