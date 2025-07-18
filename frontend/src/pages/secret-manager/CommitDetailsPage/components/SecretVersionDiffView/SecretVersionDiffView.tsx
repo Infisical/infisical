@@ -2,6 +2,7 @@
 import { useCallback, useRef, useState } from "react";
 import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 export interface Version {
   id?: string;
@@ -452,7 +453,7 @@ const formatDeletedJson = (json: JsonValue): JSX.Element => {
       {lines.map((line, lineIndex) => {
         const lineKey = `deleted-${line.slice(0, 30)}-${lineIndex}`;
         return (
-          <div key={lineKey} className="flex">
+          <div key={lineKey} className="flex w-fit">
             <div className="w-4 flex-shrink-0">-</div>
             <div>{line}</div>
           </div>
@@ -516,7 +517,7 @@ export const SecretVersionDiffView = ({
     }
 
     oldVersionContent = (
-      <div className="font-mono text-sm">
+      <div className="w-fit font-mono text-sm">
         {renderJsonWithDiffs(
           cleanOldVersion,
           diffPaths,
@@ -532,7 +533,7 @@ export const SecretVersionDiffView = ({
       </div>
     );
     newVersionContent = (
-      <div className="font-mono text-sm">
+      <div className="w-fit font-mono text-sm">
         {renderJsonWithDiffs(
           cleanNewVersion,
           diffPaths,
@@ -572,19 +573,19 @@ export const SecretVersionDiffView = ({
     if (item.isDeleted) {
       textStyle = "line-through text-red-300";
       changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
           {isSecret ? "Secret" : "Folder"} Deleted
         </span>
       );
     } else if (item.isAdded) {
       changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
           {isSecret ? "Secret" : "Folder"} Added
         </span>
       );
     } else if (item.isUpdated) {
       changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
           {isSecret ? "Secret" : "Folder"} Updated
         </span>
       );
@@ -604,11 +605,14 @@ export const SecretVersionDiffView = ({
         tabIndex={0}
         aria-expanded={!collapsed}
       >
-        <div className="flex items-center">
-          <span className={textStyle}>{key}</span>
+        <div className="flex min-w-0 flex-1 items-center">
+          <p className={twMerge(textStyle, "truncate")}>{key}</p>
           {changeBadge}
         </div>
-        <FontAwesomeIcon icon={collapsed ? faChevronDown : faChevronUp} className="text-gray-400" />
+        <FontAwesomeIcon
+          icon={collapsed ? faChevronDown : faChevronUp}
+          className="ml-2 text-gray-400"
+        />
       </div>
     );
   };
