@@ -332,8 +332,8 @@ export const CommitDetailsTab = ({
         <div className="mx-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
           <h3 className="text-lg font-semibold text-mineshaft-100">Commit Changes</h3>
         </div>
-        <div className="flex flex-col overflow-hidden pl-4 pr-1">
-          <div className="thin-scrollbar overflow-y-scroll py-4">
+        <div className="flex flex-col overflow-hidden px-4">
+          <div className="thin-scrollbar overflow-y-auto py-4">
             {sortedChangedItems.length > 0 ? (
               sortedChangedItems.map((item) => renderMergedItem(item))
             ) : (
