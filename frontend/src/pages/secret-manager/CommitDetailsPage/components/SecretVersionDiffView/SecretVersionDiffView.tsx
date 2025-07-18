@@ -517,7 +517,7 @@ export const SecretVersionDiffView = ({
     }
 
     oldVersionContent = (
-      <div className="w-fit font-mono text-sm">
+      <div className="w-fit min-w-[100%] font-mono text-sm">
         {renderJsonWithDiffs(
           cleanOldVersion,
           diffPaths,
@@ -533,7 +533,7 @@ export const SecretVersionDiffView = ({
       </div>
     );
     newVersionContent = (
-      <div className="w-fit font-mono text-sm">
+      <div className="w-fit min-w-[100%] font-mono text-sm">
         {renderJsonWithDiffs(
           cleanNewVersion,
           diffPaths,
