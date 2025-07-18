@@ -346,7 +346,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         if (change.resourceType === "secret") {
           const existingSecret =
             state.existingSecretKeys.has(change.secretKey) ||
-            newChanges.secrets.some((s) => s.secretKey === change.secretKey);
+            newChanges.secrets.some((s) => (s.secretKey === change.secretKey && s.type !== PendingAction.Create) || (change.type === PendingAction.Create && change.originalKey !== change.secretKey && s.secretKey === change.secretKey));
 
           if (change.type === PendingAction.Create && existingSecret) {
             return { pendingChanges: newChanges };

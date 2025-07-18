@@ -200,21 +200,9 @@ export const SecretItem = memo(
 
         isAutoSavingRef.current = true;
         try {
-          const hasDirectReferences = importedBy?.some(({ folders }) =>
-            folders?.some(({ secrets }) =>
-              secrets?.some(({ referencedSecretKey }) => referencedSecretKey === secret.key)
-            )
-          );
-
-          if (hasDirectReferences) {
-            await onSaveSecret(secret, { ...secret, ...data }, () => {
-              reset();
-            });
-          } else {
-            await onSaveSecret(secret, { ...secret, ...data }, () => {
-              reset();
-            });
-          }
+          await onSaveSecret(secret, { ...secret, ...data }, () => {
+            reset();
+          });
         } catch (error) {
           console.error("Auto-save failed:", error);
         } finally {
@@ -268,7 +256,7 @@ export const SecretItem = memo(
       );
 
     const isReadOnlySecret =
-      isReadOnly || isRotatedSecret || (isPending && pendingAction !== PendingAction.Update);
+      isReadOnly || isRotatedSecret || (isPending && pendingAction === PendingAction.Delete);
 
     const { secretValueHidden } = secret;
 
@@ -355,7 +343,6 @@ export const SecretItem = memo(
             isDirty && "border-primary-400/50",
             isRotatedSecret && "bg-mineshaft-700/60",
             isPending && "bg-mineshaft-700/60",
-            isInAutoSaveMode && "border-primary-400/75 bg-primary-900/20",
             pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
             pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
             pendingAction === PendingAction.Create && "border-l-2 border-l-green-600/75"
@@ -421,14 +408,6 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
-              {isInAutoSaveMode && (
-                <Tooltip content="Auto-saving changes">
-                  <div className="mr-2 flex items-center">
-                    <Spinner className="h-3 w-3 text-primary" />
-                  </div>
-                </Tooltip>
-              )}
-
               {secretValueHidden && !isOverriden && (
                 <Tooltip
                   content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
@@ -716,6 +695,94 @@ export const SecretItem = memo(
                   </Popover>
                 </div>
               )}
+              {pendingAction === PendingAction.Create && (
+                <div
+                  key="actions"
+                  className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
+                >
+                  <DropdownMenu>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Edit}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                          <IconButton
+                            ariaLabel="tags"
+                            variant="plain"
+                            size="sm"
+                            className={twMerge(
+                              "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
+                              hasTagsApplied && "w-5 text-primary"
+                            )}
+                            isDisabled={!isAllowed}
+                          >
+                            <Tooltip content="Tags">
+                              <FontAwesomeSymbol
+                                className="h-3.5 w-3.5"
+                                symbolName={FontAwesomeSpriteName.Tags}
+                              />
+                            </Tooltip>
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                      )}
+                    </ProjectPermissionCan>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
+                      {tags.map((tag) => {
+                        const { id: tagId, slug, color } = tag;
+
+                        const isTagSelected = selectedTagsGroupById?.[tagId];
+                        return (
+                          <DropdownMenuItem
+                            onClick={() => handleTagSelect(tag)}
+                            key={`${secret.id}-${tagId}`}
+                            icon={
+                              isTagSelected && (
+                                <FontAwesomeSymbol
+                                  symbolName={FontAwesomeSpriteName.CheckedCircle}
+                                  className="h-3 w-3"
+                                />
+                              )
+                            }
+                            iconPos="right"
+                          >
+                            <div className="flex items-center">
+                              <div
+                                className="mr-2 h-2 w-2 rounded-full"
+                                style={{ background: color || "#bec2c8" }}
+                              />
+                              {slug}
+                            </div>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                      <DropdownMenuItem className="px-1.5" asChild>
+                        <Button
+                          size="xs"
+                          className="w-full"
+                          colorSchema="primary"
+                          variant="outline_bg"
+                          leftIcon={
+                            <FontAwesomeSymbol
+                              symbolName={FontAwesomeSpriteName.Tags}
+                              className="h-3 w-3"
+                            />
+                          }
+                          onClick={onCreateTag}
+                        >
+                          Create a tag
+                        </Button>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
             <AnimatePresence mode="wait">
               {isInAutoSaveMode ? (
@@ -726,11 +793,7 @@ export const SecretItem = memo(
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -10, opacity: 0 }}
                 >
-                  <Tooltip content="Auto-saving changes...">
-                    <div className="flex items-center text-primary">
-                      <Spinner className="h-4 w-4" />
-                    </div>
-                  </Tooltip>
+                  <div className="h-12 w-12" />
                 </motion.div>
               ) : !isDirty ? (
                 isPending ? (
@@ -757,19 +820,21 @@ export const SecretItem = memo(
                       </IconButton>
                     </Tooltip>
 
-                    <IconButton
-                      ariaLabel="delete-value"
-                      variant="plain"
-                      colorSchema="danger"
-                      size="md"
-                      className="p-0 opacity-0 group-hover:opacity-100"
-                      onClick={() => handleDeletePending(secret)}
-                    >
-                      <FontAwesomeSymbol
-                        symbolName={FontAwesomeSpriteName.Close}
-                        className="h-5 w-4"
-                      />
-                    </IconButton>
+                    <Tooltip content="Discard">
+                      <IconButton
+                        ariaLabel="delete-value"
+                        variant="plain"
+                        colorSchema="danger"
+                        size="md"
+                        className="p-0 opacity-0 group-hover:opacity-100"
+                        onClick={() => handleDeletePending(secret)}
+                      >
+                        <FontAwesomeSymbol
+                          symbolName={FontAwesomeSpriteName.Close}
+                          className="h-5 w-4"
+                        />
+                      </IconButton>
+                    </Tooltip>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -815,7 +880,7 @@ export const SecretItem = memo(
                           isDisabled={!isAllowed || isRotatedSecret}
                         >
                           <FontAwesomeSymbol
-                            symbolName={FontAwesomeSpriteName.Close}
+                            symbolName={FontAwesomeSpriteName.Trash}
                             className="h-5 w-4"
                           />
                         </IconButton>

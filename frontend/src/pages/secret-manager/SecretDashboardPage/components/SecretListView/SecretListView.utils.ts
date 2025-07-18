@@ -13,7 +13,8 @@ import {
   faLock,
   faProjectDiagram,
   faShare,
-  faTags
+  faTags,
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { z } from "zod";
 
@@ -82,7 +83,8 @@ export enum FontAwesomeSpriteName {
   ReplicatedSecretKey = "secret-replicated",
   ShareSecret = "share-secret",
   KeyLock = "key-lock",
-  SecretReferenceTree = "secret-reference-tree"
+  SecretReferenceTree = "secret-reference-tree",
+  Trash = "trash"
 }
 
 // this is an optimization technique
@@ -101,5 +103,6 @@ export const FontAwesomeSpriteSymbols = [
   { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey },
   { icon: faShare, symbol: FontAwesomeSpriteName.ShareSecret },
   { icon: faLock, symbol: FontAwesomeSpriteName.KeyLock },
-  { icon: faProjectDiagram, symbol: FontAwesomeSpriteName.SecretReferenceTree }
+  { icon: faProjectDiagram, symbol: FontAwesomeSpriteName.SecretReferenceTree },
+  { icon: faTrash, symbol: FontAwesomeSpriteName.Trash }
 ];

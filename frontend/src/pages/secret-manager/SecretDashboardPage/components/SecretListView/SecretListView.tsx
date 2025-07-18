@@ -87,8 +87,15 @@ export const SecretListView = ({
   const { toggle: toggleSelectedSecret } = useSelectedSecretActions();
   const { isBatchMode, pendingChanges } = useBatchMode();
   useNavigationBlocker(
-    pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0,
-    "You have unsaved work. Are you sure you want to leave?"
+    {
+      shouldBlock: pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0,
+      message: "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
+      context: {
+        workspaceId,
+        environment,
+        secretPath
+      }
+    }
   );
   const { addPendingChange } = useBatchModeActions();
 
@@ -316,7 +323,7 @@ export const SecretListView = ({
                 secretValue: value || "",
                 secretComment: comment || "",
                 skipMultilineEncoding: modSecret.skipMultilineEncoding || false,
-                tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || "" })) || [],
+                tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || [],
                 secretMetadata: secretMetadata || [],
                 timestamp: Date.now(),
                 resourceType: "secret",
