@@ -114,7 +114,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                   ? `Credentials have not been configured. ${
                       isInfisicalCloud()
                         ? "Please contact Infisical."
-                        : `See Docs to configure Github ${methodDetails.name} Connections.`
+                        : `See Docs to configure ${methodDetails.name} Connections.`
                     }`
                   : error?.message
               }
