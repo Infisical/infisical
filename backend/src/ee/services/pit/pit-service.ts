@@ -558,7 +558,7 @@ export const pitServiceFactory = ({
       }
     }
 
-    return await folderCommitDAL.transaction(async (trx) => {
+    const response = await folderCommitDAL.transaction(async (trx) => {
       const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
       if (!targetFolder)
         throw new NotFoundError({
@@ -566,7 +566,7 @@ export const pitServiceFactory = ({
           name: "CreateManySecret"
         });
       const commitChanges: TCommitResourceChangeDTO[] = [];
-      const folderChanges: { create: string[], update: string[], delete: string[] } = {
+      const folderChanges: { create: string[]; update: string[]; delete: string[] } = {
         create: [],
         update: [],
         delete: []
@@ -610,7 +610,7 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
-        folderChanges.update.push(...updatedFolders.newFolders.map((folder) => folder.id))
+        folderChanges.update.push(...updatedFolders.newFolders.map((folder) => folder.id));
       }
 
       if ((changes.folders?.delete?.length ?? 0) > 0) {
@@ -629,7 +629,7 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
-        folderChanges.delete.push(...deletedFolders.folders.map((folder) => folder.id))
+        folderChanges.delete.push(...deletedFolders.folders.map((folder) => folder.id));
       }
 
       if (policy) {
@@ -752,6 +752,8 @@ export const pitServiceFactory = ({
         folderChanges
       };
     });
+
+    return response;
   };
 
   return {
