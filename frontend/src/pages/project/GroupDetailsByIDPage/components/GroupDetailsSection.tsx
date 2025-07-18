@@ -19,6 +19,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { GroupRoles } from "@app/pages/project/AccessControlPage/components/GroupsTab/components/GroupsSection/GroupRoles";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   groupMembership: TGroupMembership;
@@ -46,7 +47,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
       });
 
       navigate({
-        to: "/projects/$projectId/access-management",
+        to: `${getProjectBaseURL(currentWorkspace.type)}/access-management`,
         params: {
           projectId: currentWorkspace.id
         },

@@ -39,7 +39,7 @@ export const AzureDevopsAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/azure-devops/create",
+        to: "/projects/secret-management/$projectId/integrations/azure-devops/create",
         params: {
           projectId: currentWorkspace.id
         },

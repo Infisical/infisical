@@ -44,7 +44,7 @@ export const FlyioAuthorizePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/flyio/create",
+        to: "/projects/secret-management/$projectId/integrations/flyio/create",
         params: {
           projectId: currentWorkspace.id
         },

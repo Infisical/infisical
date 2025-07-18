@@ -14,6 +14,7 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 const schema = z
   .object({
@@ -100,7 +101,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         navigate({
-          to: "/projects/$projectId/roles/$roleSlug",
+          to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug` as const,
           params: {
             roleSlug: newRole.slug,
             projectId

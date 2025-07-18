@@ -52,6 +52,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 enum RolesOrderBy {
   Name = "name",
@@ -249,7 +250,7 @@ export const ProjectRoleList = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
-                      to: "/projects/$projectId/roles/$roleSlug",
+                      to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug`,
                       params: {
                         projectId: currentWorkspace.id,
                         roleSlug: slug
@@ -291,7 +292,7 @@ export const ProjectRoleList = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: "/projects/$projectId/roles/$roleSlug",
+                                    to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug`,
                                     params: {
                                       projectId: currentWorkspace.id,
                                       roleSlug: slug

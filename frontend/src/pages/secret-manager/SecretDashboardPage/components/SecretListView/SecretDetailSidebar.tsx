@@ -64,6 +64,7 @@ import { camelCaseToSpaces } from "@app/lib/fn/string";
 import { CreateReminderForm } from "./CreateReminderForm";
 import { HIDDEN_SECRET_VALUE } from "./SecretItem";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   isOpen?: boolean;
@@ -990,7 +991,9 @@ export const SecretDetailSidebar = ({
                                 className="z-[100] capitalize"
                               >
                                 <Link
-                                  to="/projects/$projectId/members/$membershipId"
+                                  to={
+                                    `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId` as const
+                                  }
                                   params={{
                                     projectId: currentWorkspace.id,
                                     membershipId: user.membershipId
@@ -1021,7 +1024,9 @@ export const SecretDetailSidebar = ({
                                 className="z-[100]"
                               >
                                 <Link
-                                  to="/projects/$projectId/identities/$identityId"
+                                  to={
+                                    `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const
+                                  }
                                   params={{
                                     projectId: currentWorkspace.id,
                                     identityId: identity.id

@@ -1,7 +1,9 @@
+import { faCog, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Menu, MenuItem } from "@app/components/v2";
+import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 
 export const SecretScanningLayout = () => {
@@ -24,30 +26,60 @@ export const SecretScanningLayout = () => {
             </div>
             <div className="flex-1">
               <Menu>
-                <Link
-                  to="/projects/$projectId/secret-scanning/data-sources"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}> Data Sources</MenuItem>}
-                </Link>
-                <Link
-                  to="/projects/$projectId/secret-scanning/findings"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>Findings</MenuItem>}
-                </Link>
-                <Link
-                  to="/projects/$projectId/secret-scanning/settings"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>Settings</MenuItem>}
-                </Link>
+                <MenuGroup title="Resources">
+                  <Link
+                    to="/projects/secret-scanning/$projectId/data-sources"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => <MenuItem isSelected={isActive}> Data Sources</MenuItem>}
+                  </Link>
+                  <Link
+                    to="/projects/secret-scanning/$projectId/findings"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => <MenuItem isSelected={isActive}>Findings</MenuItem>}
+                  </Link>
+                </MenuGroup>
+                <MenuGroup title="Others">
+                  <Link
+                    to="/projects/secret-scanning/$projectId/access-management"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faUsers} />
+                          </div>
+                          Access Management
+                        </div>
+                      </MenuItem>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/secret-management/$projectId/settings"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faCog} />
+                          </div>
+                          Settings
+                        </div>
+                      </MenuItem>
+                    )}
+                  </Link>
+                </MenuGroup>
               </Menu>
             </div>
           </nav>

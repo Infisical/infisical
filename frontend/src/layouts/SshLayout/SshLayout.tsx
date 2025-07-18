@@ -2,8 +2,10 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Menu, MenuItem } from "@app/components/v2";
+import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCog, faUsers } from "@fortawesome/free-solid-svg-icons";
 
 export const SshLayout = () => {
   const { currentWorkspace } = useWorkspace();
@@ -23,41 +25,72 @@ export const SshLayout = () => {
             <div className="border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">SSH</div>
             <div className="flex-1">
               <Menu>
-                <Link
-                  to="/projects/$projectId/ssh/overview"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>Hosts</MenuItem>}
-                </Link>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Read}
-                  a={ProjectPermissionSub.SshCertificateAuthorities}
-                >
-                  {(isAllowed) =>
-                    isAllowed && (
-                      <Link
-                        to="/projects/$projectId/ssh/cas"
-                        params={{
-                          projectId: currentWorkspace.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem isSelected={isActive}>Certificate Authorities</MenuItem>
-                        )}
-                      </Link>
-                    )
-                  }
-                </ProjectPermissionCan>
-                <Link
-                  to="/projects/$projectId/ssh/settings"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>Settings</MenuItem>}
-                </Link>
+                <MenuGroup title="Resources">
+                  <Link
+                    to="/projects/ssh/$projectId/overview"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => <MenuItem isSelected={isActive}>Hosts</MenuItem>}
+                  </Link>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Read}
+                    a={ProjectPermissionSub.SshCertificateAuthorities}
+                  >
+                    {(isAllowed) =>
+                      isAllowed && (
+                        <Link
+                          to="/projects/ssh/$projectId/cas"
+                          params={{
+                            projectId: currentWorkspace.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive}>Certificate Authorities</MenuItem>
+                          )}
+                        </Link>
+                      )
+                    }
+                  </ProjectPermissionCan>
+                </MenuGroup>
+
+                <MenuGroup title="Others">
+                  <Link
+                    to="/projects/ssh/$projectId/access-management"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faUsers} />
+                          </div>
+                          Access Management
+                        </div>
+                      </MenuItem>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/ssh/$projectId/settings"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faCog} />
+                          </div>
+                          Settings
+                        </div>
+                      </MenuItem>
+                    )}
+                  </Link>
+                </MenuGroup>
               </Menu>
             </div>
           </nav>

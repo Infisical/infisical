@@ -1,10 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { faMobile } from "@fortawesome/free-solid-svg-icons";
+import { faCog, faMobile, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Menu, MenuItem } from "@app/components/v2";
+import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 
 export const PkiManagerLayout = () => {
@@ -24,65 +24,94 @@ export const PkiManagerLayout = () => {
             className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
           >
             <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
-              <div className="border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
+              <div className="flex items-center gap-3 border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
+                <Lottie className="inline-block h-5 w-5 shrink-0" icon="note" />
                 PKI Manager
               </div>
               <div className="flex-1">
                 <Menu>
-                  <Link
-                    to="/projects/$projectId/cert-manager/subscribers"
-                    params={{
-                      projectId: currentWorkspace.id
-                    }}
-                  >
-                    {({ isActive }) => <MenuItem isSelected={isActive}>Subscribers</MenuItem>}
-                  </Link>
-                  <Link
-                    to="/projects/$projectId/cert-manager/certificate-templates"
-                    params={{
-                      projectId: currentWorkspace.id
-                    }}
-                  >
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}> Certificate Templates</MenuItem>
-                    )}
-                  </Link>
-                  <Link
-                    to="/projects/$projectId/cert-manager/certificates"
-                    params={{
-                      projectId: currentWorkspace.id
-                    }}
-                  >
-                    {({ isActive }) => <MenuItem isSelected={isActive}> Certificates</MenuItem>}
-                  </Link>
-                  <Link
-                    to="/projects/$projectId/cert-manager/certificate-authorities"
-                    params={{
-                      projectId: currentWorkspace.id
-                    }}
-                  >
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}> Certificates Authorities</MenuItem>
-                    )}
-                  </Link>
-                  <Link
-                    to="/projects/$projectId/cert-manager/alerting"
-                    params={{
-                      projectId: currentWorkspace.id
-                    }}
-                  >
-                    {({ isActive }) => <MenuItem isSelected={isActive}>Alerting</MenuItem>}
-                  </Link>
-                  {
-                    // <Link
-                    //   to="/projects/$projectId/cert-manager/settings"
-                    //   params={{
-                    //     projectId: currentWorkspace.id
-                    //   }}
-                    // >
-                    //   {({ isActive }) => <MenuItem isSelected={isActive}>Settings</MenuItem>}
-                    // </Link>
-                  }
+                  <MenuGroup title="Resources">
+                    <Link
+                      to="/projects/cert-management/$projectId/subscribers"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => <MenuItem isSelected={isActive}>Subscribers</MenuItem>}
+                    </Link>
+                    <Link
+                      to="/projects/cert-management/$projectId/certificate-templates"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}> Certificate Templates</MenuItem>
+                      )}
+                    </Link>
+                    <Link
+                      to="/projects/cert-management/$projectId/certificates"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => <MenuItem isSelected={isActive}> Certificates</MenuItem>}
+                    </Link>
+                    <Link
+                      to="/projects/cert-management/$projectId/certificate-authorities"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}> Certificates Authorities</MenuItem>
+                      )}
+                    </Link>
+                    <Link
+                      to="/projects/cert-management/$projectId/alerting"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => <MenuItem isSelected={isActive}>Alerting</MenuItem>}
+                    </Link>
+                  </MenuGroup>
+                  <MenuGroup title="Others">
+                    <Link
+                      to="/projects/cert-management/$projectId/access-management"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faUsers} />
+                            </div>
+                            Access Management
+                          </div>
+                        </MenuItem>
+                      )}
+                    </Link>
+                    <Link
+                      to="/projects/cert-management/$projectId/settings"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faCog} />
+                            </div>
+                            Settings
+                          </div>
+                        </MenuItem>
+                      )}
+                    </Link>
+                  </MenuGroup>
                 </Menu>
               </div>
             </nav>

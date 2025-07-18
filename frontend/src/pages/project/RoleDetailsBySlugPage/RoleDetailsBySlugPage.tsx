@@ -25,6 +25,7 @@ import { RolePermissionsSection } from "@app/pages/project/RoleDetailsBySlugPage
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { RoleModal } from "./components/RoleModal";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 const Page = () => {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ const Page = () => {
       });
       handlePopUpClose("deleteRole");
       navigate({
-        to: "/projects/$projectId/access-management",
+        to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
         params: {
           projectId
         },

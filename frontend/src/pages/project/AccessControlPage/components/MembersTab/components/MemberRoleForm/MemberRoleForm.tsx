@@ -5,6 +5,7 @@ import { useWorkspace } from "@app/context";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
 import { MemberRbacSection } from "./MemberRbacSection";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   projectMember: TWorkspaceUser;
@@ -21,7 +22,7 @@ export const MemberRoleForm = ({ projectMember, onOpenUpgradeModal }: Props) => 
       >
         <AlertDescription>
           <Link
-            to="/projects/$projectId/members/$membershipId"
+            to={`${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId` as const}
             params={{
               projectId: currentWorkspace.id,
               membershipId: projectMember.id

@@ -6,7 +6,6 @@ import { twMerge } from "tailwind-merge";
 
 import { useOrganization, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { createNotification } from "../notifications";
 import { IconButton, Select, SelectItem, Tooltip } from "../v2";
@@ -93,7 +92,7 @@ export default function NavHeader({
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
       {pageName === "Secrets" ? (
         <Link
-          to="/projects/$projectId/secret-manager/overview"
+          to="/projects/secret-management/$projectId/overview"
           params={{ projectId: currentWorkspace.id }}
           className="text-sm font-semibold text-primary/80 hover:text-primary"
         >
@@ -129,7 +128,7 @@ export default function NavHeader({
         <div className="flex items-center space-x-3">
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <Link
-            to={`/projects/$projectId/${ProjectType.SecretManager}/secrets/$envSlug` as const}
+            to="/projects/secret-management/$projectId/secrets/$envSlug"
             params={{ projectId: currentWorkspace.id, envSlug: routerEnvSlug }}
             className="text-sm font-semibold text-primary/80 hover:text-primary"
           >
@@ -191,7 +190,7 @@ export default function NavHeader({
                 </div>
               ) : (
                 <Link
-                  to={`/projects/$projectId/${ProjectType.SecretManager}/secrets/$envSlug` as const}
+                  to="/projects/secret-management/$projectId/secrets/$envSlug"
                   params={{
                     projectId: currentWorkspace.id,
                     envSlug: routerEnvSlug || ""

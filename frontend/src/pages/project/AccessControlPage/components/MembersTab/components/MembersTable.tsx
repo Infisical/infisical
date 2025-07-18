@@ -60,6 +60,7 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetProjectRoles, useGetWorkspaceUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -311,7 +312,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     onKeyDown={(evt) => {
                       if (evt.key === "Enter") {
                         navigate({
-                          to: "/projects/$projectId/members/$membershipId",
+                          to: `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId`,
                           params: {
                             projectId: workspaceId,
                             membershipId
@@ -321,7 +322,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     }}
                     onClick={() =>
                       navigate({
-                        to: "/projects/$projectId/members/$membershipId",
+                        to: `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId`,
                         params: {
                           projectId: workspaceId,
                           membershipId

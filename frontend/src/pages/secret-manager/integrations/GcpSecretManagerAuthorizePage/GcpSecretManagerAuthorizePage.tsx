@@ -70,7 +70,7 @@ export const GcpSecretManagerAuthorizePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/gcp-secret-manager/create",
+        to: "/projects/secret-management/$projectId/integrations/gcp-secret-manager/create",
         params: {
           projectId: currentWorkspace.id
         },

@@ -36,7 +36,7 @@ export const ChecklyAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/checkly/create",
+        to: "/projects/secret-management/$projectId/integrations/checkly/create",
         params: {
           projectId: currentWorkspace.id
         },

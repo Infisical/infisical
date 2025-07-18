@@ -10,6 +10,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { slugSchema } from "@app/lib/schemas";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   isOpen: boolean;
@@ -80,7 +81,7 @@ const Content = ({ role, onClose }: ContentProps) => {
     });
 
     navigate({
-      to: "/projects/$projectId/roles/$roleSlug",
+      to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug` as const,
       params: {
         roleSlug: newRole.slug,
         projectId: currentWorkspace.id

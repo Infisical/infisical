@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { createNotification } from "../notifications";
 import { IconButton, Tooltip } from "../v2";
@@ -70,7 +69,7 @@ export const SecretDashboardPathBreadcrumb = ({
         </div>
       ) : (
         <Link
-          to={`/projects/$projectId/${ProjectType.SecretManager}/secrets/$envSlug` as const}
+          to="/projects/secret-management/$projectId/secrets/$envSlug"
           params={{
             projectId,
             envSlug: environmentSlug

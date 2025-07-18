@@ -1,8 +1,10 @@
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Menu, MenuItem } from "@app/components/v2";
+import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCog, faUsers } from "@fortawesome/free-solid-svg-icons";
 
 export const KmsLayout = () => {
   const { currentWorkspace } = useWorkspace();
@@ -19,35 +21,66 @@ export const KmsLayout = () => {
           className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
         >
           <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
-            <div className="border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">KMS</div>
+            <div className="flex items-center gap-3 border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
+              <Lottie className="inline-block h-5 w-5 shrink-0" icon="unlock" />
+              KMS
+            </div>
             <div className="flex-1">
               <Menu>
-                <Link
-                  to="/projects/$projectId/kms/overview"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>Overview</MenuItem>}
-                </Link>
-                <Link
-                  to="/projects/$projectId/kms/kmip"
-                  params={{
-                    projectId: currentWorkspace.id
-                  }}
-                >
-                  {({ isActive }) => <MenuItem isSelected={isActive}>KMIP</MenuItem>}
-                </Link>
-                {
-                  // <Link
-                  //   to="/projects/$projectId/kms/settings"
-                  //   params={{
-                  //     projectId: currentWorkspace.id
-                  //   }}
-                  // >
-                  //   {({ isActive }) => <MenuItem isSelected={isActive}>Settings</MenuItem>}
-                  // </Link>
-                }
+                <MenuGroup title="Resources">
+                  <Link
+                    to="/projects/kms/$projectId/overview"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => <MenuItem isSelected={isActive}>Overview</MenuItem>}
+                  </Link>
+                  <Link
+                    to="/projects/kms/$projectId/kmip"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => <MenuItem isSelected={isActive}>KMIP</MenuItem>}
+                  </Link>
+                </MenuGroup>
+                <MenuGroup title="Others">
+                  <Link
+                    to="/projects/kms/$projectId/access-management"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faUsers} />
+                          </div>
+                          Access Management
+                        </div>
+                      </MenuItem>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/kms/$projectId/settings"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faCog} />
+                          </div>
+                          Settings
+                        </div>
+                      </MenuItem>
+                    )}
+                  </Link>
+                </MenuGroup>
               </Menu>
             </div>
           </nav>

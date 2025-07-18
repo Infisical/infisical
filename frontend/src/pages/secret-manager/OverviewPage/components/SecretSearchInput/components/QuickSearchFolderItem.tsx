@@ -13,7 +13,7 @@ type Props = {
 
 export const QuickSearchFolderItem = ({ folderGroup, onClose }: Props) => {
   const navigate = useNavigate({
-    from: "/projects/$projectId/secret-manager/overview"
+    from: "/projects/secret-management/$projectId/overview"
   });
 
   const [groupFolder] = folderGroup;

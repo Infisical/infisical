@@ -44,6 +44,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupRoles } from "./GroupRoles";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   handlePopUpOpen: (
@@ -158,7 +159,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       onKeyDown={(evt) => {
                         if (evt.key === "Enter") {
                           navigate({
-                            to: "/projects/$projectId/groups/$groupId",
+                            to: `${getProjectBaseURL(currentWorkspace.type)}/groups/$groupId` as const,
                             params: {
                               projectId: currentWorkspace.id,
                               groupId: id
@@ -168,7 +169,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       }}
                       onClick={() =>
                         navigate({
-                          to: "/projects/$projectId/groups/$groupId",
+                          to: `${getProjectBaseURL(currentWorkspace.type)}/groups/$groupId` as const,
                           params: {
                             projectId: currentWorkspace.id,
                             groupId: id

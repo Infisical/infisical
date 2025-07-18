@@ -4,6 +4,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import {
@@ -24,7 +25,7 @@ const Page = () => {
 
   const updateSelectedTab = (tab: string) => {
     navigate({
-      to: "/projects/$projectId/access-management",
+      to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
       search: (prev) => ({ ...prev, selectedTab: tab }),
       params: {
         projectId: currentWorkspace.id

@@ -60,6 +60,7 @@ import { ProjectIdentityOrderBy } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityModal } from "./components/IdentityModal";
+import { getProjectBaseURL } from "@app/helpers/project";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -260,7 +261,7 @@ export const IdentityTab = withProjectPermission(
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
                             navigate({
-                              to: "/projects/$projectId/identities/$identityId",
+                              to: `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const,
                               params: {
                                 projectId: currentWorkspace.id,
                                 identityId: id
@@ -270,7 +271,7 @@ export const IdentityTab = withProjectPermission(
                         }}
                         onClick={() =>
                           navigate({
-                            to: "/projects/$projectId/identities/$identityId",
+                            to: `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const,
                             params: {
                               projectId: currentWorkspace.id,
                               identityId: id

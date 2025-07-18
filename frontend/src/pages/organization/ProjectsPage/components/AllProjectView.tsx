@@ -222,7 +222,7 @@ export const AllProjectView = ({
               onKeyDown={(evt) => {
                 if (evt.key === "Enter" && workspace.isMember) {
                   navigate({
-                    to: getProjectHomePage(workspace.defaultProduct),
+                    to: getProjectHomePage(workspace.type),
                     params: {
                       projectId: workspace.id
                     }
@@ -232,7 +232,7 @@ export const AllProjectView = ({
               onClick={() => {
                 if (workspace.isMember) {
                   navigate({
-                    to: getProjectHomePage(workspace.defaultProduct),
+                    to: getProjectHomePage(workspace.type),
                     params: {
                       projectId: workspace.id
                     }
