@@ -30,14 +30,16 @@ export const GenericCreateAppConnectionFieldsSchema = (
       .describe(AppConnections.CREATE(app).description),
     isPlatformManagedCredentials: supportsPlatformManagedCredentials
       ? z.boolean().optional().default(false).describe(AppConnections.CREATE(app).isPlatformManagedCredentials)
-      : z.literal(false).optional().describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
-    gatewayId: supportsGateways
-      ? z
-          .preprocess((val) => (val === "" ? null : val), z.string().uuid().nullish())
-          .describe("The Gateway ID to use for this connection.")
       : z
-          .union([z.literal(undefined), z.literal("")])
-          .transform((v) => (v === "" ? undefined : v))
+          .literal(false, {
+            errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          })
+          .optional()
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+    gatewayId: supportsGateways
+      ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+      : z
+          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
   });
 
@@ -55,13 +57,15 @@ export const GenericUpdateAppConnectionFieldsSchema = (
       .describe(AppConnections.UPDATE(app).description),
     isPlatformManagedCredentials: supportsPlatformManagedCredentials
       ? z.boolean().optional().describe(AppConnections.UPDATE(app).isPlatformManagedCredentials)
-      : z.literal(false).optional().describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
-    gatewayId: supportsGateways
-      ? z
-          .preprocess((val) => (val === "" ? null : val), z.string().uuid().nullish())
-          .describe("The Gateway ID to use for this connection.")
       : z
-          .union([z.literal(undefined), z.literal("")])
-          .transform((v) => (v === "" ? undefined : v))
+          .literal(false, {
+            errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          })
+          .optional()
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+    gatewayId: supportsGateways
+      ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+      : z
+          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
   });
