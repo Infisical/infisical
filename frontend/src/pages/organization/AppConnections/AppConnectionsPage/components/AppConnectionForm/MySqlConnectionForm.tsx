@@ -55,8 +55,8 @@ export const MySqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
     defaultValues: appConnection ?? {
       app: AppConnection.MySql,
       method: MySqlConnectionMethod.UsernameAndPassword,
+      gatewayId: null,
       credentials: {
-        gatewayId: "",
         host: "",
         port: 3306,
         database: "default",
@@ -96,37 +96,6 @@ export const MySqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }}
       >
         {!isUpdate && <GenericAppConnectionsFields />}
-        <Controller
-          name="method"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.MySql].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(MySqlConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}{" "}
-                    </SelectItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
-          )}
-        />
         <OrgPermissionCan
           I={OrgGatewayPermissionActions.AttachGateways}
           a={OrgPermissionSubjects.Gateway}
@@ -134,7 +103,7 @@ export const MySqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
           {(isAllowed) => (
             <Controller
               control={control}
-              name="credentials.gatewayId"
+              name="gatewayId"
               defaultValue=""
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
@@ -176,6 +145,37 @@ export const MySqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
             />
           )}
         </OrgPermissionCan>
+        <Controller
+          name="method"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              tooltipText={`The method you would like to use to connect with ${
+                APP_CONNECTION_MAP[AppConnection.MySql].name
+              }. This field cannot be changed after creation.`}
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Method"
+            >
+              <Select
+                isDisabled={isUpdate}
+                value={value}
+                onValueChange={(val) => onChange(val)}
+                className="w-full border border-mineshaft-500"
+                position="popper"
+                dropdownContainerClassName="max-w-none"
+              >
+                {Object.values(MySqlConnectionMethod).map((method) => {
+                  return (
+                    <SelectItem value={method} key={method}>
+                      {getAppConnectionMethodDetails(method).name}{" "}
+                    </SelectItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          )}
+        />
         <SqlConnectionFields
           isPlatformManagedCredentials={isPlatformManagedCredentials}
           selectedTabIndex={selectedTabIndex}

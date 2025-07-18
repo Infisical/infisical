@@ -2199,7 +2199,6 @@ export const AppConnections = {
       audience: "The unique identifier of the target API you want to access."
     },
     SQL_CONNECTION: {
-      gatewayId: "The ID of the gateway to use when performing database requests.",
       host: "The hostname of the database server.",
       port: "The port number of the database.",
       database: "The name of the database to connect to.",

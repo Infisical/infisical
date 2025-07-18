@@ -105,11 +105,11 @@ export const executeWithPotentialGateway = async <T>(
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   operation: (client: Knex) => Promise<T>
 ): Promise<T> => {
-  const { credentials, app } = config;
+  const { credentials, app, gatewayId } = config;
 
-  if (credentials.gatewayId && gatewayService) {
+  if (gatewayId && gatewayService) {
     const [targetHost] = await verifyHostInputValidity(credentials.host, true);
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(credentials.gatewayId);
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
     return withGatewayProxy(

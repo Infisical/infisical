@@ -1707,7 +1707,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     licenseService,
-    gatewayService
+    gatewayService,
+    gatewayDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({

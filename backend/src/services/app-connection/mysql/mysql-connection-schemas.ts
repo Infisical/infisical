@@ -24,7 +24,6 @@ export const SanitizedMySqlConnectionSchema = z.discriminatedUnion("method", [
   BaseMySqlConnectionSchema.extend({
     method: z.literal(MySqlConnectionMethod.UsernameAndPassword),
     credentials: MySqlConnectionAccessTokenCredentialsSchema.pick({
-      gatewayId: true,
       host: true,
       database: true,
       port: true,

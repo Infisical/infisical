@@ -113,11 +113,20 @@ export type TAvailableAppConnectionsResponse = { appConnections: TAvailableAppCo
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnection,
-  "name" | "credentials" | "method" | "app" | "description" | "isPlatformManagedCredentials"
+  | "name"
+  | "credentials"
+  | "method"
+  | "app"
+  | "description"
+  | "isPlatformManagedCredentials"
+  | "gatewayId"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<
-  Pick<TAppConnection, "name" | "credentials" | "description" | "isPlatformManagedCredentials">
+  Pick<
+    TAppConnection,
+    "name" | "credentials" | "description" | "isPlatformManagedCredentials" | "gatewayId"
+  >
 > & {
   connectionId: string;
   app: AppConnection;

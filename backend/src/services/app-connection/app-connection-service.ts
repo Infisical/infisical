@@ -3,9 +3,14 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
+import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -98,6 +103,7 @@ export type TAppConnectionServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayDAL: Pick<TGatewayDALFactory, "find">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -144,7 +150,8 @@ export const appConnectionServiceFactory = ({
   permissionService,
   kmsService,
   licenseService,
-  gatewayService
+  gatewayService,
+  gatewayDAL
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnectionsByOrg = async (actor: OrgServiceActor, app?: AppConnection) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -225,7 +232,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const createAppConnection = async (
-    { method, app, credentials, ...params }: TCreateAppConnectionDTO,
+    { method, app, credentials, gatewayId, ...params }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -241,6 +248,20 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
+    if (gatewayId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway) {
+        throw new NotFoundError({
+          message: `Gateway with ID ${gatewayId} not found for org`
+        });
+      }
+    }
+
     await enterpriseAppCheck(
       licenseService,
       app,
@@ -253,7 +274,8 @@ export const appConnectionServiceFactory = ({
         app,
         credentials,
         method,
-        orgId: actor.orgId
+        orgId: actor.orgId,
+        gatewayId
       } as TAppConnectionConfig,
       gatewayService
     );
@@ -271,6 +293,7 @@ export const appConnectionServiceFactory = ({
           encryptedCredentials,
           method,
           app,
+          gatewayId,
           ...params
         });
       };
@@ -283,7 +306,8 @@ export const appConnectionServiceFactory = ({
             app,
             orgId: actor.orgId,
             credentials: validatedCredentials,
-            method
+            method,
+            gatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
           gatewayService
@@ -307,7 +331,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
-    { connectionId, credentials, ...params }: TUpdateAppConnectionDTO,
+    { connectionId, credentials, gatewayId, ...params }: TUpdateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
@@ -333,6 +357,22 @@ export const appConnectionServiceFactory = ({
       OrgPermissionAppConnectionActions.Edit,
       OrgPermissionSubjects.AppConnections
     );
+
+    if (gatewayId !== appConnection.gatewayId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
+      if (gatewayId) {
+        const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
+        if (!gateway) {
+          throw new NotFoundError({
+            message: `Gateway with ID ${gatewayId} not found for org`
+          });
+        }
+      }
+    }
 
     // prevent updating credentials or management status if platform managed
     if (appConnection.isPlatformManagedCredentials && (params.isPlatformManagedCredentials === false || credentials)) {
@@ -363,7 +403,8 @@ export const appConnectionServiceFactory = ({
           app,
           orgId: actor.orgId,
           credentials,
-          method
+          method,
+          gatewayId
         } as TAppConnectionConfig,
         gatewayService
       );
@@ -385,6 +426,7 @@ export const appConnectionServiceFactory = ({
         return appConnectionDAL.updateById(connectionId, {
           orgId: actor.orgId,
           encryptedCredentials,
+          gatewayId,
           ...params
         });
       };
@@ -401,7 +443,8 @@ export const appConnectionServiceFactory = ({
             app,
             orgId: actor.orgId,
             credentials: updatedCredentials,
-            method
+            method,
+            gatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => updateConnection(platformCredentials),
           gatewayService

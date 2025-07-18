@@ -3,11 +3,6 @@ import { z } from "zod";
 import { AppConnections } from "@app/lib/api-docs";
 
 export const BaseSqlUsernameAndPasswordConnectionSchema = z.object({
-  gatewayId: z
-    .union([z.string().uuid(), z.literal("")])
-    .transform((value) => value || null)
-    .nullish()
-    .describe(AppConnections.CREDENTIALS.SQL_CONNECTION.gatewayId),
   host: z.string().trim().min(1, "Host required").describe(AppConnections.CREDENTIALS.SQL_CONNECTION.host),
   port: z.coerce.number().describe(AppConnections.CREDENTIALS.SQL_CONNECTION.port),
   database: z.string().trim().min(1, "Database required").describe(AppConnections.CREDENTIALS.SQL_CONNECTION.database),

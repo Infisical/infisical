@@ -58,8 +58,8 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
     defaultValues: appConnection ?? {
       app: AppConnection.MsSql,
       method: MsSqlConnectionMethod.UsernameAndPassword,
+      gatewayId: null,
       credentials: {
-        gatewayId: "",
         host: "",
         port: 1433,
         database: "default",
@@ -99,37 +99,6 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }}
       >
         {!isUpdate && <GenericAppConnectionsFields />}
-        <Controller
-          name="method"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.MsSql].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(MsSqlConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}{" "}
-                    </SelectItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
-          )}
-        />
         <OrgPermissionCan
           I={OrgGatewayPermissionActions.AttachGateways}
           a={OrgPermissionSubjects.Gateway}
@@ -137,7 +106,7 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
           {(isAllowed) => (
             <Controller
               control={control}
-              name="credentials.gatewayId"
+              name="gatewayId"
               defaultValue=""
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
@@ -179,6 +148,37 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
             />
           )}
         </OrgPermissionCan>
+        <Controller
+          name="method"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              tooltipText={`The method you would like to use to connect with ${
+                APP_CONNECTION_MAP[AppConnection.MsSql].name
+              }. This field cannot be changed after creation.`}
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Method"
+            >
+              <Select
+                isDisabled={isUpdate}
+                value={value}
+                onValueChange={(val) => onChange(val)}
+                className="w-full border border-mineshaft-500"
+                position="popper"
+                dropdownContainerClassName="max-w-none"
+              >
+                {Object.values(MsSqlConnectionMethod).map((method) => {
+                  return (
+                    <SelectItem value={method} key={method}>
+                      {getAppConnectionMethodDetails(method).name}{" "}
+                    </SelectItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          )}
+        />
         <SqlConnectionFields
           isPlatformManagedCredentials={isPlatformManagedCredentials}
           selectedTabIndex={selectedTabIndex}
