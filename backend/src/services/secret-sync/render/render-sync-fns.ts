@@ -112,13 +112,6 @@ export const RenderSyncFns = {
     for await (const key of Object.keys(secretMap)) {
       // If value is empty skip it as render does not allow empty variables
       if (secretMap[key].value === "") {
-        // According to @scott - we should be deleting them from thirdparty in this case
-        // if secret deletion is not disabled
-        if (!secretSync.syncOptions.disableSecretDeletion) {
-          await deleteEnvironmentSecret(secretSync, {
-            key
-          });
-        }
         // eslint-disable-next-line no-continue
         continue;
       }
