@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { TProjectTemplates } from "@app/db/schemas";
+import { ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -29,11 +29,13 @@ const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTempla
   ...rest,
   environments: environments as TProjectTemplateEnvironment[],
   roles: [
-    ...getPredefinedRoles({ projectId: "project-template" }).map(({ name, slug, permissions }) => ({
-      name,
-      slug,
-      permissions: permissions as TUnpackedPermission[]
-    })),
+    ...getPredefinedRoles({ projectId: "project-template", projectType: rest.type as ProjectType }).map(
+      ({ name, slug, permissions }) => ({
+        name,
+        slug,
+        permissions: permissions as TUnpackedPermission[]
+      })
+    ),
     ...(roles as TProjectTemplateRole[]).map((role) => ({
       ...role,
       permissions: unpackPermissions(role.permissions)
@@ -46,7 +48,10 @@ export const projectTemplateServiceFactory = ({
   permissionService,
   projectTemplateDAL
 }: TProjectTemplatesServiceFactoryDep): TProjectTemplateServiceFactory => {
-  const listProjectTemplatesByOrg: TProjectTemplateServiceFactory["listProjectTemplatesByOrg"] = async (actor) => {
+  const listProjectTemplatesByOrg: TProjectTemplateServiceFactory["listProjectTemplatesByOrg"] = async (
+    actor,
+    type
+  ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
@@ -65,11 +70,14 @@ export const projectTemplateServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
     const projectTemplates = await projectTemplateDAL.find({
-      orgId: actor.orgId
+      orgId: actor.orgId,
+      ...(type ? { type } : {})
     });
 
     return [
-      getDefaultProjectTemplate(actor.orgId),
+      ...(type
+        ? [getDefaultProjectTemplate(actor.orgId, type)]
+        : Object.values(ProjectType).map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
       ...projectTemplates.map((template) => $unpackProjectTemplate(template))
     ];
   };
@@ -134,7 +142,7 @@ export const projectTemplateServiceFactory = ({
   };
 
   const createProjectTemplate: TProjectTemplateServiceFactory["createProjectTemplate"] = async (
-    { roles, environments, ...params },
+    { roles, environments, type, ...params },
     actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -153,6 +161,10 @@ export const projectTemplateServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
+
+    if (environments && type !== ProjectType.SecretManager) {
+      throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
+    }
 
     if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
       throw new BadRequestError({
@@ -176,8 +188,10 @@ export const projectTemplateServiceFactory = ({
     const projectTemplate = await projectTemplateDAL.create({
       ...params,
       roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
-      environments: environments ? JSON.stringify(environments ?? ProjectTemplateDefaultEnvironments) : null,
-      orgId: actor.orgId
+      environments:
+        type === ProjectType.SecretManager ? JSON.stringify(environments ?? ProjectTemplateDefaultEnvironments) : null,
+      orgId: actor.orgId,
+      type
     });
 
     return $unpackProjectTemplate(projectTemplate);
@@ -208,6 +222,11 @@ export const projectTemplateServiceFactory = ({
     );
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
+    if (projectTemplate.type !== ProjectType.SecretManager && environments)
+      throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
+
+    if (projectTemplate.type === ProjectType.SecretManager && environments === null)
+      throw new BadRequestError({ message: "Environments cannot be removed for SecretManager project templates" });
 
     if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
       throw new BadRequestError({
