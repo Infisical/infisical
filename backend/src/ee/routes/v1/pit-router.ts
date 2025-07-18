@@ -557,7 +557,6 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           type: EventType.PIT_PROCESS_NEW_COMMIT_RAW,
           metadata: {
             commitId: result.commitId,
-            folderChanges: result.folderChanges,
             approvalId: result.approvalId,
             projectId: req.body.projectId,
             environment: req.body.environment,
@@ -566,6 +565,15 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      for await (const event of result.secretMutationEvents) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.body.projectId,
+          event
+        });
+      }
 
       return { message: "success" };
     }

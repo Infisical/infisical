@@ -1547,8 +1547,9 @@ interface UpdateFolderEvent {
   metadata: {
     environment: string;
     folderId: string;
-    oldFolderName: string;
+    oldFolderName?: string;
     newFolderName: string;
+    newFolderDescription?: string;
     folderPath: string;
   };
 }
@@ -3230,11 +3231,6 @@ interface PitProcessNewCommitRawEvent {
     environment: string;
     secretPath: string;
     message: string;
-    folderChanges: {
-      create: string[];
-      update: string[];
-      delete: string[];
-    };
     approvalId?: string;
     commitId?: string;
   };

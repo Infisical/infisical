@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 
+import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -534,6 +535,7 @@ export const pitServiceFactory = ({
       actor === ActorType.USER
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
+    const secretMutationEvents: Event[] = [];
 
     const project = await projectDAL.findById(projectId);
     if (project.enforceCapitalization) {
@@ -589,6 +591,20 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
+        const newFolderEvents = createdFolders.folders.map(
+          (folder) =>
+            ({
+              type: EventType.CREATE_FOLDER,
+              metadata: {
+                environment,
+                folderId: folder.id,
+                folderName: folder.name,
+                folderPath: secretPath,
+                ...(folder.description ? { description: folder.description } : {})
+              }
+            }) as Event
+        );
+        secretMutationEvents.push(...newFolderEvents);
         folderChanges.create.push(...createdFolders.folders.map((folder) => folder.id));
       }
 
@@ -610,6 +626,21 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
+
+        const updatedFolderEvents = updatedFolders.newFolders.map(
+          (folder) =>
+            ({
+              type: EventType.UPDATE_FOLDER,
+              metadata: {
+                environment,
+                folderId: folder.id,
+                folderPath: secretPath,
+                newFolderName: folder.name,
+                newFolderDescription: folder.description
+              }
+            }) as Event
+        );
+        secretMutationEvents.push(...updatedFolderEvents);
         folderChanges.update.push(...updatedFolders.newFolders.map((folder) => folder.id));
       }
 
@@ -629,6 +660,19 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
+        const deletedFolderEvents = deletedFolders.folders.map(
+          (folder) =>
+            ({
+              type: EventType.DELETE_FOLDER,
+              metadata: {
+                environment,
+                folderId: folder.id,
+                folderPath: secretPath,
+                folderName: folder.name
+              }
+            }) as Event
+        );
+        secretMutationEvents.push(...deletedFolderEvents);
         folderChanges.delete.push(...deletedFolders.folders.map((folder) => folder.id));
       }
 
@@ -677,16 +721,18 @@ export const pitServiceFactory = ({
           });
           return {
             approvalId: approval.id,
-            folderChanges
+            folderChanges,
+            secretMutationEvents
           };
         }
         return {
-          folderChanges
+          folderChanges,
+          secretMutationEvents
         };
       }
 
       if ((changes.secrets?.create?.length ?? 0) > 0) {
-        await secretV2BridgeService.createManySecret({
+        const newSecrets = await secretV2BridgeService.createManySecret({
           secretPath,
           environment,
           projectId,
@@ -698,9 +744,21 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
+        secretMutationEvents.push({
+          type: EventType.CREATE_SECRETS,
+          metadata: {
+            environment,
+            secretPath,
+            secrets: newSecrets.map((secret) => ({
+              secretId: secret.id,
+              secretKey: secret.secretKey,
+              secretVersion: secret.version
+            }))
+          }
+        });
       }
       if ((changes.secrets?.update?.length ?? 0) > 0) {
-        await secretV2BridgeService.updateManySecret({
+        const updatedSecrets = await secretV2BridgeService.updateManySecret({
           secretPath,
           environment,
           projectId,
@@ -713,9 +771,21 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
+        secretMutationEvents.push({
+          type: EventType.UPDATE_SECRETS,
+          metadata: {
+            environment,
+            secretPath,
+            secrets: updatedSecrets.map((secret) => ({
+              secretId: secret.id,
+              secretKey: secret.secretKey,
+              secretVersion: secret.version
+            }))
+          }
+        });
       }
       if ((changes.secrets?.delete?.length ?? 0) > 0) {
-        await secretV2BridgeService.deleteManySecret({
+        const deletedSecrets = await secretV2BridgeService.deleteManySecret({
           secretPath,
           environment,
           projectId,
@@ -726,6 +796,18 @@ export const pitServiceFactory = ({
           secrets: changes.secrets?.delete ?? [],
           tx: trx,
           commitChanges
+        });
+        secretMutationEvents.push({
+          type: EventType.DELETE_SECRETS,
+          metadata: {
+            environment,
+            secretPath,
+            secrets: deletedSecrets.map((secret) => ({
+              secretId: secret.id,
+              secretKey: secret.secretKey,
+              secretVersion: secret.version
+            }))
+          }
         });
       }
       if (commitChanges?.length > 0) {
@@ -745,11 +827,13 @@ export const pitServiceFactory = ({
         );
         return {
           folderChanges,
-          commitId: commit?.id
+          commitId: commit?.id,
+          secretMutationEvents
         };
       }
       return {
-        folderChanges
+        folderChanges,
+        secretMutationEvents
       };
     });
 
