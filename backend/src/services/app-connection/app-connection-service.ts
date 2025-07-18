@@ -47,8 +47,6 @@ import { azureDevOpsConnectionService } from "./azure-devops/azure-devops-servic
 import { ValidateAzureKeyVaultConnectionCredentialsSchema } from "./azure-key-vault";
 import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
 import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
-import { ValidateOktaConnectionCredentialsSchema } from "./okta";
-import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
@@ -75,6 +73,8 @@ import { humanitecConnectionService } from "./humanitec/humanitec-connection-ser
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
+import { ValidateOktaConnectionCredentialsSchema } from "./okta";
+import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
