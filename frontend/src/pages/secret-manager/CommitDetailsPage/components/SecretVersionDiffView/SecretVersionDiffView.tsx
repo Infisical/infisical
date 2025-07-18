@@ -453,7 +453,7 @@ const formatDeletedJson = (json: JsonValue): JSX.Element => {
       {lines.map((line, lineIndex) => {
         const lineKey = `deleted-${line.slice(0, 30)}-${lineIndex}`;
         return (
-          <div key={lineKey} className="flex w-fit">
+          <div key={lineKey} className="flex">
             <div className="w-4 flex-shrink-0">-</div>
             <div>{line}</div>
           </div>
