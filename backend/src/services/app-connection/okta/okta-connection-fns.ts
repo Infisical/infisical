@@ -53,5 +53,5 @@ export const listOktaApps = async (appConnection: TOktaConnection) => {
     }
   });
 
-  return data.filter((app) => app.status === "ACTIVE");
+  return data.filter((app) => app.status === "ACTIVE" && app.name === "oidc_client");
 };

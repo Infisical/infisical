@@ -25,4 +25,5 @@ export type TOktaApp = {
   id: string;
   label: string;
   status: "ACTIVE" | "INACTIVE";
+  name: string; // "oidc_client" or other types
 };
