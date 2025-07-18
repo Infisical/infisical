@@ -4,13 +4,7 @@ import * as x509 from "@peculiar/x509";
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import {
-  ActionProjectType,
-  ProjectType,
-  TableName,
-  TCertificateAuthorities,
-  TCertificateTemplates
-} from "@app/db/schemas";
+import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,

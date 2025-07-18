@@ -22,14 +22,14 @@ export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
-  const findIdentityProjects = async (identityId: string, orgId: string, projectType: ProjectType | "all") => {
+  const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
     try {
       const workspaces = await db(TableName.IdentityProjectMembership)
         .where({ identityId })
         .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .andWhere((qb) => {
-          if (projectType !== "all") {
+          if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);
           }
         })
@@ -72,7 +72,7 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserProjects = async (userId: string, orgId: string, projectType: ProjectType | "all") => {
+  const findUserProjects = async (userId: string, orgId: string, projectType?: ProjectType) => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.ProjectMembership)
@@ -80,7 +80,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .andWhere((qb) => {
-          if (projectType !== "all") {
+          if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);
           }
         })
@@ -104,7 +104,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .andWhere((qb) => {
-          if (projectType !== "all") {
+          if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);
           }
         })
