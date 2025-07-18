@@ -11,6 +11,9 @@ export type TIdentityAccessTokenJwtPayload = {
     oidc?: {
       claims: Record<string, string>;
     };
+    aws?: {
+      stsIdentity: Record<string, string>;
+    };
     kubernetes?: {
       namespace: string;
       name: string;

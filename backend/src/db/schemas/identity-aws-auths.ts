@@ -20,6 +20,7 @@ export const IdentityAwsAuthsSchema = z.object({
   stsEndpoint: z.string(),
   allowedPrincipalArns: z.string(),
   allowedAccountIds: z.string(),
+  stsAttributeMapping: z.unknown().nullable().optional(),
   accessTokenPeriod: z.coerce.number().default(0)
 });
 

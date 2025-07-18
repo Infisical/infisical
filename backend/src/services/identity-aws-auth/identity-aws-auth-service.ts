@@ -107,7 +107,7 @@ export const identityAwsAuthServiceFactory = ({
     const {
       data: {
         GetCallerIdentityResponse: {
-          GetCallerIdentityResult: { Account, Arn }
+          GetCallerIdentityResult: { Account, Arn, UserId }
         }
       }
     }: { data: TGetCallerIdentityResponse } = await axios({
@@ -151,6 +151,48 @@ export const identityAwsAuthServiceFactory = ({
         });
     }
 
+    // Extract STS attributes for mapping
+    const stsData = {
+      Account,
+      Arn,
+      UserId
+    };
+
+    const filteredStsAttributes: Record<string, string> = {};
+    if (identityAwsAuth.stsAttributeMapping) {
+      Object.keys(identityAwsAuth.stsAttributeMapping).forEach((permissionKey) => {
+        const mappingValue = (identityAwsAuth.stsAttributeMapping as Record<string, any>)[permissionKey];
+
+        if (typeof mappingValue === 'string') {
+          // Simple string mapping (backward compatibility)
+          const value = (stsData as Record<string, any>)[mappingValue];
+          if (value) {
+            filteredStsAttributes[permissionKey] = String(value);
+          }
+        } else if (mappingValue && typeof mappingValue === 'object' && mappingValue.regex) {
+          // Regex-based extraction
+          const sourceValue = (stsData as Record<string, any>)[mappingValue.source || permissionKey];
+          if (sourceValue) {
+            try {
+              const regex = new RE2(mappingValue.regex, mappingValue.flags || '');
+              const match = String(sourceValue).match(regex);
+              if (match) {
+                // If replacement is provided, use it (supports capture groups like $1, $2)
+                if (mappingValue.replacement) {
+                  filteredStsAttributes[permissionKey] = String(sourceValue).replace(regex, mappingValue.replacement);
+                } else {
+                  // Otherwise, use the first capture group or the full match
+                  filteredStsAttributes[permissionKey] = match[1] || match[0];
+                }
+              }
+            } catch (error) {
+              // Skip invalid regex patterns silently
+            }
+          }
+        }
+      });
+    }
+
     const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {
       const newToken = await identityAccessTokenDAL.create(
         {
@@ -172,7 +214,12 @@ export const identityAwsAuthServiceFactory = ({
       {
         identityId: identityAwsAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+        identityAuth: {
+          aws: {
+            stsIdentity: filteredStsAttributes
+          }
+        }
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
@@ -195,6 +242,7 @@ export const identityAwsAuthServiceFactory = ({
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
     accessTokenTrustedIps,
+    stsAttributeMapping,
     actorId,
     actorAuthMethod,
     actor,
@@ -254,7 +302,8 @@ export const identityAwsAuthServiceFactory = ({
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
+          accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
+          stsAttributeMapping: stsAttributeMapping ? JSON.stringify(stsAttributeMapping) : null
         },
         tx
       );
@@ -272,6 +321,7 @@ export const identityAwsAuthServiceFactory = ({
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
     accessTokenTrustedIps,
+    stsAttributeMapping,
     actorId,
     actorAuthMethod,
     actor,
@@ -331,7 +381,8 @@ export const identityAwsAuthServiceFactory = ({
       accessTokenNumUsesLimit,
       accessTokenTrustedIps: reformattedAccessTokenTrustedIps
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+        : undefined,
+      stsAttributeMapping: stsAttributeMapping ? JSON.stringify(stsAttributeMapping) : undefined
     });
 
     return { ...updatedAwsAuth, orgId: identityMembershipOrg.orgId };

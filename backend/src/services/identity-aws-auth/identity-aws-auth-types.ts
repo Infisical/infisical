@@ -7,11 +7,21 @@ export type TLoginAwsAuthDTO = {
   iamRequestHeaders: string;
 };
 
+export type TStsAttributeMapping = {
+  [key: string]: string | {
+    source?: string;  // Source STS field (Account, Arn, UserId) - defaults to the key name
+    regex: string;
+    replacement?: string;
+    flags?: string;
+  };
+};
+
 export type TAttachAwsAuthDTO = {
   identityId: string;
   stsEndpoint: string;
   allowedPrincipalArns: string;
   allowedAccountIds: string;
+  stsAttributeMapping?: TStsAttributeMapping;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -24,6 +34,7 @@ export type TUpdateAwsAuthDTO = {
   stsEndpoint?: string;
   allowedPrincipalArns?: string;
   allowedAccountIds?: string;
+  stsAttributeMapping?: TStsAttributeMapping;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
