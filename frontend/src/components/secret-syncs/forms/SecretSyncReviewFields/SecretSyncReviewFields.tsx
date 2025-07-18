@@ -34,6 +34,7 @@ import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
@@ -139,6 +140,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Checkly:
       DestinationFieldsComponent = <ChecklySyncReviewFields />;
+      break;
+    case SecretSync.Supabase:
+      DestinationFieldsComponent = <SupabaseSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

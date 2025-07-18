@@ -42,6 +42,14 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         maxAge: 0
       });
 
+      void res.cookie("aod", "", {
+        httpOnly: false,
+        path: "/",
+        sameSite: "lax",
+        secure: appCfg.HTTPS_ENABLED,
+        maxAge: 0
+      });
+
       return { message: "Successfully logged out" };
     }
   });

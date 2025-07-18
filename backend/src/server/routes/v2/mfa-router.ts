@@ -4,6 +4,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { mfaRateLimit } from "@app/server/config/rateLimiter";
+import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 
 export const registerMfaRouter = async (server: FastifyZodProvider) => {
@@ -130,6 +131,8 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
+
+      addAuthOriginDomainCookie(res);
 
       return {
         ...user,

@@ -21,6 +21,7 @@ import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-sch
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
+import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
@@ -51,7 +52,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GitlabSyncDestinationSchema,
   CloudflarePagesSyncDestinationSchema,
   CloudflareWorkersSyncDestinationSchema,
-
+  SupabaseSyncDestinationSchema,
   ZabbixSyncDestinationSchema,
   RailwaySyncDestinationSchema,
   ChecklySyncDestinationSchema

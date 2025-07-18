@@ -426,7 +426,8 @@ export const secretQueueFactory = ({
           environment: dto.environment,
           secretPath: dto.secretPath,
           skipMultilineEncoding: secret.skipMultilineEncoding,
-          value: secretValue
+          value: secretValue,
+          secretKey
         });
         content[secretKey] = { value: expandedSecretValue || "" };
 

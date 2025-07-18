@@ -231,7 +231,8 @@ export const secretSyncQueueFactory = ({
           environment: environment.slug,
           secretPath: folder.path,
           skipMultilineEncoding: secret.skipMultilineEncoding,
-          value: secretValue
+          value: secretValue,
+          secretKey
         });
         secretMap[secretKey] = { value: expandedSecretValue || "" };
 

@@ -9,6 +9,7 @@ import { getAppConnectionMethodName } from "@app/services/app-connection/app-con
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { AppConnection } from "../app-connection-enums";
+import { GithubTokenRespData, isGithubErrorResponse } from "../github/github-connection-fns";
 import { GitHubRadarConnectionMethod } from "./github-radar-connection-enums";
 import {
   TGitHubRadarConnection,
@@ -71,13 +72,6 @@ export const listGitHubRadarRepositories = async (appConnection: TGitHubRadarCon
   return repositories;
 };
 
-type TokenRespData = {
-  access_token: string;
-  scope: string;
-  token_type: string;
-  error?: string;
-};
-
 export const validateGitHubRadarConnectionCredentials = async (config: TGitHubRadarConnectionConfig) => {
   const { credentials, method } = config;
 
@@ -93,10 +87,10 @@ export const validateGitHubRadarConnectionCredentials = async (config: TGitHubRa
     });
   }
 
-  let tokenResp: AxiosResponse<TokenRespData>;
+  let tokenResp: AxiosResponse<GithubTokenRespData>;
 
   try {
-    tokenResp = await request.get<TokenRespData>("https://github.com/login/oauth/access_token", {
+    tokenResp = await request.get<GithubTokenRespData>("https://github.com/login/oauth/access_token", {
       params: {
         client_id: INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID,
         client_secret: INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET,
@@ -108,19 +102,27 @@ export const validateGitHubRadarConnectionCredentials = async (config: TGitHubRa
         "Accept-Encoding": "application/json"
       }
     });
+
+    if (isGithubErrorResponse(tokenResp?.data)) {
+      throw new BadRequestError({
+        message: `Unable to validate credentials: GitHub responded with an error: ${tokenResp.data.error} - ${tokenResp.data.error_description}`
+      });
+    }
   } catch (e: unknown) {
+    if (e instanceof BadRequestError) {
+      throw e;
+    }
+
     throw new BadRequestError({
       message: `Unable to validate connection: verify credentials`
     });
   }
 
-  if (tokenResp.status !== 200) {
-    throw new BadRequestError({
-      message: `Unable to validate credentials: GitHub responded with a status code of ${tokenResp.status} (${tokenResp.statusText}). Verify credentials and try again.`
-    });
-  }
-
   if (method === GitHubRadarConnectionMethod.App) {
+    if (!tokenResp.data.access_token) {
+      throw new InternalServerError({ message: `Missing access token: ${tokenResp.data.error}` });
+    }
+
     const installationsResp = await request.get<{
       installations: {
         id: number;
@@ -147,10 +149,6 @@ export const validateGitHubRadarConnectionCredentials = async (config: TGitHubRa
         message: "User does not have access to the provided installation"
       });
     }
-  }
-
-  if (!tokenResp.data.access_token) {
-    throw new InternalServerError({ message: `Missing access token: ${tokenResp.data.error}` });
   }
 
   switch (method) {

@@ -2,3 +2,8 @@
 title: "Login"
 openapi: "POST /api/v1/auth/tls-cert-auth/login"
 ---
+
+<Warning>
+  Infisical US/EU and dedicated instances are deployed with AWS ALB. TLS Certificate Auth must flow through our ALB mTLS pass-through in order to authenticate.
+  When you are authenticating with TLS Certificate Auth, you must use the port `8443` instead of the default `443`. Example: `https://app.infisical.com:8443/api/v1/auth/tls-cert-auth/login`
+</Warning>

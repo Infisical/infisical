@@ -25,7 +25,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.GitLab]: "GitLab",
   [SecretSync.CloudflarePages]: "Cloudflare Pages",
   [SecretSync.CloudflareWorkers]: "Cloudflare Workers",
-
+  [SecretSync.Supabase]: "Supabase",
   [SecretSync.Zabbix]: "Zabbix",
   [SecretSync.Railway]: "Railway",
   [SecretSync.Checkly]: "Checkly"
@@ -55,7 +55,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
-
+  [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly
@@ -85,7 +85,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.GitLab]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflareWorkers]: SecretSyncPlanType.Regular,
-
+  [SecretSync.Supabase]: SecretSyncPlanType.Regular,
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular,
   [SecretSync.Railway]: SecretSyncPlanType.Regular,
   [SecretSync.Checkly]: SecretSyncPlanType.Regular

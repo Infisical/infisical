@@ -32,6 +32,7 @@ import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSecti
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
+import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
@@ -129,6 +130,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Checkly:
       DestinationComponents = <ChecklySyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Supabase:
+      DestinationComponents = <SupabaseSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

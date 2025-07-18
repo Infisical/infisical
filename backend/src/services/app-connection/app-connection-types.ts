@@ -160,6 +160,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TSupabaseConnection,
+  TSupabaseConnectionConfig,
+  TSupabaseConnectionInput,
+  TValidateSupabaseConnectionCredentialsSchema
+} from "./supabase";
+import {
   TTeamCityConnection,
   TTeamCityConnectionConfig,
   TTeamCityConnectionInput,
@@ -224,6 +230,7 @@ export type TAppConnection = { id: string } & (
   | TZabbixConnection
   | TRailwayConnection
   | TChecklyConnection
+  | TSupabaseConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -264,6 +271,7 @@ export type TAppConnectionInput = { id: string } & (
   | TZabbixConnectionInput
   | TRailwayConnectionInput
   | TChecklyConnectionInput
+  | TSupabaseConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -311,7 +319,8 @@ export type TAppConnectionConfig =
   | TBitbucketConnectionConfig
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
-  | TChecklyConnectionConfig;
+  | TChecklyConnectionConfig
+  | TSupabaseConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -346,7 +355,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateBitbucketConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
-  | TValidateChecklyConnectionCredentialsSchema;
+  | TValidateChecklyConnectionCredentialsSchema
+  | TValidateSupabaseConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
