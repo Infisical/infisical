@@ -275,9 +275,6 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       const { name, credentials, description, isPlatformManagedCredentials, gatewayId } = req.body;
       const { connectionId } = req.params;
 
-      console.log("123");
-      console.log(gatewayId);
-
       const appConnection = (await server.services.appConnection.updateAppConnection(
         { name, credentials, connectionId, description, isPlatformManagedCredentials, gatewayId },
         req.permission
