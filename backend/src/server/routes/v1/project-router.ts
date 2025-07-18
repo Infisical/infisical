@@ -1050,6 +1050,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         limit: z.number().default(100),
         offset: z.number().default(0),
+        type: z.nativeEnum(ProjectType).optional(),
         orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
         orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
         name: z

@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -62,7 +62,8 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Create,
@@ -181,7 +182,8 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Edit,
@@ -291,7 +293,8 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Delete,
@@ -319,7 +322,8 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Read,
@@ -352,7 +356,8 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -388,7 +393,8 @@ export const identityProjectServiceFactory = ({
       actorId,
       projectId: membership.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

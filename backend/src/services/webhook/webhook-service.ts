@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TWebhooksInsert } from "@app/db/schemas";
+import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
@@ -54,7 +54,8 @@ export const webhookServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
@@ -92,7 +93,8 @@ export const webhookServiceFactory = ({
       actorId,
       projectId: webhook.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
 
@@ -109,7 +111,8 @@ export const webhookServiceFactory = ({
       actorId,
       projectId: webhook.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
@@ -126,7 +129,8 @@ export const webhookServiceFactory = ({
       actorId,
       projectId: webhook.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
 
     const project = await projectDAL.findById(webhook.projectId);
@@ -177,7 +181,8 @@ export const webhookServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
 
