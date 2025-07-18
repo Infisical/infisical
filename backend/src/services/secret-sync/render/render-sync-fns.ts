@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop */
+import { isAxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -71,7 +73,7 @@ const putEnvironmentSecret = async (secretSync: TRenderSyncWithCredentials, secr
   );
 };
 
-const deleteEnvironmentSecret = async (secretSync: TRenderSyncWithCredentials, secret: TRenderSecret) => {
+const deleteEnvironmentSecret = async (secretSync: TRenderSyncWithCredentials, secret: Pick<TRenderSecret, "key">) => {
   const {
     destinationConfig,
     connection: {
@@ -79,15 +81,24 @@ const deleteEnvironmentSecret = async (secretSync: TRenderSyncWithCredentials, s
     }
   } = secretSync;
 
-  await request.delete(
-    `${IntegrationUrls.RENDER_API_URL}/v1/services/${destinationConfig.serviceId}/env-vars/${secret.key}`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: "application/json"
+  try {
+    await request.delete(
+      `${IntegrationUrls.RENDER_API_URL}/v1/services/${destinationConfig.serviceId}/env-vars/${secret.key}`,
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json"
+        }
       }
+    );
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      // If the secret does not exist, we can ignore this error
+      return;
     }
-  );
+
+    throw error;
+  }
 };
 
 const sleep = async () =>
@@ -99,6 +110,18 @@ export const RenderSyncFns = {
   syncSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
     const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
     for await (const key of Object.keys(secretMap)) {
+      // If value is empty skip it as render does not allow empty variables
+      if (secretMap[key].value === "") {
+        // According to @scott - we should be deleting them from thirdparty in this case
+        // if secret deletion is not disabled
+        if (!secretSync.syncOptions.disableSecretDeletion) {
+          await deleteEnvironmentSecret(secretSync, {
+            key
+          });
+        }
+        // eslint-disable-next-line no-continue
+        continue;
+      }
       await putEnvironmentSecret(secretSync, secretMap, key);
       await sleep();
     }
