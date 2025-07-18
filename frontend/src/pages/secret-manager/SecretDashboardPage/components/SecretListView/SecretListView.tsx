@@ -16,6 +16,7 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { WsTag } from "@app/hooks/api/types";
+import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
 import {
@@ -85,6 +86,10 @@ export const SecretListView = ({
   const selectedSecrets = useSelectedSecrets();
   const { toggle: toggleSelectedSecret } = useSelectedSecretActions();
   const { isBatchMode, pendingChanges } = useBatchMode();
+  useNavigationBlocker(
+    pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0,
+    "You have unsaved work. Are you sure you want to leave?"
+  );
   const { addPendingChange } = useBatchModeActions();
 
   const handleSecretOperation = async (
@@ -226,7 +231,7 @@ export const SecretListView = ({
     async (
       orgSecret: SecretV3RawSanitized,
       modSecret: Omit<SecretV3RawSanitized, "tags"> & {
-        tags?: { id: string; name?: string }[];
+        tags?: { id: string; name?: string; slug?: string }[];
         secretMetadata?: { key: string; value: string }[];
       },
       cb?: () => void
@@ -347,7 +352,7 @@ export const SecretListView = ({
                 ...(!isSameTags && {
                   originalTags:
                     trueOriginalSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
-                  tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || "" })) || []
+                  tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || []
                 }),
                 ...(JSON.stringify(secretMetadata) !==
                   JSON.stringify(trueOriginalSecret.secretMetadata) && {

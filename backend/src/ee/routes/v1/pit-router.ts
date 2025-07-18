@@ -535,7 +535,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.pit.processNewCommitRaw({
+      const result = await server.services.pit.processNewCommitRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -549,6 +549,24 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           folders: req.body.changes.folders
         }
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.PIT_PROCESS_NEW_COMMIT_RAW,
+          metadata: {
+            commitId: result.commitId,
+            folderChanges: result.folderChanges,
+            approvalId: result.approvalId,
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            message: req.body.message
+          }
+        }
+      });
+
       return { message: "success" };
     }
   });

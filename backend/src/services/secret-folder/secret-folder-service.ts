@@ -292,7 +292,7 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+          const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
           if (!env) {
             throw new NotFoundError({
               message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`,

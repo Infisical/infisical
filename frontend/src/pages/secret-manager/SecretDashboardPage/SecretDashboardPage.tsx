@@ -138,24 +138,6 @@ const Page = () => {
     }
   }, [isBatchMode, workspaceId, environment, secretPath, loadPendingChanges]);
 
-  const handleCreateCommit = async (changes: PendingChanges, message: string) => {
-    try {
-      await createCommit({
-        workspaceId,
-        environment,
-        secretPath,
-        pendingChanges: changes,
-        message
-      });
-    } catch (error) {
-      createNotification({
-        text: "Failed to commit changes",
-        type: "error"
-      });
-      console.error(error);
-    }
-  };
-
   const canReadSecret = hasSecretReadValueOrDescribePermission(
     permission,
     ProjectPermissionSecretActions.DescribeSecret,
@@ -298,6 +280,30 @@ const Page = () => {
     secretPath
   });
   const isProtectedBranch = Boolean(boardPolicy);
+
+  const handleCreateCommit = async (changes: PendingChanges, message: string) => {
+    try {
+      await createCommit({
+        workspaceId,
+        environment,
+        secretPath,
+        pendingChanges: changes,
+        message
+      });
+      createNotification({
+        text: isProtectedBranch
+          ? "Requested changes have been sent for review"
+          : "Changes committed successfully",
+        type: "success"
+      });
+    } catch (error) {
+      createNotification({
+        text: "Failed to commit changes",
+        type: "error"
+      });
+      console.error(error);
+    }
+  };
 
   const {
     data: snapshotList,
@@ -538,7 +544,7 @@ const Page = () => {
             value: change.secretValue,
             comment: change.secretComment || "",
             skipMultilineEncoding: change.skipMultilineEncoding || false,
-            tags: change.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
+            tags: change.tags || [],
             secretMetadata: change.secretMetadata || [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -568,7 +574,16 @@ const Page = () => {
                   : mergedSecrets[updateIndex].skipMultilineEncoding,
               secretMetadata: change.secretMetadata || mergedSecrets[updateIndex].secretMetadata,
               isPending: true,
-              pendingAction: PendingAction.Update
+              pendingAction: PendingAction.Update,
+              tags:
+                change.tags?.map((tag) => ({
+                  id: tag.id,
+                  slug: tag.slug,
+                  projectId: workspaceId,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  __v: 0
+                })) || []
             };
           }
           break;

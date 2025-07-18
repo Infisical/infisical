@@ -18,7 +18,7 @@ import {
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
-import { SecretProtectionType, TProcessNewCommitRawDTO } from "@app/services/secret/secret-types";
+import { TProcessNewCommitRawDTO } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
@@ -545,11 +545,7 @@ export const pitServiceFactory = ({
 
         // Check update operations
         ...(changes.secrets?.update
-          ?.filter(
-            (sec) =>
-              sec.secretKey !== sec.secretKey.toUpperCase() ||
-              (sec.newSecretKey && sec.newSecretKey !== sec.newSecretKey.toUpperCase())
-          )
+          ?.filter((sec) => sec.newSecretName && sec.newSecretName !== sec.newSecretName.toUpperCase())
           .map((sec) => sec.secretKey) ?? [])
       ];
 
@@ -562,17 +558,22 @@ export const pitServiceFactory = ({
       }
     }
 
-    await folderCommitDAL.transaction(async (trx) => {
-      const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    return await folderCommitDAL.transaction(async (trx) => {
+      const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
       if (!targetFolder)
         throw new NotFoundError({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
           name: "CreateManySecret"
         });
       const commitChanges: TCommitResourceChangeDTO[] = [];
+      const folderChanges: { create: string[], update: string[], delete: string[] } = {
+        create: [],
+        update: [],
+        delete: []
+      };
 
       if ((changes.folders?.create?.length ?? 0) > 0) {
-        await folderService.createManyFolders({
+        const createdFolders = await folderService.createManyFolders({
           projectId,
           actor,
           actorId,
@@ -588,10 +589,11 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
+        folderChanges.create.push(...createdFolders.folders.map((folder) => folder.id));
       }
 
       if ((changes.folders?.update?.length ?? 0) > 0) {
-        await folderService.updateManyFolders({
+        const updatedFolders = await folderService.updateManyFolders({
           projectId,
           actor,
           actorId,
@@ -608,10 +610,11 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
+        folderChanges.update.push(...updatedFolders.newFolders.map((folder) => folder.id))
       }
 
       if ((changes.folders?.delete?.length ?? 0) > 0) {
-        await folderService.deleteManyFolders({
+        const deletedFolders = await folderService.deleteManyFolders({
           projectId,
           actor,
           actorId,
@@ -626,46 +629,60 @@ export const pitServiceFactory = ({
           tx: trx,
           commitChanges
         });
+        folderChanges.delete.push(...deletedFolders.folders.map((folder) => folder.id))
       }
 
       if (policy) {
-        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
-          policy,
-          secretPath,
-          environment,
-          projectId,
-          actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod,
-          data: {
-            [SecretOperations.Create]:
-              changes.secrets?.create?.map((el) => ({
-                tagIds: el.tagIds,
-                secretValue: el.secretValue,
-                secretComment: el.secretComment,
-                metadata: el.metadata,
-                skipMultilineEncoding: el.skipMultilineEncoding,
-                secretKey: el.secretKey,
-                secretMetadata: el.secretMetadata
-              })) ?? [],
-            [SecretOperations.Update]:
-              changes.secrets?.update?.map((el) => ({
-                tagIds: el.tagIds,
-                secretValue: el.secretValue,
-                secretComment: el.secretComment,
-                metadata: el.metadata,
-                skipMultilineEncoding: el.skipMultilineEncoding,
-                secretKey: el.secretKey,
-                secretMetadata: el.secretMetadata
-              })) ?? [],
-            [SecretOperations.Delete]:
-              changes.secrets?.delete?.map((el) => ({
-                secretKey: el.secretKey
-              })) ?? []
-          }
-        });
-        return { type: SecretProtectionType.Approval as const, approval };
+        if (
+          (changes.secrets?.create?.length ?? 0) > 0 ||
+          (changes.secrets?.update?.length ?? 0) > 0 ||
+          (changes.secrets?.delete?.length ?? 0) > 0
+        ) {
+          const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+            policy,
+            secretPath,
+            environment,
+            projectId,
+            actor,
+            actorId,
+            actorOrgId,
+            actorAuthMethod,
+            data: {
+              [SecretOperations.Create]:
+                changes.secrets?.create?.map((el) => ({
+                  tagIds: el.tagIds,
+                  secretValue: el.secretValue,
+                  secretComment: el.secretComment,
+                  metadata: el.metadata,
+                  skipMultilineEncoding: el.skipMultilineEncoding,
+                  secretKey: el.secretKey,
+                  secretMetadata: el.secretMetadata
+                })) ?? [],
+              [SecretOperations.Update]:
+                changes.secrets?.update?.map((el) => ({
+                  tagIds: el.tagIds,
+                  newSecretName: el.newSecretName,
+                  secretValue: el.secretValue,
+                  secretComment: el.secretComment,
+                  metadata: el.metadata,
+                  skipMultilineEncoding: el.skipMultilineEncoding,
+                  secretKey: el.secretKey,
+                  secretMetadata: el.secretMetadata
+                })) ?? [],
+              [SecretOperations.Delete]:
+                changes.secrets?.delete?.map((el) => ({
+                  secretKey: el.secretKey
+                })) ?? []
+            }
+          });
+          return {
+            approvalId: approval.id,
+            folderChanges
+          };
+        }
+        return {
+          folderChanges
+        };
       }
 
       if ((changes.secrets?.create?.length ?? 0) > 0) {
@@ -712,7 +729,7 @@ export const pitServiceFactory = ({
         });
       }
       if (commitChanges?.length > 0) {
-        await folderCommitService.createCommit(
+        const commit = await folderCommitService.createCommit(
           {
             actor: {
               type: actor || ActorType.PLATFORM,
@@ -726,7 +743,14 @@ export const pitServiceFactory = ({
           },
           trx
         );
+        return {
+          folderChanges,
+          commitId: commit?.id
+        };
       }
+      return {
+        folderChanges
+      };
     });
   };
 

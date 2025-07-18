@@ -38,7 +38,7 @@ import { WsTag } from "@app/hooks/api/types";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import { memo, useEffect } from "react";
+import { memo, useEffect, useRef, useCallback } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 import {
@@ -118,6 +118,9 @@ export const SecretItem = memo(
     const { isRotatedSecret } = secret;
     const { removePendingChange } = useBatchModeActions();
 
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+    const isAutoSavingRef = useRef(false);
+
     const handleDeletePending = (pendingSecret: SecretV3RawSanitized) => {
       removePendingChange(pendingSecret.id, "secret", {
         workspaceId: currentWorkspace.id,
@@ -166,7 +169,6 @@ export const SecretItem = memo(
     });
 
     const secretName = watch("key");
-
     const overrideAction = watch("overrideAction");
     const hasComment = Boolean(watch("comment"));
 
@@ -181,6 +183,68 @@ export const SecretItem = memo(
       control,
       name: "tags"
     });
+
+    const isOverriden =
+      overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
+    const hasTagsApplied = Boolean(fields.length);
+
+    const autoSaveChanges = useCallback(
+      async (data: TFormSchema) => {
+        if (isAutoSavingRef.current) return;
+        if (
+          data.overrideAction === SecretActionType.Created ||
+          data.overrideAction === SecretActionType.Modified
+        ) {
+          return;
+        }
+
+        isAutoSavingRef.current = true;
+        try {
+          const hasDirectReferences = importedBy?.some(({ folders }) =>
+            folders?.some(({ secrets }) =>
+              secrets?.some(({ referencedSecretKey }) => referencedSecretKey === secret.key)
+            )
+          );
+
+          if (hasDirectReferences) {
+            await onSaveSecret(secret, { ...secret, ...data }, () => {
+              reset();
+            });
+          } else {
+            await onSaveSecret(secret, { ...secret, ...data }, () => {
+              reset();
+            });
+          }
+        } catch (error) {
+          console.error("Auto-save failed:", error);
+        } finally {
+          isAutoSavingRef.current = false;
+        }
+      },
+      [secret, onSaveSecret, importedBy, reset]
+    );
+
+    const formValues = watch();
+
+    useEffect(() => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+
+      if (isDirty && !isSubmitting && !isAutoSavingRef.current) {
+        const debounceTime = isPending ? 500 : 1500;
+
+        autoSaveTimeoutRef.current = setTimeout(() => {
+          autoSaveChanges(formValues);
+        }, debounceTime);
+      }
+
+      return () => {
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+        }
+      };
+    }, [formValues, isDirty, isSubmitting, autoSaveChanges, isPending]);
 
     const isReadOnly =
       hasSecretReadValueOrDescribePermission(
@@ -202,6 +266,7 @@ export const SecretItem = memo(
           secretTags: selectedTagSlugs
         })
       );
+
     const isReadOnlySecret =
       isReadOnly || isRotatedSecret || (isPending && pendingAction !== PendingAction.Update);
 
@@ -215,10 +280,6 @@ export const SecretItem = memo(
       }
       return () => clearTimeout(timer);
     }, [isSecValueCopied]);
-
-    const isOverriden =
-      overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
-    const hasTagsApplied = Boolean(fields.length);
 
     const handleOverrideClick = () => {
       if (isOverriden) {
@@ -284,6 +345,8 @@ export const SecretItem = memo(
       setIsSecValueCopied.on();
     };
 
+    const isInAutoSaveMode = isDirty && !isSubmitting && !isOverriden;
+
     return (
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div
@@ -292,6 +355,7 @@ export const SecretItem = memo(
             isDirty && "border-primary-400/50",
             isRotatedSecret && "bg-mineshaft-700/60",
             isPending && "bg-mineshaft-700/60",
+            isInAutoSaveMode && "border-primary-400/75 bg-primary-900/20",
             pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
             pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
             pendingAction === PendingAction.Create && "border-l-2 border-l-green-600/75"
@@ -357,6 +421,14 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
+              {isInAutoSaveMode && (
+                <Tooltip content="Auto-saving changes">
+                  <div className="mr-2 flex items-center">
+                    <Spinner className="h-3 w-3 text-primary" />
+                  </div>
+                </Tooltip>
+              )}
+
               {secretValueHidden && !isOverriden && (
                 <Tooltip
                   content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
@@ -399,7 +471,6 @@ export const SecretItem = memo(
                   )}
                 />
               )}
-              {/* Only allow to open the side panel if the secret is not in a pending create or delete state */}
               {pendingAction !== PendingAction.Create && pendingAction !== PendingAction.Delete && (
                 <div
                   key="actions"
@@ -460,7 +531,7 @@ export const SecretItem = memo(
                         <ModalContent
                           title="Secret Reference Details"
                           subTitle="Visual breakdown of secrets referenced by this secret."
-                          onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
+                          onOpenAutoFocus={(e) => e.preventDefault()}
                         >
                           <SecretReferenceTree
                             secretPath={secretPath}
@@ -647,7 +718,21 @@ export const SecretItem = memo(
               )}
             </div>
             <AnimatePresence mode="wait">
-              {!isDirty ? (
+              {isInAutoSaveMode ? (
+                <motion.div
+                  key="auto-save-mode"
+                  className="flex h-10 flex-shrink-0 items-center space-x-4 px-[0.64rem]"
+                  initial={{ x: -10, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -10, opacity: 0 }}
+                >
+                  <Tooltip content="Auto-saving changes...">
+                    <div className="flex items-center text-primary">
+                      <Spinner className="h-4 w-4" />
+                    </div>
+                  </Tooltip>
+                </motion.div>
+              ) : !isDirty ? (
                 isPending ? (
                   <motion.div
                     key="options"
@@ -717,7 +802,7 @@ export const SecretItem = memo(
                         secretTags: selectedTagSlugs
                       })}
                       renderTooltip
-                      allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"} // just using label for isRotatedSecret, disabled below
+                      allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}
                     >
                       {(isAllowed) => (
                         <IconButton

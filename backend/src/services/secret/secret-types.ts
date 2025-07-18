@@ -558,7 +558,7 @@ export type TProcessNewCommitRawDTO = {
     }[];
     update?: {
       secretKey: string;
-      newSecretKey?: string;
+      newSecretName?: string;
       secretValue?: string;
       secretComment?: string;
       skipMultilineEncoding?: boolean;

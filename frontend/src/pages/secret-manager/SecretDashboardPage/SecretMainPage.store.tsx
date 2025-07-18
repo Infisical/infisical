@@ -114,9 +114,9 @@ const savePendingChangesToStorage = (
 ) => {
   const key = `${STORAGE_KEY}_${generateContextKey(workspaceId, environment, secretPath)}`;
   try {
-    localStorage.setItem(key, JSON.stringify(changes));
+    sessionStorage.setItem(key, JSON.stringify(changes));
   } catch (error) {
-    console.warn("Failed to save pending changes to localStorage:", error);
+    console.warn("Failed to save pending changes to sessionStorage:", error);
   }
 };
 
@@ -126,7 +126,7 @@ const loadPendingChangesFromStorage = (
   secretPath: string
 ): PendingChanges => {
   const key = `${STORAGE_KEY}_${generateContextKey(workspaceId, environment, secretPath)}`;
-  const stored = localStorage.getItem(key);
+  const stored = sessionStorage.getItem(key);
   if (!stored) return { secrets: [], folders: [] };
 
   try {
@@ -144,7 +144,7 @@ const loadPendingChangesFromStorage = (
       folders: parsed.folders || []
     };
   } catch (error) {
-    console.warn("Failed to parse pending changes from localStorage:", error);
+    console.warn("Failed to parse pending changes from sessionStorage:", error);
     return { secrets: [], folders: [] };
   }
 };
@@ -156,10 +156,120 @@ const clearPendingChangesFromStorage = (
 ) => {
   const key = `${STORAGE_KEY}_${generateContextKey(workspaceId, environment, secretPath)}`;
   try {
-    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
   } catch (error) {
-    console.warn("Failed to clear pending changes from localStorage:", error);
+    console.warn("Failed to clear pending changes from sessionStorage:", error);
   }
+};
+
+const normalizeValue = (value: any): string | boolean | undefined => {
+  if (value === null || value === undefined || value === "") {
+    return undefined;
+  }
+  return value;
+};
+
+const areValuesEqual = (value1: any, value2: any): boolean => {
+  const normalized1 = normalizeValue(value1);
+  const normalized2 = normalizeValue(value2);
+
+  if (normalized1 === undefined && normalized2 === undefined) {
+    return true;
+  }
+
+  return normalized1 === normalized2;
+};
+
+const areArraysEqual = (arr1: any[] | undefined, arr2: any[] | undefined): boolean => {
+  // Handle undefined/null arrays
+  if (!arr1 && !arr2) return true;
+  if (!arr1 || !arr2) return false;
+
+  // Compare lengths
+  if (arr1.length !== arr2.length) return false;
+
+  // Deep comparison using JSON stringify (for simple objects)
+  return JSON.stringify(arr1.sort()) === JSON.stringify(arr2.sort());
+};
+
+const cleanupRevertedSecretFields = (update: PendingSecretUpdate): PendingSecretUpdate | null => {
+  const cleaned = { ...update };
+  let hasChanges = false;
+
+  if (
+    cleaned.secretValue !== undefined &&
+    !areValuesEqual(cleaned.secretValue, cleaned.originalValue)
+  ) {
+    hasChanges = true;
+  } else {
+    cleaned.secretValue = undefined;
+  }
+
+  if (
+    cleaned.secretComment !== undefined &&
+    !areValuesEqual(cleaned.secretComment, cleaned.originalComment)
+  ) {
+    hasChanges = true;
+  } else {
+    cleaned.secretComment = undefined;
+  }
+
+  if (
+    cleaned.skipMultilineEncoding !== undefined &&
+    cleaned.skipMultilineEncoding !== cleaned.originalSkipMultilineEncoding
+  ) {
+    hasChanges = true;
+  } else {
+    cleaned.skipMultilineEncoding = undefined;
+  }
+
+  if (cleaned.tags !== undefined && !areArraysEqual(cleaned.tags, cleaned.originalTags)) {
+    hasChanges = true;
+  } else {
+    cleaned.tags = undefined;
+  }
+
+  if (
+    cleaned.secretMetadata !== undefined &&
+    !areArraysEqual(cleaned.secretMetadata, cleaned.originalSecretMetadata)
+  ) {
+    hasChanges = true;
+  } else {
+    cleaned.secretMetadata = undefined;
+  }
+
+  if (cleaned.newSecretName !== undefined && cleaned.newSecretName !== cleaned.secretKey) {
+    hasChanges = true;
+  } else {
+    cleaned.newSecretName = undefined;
+  }
+
+  // If no changes remain, return null to indicate this update should be removed
+  return hasChanges ? cleaned : null;
+};
+
+const cleanupRevertedFolderFields = (update: PendingFolderUpdate): PendingFolderUpdate | null => {
+  const cleaned = { ...update };
+  let hasChanges = false;
+
+  if (
+    cleaned.folderName !== undefined &&
+    !areValuesEqual(cleaned.folderName, cleaned.originalFolderName)
+  ) {
+    hasChanges = true;
+  }
+
+  if (
+    cleaned.description !== undefined &&
+    !areValuesEqual(cleaned.description, cleaned.originalDescription)
+  ) {
+    hasChanges = true;
+  } else {
+    cleaned.description = undefined;
+  }
+
+  // If no changes remain, return null to indicate this update should be removed
+  return hasChanges ? cleaned : null;
 };
 
 type SelectedSecretState = {
@@ -188,38 +298,6 @@ const createSelectedSecretStore: StateCreator<CombinedState, [], [], SelectedSec
     set: (secrets) => set({ selectedSecret: secrets })
   }
 });
-
-const cleanupRevertedFields = (update: PendingSecretUpdate): PendingSecretUpdate => {
-  const cleaned = { ...update };
-
-  if (cleaned.secretValue === cleaned.originalValue) {
-    cleaned.secretValue = undefined;
-  }
-
-  if (cleaned.secretComment === cleaned.originalComment) {
-    cleaned.secretComment = undefined;
-  }
-
-  if (cleaned.skipMultilineEncoding === cleaned.originalSkipMultilineEncoding) {
-    cleaned.skipMultilineEncoding = undefined;
-  }
-
-  // For arrays, compare stringified versions
-  if (JSON.stringify(cleaned.tags) === JSON.stringify(cleaned.originalTags)) {
-    cleaned.tags = undefined;
-  }
-
-  if (JSON.stringify(cleaned.secretMetadata) === JSON.stringify(cleaned.originalSecretMetadata)) {
-    cleaned.secretMetadata = undefined;
-  }
-
-  // If the new name is the same as original key, remove it
-  if (cleaned.newSecretName === cleaned.secretKey) {
-    cleaned.newSecretName = undefined;
-  }
-
-  return cleaned;
-};
 
 type BatchModeState = {
   isBatchMode: boolean;
@@ -348,7 +426,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               if (existingUpdateIndex >= 0) {
                 const existingUpdate = secretChanges[existingUpdateIndex] as PendingSecretUpdate;
 
-                const improvedUpdate: PendingSecretUpdate = {
+                const mergedUpdate: PendingSecretUpdate = {
                   ...existingUpdate,
                   secretKey: existingUpdate.secretKey,
                   originalValue: existingUpdate.originalValue,
@@ -382,11 +460,23 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
                   timestamp: Date.now()
                 };
 
-                const cleanedUpdate = cleanupRevertedFields(improvedUpdate);
+                // Clean up reverted fields and check if any changes remain
+                const cleanedUpdate = cleanupRevertedSecretFields(mergedUpdate);
 
-                secretChanges[existingUpdateIndex] = cleanedUpdate;
+                if (cleanedUpdate) {
+                  // Still has changes, keep the update
+                  secretChanges[existingUpdateIndex] = cleanedUpdate;
+                } else {
+                  // No changes remain, remove the pending update
+                  secretChanges.splice(existingUpdateIndex, 1);
+                }
               } else {
-                secretChanges.push(change);
+                // New update - clean it up before adding
+                const cleanedUpdate = cleanupRevertedSecretFields(change);
+                if (cleanedUpdate) {
+                  secretChanges.push(cleanedUpdate);
+                }
+                // If cleanedUpdate is null, don't add it (no actual changes)
               }
             }
           } else {
@@ -435,7 +525,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               if (existingUpdateIndex >= 0) {
                 const existingUpdate = folderChanges[existingUpdateIndex] as PendingFolderUpdate;
 
-                folderChanges[existingUpdateIndex] = {
+                const mergedUpdate: PendingFolderUpdate = {
                   ...existingUpdate,
                   originalFolderName: existingUpdate.originalFolderName,
                   originalDescription: existingUpdate.originalDescription,
@@ -449,8 +539,24 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
 
                   timestamp: Date.now()
                 };
+
+                // Clean up reverted fields and check if any changes remain
+                const cleanedUpdate = cleanupRevertedFolderFields(mergedUpdate);
+
+                if (cleanedUpdate) {
+                  // Still has changes, keep the update
+                  folderChanges[existingUpdateIndex] = cleanedUpdate;
+                } else {
+                  // No changes remain, remove the pending update
+                  folderChanges.splice(existingUpdateIndex, 1);
+                }
               } else {
-                folderChanges.push(change);
+                // New update - clean it up before adding
+                const cleanedUpdate = cleanupRevertedFolderFields(change);
+                if (cleanedUpdate) {
+                  folderChanges.push(cleanedUpdate);
+                }
+                // If cleanedUpdate is null, don't add it (no actual changes)
               }
             }
           } else {

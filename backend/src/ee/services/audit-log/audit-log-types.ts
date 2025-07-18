@@ -449,6 +449,7 @@ export enum EventType {
   PIT_REVERT_COMMIT = "pit-revert-commit",
   PIT_GET_FOLDER_STATE = "pit-get-folder-state",
   PIT_COMPARE_FOLDER_STATES = "pit-compare-folder-states",
+  PIT_PROCESS_NEW_COMMIT_RAW = "pit-process-new-commit-raw",
   SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-source-list",
   SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-source-create",
   SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
@@ -3222,6 +3223,23 @@ interface PitCompareFolderStatesEvent {
   };
 }
 
+interface PitProcessNewCommitRawEvent {
+  type: EventType.PIT_PROCESS_NEW_COMMIT_RAW;
+  metadata: {
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    message: string;
+    folderChanges: {
+      create: string[];
+      update: string[];
+      delete: string[];
+    };
+    approvalId?: string;
+    commitId?: string;
+  };
+}
+
 interface SecretScanningDataSourceListEvent {
   type: EventType.SECRET_SCANNING_DATA_SOURCE_LIST;
   metadata: {
@@ -3658,6 +3676,7 @@ export type Event =
   | PitRevertCommitEvent
   | PitCompareFolderStatesEvent
   | PitGetFolderStateEvent
+  | PitProcessNewCommitRawEvent
   | SecretScanningDataSourceListEvent
   | SecretScanningDataSourceGetEvent
   | SecretScanningDataSourceCreateEvent

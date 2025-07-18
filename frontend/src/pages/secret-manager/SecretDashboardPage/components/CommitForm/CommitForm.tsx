@@ -1,17 +1,9 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useState } from "react";
-import { faCodeCommit, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
+import { faCodeCommit, faEye, faFolder, faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import {
-  Badge,
-  Button,
-  FontAwesomeSymbol,
-  IconButton,
-  Input,
-  Modal,
-  ModalContent
-} from "@app/components/v2";
+import { Badge, Button, IconButton, Input, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
 import {
@@ -20,7 +12,6 @@ import {
   useBatchMode,
   useBatchModeActions
 } from "../../SecretMainPage.store";
-import { FontAwesomeSpriteName } from "../SecretListView/SecretListView.utils";
 
 interface CommitFormProps {
   onCommit: (changes: PendingChanges, commitMessage: string) => Promise<void>;
@@ -384,15 +375,17 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
           <span className="font-medium text-mineshaft-100">{getChangeName()}</span>
           {getChangeBadge(change.type)}
         </div>
-        <IconButton
-          ariaLabel="delete-change"
-          variant="plain"
-          colorSchema="danger"
-          size="sm"
-          onClick={() => handleDeletePending(change.resourceType, change.id)}
-        >
-          <FontAwesomeSymbol symbolName={FontAwesomeSpriteName.Close} className="h-4 w-4" />
-        </IconButton>
+        <Tooltip content="Discard change">
+          <IconButton
+            ariaLabel="delete-change"
+            variant="plain"
+            colorSchema="danger"
+            size="sm"
+            onClick={() => handleDeletePending(change.resourceType, change.id)}
+          >
+            <FontAwesomeIcon icon={faTrash} />
+          </IconButton>
+        </Tooltip>
       </div>
       {change.resourceType === "secret" ? renderSecretChanges() : renderFolderChanges()}
     </div>
@@ -434,7 +427,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     <>
       {/* Floating Panel */}
       {!isModalOpen && (
-        <div className="fixed bottom-4 z-40 w-80 self-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-2xl">
+        <div className="fixed bottom-4 z-40 w-64 self-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-2xl">
           <div className="flex w-full justify-center border-b border-mineshaft-600 px-4 py-3">
             <div className="flex w-full items-center justify-between">
               <div className="flex items-center gap-2">
@@ -447,14 +440,22 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             </div>
           </div>
 
-          <div className="p-3">
+          <div className="flex justify-center gap-4 p-3">
             <Button
-              onClick={() => setIsModalOpen(true)}
-              className="w-full"
+              leftIcon={<FontAwesomeIcon icon={faTrash} />}
+              onClick={() => clearAllPendingChanges({ workspaceId, environment, secretPath })}
               isDisabled={totalChangesCount === 0}
               colorSchema="secondary"
             >
-              Review & Commit
+              Discard
+            </Button>
+            <Button
+              leftIcon={<FontAwesomeIcon icon={faEye} />}
+              onClick={() => setIsModalOpen(true)}
+              isDisabled={totalChangesCount === 0}
+              colorSchema="secondary"
+            >
+              Review
             </Button>
           </div>
         </div>
