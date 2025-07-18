@@ -18,12 +18,12 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { Timezone } from "@app/helpers/datetime";
 
 import {
   auditLogDateFilterFormSchema,
   AuditLogDateFilterType,
-  TAuditLogDateFilterFormData,
-  Timezone
+  TAuditLogDateFilterFormData
 } from "./types";
 
 type Props = {
@@ -233,6 +233,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                         <DatePicker
                           value={field.value || undefined}
                           onChange={onChange}
+                          timezone={timezone}
                           dateFormat="P"
                           buttonClassName="w-44 h-8 font-normal"
                           popUpProps={{
@@ -266,6 +267,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                           onChange={onChange}
                           dateFormat="P"
                           buttonClassName="w-44 h-8 font-normal"
+                          timezone={timezone}
                           popUpProps={{
                             open: isEndDatePickerOpen,
                             onOpenChange: setIsEndDatePickerOpen

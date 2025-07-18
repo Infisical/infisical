@@ -8,11 +8,6 @@ export enum AuditLogDateFilterType {
   Absolute = "absolute"
 }
 
-export enum Timezone {
-  Local = "local",
-  UTC = "UTC"
-}
-
 export const auditLogFilterFormSchema = z.object({
   eventMetadata: z.object({}).optional(),
   project: z

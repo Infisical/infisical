@@ -1,13 +1,11 @@
 import { faCaretDown, faCaretRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format } from "date-fns";
 
 import { Td, Tr } from "@app/components/v2";
+import { formatDateTime, Timezone } from "@app/helpers/datetime";
 import { useToggle } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { AuditLog } from "@app/hooks/api/auditLogs/types";
-
-import { Timezone } from "./types";
 
 type Props = {
   auditLog: AuditLog;
@@ -30,16 +28,6 @@ const Tag = ({ label, value }: TagProps) => {
   );
 };
 
-const formatDateTime = (timestamp: string | Date, timezone: Timezone) => {
-  const date = new Date(timestamp);
-
-  if (timezone === Timezone.UTC) {
-    const utcDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-    return `${format(utcDate, "MMM do yyyy, hh:mm a")} UTC`;
-  }
-  return format(date, "MMM do yyyy, hh:mm a");
-};
-
 export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
   const [isOpen, setIsOpen] = useToggle();
 
@@ -59,7 +47,7 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
           <FontAwesomeIcon icon={isOpen ? faCaretDown : faCaretRight} />
           {rowNumber}
         </Td>
-        <Td className="align-top">{formatDateTime(auditLog.createdAt, timezone)}</Td>
+        <Td className="align-top">{formatDateTime({ timestamp: auditLog.createdAt, timezone })}</Td>
         <Td>
           <div className="flex flex-wrap gap-4 text-sm">
             <Tag label="event" value={auditLog.event.type} />

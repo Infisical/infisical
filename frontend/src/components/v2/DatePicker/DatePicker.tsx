@@ -1,10 +1,12 @@
 import { ChangeEventHandler, useState } from "react";
-import { DayPicker, DayPickerProps, getDefaultClassNames, UI } from "react-day-picker";
+import { DayPicker, DayPickerProps, getDefaultClassNames, TZDate, UI } from "react-day-picker";
 import { faCalendar } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { PopoverContentProps, PopoverProps } from "@radix-ui/react-popover";
 import { format, setHours, setMinutes } from "date-fns";
 import { twMerge } from "tailwind-merge";
+
+import { formatDateTime, Timezone } from "@app/helpers/datetime";
 
 import { Button } from "../Button";
 import { Input } from "../Input";
@@ -19,6 +21,31 @@ export type DatePickerProps = Omit<DayPickerProps, "selected"> & {
   popUpContentProps: PopoverContentProps;
   dateFormat?: "PPP" | "PP" | "P"; // extend as needed
   buttonClassName?: string;
+  timezone?: Timezone;
+};
+
+const localTimeToUTC = (timeString: string) => {
+  const today = new Date();
+  const [hours, minutes] = timeString.split(":").map(Number);
+
+  today.setHours(hours, minutes, 0, 0);
+
+  const utcHours = today.getUTCHours().toString().padStart(2, "0");
+  const utcMinutes = today.getUTCMinutes().toString().padStart(2, "0");
+
+  return `${utcHours}:${utcMinutes}`;
+};
+
+const utcTimeToLocal = (utcTimeString: string) => {
+  const today = new Date();
+  const [hours, minutes] = utcTimeString.split(":").map(Number);
+
+  today.setUTCHours(hours, minutes, 0, 0);
+
+  const localHours = today.getHours().toString().padStart(2, "0");
+  const localMinutes = today.getMinutes().toString().padStart(2, "0");
+
+  return `${localHours}:${localMinutes}`;
 };
 
 // Doc: https://react-day-picker.js.org/
@@ -29,12 +56,15 @@ export const DatePicker = ({
   popUpContentProps,
   dateFormat = "PPP",
   buttonClassName,
+  timezone,
   ...props
 }: DatePickerProps) => {
   const [timeValue, setTimeValue] = useState<string>(value ? format(value, "HH:mm") : "00:00");
+  const displayUtc = timezone === Timezone.UTC;
 
   const handleTimeChange: ChangeEventHandler<HTMLInputElement> = (e) => {
-    const time = e.target.value;
+    const time = displayUtc ? utcTimeToLocal(e.target.value) : e.target.value;
+
     if (time) {
       setTimeValue(time);
       if (value) {
@@ -64,7 +94,9 @@ export const DatePicker = ({
           variant="outline_bg"
           leftIcon={<FontAwesomeIcon icon={faCalendar} />}
         >
-          {value ? format(value, dateFormat) : "Pick a date and time"}
+          {value
+            ? formatDateTime({ timestamp: value, timezone, dateFormat })
+            : "Pick a date and time"}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -78,9 +110,10 @@ export const DatePicker = ({
           <DayPicker
             {...props}
             mode="single"
-            selected={value}
-            onSelect={handleDaySelect}
+            selected={value ? new TZDate(value, displayUtc ? "UTC" : undefined) : undefined}
+            onSelect={(date) => handleDaySelect(date ? new TZDate(date, undefined) : undefined)}
             className="font-inter text-mineshaft-200"
+            timeZone={displayUtc ? "UTC" : undefined}
             classNames={{
               today: "text-primary border-primary",
               selected: " text-mineshaft-100 bg-mineshaft-500",
@@ -94,7 +127,7 @@ export const DatePicker = ({
         <div className="mx-4 my-4">
           <Input
             type="time"
-            value={timeValue}
+            value={displayUtc ? localTimeToUTC(timeValue) : timeValue}
             onChange={handleTimeChange}
             className="bg-mineshaft-700 text-white [color-scheme:dark]"
           />

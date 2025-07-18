@@ -5,6 +5,7 @@ import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { Timezone } from "@app/helpers/datetime";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -15,8 +16,7 @@ import {
   AuditLogDateFilterType,
   Presets,
   TAuditLogDateFilterFormData,
-  TAuditLogFilterFormData,
-  Timezone
+  TAuditLogFilterFormData
 } from "./types";
 
 type Props = {
