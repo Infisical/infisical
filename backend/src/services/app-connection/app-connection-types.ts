@@ -382,4 +382,5 @@ export type TAppConnectionTransitionCredentialsToPlatform = (
 
 export type TAppConnectionBaseConfig = {
   supportsPlatformManagedCredentials?: boolean;
+  supportsGateways?: boolean;
 };
