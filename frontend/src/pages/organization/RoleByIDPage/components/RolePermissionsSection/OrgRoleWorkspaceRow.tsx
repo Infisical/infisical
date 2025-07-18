@@ -70,17 +70,18 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
         className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
         onClick={() => setIsRowExpanded.toggle()}
       >
-        <Td>
-          <FontAwesomeIcon icon={isRowExpanded ? faChevronDown : faChevronRight} />
+        <Td className="w-4">
+          <FontAwesomeIcon className="w-4" icon={isRowExpanded ? faChevronDown : faChevronRight} />
         </Td>
-        <Td>Project</Td>
+        <Td className="w-full select-none">Project</Td>
         <Td>
           <Select
             value={selectedPermissionCategory}
-            className="w-40 bg-mineshaft-600"
-            dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+            className="h-8 w-40 bg-mineshaft-700"
+            dropdownContainerClassName="border text-left border-mineshaft-600 bg-mineshaft-800"
             onValueChange={handlePermissionChange}
             isDisabled={!isEditable}
+            position="popper"
           >
             <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
             <SelectItem value={Permission.Custom}>Custom</SelectItem>
@@ -89,11 +90,8 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
       </Tr>
       {isRowExpanded && (
         <Tr>
-          <Td
-            colSpan={3}
-            className={`bg-bunker-600 px-0 py-0 ${isRowExpanded && "border-mineshaft-500 p-8"}`}
-          >
-            <div className="grid grid-cols-3 gap-4">
+          <Td colSpan={3} className="border-mineshaft-500 bg-mineshaft-900 p-8">
+            <div className="flex flex-grow flex-wrap justify-start gap-x-8 gap-y-4">
               {PERMISSION_ACTIONS.map(({ action, label }) => {
                 return (
                   <Controller
