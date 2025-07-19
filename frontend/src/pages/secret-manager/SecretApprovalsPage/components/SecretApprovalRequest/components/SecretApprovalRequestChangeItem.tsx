@@ -156,11 +156,11 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Tags</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-y-2">
                   {(secretVersion?.tags?.length ?? 0) ? (
                     secretVersion?.tags?.map(({ slug, id: tagId, color }) => (
                       <Tag
-                        className="flex w-min items-center space-x-2"
+                        className="flex w-min items-center space-x-1.5 border border-mineshaft-500 bg-mineshaft-800"
                         key={`${secretVersion.id}-${tagId}`}
                       >
                         <div

@@ -38,7 +38,7 @@ import { WsTag } from "@app/hooks/api/types";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import { memo, useEffect, useRef, useCallback } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 import {
@@ -799,7 +799,7 @@ export const SecretItem = memo(
                 isPending ? (
                   <motion.div
                     key="options"
-                    className="flex h-10 flex-shrink-0 items-center space-x-4 px-[0.64rem]"
+                    className="mt-0.5 flex h-10 flex-shrink-0 items-center space-x-3 px-[0.84rem]"
                     initial={{ x: 0, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
@@ -839,7 +839,7 @@ export const SecretItem = memo(
                 ) : (
                   <motion.div
                     key="options"
-                    className="flex h-10 flex-shrink-0 items-center space-x-4 px-[0.64rem]"
+                    className="mt-0.5 flex h-10 flex-shrink-0 items-center space-x-3 px-[0.84rem]"
                     initial={{ x: 0, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
@@ -881,7 +881,7 @@ export const SecretItem = memo(
                         >
                           <FontAwesomeSymbol
                             symbolName={FontAwesomeSpriteName.Trash}
-                            className="h-5 w-4"
+                            className="h-3.5 w-4"
                           />
                         </IconButton>
                       )}

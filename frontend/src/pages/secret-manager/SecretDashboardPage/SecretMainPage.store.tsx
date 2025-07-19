@@ -291,7 +291,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
 
           if (change.type === PendingAction.Create && existingFolder) {
             createNotification({
-              text: "Another folder with same name already exists",
+              text: "A folder with this name already exists",
               type: "error"
             });
             return { pendingChanges: newChanges };
@@ -302,7 +302,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
             existingFolder
           ) {
             createNotification({
-              text: "Another folder with same name already exists",
+              text: "A folder with this name already exists",
               type: "error"
             });
             return { pendingChanges: newChanges };
@@ -322,7 +322,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
 
           if (change.type === PendingAction.Create && existingSecret) {
             createNotification({
-              text: "Another secret with same name already exists",
+              text: "A secret with this name already exists",
               type: "error"
             });
             return { pendingChanges: newChanges };
@@ -343,7 +343,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
 
           if (existingNewSecretName) {
             createNotification({
-              text: "Another secret with same name already exists",
+              text: "A secret with this name already exists",
               type: "error"
             });
             return { pendingChanges: newChanges };

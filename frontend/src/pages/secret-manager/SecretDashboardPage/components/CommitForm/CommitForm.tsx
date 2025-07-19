@@ -1,9 +1,19 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useState } from "react";
-import { faCodeCommit, faEye, faFolder, faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faChevronRight,
+  faCodeCommit,
+  faEye,
+  faFolder,
+  faKey,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { Badge, Button, IconButton, Input, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
 import {
@@ -39,7 +49,7 @@ const TagsList: React.FC<{ tags?: { id: string; slug: string }[]; className?: st
   return (
     <div className={`flex flex-wrap gap-1 ${className}`}>
       {tags.map((tag) => (
-        <Badge key={tag.id} variant="primary" className="text-xs">
+        <Badge key={tag.id} variant="success" className="text-xs">
           {tag.slug}
         </Badge>
       ))}
@@ -79,12 +89,14 @@ const ComparisonTableRow: React.FC<{
 
   return (
     <tr className="border-b border-mineshaft-700 last:border-b-0">
-      <td className="w-24 py-3 pl-4 align-top font-medium text-mineshaft-300">{label}:</td>
-      <td className="w-1/2 px-3 py-3 align-top">
+      <td className="w-[12%] border-r border-mineshaft-600 px-4 py-3 align-top font-medium text-mineshaft-300">
+        {label}
+      </td>
+      <td className="w-1/2 border-r border-mineshaft-600 px-4 py-3 align-top">
         <div className="text-red-400 opacity-80">{previousValue}</div>
       </td>
       <td className="w-1/2 py-3 pr-4 align-top">
-        <div className="text-green-400">{newValue}</div>
+        <div className="px-4 text-green-400">{newValue}</div>
       </td>
     </tr>
   );
@@ -96,6 +108,8 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   workspaceId,
   secretPath
 }) => {
+  const [isOpen, setIsOpen] = useToggle(true);
+
   const getChangeBadge = (type: PendingChange["type"]) => {
     switch (type) {
       case PendingAction.Create:
@@ -114,7 +128,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
 
     if (change.type === PendingAction.Create) {
       return (
-        <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
+        <div className="overflow-hidden rounded-md bg-mineshaft-900/80">
           <table className="w-full text-sm">
             <tbody>
               <tr className="border-b border-mineshaft-700">
@@ -185,83 +199,85 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       if (!hasChanges) return null;
 
       return (
-        <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
-          <table className="w-full text-sm">
-            <tbody>
-              {hasKeyChange && (
-                <ComparisonTableRow
-                  label="Key"
-                  previousValue={<span className="font-mono">{change.existingSecret.key}</span>}
-                  newValue={<span className="font-mono">{change.newSecretName}</span>}
-                />
-              )}
-              {hasValueChange && (
-                <ComparisonTableRow
-                  label="Value"
-                  previousValue={
-                    <div className="max-w-md break-all rounded">
-                      {change.existingSecret.value || <span className="italic">(empty)</span>}
-                    </div>
-                  }
-                  newValue={
-                    <div className="max-w-md break-all rounded">
-                      {change.secretValue || <span className="italic">(empty)</span>}
-                    </div>
-                  }
-                />
-              )}
-              {hasCommentChange && (
-                <ComparisonTableRow
-                  label="Comment"
-                  previousValue={
-                    change.existingSecret.comment || <span className="italic">(empty)</span>
-                  }
-                  newValue={change.secretComment || <span className="italic">(empty)</span>}
-                />
-              )}
-              {hasMultilineChange && (
-                <ComparisonTableRow
-                  label="Multi-line Encoding"
-                  previousValue={
-                    change.existingSecret.skipMultilineEncoding ? "Enabled" : "Disabled"
-                  }
-                  newValue={change.skipMultilineEncoding ? "Enabled" : "Disabled"}
-                />
-              )}
-              {hasTagsChange && (
-                <ComparisonTableRow
-                  label="Tags"
-                  previousValue={<TagsList tags={change.existingSecret.tags} />}
-                  newValue={<TagsList tags={change.tags} />}
-                />
-              )}
-              {hasMetadataChange && (
-                <ComparisonTableRow
-                  label="Metadata"
-                  previousValue={<MetadataList metadata={change.existingSecret.secretMetadata} />}
-                  newValue={<MetadataList metadata={change.secretMetadata} />}
-                />
-              )}
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full text-sm">
+          <tbody>
+            {hasKeyChange && (
+              <ComparisonTableRow
+                label="Key"
+                previousValue={<span className="font-mono">{change.existingSecret.key}</span>}
+                newValue={<span className="font-mono">{change.newSecretName}</span>}
+              />
+            )}
+            {hasValueChange && (
+              <ComparisonTableRow
+                label="Value"
+                previousValue={
+                  <div className="max-w-md break-all rounded">
+                    {change.existingSecret.value || (
+                      <span className="italic text-mineshaft-400">(empty)</span>
+                    )}
+                  </div>
+                }
+                newValue={
+                  <div className="max-w-md break-all rounded">
+                    {change.secretValue || (
+                      <span className="italic text-mineshaft-400">(empty)</span>
+                    )}
+                  </div>
+                }
+              />
+            )}
+            {hasCommentChange && (
+              <ComparisonTableRow
+                label="Comment"
+                previousValue={
+                  change.existingSecret.comment || (
+                    <span className="italic text-mineshaft-400">(empty)</span>
+                  )
+                }
+                newValue={
+                  change.secretComment || <span className="italic text-mineshaft-400">(empty)</span>
+                }
+              />
+            )}
+            {hasMultilineChange && (
+              <ComparisonTableRow
+                label="Multi-line Encoding"
+                previousValue={change.existingSecret.skipMultilineEncoding ? "Enabled" : "Disabled"}
+                newValue={change.skipMultilineEncoding ? "Enabled" : "Disabled"}
+              />
+            )}
+            {hasTagsChange && (
+              <ComparisonTableRow
+                label="Tags"
+                previousValue={<TagsList tags={change.existingSecret.tags} />}
+                newValue={<TagsList tags={change.tags} />}
+              />
+            )}
+            {hasMetadataChange && (
+              <ComparisonTableRow
+                label="Metadata"
+                previousValue={<MetadataList metadata={change.existingSecret.secretMetadata} />}
+                newValue={<MetadataList metadata={change.secretMetadata} />}
+              />
+            )}
+          </tbody>
+        </table>
       );
     }
 
     if (change.type === PendingAction.Delete) {
       return (
-        <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
-          <table className="w-full text-sm">
-            <tbody>
-              <tr className="border-b border-mineshaft-700">
-                <td className="w-24 py-3 pl-4 font-medium text-red-400">Key:</td>
-                <td className="px-3 py-3 font-mono text-red-400 line-through" colSpan={2}>
-                  {change.secretKey}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-b border-mineshaft-700">
+              <td className="w-24 py-3 pl-4 font-medium text-red-400">Key:</td>
+              <td className="px-3 py-3 font-mono text-red-400 line-through" colSpan={2}>
+                {change.secretKey}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       );
     }
 
@@ -273,26 +289,24 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
 
     if (change.type === PendingAction.Create) {
       return (
-        <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
-          <table className="w-full text-sm">
-            <tbody>
-              <tr className="border-b border-mineshaft-700">
-                <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Name:</td>
-                <td className="px-3 py-3 font-mono text-mineshaft-100" colSpan={2}>
-                  {change.folderName}
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-b border-mineshaft-700">
+              <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Name:</td>
+              <td className="px-3 py-3 font-mono text-mineshaft-100" colSpan={2}>
+                {change.folderName}
+              </td>
+            </tr>
+            {change.description !== undefined && change.description !== "" && (
+              <tr className="border-b border-mineshaft-700 last:border-b-0">
+                <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Description:</td>
+                <td className="px-3 py-3 text-mineshaft-100" colSpan={2}>
+                  {change.description}
                 </td>
               </tr>
-              {change.description !== undefined && change.description !== "" && (
-                <tr className="border-b border-mineshaft-700 last:border-b-0">
-                  <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Description:</td>
-                  <td className="px-3 py-3 text-mineshaft-100" colSpan={2}>
-                    {change.description}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            )}
+          </tbody>
+        </table>
       );
     }
 
@@ -305,45 +319,41 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       if (!hasChanges) return null;
 
       return (
-        <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
-          <table className="w-full text-sm">
-            <tbody>
-              {hasNameChange && (
-                <ComparisonTableRow
-                  label="Name"
-                  previousValue={<span className="font-mono">{change.originalFolderName}</span>}
-                  newValue={<span className="font-mono">{change.folderName}</span>}
-                />
-              )}
-              {hasDescriptionChange && (
-                <ComparisonTableRow
-                  label="Description"
-                  previousValue={
-                    change.originalDescription || <span className="italic">(empty)</span>
-                  }
-                  newValue={change.description || <span className="italic">(empty)</span>}
-                />
-              )}
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full text-sm">
+          <tbody>
+            {hasNameChange && (
+              <ComparisonTableRow
+                label="Name"
+                previousValue={<span className="font-mono">{change.originalFolderName}</span>}
+                newValue={<span className="font-mono">{change.folderName}</span>}
+              />
+            )}
+            {hasDescriptionChange && (
+              <ComparisonTableRow
+                label="Description"
+                previousValue={
+                  change.originalDescription || <span className="italic">(empty)</span>
+                }
+                newValue={change.description || <span className="italic">(empty)</span>}
+              />
+            )}
+          </tbody>
+        </table>
       );
     }
 
     if (change.type === PendingAction.Delete) {
       return (
-        <div className="mt-3 overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900">
-          <table className="w-full text-sm">
-            <tbody>
-              <tr className="border-b border-mineshaft-700">
-                <td className="w-24 py-3 pl-4 font-medium text-red-400">Name:</td>
-                <td className="px-3 py-3 font-mono text-red-400 line-through" colSpan={2}>
-                  {change.folderName}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-b border-mineshaft-700">
+              <td className="w-24 py-3 pl-4 font-medium text-red-400">Name:</td>
+              <td className="px-3 py-3 font-mono text-red-400 line-through" colSpan={2}>
+                {change.folderName}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       );
     }
 
@@ -371,6 +381,49 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       secretPath
     });
   };
+
+  return (
+    <div className="overflow-clip rounded-t-none border border-t-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md first:border-t last:rounded-b-md last:border-b">
+      <div
+        className={twMerge(
+          "flex h-12 cursor-pointer items-center border-mineshaft-600 px-3.5 py-2 text-sm text-gray-300",
+          isOpen && "border-b"
+        )}
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsOpen.toggle()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            setIsOpen.toggle();
+          }
+        }}
+      >
+        <FontAwesomeIcon className="mr-3 w-4" icon={isOpen ? faChevronDown : faChevronRight} />
+
+        <div className="flex flex-1 items-center gap-1.5 text-sm">
+          {getChangeName()}
+          {getChangeBadge(change.type)}
+        </div>
+        <Tooltip content="Discard change">
+          <IconButton
+            ariaLabel="delete-change"
+            variant="plain"
+            colorSchema="danger"
+            size="sm"
+            onClick={() => handleDeletePending(change.resourceType, change.id)}
+          >
+            <FontAwesomeIcon icon={faTrash} />
+          </IconButton>
+        </Tooltip>
+      </div>
+
+      {isOpen ? (
+        <div className="overflow-hidden bg-mineshaft-900">
+          {change.resourceType === "secret" ? renderSecretChanges() : renderFolderChanges()}
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="py-2 shadow-sm">
@@ -432,32 +485,35 @@ export const CommitForm: React.FC<CommitFormProps> = ({
       {/* Floating Panel */}
       {!isModalOpen && (
         <div className="fixed bottom-4 z-40 w-64 self-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-2xl">
-          <div className="flex w-full justify-center border-b border-mineshaft-600 px-4 py-3">
+          <div className="flex w-full justify-center border-b border-mineshaft-600 p-2">
             <div className="flex w-full items-center justify-between">
               <div className="flex items-center gap-2">
-                <FontAwesomeIcon icon={faCodeCommit} className="text-primary" />
-                <span className="font-medium text-mineshaft-100">Ready to Commit</span>
+                <FontAwesomeIcon icon={faCodeCommit} className="text-mineshaft-400" />
+                <span className="font-medium text-mineshaft-100">Pending Changes</span>
               </div>
               <Badge variant="primary" className="text-xs">
-                {totalChangesCount} change{totalChangesCount !== 1 ? "s" : ""}
+                {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
               </Badge>
             </div>
           </div>
 
-          <div className="flex justify-center gap-4 p-3">
+          <div className="flex justify-center gap-2 p-2">
             <Button
+              size="sm"
               leftIcon={<FontAwesomeIcon icon={faTrash} />}
               onClick={() => clearAllPendingChanges({ workspaceId, environment, secretPath })}
               isDisabled={totalChangesCount === 0}
-              colorSchema="secondary"
+              variant="outline_bg"
+              className="h-8 flex-1 hover:border-red/40 hover:bg-red/[0.1]"
             >
               Discard
             </Button>
             <Button
+              variant="outline_bg"
               leftIcon={<FontAwesomeIcon icon={faEye} />}
               onClick={() => setIsModalOpen(true)}
               isDisabled={totalChangesCount === 0}
-              colorSchema="secondary"
+              className="h-8 flex-1"
             >
               Review
             </Button>
@@ -470,23 +526,20 @@ export const CommitForm: React.FC<CommitFormProps> = ({
         <ModalContent
           title={
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faCodeCommit} className="text-primary" />
+              <FontAwesomeIcon icon={faCodeCommit} className="text-mineshaft-400" />
               Commit Changes
-              <Badge variant="primary" className="ml-2">
-                {totalChangesCount} change{totalChangesCount !== 1 ? "s" : ""}
+              <Badge variant="primary" className="mt-[0.05rem]">
+                {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
               </Badge>
             </div>
           }
+          subTitle={"Write a commit message and review the changes you&apos;re about to commit."}
           className="max-h-[90vh] max-w-5xl"
         >
           <div className="space-y-6">
-            <p className="text-mineshaft-300">
-              Write a commit message and review the changes you&apos;re about to commit.
-            </p>
-
             {/* Changes List */}
             <div className="space-y-6">
-              <div className="max-h-96 space-y-4 overflow-y-auto pr-2">
+              <div className="max-h-[50vh] space-y-4 overflow-y-auto rounded-md border border-mineshaft-600 bg-bunker-800 p-4 shadow-inner">
                 {/* Folder Changes */}
                 {pendingChanges.folders.length > 0 && (
                   <div>
@@ -494,7 +547,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                       <FontAwesomeIcon icon={faFolder} className="text-mineshaft-300" />
                       Folders ({pendingChanges.folders.length})
                     </h4>
-                    <div className="space-y-3">
+                    <div>
                       {pendingChanges.folders.map((change) => (
                         <ChangeTable
                           key={change.id}
@@ -511,11 +564,11 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 {/* Secret Changes */}
                 {pendingChanges.secrets.length > 0 && (
                   <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-semibold text-mineshaft-200">
-                      <FontAwesomeIcon icon={faKey} className="text-mineshaft-300" />
+                    <h4 className="mb-2 flex items-center gap-2 px-2 text-sm text-mineshaft-300">
+                      <FontAwesomeIcon icon={faKey} className="mr-1 text-mineshaft-300" />
                       Secrets ({pendingChanges.secrets.length})
                     </h4>
-                    <div className="space-y-3">
+                    <div>
                       {pendingChanges.secrets.map((change) => (
                         <ChangeTable
                           key={change.id}
@@ -546,9 +599,10 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3 border-t border-mineshaft-600 pt-4">
+            <div className="flex justify-end gap-3">
               <Button
-                variant="outline_bg"
+                variant="plain"
+                colorSchema="secondary"
                 onClick={() => setIsModalOpen(false)}
                 isDisabled={isCommitting}
               >
@@ -560,6 +614,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 isDisabled={isCommitting || !commitMessage.trim()}
                 leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                 colorSchema="primary"
+                variant="outline_bg"
               >
                 {isCommitting ? "Committing..." : "Commit Changes"}
               </Button>
