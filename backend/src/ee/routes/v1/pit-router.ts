@@ -3,11 +3,14 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { isValidFolderName } from "@app/lib/validator";
+import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { SecretNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { commitChangesResponseSchema, resourceChangeSchema } from "@app/services/folder-commit/folder-commit-schemas";
+import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 const commitHistoryItemSchema = z.object({
   id: z.string(),
@@ -411,6 +414,168 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       });
 
       return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/batch/commit",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: true,
+      description: "Commit changes",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        message: z
+          .string()
+          .trim()
+          .min(1)
+          .max(255)
+          .refine((message) => message.trim() !== "", {
+            message: "Commit message cannot be empty"
+          }),
+        changes: z.object({
+          secrets: z.object({
+            create: z
+              .array(
+                z.object({
+                  secretKey: SecretNameSchema,
+                  secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+                  secretComment: z.string().trim().optional().default(""),
+                  skipMultilineEncoding: z.boolean().optional(),
+                  metadata: z.record(z.string()).optional(),
+                  secretMetadata: ResourceMetadataSchema.optional(),
+                  tagIds: z.string().array().optional()
+                })
+              )
+              .optional(),
+            update: z
+              .array(
+                z.object({
+                  secretKey: SecretNameSchema,
+                  newSecretName: SecretNameSchema.optional(),
+                  secretValue: z
+                    .string()
+                    .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+                    .optional(),
+                  secretComment: z.string().trim().optional().default(""),
+                  skipMultilineEncoding: z.boolean().optional(),
+                  metadata: z.record(z.string()).optional(),
+                  secretMetadata: ResourceMetadataSchema.optional(),
+                  tagIds: z.string().array().optional()
+                })
+              )
+              .optional(),
+            delete: z
+              .array(
+                z.object({
+                  secretKey: SecretNameSchema
+                })
+              )
+              .optional()
+          }),
+          folders: z.object({
+            create: z
+              .array(
+                z.object({
+                  folderName: z
+                    .string()
+                    .trim()
+                    .refine((name) => isValidFolderName(name), {
+                      message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+                    }),
+                  description: z.string().optional()
+                })
+              )
+              .optional(),
+            update: z
+              .array(
+                z.object({
+                  folderName: z
+                    .string()
+                    .trim()
+                    .refine((name) => isValidFolderName(name), {
+                      message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+                    }),
+                  description: z.string().nullable().optional(),
+                  id: z.string()
+                })
+              )
+              .optional(),
+            delete: z
+              .array(
+                z.object({
+                  folderName: z
+                    .string()
+                    .trim()
+                    .refine((name) => isValidFolderName(name), {
+                      message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+                    }),
+                  id: z.string()
+                })
+              )
+              .optional()
+          })
+        })
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.pit.processNewCommitRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.body.projectId,
+        environment: req.body.environment,
+        secretPath: req.body.secretPath,
+        message: req.body.message,
+        changes: {
+          secrets: req.body.changes.secrets,
+          folders: req.body.changes.folders
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.PIT_PROCESS_NEW_COMMIT_RAW,
+          metadata: {
+            commitId: result.commitId,
+            approvalId: result.approvalId,
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            message: req.body.message
+          }
+        }
+      });
+
+      for await (const event of result.secretMutationEvents) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.body.projectId,
+          event
+        });
+      }
+
+      return { message: "success" };
     }
   });
 };

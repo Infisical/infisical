@@ -1,5 +1,6 @@
 import { ProjectPermissionActions } from "@app/context";
 
+import { PendingAction } from "../secretFolders/types";
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
@@ -66,6 +67,8 @@ export type SecretV3RawSanitized = {
   isRotatedSecret?: boolean;
   secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
+  isPending?: boolean;
+  pendingAction?: PendingAction;
 };
 
 export type SecretV3Raw = {

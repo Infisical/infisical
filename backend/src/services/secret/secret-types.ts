@@ -544,3 +544,33 @@ export enum SecretProtectionType {
 }
 
 export type TStartSecretsV2MigrationDTO = TProjectPermission;
+
+export type TProcessNewCommitRawDTO = {
+  secrets: {
+    create?: {
+      secretKey: string;
+      secretValue: string;
+      secretComment?: string;
+      skipMultilineEncoding?: boolean;
+      tagIds?: string[];
+      secretMetadata?: ResourceMetadataDTO;
+      metadata?: { source?: string };
+    }[];
+    update?: {
+      secretKey: string;
+      newSecretName?: string;
+      secretValue?: string;
+      secretComment?: string;
+      skipMultilineEncoding?: boolean;
+      tagIds?: string[];
+      secretMetadata?: ResourceMetadataDTO;
+      metadata?: { source?: string };
+    }[];
+    delete?: { secretKey: string }[];
+  };
+  folders: {
+    create?: { folderName: string; description?: string }[];
+    update?: { folderName: string; description?: string | null; id: string }[];
+    delete?: { folderName: string; id: string }[];
+  };
+};

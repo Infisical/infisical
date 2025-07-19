@@ -47,6 +47,14 @@ export enum ResourceType {
   FOLDER = "folder"
 }
 
+export type TCommitResourceChangeDTO = {
+  type: string;
+  secretVersionId?: string;
+  folderVersionId?: string;
+  isUpdate?: boolean;
+  folderId?: string;
+};
+
 type TCreateCommitDTO = {
   actor: {
     type: string;
@@ -57,13 +65,7 @@ type TCreateCommitDTO = {
   };
   message?: string;
   folderId: string;
-  changes: {
-    type: string;
-    secretVersionId?: string;
-    folderVersionId?: string;
-    isUpdate?: boolean;
-    folderId?: string;
-  }[];
+  changes: TCommitResourceChangeDTO[];
   omitIgnoreFilter?: boolean;
 };
 

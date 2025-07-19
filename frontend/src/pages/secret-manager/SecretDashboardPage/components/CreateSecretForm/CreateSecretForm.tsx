@@ -12,9 +12,15 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { useCreateSecretV3, useCreateWsTag, useGetWsTags } from "@app/hooks/api";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType } from "@app/hooks/api/types";
 
-import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
+import {
+  PendingSecretCreate,
+  PopUpNames,
+  useBatchModeActions,
+  usePopUpAction
+} from "../../SecretMainPage.store";
 
 const typeSchema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),
@@ -31,6 +37,7 @@ type Props = {
   // modal props
   autoCapitalize?: boolean;
   isProtectedBranch?: boolean;
+  isBatchMode?: boolean;
 };
 
 export const CreateSecretForm = ({
@@ -38,7 +45,8 @@ export const CreateSecretForm = ({
   workspaceId,
   secretPath = "/",
   autoCapitalize = true,
-  isProtectedBranch = false
+  isProtectedBranch = false,
+  isBatchMode = false
 }: Props) => {
   const {
     register,
@@ -53,6 +61,7 @@ export const CreateSecretForm = ({
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const createWsTag = useCreateWsTag();
+  const { addPendingChange } = useBatchModeActions();
 
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -85,6 +94,26 @@ export const CreateSecretForm = ({
 
   const handleFormSubmit = async ({ key, value, tags }: TFormSchema) => {
     try {
+      if (isBatchMode) {
+        const pendingSecretCreate: PendingSecretCreate = {
+          id: key,
+          type: PendingAction.Create,
+          secretKey: key,
+          secretValue: value || "",
+          secretComment: "",
+          tags: tags?.map((el) => ({ id: el.value, slug: el.label })),
+          timestamp: Date.now(),
+          resourceType: "secret"
+        };
+        addPendingChange(pendingSecretCreate, {
+          workspaceId,
+          environment,
+          secretPath
+        });
+        closePopUp(PopUpNames.CreateSecretForm);
+        reset();
+        return;
+      }
       await createSecretV3({
         environment,
         workspaceId,

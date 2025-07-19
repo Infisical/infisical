@@ -77,12 +77,15 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/types";
 import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
 
 import {
+  PendingFolderCreate,
   PopUpNames,
+  useBatchModeActions,
   usePopUpAction,
   useSelectedSecretActions,
   useSelectedSecrets
@@ -112,6 +115,7 @@ type Props = {
   filter: Filter;
   tags?: WsTag[];
   isVisible?: boolean;
+  isBatchMode?: boolean;
   snapshotCount: number;
   isSnapshotCountLoading?: boolean;
   protectedBranchPolicyName?: string;
@@ -142,6 +146,7 @@ export const ActionBar = ({
   filter,
   tags = [],
   isVisible,
+  isBatchMode,
   snapshotCount,
   isSnapshotCountLoading,
   onSearchChange,
@@ -182,6 +187,7 @@ export const ActionBar = ({
     options: { onSuccess: undefined }
   });
   const queryClient = useQueryClient();
+  const { addPendingChange } = useBatchModeActions();
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
@@ -192,6 +198,28 @@ export const ActionBar = ({
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
+      if (isBatchMode) {
+        const folderId = `${folderName}`;
+        const pendingFolderCreate: PendingFolderCreate = {
+          id: folderId,
+          resourceType: "folder",
+          type: PendingAction.Create,
+          folderName,
+          description: description || undefined,
+          parentPath: secretPath,
+          timestamp: Date.now()
+        };
+
+        addPendingChange(pendingFolderCreate, {
+          workspaceId,
+          environment,
+          secretPath
+        });
+
+        handlePopUpClose("addFolder");
+        return;
+      }
+
       await createFolder({
         name: folderName,
         path: secretPath,

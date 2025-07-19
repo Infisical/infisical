@@ -1,5 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import {
   ProjectMembershipRole,
@@ -1368,8 +1369,9 @@ export const secretApprovalRequestServiceFactory = ({
     policy,
     projectId,
     secretPath,
-    environment
-  }: TGenerateSecretApprovalRequestV2BridgeDTO) => {
+    environment,
+    trx: providedTx
+  }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
     if (actor === ActorType.SERVICE || actor === ActorType.Machine)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
@@ -1595,7 +1597,7 @@ export const secretApprovalRequestServiceFactory = ({
       );
     });
 
-    const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
+    const executeApprovalRequestCreation = async (tx: Knex) => {
       const doc = await secretApprovalRequestDAL.create(
         {
           folderId,
@@ -1657,7 +1659,11 @@ export const secretApprovalRequestServiceFactory = ({
       }
 
       return { ...doc, commits: approvalCommits };
-    });
+    };
+
+    const secretApprovalRequest = providedTx
+      ? await executeApprovalRequestCreation(providedTx)
+      : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
     const user = await userDAL.findById(actorId);
     const env = await projectEnvDAL.findOne({ id: policy.envId });
