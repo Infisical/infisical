@@ -51,7 +51,7 @@ export const DigitalOceanAppPlatformSyncFields = () => {
                 setValue("destinationConfig.appName", v?.spec.name ?? "");
               }}
               options={apps}
-              placeholder="Select an account..."
+              placeholder="Select an app..."
               getOptionLabel={(option) => option.spec.name}
               getOptionValue={(option) => option.id}
             />
