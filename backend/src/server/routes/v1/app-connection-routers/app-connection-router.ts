@@ -104,7 +104,7 @@ import {
 import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { SanitizedDigitalOceanConnectionSchema } from "../../../../services/app-connection/digital-ocean";
+import { SanitizedDigitalOceanConnectionSchema } from "@app/services/app-connection/digital-ocean";
 
 // can't use discriminated due to multiple schemas for certain apps
 const SanitizedAppConnectionSchema = z.union([
