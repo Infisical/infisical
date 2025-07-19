@@ -415,6 +415,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     filters?: {
       search?: string;
       tagSlugs?: string[];
+      includeTagsInSearch?: boolean;
+      includeMetadataInSearch?: boolean;
     }
   ) => {
     try {
@@ -433,17 +435,27 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .whereIn("folderId", folderIds)
         .where((bd) => {
           if (filters?.search) {
-            void bd.whereILike("key", `%${filters?.search}%`);
+            void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
+            if (filters?.includeTagsInSearch) {
+              void bd.orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
+            }
+            if (filters?.includeMetadataInSearch) {
+              void bd
+                .orWhereILike(`${TableName.ResourceMetadata}.key`, `%${filters?.search}%`)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, `%${filters?.search}%`);
+            }
           }
         })
         .where((bd) => {
-          void bd.whereNull("userId").orWhere({ userId: userId || null });
+          void bd
+            .whereNull(`${TableName.SecretV2}.userId`)
+            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
-        .countDistinct("key");
+        .countDistinct(`${TableName.SecretV2}.key`);
 
       // only need to join tags if filtering by tag slugs
       const slugs = filters?.tagSlugs?.filter(Boolean);
-      if (slugs && slugs.length > 0) {
+      if ((slugs && slugs.length > 0) || filters?.includeTagsInSearch) {
         void query
           .leftJoin(
             TableName.SecretV2JnTag,
@@ -454,12 +466,24 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             TableName.SecretTag,
             `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
             `${TableName.SecretTag}.id`
-          )
-          .whereIn("slug", slugs);
+          );
+
+        if (slugs?.length) {
+          void query.whereIn("slug", slugs);
+        }
+      }
+
+      if (filters?.includeMetadataInSearch) {
+        void query.leftJoin(
+          TableName.ResourceMetadata,
+          `${TableName.SecretV2}.id`,
+          `${TableName.ResourceMetadata}.secretId`
+        );
       }
 
       const secrets = await query;
 
+      // @ts-expect-error not inferred by knex
       return Number(secrets[0]?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "get folder secret count" });
@@ -485,12 +509,14 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
         .where((bd) => {
           if (filters?.search) {
+            void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
             if (filters?.includeTagsInSearch) {
+              void bd.orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
+            }
+            if (filters?.includeMetadataInSearch) {
               void bd
-                .whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`)
-                .orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
-            } else {
-              void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
+                .orWhereILike(`${TableName.ResourceMetadata}.key`, `%${filters?.search}%`)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, `%${filters?.search}%`);
             }
           }
 
