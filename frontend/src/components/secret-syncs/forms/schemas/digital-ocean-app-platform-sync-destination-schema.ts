@@ -14,7 +14,7 @@ export const DigitalOceanAppPlatformSyncDestinationSchema = BaseSecretSyncSchema
       appName: z
         .string()
         .min(1, "Account Name is required")
-        .max(255, "Account ID must be less than 255 characters")
+        .max(255, "App Name must be less than 255 characters")
     })
   })
 );
