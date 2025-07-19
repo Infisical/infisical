@@ -90,6 +90,7 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import { TDigitalOceanAppPlatformSyncListItem } from "./digital-ocean-app-platform/digital-ocean-app-platform-sync-types";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
@@ -253,7 +254,8 @@ export type TSecretSyncListItem =
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem
-  | TSupabaseSyncListItem;
+  | TSupabaseSyncListItem
+  | TDigitalOceanAppPlatformSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

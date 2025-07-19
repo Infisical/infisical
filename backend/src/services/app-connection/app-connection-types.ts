@@ -88,6 +88,12 @@ import {
   TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
 import {
+  TDigitalOceanConnection,
+  TDigitalOceanConnectionConfig,
+  TDigitalOceanConnectionInput,
+  TValidateDigitalOceanCredentialsSchema
+} from "./digital-ocean";
+import {
   TFlyioConnection,
   TFlyioConnectionConfig,
   TFlyioConnectionInput,
@@ -232,6 +238,7 @@ export type TAppConnection = { id: string } & (
   | TRailwayConnection
   | TChecklyConnection
   | TSupabaseConnection
+  | TDigitalOceanConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -273,6 +280,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRailwayConnectionInput
   | TChecklyConnectionInput
   | TSupabaseConnectionInput
+  | TDigitalOceanConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -321,7 +329,8 @@ export type TAppConnectionConfig =
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
-  | TSupabaseConnectionConfig;
+  | TSupabaseConnectionConfig
+  | TDigitalOceanConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -357,7 +366,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
-  | TValidateSupabaseConnectionCredentialsSchema;
+  | TValidateSupabaseConnectionCredentialsSchema
+  | TValidateDigitalOceanCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

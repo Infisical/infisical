@@ -25,7 +25,8 @@ export enum SecretSync {
   Supabase = "supabase",
   Zabbix = "zabbix",
   Railway = "railway",
-  Checkly = "checkly"
+  Checkly = "checkly",
+  DigitalOceanAppPlatform = "digital-ocean-app-platform"
 }
 
 export enum SecretSyncInitialSyncBehavior {

@@ -34,6 +34,7 @@ import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
+import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 
 export * from "./app-connection-router";
 
@@ -72,5 +73,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,
     [AppConnection.Checkly]: registerChecklyConnectionRouter,
-    [AppConnection.Supabase]: registerSupabaseConnectionRouter
+    [AppConnection.Supabase]: registerSupabaseConnectionRouter,
+    [AppConnection.DigitalOcean]: registerDigitalOceanConnectionRouter
   };
