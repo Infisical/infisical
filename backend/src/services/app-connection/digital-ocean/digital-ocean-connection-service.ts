@@ -18,7 +18,7 @@ export const digitalOceanAppPlatformConnectionService = (getAppConnection: TGetA
       const apps = await DigitalOceanAppPlatformPublicAPI.getApps(connection);
       return apps;
     } catch (error) {
-      logger.error(error, "Failed to list accounts on Checkly");
+      logger.error(error, "Failed to list apps on Digital Ocean");
       return [];
     }
   };
