@@ -20,6 +20,7 @@ import { registerGitLabSyncRouter } from "./gitlab-sync-router";
 import { registerHCVaultSyncRouter } from "./hc-vault-sync-router";
 import { registerHerokuSyncRouter } from "./heroku-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
+import { registerNetlifySyncRouter } from "./netlify-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
 import { registerSupabaseSyncRouter } from "./supabase-sync-router";
@@ -59,5 +60,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Zabbix]: registerZabbixSyncRouter,
   [SecretSync.Railway]: registerRailwaySyncRouter,
   [SecretSync.Checkly]: registerChecklySyncRouter,
-  [SecretSync.DigitalOceanAppPlatform]: registerDigitalOceanAppPlatformSyncRouter
+  [SecretSync.DigitalOceanAppPlatform]: registerDigitalOceanAppPlatformSyncRouter,
+  [SecretSync.Netlify]: registerNetlifySyncRouter
 };

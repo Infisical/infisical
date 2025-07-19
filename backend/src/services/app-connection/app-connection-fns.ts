@@ -97,6 +97,7 @@ import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnection
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
+import { getNetlifyConnectionListItem, validateNetlifyConnectionCredentials } from "./netlify";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
@@ -161,7 +162,8 @@ export const listAppConnectionOptions = () => {
     getBitbucketConnectionListItem(),
     getChecklyConnectionListItem(),
     getSupabaseConnectionListItem(),
-    getDigitalOceanConnectionListItem()
+    getDigitalOceanConnectionListItem(),
+    getNetlifyConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -248,7 +250,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService);
@@ -376,7 +379,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
   [AppConnection.Checkly]: platformManagedCredentialsNotSupported,
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
-  [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported
+  [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
+  [AppConnection.Netlify]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

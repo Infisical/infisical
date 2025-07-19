@@ -76,6 +76,10 @@ import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@ap
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
 import {
+  NetlifyConnectionListItemSchema,
+  SanitizedNetlifyConnectionSchema
+} from "@app/services/app-connection/netlify";
+import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
@@ -143,7 +147,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRailwayConnectionSchema.options,
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
-  ...SanitizedDigitalOceanConnectionSchema.options
+  ...SanitizedDigitalOceanConnectionSchema.options,
+  ...SanitizedNetlifyConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -181,7 +186,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RailwayConnectionListItemSchema,
   ChecklyConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
-  DigitalOceanConnectionListItemSchema
+  DigitalOceanConnectionListItemSchema,
+  NetlifyConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

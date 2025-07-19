@@ -19,6 +19,7 @@ import { GitLabSyncDestinationCol } from "./GitLabSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
+import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
@@ -91,6 +92,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <SupabaseSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.DigitalOceanAppPlatform:
       return <DigitalOceanAppPlatformSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Netlify:
+      return <NetlifySyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

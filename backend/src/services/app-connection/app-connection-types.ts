@@ -150,6 +150,12 @@ import {
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
+  TNetlifyConnection,
+  TNetlifyConnectionConfig,
+  TNetlifyConnectionInput,
+  TValidateNetlifyConnectionCredentialsSchema
+} from "./netlify";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -239,6 +245,7 @@ export type TAppConnection = { id: string } & (
   | TChecklyConnection
   | TSupabaseConnection
   | TDigitalOceanConnection
+  | TNetlifyConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -281,6 +288,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChecklyConnectionInput
   | TSupabaseConnectionInput
   | TDigitalOceanConnectionInput
+  | TNetlifyConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -330,7 +338,8 @@ export type TAppConnectionConfig =
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
   | TSupabaseConnectionConfig
-  | TDigitalOceanConnectionConfig;
+  | TDigitalOceanConnectionConfig
+  | TNetlifyConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -367,7 +376,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
   | TValidateSupabaseConnectionCredentialsSchema
-  | TValidateDigitalOceanCredentialsSchema;
+  | TValidateDigitalOceanCredentialsSchema
+  | TValidateNetlifyConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

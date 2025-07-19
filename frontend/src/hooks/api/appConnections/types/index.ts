@@ -24,6 +24,7 @@ import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
+import { TNetlifyConnection } from "./netlify-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
@@ -103,7 +104,8 @@ export type TAppConnection =
   | TRailwayConnection
   | TChecklyConnection
   | TSupabaseConnection
-  | TDigitalOceanConnection;
+  | TDigitalOceanConnection
+  | TNetlifyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 

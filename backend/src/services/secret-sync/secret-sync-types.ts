@@ -111,6 +111,7 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import { TNetlifySync, TNetlifySyncInput, TNetlifySyncListItem, TNetlifySyncWithCredentials } from "./netlify";
 import {
   TRailwaySync,
   TRailwaySyncInput,
@@ -171,7 +172,8 @@ export type TSecretSync =
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
-  | TSupabaseSync;
+  | TSupabaseSync
+  | TNetlifySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -201,7 +203,8 @@ export type TSecretSyncWithCredentials =
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
-  | TDigitalOceanAppPlatformSyncWithCredentials;
+  | TDigitalOceanAppPlatformSyncWithCredentials
+  | TNetlifySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -231,7 +234,8 @@ export type TSecretSyncInput =
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
-  | TDigitalOceanAppPlatformSyncInput;
+  | TDigitalOceanAppPlatformSyncInput
+  | TNetlifySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -261,7 +265,8 @@ export type TSecretSyncListItem =
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
-  | TDigitalOceanAppPlatformSyncListItem;
+  | TDigitalOceanAppPlatformSyncListItem
+  | TNetlifySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

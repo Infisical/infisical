@@ -43,6 +43,7 @@ import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
+import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
@@ -80,7 +81,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   ZabbixSyncSchema,
   RailwaySyncSchema,
   ChecklySyncSchema,
-  DigitalOceanAppPlatformSyncSchema
+  DigitalOceanAppPlatformSyncSchema,
+  NetlifySyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -111,7 +113,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   ZabbixSyncListItemSchema,
   RailwaySyncListItemSchema,
   ChecklySyncListItemSchema,
-  SupabaseSyncListItemSchema
+  SupabaseSyncListItemSchema,
+  NetlifySyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

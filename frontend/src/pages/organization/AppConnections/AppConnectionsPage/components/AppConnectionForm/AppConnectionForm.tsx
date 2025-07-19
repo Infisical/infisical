@@ -33,6 +33,7 @@ import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
+import { NetlifyConnectionForm } from "./NetlifyConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
@@ -152,6 +153,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <SupabaseConnectionForm onSubmit={onSubmit} />;
     case AppConnection.DigitalOcean:
       return <DigitalOceanConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Netlify:
+      return <NetlifyConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }

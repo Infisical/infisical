@@ -30,6 +30,7 @@ import { GitLabSyncDestinationSection } from "./GitLabSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
+import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
@@ -139,6 +140,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       DestinationComponents = (
         <DigitalOceanAppPlatformSyncDestinationSection secretSync={secretSync} />
       );
+      break;
+    case SecretSync.Netlify:
+      DestinationComponents = <NetlifySyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

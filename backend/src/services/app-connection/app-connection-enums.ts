@@ -33,7 +33,8 @@ export enum AppConnection {
   Bitbucket = "bitbucket",
   Checkly = "checkly",
   Supabase = "supabase",
-  DigitalOcean = "digital-ocean"
+  DigitalOcean = "digital-ocean",
+  Netlify = "netlify"
 }
 
 export enum AWSRegion {
