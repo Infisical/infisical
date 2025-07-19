@@ -417,7 +417,9 @@ const Page = () => {
       imports?.length ||
       dynamicSecrets?.length ||
       secretRotations?.length ||
-      noAccessSecretCount
+      noAccessSecretCount ||
+      pendingChanges.secrets.length ||
+      pendingChanges.folders.length
   );
 
   useEffect(() => {
@@ -604,15 +606,16 @@ const Page = () => {
               secretMetadata: change.secretMetadata || mergedSecrets[updateIndex].secretMetadata,
               isPending: true,
               pendingAction: PendingAction.Update,
-              tags:
-                change.tags?.map((tag) => ({
-                  id: tag.id,
-                  slug: tag.slug,
-                  projectId: workspaceId,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                  __v: 0
-                })) || []
+              tags: change.tags
+                ? change.tags?.map((tag) => ({
+                    id: tag.id,
+                    slug: tag.slug,
+                    projectId: workspaceId,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    __v: 0
+                  })) || []
+                : mergedSecrets[updateIndex].tags
             };
           }
           break;
@@ -935,25 +938,34 @@ const Page = () => {
                 folders?.length === 0 && <PermissionDeniedBanner />}
             </div>
           </div>
-          {!isDetailsLoading && totalCount > 0 && (
-            <Pagination
-              startAdornment={
-                <SecretTableResourceCount
-                  dynamicSecretCount={totalDynamicSecretCount}
-                  importCount={totalImportCount}
-                  secretCount={totalSecretCount}
-                  folderCount={totalFolderCount}
-                  secretRotationCount={totalSecretRotationCount}
-                />
-              }
-              className="rounded-b-md border-t border-solid border-t-mineshaft-600"
-              count={totalCount}
-              page={page}
-              perPage={perPage}
-              onChangePage={(newPage) => setPage(newPage)}
-              onChangePerPage={handlePerPageChange}
-            />
-          )}
+          {!isDetailsLoading &&
+            (totalCount > 0 ||
+              pendingChanges.secrets.length > 0 ||
+              pendingChanges.folders.length > 0) && (
+              <Pagination
+                startAdornment={
+                  <SecretTableResourceCount
+                    dynamicSecretCount={totalDynamicSecretCount}
+                    importCount={totalImportCount}
+                    secretCount={
+                      totalSecretCount +
+                      pendingChanges.secrets.filter((s) => s.type === PendingAction.Create).length
+                    }
+                    folderCount={
+                      totalFolderCount +
+                      pendingChanges.folders.filter((f) => f.type === PendingAction.Create).length
+                    }
+                    secretRotationCount={totalSecretRotationCount}
+                  />
+                }
+                className="rounded-b-md border-t border-solid border-t-mineshaft-600"
+                count={totalCount + pendingChanges.secrets.length + pendingChanges.folders.length}
+                page={page}
+                perPage={perPage}
+                onChangePage={(newPage) => setPage(newPage)}
+                onChangePerPage={handlePerPageChange}
+              />
+            )}
           <Modal
             isOpen={createSecretPopUp.isOpen}
             onOpenChange={(state) => togglePopUp(PopUpNames.CreateSecretForm, state)}

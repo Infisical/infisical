@@ -220,7 +220,7 @@ export const SecretItem = memo(
       }
 
       if (isDirty && !isSubmitting && !isAutoSavingRef.current) {
-        const debounceTime = isPending ? 500 : 1500;
+        const debounceTime = 600;
 
         autoSaveTimeoutRef.current = setTimeout(() => {
           autoSaveChanges(formValues);

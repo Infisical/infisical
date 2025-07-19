@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { createStore, StateCreator, StoreApi, useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
+import { createNotification } from "@app/components/notifications";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
@@ -45,6 +46,7 @@ export interface PendingSecretUpdate extends BasePendingChange {
   tags?: { id: string; slug: string }[];
   originalSecretMetadata?: { key: string; value: string }[];
   secretMetadata?: { key: string; value: string }[];
+  existingSecret: SecretV3RawSanitized;
 }
 
 export interface PendingSecretDelete extends BasePendingChange {
@@ -100,68 +102,6 @@ export interface BatchContext {
   secretPath: string;
 }
 
-const STORAGE_KEY = "infisical_pending_changes";
-
-const generateContextKey = (workspaceId: string, environment: string, secretPath: string) => {
-  return `${workspaceId}_${environment}_${secretPath}`;
-};
-
-const savePendingChangesToStorage = (
-  changes: PendingChanges,
-  workspaceId: string,
-  environment: string,
-  secretPath: string
-) => {
-  const key = `${STORAGE_KEY}_${generateContextKey(workspaceId, environment, secretPath)}`;
-  try {
-    sessionStorage.setItem(key, JSON.stringify(changes));
-  } catch (error) {
-    console.warn("Failed to save pending changes to sessionStorage:", error);
-  }
-};
-
-const loadPendingChangesFromStorage = (
-  workspaceId: string,
-  environment: string,
-  secretPath: string
-): PendingChanges => {
-  const key = `${STORAGE_KEY}_${generateContextKey(workspaceId, environment, secretPath)}`;
-  const stored = sessionStorage.getItem(key);
-  if (!stored) return { secrets: [], folders: [] };
-
-  try {
-    const parsed = JSON.parse(stored);
-    if (Array.isArray(parsed)) {
-      return {
-        secrets: parsed.filter(
-          (change: any) => !change.resourceType || change.resourceType === "secret"
-        ),
-        folders: []
-      };
-    }
-    return {
-      secrets: parsed.secrets || [],
-      folders: parsed.folders || []
-    };
-  } catch (error) {
-    console.warn("Failed to parse pending changes from sessionStorage:", error);
-    return { secrets: [], folders: [] };
-  }
-};
-
-const clearPendingChangesFromStorage = (
-  workspaceId: string,
-  environment: string,
-  secretPath: string
-) => {
-  const key = `${STORAGE_KEY}_${generateContextKey(workspaceId, environment, secretPath)}`;
-  try {
-    sessionStorage.removeItem(key);
-  } catch (error) {
-    console.warn("Failed to clear pending changes from sessionStorage:", error);
-  }
-};
-
 const normalizeValue = (value: any): string | boolean | undefined => {
   if (value === null || value === undefined || value === "") {
     return undefined;
@@ -207,7 +147,8 @@ const cleanupRevertedSecretFields = (update: PendingSecretUpdate): PendingSecret
 
   if (
     cleaned.secretComment !== undefined &&
-    !areValuesEqual(cleaned.secretComment, cleaned.originalComment)
+    (!areValuesEqual(cleaned.secretComment, cleaned.originalComment) ||
+      !areValuesEqual(cleaned.secretComment, cleaned.existingSecret.comment))
   ) {
     hasChanges = true;
   } else {
@@ -302,6 +243,7 @@ const createSelectedSecretStore: StateCreator<CombinedState, [], [], SelectedSec
 type BatchModeState = {
   isBatchMode: boolean;
   pendingChanges: PendingChanges;
+  pendingChangesByContext: Map<string, PendingChanges>;
   existingSecretKeys: Set<string>;
   existingFolderNames: Set<string>;
   currentContext: BatchContext | null;
@@ -315,16 +257,32 @@ type BatchModeState = {
   };
 };
 
+const generateContextKey = (workspaceId: string, environment: string, secretPath: string) => {
+  return `${workspaceId}_${environment}_${secretPath}`;
+};
+
 const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> = (set, get) => ({
   isBatchMode: true, // Always enabled by default
   pendingChanges: { secrets: [], folders: [] },
+  pendingChangesByContext: new Map<string, PendingChanges>(),
   currentContext: null,
   existingSecretKeys: new Set<string>(),
   existingFolderNames: new Set<string>(),
   batchActions: {
     addPendingChange: (change: PendingChange, context: BatchContext) =>
       set((state) => {
-        const newChanges = { ...state.pendingChanges };
+        const contextKey = generateContextKey(
+          context.workspaceId,
+          context.environment,
+          context.secretPath
+        );
+
+        // Get existing changes for this context or create new empty state
+        const existingChanges = state.pendingChangesByContext.get(contextKey) || {
+          secrets: [],
+          folders: []
+        };
+        const newChanges = { ...existingChanges };
 
         if (change.resourceType === "folder") {
           const existingFolder =
@@ -332,6 +290,10 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
             newChanges.folders.some((f) => f.folderName === change.folderName);
 
           if (change.type === PendingAction.Create && existingFolder) {
+            createNotification({
+              text: "Another folder with same name already exists",
+              type: "error"
+            });
             return { pendingChanges: newChanges };
           }
           if (
@@ -339,6 +301,10 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
             change.folderName !== change.originalFolderName &&
             existingFolder
           ) {
+            createNotification({
+              text: "Another folder with same name already exists",
+              type: "error"
+            });
             return { pendingChanges: newChanges };
           }
         }
@@ -346,9 +312,19 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         if (change.resourceType === "secret") {
           const existingSecret =
             state.existingSecretKeys.has(change.secretKey) ||
-            newChanges.secrets.some((s) => (s.secretKey === change.secretKey && s.type !== PendingAction.Create) || (change.type === PendingAction.Create && change.originalKey !== change.secretKey && s.secretKey === change.secretKey));
+            newChanges.secrets.some(
+              (s) =>
+                (s.secretKey === change.secretKey && s.type !== PendingAction.Create) ||
+                (change.type === PendingAction.Create &&
+                  change.originalKey !== change.secretKey &&
+                  s.secretKey === change.secretKey)
+            );
 
           if (change.type === PendingAction.Create && existingSecret) {
+            createNotification({
+              text: "Another secret with same name already exists",
+              type: "error"
+            });
             return { pendingChanges: newChanges };
           }
 
@@ -366,6 +342,10 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               ));
 
           if (existingNewSecretName) {
+            createNotification({
+              text: "Another secret with same name already exists",
+              type: "error"
+            });
             return { pendingChanges: newChanges };
           }
         }
@@ -425,7 +405,6 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
 
               if (existingUpdateIndex >= 0) {
                 const existingUpdate = secretChanges[existingUpdateIndex] as PendingSecretUpdate;
-
                 const mergedUpdate: PendingSecretUpdate = {
                   ...existingUpdate,
                   secretKey: existingUpdate.secretKey,
@@ -456,7 +435,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
                     change.secretMetadata !== undefined
                       ? change.secretMetadata
                       : existingUpdate.secretMetadata,
-
+                  existingSecret: existingUpdate.existingSecret,
                   timestamp: Date.now()
                 };
 
@@ -566,18 +545,40 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
           newChanges.folders = folderChanges;
         }
 
-        savePendingChangesToStorage(
-          newChanges,
-          context.workspaceId,
-          context.environment,
-          context.secretPath
-        );
-        return { pendingChanges: newChanges };
+        const updatedContextMap = new Map(state.pendingChangesByContext);
+        updatedContextMap.set(contextKey, newChanges);
+
+        const currentChanges =
+          contextKey ===
+          generateContextKey(
+            state.currentContext?.workspaceId || context.workspaceId,
+            state.currentContext?.environment || context.environment,
+            state.currentContext?.secretPath || context.secretPath
+          )
+            ? newChanges
+            : state.pendingChanges;
+
+        return {
+          pendingChangesByContext: updatedContextMap,
+          pendingChanges: currentChanges,
+          currentContext: context
+        };
       }),
 
     removePendingChange: (changeId: string, resourceType: string, context: BatchContext) =>
       set((state) => {
-        const newChanges = { ...state.pendingChanges };
+        const contextKey = generateContextKey(
+          context.workspaceId,
+          context.environment,
+          context.secretPath
+        );
+
+        // Get existing changes for this context
+        const existingChanges = state.pendingChangesByContext.get(contextKey) || {
+          secrets: [],
+          folders: []
+        };
+        const newChanges = { ...existingChanges };
 
         if (resourceType === "secret") {
           newChanges.secrets = newChanges.secrets.filter((c) => c.id !== changeId);
@@ -585,28 +586,70 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
           newChanges.folders = newChanges.folders.filter((c) => c.id !== changeId);
         }
 
-        savePendingChangesToStorage(
-          newChanges,
-          context.workspaceId,
-          context.environment,
-          context.secretPath
-        );
-        return { pendingChanges: newChanges };
+        const updatedContextMap = new Map(state.pendingChangesByContext);
+        updatedContextMap.set(contextKey, newChanges);
+
+        const isCurrentContext =
+          state.currentContext &&
+          contextKey ===
+            generateContextKey(
+              state.currentContext.workspaceId,
+              state.currentContext.environment,
+              state.currentContext.secretPath
+            );
+
+        return {
+          pendingChangesByContext: updatedContextMap,
+          pendingChanges: isCurrentContext ? newChanges : state.pendingChanges
+        };
       }),
 
     loadPendingChanges: (context) => {
-      const changes = loadPendingChangesFromStorage(
+      const contextKey = generateContextKey(
         context.workspaceId,
         context.environment,
         context.secretPath
       );
-      set({ pendingChanges: changes });
+
+      set((state) => {
+        const contextChanges = state.pendingChangesByContext.get(contextKey) || {
+          secrets: [],
+          folders: []
+        };
+
+        return {
+          pendingChanges: contextChanges,
+          currentContext: context
+        };
+      });
     },
 
     clearAllPendingChanges: (context) => {
-      clearPendingChangesFromStorage(context.workspaceId, context.environment, context.secretPath);
-      set({
-        pendingChanges: { secrets: [], folders: [] }
+      const contextKey = generateContextKey(
+        context.workspaceId,
+        context.environment,
+        context.secretPath
+      );
+
+      set((state) => {
+        // Clear changes for this specific context
+        const updatedContextMap = new Map(state.pendingChangesByContext);
+        updatedContextMap.delete(contextKey);
+
+        // If this is the current context, also clear the active pending changes
+        const isCurrentContext =
+          state.currentContext &&
+          contextKey ===
+            generateContextKey(
+              state.currentContext.workspaceId,
+              state.currentContext.environment,
+              state.currentContext.secretPath
+            );
+
+        return {
+          pendingChangesByContext: updatedContextMap,
+          pendingChanges: isCurrentContext ? { secrets: [], folders: [] } : state.pendingChanges
+        };
       });
     },
 

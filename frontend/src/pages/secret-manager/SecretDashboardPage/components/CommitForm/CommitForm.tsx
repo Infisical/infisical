@@ -191,7 +191,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
               {hasKeyChange && (
                 <ComparisonTableRow
                   label="Key"
-                  previousValue={<span className="font-mono">{change.secretKey}</span>}
+                  previousValue={<span className="font-mono">{change.existingSecret.key}</span>}
                   newValue={<span className="font-mono">{change.newSecretName}</span>}
                 />
               )}
@@ -200,7 +200,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
                   label="Value"
                   previousValue={
                     <div className="max-w-md break-all rounded">
-                      {change.originalValue || <span className="italic">(empty)</span>}
+                      {change.existingSecret.value || <span className="italic">(empty)</span>}
                     </div>
                   }
                   newValue={
@@ -213,28 +213,32 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
               {hasCommentChange && (
                 <ComparisonTableRow
                   label="Comment"
-                  previousValue={change.originalComment || <span className="italic">(empty)</span>}
+                  previousValue={
+                    change.existingSecret.comment || <span className="italic">(empty)</span>
+                  }
                   newValue={change.secretComment || <span className="italic">(empty)</span>}
                 />
               )}
               {hasMultilineChange && (
                 <ComparisonTableRow
-                  label="Multiline"
-                  previousValue={change.originalSkipMultilineEncoding ? "Enabled" : "Disabled"}
+                  label="Multi-line Encoding"
+                  previousValue={
+                    change.existingSecret.skipMultilineEncoding ? "Enabled" : "Disabled"
+                  }
                   newValue={change.skipMultilineEncoding ? "Enabled" : "Disabled"}
                 />
               )}
               {hasTagsChange && (
                 <ComparisonTableRow
                   label="Tags"
-                  previousValue={<TagsList tags={change.originalTags} />}
+                  previousValue={<TagsList tags={change.existingSecret.tags} />}
                   newValue={<TagsList tags={change.tags} />}
                 />
               )}
               {hasMetadataChange && (
                 <ComparisonTableRow
                   label="Metadata"
-                  previousValue={<MetadataList metadata={change.originalSecretMetadata} />}
+                  previousValue={<MetadataList metadata={change.existingSecret.secretMetadata} />}
                   newValue={<MetadataList metadata={change.secretMetadata} />}
                 />
               )}

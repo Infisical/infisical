@@ -440,46 +440,6 @@ export const useCreateCommit = () => {
     }
   >({
     mutationFn: async ({ workspaceId, environment, secretPath, pendingChanges, message }) => {
-      const transformedSecretUpdates = pendingChanges.secrets
-        .filter((change) => change.type === PendingAction.Update)
-        .map((change: PendingSecretUpdate) => {
-          const updatePayload: {
-            secretKey: string;
-            newSecretName?: string;
-            secretValue?: string;
-            secretComment?: string;
-            skipMultilineEncoding?: boolean;
-            tagIds?: string[];
-            secretMetadata?: {
-              key: string;
-              value: string;
-            }[];
-          } = {
-            secretKey: change.secretKey
-          };
-
-          // Only include fields that actually changed
-          if (change.newSecretName) {
-            updatePayload.newSecretName = change.newSecretName;
-          }
-          if (change.secretValue !== undefined) {
-            updatePayload.secretValue = change.secretValue;
-          }
-          if (change.secretComment !== undefined) {
-            updatePayload.secretComment = change.secretComment;
-          }
-          if (change.skipMultilineEncoding !== undefined) {
-            updatePayload.skipMultilineEncoding = change.skipMultilineEncoding;
-          }
-          if (change.tags) {
-            updatePayload.tagIds = change.tags.map((tag) => tag.id);
-          }
-          if (change.secretMetadata) {
-            updatePayload.secretMetadata = change.secretMetadata;
-          }
-
-          return updatePayload;
-        });
       const { data } = await apiRequest.post("/api/v1/pit/batch/commit", {
         projectId: workspaceId,
         environment,
@@ -497,7 +457,23 @@ export const useCreateCommit = () => {
                   tagIds: change.tags?.map((tag) => tag.id),
                   secretMetadata: change.secretMetadata
                 })) || [],
-            update: transformedSecretUpdates || [],
+            update:
+              pendingChanges.secrets
+                .filter((change) => change.type === PendingAction.Update)
+                .map((change: PendingSecretUpdate) => ({
+                  secretKey: change.secretKey,
+                  newSecretName: change.newSecretName,
+                  secretValue: change.secretValue || change.existingSecret.value,
+                  secretComment: change.secretComment || change.existingSecret.comment,
+                  skipMultilineEncoding:
+                    change.skipMultilineEncoding !== undefined
+                      ? change.skipMultilineEncoding
+                      : change.existingSecret.skipMultilineEncoding,
+                  tagIds:
+                    change.tags?.map((tag) => tag.id) ||
+                    change.existingSecret.tags?.map((tag) => tag.id),
+                  secretMetadata: change.secretMetadata || change.existingSecret.secretMetadata
+                })) || [],
             delete:
               pendingChanges.secrets.filter((change) => change.type === PendingAction.Delete) || []
           },

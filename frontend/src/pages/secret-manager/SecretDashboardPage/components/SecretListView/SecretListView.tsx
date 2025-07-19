@@ -86,17 +86,16 @@ export const SecretListView = ({
   const selectedSecrets = useSelectedSecrets();
   const { toggle: toggleSelectedSecret } = useSelectedSecretActions();
   const { isBatchMode, pendingChanges } = useBatchMode();
-  useNavigationBlocker(
-    {
-      shouldBlock: pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0,
-      message: "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
-      context: {
-        workspaceId,
-        environment,
-        secretPath
-      }
+  useNavigationBlocker({
+    shouldBlock: pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0,
+    message:
+      "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
+    context: {
+      workspaceId,
+      environment,
+      secretPath
     }
-  );
+  });
   const { addPendingChange } = useBatchModeActions();
 
   const handleSecretOperation = async (
@@ -368,7 +367,8 @@ export const SecretListView = ({
                 }),
 
                 timestamp: Date.now(),
-                resourceType: "secret"
+                resourceType: "secret",
+                existingSecret: orgSecret
               };
 
               addPendingChange(updateChange, {
