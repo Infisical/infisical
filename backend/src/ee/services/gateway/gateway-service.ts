@@ -566,6 +566,14 @@ export const gatewayServiceFactory = ({
     if (!gateway) throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found.` });
 
     const orgGatewayConfig = await orgGatewayConfigDAL.findById(gateway.orgGatewayRootCaId);
+
+    const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
+    if (!orgLicensePlan.gateway) {
+      throw new BadRequestError({
+        message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
+      });
+    }
+
     const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
