@@ -9,8 +9,8 @@ export const DigitalOceanAppPlatformSyncDestinationSchema = BaseSecretSyncSchema
     destinationConfig: z.object({
       appId: z
         .string()
-        .min(1, "Account ID is required")
-        .max(255, "Account ID must be less than 255 characters"),
+        .min(1, "App ID is required")
+        .max(255, "App ID must be less than 255 characters"),
       appName: z
         .string()
         .min(1, "Account Name is required")
