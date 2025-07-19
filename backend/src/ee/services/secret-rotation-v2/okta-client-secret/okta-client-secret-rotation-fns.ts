@@ -46,6 +46,9 @@ const createErrorMessage = (error: unknown) => {
   return "Unknown error";
 };
 
+// Delay between each revocation call in revokeCredentials
+const DELAY_MS = 1000;
+
 export const oktaClientSecretRotationFactory: TRotationFactory<
   TOktaClientSecretRotationWithConnection,
   TOktaClientSecretRotationGeneratedCredentials
@@ -182,6 +185,16 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
         }
       });
     } catch (error: unknown) {
+      if (
+        error instanceof AxiosError &&
+        error.response?.data &&
+        isOktaErrorResponse(error.response.data) &&
+        error.response.data.errorCode === "E0000001"
+      ) {
+        // If this is the last secret, we cannot revoke it
+        return;
+      }
+
       throw new BadRequestError({
         message: `Failed to remove client secret with secretId ${secretId} from app ${clientId}: ${createErrorMessage(error)}`
       });
@@ -209,7 +222,7 @@ export const oktaClientSecretRotationFactory: TRotationFactory<
 
     for (const { secretId } of credentials) {
       await revokeCredential(secretId);
-      await delayMs(1000);
+      await delayMs(DELAY_MS);
     }
     return callback();
   };
