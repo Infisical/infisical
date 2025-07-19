@@ -47,6 +47,13 @@ import {
   TMySqlCredentialsRotationWithConnection
 } from "./mysql-credentials";
 import {
+  TOktaClientSecretRotation,
+  TOktaClientSecretRotationGeneratedCredentials,
+  TOktaClientSecretRotationInput,
+  TOktaClientSecretRotationListItem,
+  TOktaClientSecretRotationWithConnection
+} from "./okta-client-secret";
+import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationInput,
   TOracleDBCredentialsRotationListItem,
@@ -69,7 +76,8 @@ export type TSecretRotationV2 =
   | TAuth0ClientSecretRotation
   | TAzureClientSecretRotation
   | TLdapPasswordRotation
-  | TAwsIamUserSecretRotation;
+  | TAwsIamUserSecretRotation
+  | TOktaClientSecretRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -79,14 +87,16 @@ export type TSecretRotationV2WithConnection =
   | TAuth0ClientSecretRotationWithConnection
   | TAzureClientSecretRotationWithConnection
   | TLdapPasswordRotationWithConnection
-  | TAwsIamUserSecretRotationWithConnection;
+  | TAwsIamUserSecretRotationWithConnection
+  | TOktaClientSecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
   | TAuth0ClientSecretRotationGeneratedCredentials
   | TAzureClientSecretRotationGeneratedCredentials
   | TLdapPasswordRotationGeneratedCredentials
-  | TAwsIamUserSecretRotationGeneratedCredentials;
+  | TAwsIamUserSecretRotationGeneratedCredentials
+  | TOktaClientSecretRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -96,7 +106,8 @@ export type TSecretRotationV2Input =
   | TAuth0ClientSecretRotationInput
   | TAzureClientSecretRotationInput
   | TLdapPasswordRotationInput
-  | TAwsIamUserSecretRotationInput;
+  | TAwsIamUserSecretRotationInput
+  | TOktaClientSecretRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -106,7 +117,8 @@ export type TSecretRotationV2ListItem =
   | TAuth0ClientSecretRotationListItem
   | TAzureClientSecretRotationListItem
   | TLdapPasswordRotationListItem
-  | TAwsIamUserSecretRotationListItem;
+  | TAwsIamUserSecretRotationListItem
+  | TOktaClientSecretRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters = TLdapPasswordRotationInput["temporaryParameters"] | undefined;
 

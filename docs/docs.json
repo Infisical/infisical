@@ -78,7 +78,10 @@
               },
               {
                 "group": "Infisical SSH",
-                "pages": ["documentation/platform/ssh/overview", "documentation/platform/ssh/host-groups"]
+                "pages": [
+                  "documentation/platform/ssh/overview",
+                  "documentation/platform/ssh/host-groups"
+                ]
               },
               {
                 "group": "Key Management (KMS)",
@@ -146,6 +149,7 @@
                   "documentation/platform/secret-rotation/ldap-password",
                   "documentation/platform/secret-rotation/mssql-credentials",
                   "documentation/platform/secret-rotation/mysql-credentials",
+                  "documentation/platform/secret-rotation/okta-client-secret",
                   "documentation/platform/secret-rotation/oracledb-credentials",
                   "documentation/platform/secret-rotation/postgres-credentials"
                 ]
@@ -375,7 +379,10 @@
               },
               {
                 "group": "Architecture",
-                "pages": ["internals/architecture/components", "internals/architecture/cloud"]
+                "pages": [
+                  "internals/architecture/components",
+                  "internals/architecture/cloud"
+                ]
               },
               "internals/security",
               "internals/service-tokens"
@@ -481,6 +488,7 @@
                   "integrations/app-connections/mssql",
                   "integrations/app-connections/mysql",
                   "integrations/app-connections/oci",
+                  "integrations/app-connections/okta",
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/postgres",
                   "integrations/app-connections/railway",
@@ -551,7 +559,10 @@
               "integrations/cloud/gcp-secret-manager",
               {
                 "group": "Cloudflare",
-                "pages": ["integrations/cloud/cloudflare-pages", "integrations/cloud/cloudflare-workers"]
+                "pages": [
+                  "integrations/cloud/cloudflare-pages",
+                  "integrations/cloud/cloudflare-workers"
+                ]
               },
               "integrations/cloud/terraform-cloud",
               "integrations/cloud/databricks",
@@ -663,7 +674,11 @@
                   "cli/commands/reset",
                   {
                     "group": "infisical scan",
-                    "pages": ["cli/commands/scan", "cli/commands/scan-git-changes", "cli/commands/scan-install"]
+                    "pages": [
+                      "cli/commands/scan",
+                      "cli/commands/scan-git-changes",
+                      "cli/commands/scan-install"
+                    ]
                   }
                 ]
               },
@@ -987,7 +1002,9 @@
                 "pages": [
                   {
                     "group": "Kubernetes",
-                    "pages": ["api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"]
+                    "pages": [
+                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
+                    ]
                   },
                   "api-reference/endpoints/dynamic-secrets/create",
                   "api-reference/endpoints/dynamic-secrets/update",
@@ -1091,6 +1108,19 @@
                       "api-reference/endpoints/secret-rotations/mysql-credentials/list",
                       "api-reference/endpoints/secret-rotations/mysql-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/mysql-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Okta Client Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/create",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/delete",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-by-id",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-by-name",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/list",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/update"
                     ]
                   },
                   {
@@ -1494,6 +1524,18 @@
                       "api-reference/endpoints/app-connections/oci/create",
                       "api-reference/endpoints/app-connections/oci/update",
                       "api-reference/endpoints/app-connections/oci/delete"
+                    ]
+                  },
+                  {
+                    "group": "Okta",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/okta/list",
+                      "api-reference/endpoints/app-connections/okta/available",
+                      "api-reference/endpoints/app-connections/okta/get-by-id",
+                      "api-reference/endpoints/app-connections/okta/get-by-name",
+                      "api-reference/endpoints/app-connections/okta/create",
+                      "api-reference/endpoints/app-connections/okta/update",
+                      "api-reference/endpoints/app-connections/okta/delete"
                     ]
                   },
                   {

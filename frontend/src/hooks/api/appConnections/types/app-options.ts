@@ -152,6 +152,10 @@ export type TSupabaseConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Supabase;
 };
 
+export type TOktaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Okta;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -183,7 +187,8 @@ export type TAppConnectionOption =
   | TBitbucketConnectionOption
   | TZabbixConnectionOption
   | TRailwayConnectionOption
-  | TChecklyConnectionOption;
+  | TChecklyConnectionOption
+  | TOktaConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -220,4 +225,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Railway]: TRailwayConnectionOption;
   [AppConnection.Checkly]: TChecklyConnectionOption;
   [AppConnection.Supabase]: TSupabaseConnectionOption;
+  [AppConnection.Okta]: TOktaConnectionOption;
 };

@@ -1,0 +1,99 @@
+---
+title: "Okta Connection"
+description: "Learn how to configure an Okta Connection for Infisical."
+---
+
+Infisical supports the use of [API Tokens](https://developer.okta.com/docs/guides/create-an-api-token/main/) to connect with Okta.
+
+## Create Okta API Token
+
+<Steps>
+    <Step title="Create API Token">
+        From the Okta admin dashboard, navigate to **Security > API > Tokens** and click **Create token**.
+
+        ![Create API Token](/images/app-connections/okta/step-1.png)
+    </Step>
+    <Step title="Provide Info">
+        Enter the token name and select **Any IP** for the second dropdown, then click **Create token**.
+
+        ![Provide Info](/images/app-connections/okta/step-2.png)
+    </Step>
+    <Step title="Copy Token">
+        Copy the token from the modal for later steps.
+
+        ![Copy Token](/images/app-connections/okta/step-3.png)
+    </Step>
+</Steps>
+
+## Create Okta Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select Okta Connection">
+                Click the **Add Connection** button and select **Okta** from the list of available connections.
+            </Step>
+            <Step title="Fill out Connection Modal">
+                Complete the Okta Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - Your Okta instance URL
+                - The API Token from earlier steps
+
+                ![Connection Modal](/images/app-connections/okta/step-4.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **Okta Connection** is established and ready to use with your Infisical projects.
+
+                ![Connection Created](/images/app-connections/okta/step-5.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Okta Connection, make an API request to the [Create Okta Connection](/api-reference/endpoints/app-connections/okta/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/okta \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-okta-connection",
+                    "method": "api-token",
+                    "credentials": {
+                        "instanceUrl": "https://example.okta.com",
+                        "apiToken": "<YOUR-API-TOKEN>"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-okta-connection",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "okta",
+              "method": "api-token",
+              "credentials": {
+                  "instanceUrl": "https://example.okta.com"
+              }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>
