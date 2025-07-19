@@ -15,11 +15,11 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { Timezone } from "@app/helpers/datetime";
 import { useGetAuditLogs } from "@app/hooks/api";
 import { TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 
 import { LogsTableRow } from "./LogsTableRow";
-import { Timezone } from "./types";
 
 type Props = {
   filter: TGetAuditLogsFilter;
