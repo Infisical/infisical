@@ -13,7 +13,7 @@ type TGetAppConnectionFunc = (
 
 export const digitalOceanAppPlatformConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listApps = async (connectionId: string, actor: OrgServiceActor) => {
-    const connection = await getAppConnection(AppConnection.Checkly, connectionId, actor);
+    const connection = await getAppConnection(AppConnection.DigitalOcean, connectionId, actor);
     try {
       const apps = await DigitalOceanAppPlatformPublicAPI.getApps(connection);
       return apps;

@@ -36,23 +36,23 @@ class DigitalOceanAppPlatformPublicClient {
   }
 
   async getApps(connection: TDigitalOceanConnectionConfig) {
-    const response = await this.client.get<TDigitalOceanApp[]>(`/apps`, {
+    const response = await this.client.get<{ apps: TDigitalOceanApp[] }>(`/apps`, {
       headers: {
         Authorization: `Bearer ${connection.credentials.apiToken}`
       }
     });
 
-    return response.data;
+    return response.data.apps;
   }
 
   async getApp(connection: TDigitalOceanConnectionConfig, appId: string) {
-    const response = await this.client.get<TDigitalOceanApp>(`/apps/${appId}`, {
+    const response = await this.client.get<{ app: TDigitalOceanApp }>(`/apps/${appId}`, {
       headers: {
         Authorization: `Bearer ${connection.credentials.apiToken}`
       }
     });
 
-    return response.data;
+    return response.data.app;
   }
 
   async getVariables(connection: TDigitalOceanConnectionConfig, appId: string): Promise<TDigitalOceanVariable[]> {
@@ -70,15 +70,23 @@ class DigitalOceanAppPlatformPublicClient {
       return found ? { ...found, ...variable } : variable;
     });
 
-    return this.client.put(`/apps/${appId}`, {
-      spec: {
-        ...response.spec,
-        envs: variables
+    return this.client.put(
+      `/apps/${appId}`,
+      {
+        spec: {
+          ...response.spec,
+          envs: variables
+        }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${connection.credentials.apiToken}`
+        }
       }
-    });
+    );
   }
 
-  async deleteVariable(connection: TDigitalOceanConnectionConfig, appId: string, ...input: TDigitalOceanVariable[]) {
+  async deleteVariables(connection: TDigitalOceanConnectionConfig, appId: string, ...input: TDigitalOceanVariable[]) {
     const response = await this.getApp(connection, appId);
     const existing = response.spec.envs || [];
 
@@ -88,12 +96,20 @@ class DigitalOceanAppPlatformPublicClient {
       return found ? null : variable;
     });
 
-    return this.client.put(`/apps/${appId}`, {
-      spec: {
-        ...response.spec,
-        envs: variables.filter((v) => v !== null)
+    return this.client.put(
+      `/apps/${appId}`,
+      {
+        spec: {
+          ...response.spec,
+          envs: variables.filter((v) => v !== null)
+        }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${connection.credentials.apiToken}`
+        }
       }
-    });
+    );
   }
 }
 

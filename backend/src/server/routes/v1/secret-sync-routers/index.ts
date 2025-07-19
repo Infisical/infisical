@@ -12,6 +12,7 @@ import { registerChecklySyncRouter } from "./checkly-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
+import { registerDigitalOceanAppPlatformSyncRouter } from "./digital-ocean-app-platform-sync-router";
 import { registerFlyioSyncRouter } from "./flyio-sync-router";
 import { registerGcpSyncRouter } from "./gcp-sync-router";
 import { registerGitHubSyncRouter } from "./github-sync-router";
@@ -57,5 +58,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Supabase]: registerSupabaseSyncRouter,
   [SecretSync.Zabbix]: registerZabbixSyncRouter,
   [SecretSync.Railway]: registerRailwaySyncRouter,
-  [SecretSync.Checkly]: registerChecklySyncRouter
+  [SecretSync.Checkly]: registerChecklySyncRouter,
+  [SecretSync.DigitalOceanAppPlatform]: registerDigitalOceanAppPlatformSyncRouter
 };

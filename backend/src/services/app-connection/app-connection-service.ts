@@ -62,6 +62,7 @@ import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
+import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -605,6 +606,7 @@ export const appConnectionServiceFactory = ({
     railway: railwayConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
-    supabase: supabaseConnectionService(connectAppConnectionById)
+    supabase: supabaseConnectionService(connectAppConnectionById),
+    digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById)
   };
 };

@@ -152,7 +152,7 @@ export type TSupabaseConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Supabase;
 };
 
-export type TDitialOceanAppPlatformConnectionOption = TAppConnectionOptionBase & {
+export type TDigitalOceanConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DigitalOcean;
 };
 
@@ -188,7 +188,7 @@ export type TAppConnectionOption =
   | TZabbixConnectionOption
   | TRailwayConnectionOption
   | TChecklyConnectionOption
-  | TDitialOceanAppPlatformConnectionOption;
+  | TDigitalOceanConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -225,5 +225,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Railway]: TRailwayConnectionOption;
   [AppConnection.Checkly]: TChecklyConnectionOption;
   [AppConnection.Supabase]: TSupabaseConnectionOption;
-  [AppConnection.DigitalOcean]: TDitialOceanAppPlatformConnectionOption;
+  [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
 };

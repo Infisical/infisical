@@ -90,7 +90,11 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
-import { TDigitalOceanAppPlatformSyncListItem } from "./digital-ocean-app-platform/digital-ocean-app-platform-sync-types";
+import {
+  TDigitalOceanAppPlatformSyncInput,
+  TDigitalOceanAppPlatformSyncListItem,
+  TDigitalOceanAppPlatformSyncWithCredentials
+} from "./digital-ocean-app-platform/digital-ocean-app-platform-sync-types";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
@@ -196,7 +200,8 @@ export type TSecretSyncWithCredentials =
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
-  | TSupabaseSyncWithCredentials;
+  | TSupabaseSyncWithCredentials
+  | TDigitalOceanAppPlatformSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -225,7 +230,8 @@ export type TSecretSyncInput =
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
-  | TSupabaseSyncInput;
+  | TSupabaseSyncInput
+  | TDigitalOceanAppPlatformSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem

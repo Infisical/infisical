@@ -174,4 +174,5 @@ export type TAppConnectionMap = {
   [AppConnection.Railway]: TRailwayConnection;
   [AppConnection.Checkly]: TChecklyConnection;
   [AppConnection.Supabase]: TSupabaseConnection;
+  [AppConnection.DigitalOcean]: TDigitalOceanConnection;
 };
