@@ -23,6 +23,7 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
+import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
 import { FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
@@ -30,6 +31,7 @@ import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
@@ -143,6 +145,12 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Supabase:
       DestinationFieldsComponent = <SupabaseSyncReviewFields />;
+      break;
+    case SecretSync.DigitalOceanAppPlatform:
+      DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;
+      break;
+    case SecretSync.Netlify:
+      DestinationFieldsComponent = <NetlifySyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

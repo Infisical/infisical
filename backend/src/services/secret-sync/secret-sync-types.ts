@@ -90,6 +90,11 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import {
+  TDigitalOceanAppPlatformSyncInput,
+  TDigitalOceanAppPlatformSyncListItem,
+  TDigitalOceanAppPlatformSyncWithCredentials
+} from "./digital-ocean-app-platform/digital-ocean-app-platform-sync-types";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
@@ -106,6 +111,7 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import { TNetlifySync, TNetlifySyncInput, TNetlifySyncListItem, TNetlifySyncWithCredentials } from "./netlify";
 import {
   TRailwaySync,
   TRailwaySyncInput,
@@ -166,7 +172,8 @@ export type TSecretSync =
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
-  | TSupabaseSync;
+  | TSupabaseSync
+  | TNetlifySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -195,7 +202,9 @@ export type TSecretSyncWithCredentials =
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
-  | TSupabaseSyncWithCredentials;
+  | TSupabaseSyncWithCredentials
+  | TDigitalOceanAppPlatformSyncWithCredentials
+  | TNetlifySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -224,7 +233,9 @@ export type TSecretSyncInput =
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
-  | TSupabaseSyncInput;
+  | TSupabaseSyncInput
+  | TDigitalOceanAppPlatformSyncInput
+  | TNetlifySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -253,7 +264,9 @@ export type TSecretSyncListItem =
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem
-  | TSupabaseSyncListItem;
+  | TSupabaseSyncListItem
+  | TDigitalOceanAppPlatformSyncListItem
+  | TNetlifySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

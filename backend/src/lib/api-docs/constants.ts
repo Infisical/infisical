@@ -2289,6 +2289,14 @@ export const AppConnections = {
     SUPABASE: {
       accessKey: "The Key used to access Supabase.",
       instanceUrl: "The URL used to access Supabase."
+    },
+    DIGITAL_OCEAN_APP_PLATFORM: {
+      apiToken: "The API token used to authenticate with Digital Ocean App Platform."
+    },
+    NETLIFY: {
+      accessToken: "The Access token used to authenticate with Netlify.",
+      accountId: "The Account ID used to authenticate with Netlify.",
+      accountName: "The Account Name used to authenticate with Netlify."
     }
   }
 };

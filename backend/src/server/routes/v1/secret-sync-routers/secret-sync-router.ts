@@ -32,6 +32,10 @@ import {
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
+import {
+  DigitalOceanAppPlatformSyncListItemSchema,
+  DigitalOceanAppPlatformSyncSchema
+} from "@app/services/secret-sync/digital-ocean-app-platform";
 import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-sync/flyio";
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
@@ -39,6 +43,7 @@ import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
+import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
@@ -75,7 +80,9 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   SupabaseSyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
-  ChecklySyncSchema
+  ChecklySyncSchema,
+  DigitalOceanAppPlatformSyncSchema,
+  NetlifySyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -102,11 +109,12 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,
   CloudflareWorkersSyncListItemSchema,
-
+  DigitalOceanAppPlatformSyncListItemSchema,
   ZabbixSyncListItemSchema,
   RailwaySyncListItemSchema,
   ChecklySyncListItemSchema,
-  SupabaseSyncListItemSchema
+  SupabaseSyncListItemSchema,
+  NetlifySyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

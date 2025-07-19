@@ -12,6 +12,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TDigitalOceanConnection } from "./digital-ocean";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
@@ -23,6 +24,7 @@ import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
+import { TNetlifyConnection } from "./netlify-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
@@ -101,7 +103,9 @@ export type TAppConnection =
   | TZabbixConnection
   | TRailwayConnection
   | TChecklyConnection
-  | TSupabaseConnection;
+  | TSupabaseConnection
+  | TDigitalOceanConnection
+  | TNetlifyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -172,4 +176,5 @@ export type TAppConnectionMap = {
   [AppConnection.Railway]: TRailwayConnection;
   [AppConnection.Checkly]: TChecklyConnection;
   [AppConnection.Supabase]: TSupabaseConnection;
+  [AppConnection.DigitalOcean]: TDigitalOceanConnection;
 };

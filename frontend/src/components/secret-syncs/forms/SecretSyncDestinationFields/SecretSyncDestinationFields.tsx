@@ -14,6 +14,7 @@ import { ChecklySyncFields } from "./ChecklySyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
+import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSyncFields";
 import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
@@ -21,6 +22,7 @@ import { GitLabSyncFields } from "./GitLabSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { NetlifySyncFields } from "./NetlifySyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
@@ -91,6 +93,10 @@ export const SecretSyncDestinationFields = () => {
       return <ChecklySyncFields />;
     case SecretSync.Supabase:
       return <SupabaseSyncFields />;
+    case SecretSync.DigitalOceanAppPlatform:
+      return <DigitalOceanAppPlatformSyncFields />;
+    case SecretSync.Netlify:
+      return <NetlifySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

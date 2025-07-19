@@ -34,6 +34,10 @@ import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
+import {
+  DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
+  DigitalOceanAppPlatformSyncFns
+} from "./digital-ocean-app-platform";
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
 import { GcpSyncFns } from "./gcp/gcp-sync-fns";
@@ -42,6 +46,7 @@ import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { NETLIFY_SYNC_LIST_OPTION, NetlifySyncFns } from "./netlify";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
@@ -80,7 +85,9 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Supabase]: SUPABASE_SYNC_LIST_OPTION,
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
   [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
-  [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION
+  [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION,
+  [SecretSync.DigitalOceanAppPlatform]: DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
+  [SecretSync.Netlify]: NETLIFY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -258,6 +265,10 @@ export const SecretSyncFns = {
         return ChecklySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
         return SupabaseSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.DigitalOceanAppPlatform:
+        return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Netlify:
+        return NetlifySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -365,6 +376,12 @@ export const SecretSyncFns = {
       case SecretSync.Supabase:
         secretMap = await SupabaseSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.DigitalOceanAppPlatform:
+        secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.Netlify:
+        secretMap = await NetlifySyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -452,6 +469,10 @@ export const SecretSyncFns = {
         return ChecklySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
         return SupabaseSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.DigitalOceanAppPlatform:
+        return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Netlify:
+        return NetlifySyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

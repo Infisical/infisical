@@ -13,6 +13,7 @@ import { TChecklySync } from "./checkly-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
+import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
 import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
@@ -20,6 +21,7 @@ import { TGitLabSync } from "./gitlab-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TNetlifySync } from "./netlify-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TSupabaseSync } from "./supabase";
@@ -63,7 +65,9 @@ export type TSecretSync =
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
-  | TSupabaseSync;
+  | TSupabaseSync
+  | TDigitalOceanAppPlatformSync
+  | TNetlifySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

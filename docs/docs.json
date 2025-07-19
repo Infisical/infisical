@@ -469,6 +469,7 @@
                   "integrations/app-connections/checkly",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/databricks",
+                  "integrations/app-connections/digital-ocean",
                   "integrations/app-connections/flyio",
                   "integrations/app-connections/gcp",
                   "integrations/app-connections/github",
@@ -480,6 +481,7 @@
                   "integrations/app-connections/ldap",
                   "integrations/app-connections/mssql",
                   "integrations/app-connections/mysql",
+                  "integrations/app-connections/netlify",
                   "integrations/app-connections/oci",
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/postgres",
@@ -513,6 +515,7 @@
                   "integrations/secret-syncs/cloudflare-pages",
                   "integrations/secret-syncs/cloudflare-workers",
                   "integrations/secret-syncs/databricks",
+                  "integrations/secret-syncs/digital-ocean-app-platform",
                   "integrations/secret-syncs/flyio",
                   "integrations/secret-syncs/gcp-secret-manager",
                   "integrations/secret-syncs/github",
@@ -520,6 +523,7 @@
                   "integrations/secret-syncs/hashicorp-vault",
                   "integrations/secret-syncs/heroku",
                   "integrations/secret-syncs/humanitec",
+                  "integrations/secret-syncs/netlify",
                   "integrations/secret-syncs/oci-vault",
                   "integrations/secret-syncs/railway",
                   "integrations/secret-syncs/render",
@@ -1352,6 +1356,18 @@
                       "api-reference/endpoints/app-connections/databricks/delete"
                     ]
                   },
+                   {
+                    "group": "Digital Ocean",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/digital-ocean/list",
+                      "api-reference/endpoints/app-connections/digital-ocean/available",
+                      "api-reference/endpoints/app-connections/digital-ocean/get-by-id",
+                      "api-reference/endpoints/app-connections/digital-ocean/get-by-name",
+                      "api-reference/endpoints/app-connections/digital-ocean/create",
+                      "api-reference/endpoints/app-connections/digital-ocean/update",
+                      "api-reference/endpoints/app-connections/digital-ocean/delete"
+                    ]
+                  },
                   {
                     "group": "Fly.io",
                     "pages": [
@@ -1482,6 +1498,18 @@
                       "api-reference/endpoints/app-connections/mysql/create",
                       "api-reference/endpoints/app-connections/mysql/update",
                       "api-reference/endpoints/app-connections/mysql/delete"
+                    ]
+                  },
+                   {
+                    "group": "Netlify",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/netlify/list",
+                      "api-reference/endpoints/app-connections/netlify/available",
+                      "api-reference/endpoints/app-connections/netlify/get-by-id",
+                      "api-reference/endpoints/app-connections/netlify/get-by-name",
+                      "api-reference/endpoints/app-connections/netlify/create",
+                      "api-reference/endpoints/app-connections/netlify/update",
+                      "api-reference/endpoints/app-connections/netlify/delete"
                     ]
                   },
                   {
@@ -1773,6 +1801,19 @@
                     ]
                   },
                   {
+                    "group": "Digital Ocean",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/list",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/get-by-id",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/get-by-name",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/create",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/update",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/delete",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Fly.io",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/flyio/list",
@@ -1863,6 +1904,19 @@
                       "api-reference/endpoints/secret-syncs/humanitec/delete",
                       "api-reference/endpoints/secret-syncs/humanitec/sync-secrets",
                       "api-reference/endpoints/secret-syncs/humanitec/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Netlify",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/netlify/list",
+                      "api-reference/endpoints/secret-syncs/netlify/get-by-id",
+                      "api-reference/endpoints/secret-syncs/netlify/get-by-name",
+                      "api-reference/endpoints/secret-syncs/netlify/create",
+                      "api-reference/endpoints/secret-syncs/netlify/update",
+                      "api-reference/endpoints/secret-syncs/netlify/delete",
+                      "api-reference/endpoints/secret-syncs/netlify/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/netlify/remove-secrets"
                     ]
                   },
                   {
