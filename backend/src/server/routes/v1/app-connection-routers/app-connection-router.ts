@@ -51,7 +51,10 @@ import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
-import { DigitalOceanConnectionListItemSchema } from "@app/services/app-connection/digital-ocean";
+import {
+  DigitalOceanConnectionListItemSchema,
+  SanitizedDigitalOceanConnectionSchema
+} from "@app/services/app-connection/digital-ocean";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -103,8 +106,6 @@ import {
 } from "@app/services/app-connection/windmill";
 import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
 import { AuthMode } from "@app/services/auth/auth-type";
-
-import { SanitizedDigitalOceanConnectionSchema } from "@app/services/app-connection/digital-ocean";
 
 // can't use discriminated due to multiple schemas for certain apps
 const SanitizedAppConnectionSchema = z.union([
