@@ -14,6 +14,7 @@ import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
+import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -72,5 +73,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,
     [AppConnection.Checkly]: registerChecklyConnectionRouter,
-    [AppConnection.Supabase]: registerSupabaseConnectionRouter
+    [AppConnection.Supabase]: registerSupabaseConnectionRouter,
+    [AppConnection.DigitalOcean]: registerDigitalOceanConnectionRouter
   };

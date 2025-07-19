@@ -12,6 +12,7 @@ import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TDigitalOceanConnection } from "./digital-ocean";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
@@ -101,7 +102,8 @@ export type TAppConnection =
   | TZabbixConnection
   | TRailwayConnection
   | TChecklyConnection
-  | TSupabaseConnection;
+  | TSupabaseConnection
+  | TDigitalOceanConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -172,4 +174,5 @@ export type TAppConnectionMap = {
   [AppConnection.Railway]: TRailwayConnection;
   [AppConnection.Checkly]: TChecklyConnection;
   [AppConnection.Supabase]: TSupabaseConnection;
+  [AppConnection.DigitalOcean]: TDigitalOceanConnection;
 };
