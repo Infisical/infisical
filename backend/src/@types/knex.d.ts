@@ -504,6 +504,12 @@ import {
   TProjectMicrosoftTeamsConfigsInsert,
   TProjectMicrosoftTeamsConfigsUpdate
 } from "@app/db/schemas/project-microsoft-teams-configs";
+import { TReminders, TRemindersInsert, TRemindersUpdate } from "@app/db/schemas/reminders";
+import {
+  TRemindersRecipients,
+  TRemindersRecipientsInsert,
+  TRemindersRecipientsUpdate
+} from "@app/db/schemas/reminders-recipients";
 import {
   TSecretReminderRecipients,
   TSecretReminderRecipientsInsert,
@@ -1210,6 +1216,12 @@ declare module "knex/types/tables" {
       TSecretScanningConfigs,
       TSecretScanningConfigsInsert,
       TSecretScanningConfigsUpdate
+    >;
+    [TableName.Reminder]: KnexOriginal.CompositeTableType<TReminders, TRemindersInsert, TRemindersUpdate>;
+    [TableName.ReminderRecipient]: KnexOriginal.CompositeTableType<
+      TRemindersRecipients,
+      TRemindersRecipientsInsert,
+      TRemindersRecipientsUpdate
     >;
   }
 }

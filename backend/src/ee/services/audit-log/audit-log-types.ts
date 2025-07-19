@@ -467,7 +467,11 @@ export enum EventType {
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
-  DELETE_PROJECT = "delete-project"
+  DELETE_PROJECT = "delete-project",
+
+  CREATE_SECRET_REMINDER = "create-secret-reminder",
+  GET_SECRET_REMINDER = "get-secret-reminder",
+  DELETE_SECRET_REMINDER = "delete-secret-reminder"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -3312,6 +3316,31 @@ interface SecretScanningConfigUpdateEvent {
   };
 }
 
+interface SecretReminderCreateEvent {
+  type: EventType.CREATE_SECRET_REMINDER;
+  metadata: {
+    secretId: string;
+    message?: string | null;
+    repeatDays?: number | null;
+    nextReminderDate?: string | null;
+    recipients?: string[] | null;
+  };
+}
+
+interface SecretReminderGetEvent {
+  type: EventType.GET_SECRET_REMINDER;
+  metadata: {
+    secretId: string;
+  };
+}
+
+interface SecretReminderDeleteEvent {
+  type: EventType.DELETE_SECRET_REMINDER;
+  metadata: {
+    secretId: string;
+  };
+}
+
 interface SecretScanningConfigReadEvent {
   type: EventType.SECRET_SCANNING_CONFIG_GET;
   metadata?: Record<string, never>; // not needed, based off projectId
@@ -3674,4 +3703,7 @@ export type Event =
   | OrgUpdateEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
-  | ProjectDeleteEvent;
+  | ProjectDeleteEvent
+  | SecretReminderCreateEvent
+  | SecretReminderGetEvent
+  | SecretReminderDeleteEvent;
