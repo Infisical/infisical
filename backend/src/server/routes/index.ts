@@ -500,6 +500,7 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     licenseDAL,
+    keyStore,
     identityOrgMembershipDAL,
     projectDAL
   });
