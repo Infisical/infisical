@@ -116,7 +116,21 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
             .max(315360000)
             .default(2592000)
             .describe(AWS_AUTH.ATTACH.accessTokenMaxTTL),
-          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(AWS_AUTH.ATTACH.accessTokenNumUsesLimit)
+          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(AWS_AUTH.ATTACH.accessTokenNumUsesLimit),
+          stsAttributeMapping: z
+            .record(
+              z.union([
+                z.string().trim().min(1),
+                z.object({
+                  source: z.enum(["Account", "Arn", "UserId"]).optional(),
+                  regex: z.string().min(1),
+                  replacement: z.string().optional(),
+                  flags: z.string().optional()
+                })
+              ])
+            )
+            .optional()
+            .describe("Map of AWS STS attributes to custom names for policy evaluation. Supports simple string mapping or regex-based extraction")
         })
         .refine(
           (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
@@ -201,7 +215,21 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
             .max(315360000)
             .min(0)
             .optional()
-            .describe(AWS_AUTH.UPDATE.accessTokenMaxTTL)
+            .describe(AWS_AUTH.UPDATE.accessTokenMaxTTL),
+          stsAttributeMapping: z
+            .record(
+              z.union([
+                z.string().trim().min(1),
+                z.object({
+                  source: z.enum(["Account", "Arn", "UserId"]).optional(),
+                  regex: z.string().min(1),
+                  replacement: z.string().optional(),
+                  flags: z.string().optional()
+                })
+              ])
+            )
+            .optional()
+            .describe("Map of AWS STS attributes to custom names for policy evaluation. Supports simple string mapping or regex-based extraction")
         })
         .refine(
           (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
