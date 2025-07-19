@@ -3,6 +3,11 @@ import { FastifyReply } from "fastify";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
+/**
+ * `aod` (Auth Origin Domain) cookie is used to store the origin domain of the application when user was last authenticated.
+ *  This is useful for determining the target domain for authentication redirects, especially in cloud deployments.
+ *  It is set only in cloud mode to ensure that the cookie is shared across subdomains.
+ */
 export function addAuthOriginDomainCookie(res: FastifyReply) {
   try {
     const appCfg = getConfig();

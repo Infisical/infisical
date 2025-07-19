@@ -144,14 +144,14 @@ export const getGitHubEnvironments = async (appConnection: TGitHubConnection, ow
   }
 };
 
-type TokenRespData = {
+export type GithubTokenRespData = {
   access_token?: string;
   scope: string;
   token_type: string;
   error?: string;
 };
 
-function isErrorResponse(data: TokenRespData): data is TokenRespData & {
+export function isGithubErrorResponse(data: GithubTokenRespData): data is GithubTokenRespData & {
   error: string;
   error_description: string;
   error_uri: string;
@@ -191,10 +191,10 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
     });
   }
 
-  let tokenResp: AxiosResponse<TokenRespData>;
+  let tokenResp: AxiosResponse<GithubTokenRespData>;
 
   try {
-    tokenResp = await request.get<TokenRespData>("https://github.com/login/oauth/access_token", {
+    tokenResp = await request.get<GithubTokenRespData>("https://github.com/login/oauth/access_token", {
       params: {
         client_id: clientId,
         client_secret: clientSecret,
@@ -207,7 +207,7 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
       }
     });
 
-    if (isErrorResponse(tokenResp?.data)) {
+    if (isGithubErrorResponse(tokenResp?.data)) {
       throw new BadRequestError({
         message: `Unable to validate credentials: GitHub responded with an error: ${tokenResp.data.error} - ${tokenResp.data.error_description}`
       });

@@ -1,4 +1,5 @@
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -251,7 +252,8 @@ export type TRotationFactory<
 > = (
   secretRotation: T,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;

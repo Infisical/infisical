@@ -45,7 +45,10 @@ export const ValidateOracleDBConnectionCredentialsSchema = z.discriminatedUnion(
 ]);
 
 export const CreateOracleDBConnectionSchema = ValidateOracleDBConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.OracleDB, { supportsPlatformManagedCredentials: true })
+  GenericCreateAppConnectionFieldsSchema(AppConnection.OracleDB, {
+    supportsPlatformManagedCredentials: true,
+    supportsGateways: true
+  })
 );
 
 export const UpdateOracleDBConnectionSchema = z
@@ -54,7 +57,12 @@ export const UpdateOracleDBConnectionSchema = z
       AppConnections.UPDATE(AppConnection.OracleDB).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.OracleDB, { supportsPlatformManagedCredentials: true }));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.OracleDB, {
+      supportsPlatformManagedCredentials: true,
+      supportsGateways: true
+    })
+  );
 
 export const OracleDBConnectionListItemSchema = z.object({
   name: z.literal("OracleDB"),

@@ -9,6 +9,7 @@ import {
   TOracleDBConnectionInput,
   TValidateOracleDBConnectionCredentialsSchema
 } from "@app/ee/services/app-connections/oracledb";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -290,7 +291,7 @@ export type TSqlConnectionInput =
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
-  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManagedCredentials"
+  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManagedCredentials" | "gatewayId"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "method" | "app">> & {
@@ -379,14 +380,17 @@ export type TListAwsConnectionIamUsers = {
 };
 
 export type TAppConnectionCredentialsValidator = (
-  appConnection: TAppConnectionConfig
+  appConnection: TAppConnectionConfig,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => Promise<TAppConnection["credentials"]>;
 
 export type TAppConnectionTransitionCredentialsToPlatform = (
   appConnection: TAppConnectionConfig,
-  callback: (credentials: TAppConnection["credentials"]) => Promise<TAppConnectionRaw>
+  callback: (credentials: TAppConnection["credentials"]) => Promise<TAppConnectionRaw>,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => Promise<TAppConnectionRaw>;
 
 export type TAppConnectionBaseConfig = {
   supportsPlatformManagedCredentials?: boolean;
+  supportsGateways?: boolean;
 };

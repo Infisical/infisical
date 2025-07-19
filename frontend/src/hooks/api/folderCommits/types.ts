@@ -62,3 +62,16 @@ export type RollbackPreview = {
   folderPath: string;
   changes: RollbackChange[];
 };
+
+interface CommitActorMetadata {
+  email?: string;
+  name?: string;
+}
+
+export interface Commit {
+  id: string;
+  message: string;
+  createdAt: string;
+  actorType: string;
+  actorMetadata?: CommitActorMetadata;
+}
