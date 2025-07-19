@@ -57,6 +57,7 @@ export const useGetAuditLogs = (
     },
     getNextPageParam: (lastPage, pages) =>
       lastPage.length !== 0 ? pages.length * filters.limit : undefined,
+    placeholderData: (prev) => prev,
     ...options
   });
 };

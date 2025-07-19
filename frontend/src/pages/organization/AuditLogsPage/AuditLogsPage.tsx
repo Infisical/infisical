@@ -18,7 +18,7 @@ export const AuditLogsPage = () => {
             title="Audit logs"
             description="Audit logs for security and compliance teams to monitor information access."
           />
-          <LogsSection />
+          <LogsSection pageView />
         </div>
       </div>
     </div>
