@@ -47,7 +47,10 @@ export const ValidatePostgresConnectionCredentialsSchema = z.discriminatedUnion(
 ]);
 
 export const CreatePostgresConnectionSchema = ValidatePostgresConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.Postgres, { supportsPlatformManagedCredentials: true })
+  GenericCreateAppConnectionFieldsSchema(AppConnection.Postgres, {
+    supportsPlatformManagedCredentials: true,
+    supportsGateways: true
+  })
 );
 
 export const UpdatePostgresConnectionSchema = z
@@ -56,7 +59,12 @@ export const UpdatePostgresConnectionSchema = z
       AppConnections.UPDATE(AppConnection.Postgres).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Postgres, { supportsPlatformManagedCredentials: true }));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.Postgres, {
+      supportsPlatformManagedCredentials: true,
+      supportsGateways: true
+    })
+  );
 
 export const PostgresConnectionListItemSchema = z.object({
   name: z.literal("PostgreSQL"),

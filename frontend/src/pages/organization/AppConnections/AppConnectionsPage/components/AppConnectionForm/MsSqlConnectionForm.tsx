@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
-import { Button, FormControl, ModalClose, Select, SelectItem } from "@app/components/v2";
+import { OrgPermissionCan } from "@app/components/permissions";
+import { Button, FormControl, ModalClose, Select, SelectItem, Tooltip } from "@app/components/v2";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { gatewaysQueryKeys } from "@app/hooks/api";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   MsSqlConnectionMethod,
@@ -51,6 +58,7 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
     defaultValues: appConnection ?? {
       app: AppConnection.MsSql,
       method: MsSqlConnectionMethod.UsernameAndPassword,
+      gatewayId: null,
       credentials: {
         host: "",
         port: 1433,
@@ -71,6 +79,7 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
   } = form;
 
   const isPlatformManagedCredentials = appConnection?.isPlatformManagedCredentials ?? false;
+  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   const confirmSubmit = async (formData: FormData) => {
     if (formData.isPlatformManagedCredentials) {
@@ -90,6 +99,55 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }}
       >
         {!isUpdate && <GenericAppConnectionsFields />}
+        <OrgPermissionCan
+          I={OrgGatewayPermissionActions.AttachGateways}
+          a={OrgPermissionSubjects.Gateway}
+        >
+          {(isAllowed) => (
+            <Controller
+              control={control}
+              name="gatewayId"
+              defaultValue=""
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error?.message)}
+                  errorText={error?.message}
+                  label="Gateway"
+                >
+                  <Tooltip
+                    isDisabled={isAllowed}
+                    content="Restricted access. You don't have permission to attach gateways to resources."
+                  >
+                    <div>
+                      <Select
+                        isDisabled={!isAllowed}
+                        value={value as string}
+                        onValueChange={onChange}
+                        className="w-full border border-mineshaft-500"
+                        dropdownContainerClassName="max-w-none"
+                        isLoading={isGatewaysLoading}
+                        placeholder="Default: Internet Gateway"
+                        position="popper"
+                      >
+                        <SelectItem
+                          value={null as unknown as string}
+                          onClick={() => onChange(undefined)}
+                        >
+                          Internet Gateway
+                        </SelectItem>
+                        {gateways?.map((el) => (
+                          <SelectItem value={el.id} key={el.id}>
+                            {el.name}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </div>
+                  </Tooltip>
+                </FormControl>
+              )}
+            />
+          )}
+        </OrgPermissionCan>
         <Controller
           name="method"
           control={control}

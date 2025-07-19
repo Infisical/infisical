@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { faAngleDown } from "@fortawesome/free-solid-svg-icons";
+import {
+  faAngleDown,
+  faChevronLeft,
+  faCodeCommit,
+  faWarning
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
 import { useSearch } from "@tanstack/react-router";
@@ -7,12 +12,14 @@ import { useSearch } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Button,
+  ContentLoader,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  IconButton,
-  Spinner
+  EmptyState,
+  PageHeader
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -108,25 +115,25 @@ export const CommitDetailsTab = ({
   // If no commit is selected or data is loading, show appropriate message
   if (!selectedCommitId) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-gray-400">Select a commit to view details</p>
-      </div>
+      <EmptyState className="mt-40" title="Select a commit to view details." icon={faCodeCommit}>
+        <Button className="mt-4" colorSchema="secondary" onClick={() => goBackToHistory()}>
+          Back to Commits
+        </Button>
+      </EmptyState>
     );
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <ContentLoader />;
   }
 
   if (!commitDetails) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-gray-400">No details found for this commit</p>
-      </div>
+      <EmptyState className="mt-40" title="No details found for this commit." icon={faCodeCommit}>
+        <Button className="mt-4" colorSchema="secondary" onClick={() => goBackToHistory()}>
+          Back to Commits
+        </Button>
+      </EmptyState>
     );
   }
 
@@ -138,9 +145,11 @@ export const CommitDetailsTab = ({
   } catch (error) {
     console.error("Failed to parse commit details:", error);
     return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-gray-400">Error parsing commit details</p>
-      </div>
+      <EmptyState className="mt-40" title="Error parsing commit details." icon={faWarning}>
+        <Button className="mt-4" colorSchema="secondary" onClick={() => goBackToHistory()}>
+          Back to Commits
+        </Button>
+      </EmptyState>
     );
   }
 
@@ -223,13 +232,12 @@ export const CommitDetailsTab = ({
   // Render an item from the merged list
   const renderMergedItem = (item: MergedItem): JSX.Element => {
     return (
-      <div key={item.id} className="mb-2">
-        <SecretVersionDiffView
-          item={item}
-          isCollapsed={collapsedItems[item.id]}
-          onToggleCollapse={(id) => toggleItemCollapsed(id)}
-        />
-      </div>
+      <SecretVersionDiffView
+        key={item.id}
+        item={item}
+        isCollapsed={collapsedItems[item.id]}
+        onToggleCollapse={(id) => toggleItemCollapsed(id)}
+      />
     );
   };
 
@@ -240,114 +248,104 @@ export const CommitDetailsTab = ({
     "Unknown";
 
   return (
-    <div className="w-full">
-      <div>
-        <div className="flex justify-between pb-2">
-          <div className="w-5/6">
-            <div>
-              <div className="flex items-center">
-                <h1 className="mr-4 truncate text-3xl font-semibold text-white">
-                  {parsedCommitDetails.changes?.message || "No message"}
-                </h1>
-              </div>
-            </div>
-            <div className="font-small mb-4 mt-2 flex items-center text-sm">
-              <p>
-                <span> Commited by </span>
-                <b>{actorDisplay}</b>
-                <span> on </span>
-                <b>
-                  {formatDisplayDate(
-                    parsedCommitDetails.changes?.createdAt || new Date().toISOString()
-                  )}
-                </b>
-                {parsedCommitDetails.changes?.isLatest && (
-                  <span className="ml-1 italic text-gray-400">(Latest)</span>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center justify-start">
-            <ProjectPermissionCan
-              I={ProjectPermissionCommitsActions.PerformRollback}
-              a={ProjectPermissionSub.Commits}
-            >
-              {(isAllowed) => (
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    asChild
-                    disabled={!isAllowed}
-                    className={`${!isAllowed ? "cursor-not-allowed" : ""}`}
+    <>
+      <Button
+        variant="link"
+        type="submit"
+        leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
+        onClick={() => {
+          goBackToHistory();
+        }}
+      >
+        Commit History
+      </Button>
+      <PageHeader
+        title={`${parsedCommitDetails.changes?.message}` || "No message"}
+        description={
+          <>
+            Commited by {actorDisplay} on{" "}
+            {formatDisplayDate(parsedCommitDetails.changes?.createdAt || new Date().toISOString())}
+            {parsedCommitDetails.changes?.isLatest && (
+              <span className="ml-1 text-mineshaft-400">(Latest)</span>
+            )}
+          </>
+        }
+      >
+        <ProjectPermissionCan
+          I={ProjectPermissionCommitsActions.PerformRollback}
+          a={ProjectPermissionSub.Commits}
+        >
+          {(isAllowed) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                asChild
+                disabled={!isAllowed}
+                className={`${!isAllowed ? "cursor-not-allowed" : ""}`}
+              >
+                <Button
+                  rightIcon={<FontAwesomeIcon className="ml-2" icon={faAngleDown} />}
+                  variant="solid"
+                  className="h-min"
+                  colorSchema="secondary"
+                >
+                  Restore Options
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-w-sm bg-bunker-500" sideOffset={2}>
+                {!parsedCommitDetails.changes.isLatest && (
+                  <DropdownMenuItem
+                    className="group cursor-pointer border-b border-mineshaft-600 px-3 py-3 transition-colors hover:bg-mineshaft-700"
+                    onClick={() => goToRollbackPreview()}
                   >
-                    <IconButton
-                      ariaLabel="commit-options"
-                      variant="outline_bg"
-                      className="h-10 rounded border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-sm font-medium"
-                    >
-                      <p className="mr-2">Restore Options</p>
-                      <FontAwesomeIcon icon={faAngleDown} />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    sideOffset={2}
-                    className="animate-in fade-in-50 zoom-in-95 min-w-[240px] rounded-md bg-mineshaft-800 p-1 shadow-lg"
-                    style={{ marginTop: "0" }}
-                  >
-                    {!parsedCommitDetails.changes.isLatest && (
-                      <DropdownMenuItem
-                        className="group cursor-pointer rounded-md px-3 py-3 transition-colors hover:bg-mineshaft-700"
-                        onClick={() => goToRollbackPreview()}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-white">
-                              Roll back to this commit
-                            </span>
-                            <span className="max-w-[180px] whitespace-normal break-words text-xs leading-snug text-gray-400">
-                              Return this folder to its exact state at the time of this commit,
-                              discarding all other changes made after it
-                            </span>
-                          </div>
-                        </div>
-                      </DropdownMenuItem>
-                    )}
-
-                    <DropdownMenuItem
-                      className="group cursor-pointer rounded-md px-3 py-3 transition-colors hover:bg-mineshaft-700"
-                      onClick={() => handlePopUpOpen("revertChanges")}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-white">Revert changes</span>
-                          <span className="max-w-[180px] whitespace-normal break-words text-xs leading-snug text-gray-400">
-                            Will restore to the previous version of affected resources
-                          </span>
-                        </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-white">
+                          Roll back to this commit
+                        </span>
+                        <span className="whitespace-normal break-words text-xs leading-snug text-gray-400">
+                          Return this folder to its exact state at the time of this commit,
+                          discarding all other changes made after it
+                        </span>
                       </div>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </ProjectPermissionCan>
-          </div>
+                    </div>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  className="group cursor-pointer px-3 py-3 transition-colors hover:bg-mineshaft-700"
+                  onClick={() => handlePopUpOpen("revertChanges")}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-white">Revert changes</span>
+                      <span className="whitespace-normal break-words text-xs leading-snug text-gray-400">
+                        Will restore to the previous version of affected resources
+                      </span>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </ProjectPermissionCan>
+      </PageHeader>
+      <div className="flex w-full flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-900 pt-4">
+        <div className="mx-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+          <h3 className="text-lg font-semibold text-mineshaft-100">Commit Changes</h3>
         </div>
-
-        <div className="py-2">
-          <div className="overflow-hidden">
-            <div className="space-y-2">
-              {sortedChangedItems.length > 0 ? (
-                sortedChangedItems.map((item) => renderMergedItem(item))
-              ) : (
-                <div className="flex h-32 items-center justify-center rounded-lg border border-mineshaft-600 bg-mineshaft-800">
-                  <p className="text-gray-400">No changed items found</p>
-                </div>
-              )}
-            </div>
+        <div className="flex flex-col overflow-hidden px-4">
+          <div className="thin-scrollbar overflow-y-auto py-4">
+            {sortedChangedItems.length > 0 ? (
+              sortedChangedItems.map((item) => renderMergedItem(item))
+            ) : (
+              <EmptyState
+                title="No changes found."
+                className="h-full pb-0 pt-28"
+                icon={faCodeCommit}
+              />
+            )}
           </div>
         </div>
       </div>
-
       <DeleteActionModal
         isOpen={popUp.revertChanges.isOpen}
         deleteKey="revert"
@@ -357,6 +355,6 @@ export const CommitDetailsTab = ({
         onDeleteApproved={handleRevertChanges}
         buttonText="Yes, revert changes"
       />
-    </div>
+    </>
   );
 };

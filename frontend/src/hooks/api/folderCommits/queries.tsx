@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 
 import { apiRequest } from "@app/config/request";
 
-import { CommitHistoryItem, CommitWithChanges, RollbackPreview } from "./types";
+import { Commit, CommitHistoryItem, CommitWithChanges, RollbackPreview } from "./types";
 
 export const commitKeys = {
   count: ({
@@ -242,7 +243,6 @@ export const useGetFolderCommitHistory = ({
   workspaceId,
   environment,
   directory,
-  offset = 0,
   limit = 20,
   search,
   sort = "desc"
@@ -250,22 +250,33 @@ export const useGetFolderCommitHistory = ({
   workspaceId: string;
   environment: string;
   directory: string;
-  offset?: number;
   limit?: number;
   search?: string;
   sort?: "asc" | "desc";
 }) => {
-  return useQuery({
-    queryKey: [
-      commitKeys.history({ workspaceId, environment, directory }),
-      offset,
-      limit,
-      search,
-      sort
-    ],
-    queryFn: () =>
-      fetchFolderCommitHistory(workspaceId, environment, directory, offset, limit, search, sort),
-    enabled: Boolean(workspaceId && environment)
+  return useInfiniteQuery({
+    initialPageParam: 0,
+    queryKey: [commitKeys.history({ workspaceId, environment, directory }), limit, search, sort],
+    queryFn: ({ pageParam }) =>
+      fetchFolderCommitHistory(workspaceId, environment, directory, pageParam, limit, search, sort),
+    enabled: Boolean(workspaceId && environment),
+    select: (data) => {
+      return (data?.pages ?? [])
+        ?.map((page) => page.commits)
+        .flat()
+        .reduce(
+          (acc, commit) => {
+            const date = format(new Date(commit.createdAt), "MMM d, yyyy");
+            if (!acc[date]) {
+              acc[date] = [];
+            }
+            acc[date].push(commit);
+            return acc;
+          },
+          {} as Record<string, Commit[]>
+        );
+    },
+    getNextPageParam: (lastPage, pages) => (lastPage.hasMore ? pages.length * limit : undefined)
   });
 };
 
