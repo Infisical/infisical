@@ -11,7 +11,7 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 
 const DigitalOceanAppPlatformSyncDestinationConfigSchema = z.object({
   appId: z.string().min(1, "Account ID is required").max(255, "Account ID must be less than 255 characters"),
-  appName: z.string().min(1, "Account Name is required").max(255, "Account ID must be less than 255 characters")
+  appName: z.string().min(1, "Account Name is required").max(255, "Account Name must be less than 255 characters")
 });
 
 const DigitalOceanAppPlatformSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
