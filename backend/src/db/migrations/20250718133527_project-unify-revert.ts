@@ -13,9 +13,10 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
   await knex(TableName.Project).insert({
     ...project,
     type: projectType,
+    defaultProduct: projectType,
     // @ts-ignore id is required
     id: newProjectId,
-    slug: slugify(`${project?.name}-${alphaNumericNanoId(4)}`)
+    slug: slugify(`${project?.name}-${alphaNumericNanoId(8)}`)
   });
 
   const customRoleMapping: Record<string, string> = {};
@@ -198,11 +199,15 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
 };
 
 const kickOutSecretManagerProject = async (knex: Knex, oldProjectId: string) => {
-  const enviroments = await knex(TableName.Environment).where("projectId", oldProjectId).returning("id").first();
-  if (enviroments) {
+  const secret = await knex(TableName.Secret)
+    .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
+    .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+    .where("projectId", oldProjectId)
+    .returning(`${TableName.Secret}.id`)
+    .first();
+  if (secret) {
     const newProjectId = await newProject(knex, oldProjectId, ProjectType.SecretManager);
     await knex(TableName.IntegrationAuth).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.ProjectBot).where("projectId", oldProjectId).update("projectId", newProjectId);
     await knex(TableName.SecretBlindIndex).where("projectId", oldProjectId).update("projectId", newProjectId);
     await knex(TableName.SecretSync).where("projectId", oldProjectId).update("projectId", newProjectId);
     await knex(TableName.SecretTag).where("projectId", oldProjectId).update("projectId", newProjectId);
@@ -303,7 +308,7 @@ export async function up(knex: Knex): Promise<void> {
         }
         await knex(TableName.Project).whereIn("id", ids).update("defaultProduct", null);
       }
-    } while (projectsToBeTyped.length > 0);
+    } while (projectsToBeSplit.length > 0);
   }
 }
 

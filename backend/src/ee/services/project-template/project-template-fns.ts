@@ -1,3 +1,4 @@
+import { ProjectType } from "@app/db/schemas";
 import {
   InfisicalProjectTemplate,
   TUnpackedPermission
@@ -5,7 +6,6 @@ import {
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import { ProjectTemplateDefaultEnvironments } from "./project-template-constants";
-import { ProjectType } from "@app/db/schemas";
 
 export const getDefaultProjectTemplate = (orgId: string, type: ProjectType) => ({
   id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // random ID to appease zod
