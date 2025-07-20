@@ -586,14 +586,7 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const getProjects = async ({
-    actorId,
-    actor,
-    includeRoles,
-    actorAuthMethod,
-    actorOrgId,
-    type = ProjectType.SecretManager
-  }: TListProjectsDTO) => {
+  const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
     const workspaces =
       actor === ActorType.IDENTITY
         ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
