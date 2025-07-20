@@ -46,6 +46,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -60,7 +61,6 @@ import { ProjectIdentityOrderBy } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityModal } from "./components/IdentityModal";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 

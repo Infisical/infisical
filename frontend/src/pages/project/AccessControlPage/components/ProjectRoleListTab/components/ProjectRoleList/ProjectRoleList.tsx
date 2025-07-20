@@ -40,6 +40,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -52,7 +53,6 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 enum RolesOrderBy {
   Name = "name",

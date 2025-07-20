@@ -17,6 +17,7 @@ import {
   PageHeader
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -25,7 +26,6 @@ import { RolePermissionsSection } from "@app/pages/project/RoleDetailsBySlugPage
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { RoleModal } from "./components/RoleModal";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 const Page = () => {
   const navigate = useNavigate();

@@ -33,6 +33,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -44,7 +45,6 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupRoles } from "./GroupRoles";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   handlePopUpOpen: (

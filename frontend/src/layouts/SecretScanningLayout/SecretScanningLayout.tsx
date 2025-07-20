@@ -1,9 +1,15 @@
-import { faCog, faUsers } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCog,
+  faDatabase,
+  faHome,
+  faMagnifyingGlass,
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
+import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 
 export const SecretScanningLayout = () => {
@@ -21,7 +27,8 @@ export const SecretScanningLayout = () => {
           className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
         >
           <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
-            <div className="border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
+            <div className="flex items-center gap-3 border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
+              <Lottie className="inline-block h-5 w-5 shrink-0" icon="secret-scan" />
               Secret Scanning
             </div>
             <div className="flex-1">
@@ -33,7 +40,16 @@ export const SecretScanningLayout = () => {
                       projectId: currentWorkspace.id
                     }}
                   >
-                    {({ isActive }) => <MenuItem isSelected={isActive}> Data Sources</MenuItem>}
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faDatabase} />
+                          </div>
+                          Data Sources
+                        </div>
+                      </MenuItem>
+                    )}
                   </Link>
                   <Link
                     to="/projects/secret-scanning/$projectId/findings"
@@ -41,7 +57,16 @@ export const SecretScanningLayout = () => {
                       projectId: currentWorkspace.id
                     }}
                   >
-                    {({ isActive }) => <MenuItem isSelected={isActive}>Findings</MenuItem>}
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faMagnifyingGlass} />
+                          </div>
+                          Findings
+                        </div>
+                      </MenuItem>
+                    )}
                   </Link>
                 </MenuGroup>
                 <MenuGroup title="Others">
@@ -80,6 +105,22 @@ export const SecretScanningLayout = () => {
                     )}
                   </Link>
                 </MenuGroup>
+              </Menu>
+            </div>
+            <div>
+              <Menu>
+                <Link to="/organization/projects">
+                  <MenuItem
+                    className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                    leftIcon={
+                      <div className="w-6">
+                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
+                      </div>
+                    }
+                  >
+                    Organization Home
+                  </MenuItem>
+                </Link>
               </Menu>
             </div>
           </nav>

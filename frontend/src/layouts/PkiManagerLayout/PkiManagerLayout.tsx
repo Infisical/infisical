@@ -1,5 +1,15 @@
 import { useTranslation } from "react-i18next";
-import { faCog, faMobile, faUsers } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBell,
+  faCertificate,
+  faCog,
+  faFileLines,
+  faHome,
+  faMobile,
+  faSitemap,
+  faStamp,
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -37,7 +47,16 @@ export const PkiManagerLayout = () => {
                         projectId: currentWorkspace.id
                       }}
                     >
-                      {({ isActive }) => <MenuItem isSelected={isActive}>Subscribers</MenuItem>}
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faSitemap} />
+                            </div>
+                            Subscribers
+                          </div>
+                        </MenuItem>
+                      )}
                     </Link>
                     <Link
                       to="/projects/cert-management/$projectId/certificate-templates"
@@ -46,7 +65,14 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}> Certificate Templates</MenuItem>
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faFileLines} />
+                            </div>
+                            Certificate Templates
+                          </div>
+                        </MenuItem>
                       )}
                     </Link>
                     <Link
@@ -55,7 +81,16 @@ export const PkiManagerLayout = () => {
                         projectId: currentWorkspace.id
                       }}
                     >
-                      {({ isActive }) => <MenuItem isSelected={isActive}> Certificates</MenuItem>}
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faCertificate} />
+                            </div>
+                            Certificates
+                          </div>
+                        </MenuItem>
+                      )}
                     </Link>
                     <Link
                       to="/projects/cert-management/$projectId/certificate-authorities"
@@ -64,7 +99,14 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}> Certificates Authorities</MenuItem>
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faStamp} />
+                            </div>
+                            Certificates Authority
+                          </div>
+                        </MenuItem>
                       )}
                     </Link>
                     <Link
@@ -73,7 +115,16 @@ export const PkiManagerLayout = () => {
                         projectId: currentWorkspace.id
                       }}
                     >
-                      {({ isActive }) => <MenuItem isSelected={isActive}>Alerting</MenuItem>}
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faBell} />
+                            </div>
+                            Alerting
+                          </div>
+                        </MenuItem>
+                      )}
                     </Link>
                   </MenuGroup>
                   <MenuGroup title="Others">
@@ -112,6 +163,22 @@ export const PkiManagerLayout = () => {
                       )}
                     </Link>
                   </MenuGroup>
+                </Menu>
+              </div>
+              <div>
+                <Menu>
+                  <Link to="/organization/projects">
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                      leftIcon={
+                        <div className="w-6">
+                          <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
+                        </div>
+                      }
+                    >
+                      Organization Home
+                    </MenuItem>
+                  </Link>
                 </Menu>
               </div>
             </nav>

@@ -1,32 +1,29 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { createFileRoute } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { SecretScanningFindingStatus } from '@app/hooks/api/secretScanningV2'
+import { SecretScanningFindingStatus } from "@app/hooks/api/secretScanningV2";
 
-import { SecretScanningFindingsPage } from './SecretScanningFindingsPage'
+import { SecretScanningFindingsPage } from "./SecretScanningFindingsPage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/findings',
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/findings"
 )({
   validateSearch: zodValidator(
     z.object({
       search: z.string().optional(),
-      status: z
-        .nativeEnum(SecretScanningFindingStatus)
-        .optional()
-        .catch(undefined),
-    }),
+      status: z.nativeEnum(SecretScanningFindingStatus).optional().catch(undefined)
+    })
   ),
   beforeLoad: ({ context }) => {
     return {
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Findings',
-        },
-      ],
-    }
+          label: "Findings"
+        }
+      ]
+    };
   },
-  component: SecretScanningFindingsPage,
-})
+  component: SecretScanningFindingsPage
+});

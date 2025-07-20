@@ -3,6 +3,7 @@ import {
   faArrowsSpin,
   faCheckToSlot,
   faCog,
+  faHome,
   faMobile,
   faPuzzlePiece,
   faUsers,
@@ -180,6 +181,22 @@ export const SecretManagerLayout = () => {
                       )}
                     </Link>
                   </MenuGroup>
+                </Menu>
+              </div>
+              <div>
+                <Menu>
+                  <Link to="/organization/projects">
+                    <MenuItem
+                      className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                      leftIcon={
+                        <div className="w-6">
+                          <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
+                        </div>
+                      }
+                    >
+                      Organization Home
+                    </MenuItem>
+                  </Link>
                 </Menu>
               </div>
             </nav>

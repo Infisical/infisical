@@ -184,6 +184,7 @@ export type TSearchProjectsDTO = {
   name?: string;
   limit?: number;
   offset?: number;
+  type?: ProjectType;
   options?: { enabled?: boolean };
   orderBy?: ProjectIdentityOrderBy;
   orderDirection?: OrderByDirection;

@@ -1,11 +1,11 @@
-import { createFileRoute, linkOptions } from '@tanstack/react-router'
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { ProjectAccessControlTabs } from '@app/types/project'
+import { ProjectAccessControlTabs } from "@app/types/project";
 
-import { IdentityDetailsByIDPage } from './IdentityDetailsByIDPage'
+import { IdentityDetailsByIDPage } from "./IdentityDetailsByIDPage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/identities/$identityId',
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/identities/$identityId"
 )({
   component: IdentityDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -13,21 +13,21 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Access Control',
+          label: "Access Control",
           link: linkOptions({
-            to: '/projects/$projectId/access-management',
+            to: "/projects/$projectId/access-management",
             params: {
-              projectId: params.projectId,
+              projectId: params.projectId
             },
             search: {
-              selectedTab: ProjectAccessControlTabs.Identities,
-            },
-          }),
+              selectedTab: ProjectAccessControlTabs.Identities
+            }
+          })
         },
         {
-          label: 'Machine Identity',
-        },
-      ],
-    }
-  },
-})
+          label: "Machine Identity"
+        }
+      ]
+    };
+  }
+});

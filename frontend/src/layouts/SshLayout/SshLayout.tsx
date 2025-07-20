@@ -1,11 +1,11 @@
+import { faCog, faHome, faServer, faStamp, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
+import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCog, faUsers } from "@fortawesome/free-solid-svg-icons";
 
 export const SshLayout = () => {
   const { currentWorkspace } = useWorkspace();
@@ -22,7 +22,10 @@ export const SshLayout = () => {
           className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
         >
           <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
-            <div className="border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">SSH</div>
+            <div className="flex items-center gap-3 border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
+              <Lottie className="inline-block h-5 w-5 shrink-0" icon="terminal" />
+              SSH
+            </div>
             <div className="flex-1">
               <Menu>
                 <MenuGroup title="Resources">
@@ -32,7 +35,16 @@ export const SshLayout = () => {
                       projectId: currentWorkspace.id
                     }}
                   >
-                    {({ isActive }) => <MenuItem isSelected={isActive}>Hosts</MenuItem>}
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faServer} />
+                          </div>
+                          Hosts
+                        </div>
+                      </MenuItem>
+                    )}
                   </Link>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Read}
@@ -47,7 +59,14 @@ export const SshLayout = () => {
                           }}
                         >
                           {({ isActive }) => (
-                            <MenuItem isSelected={isActive}>Certificate Authorities</MenuItem>
+                            <MenuItem isSelected={isActive}>
+                              <div className="mx-1 flex gap-2">
+                                <div className="w-6">
+                                  <FontAwesomeIcon icon={faStamp} />
+                                </div>
+                                Certificates Authority
+                              </div>
+                            </MenuItem>
                           )}
                         </Link>
                       )
@@ -91,6 +110,22 @@ export const SshLayout = () => {
                     )}
                   </Link>
                 </MenuGroup>
+              </Menu>
+            </div>
+            <div>
+              <Menu>
+                <Link to="/organization/projects">
+                  <MenuItem
+                    className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                    leftIcon={
+                      <div className="w-6">
+                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
+                      </div>
+                    }
+                  >
+                    Organization Home
+                  </MenuItem>
+                </Link>
               </Menu>
             </div>
           </nav>

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   useCreateProjectRole,
   useGetProjectRoleBySlug,
@@ -14,7 +15,6 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 const schema = z
   .object({

@@ -4,6 +4,7 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 import z from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -16,6 +17,7 @@ import {
   Button,
   FormControl,
   Input,
+  Lottie,
   Modal,
   ModalClose,
   ModalContent,
@@ -35,6 +37,7 @@ import { getProjectHomePage } from "@app/helpers/project";
 import { useCreateWorkspace, useGetExternalKmsList, useGetUserWorkspaces } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
@@ -43,6 +46,7 @@ const formSchema = z.object({
     .trim()
     .max(256, "Description too long, max length is 256 characters")
     .optional(),
+  type: z.nativeEnum(ProjectType),
   kmsKeyId: z.string(),
   template: z.string()
 });
@@ -55,6 +59,34 @@ interface NewProjectModalProps {
 }
 
 type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
+
+const PROJECT_TYPE_MENU_ITEMS = [
+  {
+    label: "Secret Manager",
+    value: ProjectType.SecretManager,
+    icon: "vault"
+  },
+  {
+    label: "Certificate Manager",
+    value: ProjectType.CertificateManager,
+    icon: "note"
+  },
+  {
+    label: "KMS",
+    value: ProjectType.KMS,
+    icon: "unlock"
+  },
+  {
+    label: "SSH",
+    value: ProjectType.SSH,
+    icon: "terminal"
+  },
+  {
+    label: "Secret Scanning",
+    value: ProjectType.SecretScanning,
+    icon: "secret-scan"
+  }
+];
 
 const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
   const navigate = useNavigate();
@@ -101,7 +133,8 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
     name,
     description,
     kmsKeyId,
-    template
+    template,
+    type
   }: TAddProjectFormData) => {
     // type check
     if (!currentOrg) return;
@@ -113,7 +146,8 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
         projectName: name,
         projectDescription: description,
         kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-        template
+        template,
+        type
       });
       await refetchWorkspaces();
 
@@ -152,6 +186,42 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
         />
         <Controller
           control={control}
+          name="type"
+          defaultValue={ProjectType.SecretManager}
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Project Type"
+              isError={Boolean(error)}
+              errorText={error?.message}
+              className="flex-1"
+            >
+              <div className="mt-2 grid grid-cols-5 gap-4">
+                {PROJECT_TYPE_MENU_ITEMS.map((el) => (
+                  <div
+                    key={el.value}
+                    className={twMerge(
+                      "flex cursor-pointer flex-col items-center gap-2 rounded border border-mineshaft-600 p-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
+                      field.value === el.value && "border-primary-400 bg-mineshaft-600 opacity-100"
+                    )}
+                    onClick={() => field.onChange(el.value)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        field.onChange(el.value);
+                      }
+                    }}
+                  >
+                    <Lottie icon={el.icon} className="h-8 w-8" />
+                    <div className="text-center text-xs">{el.label}</div>
+                  </div>
+                ))}
+              </div>
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
           name="description"
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
@@ -171,6 +241,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
             </FormControl>
           )}
         />
+
         <Controller
           control={control}
           name="template"

@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { PkiTemplateListPage } from './PkiTemplateListPage'
+import { PkiTemplateListPage } from "./PkiTemplateListPage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificate-templates/',
+  "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificate-templates/"
 )({
   component: PkiTemplateListPage,
   beforeLoad: ({ context }) => {
@@ -11,9 +11,9 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Certificate Templates',
-        },
-      ],
-    }
-  },
-})
+          label: "Certificate Templates"
+        }
+      ]
+    };
+  }
+});

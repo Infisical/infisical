@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { PkiManagerLayout } from "@app/layouts/PkiManagerLayout";
-import { workspaceKeys } from "@app/hooks/api";
-import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
-import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { BreadcrumbTypes } from "@app/components/v2";
+import { workspaceKeys } from "@app/hooks/api";
+import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
+import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
+import { PkiManagerLayout } from "@app/layouts/PkiManagerLayout";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 
 export const Route = createFileRoute(

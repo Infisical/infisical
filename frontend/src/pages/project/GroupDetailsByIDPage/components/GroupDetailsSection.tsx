@@ -15,11 +15,11 @@ import {
 } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { GroupRoles } from "@app/pages/project/AccessControlPage/components/GroupsTab/components/GroupsSection/GroupRoles";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   groupMembership: TGroupMembership;

@@ -1,10 +1,10 @@
+import { faCog, faCube, faHome, faLock, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCog, faUsers } from "@fortawesome/free-solid-svg-icons";
 
 export const KmsLayout = () => {
   const { currentWorkspace } = useWorkspace();
@@ -34,7 +34,16 @@ export const KmsLayout = () => {
                       projectId: currentWorkspace.id
                     }}
                   >
-                    {({ isActive }) => <MenuItem isSelected={isActive}>Overview</MenuItem>}
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faCube} />
+                          </div>
+                          Overview
+                        </div>
+                      </MenuItem>
+                    )}
                   </Link>
                   <Link
                     to="/projects/kms/$projectId/kmip"
@@ -42,7 +51,16 @@ export const KmsLayout = () => {
                       projectId: currentWorkspace.id
                     }}
                   >
-                    {({ isActive }) => <MenuItem isSelected={isActive}>KMIP</MenuItem>}
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faLock} />
+                          </div>
+                          KMIP
+                        </div>
+                      </MenuItem>
+                    )}
                   </Link>
                 </MenuGroup>
                 <MenuGroup title="Others">
@@ -81,6 +99,22 @@ export const KmsLayout = () => {
                     )}
                   </Link>
                 </MenuGroup>
+              </Menu>
+            </div>
+            <div>
+              <Menu>
+                <Link to="/organization/projects">
+                  <MenuItem
+                    className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                    leftIcon={
+                      <div className="w-6">
+                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
+                      </div>
+                    }
+                  >
+                    Organization Home
+                  </MenuItem>
+                </Link>
               </Menu>
             </div>
           </nav>

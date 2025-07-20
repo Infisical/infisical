@@ -94,3 +94,14 @@ export const getProjectTitle = (type: ProjectType) => {
   };
   return titleConvert[type];
 };
+
+export const getProjectLottieIcon = (type: ProjectType) => {
+  const titleConvert = {
+    [ProjectType.SecretManager]: "vault",
+    [ProjectType.KMS]: "unlock",
+    [ProjectType.CertificateManager]: "note",
+    [ProjectType.SSH]: "terminal",
+    [ProjectType.SecretScanning]: "secret-scan"
+  };
+  return titleConvert[type];
+};

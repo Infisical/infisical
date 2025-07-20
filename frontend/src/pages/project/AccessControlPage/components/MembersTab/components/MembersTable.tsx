@@ -50,6 +50,7 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -60,7 +61,6 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetProjectRoles, useGetWorkspaceUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 

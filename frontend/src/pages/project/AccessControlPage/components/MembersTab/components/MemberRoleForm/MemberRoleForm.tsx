@@ -2,10 +2,10 @@ import { Link } from "@tanstack/react-router";
 
 import { Alert, AlertDescription } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
 import { MemberRbacSection } from "./MemberRbacSection";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   projectMember: TWorkspaceUser;

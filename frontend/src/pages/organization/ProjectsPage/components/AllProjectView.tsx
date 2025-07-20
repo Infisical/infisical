@@ -4,6 +4,7 @@ import {
   faArrowDownAZ,
   faBorderAll,
   faCheck,
+  faCheckCircle,
   faFolderOpen,
   faList,
   faMagnifyingGlass,
@@ -17,6 +18,11 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   FormControl,
   IconButton,
   Input,
@@ -27,7 +33,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
+import { getProjectHomePage, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -35,7 +41,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 type Props = {
   onAddNewProject: () => void;
@@ -98,6 +104,7 @@ export const AllProjectView = ({
   const navigate = useNavigate();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
+  const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType>();
   const {
     setPage,
     perPage,
@@ -124,7 +131,8 @@ export const AllProjectView = ({
     limit,
     offset,
     name: debouncedSearch || undefined,
-    orderDirection
+    orderDirection,
+    type: projectTypeFilter
   });
 
   useResetPageHelper({
@@ -133,6 +141,9 @@ export const AllProjectView = ({
     totalCount: searchedProjects?.totalCount || 0
   });
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Workspace;
+
+  const handleToggleFilterByProjectType = (el: ProjectType) =>
+    setProjectTypeFilter((state) => (state === el ? undefined : el));
 
   return (
     <div>
@@ -160,6 +171,49 @@ export const AllProjectView = ({
             </IconButton>
           </Tooltip>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div
+              className={twMerge(
+                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
+                projectTypeFilter && "border-primary-400 text-primary-400"
+              )}
+            >
+              <Tooltip content="Choose visible project type" className="mb-2">
+                <IconButton
+                  ariaLabel="project-types"
+                  className={twMerge(
+                    "min-w-[2.4rem] border-none hover:bg-mineshaft-600",
+                    projectTypeFilter && "text-primary-400"
+                  )}
+                  variant="plain"
+                  size="xs"
+                  colorSchema="secondary"
+                >
+                  <FontAwesomeIcon icon={faList} />
+                </IconButton>
+              </Tooltip>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="thin-scrollbar overflow-y-auto" align="end">
+            <DropdownMenuLabel>Filter By Project Type</DropdownMenuLabel>
+            {Object.values(ProjectType).map((el) => (
+              <DropdownMenuItem
+                key={`filter-item-${el}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleToggleFilterByProjectType(el);
+                }}
+                icon={projectTypeFilter === el && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <span>{getProjectTitle(el)}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Disabled across All Project view.">
             <IconButton
@@ -270,7 +324,8 @@ export const AllProjectView = ({
                   </div>
                 </div>
                 <div className="mt-1 max-w-lg overflow-hidden text-ellipsis whitespace-nowrap text-xs text-mineshaft-300">
-                  {workspace.description}
+                  {getProjectTitle(workspace.type)}{" "}
+                  {workspace.description ? `- ${workspace.description}` : ""}
                 </div>
               </div>
             </div>

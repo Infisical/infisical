@@ -52,6 +52,7 @@ import {
   useWorkspace
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -64,7 +65,6 @@ import { camelCaseToSpaces } from "@app/lib/fn/string";
 import { CreateReminderForm } from "./CreateReminderForm";
 import { HIDDEN_SECRET_VALUE } from "./SecretItem";
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
-import { getProjectBaseURL } from "@app/helpers/project";
 
 type Props = {
   isOpen?: boolean;

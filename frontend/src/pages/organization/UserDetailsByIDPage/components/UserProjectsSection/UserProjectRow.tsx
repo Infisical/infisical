@@ -5,13 +5,12 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
-import { getProjectBaseURL } from "@app/helpers/project";
-import { useWorkspace } from "@app/context";
 
 type Props = {
   membership: TWorkspaceUser;
@@ -27,7 +26,6 @@ export const UserProjectRow = ({
 }: Props) => {
   const { data: workspaces = [] } = useGetUserWorkspaces();
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
 
   const isAccessible = useMemo(() => {
     const workspaceIds = new Map();
@@ -46,7 +44,7 @@ export const UserProjectRow = ({
       onClick={() => {
         if (isAccessible) {
           navigate({
-            to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
+            to: `${getProjectBaseURL(project.type)}/access-management` as const,
             params: {
               projectId: project.id
             },

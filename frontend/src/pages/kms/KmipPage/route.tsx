@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { KmipPage } from './KmipPage'
+import { KmipPage } from "./KmipPage";
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId/_kms-layout/kmip',
+  "/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId/_kms-layout/kmip"
 )({
   component: KmipPage,
   beforeLoad: ({ context }) => {
@@ -11,9 +11,9 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'KMIP',
-        },
-      ],
-    }
-  },
-})
+          label: "KMIP"
+        }
+      ]
+    };
+  }
+});
