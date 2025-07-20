@@ -42,7 +42,8 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   const {
     data: { project }
   } = await createWorkspace({
-    projectName
+    projectName,
+    type: ProjectType.SecretManager
   });
 
   try {

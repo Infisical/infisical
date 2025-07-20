@@ -10,10 +10,13 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProjectPermission, useWorkspace } from "@app/context";
+
+import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const SecretScanningLayout = () => {
   const { currentWorkspace } = useWorkspace();
+  const { assumedPrivilegeDetails } = useProjectPermission();
 
   return (
     <div className="dark hidden h-full w-full flex-col overflow-x-hidden md:flex">
@@ -126,6 +129,7 @@ export const SecretScanningLayout = () => {
           </nav>
         </motion.div>
         <div className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 p-4 pt-8">
+          {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
           <Outlet />
         </div>
       </div>
