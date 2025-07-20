@@ -200,10 +200,10 @@ export const MyProjectView = ({
         </div>
         <div className="flex-1">
           <div className="flex">
-            <div className="flex-1 truncate text-lg font-semibold text-mineshaft-100">
-              {workspace.name}
+            <div className="flex-1 text-lg font-semibold text-mineshaft-100">
+              <div className="max-w-72 truncate">{workspace.name}</div>
             </div>
-            <div className="">
+            <div className="flex-shrink-0">
               {isFavorite ? (
                 <FontAwesomeIcon
                   icon={faSolidStar}
@@ -230,7 +230,7 @@ export const MyProjectView = ({
           </div>
         </div>
       </div>
-      <div className="mt-4 text-sm text-mineshaft-400">
+      <div className="mt-4 truncate text-sm text-mineshaft-400">
         {workspace.description || "No description"}
       </div>
     </div>
