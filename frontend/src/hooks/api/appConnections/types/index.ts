@@ -177,4 +177,5 @@ export type TAppConnectionMap = {
   [AppConnection.Checkly]: TChecklyConnection;
   [AppConnection.Supabase]: TSupabaseConnection;
   [AppConnection.DigitalOcean]: TDigitalOceanConnection;
+  [AppConnection.Netlify]: TNetlifyConnection;
 };
