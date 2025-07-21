@@ -239,6 +239,7 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         metadata,
+        secretMetadata,
         reminderNote,
         reminderRepeatDays
       }
@@ -250,7 +251,7 @@ export const fnSecretBulkUpdate = async ({
         key,
         userId,
         encryptedComment,
-        metadata,
+        metadata: JSON.stringify(metadata || secretMetadata || []),
         reminderNote,
         encryptedValue,
         reminderRepeatDays
