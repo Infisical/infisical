@@ -93,7 +93,13 @@ const cryptographyFactory = () => {
   };
 
   const verifyFipsLicense = (licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">) => {
-    if (isFipsModeEnabled({ skipInitializationCheck: true }) && !licenseService.onPremFeatures?.fips) {
+    const appCfg = getConfig();
+
+    if (
+      !appCfg.isDevelopmentMode &&
+      isFipsModeEnabled({ skipInitializationCheck: true }) &&
+      !licenseService.onPremFeatures?.fips
+    ) {
       throw new CryptographyError({
         message: "FIPS mode is enabled but your license does not include FIPS support. Please contact support."
       });
