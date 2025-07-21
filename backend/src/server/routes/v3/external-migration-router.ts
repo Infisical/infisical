@@ -1,9 +1,11 @@
 import fastifyMultipart from "@fastify/multipart";
+import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { VaultMappingType } from "@app/services/external-migration/external-migration-types";
 
 const MB25_IN_BYTES = 26214400;
 
@@ -49,6 +51,32 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/vault",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      body: z.object({
+        vaultAccessToken: z.string(),
+        vaultNamespace: z.string(),
+        vaultUrl: z.string(),
+        mappingType: z.nativeEnum(VaultMappingType)
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      await server.services.migration.importVaultData({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        ...req.body
       });
     }
   });
