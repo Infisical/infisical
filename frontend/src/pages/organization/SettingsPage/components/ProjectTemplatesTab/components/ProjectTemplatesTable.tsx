@@ -81,7 +81,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               />
             )}
             {filteredTemplates.map((template) => {
-              const { id, name, roles, environments = [], description, type } = template;
+              const { id, name, roles, description, type } = template;
               return (
                 <Tr
                   onClick={() => onEdit(template)}
