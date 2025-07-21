@@ -338,7 +338,7 @@ export type TAppConnectionConfig =
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
   | TSupabaseConnectionConfig
-  | TDigitalOceanConnectionConfig;
+  | TDigitalOceanConnectionConfig
   | TOktaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -376,7 +376,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
   | TValidateSupabaseConnectionCredentialsSchema
-  | TValidateDigitalOceanCredentialsSchema;
+  | TValidateDigitalOceanCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

@@ -184,7 +184,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ChecklyConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
-  OktaConnectionListItemSchema,
+  OktaConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
