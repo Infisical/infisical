@@ -97,7 +97,7 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
             {
               version: 1, // placeholder, not used
               secretKey: change.newSecretName ? existingSecret.key : undefined,
-              secretValue: change.secretValue ? existingSecret.value : "",
+              secretValue: change.secretValue ? (existingSecret.value ?? "") : undefined,
               tags: change.tags ? (existingSecret.tags?.map((tag) => tag.slug) ?? []) : undefined,
               secretMetadata: change.secretMetadata ? existingSecret.secretMetadata : undefined,
               skipMultilineEncoding:
@@ -189,12 +189,12 @@ const RenderFolderChanges = ({ onDiscard, change }: RenderResourceProps) => {
           versions: [
             {
               version: 1, // placeholder, not used
-              name: change.folderName ?? change.originalFolderName,
+              name: change.folderName ? change.originalFolderName : undefined,
               description: change.description ? change.originalDescription : undefined
             },
             {
               version: 2, // placeholder, not used
-              name: change.folderName ?? change.originalFolderName,
+              name: change.folderName,
               description: change.description
             }
           ]
