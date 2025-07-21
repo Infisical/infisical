@@ -13,6 +13,7 @@ import { TChecklySync } from "./checkly-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
+import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
 import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
@@ -28,7 +29,6 @@ import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
 import { TZabbixSync } from "./zabbix-sync";
-import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
 
 export type TSecretSyncOption = {
   name: string;

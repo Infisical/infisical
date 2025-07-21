@@ -17,9 +17,7 @@ import {
   AzureClientSecretsConnectionMethod,
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
-  BitbucketConnectionMethod,
   CamundaConnectionMethod,
-  ChecklyConnectionMethod,
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
   FlyioConnectionMethod,
@@ -28,19 +26,14 @@ import {
   GitHubRadarConnectionMethod,
   GitLabConnectionMethod,
   HCVaultConnectionMethod,
-  HerokuConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
   MsSqlConnectionMethod,
   MySqlConnectionMethod,
-  OCIConnectionMethod,
   OktaConnectionMethod,
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
-  RailwayConnectionMethod,
-  RenderConnectionMethod,
-  SupabaseConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
@@ -50,12 +43,12 @@ import {
 } from "@app/hooks/api/appConnections/types";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
+import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
-import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,

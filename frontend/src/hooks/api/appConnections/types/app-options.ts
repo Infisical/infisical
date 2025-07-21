@@ -154,7 +154,7 @@ export type TSupabaseConnectionOption = TAppConnectionOptionBase & {
 
 export type TDigitalOceanConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DigitalOcean;
-}
+};
 
 export type TOktaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Okta;
