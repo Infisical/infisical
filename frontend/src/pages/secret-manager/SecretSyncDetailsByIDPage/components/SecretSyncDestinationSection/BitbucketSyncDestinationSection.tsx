@@ -7,15 +7,15 @@ type Props = {
 
 export const BitbucketSyncDestinationSection = ({ secretSync }: Props) => {
   const {
-    destinationConfig: { workspace, repository, environment }
+    destinationConfig: { workspaceSlug, repositorySlug, environmentId }
   } = secretSync;
 
   return (
     <>
-      <GenericFieldLabel label="Workspace">{workspace}</GenericFieldLabel>
-      <GenericFieldLabel label="Repository">{repository}</GenericFieldLabel>
-      {environment && (
-        <GenericFieldLabel label="Deployment Environment">{environment}</GenericFieldLabel>
+      <GenericFieldLabel label="Workspace">{workspaceSlug}</GenericFieldLabel>
+      <GenericFieldLabel label="Repository">{repositorySlug}</GenericFieldLabel>
+      {environmentId && (
+        <GenericFieldLabel label="Deployment Environment">{environmentId}</GenericFieldLabel>
       )}
     </>
   );

@@ -21,8 +21,8 @@ export const BitbucketSyncFields = () => {
   >();
 
   const connectionId = useWatch({ name: "connection.id", control });
-  const workspace = useWatch({ name: "destinationConfig.workspace", control });
-  const repository = useWatch({ name: "destinationConfig.repository", control });
+  const workspace = useWatch({ name: "destinationConfig.workspaceSlug", control });
+  const repository = useWatch({ name: "destinationConfig.repositorySlug", control });
 
   const { data: workspaces = [], isPending: isWorkspacesLoading } =
     useBitbucketConnectionListWorkspaces(connectionId, {
@@ -43,14 +43,14 @@ export const BitbucketSyncFields = () => {
     <>
       <SecretSyncConnectionField
         onChange={() => {
-          setValue("destinationConfig.workspace", "");
-          setValue("destinationConfig.repository", "");
-          setValue("destinationConfig.environment", "");
+          setValue("destinationConfig.workspaceSlug", "");
+          setValue("destinationConfig.repositorySlug", "");
+          setValue("destinationConfig.environmentId", "");
         }}
       />
 
       <Controller
-        name="destinationConfig.workspace"
+        name="destinationConfig.workspaceSlug"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
@@ -67,8 +67,8 @@ export const BitbucketSyncFields = () => {
                 const v = option as SingleValue<TBitbucketWorkspace>;
                 onChange(v?.slug ?? "");
                 // Clear downstream selections
-                setValue("destinationConfig.repository", "");
-                setValue("destinationConfig.environment", "");
+                setValue("destinationConfig.repositorySlug", "");
+                setValue("destinationConfig.environmentId", "");
               }}
               options={workspaces}
               placeholder="Select workspace..."
@@ -80,7 +80,7 @@ export const BitbucketSyncFields = () => {
       />
 
       <Controller
-        name="destinationConfig.repository"
+        name="destinationConfig.repositorySlug"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
@@ -97,7 +97,7 @@ export const BitbucketSyncFields = () => {
                 const v = option as SingleValue<TBitbucketRepo>;
                 onChange(v?.slug ?? "");
                 // Clear downstream selections
-                setValue("destinationConfig.environment", "");
+                setValue("destinationConfig.environmentId", "");
               }}
               options={repositories}
               placeholder="Select repository..."
@@ -109,13 +109,14 @@ export const BitbucketSyncFields = () => {
       />
 
       <Controller
-        name="destinationConfig.environment"
+        name="destinationConfig.environmentId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Bitbucket Deployment Environment (optional)"
+            isOptional
+            label="Bitbucket Deployment Environment"
             tooltipClassName="max-w-md"
           >
             <FilterableSelect

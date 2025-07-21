@@ -1,4 +1,5 @@
 import { request } from "@app/lib/config/request";
+import { createAuthHeader } from "@app/services/app-connection/bitbucket";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import {
   TBitbucketListVariables,
@@ -11,29 +12,25 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
-const createAuthHeader = (email: string, apiToken: string): string => {
-  return `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
-};
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const buildVariablesUrl = (workspace: string, repository: string, environment?: string, uuid?: string): string => {
   const baseUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspace)}/${encodeURIComponent(repository)}`;
 
   if (environment) {
-    return `${baseUrl}/deployments_config/environments/${environment}/variables${uuid ? `/${uuid}` : ""}`;
+    return `${baseUrl}/deployments_config/environments/${environment}/variables/${uuid || ""}`;
   }
 
   return `${baseUrl}/pipelines_config/variables/${uuid || ""}`;
 };
 
 const listVariables = async ({
-  email,
-  apiToken,
-  workspace,
-  repository,
-  environment
-}: TBitbucketListVariables & { environment?: string }): Promise<TBitbucketVariable[]> => {
-  const url = buildVariablesUrl(workspace, repository, environment);
-  const authHeader = createAuthHeader(email, apiToken);
+  workspaceSlug,
+  repositorySlug,
+  environmentId,
+  authHeader
+}: TBitbucketListVariables): Promise<TBitbucketVariable[]> => {
+  const url = buildVariablesUrl(workspaceSlug, repositorySlug, environmentId);
 
   const { data } = await request.get<{ values: TBitbucketVariable[] }>(url, {
     headers: {
@@ -46,26 +43,23 @@ const listVariables = async ({
 };
 
 const upsertVariable = async ({
-  email,
-  apiToken,
-  workspace,
-  repository,
-  environment,
+  workspaceSlug,
+  repositorySlug,
+  environmentId,
   key,
   value,
-  existingVariables
+  existingVariables,
+  authHeader
 }: {
-  email: string;
-  apiToken: string;
-  workspace: string;
-  repository: string;
-  environment?: string;
+  workspaceSlug: string;
+  repositorySlug: string;
+  environmentId?: string;
   key: string;
   value: string;
   existingVariables: TBitbucketVariable[];
+  authHeader: string;
 }) => {
   const existingVariable = existingVariables.find((variable) => variable.key === key);
-  const authHeader = createAuthHeader(email, apiToken);
   const requestData = { key, value, secured: true };
   const headers = {
     Authorization: authHeader,
@@ -73,40 +67,37 @@ const upsertVariable = async ({
   };
 
   if (existingVariable) {
-    const url = buildVariablesUrl(workspace, repository, environment, existingVariable.uuid);
+    const url = buildVariablesUrl(workspaceSlug, repositorySlug, environmentId, existingVariable.uuid);
     return request.put(url, requestData, { headers });
   }
 
-  const url = buildVariablesUrl(workspace, repository, environment);
+  const url = buildVariablesUrl(workspaceSlug, repositorySlug, environmentId);
   return request.post(url, requestData, { headers });
 };
 
 const putVariables = async ({
-  email,
-  apiToken,
-  workspace,
-  repository,
-  environment,
-  secretMap
-}: TPutBitbucketVariable & { environment?: string; secretMap: TSecretMap }) => {
+  workspaceSlug,
+  repositorySlug,
+  environmentId,
+  secretMap,
+  authHeader
+}: TPutBitbucketVariable & { secretMap: TSecretMap; authHeader: string }) => {
   const existingVariables = await listVariables({
-    email,
-    apiToken,
-    workspace,
-    repository,
-    environment
+    workspaceSlug,
+    repositorySlug,
+    environmentId,
+    authHeader
   });
 
   const promises = Object.entries(secretMap).map(([key, { value }]) =>
     upsertVariable({
-      email,
-      apiToken,
-      workspace,
-      repository,
-      environment,
+      workspaceSlug,
+      repositorySlug,
+      environmentId,
       key,
       value,
-      existingVariables
+      existingVariables,
+      authHeader
     })
   );
 
@@ -114,26 +105,22 @@ const putVariables = async ({
 };
 
 const deleteVariables = async ({
-  email,
-  apiToken,
-  workspace,
-  repository,
-  environment,
-  keys
-}: TDeleteBitbucketVariable & { environment?: string }) => {
+  workspaceSlug,
+  repositorySlug,
+  environmentId,
+  keys,
+  authHeader
+}: TDeleteBitbucketVariable) => {
   const existingVariables = await listVariables({
-    email,
-    apiToken,
-    workspace,
-    repository,
-    environment
+    workspaceSlug,
+    repositorySlug,
+    environmentId,
+    authHeader
   });
 
   const variablesToDelete = existingVariables.filter((variable) => keys.includes(variable.key));
-
-  const authHeader = createAuthHeader(email, apiToken);
   const promises = variablesToDelete.map((variable) => {
-    const url = buildVariablesUrl(workspace, repository, environment, variable.uuid);
+    const url = buildVariablesUrl(workspaceSlug, repositorySlug, environmentId, variable.uuid);
     return request.delete(url, {
       headers: { Authorization: authHeader }
     });
@@ -147,19 +134,19 @@ export const BitbucketSyncFns = {
     const {
       connection,
       environment,
-      destinationConfig: { workspace, repository, environment: configEnvironment }
+      destinationConfig: { workspaceSlug, repositorySlug, environmentId }
     } = secretSync;
 
     const { email, apiToken } = connection.credentials;
+    const authHeader = createAuthHeader(email, apiToken);
 
     try {
       await putVariables({
-        email,
-        apiToken,
-        workspace,
-        repository,
-        environment: configEnvironment,
-        secretMap
+        workspaceSlug,
+        repositorySlug,
+        environmentId,
+        secretMap,
+        authHeader
       });
     } catch (error) {
       throw new SecretSyncError({ error });
@@ -169,11 +156,10 @@ export const BitbucketSyncFns = {
 
     try {
       const existingVariables = await listVariables({
-        email,
-        apiToken,
-        workspace,
-        repository,
-        environment: configEnvironment
+        workspaceSlug,
+        repositorySlug,
+        environmentId,
+        authHeader
       });
 
       const keysToDelete = existingVariables
@@ -185,12 +171,11 @@ export const BitbucketSyncFns = {
 
       if (keysToDelete.length > 0) {
         await deleteVariables({
-          email,
-          apiToken,
-          workspace,
-          repository,
-          environment: configEnvironment,
-          keys: keysToDelete
+          workspaceSlug,
+          repositorySlug,
+          environmentId,
+          keys: keysToDelete,
+          authHeader
         });
       }
     } catch (error) {
@@ -201,30 +186,29 @@ export const BitbucketSyncFns = {
   removeSecrets: async (secretSync: TBitbucketSyncWithCredentials, secretMap: TSecretMap) => {
     const {
       connection,
-      destinationConfig: { workspace, repository, environment: configEnvironment }
+      destinationConfig: { workspaceSlug, repositorySlug, environmentId }
     } = secretSync;
 
     const { email, apiToken } = connection.credentials;
+    const authHeader = createAuthHeader(email, apiToken);
 
     try {
       const existingVariables = await listVariables({
-        email,
-        apiToken,
-        workspace,
-        repository,
-        environment: configEnvironment
+        workspaceSlug,
+        repositorySlug,
+        environmentId,
+        authHeader
       });
 
       const keysToRemove = existingVariables.map((variable) => variable.key).filter((secret) => secret in secretMap);
 
       if (keysToRemove.length > 0) {
         await deleteVariables({
-          email,
-          apiToken,
-          workspace,
-          repository,
-          environment: configEnvironment,
-          keys: keysToRemove
+          workspaceSlug,
+          repositorySlug,
+          environmentId,
+          keys: keysToRemove,
+          authHeader
         });
       }
     } catch (error) {
@@ -232,34 +216,7 @@ export const BitbucketSyncFns = {
     }
   },
 
-  getSecrets: async (secretSync: TBitbucketSyncWithCredentials) => {
-    const {
-      connection,
-      destinationConfig: { workspace, repository, environment }
-    } = secretSync;
-
-    const { email, apiToken } = connection.credentials;
-
-    try {
-      const variables = await listVariables({
-        email,
-        apiToken,
-        workspace,
-        repository,
-        environment
-      });
-
-      const secretMap: TSecretMap = {};
-      variables.forEach((variable) => {
-        secretMap[variable.key] = {
-          value: variable.secured ? "[SECURED]" : variable.value || "",
-          comment: ""
-        };
-      });
-
-      return secretMap;
-    } catch (error) {
-      throw new SecretSyncError({ error });
-    }
+  getSecrets: async (secretSync: TBitbucketSyncWithCredentials): Promise<TSecretMap> => {
+    throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   }
 };

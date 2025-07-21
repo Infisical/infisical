@@ -11,12 +11,12 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const BitbucketSyncDestinationConfigSchema = z.object({
-  repository: z.string().describe(SecretSyncs.DESTINATION_CONFIG.BITBUCKET.repository),
-  environment: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.BITBUCKET.environment),
-  workspace: z.string().describe(SecretSyncs.DESTINATION_CONFIG.BITBUCKET.workspace)
+  repositorySlug: z.string().describe(SecretSyncs.DESTINATION_CONFIG.BITBUCKET.repositorySlug),
+  environmentId: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.BITBUCKET.environmentId),
+  workspaceSlug: z.string().describe(SecretSyncs.DESTINATION_CONFIG.BITBUCKET.workspaceSlug)
 });
 
-const BitbucketSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
+const BitbucketSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
 export const BitbucketSyncSchema = BaseSecretSyncSchema(SecretSync.Bitbucket, BitbucketSyncOptionsConfig).extend({
   destination: z.literal(SecretSync.Bitbucket),
@@ -41,5 +41,5 @@ export const BitbucketSyncListItemSchema = z.object({
   name: z.literal("Bitbucket"),
   connection: z.literal(AppConnection.Bitbucket),
   destination: z.literal(SecretSync.Bitbucket),
-  canImportSecrets: z.literal(true)
+  canImportSecrets: z.literal(false)
 });

@@ -17,34 +17,34 @@ export type TBitbucketSyncWithCredentials = TBitbucketSync & {
 export type TBitbucketVariable = {
   key: string;
   value?: string;
+  // Secure variables values are not returned by the API neither are they shown in Bitbucket UI
   secured: boolean;
   uuid: string;
   type: string;
 };
 
 export type TBitbucketListVariables = {
-  apiToken: string;
-  email: string;
-  workspace: string;
-  repository: string;
+  workspaceSlug: string;
+  repositorySlug: string;
+  environmentId?: string;
+  authHeader: string;
 };
 
 export type TPutBitbucketVariable = {
-  email: string;
-  apiToken: string;
-  workspace: string;
-  repository: string;
+  authHeader: string;
+  workspaceSlug: string;
+  repositorySlug: string;
+  environmentId?: string;
 };
 
 export type TDeleteBitbucketVariable = {
-  email: string;
-  apiToken: string;
-  workspace: string;
-  repository: string;
+  authHeader: string;
+  workspaceSlug: string;
+  repositorySlug: string;
+  environmentId?: string;
   keys: string[];
 };
 
 export type TBitbucketConnectionCredentials = {
-  email: string;
-  apiToken: string;
+  authHeader: string;
 };

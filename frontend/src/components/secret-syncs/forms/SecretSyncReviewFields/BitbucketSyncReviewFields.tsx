@@ -6,9 +6,9 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const BitbucketSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Bitbucket }>();
-  const repository = watch("destinationConfig.repository");
-  const environment = watch("destinationConfig.environment");
-  const workspace = watch("destinationConfig.workspace");
+  const repository = watch("destinationConfig.repositorySlug");
+  const environment = watch("destinationConfig.environmentId");
+  const workspace = watch("destinationConfig.workspaceSlug");
 
   return (
     <>

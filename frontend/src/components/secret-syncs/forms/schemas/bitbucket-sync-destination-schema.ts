@@ -7,9 +7,13 @@ export const BitbucketSyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({
     destination: z.literal(SecretSync.Bitbucket),
     destinationConfig: z.object({
-      repository: z.string().trim().min(1, "Repository slug required").describe("Repository slug"),
-      environment: z.string().trim().optional().describe("Deployment environment uuid"),
-      workspace: z.string().trim().min(1, "Workspace slug required").describe("Workspace slug")
+      repositorySlug: z
+        .string()
+        .trim()
+        .min(1, "Repository slug required")
+        .describe("Repository slug"),
+      environmentId: z.string().trim().optional().describe("Deployment environment uuid"),
+      workspaceSlug: z.string().trim().min(1, "Workspace slug required").describe("Workspace slug")
     })
   })
 );

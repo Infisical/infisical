@@ -5,9 +5,9 @@ import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 export type TBitbucketSync = TRootSecretSync & {
   destination: SecretSync.Bitbucket;
   destinationConfig: {
-    workspace: string;
-    repository: string;
-    environment?: string;
+    workspaceSlug: string;
+    repositorySlug: string;
+    environmentId?: string;
   };
   connection: {
     app: AppConnection.Bitbucket;

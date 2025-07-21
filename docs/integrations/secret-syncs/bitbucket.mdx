@@ -46,8 +46,9 @@ description: "Learn how to configure a Bitbucket Sync for Infisical."
 
                 - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
                     - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
-                    - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Bitbucket when keys conflict.
-                    - **Import Secrets (Prioritize Bitbucket)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Bitbucket over Infisical when keys conflict.
+                    <Note>
+                        Bitbucket does not support importing secrets.
+                    </Note>
                 - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
                 <Note>
                     We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
@@ -96,8 +97,8 @@ description: "Learn how to configure a Bitbucket Sync for Infisical."
                         "initialSyncBehavior": "overwrite-destination"
                     },
                     "destinationConfig": {
-                        "workspace": "my-bitbucket-workspace",
-                        "repository": "my-bitbucket-repository"
+                        "workspaceSlug": "my-bitbucket-workspace",
+                        "repositorySlug": "my-bitbucket-repository"
                     }
                 }'
         ```
@@ -148,8 +149,8 @@ description: "Learn how to configure a Bitbucket Sync for Infisical."
                 },
                 "destination": "bitbucket",
                 "destinationConfig": {
-                  "workspace": "my-bitbucket-workspace",
-                  "repository": "my-bitbucket-repository"
+                  "workspaceSlug": "my-bitbucket-workspace",
+                  "repositorySlug": "my-bitbucket-repository"
                 }
             }
         }
