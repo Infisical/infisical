@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Modal, ModalContent } from "@app/components/v2";
 
 import { EnvKeyPlatformModal } from "./EnvKeyPlatformModal";
-import { VaultPlatformModal } from "./VaultPlatformModal copy";
+import { VaultPlatformModal } from "./VaultPlatformModal";
 
 type Props = {
   isOpen?: boolean;

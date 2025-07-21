@@ -69,8 +69,6 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
   });
   type TFormData = z.infer<typeof formSchema>;
 
-  const fileUploadRef = useRef<HTMLInputElement>(null);
-
   const { mutateAsync: importVault } = useImportVault();
 
   const {
@@ -87,7 +85,8 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
       await importVault({
         vaultAccessToken: data.vaultAccessToken,
         vaultNamespace: data.vaultNamespace,
-        vaultUrl: data.vaultUrl
+        vaultUrl: data.vaultUrl,
+        mappingType: data.mappingType
       });
       createNotification({
         title: "Import started",
@@ -97,10 +96,6 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
 
       onClose();
       reset();
-
-      if (fileUploadRef.current) {
-        fileUploadRef.current.value = "";
-      }
     } catch {
       reset();
     }

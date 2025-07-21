@@ -2,7 +2,7 @@ import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { VaultMappingType } from "@app/services/external-migration/external-migration-types";
@@ -17,7 +17,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     bodyLimit: MB25_IN_BYTES,
     url: "/env-key",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -59,7 +59,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     method: "POST",
     url: "/vault",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       body: z.object({

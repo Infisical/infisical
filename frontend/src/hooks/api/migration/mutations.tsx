@@ -45,16 +45,19 @@ export const useImportVault = () => {
     mutationFn: async ({
       vaultAccessToken,
       vaultNamespace,
-      vaultUrl
+      vaultUrl,
+      mappingType
     }: {
       vaultAccessToken: string;
       vaultNamespace: string;
       vaultUrl: string;
+      mappingType: string;
     }) => {
       await apiRequest.post("/api/v3/external-migration/vault/", {
         vaultAccessToken,
         vaultNamespace,
-        vaultUrl
+        vaultUrl,
+        mappingType
       });
     }
   });
