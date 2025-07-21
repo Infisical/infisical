@@ -10,6 +10,7 @@ import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotati
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
 import { AzureClientSecretRotationReviewFields } from "./AzureClientSecretRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
+import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotationReviewFields";
 import { SqlCredentialsRotationReviewFields } from "./shared";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
@@ -20,7 +21,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.Auth0ClientSecret]: Auth0ClientSecretRotationReviewFields,
   [SecretRotation.AzureClientSecret]: AzureClientSecretRotationReviewFields,
   [SecretRotation.LdapPassword]: LdapPasswordRotationReviewFields,
-  [SecretRotation.AwsIamUserSecret]: AwsIamUserSecretRotationReviewFields
+  [SecretRotation.AwsIamUserSecret]: AwsIamUserSecretRotationReviewFields,
+  [SecretRotation.OktaClientSecret]: OktaClientSecretRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

@@ -144,6 +144,12 @@ import {
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
+  TOktaConnection,
+  TOktaConnectionConfig,
+  TOktaConnectionInput,
+  TValidateOktaConnectionCredentialsSchema
+} from "./okta";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -232,6 +238,7 @@ export type TAppConnection = { id: string } & (
   | TRailwayConnection
   | TChecklyConnection
   | TSupabaseConnection
+  | TOktaConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -273,6 +280,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRailwayConnectionInput
   | TChecklyConnectionInput
   | TSupabaseConnectionInput
+  | TOktaConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -321,7 +329,8 @@ export type TAppConnectionConfig =
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
-  | TSupabaseConnectionConfig;
+  | TSupabaseConnectionConfig
+  | TOktaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -357,7 +366,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
-  | TValidateSupabaseConnectionCredentialsSchema;
+  | TValidateSupabaseConnectionCredentialsSchema
+  | TValidateOktaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
