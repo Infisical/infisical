@@ -17,7 +17,9 @@ import {
   AzureClientSecretsConnectionMethod,
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
+  BitbucketConnectionMethod,
   CamundaConnectionMethod,
+  ChecklyConnectionMethod,
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
   FlyioConnectionMethod,
@@ -26,13 +28,19 @@ import {
   GitHubRadarConnectionMethod,
   GitLabConnectionMethod,
   HCVaultConnectionMethod,
+  HerokuConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
   MsSqlConnectionMethod,
   MySqlConnectionMethod,
+  OCIConnectionMethod,
+  OktaConnectionMethod,
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
+  RailwayConnectionMethod,
+  RenderConnectionMethod,
+  SupabaseConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
@@ -103,7 +111,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.DigitalOcean]: {
     name: "Digital Ocean",
     image: "Digital Ocean.png"
-  }
+  },
+  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -138,6 +147,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
+    case OktaConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

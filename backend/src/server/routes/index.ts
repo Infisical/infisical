@@ -500,6 +500,7 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     licenseDAL,
+    keyStore,
     identityOrgMembershipDAL,
     projectDAL
   });
@@ -1537,7 +1538,12 @@ export const registerRoutes = async (
     folderService,
     permissionService,
     folderDAL,
-    projectEnvDAL
+    projectEnvDAL,
+    secretApprovalRequestService,
+    secretApprovalPolicyService,
+    projectDAL,
+    secretV2BridgeService,
+    folderCommitDAL
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({

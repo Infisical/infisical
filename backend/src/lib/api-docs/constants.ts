@@ -2292,6 +2292,10 @@ export const AppConnections = {
     },
     DIGITAL_OCEAN_APP_PLATFORM: {
       apiToken: "The API token used to authenticate with Digital Ocean App Platform."
+    },
+    OKTA: {
+      instanceUrl: "The URL used to access your Okta organization.",
+      apiToken: "The API token used to authenticate with Okta."
     }
   }
 };
@@ -2597,6 +2601,9 @@ export const SecretRotations = {
     AWS_IAM_USER_SECRET: {
       userName: "The name of the client to rotate credentials for.",
       region: "The AWS region the client is present in."
+    },
+    OKTA_CLIENT_SECRET: {
+      clientId: "The ID of the Okta Application to rotate the client secret for."
     }
   },
   SECRETS_MAPPING: {
@@ -2619,6 +2626,10 @@ export const SecretRotations = {
     AWS_IAM_USER_SECRET: {
       accessKeyId: "The name of the secret that the access key ID will be mapped to.",
       secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
+    },
+    OKTA_CLIENT_SECRET: {
+      clientId: "The name of the secret that the client ID will be mapped to.",
+      clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     }
   }
 };

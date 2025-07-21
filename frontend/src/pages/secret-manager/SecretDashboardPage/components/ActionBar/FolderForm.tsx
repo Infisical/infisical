@@ -8,7 +8,12 @@ import { TextArea } from "@app/components/v2/TextArea/TextArea";
 
 type Props = {
   onCreateFolder?: (folderName: string, description: string | null) => Promise<void>;
-  onUpdateFolder?: (folderName: string, description: string | null) => Promise<void>;
+  onUpdateFolder?: (
+    folderName: string,
+    description: string | null,
+    oldFolderName?: string,
+    oldFolderDescription?: string
+  ) => Promise<void>;
   isEdit?: boolean;
   defaultFolderName?: string;
   defaultDescription?: string;
@@ -69,7 +74,7 @@ export const FolderForm = ({
     const descriptionShaped = description && description.trim() !== "" ? description : null;
 
     if (isEdit) {
-      await onUpdateFolder?.(name, descriptionShaped);
+      await onUpdateFolder?.(name, descriptionShaped, defaultFolderName, defaultDescription);
     } else {
       await onCreateFolder?.(name, descriptionShaped);
     }
