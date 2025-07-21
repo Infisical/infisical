@@ -1,5 +1,12 @@
 import { subject } from "@casl/ability";
-import { faClose, faFolder, faInfoCircle, faPencilSquare } from "@fortawesome/free-solid-svg-icons";
+import {
+  faClose,
+  faEdit,
+  faFolder,
+  faInfoCircle,
+  faPencilSquare,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
@@ -251,7 +258,7 @@ export const FolderListView = ({
               </IconButton>
             </div>
           ) : (
-            <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
+            <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-3 py-3">
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
@@ -267,7 +274,7 @@ export const FolderListView = ({
                     onClick={() => handlePopUpOpen("updateFolder", { id, name, description })}
                     isDisabled={!isAllowed}
                   >
-                    <FontAwesomeIcon icon={faPencilSquare} size="lg" />
+                    <FontAwesomeIcon icon={faEdit} />
                   </IconButton>
                 )}
               </ProjectPermissionCan>
@@ -281,12 +288,13 @@ export const FolderListView = ({
                   <IconButton
                     ariaLabel="delete-folder"
                     variant="plain"
+                    colorSchema="danger"
                     size="md"
                     className="p-0 opacity-0 group-hover:opacity-100"
                     onClick={() => handlePopUpOpen("deleteFolder", { id, name })}
                     isDisabled={!isAllowed}
                   >
-                    <FontAwesomeIcon icon={faClose} size="lg" />
+                    <FontAwesomeIcon icon={faTrash} />
                   </IconButton>
                 )}
               </ProjectPermissionCan>

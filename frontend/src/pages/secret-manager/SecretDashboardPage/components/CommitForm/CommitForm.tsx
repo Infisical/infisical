@@ -1,10 +1,9 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { faCodeCommit, faEye, faFolder, faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Badge, Button, Input, Modal, ModalContent } from "@app/components/v2";
-import { useToggle } from "@app/hooks";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretVersionDiffView } from "@app/pages/secret-manager/CommitDetailsPage/components/SecretVersionDiffView";
 
@@ -23,356 +22,242 @@ interface CommitFormProps {
   secretPath: string;
 }
 
-interface ChangeTableProps {
+interface ResourceChangeProps {
   change: PendingChange;
   environment: string;
   workspaceId: string;
   secretPath: string;
 }
 
-const TagsList: React.FC<{ tags?: { id: string; slug: string }[]; className?: string }> = ({
-  tags,
-  className = ""
-}) => {
-  if (!tags || tags.length === 0) {
-    return <span className={`italic text-mineshaft-400 ${className}`}>(no tags)</span>;
+type RenderResourceProps = {
+  onDiscard: () => void;
+  change: PendingChange;
+};
+
+const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
+  if (change.resourceType !== "secret") return null;
+
+  if (change.type === PendingAction.Create) {
+    return (
+      <SecretVersionDiffView
+        onDiscard={onDiscard}
+        item={{
+          secretKey: change.secretKey,
+          isAdded: true,
+          type: "secret",
+          id: change.id,
+          versions: [
+            {
+              version: 1, // placeholder, not used
+              secretKey: change.secretKey,
+              secretValue: change.secretValue,
+              tags: change.tags,
+              secretMetadata: change.secretMetadata,
+              skipMultilineEncoding: change.skipMultilineEncoding,
+              comment: change.secretComment
+            }
+          ]
+        }}
+      />
+    );
   }
 
-  return (
-    <div className={`flex flex-wrap gap-1 ${className}`}>
-      {tags.map((tag) => (
-        <Badge key={tag.id} variant="success" className="text-xs">
-          {tag.slug}
-        </Badge>
-      ))}
-    </div>
-  );
-};
+  if (change.type === PendingAction.Update) {
+    const { existingSecret } = change;
 
-const MetadataList: React.FC<{
-  metadata?: { key: string; value: string }[];
-  className?: string;
-}> = ({ metadata, className = "" }) => {
-  if (!metadata || metadata.length === 0) {
-    return <span className={`italic text-mineshaft-400 ${className}`}>(no metadata)</span>;
+    const hasKeyChange = change.newSecretName && change.secretKey !== change.newSecretName;
+    const hasValueChange = change.secretValue !== change.originalValue;
+    const hasCommentChange = change.secretComment !== change.originalComment;
+    const hasMultilineChange =
+      change.skipMultilineEncoding !== change.originalSkipMultilineEncoding;
+    const hasTagsChange = JSON.stringify(change.tags) !== JSON.stringify(change.originalTags);
+    const hasMetadataChange =
+      JSON.stringify(change.secretMetadata) !== JSON.stringify(change.originalSecretMetadata);
+
+    const hasChanges = [
+      hasKeyChange,
+      hasValueChange,
+      hasCommentChange,
+      hasMultilineChange,
+      hasTagsChange,
+      hasMetadataChange
+    ].some(Boolean);
+
+    if (!hasChanges) return null;
+
+    return (
+      <SecretVersionDiffView
+        onDiscard={onDiscard}
+        item={{
+          secretKey: change.secretKey,
+          isUpdated: true,
+          type: "secret",
+          id: change.id,
+          versions: [
+            {
+              version: 1, // placeholder, not used
+              secretKey: change.newSecretName ? existingSecret.key : undefined,
+              secretValue: change.secretValue ? existingSecret.value : "",
+              tags: change.tags ? (existingSecret.tags?.map((tag) => tag.slug) ?? []) : undefined,
+              secretMetadata: change.secretMetadata ? existingSecret.secretMetadata : undefined,
+              skipMultilineEncoding:
+                typeof change.skipMultilineEncoding === "boolean"
+                  ? existingSecret.skipMultilineEncoding
+                  : undefined,
+              comment: change.secretComment !== undefined ? existingSecret.comment : undefined
+            },
+            {
+              version: 2, // placeholder, not used
+              secretKey: change.newSecretName,
+              secretValue: change.secretValue,
+              tags: change.tags?.map((tag) => tag.slug),
+              secretMetadata: change.secretMetadata,
+              skipMultilineEncoding: change.skipMultilineEncoding,
+              comment: change.secretComment
+            }
+          ]
+        }}
+      />
+    );
   }
 
-  return (
-    <div className={`space-y-1 ${className}`}>
-      {metadata.map((item) => (
-        <div key={item.key} className="flex items-center gap-2 text-xs">
-          <span className="font-medium text-mineshaft-300">{item.key}:</span>
-          <span className="font-mono text-mineshaft-100">{item.value}</span>
-        </div>
-      ))}
-    </div>
-  );
+  if (change.type === PendingAction.Delete) {
+    const { secretKey, secretValue } = change;
+    return (
+      <SecretVersionDiffView
+        onDiscard={onDiscard}
+        item={{
+          secretKey: change.secretKey,
+          isDeleted: true,
+          type: "secret",
+          id: change.id,
+          versions: [
+            {
+              version: 1, // placeholder, not used
+              secretKey,
+              secretValue
+            }
+          ]
+        }}
+      />
+    );
+  }
+
+  return null;
 };
 
-const ComparisonTableRow: React.FC<{
-  label: string;
-  previousValue: React.ReactNode;
-  newValue: React.ReactNode;
-  hideIfSame?: boolean;
-}> = ({ label, previousValue, newValue, hideIfSame = false }) => {
-  const isSame = hideIfSame && String(previousValue) === String(newValue);
+const RenderFolderChanges = ({ onDiscard, change }: RenderResourceProps) => {
+  if (change.resourceType !== "folder") return null;
 
-  if (isSame) return null;
+  if (change.type === PendingAction.Create) {
+    return (
+      <SecretVersionDiffView
+        onDiscard={onDiscard}
+        item={{
+          folderName: change.folderName,
+          isAdded: true,
+          type: "folder",
+          id: change.id,
+          versions: [
+            {
+              version: 1,
+              name: change.folderName,
+              description: change.description
+            }
+          ]
+        }}
+      />
+    );
+  }
 
-  return (
-    <tr className="border-b border-mineshaft-700 last:border-b-0">
-      <td className="w-[12%] border-r border-mineshaft-600 px-4 py-3 align-top font-medium text-mineshaft-300">
-        {label}
-      </td>
-      <td className="w-1/2 border-r border-mineshaft-600 px-4 py-3 align-top">
-        <div className="text-red-400 opacity-80">{previousValue}</div>
-      </td>
-      <td className="w-1/2 py-3 pr-4 align-top">
-        <div className="px-4 text-green-400">{newValue}</div>
-      </td>
-    </tr>
-  );
+  if (change.type === PendingAction.Update) {
+    const hasNameChange = change.folderName !== change.originalFolderName;
+    const hasDescriptionChange = change.description !== change.originalDescription;
+
+    const hasChanges = [hasNameChange, hasDescriptionChange].some(Boolean);
+
+    if (!hasChanges) return null;
+
+    return (
+      <SecretVersionDiffView
+        onDiscard={onDiscard}
+        item={{
+          folderName: change.folderName,
+          isUpdated: true,
+          type: "folder",
+          id: change.id,
+          versions: [
+            {
+              version: 1, // placeholder, not used
+              name: change.folderName ?? change.originalFolderName,
+              description: change.description ? change.originalDescription : undefined
+            },
+            {
+              version: 2, // placeholder, not used
+              name: change.folderName ?? change.originalFolderName,
+              description: change.description
+            }
+          ]
+        }}
+      />
+    );
+  }
+
+  if (change.type === PendingAction.Delete) {
+    return (
+      <SecretVersionDiffView
+        onDiscard={onDiscard}
+        item={{
+          folderName: change.folderName,
+          isDeleted: true,
+          type: "folder",
+          id: change.id,
+          versions: [
+            {
+              version: 1,
+              name: change.folderName
+            }
+          ]
+        }}
+      />
+    );
+  }
+
+  return null;
 };
 
-const ChangeTable: React.FC<ChangeTableProps> = ({
+const ResourceChange: React.FC<ResourceChangeProps> = ({
   change,
   environment,
   workspaceId,
   secretPath
 }) => {
-  const [isOpen, setIsOpen] = useToggle(true);
-
-  const getChangeBadge = (type: PendingChange["type"]) => {
-    switch (type) {
-      case PendingAction.Create:
-        return <Badge variant="success">Created</Badge>;
-      case PendingAction.Update:
-        return <Badge variant="primary">Updated</Badge>;
-      case PendingAction.Delete:
-        return <Badge variant="danger">Deleted</Badge>;
-      default:
-        return null;
-    }
-  };
-
-  const renderSecretChanges = () => {
-    if (change.resourceType !== "secret") return null;
-
-    if (change.type === PendingAction.Create) {
-      return (
-        <div className="overflow-hidden rounded-md bg-mineshaft-900/80">
-          <table className="w-full text-sm">
-            <tbody>
-              <tr className="border-b border-mineshaft-700">
-                <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Key:</td>
-                <td className="px-3 py-3 font-mono text-mineshaft-100" colSpan={2}>
-                  {change.secretKey}
-                </td>
-              </tr>
-              <tr className="border-b border-mineshaft-700">
-                <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Value:</td>
-                <td className="px-3 py-3" colSpan={2}>
-                  <div className="max-w-md break-all px-2 py-1 font-mono text-xs text-mineshaft-100">
-                    {change.secretValue || (
-                      <span className="italic text-mineshaft-400">(empty)</span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-              {change.secretComment !== undefined && change.secretComment !== "" && (
-                <tr className="border-b border-mineshaft-700">
-                  <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Comment:</td>
-                  <td className="px-3 py-3 text-mineshaft-100" colSpan={2}>
-                    {change.secretComment}
-                  </td>
-                </tr>
-              )}
-              {change.tags && change.tags.length > 0 && (
-                <tr className="border-b border-mineshaft-700">
-                  <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Tags:</td>
-                  <td className="px-3 py-3" colSpan={2}>
-                    <TagsList tags={change.tags} />
-                  </td>
-                </tr>
-              )}
-              {change.secretMetadata && change.secretMetadata.length > 0 && (
-                <tr className="border-b border-mineshaft-700 last:border-b-0">
-                  <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Metadata:</td>
-                  <td className="px-3 py-3" colSpan={2}>
-                    <MetadataList metadata={change.secretMetadata} />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
-
-    if (change.type === PendingAction.Update) {
-      const { existingSecret } = change;
-
-      const hasKeyChange = change.newSecretName && change.secretKey !== change.newSecretName;
-      const hasValueChange = change.secretValue !== change.originalValue;
-      const hasCommentChange = change.secretComment !== change.originalComment;
-      const hasMultilineChange =
-        change.skipMultilineEncoding !== change.originalSkipMultilineEncoding;
-      const hasTagsChange = JSON.stringify(change.tags) !== JSON.stringify(change.originalTags);
-      const hasMetadataChange =
-        JSON.stringify(change.secretMetadata) !== JSON.stringify(change.originalSecretMetadata);
-
-      const hasChanges = [
-        hasKeyChange,
-        hasValueChange,
-        hasCommentChange,
-        hasMultilineChange,
-        hasTagsChange,
-        hasMetadataChange
-      ].some(Boolean);
-
-      if (!hasChanges) return null;
-
-      return (
-        <SecretVersionDiffView
-          item={{
-            secretKey: change.secretKey,
-            isUpdated: true,
-            type: "secret",
-            id: change.id,
-            versions: [
-              {
-                version: 1,
-                secretKey: change.newSecretName ? existingSecret.key : undefined,
-                secretValue: change.secretValue ? existingSecret.value : undefined,
-                tags: change.tags ? existingSecret.tags : undefined,
-                secretMetadata: change.secretMetadata ? existingSecret.secretMetadata : undefined,
-                skipMultilineEncoding:
-                  typeof change.skipMultilineEncoding === "boolean"
-                    ? existingSecret.skipMultilineEncoding
-                    : undefined,
-                comment: change.secretComment !== undefined ? existingSecret.comment : undefined
-              },
-              {
-                version: 2,
-                secretKey: change.newSecretName,
-                secretValue: change.secretValue,
-                tags: change.tags,
-                secretMetadata: change.secretMetadata,
-                skipMultilineEncoding: change.skipMultilineEncoding,
-                comment: change.secretComment
-              }
-            ]
-          }}
-        />
-      );
-    }
-
-    if (change.type === PendingAction.Delete) {
-      const { secretKey, secretValue } = change;
-      return (
-        <SecretVersionDiffView
-          item={{
-            secretKey: change.secretKey,
-            isDeleted: true,
-            type: "secret",
-            id: change.id,
-            versions: [
-              {
-                version: 1,
-                secretKey,
-                secretValue
-              }
-            ]
-          }}
-        />
-      );
-    }
-
-    return null;
-  };
-
-  const renderFolderChanges = () => {
-    if (change.resourceType !== "folder") return null;
-
-    if (change.type === PendingAction.Create) {
-      return (
-        <table className="w-full text-sm">
-          <tbody>
-            <tr className="border-b border-mineshaft-700">
-              <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Name:</td>
-              <td className="px-3 py-3 font-mono text-mineshaft-100" colSpan={2}>
-                {change.folderName}
-              </td>
-            </tr>
-            {change.description !== undefined && change.description !== "" && (
-              <tr className="border-b border-mineshaft-700 last:border-b-0">
-                <td className="w-24 py-3 pl-4 font-medium text-mineshaft-300">Description:</td>
-                <td className="px-3 py-3 text-mineshaft-100" colSpan={2}>
-                  {change.description}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      );
-    }
-
-    if (change.type === PendingAction.Update) {
-      const hasNameChange = change.folderName !== change.originalFolderName;
-      const hasDescriptionChange = change.description !== change.originalDescription;
-
-      const hasChanges = [hasNameChange, hasDescriptionChange].some(Boolean);
-
-      if (!hasChanges) return null;
-
-      return (
-        <table className="w-full text-sm">
-          <tbody>
-            {hasNameChange && (
-              <ComparisonTableRow
-                label="Name"
-                previousValue={<span className="font-mono">{change.originalFolderName}</span>}
-                newValue={<span className="font-mono">{change.folderName}</span>}
-              />
-            )}
-            {hasDescriptionChange && (
-              <ComparisonTableRow
-                label="Description"
-                previousValue={
-                  change.originalDescription || <span className="italic">(empty)</span>
-                }
-                newValue={change.description || <span className="italic">(empty)</span>}
-              />
-            )}
-          </tbody>
-        </table>
-      );
-    }
-
-    if (change.type === PendingAction.Delete) {
-      return (
-        <table className="w-full text-sm">
-          <tbody>
-            <tr className="border-b border-mineshaft-700">
-              <td className="w-24 py-3 pl-4 font-medium text-red-400">Name:</td>
-              <td className="px-3 py-3 font-mono text-red-400 line-through" colSpan={2}>
-                {change.folderName}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      );
-    }
-
-    return null;
-  };
-
-  const getChangeName = () => {
-    if (change.resourceType === "secret") {
-      return change.type === PendingAction.Update
-        ? change.newSecretName || change.secretKey
-        : change.secretKey;
-    }
-    if (change.resourceType === "folder") {
-      return change.type === PendingAction.Update ? change.originalFolderName : change.folderName;
-    }
-    return "Unknown";
-  };
-
   const { removePendingChange } = useBatchModeActions();
 
-  const handleDeletePending = (changeType: string, id: string) => {
-    removePendingChange(id, changeType, {
-      workspaceId,
-      environment,
-      secretPath
-    });
-  };
+  const handleDeletePending = useCallback(
+    (changeType: string, id: string) => {
+      removePendingChange(id, changeType, {
+        workspaceId,
+        environment,
+        secretPath
+      });
+    },
+    [change.resourceType, change.id]
+  );
 
-  return change.resourceType === "secret" ? renderSecretChanges() : renderFolderChanges();
-
-  // return (
-  //   <div className="py-2 shadow-sm">
-  //     <div className="flex items-center justify-between">
-  //       <div className="flex items-center gap-3">
-  //         <span className="font-medium text-mineshaft-100">{getChangeName()}</span>
-  //         {getChangeBadge(change.type)}
-  //       </div>
-  //       <Tooltip content="Discard change">
-  //         <IconButton
-  //           ariaLabel="delete-change"
-  //           variant="plain"
-  //           colorSchema="danger"
-  //           size="sm"
-  //           onClick={() => handleDeletePending(change.resourceType, change.id)}
-  //         >
-  //           <FontAwesomeIcon icon={faTrash} />
-  //         </IconButton>
-  //       </Tooltip>
-  //     </div>
-  //     {change.resourceType === "secret" ? renderSecretChanges() : renderFolderChanges()}
-  //   </div>
-  // );
+  return change.resourceType === "secret" ? (
+    <RenderSecretChanges
+      key={change.id}
+      change={change}
+      onDiscard={() => handleDeletePending(change.resourceType, change.id)}
+    />
+  ) : (
+    <RenderFolderChanges
+      key={change.id}
+      change={change}
+      onDiscard={() => handleDeletePending(change.resourceType, change.id)}
+    />
+  );
 };
 
 export const CommitForm: React.FC<CommitFormProps> = ({
@@ -460,12 +345,12 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             </div>
           }
           subTitle={"Write a commit message and review the changes you&apos;re about to commit."}
-          className="max-h-[90vh] max-w-5xl"
+          className="max-h-[90vh] max-w-[95%] md:max-w-7xl"
         >
           <div className="space-y-6">
             {/* Changes List */}
             <div className="space-y-6">
-              <div className="max-h-[50vh] space-y-4 overflow-y-auto rounded-md border border-mineshaft-600 bg-bunker-800 p-4 shadow-inner">
+              <div className="max-h-[50vh] space-y-4 overflow-y-auto">
                 {/* Folder Changes */}
                 {pendingChanges.folders.length > 0 && (
                   <div>
@@ -475,7 +360,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                     </h4>
                     <div>
                       {pendingChanges.folders.map((change) => (
-                        <ChangeTable
+                        <ResourceChange
                           key={change.id}
                           change={change}
                           environment={environment}
@@ -490,13 +375,13 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 {/* Secret Changes */}
                 {pendingChanges.secrets.length > 0 && (
                   <div>
-                    <h4 className="mb-2 flex items-center gap-2 px-2 text-sm text-mineshaft-300">
+                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-semibold text-mineshaft-200">
                       <FontAwesomeIcon icon={faKey} className="mr-1 text-mineshaft-300" />
                       Secrets ({pendingChanges.secrets.length})
                     </h4>
                     <div>
                       {pendingChanges.secrets.map((change) => (
-                        <ChangeTable
+                        <ResourceChange
                           key={change.id}
                           change={change}
                           environment={environment}

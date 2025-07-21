@@ -788,18 +788,18 @@ export const SecretItem = memo(
               {isInAutoSaveMode ? (
                 <motion.div
                   key="auto-save-mode"
-                  className="flex h-10 flex-shrink-0 items-center space-x-4 px-[0.64rem]"
+                  className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
                   initial={{ x: -10, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -10, opacity: 0 }}
                 >
-                  <div className="h-12 w-12" />
+                  <div className="h-10 w-12" />
                 </motion.div>
               ) : !isDirty ? (
                 isPending ? (
                   <motion.div
                     key="options"
-                    className="mt-0.5 flex h-10 flex-shrink-0 items-center space-x-3 px-[0.84rem]"
+                    className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
                     initial={{ x: 0, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
@@ -839,7 +839,7 @@ export const SecretItem = memo(
                 ) : (
                   <motion.div
                     key="options"
-                    className="mt-0.5 flex h-10 flex-shrink-0 items-center space-x-3 px-[0.84rem]"
+                    className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
                     initial={{ x: 0, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
@@ -881,7 +881,7 @@ export const SecretItem = memo(
                         >
                           <FontAwesomeSymbol
                             symbolName={FontAwesomeSpriteName.Trash}
-                            className="h-3.5 w-4"
+                            className="h-4 w-3"
                           />
                         </IconButton>
                       )}
@@ -891,7 +891,7 @@ export const SecretItem = memo(
               ) : (
                 <motion.div
                   key="options-save"
-                  className="flex h-10 flex-shrink-0 items-center space-x-4 px-3"
+                  className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
                   initial={{ x: -10, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -10, opacity: 0 }}

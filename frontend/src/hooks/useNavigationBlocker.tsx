@@ -1,6 +1,10 @@
 import { useCallback } from "react";
 import { useBlocker } from "@tanstack/react-router";
-import { BatchContext, useBatchModeActions } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
+
+import {
+  BatchContext,
+  useBatchModeActions
+} from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 type TNavigationBlockerReturn = {
   isBlocked: boolean;

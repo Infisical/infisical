@@ -1,8 +1,10 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback, useRef, useState } from "react";
-import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
+
+import { IconButton, Tooltip } from "@app/components/v2";
 
 export interface Version {
   id?: string;
@@ -33,6 +35,7 @@ interface SecretVersionDiffViewProps {
   showHeader?: boolean;
   customHeader?: JSX.Element;
   excludedFieldsHighlight?: string[];
+  onDiscard?: VoidFunction;
 }
 
 const isObject = (obj: JsonValue): obj is JsonObject => {
@@ -409,7 +412,6 @@ const renderJsonWithDiffs = (
           <div>
             {indent}
             <span>{"}"}</span>
-            {comma}
           </div>
         </div>
       </div>
@@ -465,7 +467,9 @@ const formatDeletedJson = (json: JsonValue): JSX.Element => {
 
 const cleanVersionForComparison = (version: Version): JsonValue => {
   const { id, version: versionNumber, ...cleanVersion } = version;
-  return Object.fromEntries(Object.entries(cleanVersion).filter((entry) => Boolean(entry[1])));
+  return Object.fromEntries(
+    Object.entries(cleanVersion).filter((entry) => typeof entry[1] !== "undefined")
+  );
 };
 
 export const SecretVersionDiffView = ({
@@ -474,9 +478,9 @@ export const SecretVersionDiffView = ({
   onToggleCollapse,
   showHeader = true,
   customHeader,
-  excludedFieldsHighlight = ["metadata", "tags"]
+  excludedFieldsHighlight = ["metadata", "tags"],
+  onDiscard
 }: SecretVersionDiffViewProps) => {
-  console.log("item", item);
   const oldContainerRef = useRef<HTMLDivElement>(null);
   const newContainerRef = useRef<HTMLDivElement>(null);
   const [internalCollapsed, setInternalCollapsed] = useState(isCollapsed);
@@ -610,6 +614,20 @@ export const SecretVersionDiffView = ({
           <p className={twMerge(textStyle, "truncate")}>{key}</p>
           {changeBadge}
         </div>
+        {onDiscard && (
+          <Tooltip side="left" content="Discard change">
+            <IconButton
+              ariaLabel="discard-change"
+              variant="plain"
+              colorSchema="danger"
+              size="sm"
+              className="ml-2"
+              onClick={onDiscard}
+            >
+              <FontAwesomeIcon icon={faTrash} />
+            </IconButton>
+          </Tooltip>
+        )}
         <FontAwesomeIcon
           icon={collapsed ? faChevronDown : faChevronUp}
           className="ml-2 text-gray-400"
