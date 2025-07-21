@@ -8,17 +8,17 @@ import {
   DropdownMenuTrigger,
   IconButton
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import { PolicyTemplateModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicyTemplateModal";
 
 type Props = {
   isDisabled?: boolean;
+  projectType: ProjectType;
 };
 
-export const AddPoliciesButton = ({ isDisabled }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addPolicy",
     "addPolicyOptions",
@@ -68,12 +68,12 @@ export const AddPoliciesButton = ({ isDisabled }: Props) => {
         </DropdownMenuContent>
       </DropdownMenu>
       <PolicySelectionModal
-        type={currentWorkspace.type}
+        type={projectType}
         isOpen={popUp.addPolicy.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
       />
       <PolicyTemplateModal
-        type={currentWorkspace.type}
+        type={projectType}
         isOpen={popUp.applyTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("applyTemplate", isOpen)}
       />

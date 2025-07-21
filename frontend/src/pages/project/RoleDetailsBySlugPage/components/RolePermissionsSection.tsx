@@ -174,7 +174,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                   Save
                 </Button>
                 <div className="ml-2 border-l border-mineshaft-500 pl-4">
-                  <AddPoliciesButton isDisabled={isDisabled} />
+                  <AddPoliciesButton isDisabled={isDisabled} projectType={currentWorkspace.type} />
                 </div>
               </div>
             )}

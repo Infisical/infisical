@@ -217,7 +217,7 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const approvalUrl = `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`;
+      const approvalUrl = `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`;
 
       await triggerWorkflowIntegrationNotification({
         input: {
@@ -554,7 +554,7 @@ export const accessApprovalRequestServiceFactory = ({
                   bypassReason: bypassReason || "No reason provided",
                   secretPath: policy.secretPath || "/",
                   environment,
-                  approvalUrl: `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`,
+                  approvalUrl: `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`,
                   requestType: "access"
                 },
                 template: SmtpTemplates.AccessSecretRequestBypassed
