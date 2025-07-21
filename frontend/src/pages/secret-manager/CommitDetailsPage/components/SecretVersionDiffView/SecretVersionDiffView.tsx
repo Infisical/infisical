@@ -475,7 +475,7 @@ const formatDeletedJson = (json: JsonValue): JSX.Element => {
 
 const cleanVersionForComparison = (version: Version): JsonValue => {
   const { id, version: versionNumber, ...cleanVersion } = version;
-  return cleanVersion;
+  return Object.fromEntries(Object.entries(cleanVersion).filter((entry) => Boolean(entry[1])));
 };
 
 export const SecretVersionDiffView = ({
@@ -486,6 +486,7 @@ export const SecretVersionDiffView = ({
   customHeader,
   excludedFieldsHighlight = ["metadata", "tags"]
 }: SecretVersionDiffViewProps) => {
+  console.log("item", item);
   const oldContainerRef = useRef<HTMLDivElement>(null);
   const newContainerRef = useRef<HTMLDivElement>(null);
   const [internalCollapsed, setInternalCollapsed] = useState(isCollapsed);

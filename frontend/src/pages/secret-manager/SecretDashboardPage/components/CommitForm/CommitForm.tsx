@@ -1,20 +1,12 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useState } from "react";
-import {
-  faChevronDown,
-  faChevronRight,
-  faCodeCommit,
-  faEye,
-  faFolder,
-  faKey,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faCodeCommit, faEye, faFolder, faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
-import { Badge, Button, IconButton, Input, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { Badge, Button, Input, Modal, ModalContent } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { SecretVersionDiffView } from "@app/pages/secret-manager/CommitDetailsPage/components/SecretVersionDiffView";
 
 import {
   PendingChange,
@@ -178,6 +170,8 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
     }
 
     if (change.type === PendingAction.Update) {
+      const { existingSecret } = change;
+
       const hasKeyChange = change.newSecretName && change.secretKey !== change.newSecretName;
       const hasValueChange = change.secretValue !== change.originalValue;
       const hasCommentChange = change.secretComment !== change.originalComment;
@@ -199,85 +193,58 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
       if (!hasChanges) return null;
 
       return (
-        <table className="w-full text-sm">
-          <tbody>
-            {hasKeyChange && (
-              <ComparisonTableRow
-                label="Key"
-                previousValue={<span className="font-mono">{change.existingSecret.key}</span>}
-                newValue={<span className="font-mono">{change.newSecretName}</span>}
-              />
-            )}
-            {hasValueChange && (
-              <ComparisonTableRow
-                label="Value"
-                previousValue={
-                  <div className="max-w-md break-all rounded">
-                    {change.existingSecret.value || (
-                      <span className="italic text-mineshaft-400">(empty)</span>
-                    )}
-                  </div>
-                }
-                newValue={
-                  <div className="max-w-md break-all rounded">
-                    {change.secretValue || (
-                      <span className="italic text-mineshaft-400">(empty)</span>
-                    )}
-                  </div>
-                }
-              />
-            )}
-            {hasCommentChange && (
-              <ComparisonTableRow
-                label="Comment"
-                previousValue={
-                  change.existingSecret.comment || (
-                    <span className="italic text-mineshaft-400">(empty)</span>
-                  )
-                }
-                newValue={
-                  change.secretComment || <span className="italic text-mineshaft-400">(empty)</span>
-                }
-              />
-            )}
-            {hasMultilineChange && (
-              <ComparisonTableRow
-                label="Multi-line Encoding"
-                previousValue={change.existingSecret.skipMultilineEncoding ? "Enabled" : "Disabled"}
-                newValue={change.skipMultilineEncoding ? "Enabled" : "Disabled"}
-              />
-            )}
-            {hasTagsChange && (
-              <ComparisonTableRow
-                label="Tags"
-                previousValue={<TagsList tags={change.existingSecret.tags} />}
-                newValue={<TagsList tags={change.tags} />}
-              />
-            )}
-            {hasMetadataChange && (
-              <ComparisonTableRow
-                label="Metadata"
-                previousValue={<MetadataList metadata={change.existingSecret.secretMetadata} />}
-                newValue={<MetadataList metadata={change.secretMetadata} />}
-              />
-            )}
-          </tbody>
-        </table>
+        <SecretVersionDiffView
+          item={{
+            secretKey: change.secretKey,
+            isUpdated: true,
+            type: "secret",
+            id: change.id,
+            versions: [
+              {
+                version: 1,
+                secretKey: change.newSecretName ? existingSecret.key : undefined,
+                secretValue: change.secretValue ? existingSecret.value : undefined,
+                tags: change.tags ? existingSecret.tags : undefined,
+                secretMetadata: change.secretMetadata ? existingSecret.secretMetadata : undefined,
+                skipMultilineEncoding:
+                  typeof change.skipMultilineEncoding === "boolean"
+                    ? existingSecret.skipMultilineEncoding
+                    : undefined,
+                comment: change.secretComment !== undefined ? existingSecret.comment : undefined
+              },
+              {
+                version: 2,
+                secretKey: change.newSecretName,
+                secretValue: change.secretValue,
+                tags: change.tags,
+                secretMetadata: change.secretMetadata,
+                skipMultilineEncoding: change.skipMultilineEncoding,
+                comment: change.secretComment
+              }
+            ]
+          }}
+        />
       );
     }
 
     if (change.type === PendingAction.Delete) {
+      const { secretKey, secretValue } = change;
       return (
-        <table className="w-full text-sm">
-          <tbody>
-            <tr className="border-b border-mineshaft-700">
-              <td className="w-24 py-3 pl-4 font-medium text-red-400">Key:</td>
-              <td className="px-3 py-3 font-mono text-red-400 line-through" colSpan={2}>
-                {change.secretKey}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <SecretVersionDiffView
+          item={{
+            secretKey: change.secretKey,
+            isDeleted: true,
+            type: "secret",
+            id: change.id,
+            versions: [
+              {
+                version: 1,
+                secretKey,
+                secretValue
+              }
+            ]
+          }}
+        />
       );
     }
 
@@ -382,71 +349,30 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
     });
   };
 
-  return (
-    <div className="overflow-clip rounded-t-none border border-t-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md first:border-t last:rounded-b-md last:border-b">
-      <div
-        className={twMerge(
-          "flex h-12 cursor-pointer items-center border-mineshaft-600 px-3.5 py-2 text-sm text-gray-300",
-          isOpen && "border-b"
-        )}
-        role="button"
-        tabIndex={0}
-        onClick={() => setIsOpen.toggle()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            setIsOpen.toggle();
-          }
-        }}
-      >
-        <FontAwesomeIcon className="mr-3 w-4" icon={isOpen ? faChevronDown : faChevronRight} />
+  return change.resourceType === "secret" ? renderSecretChanges() : renderFolderChanges();
 
-        <div className="flex flex-1 items-center gap-1.5 text-sm">
-          {getChangeName()}
-          {getChangeBadge(change.type)}
-        </div>
-        <Tooltip content="Discard change">
-          <IconButton
-            ariaLabel="delete-change"
-            variant="plain"
-            colorSchema="danger"
-            size="sm"
-            onClick={() => handleDeletePending(change.resourceType, change.id)}
-          >
-            <FontAwesomeIcon icon={faTrash} />
-          </IconButton>
-        </Tooltip>
-      </div>
-
-      {isOpen ? (
-        <div className="overflow-hidden bg-mineshaft-900">
-          {change.resourceType === "secret" ? renderSecretChanges() : renderFolderChanges()}
-        </div>
-      ) : null}
-    </div>
-  );
-
-  return (
-    <div className="py-2 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-medium text-mineshaft-100">{getChangeName()}</span>
-          {getChangeBadge(change.type)}
-        </div>
-        <Tooltip content="Discard change">
-          <IconButton
-            ariaLabel="delete-change"
-            variant="plain"
-            colorSchema="danger"
-            size="sm"
-            onClick={() => handleDeletePending(change.resourceType, change.id)}
-          >
-            <FontAwesomeIcon icon={faTrash} />
-          </IconButton>
-        </Tooltip>
-      </div>
-      {change.resourceType === "secret" ? renderSecretChanges() : renderFolderChanges()}
-    </div>
-  );
+  // return (
+  //   <div className="py-2 shadow-sm">
+  //     <div className="flex items-center justify-between">
+  //       <div className="flex items-center gap-3">
+  //         <span className="font-medium text-mineshaft-100">{getChangeName()}</span>
+  //         {getChangeBadge(change.type)}
+  //       </div>
+  //       <Tooltip content="Discard change">
+  //         <IconButton
+  //           ariaLabel="delete-change"
+  //           variant="plain"
+  //           colorSchema="danger"
+  //           size="sm"
+  //           onClick={() => handleDeletePending(change.resourceType, change.id)}
+  //         >
+  //           <FontAwesomeIcon icon={faTrash} />
+  //         </IconButton>
+  //       </Tooltip>
+  //     </div>
+  //     {change.resourceType === "secret" ? renderSecretChanges() : renderFolderChanges()}
+  //   </div>
+  // );
 };
 
 export const CommitForm: React.FC<CommitFormProps> = ({
