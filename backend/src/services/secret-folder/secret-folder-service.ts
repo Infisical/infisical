@@ -1029,7 +1029,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     folders.forEach(({ environment, path: secretPath }) => {
@@ -1240,7 +1241,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     folders.forEach(({ environment, path: secretPath }) => {
