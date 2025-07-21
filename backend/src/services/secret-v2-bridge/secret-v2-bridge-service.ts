@@ -28,7 +28,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorType } from "../auth/auth-type";
-import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -1505,8 +1505,10 @@ export const secretV2BridgeServiceFactory = ({
     actorOrgId,
     environment,
     projectId,
-    secrets: inputSecrets
-  }: TCreateManySecretDTO) => {
+    secrets: inputSecrets,
+    tx: providedTx,
+    commitChanges
+  }: TCreateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1589,8 +1591,8 @@ export const secretV2BridgeServiceFactory = ({
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-    const newSecrets = await secretDAL.transaction(async (tx) =>
-      fnSecretBulkInsert({
+    const executeBulkInsert = async (tx: Knex) => {
+      return fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
 
@@ -1612,6 +1614,7 @@ export const secretV2BridgeServiceFactory = ({
           };
         }),
         folderId,
+        commitChanges,
         orgId: actorOrgId,
         secretDAL,
         resourceMetadataDAL,
@@ -1624,8 +1627,13 @@ export const secretV2BridgeServiceFactory = ({
           actorId
         },
         tx
-      })
-    );
+      });
+    };
+
+    const newSecrets = providedTx
+      ? await executeBulkInsert(providedTx)
+      : await secretDAL.transaction(executeBulkInsert);
+
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
@@ -1672,8 +1680,10 @@ export const secretV2BridgeServiceFactory = ({
     projectId,
     secretPath: defaultSecretPath = "/",
     secrets: inputSecrets,
-    mode: updateMode
-  }: TUpdateManySecretDTO) => {
+    mode: updateMode,
+    tx: providedTx,
+    commitChanges
+  }: TUpdateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1702,18 +1712,20 @@ export const secretV2BridgeServiceFactory = ({
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-    const updatedSecrets: Array<
-      TSecretsV2 & {
-        secretPath: string;
-        tags: {
-          id: string;
-          slug: string;
-          color?: string | null;
-          name: string;
-        }[];
-      }
-    > = [];
-    await secretDAL.transaction(async (tx) => {
+    // Function to execute the bulk update operation
+    const executeBulkUpdate = async (tx: Knex) => {
+      const updatedSecrets: Array<
+        TSecretsV2 & {
+          secretPath: string;
+          tags: {
+            id: string;
+            slug: string;
+            color?: string | null;
+            name: string;
+          }[];
+        }
+      > = [];
+
       for await (const folder of folders) {
         if (!folder) throw new NotFoundError({ message: "Folder not found" });
 
@@ -1832,7 +1844,7 @@ export const secretV2BridgeServiceFactory = ({
                         {
                           operator: "eq",
                           field: `${TableName.SecretV2}.key` as "key",
-                          value: el.secretKey
+                          value: el.newSecretName as string
                         },
                         {
                           operator: "eq",
@@ -1886,6 +1898,7 @@ export const secretV2BridgeServiceFactory = ({
           orgId: actorOrgId,
           folderCommitService,
           tx,
+          commitChanges,
           inputSecrets: secretsToUpdate.map((el) => {
             const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
             const encryptedValue =
@@ -1965,7 +1978,13 @@ export const secretV2BridgeServiceFactory = ({
           updatedSecrets.push(...bulkInsertedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
         }
       }
-    });
+
+      return updatedSecrets;
+    };
+
+    const updatedSecrets = providedTx
+      ? await executeBulkUpdate(providedTx)
+      : await secretDAL.transaction(executeBulkUpdate);
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
@@ -2022,8 +2041,10 @@ export const secretV2BridgeServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
-  }: TDeleteManySecretDTO) => {
+    actorOrgId,
+    tx: providedTx,
+    commitChanges
+  }: TDeleteManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2082,24 +2103,29 @@ export const secretV2BridgeServiceFactory = ({
       );
     });
 
+    const executeBulkDelete = async (tx: Knex) => {
+      return fnSecretBulkDelete({
+        secretDAL,
+        secretQueueService,
+        folderCommitService,
+        secretVersionDAL,
+        inputSecrets: inputSecrets.map(({ type, secretKey }) => ({
+          secretKey,
+          type: type || SecretType.Shared
+        })),
+        projectId,
+        folderId,
+        actorId,
+        actorType: actor,
+        commitChanges,
+        tx
+      });
+    };
+
     try {
-      const secretsDeleted = await secretDAL.transaction(async (tx) =>
-        fnSecretBulkDelete({
-          secretDAL,
-          secretQueueService,
-          folderCommitService,
-          secretVersionDAL,
-          inputSecrets: inputSecrets.map(({ type, secretKey }) => ({
-            secretKey,
-            type: type || SecretType.Shared
-          })),
-          projectId,
-          folderId,
-          actorId,
-          actorType: actor,
-          tx
-        })
-      );
+      const secretsDeleted = providedTx
+        ? await executeBulkDelete(providedTx)
+        : await secretDAL.transaction(executeBulkDelete);
 
       await secretDAL.invalidateSecretCacheByProjectId(projectId);
       await snapshotService.performSnapshot(folderId);
