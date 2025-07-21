@@ -463,8 +463,14 @@ export const useCreateCommit = () => {
                 .map((change: PendingSecretUpdate) => ({
                   secretKey: change.secretKey,
                   newSecretName: change.newSecretName,
-                  secretValue: change.secretValue || change.existingSecret.value,
-                  secretComment: change.secretComment || change.existingSecret.comment,
+                  secretValue:
+                    change.secretValue === ""
+                      ? ""
+                      : change.secretValue || change.existingSecret.value,
+                  secretComment:
+                    change.secretComment === ""
+                      ? ""
+                      : change.secretComment || change.existingSecret.comment,
                   skipMultilineEncoding:
                     change.skipMultilineEncoding !== undefined
                       ? change.skipMultilineEncoding
