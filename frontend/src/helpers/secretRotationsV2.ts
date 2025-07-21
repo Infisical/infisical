@@ -44,6 +44,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "AWS IAM User Secret",
     image: "Amazon Web Services.png",
     size: 50
+  },
+  [SecretRotation.OktaClientSecret]: {
+    name: "Okta Client Secret",
+    image: "Okta.png",
+    size: 50
   }
 };
 
@@ -55,7 +60,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.Auth0ClientSecret]: AppConnection.Auth0,
   [SecretRotation.AzureClientSecret]: AppConnection.AzureClientSecrets,
   [SecretRotation.LdapPassword]: AppConnection.LDAP,
-  [SecretRotation.AwsIamUserSecret]: AppConnection.AWS
+  [SecretRotation.AwsIamUserSecret]: AppConnection.AWS,
+  [SecretRotation.OktaClientSecret]: AppConnection.Okta
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -67,7 +73,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.Auth0ClientSecret]: false,
   [SecretRotation.AzureClientSecret]: true,
   [SecretRotation.LdapPassword]: false,
-  [SecretRotation.AwsIamUserSecret]: true
+  [SecretRotation.AwsIamUserSecret]: true,
+  [SecretRotation.OktaClientSecret]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

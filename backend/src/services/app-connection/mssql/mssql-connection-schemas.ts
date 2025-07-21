@@ -49,7 +49,10 @@ export const ValidateMsSqlConnectionCredentialsSchema = z.discriminatedUnion("me
 ]);
 
 export const CreateMsSqlConnectionSchema = ValidateMsSqlConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.MsSql, { supportsPlatformManagedCredentials: true })
+  GenericCreateAppConnectionFieldsSchema(AppConnection.MsSql, {
+    supportsPlatformManagedCredentials: true,
+    supportsGateways: true
+  })
 );
 
 export const UpdateMsSqlConnectionSchema = z
@@ -58,7 +61,12 @@ export const UpdateMsSqlConnectionSchema = z
       AppConnections.UPDATE(AppConnection.MsSql).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.MsSql, { supportsPlatformManagedCredentials: true }));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.MsSql, {
+      supportsPlatformManagedCredentials: true,
+      supportsGateways: true
+    })
+  );
 
 export const MsSqlConnectionListItemSchema = z.object({
   name: z.literal("Microsoft SQL Server"),
