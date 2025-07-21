@@ -3,7 +3,6 @@ import { Controller, useForm } from "react-hook-form";
 import { faCalendar, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 
@@ -18,7 +17,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { Timezone } from "@app/helpers/datetime";
+import { formatDateTime, Timezone } from "@app/helpers/datetime";
 
 import {
   auditLogDateFilterFormSchema,
@@ -100,11 +99,23 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
             </>
           ) : (
             <div className="flex w-[19.1rem] items-center justify-between rounded-l-md border border-transparent bg-mineshaft-600 px-5 py-2 text-sm text-bunker-200">
-              <div>{format(filter.startDate, "yyyy-MM-dd HH:mm")}</div>
+              <div>
+                {formatDateTime({
+                  timezone,
+                  timestamp: filter.startDate,
+                  dateFormat: "yyyy/MM/dd HH:mm"
+                })}
+              </div>
               <div>
                 <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faChevronRight} />
               </div>
-              <div>{format(filter.endDate, "yyyy-MM-dd HH:mm")}</div>
+              <div>
+                {formatDateTime({
+                  timezone,
+                  timestamp: filter.startDate,
+                  dateFormat: "yyyy/MM/dd HH:mm"
+                })}
+              </div>
             </div>
           )}
           <DropdownMenuTrigger asChild>

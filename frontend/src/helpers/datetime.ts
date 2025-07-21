@@ -18,7 +18,7 @@ export const formatDateTime = ({
 
   if (timezone === Timezone.UTC) {
     const utcDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-    return `${format(utcDate, dateFormat)} UTC`;
+    return `${format(utcDate, dateFormat)}`;
   }
   return format(date, dateFormat);
 };
