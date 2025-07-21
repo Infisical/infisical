@@ -33,7 +33,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
+import { getProjectHomePage, getProjectLottieIcon } from "@app/helpers/project";
 import { useCreateWorkspace, useGetExternalKmsList, useGetUserWorkspaces } from "@app/hooks/api";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
@@ -63,28 +63,23 @@ type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
 const PROJECT_TYPE_MENU_ITEMS = [
   {
     label: "Secret Manager",
-    value: ProjectType.SecretManager,
-    icon: "vault"
+    value: ProjectType.SecretManager
   },
   {
     label: "Certificate Manager",
-    value: ProjectType.CertificateManager,
-    icon: "note"
+    value: ProjectType.CertificateManager
   },
   {
     label: "KMS",
-    value: ProjectType.KMS,
-    icon: "unlock"
+    value: ProjectType.KMS
   },
   {
     label: "SSH",
-    value: ProjectType.SSH,
-    icon: "terminal"
+    value: ProjectType.SSH
   },
   {
     label: "Secret Scanning",
-    value: ProjectType.SecretScanning,
-    icon: "secret-scan"
+    value: ProjectType.SecretScanning
   }
 ];
 
@@ -102,18 +97,11 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
     OrgPermissionSubjects.ProjectTemplates
   );
 
-  const { data: projectTemplates = [] } = useListProjectTemplates({
-    enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates)
-  });
-
-  const { data: externalKmsList } = useGetExternalKmsList(currentOrg.id, {
-    enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
-  });
-
   const {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { isSubmitting, errors }
   } = useForm<TAddProjectFormData>({
     resolver: zodResolver(formSchema),
@@ -121,6 +109,16 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
       kmsKeyId: INTERNAL_KMS_KEY_ID,
       template: InfisicalProjectTemplate.Default
     }
+  });
+
+  const selectedProjectType = watch("type");
+  const { data: projectTemplates = [] } = useListProjectTemplates({
+    enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates),
+    select: (template) => template.filter((el) => el.type === selectedProjectType)
+  });
+
+  const { data: externalKmsList } = useGetExternalKmsList(currentOrg.id, {
+    enabled: permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)
   });
 
   useEffect(() => {
@@ -212,7 +210,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
                       }
                     }}
                   >
-                    <Lottie icon={el.icon} className="h-8 w-8" />
+                    <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
                     <div className="text-center text-xs">{el.label}</div>
                   </div>
                 ))}

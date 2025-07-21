@@ -91,7 +91,7 @@ export const SecretScanningLayout = () => {
                     )}
                   </Link>
                   <Link
-                    to="/projects/secret-management/$projectId/settings"
+                    to="/projects/secret-scanning/$projectId/settings"
                     params={{
                       projectId: currentWorkspace.id
                     }}

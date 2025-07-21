@@ -23,6 +23,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 
@@ -66,8 +67,8 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
+              <Th>Type</Th>
               <Th>Roles</Th>
-              <Th>Environments</Th>
               <Th />
             </Tr>
           </THead>
@@ -80,7 +81,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               />
             )}
             {filteredTemplates.map((template) => {
-              const { id, name, roles, environments = [], description } = template;
+              const { id, name, roles, environments = [], description, type } = template;
               return (
                 <Tr
                   onClick={() => onEdit(template)}
@@ -99,6 +100,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       </Tooltip>
                     )}
                   </Td>
+                  <Td>{getProjectTitle(type)}</Td>
                   <Td className="pl-8">
                     {roles.length}
                     {roles.length > 0 && (

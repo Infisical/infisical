@@ -67,7 +67,7 @@ export const serviceTokenServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
 
@@ -158,7 +158,7 @@ export const serviceTokenServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
 

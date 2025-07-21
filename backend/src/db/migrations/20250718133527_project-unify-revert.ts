@@ -208,6 +208,7 @@ const kickOutSecretManagerProject = async (knex: Knex, oldProjectId: string) => 
   if (secret) {
     const newProjectId = await newProject(knex, oldProjectId, ProjectType.SecretManager);
     await knex(TableName.IntegrationAuth).where("projectId", oldProjectId).update("projectId", newProjectId);
+    await knex(TableName.Environment).where("projectId", oldProjectId).update("projectId", newProjectId);
     await knex(TableName.SecretBlindIndex).where("projectId", oldProjectId).update("projectId", newProjectId);
     await knex(TableName.SecretSync).where("projectId", oldProjectId).update("projectId", newProjectId);
     await knex(TableName.SecretTag).where("projectId", oldProjectId).update("projectId", newProjectId);
@@ -229,7 +230,7 @@ const kickOutCertManagerProject = async (knex: Knex, oldProjectId: string) => {
 };
 
 const kickOutSecretScanningProject = async (knex: Knex, oldProjectId: string) => {
-  const cas = await knex(TableName.SecretScanningConfig).where("projectId", oldProjectId).returning("id").first();
+  const cas = await knex(TableName.SecretScanningDataSource).where("projectId", oldProjectId).returning("id").first();
   if (cas) {
     const newProjectId = await newProject(knex, oldProjectId, ProjectType.SecretScanning);
     await knex(TableName.SecretScanningConfig).where("projectId", oldProjectId).update("projectId", newProjectId);
@@ -244,6 +245,7 @@ const kickOutKmsProject = async (knex: Knex, oldProjectId: string) => {
     .andWhere("isReserved", false)
     .returning("id")
     .first();
+
   if (kmsKeys) {
     const newProjectId = await newProject(knex, oldProjectId, ProjectType.KMS);
     await knex(TableName.KmsKey)
@@ -255,7 +257,7 @@ const kickOutKmsProject = async (knex: Knex, oldProjectId: string) => {
 };
 
 const kickOutSshProject = async (knex: Knex, oldProjectId: string) => {
-  const hosts = await knex(TableName.ProjectSshConfig).where("projectId", oldProjectId).returning("id").first();
+  const hosts = await knex(TableName.SshCertificateAuthority).where("projectId", oldProjectId).returning("id").first();
   if (hosts) {
     const newProjectId = await newProject(knex, oldProjectId, ProjectType.SSH);
     await knex(TableName.SshHost).where("projectId", oldProjectId).update("projectId", newProjectId);
@@ -270,6 +272,9 @@ const BATCH_SIZE = 1000;
 export async function up(knex: Knex): Promise<void> {
   const hasTemplateTypeColumn = await knex.schema.hasColumn(TableName.ProjectTemplates, "type");
   if (hasTemplateTypeColumn) {
+    await knex(TableName.ProjectTemplates).whereNull("type").update({
+      type: ProjectType.SecretManager
+    });
     await knex.schema.alterTable(TableName.ProjectTemplates, (t) => {
       t.string("type").notNullable().defaultTo(ProjectType.SecretManager).alter();
     });

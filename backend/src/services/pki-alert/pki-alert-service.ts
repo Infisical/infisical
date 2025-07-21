@@ -137,7 +137,7 @@ export const pkiAlertServiceFactory = ({
       projectId: alert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.Any
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
