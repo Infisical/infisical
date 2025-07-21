@@ -17,11 +17,30 @@ type Props = {
 };
 
 enum VaultMappingType {
-  Namespace = "namespace",
-  KeyVault = "key-vault"
+  KeyVault = "key-vault",
+  Namespace = "namespace"
 }
 
 const MAPPING_TYPE_MENU_ITEMS = [
+  {
+    value: VaultMappingType.KeyVault,
+    label: "Key Vaults",
+    tooltip: (
+      <div>
+        When using key vaults for mapping, each key vault within Vault will be created in Infisical
+        as a project. Each secret path inside the key vault, will be created as an environment
+        inside the corresponding project. When using Key Vaults as the project mapping type, a
+        default environment called &quot;Production&quot; will be created for each project, which
+        will contain the secrets from the key vault.
+        <div className="mt-4 flex flex-col gap-1 text-sm">
+          <div>Key Vault → Project</div>
+          <div>Default Environment (Production)</div>
+          <div>Secret Path → Secret Folder</div>
+          <div>Secret data → Secrets</div>
+        </div>
+      </div>
+    )
+  },
   {
     value: VaultMappingType.Namespace,
     label: "Namespaces",
@@ -38,25 +57,6 @@ const MAPPING_TYPE_MENU_ITEMS = [
         </div>
       </div>
     )
-  },
-  {
-    value: VaultMappingType.KeyVault,
-    label: "Key Vaults",
-    tooltip: (
-      <div>
-        When using key vaults for mapping, each key vault within Vault will be created in Infisical
-        as a project. Each secret path inside the key vault, will be created as an environment
-        inside the corresponding project. When using Key Vaults as the mapping type, a default
-        environment called &quot;Production&quot; will be created for each project, which will
-        contain the secrets from the key vault.
-        <div className="mt-4 flex flex-col gap-1 text-sm">
-          <div>Key Vault → Project</div>
-          <div>Default Environment (Production)</div>
-          <div>Secret Path → Secret Folder</div>
-          <div>Secret data → Secrets</div>
-        </div>
-      </div>
-    )
   }
 ];
 
@@ -65,7 +65,7 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
     vaultUrl: z.string().min(1),
     vaultNamespace: z.string().min(1),
     vaultAccessToken: z.string().min(1),
-    mappingType: z.nativeEnum(VaultMappingType)
+    mappingType: z.nativeEnum(VaultMappingType).default(VaultMappingType.KeyVault)
   });
   type TFormData = z.infer<typeof formSchema>;
 
@@ -111,8 +111,7 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
       <NoticeBannerV2 title="Vault KV Secret Engine Import" className="mb-4">
         <p className="text-sm">
           The Vault migration currently supports importing static secrets from Vault
-          Dedicated/Self-Hosted. Namespaces are treated as projects, Secret Engines are treated as
-          environments, and secret paths are treated as folders.
+          Dedicated/Self-Hosted.
           <div className="mt-2 text-xs opacity-80">
             Currently only KV Secret Engine V2 is supported for Vault migrations.
           </div>
@@ -164,11 +163,12 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
         <Controller
           control={control}
           name="mappingType"
-          defaultValue={VaultMappingType.Namespace}
+          defaultValue={VaultMappingType.KeyVault}
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="Mapping Type"
+              label="Project Mapping"
               isError={Boolean(error)}
+              isRequired
               errorText={error?.message}
               className="flex-1"
             >
