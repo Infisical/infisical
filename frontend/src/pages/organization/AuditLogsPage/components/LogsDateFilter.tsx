@@ -112,7 +112,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
               <div>
                 {formatDateTime({
                   timezone,
-                  timestamp: filter.startDate,
+                  timestamp: filter.endDate,
                   dateFormat: "yyyy/MM/dd HH:mm"
                 })}
               </div>
