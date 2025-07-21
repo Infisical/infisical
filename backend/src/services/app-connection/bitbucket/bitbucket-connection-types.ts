@@ -51,7 +51,7 @@ export type TBitbucketEnvironment = {
   name: string;
 };
 
-export type BitbucketEnvironmentsResponse = {
+export type TBitbucketEnvironmentsResponse = {
   values: TBitbucketEnvironment[];
   next?: string;
 };

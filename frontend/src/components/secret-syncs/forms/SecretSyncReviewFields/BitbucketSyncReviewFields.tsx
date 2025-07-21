@@ -4,7 +4,7 @@ import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { GenericFieldLabel } from "@app/components/v2";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
-export const BitBucketSyncReviewFields = () => {
+export const BitbucketSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Bitbucket }>();
   const repository = watch("destinationConfig.repository");
   const environment = watch("destinationConfig.environment");
