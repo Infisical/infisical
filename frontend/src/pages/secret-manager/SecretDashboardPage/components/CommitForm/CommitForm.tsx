@@ -97,7 +97,8 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
             {
               version: 1, // placeholder, not used
               secretKey: change.newSecretName ? existingSecret.key : undefined,
-              secretValue: change.secretValue ? (existingSecret.value ?? "") : undefined,
+              secretValue:
+                change.secretValue !== undefined ? (existingSecret.value ?? "") : undefined,
               tags: change.tags ? (existingSecret.tags?.map((tag) => tag.slug) ?? []) : undefined,
               secretMetadata: change.secretMetadata ? existingSecret.secretMetadata : undefined,
               skipMultilineEncoding:
