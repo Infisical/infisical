@@ -8,6 +8,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/projectTemplates";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { ProjectTemplateDetailsModal } from "../../ProjectTemplateDetailsModal";
 import { ProjectTemplateEnvironmentsForm } from "./ProjectTemplateEnvironmentsForm";
@@ -98,10 +99,12 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
           </div>
         )}
       </div>
-      <ProjectTemplateEnvironmentsForm
-        isInfisicalTemplate={isInfisicalTemplate}
-        projectTemplate={projectTemplate}
-      />
+      {type === ProjectType.SecretManager && (
+        <ProjectTemplateEnvironmentsForm
+          isInfisicalTemplate={isInfisicalTemplate}
+          projectTemplate={projectTemplate}
+        />
+      )}
       <ProjectTemplateRolesSection
         isInfisicalTemplate={isInfisicalTemplate}
         projectTemplate={projectTemplate}
