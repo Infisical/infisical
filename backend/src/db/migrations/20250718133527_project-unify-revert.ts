@@ -13,7 +13,7 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
   await knex(TableName.Project).insert({
     ...project,
     type: projectType,
-    defaultProduct: projectType,
+    defaultProduct: null,
     // @ts-ignore id is required
     id: newProjectId,
     slug: slugify(`${project?.name}-${alphaNumericNanoId(8)}`)
