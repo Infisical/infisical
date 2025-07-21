@@ -63,6 +63,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Railway:
     case SecretSync.Checkly:
     case SecretSync.Supabase:
+    case SecretSync.Bitbucket:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

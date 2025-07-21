@@ -2502,6 +2502,11 @@ export const SecretSyncs = {
     SUPABASE: {
       projectId: "The ID of the Supabase project to sync secrets to.",
       projectName: "The name of the Supabase project to sync secrets to."
+    },
+    BITBUCKET: {
+      workspace: "The Bitbucket Workspace slug to sync secrets to.",
+      repository: "The Bitbucket Repository slug to sync secrets to.",
+      environment: "The Bitbucket Deployment Environment uuid to sync secrets to."
     }
   }
 };

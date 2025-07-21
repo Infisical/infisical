@@ -101,6 +101,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Supabase]: {
     name: "Supabase",
     image: "Supabase.png"
+  },
+  [SecretSync.Bitbucket]: {
+    name: "Bitbucket",
+    image: "Bitbucket.png"
   }
 };
 
@@ -131,7 +135,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
-  [SecretSync.Checkly]: AppConnection.Checkly
+  [SecretSync.Checkly]: AppConnection.Checkly,
+  [SecretSync.Bitbucket]: AppConnection.Bitbucket
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

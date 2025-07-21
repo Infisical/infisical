@@ -9,6 +9,7 @@ import { BitbucketConnectionMethod } from "./bitbucket-connection-enums";
 import {
   TBitbucketConnection,
   TBitbucketConnectionConfig,
+  TBitbucketEnvironment,
   TBitbucketRepo,
   TBitbucketWorkspace
 } from "./bitbucket-connection-types";
@@ -114,4 +115,41 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
   }
 
   return allRepos;
+};
+
+export const listBitbucketEnvironments = async (
+  appConnection: TBitbucketConnection,
+  workspaceSlug: string,
+  repositorySlug: string
+) => {
+  const { email, apiToken } = appConnection.credentials;
+
+  const headers = {
+    Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
+    Accept: "application/json"
+  };
+
+  const environments: TBitbucketEnvironment[] = [];
+  let hasNextPage = true;
+
+  let environmentsUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(repositorySlug)}/environments?pagelen=100`;
+
+  while (hasNextPage) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
+      headers
+    });
+
+    if (data?.values.length > 0) {
+      environments.push(...data.values);
+    }
+
+    if (data.next) {
+      environmentsUrl = data.next;
+    } else {
+      hasNextPage = false;
+    }
+  }
+
+  return environments;
 };

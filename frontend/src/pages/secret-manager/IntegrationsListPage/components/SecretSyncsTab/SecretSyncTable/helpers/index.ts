@@ -174,6 +174,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectName;
       secondaryText = "Supabase Project";
       break;
+    case SecretSync.Bitbucket:
+      primaryText = destinationConfig.workspace;
+      secondaryText = destinationConfig.repository;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }
