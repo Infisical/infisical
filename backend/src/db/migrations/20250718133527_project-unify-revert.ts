@@ -269,51 +269,61 @@ const kickOutSshProject = async (knex: Knex, oldProjectId: string) => {
 };
 
 const BATCH_SIZE = 1000;
+const MIGRATION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 export async function up(knex: Knex): Promise<void> {
-  const hasTemplateTypeColumn = await knex.schema.hasColumn(TableName.ProjectTemplates, "type");
-  if (hasTemplateTypeColumn) {
-    await knex(TableName.ProjectTemplates).whereNull("type").update({
-      type: ProjectType.SecretManager
-    });
-    await knex.schema.alterTable(TableName.ProjectTemplates, (t) => {
-      t.string("type").notNullable().defaultTo(ProjectType.SecretManager).alter();
-    });
-  }
+  const result = await knex.raw("SHOW statement_timeout");
+  const originalTimeout = result.rows[0].statement_timeout;
 
-  const hasTypeColumn = await knex.schema.hasColumn(TableName.Project, "type");
-  const hasDefaultTypeColumn = await knex.schema.hasColumn(TableName.Project, "defaultProduct");
-  if (hasTypeColumn && hasDefaultTypeColumn) {
-    await knex(TableName.Project).update({
-      // eslint-disable-next-line
-      // @ts-ignore this is because this field is created later
-      type: knex.raw(`"defaultProduct"`)
-    });
+  try {
+    await knex.raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
 
-    await knex.schema.alterTable(TableName.Project, (t) => {
-      t.string("type").notNullable().alter();
-      t.string("defaultProduct").nullable().alter();
-    });
+    const hasTemplateTypeColumn = await knex.schema.hasColumn(TableName.ProjectTemplates, "type");
+    if (hasTemplateTypeColumn) {
+      await knex(TableName.ProjectTemplates).whereNull("type").update({
+        type: ProjectType.SecretManager
+      });
+      await knex.schema.alterTable(TableName.ProjectTemplates, (t) => {
+        t.string("type").notNullable().defaultTo(ProjectType.SecretManager).alter();
+      });
+    }
 
-    let projectsToBeSplit;
-    do {
-      // eslint-disable-next-line no-await-in-loop
-      projectsToBeSplit = await knex(TableName.Project)
-        .whereNotNull("defaultProduct")
-        .limit(BATCH_SIZE)
-        .select("id", "defaultProduct");
-      if (projectsToBeSplit.length) {
-        const ids: string[] = [];
-        for (const { id, defaultProduct } of projectsToBeSplit) {
-          if (defaultProduct !== ProjectType.SecretManager) await kickOutSecretManagerProject(knex, id);
-          if (defaultProduct !== ProjectType.CertificateManager) await kickOutCertManagerProject(knex, id);
-          if (defaultProduct !== ProjectType.KMS) await kickOutKmsProject(knex, id);
-          if (defaultProduct !== ProjectType.SSH) await kickOutSshProject(knex, id);
-          if (defaultProduct !== ProjectType.SecretScanning) await kickOutSecretScanningProject(knex, id);
-          ids.push(id);
+    const hasTypeColumn = await knex.schema.hasColumn(TableName.Project, "type");
+    const hasDefaultTypeColumn = await knex.schema.hasColumn(TableName.Project, "defaultProduct");
+    if (hasTypeColumn && hasDefaultTypeColumn) {
+      await knex(TableName.Project).update({
+        // eslint-disable-next-line
+        // @ts-ignore this is because this field is created later
+        type: knex.raw(`"defaultProduct"`)
+      });
+
+      await knex.schema.alterTable(TableName.Project, (t) => {
+        t.string("type").notNullable().alter();
+        t.string("defaultProduct").nullable().alter();
+      });
+
+      let projectsToBeSplit;
+      do {
+        // eslint-disable-next-line no-await-in-loop
+        projectsToBeSplit = await knex(TableName.Project)
+          .whereNotNull("defaultProduct")
+          .limit(BATCH_SIZE)
+          .select("id", "defaultProduct");
+        if (projectsToBeSplit.length) {
+          const ids: string[] = [];
+          for (const { id, defaultProduct } of projectsToBeSplit) {
+            if (defaultProduct !== ProjectType.SecretManager) await kickOutSecretManagerProject(knex, id);
+            if (defaultProduct !== ProjectType.CertificateManager) await kickOutCertManagerProject(knex, id);
+            if (defaultProduct !== ProjectType.KMS) await kickOutKmsProject(knex, id);
+            if (defaultProduct !== ProjectType.SSH) await kickOutSshProject(knex, id);
+            if (defaultProduct !== ProjectType.SecretScanning) await kickOutSecretScanningProject(knex, id);
+            ids.push(id);
+          }
+          await knex(TableName.Project).whereIn("id", ids).update("defaultProduct", null);
         }
-        await knex(TableName.Project).whereIn("id", ids).update("defaultProduct", null);
-      }
-    } while (projectsToBeSplit.length > 0);
+      } while (projectsToBeSplit.length > 0);
+    }
+  } finally {
+    await knex.raw(`SET statement_timeout = '${originalTimeout}'`);
   }
 }
 
