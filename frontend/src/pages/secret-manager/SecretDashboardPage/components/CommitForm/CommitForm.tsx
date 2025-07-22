@@ -296,7 +296,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     <>
       {/* Floating Panel */}
       {!isModalOpen && (
-        <div className="fixed bottom-4 z-40 w-full max-w-4xl self-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-2xl">
+        <div className="fixed bottom-4 left-1/2 z-40 w-full max-w-3xl -translate-x-1/2 self-center rounded-lg border border-yellow/30 bg-mineshaft-800 shadow-2xl lg:left-auto lg:translate-x-0">
           <div className="flex items-center justify-between p-4">
             {/* Left Content */}
             <div className="flex-1">
@@ -311,7 +311,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
 
               {/* Description */}
               <p className="text-sm leading-5 text-mineshaft-400">
-                Review your pending changes and commit them to apply the updates.
+                Review pending changes and commit them to apply the updates.
               </p>
             </div>
 
