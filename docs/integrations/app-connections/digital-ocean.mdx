@@ -20,8 +20,17 @@ Infisical supports the use of [API Tokens](https://cloud.digitalocean.com/accoun
     ![Token Form](/images/app-connections/digital-ocean/app-connection-create-form.png)
   </Step>
    <Step title="Select appropriate scopes and Click 'Generate Token'">
-    
+          ```
+            read:account
+            read:actions
+            read:regions
+            read:sizes
+            read:app/projects
+            update:app
+          ```
+
     ![Token Form](/images/app-connections/digital-ocean/app-connection-create-form-roles.png)
+    ![Token Form](/images/app-connections/digital-ocean/app-connection-create-required-roles.png)
   </Step>
   <Step title="Generate and copy the API token">
     Make sure to copy the token now—you won't be able to see it again.
