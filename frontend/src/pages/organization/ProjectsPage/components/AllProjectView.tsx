@@ -17,6 +17,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ import {
   FormControl,
   IconButton,
   Input,
+  Lottie,
   Modal,
   ModalContent,
   Pagination,
@@ -33,7 +35,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { getProjectHomePage, getProjectTitle } from "@app/helpers/project";
+import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -216,14 +218,17 @@ export const AllProjectView = ({
         </DropdownMenu>
         <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Disabled across All Project view.">
-            <IconButton
-              variant="outline_bg"
-              ariaLabel="grid"
-              size="xs"
-              className="min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
-            >
-              <FontAwesomeIcon icon={faBorderAll} />
-            </IconButton>
+            <div className="flex cursor-not-allowed items-center justify-center">
+              <IconButton
+                variant="outline_bg"
+                ariaLabel="grid"
+                size="xs"
+                isDisabled
+                className="pointer-events-none min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
+              >
+                <FontAwesomeIcon icon={faBorderAll} />
+              </IconButton>
+            </div>
           </Tooltip>
           <IconButton
             variant="outline_bg"
@@ -238,7 +243,7 @@ export const AllProjectView = ({
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
-              colorSchema="primary"
+              colorSchema="secondary"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
                 if (isAddingProjectsAllowed) {
@@ -295,39 +300,41 @@ export const AllProjectView = ({
               }}
               key={workspace.id}
               className={twMerge(
-                "group flex min-w-72 grid-cols-6 items-center justify-center border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
+                "group flex min-w-72 items-center justify-center border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
                 workspace.isMember ? "cursor-pointer hover:bg-mineshaft-700" : "cursor-default"
               )}
             >
-              <div className="w-full items-center">
-                <div className="flex flex-grow items-center">
-                  <div className="flex-grow truncate text-sm text-mineshaft-100">
-                    {workspace.name}
-                  </div>
-                  <div className="flex items-center">
-                    {workspace.isMember ? (
-                      <div className="flex items-center text-center text-sm text-primary">
-                        <FontAwesomeIcon icon={faCheck} className="mr-2" />
-                        Joined
-                      </div>
-                    ) : (
-                      <div className="opacity-0 transition-all group-hover:opacity-100">
-                        <Button
-                          size="xs"
-                          variant="outline_bg"
-                          onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
-                        >
-                          Request Access
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+              <div className="mr-3 flex min-w-0 flex-1 items-center gap-3">
+                <div className="rounded border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
+                  <Lottie
+                    className="h-[1.35rem] w-[1.35rem] shrink-0"
+                    icon={getProjectLottieIcon(workspace.type)}
+                  />
                 </div>
-                <div className="mt-1 max-w-lg overflow-hidden text-ellipsis whitespace-nowrap text-xs text-mineshaft-300">
-                  {getProjectTitle(workspace.type)}{" "}
-                  {workspace.description ? `- ${workspace.description}` : ""}
+                <div className="-mt-0.5 flex min-w-0 flex-col">
+                  <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
+                  <p className="truncate text-xs leading-4 text-mineshaft-300">
+                    {getProjectTitle(workspace.type)}{" "}
+                    {workspace.description ? `- ${workspace.description}` : ""}
+                  </p>
                 </div>
               </div>
+              {workspace.isMember ? (
+                <Badge className="flex items-center" variant="success">
+                  <FontAwesomeIcon icon={faCheck} className="mr-1" />
+                  <span>Joined</span>
+                </Badge>
+              ) : (
+                <div className="opacity-0 transition-all group-hover:opacity-100">
+                  <Button
+                    size="xs"
+                    variant="outline_bg"
+                    onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                  >
+                    Request Access
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
       </div>

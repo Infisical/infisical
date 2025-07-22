@@ -192,47 +192,46 @@ export const MyProjectView = ({
         });
       }}
       key={workspace.id}
-      className="relative flex h-36 min-w-72 cursor-pointer flex-col rounded-md border border-mineshaft-500 bg-mineshaft-800 p-4 transition-all hover:border-mineshaft-400"
+      className="cursor-pointer overflow-clip rounded border border-l-[4px] border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 p-4 transition-transform duration-100 hover:scale-[103%] hover:border-l-primary hover:bg-mineshaft-700"
     >
       <div className="flex items-center gap-4">
-        <div className="h-12 w-12 rounded bg-mineshaft-600 p-2">
-          <Lottie icon={getProjectLottieIcon(workspace.type)} className="h-full w-full" />
+        <div className="rounded border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
+          <Lottie
+            className="h-[1.75rem] w-[1.75rem] shrink-0"
+            icon={getProjectLottieIcon(workspace.type)}
+          />
         </div>
-        <div className="flex-1">
-          <div className="flex">
-            <div className="flex-1 text-lg font-semibold text-mineshaft-100">
-              <div className="max-w-72 truncate">{workspace.name}</div>
-            </div>
-            <div className="flex-shrink-0">
-              {isFavorite ? (
-                <FontAwesomeIcon
-                  icon={faSolidStar}
-                  className="text-sm text-yellow-600 hover:text-mineshaft-400"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeProjectFromFavorites(workspace.id);
-                  }}
-                />
-              ) : (
-                <FontAwesomeIcon
-                  icon={faStar}
-                  className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addProjectToFavorites(workspace.id);
-                  }}
-                />
-              )}
-            </div>
-          </div>
-          <div className="truncate text-sm text-mineshaft-300">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg font-semibold text-mineshaft-100">{workspace.name}</p>
+          <p className="truncate text-sm leading-4 text-mineshaft-300">
             {getProjectTitle(workspace.type)}
-          </div>
+          </p>
+        </div>
+        <div className="mt-0.5 self-start">
+          {isFavorite ? (
+            <FontAwesomeIcon
+              icon={faSolidStar}
+              className="text-sm text-yellow-600 hover:text-mineshaft-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeProjectFromFavorites(workspace.id);
+              }}
+            />
+          ) : (
+            <FontAwesomeIcon
+              icon={faStar}
+              className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                addProjectToFavorites(workspace.id);
+              }}
+            />
+          )}
         </div>
       </div>
-      <div className="mt-4 truncate text-sm text-mineshaft-400">
+      <p className="mt-4 truncate text-sm text-mineshaft-400">
         {workspace.description || "No description"}
-      </div>
+      </p>
     </div>
   );
   const renderProjectListItem = (workspace: Workspace, isFavorite: boolean, index: number) => (
@@ -247,18 +246,26 @@ export const MyProjectView = ({
         });
       }}
       key={workspace.id}
-      className={`group grid h-16 min-w-72 cursor-pointer grid-cols-6 border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+      className={`group flex min-w-72 cursor-pointer border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:bg-mineshaft-700 ${
         index === 0 && "rounded-t-md"
       }`}
     >
-      <div className="flex flex-col justify-center sm:col-span-3 lg:col-span-4">
-        <div className="truncate text-sm text-mineshaft-100">{workspace.name}</div>
-        <div className="mt-1 text-xs text-mineshaft-300">
-          {getProjectTitle(workspace.type)}{" "}
-          {workspace.description ? `- ${workspace.description}` : ""}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="rounded border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
+          <Lottie
+            className="h-[1.35rem] w-[1.35rem] shrink-0"
+            icon={getProjectLottieIcon(workspace.type)}
+          />
+        </div>
+        <div className="-mt-0.5 flex min-w-0 flex-col">
+          <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
+          <p className="truncate text-xs leading-4 text-mineshaft-300">
+            {getProjectTitle(workspace.type)}{" "}
+            {workspace.description ? `- ${workspace.description}` : ""}
+          </p>
         </div>
       </div>
-      <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
+      <div className="flex items-center justify-end">
         {isFavorite ? (
           <FontAwesomeIcon
             icon={faSolidStar}
@@ -287,7 +294,7 @@ export const MyProjectView = ({
     switch (projectsViewMode) {
       case ProjectsViewMode.GRID:
         projectsComponents = (
-          <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {isProjectViewLoading &&
               Array.apply(0, Array(3)).map((_x, i) => (
                 <div
@@ -349,7 +356,18 @@ export const MyProjectView = ({
         <div className="text-center font-light">No projects match search...</div>
       </div>
     );
+  } else if (filteredWorkspaces.length === 0) {
+    projectsComponents = (
+      <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
+        <FontAwesomeIcon
+          icon={faSearch}
+          className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
+        />
+        <div className="text-center font-light">No projects match filters...</div>
+      </div>
+    );
   }
+
   return (
     <div>
       <div className="flex w-full flex-row">
@@ -457,7 +475,7 @@ export const MyProjectView = ({
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
-              colorSchema="primary"
+              colorSchema="secondary"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
                 if (isAddingProjectsAllowed) {
