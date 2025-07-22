@@ -140,7 +140,7 @@ export const listBitbucketEnvironments = async (
 
   let iterationCount = 0;
   // Limit to 10 iterations, fetching at most 10 * 100 = 1000 environments
-  while (hasNextPage && iterationCount < 100) {
+  while (hasNextPage && iterationCount < 10) {
     // eslint-disable-next-line no-await-in-loop
     const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
       headers
