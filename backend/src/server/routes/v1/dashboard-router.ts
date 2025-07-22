@@ -1101,7 +1101,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           filters: {
             ...sharedFilters,
             tagSlugs: tags,
-            includeTagsInSearch: true
+            includeTagsInSearch: true,
+            includeMetadataInSearch: true
           }
         },
         req.permission
