@@ -356,7 +356,7 @@ export const MyProjectView = ({
         <div className="text-center font-light">No projects match search...</div>
       </div>
     );
-  } else if (filteredWorkspaces.length === 0) {
+  } else if (filteredWorkspaces.length === 0 && isTableFilteredByType) {
     projectsComponents = (
       <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
         <FontAwesomeIcon
@@ -507,7 +507,7 @@ export const MyProjectView = ({
           onChangePerPage={handlePerPageChange}
         />
       )}
-      {isWorkspaceEmpty && (
+      {isWorkspaceEmpty && !isTableFilteredByType && (
         <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
           <FontAwesomeIcon
             icon={faFolderOpen}
