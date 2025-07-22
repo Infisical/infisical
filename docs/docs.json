@@ -2271,6 +2271,7 @@
               "sdks/languages/csharp",
               "sdks/languages/cpp",
               "sdks/languages/go",
+              "sdks/languages/rust",
               "sdks/languages/ruby"
             ]
           }
