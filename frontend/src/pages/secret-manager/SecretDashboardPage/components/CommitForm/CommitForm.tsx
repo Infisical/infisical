@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useCallback, useState } from "react";
-import { faCodeCommit, faEye, faFolder, faKey, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCodeCommit, faEye, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Badge, Button, Input, Modal, ModalContent } from "@app/components/v2";
@@ -296,39 +296,46 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     <>
       {/* Floating Panel */}
       {!isModalOpen && (
-        <div className="fixed bottom-4 z-40 w-64 self-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-2xl">
-          <div className="flex w-full justify-center border-b border-mineshaft-600 p-2">
-            <div className="flex w-full items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FontAwesomeIcon icon={faCodeCommit} className="text-mineshaft-400" />
+        <div className="fixed bottom-4 z-40 w-full max-w-4xl self-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-2xl">
+          <div className="flex items-center justify-between p-4">
+            {/* Left Content */}
+            <div className="flex-1">
+              {/* Header */}
+              <div className="mb-2 flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-yellow-500" />
                 <span className="font-medium text-mineshaft-100">Pending Changes</span>
+                <Badge variant="primary" className="text-xs">
+                  {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
+                </Badge>
               </div>
-              <Badge variant="primary" className="text-xs">
-                {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
-              </Badge>
-            </div>
-          </div>
 
-          <div className="flex justify-center gap-2 p-2">
-            <Button
-              size="sm"
-              leftIcon={<FontAwesomeIcon icon={faTrash} />}
-              onClick={() => clearAllPendingChanges({ workspaceId, environment, secretPath })}
-              isDisabled={totalChangesCount === 0}
-              variant="outline_bg"
-              className="h-8 flex-1 hover:border-red/40 hover:bg-red/[0.1]"
-            >
-              Discard
-            </Button>
-            <Button
-              variant="outline_bg"
-              leftIcon={<FontAwesomeIcon icon={faEye} />}
-              onClick={() => setIsModalOpen(true)}
-              isDisabled={totalChangesCount === 0}
-              className="h-8 flex-1"
-            >
-              Review
-            </Button>
+              {/* Description */}
+              <p className="text-sm text-mineshaft-400">
+                Review your pending changes and commit them to apply the updates.
+              </p>
+            </div>
+
+            {/* Right Buttons */}
+            <div className="ml-6 flex gap-3">
+              <Button
+                size="sm"
+                onClick={() => clearAllPendingChanges({ workspaceId, environment, secretPath })}
+                isDisabled={totalChangesCount === 0}
+                variant="outline_bg"
+                className="px-4 hover:border-red/40 hover:bg-red/[0.1]"
+              >
+                Discard
+              </Button>
+              <Button
+                variant="solid"
+                leftIcon={<FontAwesomeIcon icon={faEye} />}
+                onClick={() => setIsModalOpen(true)}
+                isDisabled={totalChangesCount === 0}
+                className="px-6"
+              >
+                Review Changes
+              </Button>
+            </div>
           </div>
         </div>
       )}
