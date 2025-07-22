@@ -160,6 +160,10 @@ export type TNetlifyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Netlify;
 };
 
+export type TOktaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Okta;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -193,7 +197,8 @@ export type TAppConnectionOption =
   | TRailwayConnectionOption
   | TChecklyConnectionOption
   | TDigitalOceanConnectionOption
-  | TNetlifyConnectionOption;
+  | TNetlifyConnectionOption
+  | TOktaConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -232,4 +237,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Supabase]: TSupabaseConnectionOption;
   [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
   [AppConnection.Netlify]: TNetlifyConnectionOption;
+  [AppConnection.Okta]: TOktaConnectionOption;
 };

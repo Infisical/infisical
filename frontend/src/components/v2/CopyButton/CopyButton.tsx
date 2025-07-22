@@ -41,7 +41,8 @@ export const CopyButton = ({
           variant={variant}
           className={twMerge("group relative", color)}
           size={size}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             handleCopyText();
           }}
         >

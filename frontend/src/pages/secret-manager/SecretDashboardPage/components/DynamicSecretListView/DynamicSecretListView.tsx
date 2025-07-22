@@ -1,10 +1,5 @@
 import { subject } from "@casl/ability";
-import {
-  faClose,
-  faFingerprint,
-  faPencilSquare,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faFingerprint, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -187,7 +182,7 @@ export const DynamicSecretListView = ({
                   </Tooltip>
                 )}
               </div>
-              <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
+              <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-3 py-3">
                 <ProjectPermissionCan
                   I={ProjectPermissionDynamicSecretActions.EditRootCredential}
                   a={subject(ProjectPermissionSub.DynamicSecrets, {
@@ -210,7 +205,7 @@ export const DynamicSecretListView = ({
                       }}
                       isDisabled={!isAllowed || isRevoking}
                     >
-                      <FontAwesomeIcon icon={faPencilSquare} size="lg" />
+                      <FontAwesomeIcon icon={faEdit} />
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
@@ -228,6 +223,7 @@ export const DynamicSecretListView = ({
                     <IconButton
                       ariaLabel="delete-dynamic-secret"
                       variant="plain"
+                      colorSchema="danger"
                       size="md"
                       className="p-0 opacity-0 group-hover:opacity-100"
                       onClick={(evt) => {
@@ -236,7 +232,7 @@ export const DynamicSecretListView = ({
                       }}
                       isDisabled={!isAllowed || isRevoking}
                     >
-                      <FontAwesomeIcon icon={faClose} size="lg" />
+                      <FontAwesomeIcon icon={faTrash} />
                     </IconButton>
                   )}
                 </ProjectPermissionCan>

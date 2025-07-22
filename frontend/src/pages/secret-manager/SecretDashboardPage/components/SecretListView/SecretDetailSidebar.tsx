@@ -1088,7 +1088,7 @@ export const SecretDetailSidebar = ({
                         isDisabled={isSubmitting || !isDirty || !isAllowed}
                         isLoading={isSubmitting}
                       >
-                        Save Changes
+                        Apply Changes
                       </Button>
                     )}
                   </ProjectPermissionCan>

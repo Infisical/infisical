@@ -2,11 +2,11 @@ import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   faAsterisk,
-  faClose,
   faEdit,
   faInfoCircle,
   faKey,
-  faRotate
+  faRotate,
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
@@ -48,7 +48,7 @@ export const SecretRotationItem = ({
         <div className="text- flex w-11 items-center py-2 pl-5 text-mineshaft-400">
           <FontAwesomeIcon icon={faRotate} />
         </div>
-        <div className="flex flex-grow items-center border-r border-mineshaft-600 py-2 pl-4 pr-2">
+        <div className="flex flex-grow items-center py-2 pl-4 pr-2">
           <div className="flex w-full flex-wrap items-center">
             <span>{name}</span>
             <Tag className="mx-2.5 flex items-center gap-1 px-1.5 py-0 text-xs normal-case">
@@ -141,7 +141,7 @@ export const SecretRotationItem = ({
         <AnimatePresence mode="wait">
           <motion.div
             key="options"
-            className="flex h-10 flex-shrink-0 items-center space-x-1 px-[0.665rem]"
+            className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-2 py-3"
             initial={{ x: 0, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 10, opacity: 0 }}
@@ -159,7 +159,6 @@ export const SecretRotationItem = ({
                 <IconButton
                   ariaLabel="Edit rotation"
                   variant="plain"
-                  size="md"
                   isDisabled={!isAllowed}
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
@@ -185,7 +184,6 @@ export const SecretRotationItem = ({
                   ariaLabel="Delete rotation"
                   variant="plain"
                   colorSchema="danger"
-                  size="md"
                   className="opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -193,7 +191,7 @@ export const SecretRotationItem = ({
                   }}
                   isDisabled={!isAllowed}
                 >
-                  <FontAwesomeIcon icon={faClose} size="lg" />
+                  <FontAwesomeIcon icon={faTrash} />
                 </IconButton>
               )}
             </ProjectPermissionCan>

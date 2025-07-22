@@ -3,10 +3,7 @@ title: "DigitalOcean Connection"
 description: "Learn how to configure a DigitalOcean Connection for Infisical."
 ---
 
-Infisical supports the use of [API Tokens](https://cloud.digitalocean.com/account/api/tokens) to connect with DigitalOcean.  
-<Note>
-  DigitalOcean requires the token to have **read and write** permissions to manage resources programmatically.
-</Note>
+Infisical supports the use of [API Tokens](https://cloud.digitalocean.com/account/api/tokens) to connect with DigitalOcean.
 
 ## Create a DigitalOcean API Token
 
@@ -17,10 +14,14 @@ Infisical supports the use of [API Tokens](https://cloud.digitalocean.com/accoun
   <Step title="In the API section, click on 'Generate New Token'">
     ![API Section](/images/app-connections/digital-ocean/app-connection-create-api-key.png)
   </Step>
-  <Step title="Provide a name and select appropriate scopes">
-    Give your token a descriptive name and ensure required scope (full-access) is selected.
+  <Step title="Provide a name and select custom scopes">
+    Give your token a descriptive name and ensure custom scopes is selected.
 
     ![Token Form](/images/app-connections/digital-ocean/app-connection-create-form.png)
+  </Step>
+   <Step title="Select appropriate scopes and Click 'Generate Token'">
+    
+    ![Token Form](/images/app-connections/digital-ocean/app-connection-create-form-roles.png)
   </Step>
   <Step title="Generate and copy the API token">
     Make sure to copy the token now—you won't be able to see it again.

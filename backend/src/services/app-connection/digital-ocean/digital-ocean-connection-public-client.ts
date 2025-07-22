@@ -60,22 +60,15 @@ class DigitalOceanAppPlatformPublicClient {
     return app.spec.envs || [];
   }
 
-  async upsertVariables(connection: TDigitalOceanConnectionConfig, appId: string, ...input: TDigitalOceanVariable[]) {
+  async putVariables(connection: TDigitalOceanConnectionConfig, appId: string, ...input: TDigitalOceanVariable[]) {
     const response = await this.getApp(connection, appId);
-    const existing = response.spec.envs || [];
-
-    const variables = input.map((variable) => {
-      const found = existing.find((ex) => ex.key === variable.key);
-
-      return found ? { ...found, ...variable } : variable;
-    });
 
     return this.client.put(
       `/apps/${appId}`,
       {
         spec: {
           ...response.spec,
-          envs: variables
+          envs: input
         }
       },
       {
@@ -90,18 +83,14 @@ class DigitalOceanAppPlatformPublicClient {
     const response = await this.getApp(connection, appId);
     const existing = response.spec.envs || [];
 
-    const variables = input.map((variable) => {
-      const found = existing.find((ex) => ex.key === variable.key);
-
-      return found ? null : variable;
-    });
+    const variables = existing.filter((v) => input.find((i) => i.key === v.key));
 
     return this.client.put(
       `/apps/${appId}`,
       {
         spec: {
           ...response.spec,
-          envs: variables.filter((v) => v !== null)
+          envs: variables
         }
       },
       {

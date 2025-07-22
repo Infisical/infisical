@@ -34,5 +34,6 @@ export enum AppConnection {
   Checkly = "checkly",
   Supabase = "supabase",
   DigitalOcean = "digital-ocean",
-  Netlify = "netlify"
+  Netlify = "netlify",
+  Okta = "okta"
 }

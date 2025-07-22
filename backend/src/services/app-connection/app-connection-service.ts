@@ -83,6 +83,8 @@ import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidateNetlifyConnectionCredentialsSchema } from "./netlify";
 import { netlifyConnectionService } from "./netlify/netlify-connection-service";
+import { ValidateOktaConnectionCredentialsSchema } from "./okta";
+import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
@@ -148,7 +150,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Checkly]: ValidateChecklyConnectionCredentialsSchema,
   [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
   [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
-  [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema
+  [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
+  [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -611,6 +614,7 @@ export const appConnectionServiceFactory = ({
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
-    netlify: netlifyConnectionService(connectAppConnectionById)
+    netlify: netlifyConnectionService(connectAppConnectionById),
+    okta: oktaConnectionService(connectAppConnectionById)
   };
 };

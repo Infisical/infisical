@@ -79,6 +79,7 @@ import {
   NetlifyConnectionListItemSchema,
   SanitizedNetlifyConnectionSchema
 } from "@app/services/app-connection/netlify";
+import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -148,7 +149,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
-  ...SanitizedNetlifyConnectionSchema.options
+  ...SanitizedNetlifyConnectionSchema.options,
+  ...SanitizedOktaConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -187,7 +189,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ChecklyConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
-  NetlifyConnectionListItemSchema
+  NetlifyConnectionListItemSchema,
+  OktaConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

@@ -72,7 +72,7 @@ export const generateCommitText = (commits: { op: CommitType }[] = [], isReplica
   if (score[CommitType.DELETE])
     text.push(
       <span className="deleted-commit">
-        {Boolean(text.length) && "and"}
+        {Boolean(text.length) && " and "}
         {score[CommitType.DELETE]} Secret{score[CommitType.DELETE] !== 1 && "s"}
         <span className="text-red-600"> Deleted</span>
       </span>

@@ -156,6 +156,12 @@ import {
   TValidateNetlifyConnectionCredentialsSchema
 } from "./netlify";
 import {
+  TOktaConnection,
+  TOktaConnectionConfig,
+  TOktaConnectionInput,
+  TValidateOktaConnectionCredentialsSchema
+} from "./okta";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -246,6 +252,7 @@ export type TAppConnection = { id: string } & (
   | TSupabaseConnection
   | TDigitalOceanConnection
   | TNetlifyConnection
+  | TOktaConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -289,6 +296,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSupabaseConnectionInput
   | TDigitalOceanConnectionInput
   | TNetlifyConnectionInput
+  | TOktaConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -339,7 +347,8 @@ export type TAppConnectionConfig =
   | TChecklyConnectionConfig
   | TSupabaseConnectionConfig
   | TDigitalOceanConnectionConfig
-  | TNetlifyConnectionConfig;
+  | TNetlifyConnectionConfig
+  | TOktaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -377,7 +386,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateChecklyConnectionCredentialsSchema
   | TValidateSupabaseConnectionCredentialsSchema
   | TValidateDigitalOceanCredentialsSchema
-  | TValidateNetlifyConnectionCredentialsSchema;
+  | TValidateNetlifyConnectionCredentialsSchema
+  | TValidateOktaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

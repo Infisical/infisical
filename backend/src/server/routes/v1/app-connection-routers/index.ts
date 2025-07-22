@@ -27,6 +27,7 @@ import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
+import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
@@ -76,5 +77,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Checkly]: registerChecklyConnectionRouter,
     [AppConnection.Supabase]: registerSupabaseConnectionRouter,
     [AppConnection.DigitalOcean]: registerDigitalOceanConnectionRouter,
-    [AppConnection.Netlify]: registerNetlifyConnectionRouter
+    [AppConnection.Netlify]: registerNetlifyConnectionRouter,
+    [AppConnection.Okta]: registerOktaConnectionRouter
   };

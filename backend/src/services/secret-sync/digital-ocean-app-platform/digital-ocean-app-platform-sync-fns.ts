@@ -24,45 +24,30 @@ export const DigitalOceanAppPlatformSyncFns = {
 
     const config = secretSync.destinationConfig;
 
-    const variables = await DigitalOceanAppPlatformPublicAPI.getVariables(secretSync.connection, config.appId);
+    const existing = await DigitalOceanAppPlatformPublicAPI.getVariables(secretSync.connection, config.appId);
 
-    const existingSecrets = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
+    const variables: Record<string, TDigitalOceanVariable> = Object.fromEntries(existing.map((v) => [v.key, v]));
 
-    try {
-      const vars = Object.entries(secretMap).map(
-        ([key, v]) =>
-          ({
-            key,
-            value: v.value,
-            type: "SECRET"
-          }) as TDigitalOceanVariable
-      );
-
-      await DigitalOceanAppPlatformPublicAPI.upsertVariables(secretSync.connection, config.appId, ...vars);
-    } catch (error) {
-      throw new SecretSyncError({
-        error
-      });
+    for (const [key, value] of Object.entries(secretMap)) {
+      variables[key] = {
+        key,
+        value: value.value,
+        type: "SECRET"
+      } as TDigitalOceanVariable;
     }
 
-    if (disableSecretDeletion) return;
+    if (!disableSecretDeletion) {
+      for (const v of existing) {
+        if (!matchesSchema(v.key, environment?.slug || "", keySchema)) continue;
+        if (!(v.key in secretMap)) {
+          delete variables[v.key];
+        }
+      }
+    }
 
     try {
-      const vars = Object.entries(existingSecrets)
-        .map(([key, v]) => {
-          if (!matchesSchema(key, environment?.slug || "", keySchema)) return;
-
-          if (key in secretMap) return;
-
-          return {
-            key,
-            value: v.value,
-            type: "SECRET"
-          } as TDigitalOceanVariable;
-        })
-        .filter(Boolean) as TDigitalOceanVariable[];
-
-      await DigitalOceanAppPlatformPublicAPI.deleteVariables(secretSync.connection, config.appId, ...vars);
+      const vars = Object.values(variables);
+      await DigitalOceanAppPlatformPublicAPI.putVariables(secretSync.connection, config.appId, ...vars);
     } catch (error) {
       throw new SecretSyncError({
         error

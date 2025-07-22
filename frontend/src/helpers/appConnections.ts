@@ -30,6 +30,7 @@ import {
   LdapConnectionMethod,
   MsSqlConnectionMethod,
   MySqlConnectionMethod,
+  OktaConnectionMethod,
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
@@ -42,6 +43,7 @@ import {
 } from "@app/hooks/api/appConnections/types";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
+import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -108,7 +110,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Netlify]: {
     name: "Netlify",
     image: "Netlify.png"
-  }
+  },
+  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -143,6 +146,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
+    case OktaConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
