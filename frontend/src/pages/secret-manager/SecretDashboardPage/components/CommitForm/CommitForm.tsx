@@ -301,7 +301,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             {/* Left Content */}
             <div className="flex-1">
               {/* Header */}
-              <div className="mb-2 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-yellow-500" />
                 <span className="font-medium text-mineshaft-100">Pending Changes</span>
                 <Badge variant="primary" className="text-xs">
@@ -310,13 +310,13 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               </div>
 
               {/* Description */}
-              <p className="text-sm text-mineshaft-400">
+              <p className="text-sm leading-5 text-mineshaft-400">
                 Review your pending changes and commit them to apply the updates.
               </p>
             </div>
 
             {/* Right Buttons */}
-            <div className="ml-6 flex gap-3">
+            <div className="ml-6 mt-0.5 flex items-center gap-3">
               <Button
                 size="sm"
                 onClick={() => clearAllPendingChanges({ workspaceId, environment, secretPath })}
