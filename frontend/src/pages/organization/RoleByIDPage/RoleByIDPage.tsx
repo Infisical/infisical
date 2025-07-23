@@ -1,7 +1,8 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { faCopy, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -12,8 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageHeader,
-  Tooltip
+  PageHeader
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -22,7 +22,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { RoleDetailsSection, RoleModal, RolePermissionsSection } from "./components";
+import { RoleModal, RolePermissionsSection } from "./components";
 
 export const Page = () => {
   const navigate = useNavigate();
@@ -80,29 +80,64 @@ export const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.name}>
+          <PageHeader
+            title={
+              <div className="flex flex-col">
+                <div>
+                  <span>{data.name}</span>
+                  <p className="text-sm font-[400] normal-case leading-3 text-mineshaft-400">
+                    {data.slug} {data.description && `- ${data.description}`}
+                  </p>
+                </div>
+              </div>
+            }
+          >
             {isCustomRole && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild className="rounded-lg">
-                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                    <Tooltip content="More options">
-                      <Button variant="outline_bg">More</Button>
-                    </Tooltip>
-                  </div>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    colorSchema="secondary"
+                    rightIcon={<FontAwesomeIcon icon={faEllipsisV} className="ml-2" />}
+                  >
+                    Options
+                  </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1">
+                <DropdownMenuContent align="end" sideOffset={2} className="p-1">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      navigator.clipboard.writeText(data.id);
+
+                      createNotification({
+                        text: "Copied ID to clipboard",
+                        type: "info"
+                      });
+                    }}
+                    icon={<FontAwesomeIcon icon={faCopy} />}
+                  >
+                    Copy ID
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      navigator.clipboard.writeText(data.slug);
+
+                      createNotification({
+                        text: "Copied slug to clipboard",
+                        type: "info"
+                      });
+                    }}
+                    icon={<FontAwesomeIcon icon={faCopy} />}
+                  >
+                    Copy Slug
+                  </DropdownMenuItem>
                   <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Role}>
                     {(isAllowed) => (
                       <DropdownMenuItem
-                        className={twMerge(
-                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
-                        onClick={async () => {
+                        onClick={() => {
                           handlePopUpOpen("role", {
                             roleId
                           });
                         }}
-                        disabled={!isAllowed}
+                        isDisabled={!isAllowed}
                       >
                         Edit Role
                       </DropdownMenuItem>
@@ -111,13 +146,10 @@ export const Page = () => {
                   <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
                     {(isAllowed) => (
                       <DropdownMenuItem
-                        className={twMerge(
-                          !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
                         onClick={() => {
                           handlePopUpOpen("duplicateRole");
                         }}
-                        disabled={!isAllowed}
+                        isDisabled={!isAllowed}
                       >
                         Duplicate Role
                       </DropdownMenuItem>
@@ -126,15 +158,10 @@ export const Page = () => {
                   <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Role}>
                     {(isAllowed) => (
                       <DropdownMenuItem
-                        className={twMerge(
-                          isAllowed
-                            ? "hover:!bg-red-500 hover:!text-white"
-                            : "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
-                        onClick={async () => {
+                        onClick={() => {
                           handlePopUpOpen("deleteOrgRole");
                         }}
-                        disabled={!isAllowed}
+                        isDisabled={!isAllowed}
                       >
                         Delete Role
                       </DropdownMenuItem>
@@ -144,12 +171,7 @@ export const Page = () => {
               </DropdownMenu>
             )}
           </PageHeader>
-          <div className="flex">
-            <div className="mr-4 w-96">
-              <RoleDetailsSection roleId={roleId} handlePopUpOpen={handlePopUpOpen} />
-            </div>
-            <RolePermissionsSection roleId={roleId} />
-          </div>
+          <RolePermissionsSection roleId={roleId} />
         </div>
       )}
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

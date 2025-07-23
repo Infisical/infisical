@@ -4,7 +4,6 @@ import { MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 import { faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
@@ -166,7 +165,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                 <Button
                   colorSchema="secondary"
                   type="submit"
-                  className={twMerge("h-10 border")}
+                  className="h-10 border"
                   isDisabled={isSubmitting || !isDirty}
                   isLoading={isSubmitting}
                   leftIcon={<FontAwesomeIcon icon={faSave} />}
