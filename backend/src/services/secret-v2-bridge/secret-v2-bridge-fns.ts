@@ -231,18 +231,7 @@ export const fnSecretBulkUpdate = async ({
   const sanitizedInputSecrets = inputSecrets.map(
     ({
       filter,
-      data: {
-        skipMultilineEncoding,
-        type,
-        key,
-        encryptedValue,
-        userId,
-        encryptedComment,
-        metadata,
-        secretMetadata,
-        reminderNote,
-        reminderRepeatDays
-      }
+      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, metadata, secretMetadata }
     }) => ({
       filter: { ...filter, folderId },
       data: {
@@ -252,9 +241,7 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         metadata: JSON.stringify(metadata || secretMetadata || []),
-        reminderNote,
-        encryptedValue,
-        reminderRepeatDays
+        encryptedValue
       }
     })
   );
@@ -270,9 +257,7 @@ export const fnSecretBulkUpdate = async ({
         encryptedComment,
         version,
         metadata,
-        reminderNote,
         encryptedValue,
-        reminderRepeatDays,
         id: secretId
       }) => ({
         skipMultilineEncoding,
@@ -282,9 +267,7 @@ export const fnSecretBulkUpdate = async ({
         encryptedComment,
         version,
         metadata: metadata ? JSON.stringify(metadata) : [],
-        reminderNote,
         encryptedValue,
-        reminderRepeatDays,
         folderId,
         secretId,
         userActorId,
@@ -407,6 +390,7 @@ export const fnSecretBulkDelete = async ({
   secretQueueService,
   folderCommitService,
   secretVersionDAL,
+  projectId,
   commitChanges
 }: TFnSecretBulkDelete) => {
   const deletedSecrets = await secretDAL.deleteMany(
@@ -419,11 +403,14 @@ export const fnSecretBulkDelete = async ({
     tx
   );
 
-  await Promise.allSettled(
+  await Promise.all(
     deletedSecrets
       .filter(({ reminderRepeatDays }) => Boolean(reminderRepeatDays))
       .map(({ id, reminderRepeatDays }) =>
-        secretQueueService.removeSecretReminder({ secretId: id, repeatDays: reminderRepeatDays as number }, tx)
+        secretQueueService.removeSecretReminder(
+          { secretId: id, repeatDays: reminderRepeatDays as number, projectId },
+          tx
+        )
       )
   );
 

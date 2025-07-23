@@ -249,6 +249,7 @@ export type TCreateSecretReminderDTO = {
 export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;
+  projectId: string;
 };
 
 export type TBackFillSecretReferencesDTO = TProjectPermission;

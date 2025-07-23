@@ -39,7 +39,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
-import { TQueueServiceFactory } from "@app/queue";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -67,6 +66,7 @@ import { TProjectMembershipDALFactory } from "../project-membership/project-memb
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
+import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -169,7 +169,6 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
-  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
@@ -186,6 +185,7 @@ type TProjectServiceFactoryDep = {
     | "createCipherPairWithDataKey"
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
+  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -198,7 +198,6 @@ export const projectServiceFactory = ({
   projectQueue,
   projectKeyDAL,
   permissionService,
-  queueService,
   projectBotService,
   orgDAL,
   userDAL,
@@ -233,7 +232,8 @@ export const projectServiceFactory = ({
   microsoftTeamsIntegrationDAL,
   projectTemplateService,
   groupProjectDAL,
-  smtpService
+  smtpService,
+  reminderService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -574,7 +574,7 @@ export const projectServiceFactory = ({
       await fnDeleteProjectSecretReminders(project.id, {
         secretDAL,
         secretV2BridgeDAL,
-        queueService,
+        reminderService,
         projectBotService,
         folderDAL
       });
