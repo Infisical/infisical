@@ -11,7 +11,7 @@ const BitbucketConfigurePageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/bitbucket/create"
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/bitbucket/create"
 )({
   component: BitbucketConfigurePage,
   validateSearch: zodValidator(BitbucketConfigurePageQueryParamsSchema),
@@ -22,7 +22,7 @@ export const Route = createFileRoute(
         {
           label: "Integrations",
           link: linkOptions({
-            to: "/projects/$projectId/secret-manager/integrations",
+            to: "/projects/secret-management/$projectId/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.NativeIntegrations

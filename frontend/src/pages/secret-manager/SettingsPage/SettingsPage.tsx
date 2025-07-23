@@ -4,9 +4,10 @@ import { useTranslation } from "react-i18next";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { EncryptionTab } from "./components/EncryptionTab";
-import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
+import { SecretSettingsTab } from "./components/ProjectGeneralTab";
 import { WebhooksTab } from "./components/WebhooksTab";
 import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection";
 
@@ -15,6 +16,7 @@ export const SettingsPage = () => {
   const { currentWorkspace } = useWorkspace();
   const tabs = [
     { name: "General", key: "tab-project-general", Component: ProjectGeneralTab },
+    { name: "Secrets Management", key: "tab-secret-general", Component: SecretSettingsTab },
     {
       name: "Encryption",
       key: "tab-project-encryption",

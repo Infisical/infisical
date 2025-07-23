@@ -172,7 +172,7 @@ const Page = () => {
           PostgreSQL and Microsoft SQL Server Rotations can now be created from the{" "}
           <Link
             className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
-            to="/projects/$projectId/secret-manager/overview"
+            to="/projects/secret-management/$projectId/overview"
             params={{ projectId: currentWorkspace.id }}
           >
             Secret Manager Dashboard
@@ -407,7 +407,7 @@ const Page = () => {
               Infisical is revamping its Secret Rotation experience. Navigate to the{" "}
               <Link
                 className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
-                to="/projects/$projectId/secret-manager/overview"
+                to="/projects/secret-management/$projectId/overview"
                 params={{ projectId: currentWorkspace.id }}
               >
                 Secret Manager Dashboard
@@ -424,7 +424,7 @@ const Page = () => {
               <Button
                 onClick={() =>
                   navigate({
-                    to: "/projects/$projectId/secret-manager/overview",
+                    to: "/projects/secret-management/$projectId/overview",
                     params: { projectId: currentWorkspace.id }
                   })
                 }

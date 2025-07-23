@@ -26,7 +26,8 @@ export enum SecretSync {
   Zabbix = "zabbix",
   Railway = "railway",
   Checkly = "checkly",
-  DigitalOceanAppPlatform = "digital-ocean-app-platform"
+  DigitalOceanAppPlatform = "digital-ocean-app-platform",
+  Bitbucket = "bitbucket"
 }
 
 export enum SecretSyncStatus {

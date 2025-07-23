@@ -24,7 +24,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
+import { getProjectHomePage } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -36,7 +36,6 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useListProjectGroupUsers } from "@app/hooks/api/groups/queries";
 import { EFilterReturnedUsers, TGroupMembership } from "@app/hooks/api/groups/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { GroupMembershipRow } from "./GroupMembershipRow";
 
@@ -137,9 +136,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
             text: "User privilege assumption has started"
           });
 
-          const url = getProjectHomePage(
-            getCurrentProductFromUrl(window.location.href) || ProjectType.SecretManager
-          );
+          const url = getProjectHomePage(currentWorkspace.type);
           window.location.href = url.replace("$projectId", currentWorkspace.id);
         }
       }

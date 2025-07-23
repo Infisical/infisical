@@ -7,6 +7,7 @@ import { registerAwsSecretsManagerSyncRouter } from "./aws-secrets-manager-sync-
 import { registerAzureAppConfigurationSyncRouter } from "./azure-app-configuration-sync-router";
 import { registerAzureDevOpsSyncRouter } from "./azure-devops-sync-router";
 import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
+import { registerBitbucketSyncRouter } from "./bitbucket-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
 import { registerChecklySyncRouter } from "./checkly-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
@@ -59,5 +60,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Zabbix]: registerZabbixSyncRouter,
   [SecretSync.Railway]: registerRailwaySyncRouter,
   [SecretSync.Checkly]: registerChecklySyncRouter,
-  [SecretSync.DigitalOceanAppPlatform]: registerDigitalOceanAppPlatformSyncRouter
+  [SecretSync.DigitalOceanAppPlatform]: registerDigitalOceanAppPlatformSyncRouter,
+  [SecretSync.Bitbucket]: registerBitbucketSyncRouter
 };

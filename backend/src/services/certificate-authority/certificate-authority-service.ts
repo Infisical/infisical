@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TableName } from "@app/db/schemas";
+import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -100,7 +100,8 @@ export const certificateAuthorityServiceFactory = ({
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -167,7 +168,8 @@ export const certificateAuthorityServiceFactory = ({
       actorId: actor.id,
       projectId: certificateAuthority.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -215,7 +217,8 @@ export const certificateAuthorityServiceFactory = ({
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -268,7 +271,8 @@ export const certificateAuthorityServiceFactory = ({
       actorId: actor.id,
       projectId: certificateAuthority.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -341,7 +345,8 @@ export const certificateAuthorityServiceFactory = ({
       actorId: actor.id,
       projectId: certificateAuthority.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

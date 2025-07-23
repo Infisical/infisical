@@ -46,6 +46,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -260,7 +261,7 @@ export const IdentityTab = withProjectPermission(
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
                             navigate({
-                              to: "/projects/$projectId/identities/$identityId",
+                              to: `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const,
                               params: {
                                 projectId: currentWorkspace.id,
                                 identityId: id
@@ -270,7 +271,7 @@ export const IdentityTab = withProjectPermission(
                         }}
                         onClick={() =>
                           navigate({
-                            to: "/projects/$projectId/identities/$identityId",
+                            to: `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const,
                             params: {
                               projectId: currentWorkspace.id,
                               identityId: id

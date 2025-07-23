@@ -64,6 +64,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Checkly:
     case SecretSync.Supabase:
     case SecretSync.DigitalOceanAppPlatform:
+    case SecretSync.Bitbucket:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

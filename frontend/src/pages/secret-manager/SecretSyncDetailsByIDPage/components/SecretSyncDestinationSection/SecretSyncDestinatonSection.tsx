@@ -17,6 +17,7 @@ import { AwsSecretsManagerSyncDestinationSection } from "./AwsSecretsManagerSync
 import { AzureAppConfigurationSyncDestinationSection } from "./AzureAppConfigurationSyncDestinationSection";
 import { AzureDevOpsSyncDestinationSection } from "./AzureDevOpsSyncDestinationSection";
 import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinationSection";
+import { BitbucketSyncDestinationSection } from "./BitbucketSyncDestinationSection";
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
@@ -139,6 +140,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       DestinationComponents = (
         <DigitalOceanAppPlatformSyncDestinationSection secretSync={secretSync} />
       );
+      break;
+    case SecretSync.Bitbucket:
+      DestinationComponents = <BitbucketSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

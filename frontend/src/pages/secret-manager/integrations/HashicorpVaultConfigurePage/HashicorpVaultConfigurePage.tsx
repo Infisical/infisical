@@ -101,7 +101,7 @@ export const HashicorpVaultConfigurePage = () => {
         secretPath: formData.secretPath
       });
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations",
+        to: "/projects/secret-management/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
         },

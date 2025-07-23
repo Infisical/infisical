@@ -13,6 +13,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import {
   PROJECT_PERMISSION_OBJECT,
@@ -24,18 +25,22 @@ import {
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  type: ProjectType;
 };
 
 type ContentProps = {
   onClose: () => void;
+  type: ProjectType;
 };
 
-const Content = ({ onClose }: ContentProps) => {
+const Content = ({ onClose, type: projectType }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
 
   const [selectedTemplate, setSelectedTemplate] = useState<RoleTemplate>();
   const [conflictingSubjects, setConflictingSubjects] = useState<ProjectPermissionSub[]>([]);
   const [showConflictingSubjects, setShowConflictingSubjects] = useState(false);
+
+  const templates = RoleTemplates[projectType ?? ProjectType.SecretManager];
 
   const onSubmit = (skipConflicting = false) => {
     if (!selectedTemplate) {
@@ -121,12 +126,12 @@ const Content = ({ onClose }: ContentProps) => {
         type="single"
         value={selectedTemplate?.id}
         onValueChange={(value) =>
-          setSelectedTemplate(RoleTemplates.find((template) => template.id === value))
+          setSelectedTemplate(templates.find((template) => template.id === value))
         }
         collapsible
         className="w-full border-collapse"
       >
-        {RoleTemplates.map(({ name, description, permissions, id }) => (
+        {templates.map(({ name, description, permissions, id }) => (
           <AccordionItem
             key={id}
             value={id}
@@ -182,7 +187,7 @@ const Content = ({ onClose }: ContentProps) => {
   );
 };
 
-export const PolicyTemplateModal = ({ isOpen, onOpenChange }: Props) => {
+export const PolicyTemplateModal = ({ isOpen, onOpenChange, type }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -190,7 +195,7 @@ export const PolicyTemplateModal = ({ isOpen, onOpenChange }: Props) => {
         subTitle="Select a template with prepopulated policies to get started. You can always add more policies later."
         className="max-w-3xl"
       >
-        <Content onClose={() => onOpenChange(false)} />
+        <Content onClose={() => onOpenChange(false)} type={type} />
       </ModalContent>
     </Modal>
   );

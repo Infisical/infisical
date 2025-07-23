@@ -46,7 +46,7 @@ export const TerraformCloudAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/terraform-cloud/create",
+        to: "/projects/secret-management/$projectId/integrations/terraform-cloud/create",
         params: {
           projectId: currentWorkspace.id
         },

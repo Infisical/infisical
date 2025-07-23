@@ -225,7 +225,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
               >
                 Save
               </Button>
-              <AddPoliciesButton isDisabled={isDisabled} />
+              <AddPoliciesButton isDisabled={isDisabled} projectType={currentWorkspace.type} />
             </div>
           </div>
         </div>

@@ -178,6 +178,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.appName;
       secondaryText = "Digital Ocean App";
       break;
+    case SecretSync.Bitbucket:
+      primaryText = destinationConfig.workspaceSlug;
+      secondaryText = destinationConfig.repositorySlug;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

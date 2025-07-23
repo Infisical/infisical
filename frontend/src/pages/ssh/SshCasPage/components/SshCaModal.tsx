@@ -22,7 +22,6 @@ import {
   SshCertKeyAlgorithm,
   sshCertKeyAlgorithms
 } from "@app/hooks/api/sshCa/constants";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -126,7 +125,7 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         navigate({
-          to: `/projects/$projectId/${ProjectType.SSH}/ca/$caId` as const,
+          to: "/projects/ssh/$projectId/ca/$caId",
           params: {
             projectId,
             caId: newCaId

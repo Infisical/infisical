@@ -21,7 +21,7 @@ const IntegrationsListPageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/"
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/"
 )({
   component: IntegrationsListPage,
   validateSearch: zodValidator(IntegrationsListPageQuerySchema),
@@ -36,7 +36,7 @@ export const Route = createFileRoute(
         });
       } catch {
         throw redirect({
-          to: "/projects/$projectId/secret-manager/integrations",
+          to: "/projects/secret-management/$projectId/integrations",
           params: {
             projectId
           },
@@ -46,7 +46,7 @@ export const Route = createFileRoute(
 
       if (secretSyncs.length) {
         throw redirect({
-          to: "/projects/$projectId/secret-manager/integrations",
+          to: "/projects/secret-management/$projectId/integrations",
           params: {
             projectId
           },
@@ -62,7 +62,7 @@ export const Route = createFileRoute(
         });
       } catch {
         throw redirect({
-          to: "/projects/$projectId/secret-manager/integrations",
+          to: "/projects/secret-management/$projectId/integrations",
           params: {
             projectId
           },
@@ -72,7 +72,7 @@ export const Route = createFileRoute(
 
       if (integrations.length) {
         throw redirect({
-          to: "/projects/$projectId/secret-manager/integrations",
+          to: "/projects/secret-management/$projectId/integrations",
           params: {
             projectId
           },
@@ -81,7 +81,7 @@ export const Route = createFileRoute(
       }
 
       throw redirect({
-        to: "/projects/$projectId/secret-manager/integrations",
+        to: "/projects/secret-management/$projectId/integrations",
         params: {
           projectId
         },

@@ -234,7 +234,7 @@ const Page = () => {
         type: "error"
       });
       navigate({
-        to: "/projects/$projectId/secret-manager/overview",
+        to: "/projects/secret-management/$projectId/overview",
         params: {
           projectId: workspaceId
         }
@@ -386,7 +386,7 @@ const Page = () => {
   const handleOnClickRollbackMode = () => {
     if (isPITEnabled) {
       navigate({
-        to: "/projects/$projectId/secret-manager/commits/$environment/$folderId",
+        to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
         params: {
           projectId: workspaceId,
           folderId,
