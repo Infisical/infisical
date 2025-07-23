@@ -23,6 +23,7 @@ import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
+import { DigitalOceanAppPlatformSyncDestinationSection } from "./DigitalOceanAppPlatformSyncDestinationSection";
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
@@ -134,6 +135,11 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Supabase:
       DestinationComponents = <SupabaseSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.DigitalOceanAppPlatform:
+      DestinationComponents = (
+        <DigitalOceanAppPlatformSyncDestinationSection secretSync={secretSync} />
+      );
       break;
     case SecretSync.Bitbucket:
       DestinationComponents = <BitbucketSyncDestinationSection secretSync={secretSync} />;

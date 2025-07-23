@@ -102,6 +102,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     name: "Supabase",
     image: "Supabase.png"
   },
+  [SecretSync.DigitalOceanAppPlatform]: {
+    name: "Digital Ocean App Platform",
+    image: "Digital Ocean.png"
+  },
   [SecretSync.Bitbucket]: {
     name: "Bitbucket",
     image: "Bitbucket.png"
@@ -136,6 +140,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
+  [SecretSync.DigitalOceanAppPlatform]: AppConnection.DigitalOcean,
   [SecretSync.Bitbucket]: AppConnection.Bitbucket
 };
 

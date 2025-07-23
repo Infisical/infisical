@@ -68,6 +68,11 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks";
+import {
+  DigitalOceanConnectionMethod,
+  getDigitalOceanConnectionListItem,
+  validateDigitalOceanConnectionCredentials
+} from "./digital-ocean";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
@@ -157,6 +162,7 @@ export const listAppConnectionOptions = () => {
     getBitbucketConnectionListItem(),
     getChecklyConnectionListItem(),
     getSupabaseConnectionListItem(),
+    getDigitalOceanConnectionListItem(),
     getOktaConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -244,6 +250,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -283,6 +290,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CloudflareConnectionMethod.APIToken:
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
+    case DigitalOceanConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
@@ -372,6 +380,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
   [AppConnection.Checkly]: platformManagedCredentialsNotSupported,
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
+  [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported
 };
 

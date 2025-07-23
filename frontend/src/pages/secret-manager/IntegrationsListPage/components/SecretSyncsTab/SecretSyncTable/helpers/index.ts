@@ -174,6 +174,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.projectName;
       secondaryText = "Supabase Project";
       break;
+    case SecretSync.DigitalOceanAppPlatform:
+      primaryText = destinationConfig.appName;
+      secondaryText = "Digital Ocean App";
+      break;
     case SecretSync.Bitbucket:
       primaryText = destinationConfig.workspaceSlug;
       secondaryText = destinationConfig.repositorySlug;

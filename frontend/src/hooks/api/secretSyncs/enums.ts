@@ -26,6 +26,7 @@ export enum SecretSync {
   Zabbix = "zabbix",
   Railway = "railway",
   Checkly = "checkly",
+  DigitalOceanAppPlatform = "digital-ocean-app-platform",
   Bitbucket = "bitbucket"
 }
 

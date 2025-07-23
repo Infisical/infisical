@@ -476,6 +476,7 @@
                   "integrations/app-connections/checkly",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/databricks",
+                  "integrations/app-connections/digital-ocean",
                   "integrations/app-connections/flyio",
                   "integrations/app-connections/gcp",
                   "integrations/app-connections/github",
@@ -522,6 +523,7 @@
                   "integrations/secret-syncs/cloudflare-pages",
                   "integrations/secret-syncs/cloudflare-workers",
                   "integrations/secret-syncs/databricks",
+                  "integrations/secret-syncs/digital-ocean-app-platform",
                   "integrations/secret-syncs/flyio",
                   "integrations/secret-syncs/gcp-secret-manager",
                   "integrations/secret-syncs/github",
@@ -1383,6 +1385,18 @@
                       "api-reference/endpoints/app-connections/databricks/delete"
                     ]
                   },
+                   {
+                    "group": "Digital Ocean",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/digital-ocean/list",
+                      "api-reference/endpoints/app-connections/digital-ocean/available",
+                      "api-reference/endpoints/app-connections/digital-ocean/get-by-id",
+                      "api-reference/endpoints/app-connections/digital-ocean/get-by-name",
+                      "api-reference/endpoints/app-connections/digital-ocean/create",
+                      "api-reference/endpoints/app-connections/digital-ocean/update",
+                      "api-reference/endpoints/app-connections/digital-ocean/delete"
+                    ]
+                  },
                   {
                     "group": "Fly.io",
                     "pages": [
@@ -1827,6 +1841,19 @@
                       "api-reference/endpoints/secret-syncs/databricks/delete",
                       "api-reference/endpoints/secret-syncs/databricks/sync-secrets",
                       "api-reference/endpoints/secret-syncs/databricks/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Digital Ocean",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/list",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/get-by-id",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/get-by-name",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/create",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/update",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/delete",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/digital-ocean-app-platform/remove-secrets"
                     ]
                   },
                   {

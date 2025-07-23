@@ -12,6 +12,7 @@ import { ChecklySyncDestinationCol } from "./ChecklySyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
+import { DigitalOceanAppPlatformSyncDestinationCol } from "./DigitalOceanAppPlatformSyncDestinationCol";
 import { FlyioSyncDestinationCol } from "./FlyioSyncDestinationCol";
 import { GcpSyncDestinationCol } from "./GcpSyncDestinationCol";
 import { GitHubSyncDestinationCol } from "./GitHubSyncDestinationCol";
@@ -89,6 +90,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <ChecklySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Supabase:
       return <SupabaseSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.DigitalOceanAppPlatform:
+      return <DigitalOceanAppPlatformSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Bitbucket:
       return <BitbucketSyncDestinationCol secretSync={secretSync} />;
     default:
