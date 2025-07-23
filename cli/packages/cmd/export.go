@@ -23,6 +23,7 @@ const (
 	FormatCSV          string = "csv"
 	FormatYaml         string = "yaml"
 	FormatDotEnvExport string = "dotenv-export"
+	FormatDotEnvPlain  string = "dotenv-plain"
 )
 
 // exportCmd represents the export command
@@ -173,6 +174,8 @@ func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string,
 		return formatAsDotEnv(envs), nil
 	case FormatDotEnvExport:
 		return formatAsDotEnvExport(envs), nil
+	case FormatDotEnvPlain:
+		return formatAsDotEnvPlain(envs), nil
 	case FormatJson:
 		return formatAsJson(envs), nil
 	case FormatCSV:
@@ -180,7 +183,7 @@ func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string,
 	case FormatYaml:
 		return formatAsYaml(envs)
 	default:
-		return "", fmt.Errorf("invalid format type: %s. Available format types are [%s]", format, []string{FormatDotenv, FormatJson, FormatCSV, FormatYaml, FormatDotEnvExport})
+		return "", fmt.Errorf("invalid format type: %s. Available format types are [%s]", format, []string{FormatDotenv, FormatJson, FormatCSV, FormatYaml, FormatDotEnvExport, FormatDotEnvPlain})
 	}
 }
 
@@ -210,6 +213,15 @@ func formatAsDotEnvExport(envs []models.SingleEnvironmentVariable) string {
 	var dotenv string
 	for _, env := range envs {
 		dotenv += fmt.Sprintf("export %s='%s'\n", env.Key, env.Value)
+	}
+	return dotenv
+}
+
+// Format environment variables as a dotenv file with no single quotes
+func formatAsDotEnvPlain(envs []models.SingleEnvironmentVariable) string {
+	var dotenv string
+	for _, env := range envs {
+		dotenv += fmt.Sprintf("%s=%s\n", env.Key, env.Value)
 	}
 	return dotenv
 }
