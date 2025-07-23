@@ -16,7 +16,7 @@ export const SettingsPage = () => {
   const { currentWorkspace } = useWorkspace();
   const tabs = [
     { name: "General", key: "tab-project-general", Component: ProjectGeneralTab },
-    { name: "Secrets Settings", key: "tab-secret-general", Component: SecretSettingsTab },
+    { name: "Secrets Management", key: "tab-secret-general", Component: SecretSettingsTab },
     {
       name: "Encryption",
       key: "tab-project-encryption",

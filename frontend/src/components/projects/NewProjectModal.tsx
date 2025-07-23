@@ -62,11 +62,11 @@ type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
 
 const PROJECT_TYPE_MENU_ITEMS = [
   {
-    label: "Secret Manager",
+    label: "Secrets Management",
     value: ProjectType.SecretManager
   },
   {
-    label: "Certificate Manager",
+    label: "Cert Management",
     value: ProjectType.CertificateManager
   },
   {
