@@ -10,7 +10,6 @@ import {
   faArrowRight,
   faArrowRightToBracket,
   faArrowUp,
-  faFileImport,
   faFilter,
   faFingerprint,
   faFolder,
@@ -152,7 +151,6 @@ const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: false,
   [RowType.DynamicSecret]: false,
   [RowType.Secret]: false,
-  [RowType.Import]: false,
   [RowType.SecretRotation]: false
 };
 
@@ -295,7 +293,7 @@ export const OverviewPage = () => {
       includeFolders: isFilteredByResources ? filter.folder : true,
       includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
       includeSecrets: isFilteredByResources ? filter.secret : true,
-      includeImports: isFilteredByResources ? filter.import : true,
+      includeImports: true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       search: debouncedSearchFilter,
       limit,
@@ -1019,20 +1017,8 @@ export const OverviewPage = () => {
                       Create an environment
                     </Button>
                   </DropdownMenuItem> */}
-                  <DropdownMenuLabel>Filter project resources</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleToggleRowType(RowType.Import);
-                    }}
-                    icon={filter[RowType.Import] && <FontAwesomeIcon icon={faCheckCircle} />}
-                    iconPos="right"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
-                      <span>Imports</span>
-                    </div>
-                  </DropdownMenuItem>
+                  <DropdownMenuLabel>Filter by Resource</DropdownMenuLabel>
+
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
@@ -1448,17 +1434,18 @@ export const OverviewPage = () => {
                     </Td>
                   </Tr>
                 )}
-                {isTableEmpty && !isOverviewLoading && isTableFiltered && (
+                {isTableEmpty && !isOverviewLoading && visibleEnvs.length > 0 && (
                   <Tr>
                     <Td colSpan={visibleEnvs.length + 1}>
                       <EmptyState
                         title={
-                          isTableFiltered
-                            ? "No secret found for your search, add one now"
+                          isTableFiltered || debouncedSearchFilter
+                            ? "No secrets found for your search, add one now"
                             : "Let's add some secrets"
                         }
                         icon={faFolderBlank}
                         iconSize="3x"
+                        className="fixed"
                       >
                         <Button
                           className="mt-4"
