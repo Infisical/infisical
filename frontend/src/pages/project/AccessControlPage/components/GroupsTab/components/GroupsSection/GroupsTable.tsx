@@ -33,6 +33,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -158,7 +159,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       onKeyDown={(evt) => {
                         if (evt.key === "Enter") {
                           navigate({
-                            to: "/projects/$projectId/groups/$groupId",
+                            to: `${getProjectBaseURL(currentWorkspace.type)}/groups/$groupId` as const,
                             params: {
                               projectId: currentWorkspace.id,
                               groupId: id
@@ -168,7 +169,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       }}
                       onClick={() =>
                         navigate({
-                          to: "/projects/$projectId/groups/$groupId",
+                          to: `${getProjectBaseURL(currentWorkspace.type)}/groups/$groupId` as const,
                           params: {
                             projectId: currentWorkspace.id,
                             groupId: id

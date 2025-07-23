@@ -2,12 +2,12 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
 import { ProjectAccessControlTabs } from "@app/types/project";
 
-import { MemberDetailsByIDPage } from "./MemberDetailsByIDPage";
+import { GroupDetailsByIDPage } from "./GroupDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/_project-general-layout/members/$membershipId"
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/groups/$groupId"
 )({
-  component: MemberDetailsByIDPage,
+  component: GroupDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
     return {
       breadcrumbs: [
@@ -15,17 +15,17 @@ export const Route = createFileRoute(
         {
           label: "Access Control",
           link: linkOptions({
-            to: "/projects/$projectId/access-management",
+            to: "/projects/secret-management/$projectId/access-management",
             params: {
               projectId: params.projectId
             },
             search: {
-              selectedTab: ProjectAccessControlTabs.Member
+              selectedTab: ProjectAccessControlTabs.Groups
             }
           })
         },
         {
-          label: "User"
+          label: "Group"
         }
       ]
     };

@@ -19,26 +19,31 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import {
   EXCLUDED_PERMISSION_SUBS,
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
+  ProjectTypePermissionSubjects,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  type: ProjectType;
 };
 
 type ContentProps = {
   onClose: () => void;
+
+  type: ProjectType;
 };
 
 type TForm = { permissions: Record<ProjectPermissionSub, boolean> };
 
-const Content = ({ onClose }: ContentProps) => {
+const Content = ({ onClose, type: projectType }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
   const [search, setSearch] = useState("");
   const {
@@ -56,7 +61,12 @@ const Content = ({ onClose }: ContentProps) => {
   });
 
   const filteredPolicies = Object.entries(PROJECT_PERMISSION_OBJECT)
-    .filter(([, { title }]) => (search ? title.toLowerCase().includes(search.toLowerCase()) : true))
+    .filter(
+      ([subject, { title }]) =>
+        ProjectTypePermissionSubjects[projectType ?? ProjectType.SecretManager][
+          subject as ProjectPermissionSub
+        ] && (search ? title.toLowerCase().includes(search.toLowerCase()) : true)
+    )
     .filter(([subject]) => !EXCLUDED_PERMISSION_SUBS.includes(subject as ProjectPermissionSub))
     .sort((a, b) => a[1].title.localeCompare(b[1].title))
     .map(([subject]) => subject);
@@ -191,7 +201,7 @@ const Content = ({ onClose }: ContentProps) => {
   );
 };
 
-export const PolicySelectionModal = ({ isOpen, onOpenChange }: Props) => {
+export const PolicySelectionModal = ({ isOpen, onOpenChange, type }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -199,7 +209,7 @@ export const PolicySelectionModal = ({ isOpen, onOpenChange }: Props) => {
         subTitle="Select one or more policies to add to this role."
         className="max-w-3xl"
       >
-        <Content onClose={() => onOpenChange(false)} />
+        <Content onClose={() => onOpenChange(false)} type={type} />
       </ModalContent>
     </Modal>
   );

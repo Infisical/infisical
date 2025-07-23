@@ -126,7 +126,7 @@ export const ProjectTemplateEditRoleForm = ({
                 >
                   Save
                 </Button>
-                <AddPoliciesButton isDisabled={isDisabled} />
+                <AddPoliciesButton isDisabled={isDisabled} projectType={projectTemplate.type} />
               </div>
             </div>
           )}

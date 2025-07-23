@@ -22,7 +22,6 @@ import {
   useWorkspace
 } from "@app/context";
 import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiSubscriberModal } from "../PkiSubscribersPage/components/PkiSubscriberModal";
@@ -61,7 +60,7 @@ const Page = () => {
 
       handlePopUpClose("deletePkiSubscriber");
       navigate({
-        to: `/projects/$projectId/${ProjectType.CertificateManager}/subscribers` as const,
+        to: "/projects/cert-management/$projectId/subscribers",
         params: {
           projectId
         }

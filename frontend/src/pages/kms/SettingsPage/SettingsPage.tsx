@@ -2,12 +2,13 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 const tabs = [
   {
     name: "General",
     key: "tab-project-general",
-    Component: () => <div className="text-white">Coming soon...</div>
+    Component: ProjectGeneralTab
   }
 ];
 

@@ -66,7 +66,7 @@ export const AWSSecretManagerAuthorizePage = () => {
             })
       });
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/aws-secret-manager/create",
+        to: "/projects/secret-management/$projectId/integrations/aws-secret-manager/create",
         params: {
           projectId: currentWorkspace.id
         },

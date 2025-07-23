@@ -108,7 +108,7 @@ export type TDeleteProjectDTO = {
 
 export type TListProjectsDTO = {
   includeRoles: boolean;
-  type?: ProjectType | "all";
+  type?: ProjectType;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpgradeProjectDTO = {

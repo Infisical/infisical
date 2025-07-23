@@ -42,7 +42,8 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   const {
     data: { project }
   } = await createWorkspace({
-    projectName
+    projectName,
+    type: ProjectType.SecretManager
   });
 
   try {
@@ -59,20 +60,34 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
 
   return project;
 };
+
+export const getProjectBaseURL = (type: ProjectType) => {
+  switch (type) {
+    case ProjectType.SecretManager:
+      return "/projects/secret-management/$projectId";
+    case ProjectType.CertificateManager:
+      return "/projects/cert-management/$projectId";
+    default:
+      return `/projects/${type}/$projectId` as const;
+  }
+};
+
 export const getProjectHomePage = (type: ProjectType) => {
   switch (type) {
+    case ProjectType.SecretManager:
+      return "/projects/secret-management/$projectId/overview";
     case ProjectType.CertificateManager:
-      return `/projects/$projectId/${type}/subscribers` as const;
+      return "/projects/cert-management/$projectId/subscribers";
     case ProjectType.SecretScanning:
-      return `/projects/$projectId/${type}/data-sources` as const;
+      return `/projects/${type}/$projectId/data-sources` as const;
     default:
-      return `/projects/$projectId/${type}/overview` as const;
+      return `/projects/${type}/$projectId/overview` as const;
   }
 };
 
 export const getProjectTitle = (type: ProjectType) => {
   const titleConvert = {
-    [ProjectType.SecretManager]: "Secret Management",
+    [ProjectType.SecretManager]: "Secrets Management",
     [ProjectType.KMS]: "Key Management",
     [ProjectType.CertificateManager]: "Cert Management",
     [ProjectType.SSH]: "SSH",
@@ -81,7 +96,13 @@ export const getProjectTitle = (type: ProjectType) => {
   return titleConvert[type];
 };
 
-export const getCurrentProductFromUrl = (location: string) => {
-  const type = Object.values(ProjectType).find((el) => location.includes(`/${el}`));
-  return type;
+export const getProjectLottieIcon = (type: ProjectType) => {
+  const titleConvert = {
+    [ProjectType.SecretManager]: "vault",
+    [ProjectType.KMS]: "unlock",
+    [ProjectType.CertificateManager]: "note",
+    [ProjectType.SSH]: "terminal",
+    [ProjectType.SecretScanning]: "secret-scan"
+  };
+  return titleConvert[type];
 };
