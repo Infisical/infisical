@@ -30,7 +30,7 @@ SELECT DISTINCT
   
   -- Use CASE with direct joins instead of EXISTS subqueries
   CASE WHEN p."defaultProduct" != 'secret-manager' AND s.secret_exists IS NOT NULL THEN true ELSE false END AS "needsSecretManager",
-  CASE WHEN p."defaultProduct" != 'certificate-manager' AND ca.ca_exists IS NOT NULL THEN true ELSE false END AS "needsCertManager", 
+  CASE WHEN p."defaultProduct" != 'cert-manager' AND ca.ca_exists IS NOT NULL THEN true ELSE false END AS "needsCertManager", 
   CASE WHEN p."defaultProduct" != 'secret-scanning' AND ssds.ssds_exists IS NOT NULL THEN true ELSE false END AS "needsSecretScanning",
   CASE WHEN p."defaultProduct" != 'kms' AND kk.kms_exists IS NOT NULL THEN true ELSE false END AS "needsKms",
   CASE WHEN p."defaultProduct" != 'ssh' AND sc.ssh_exists IS NOT NULL THEN true ELSE false END AS "needsSsh"
@@ -38,7 +38,7 @@ SELECT DISTINCT
 FROM projects p
 LEFT JOIN (
   SELECT DISTINCT e."projectId", 1 as secret_exists
-  FROM secrets s
+  FROM secrets_v2 s
   JOIN secret_folders sf ON sf.id = s."folderId"
   JOIN project_environments e ON e.id = sf."envId"
 ) s ON s."projectId" = p.id AND p."defaultProduct" != 'secret-manager'
@@ -46,7 +46,7 @@ LEFT JOIN (
 LEFT JOIN (
   SELECT DISTINCT "projectId", 1 as ca_exists
   FROM certificate_authorities
-) ca ON ca."projectId" = p.id AND p."defaultProduct" != 'certificate-manager'
+) ca ON ca."projectId" = p.id AND p."defaultProduct" != 'cert-manager'
 
 LEFT JOIN (
   SELECT DISTINCT "projectId", 1 as ssds_exists
@@ -68,7 +68,7 @@ LEFT JOIN (
 WHERE p."defaultProduct" IS NOT NULL
   AND (
     (p."defaultProduct" != 'secret-manager' AND s.secret_exists IS NOT NULL) OR
-    (p."defaultProduct" != 'certificate-manager' AND ca.ca_exists IS NOT NULL) OR
+    (p."defaultProduct" != 'cert-manager' AND ca.ca_exists IS NOT NULL) OR
     (p."defaultProduct" != 'secret-scanning' AND ssds.ssds_exists IS NOT NULL) OR
     (p."defaultProduct" != 'kms' AND kk.kms_exists IS NOT NULL) OR
     (p."defaultProduct" != 'ssh' AND sc.ssh_exists IS NOT NULL)
@@ -433,3 +433,4 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 }
+
