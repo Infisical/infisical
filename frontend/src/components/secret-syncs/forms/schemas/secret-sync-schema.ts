@@ -6,6 +6,7 @@ import { AwsSecretsManagerSyncDestinationSchema } from "./aws-secrets-manager-sy
 import { AzureAppConfigurationSyncDestinationSchema } from "./azure-app-configuration-sync-destination-schema";
 import { AzureDevOpsSyncDestinationSchema } from "./azure-devops-sync-destination-schema";
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
+import { BitbucketSyncDestinationSchema } from "./bitbucket-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
 import { ChecklySyncDestinationSchema } from "./checkly-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
@@ -59,7 +60,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   RailwaySyncDestinationSchema,
   ChecklySyncDestinationSchema,
   DigitalOceanAppPlatformSyncDestinationSchema,
-  NetlifySyncDestinationSchema
+  NetlifySyncDestinationSchema,
+  BitbucketSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

@@ -27,7 +27,8 @@ export enum SecretSync {
   Railway = "railway",
   Checkly = "checkly",
   DigitalOceanAppPlatform = "digital-ocean-app-platform",
-  Netlify = "netlify"
+  Netlify = "netlify",
+  Bitbucket = "bitbucket"
 }
 
 export enum SecretSyncInitialSyncBehavior {

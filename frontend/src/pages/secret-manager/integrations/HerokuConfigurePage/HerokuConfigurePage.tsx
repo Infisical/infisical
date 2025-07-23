@@ -98,7 +98,7 @@ export const HerokuConfigurePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations",
+        to: "/projects/secret-management/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
         },

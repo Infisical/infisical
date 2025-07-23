@@ -3,6 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import {
+  ActionProjectType,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
@@ -980,7 +981,8 @@ export const orgServiceFactory = ({
           actorId,
           projectId,
           actorAuthMethod,
-          actorOrgId
+          actorOrgId,
+          actionProjectType: ActionProjectType.Any
         });
         ForbiddenError.from(projectPermission).throwUnlessCan(
           ProjectPermissionMemberActions.Create,

@@ -38,7 +38,7 @@ export const OctopusDeployAuthorizePage = () => {
       });
 
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/octopus-deploy/create",
+        to: "/projects/secret-management/$projectId/integrations/octopus-deploy/create",
         params: {
           projectId: currentWorkspace.id
         },

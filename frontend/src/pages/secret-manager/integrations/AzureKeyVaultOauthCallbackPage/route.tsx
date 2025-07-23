@@ -12,7 +12,7 @@ export const AzureKeyVaultOauthCallbackQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/azure-key-vault/oauth2/callback"
 )({
   component: AzureKeyVaultOauthCallbackPage,
   validateSearch: zodValidator(AzureKeyVaultOauthCallbackQueryParamsSchema),
@@ -23,7 +23,7 @@ export const Route = createFileRoute(
         {
           label: "Integrations",
           link: linkOptions({
-            to: "/projects/$projectId/secret-manager/integrations",
+            to: "/projects/secret-management/$projectId/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.NativeIntegrations

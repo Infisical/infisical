@@ -46,7 +46,7 @@ export const QuickSearchSecretItem = ({
   isSingleEnv,
   search
 }: Props) => {
-  const navigate = useNavigate({ from: "/projects/$projectId/secret-manager/overview" });
+  const navigate = useNavigate({ from: "/projects/secret-management/$projectId/overview" });
   const envSlugMap = new Map(environments.map((env) => [env.slug, env]));
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
     initialState: false

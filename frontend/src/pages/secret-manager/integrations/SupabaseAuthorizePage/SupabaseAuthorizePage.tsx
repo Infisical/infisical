@@ -33,7 +33,7 @@ export const SupabaseAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/supabase/create",
+        to: "/projects/secret-management/$projectId/integrations/supabase/create",
         params: {
           projectId: currentWorkspace.id
         },

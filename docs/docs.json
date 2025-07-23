@@ -518,6 +518,7 @@
                   "integrations/secret-syncs/azure-app-configuration",
                   "integrations/secret-syncs/azure-devops",
                   "integrations/secret-syncs/azure-key-vault",
+                  "integrations/secret-syncs/bitbucket",
                   "integrations/secret-syncs/camunda",
                   "integrations/secret-syncs/checkly",
                   "integrations/secret-syncs/cloudflare-pages",
@@ -1778,6 +1779,20 @@
                     ]
                   },
                   {
+                    "group": "Bitbucket",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/bitbucket/list",
+                      "api-reference/endpoints/secret-syncs/bitbucket/get-by-id",
+                      "api-reference/endpoints/secret-syncs/bitbucket/get-by-name",
+                      "api-reference/endpoints/secret-syncs/bitbucket/create",
+                      "api-reference/endpoints/secret-syncs/bitbucket/update",
+                      "api-reference/endpoints/secret-syncs/bitbucket/delete",
+                      "api-reference/endpoints/secret-syncs/bitbucket/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/bitbucket/import-secrets",
+                      "api-reference/endpoints/secret-syncs/bitbucket/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Camunda",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/camunda/list",
@@ -2324,6 +2339,7 @@
               "sdks/languages/java",
               "sdks/languages/csharp",
               "sdks/languages/cpp",
+              "sdks/languages/rust",
               "sdks/languages/go",
               "sdks/languages/ruby"
             ]

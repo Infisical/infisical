@@ -24,6 +24,7 @@ export const EditProjectTemplateSection = ({ template, onBack }: Props) => {
     initialData: template,
     enabled: !isInfisicalTemplate
   });
+  const finalTemplate = isInfisicalTemplate ? template : projectTemplate;
 
   return (
     <div>
@@ -41,10 +42,10 @@ export const EditProjectTemplateSection = ({ template, onBack }: Props) => {
         <div className="flex h-[60vh] w-full items-center justify-center p-24">
           <Spinner />
         </div>
-      ) : projectTemplate ? (
+      ) : finalTemplate ? (
         <EditProjectTemplate
           isInfisicalTemplate={isInfisicalTemplate}
-          projectTemplate={projectTemplate}
+          projectTemplate={finalTemplate}
           onBack={onBack}
         />
       ) : (

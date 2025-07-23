@@ -7,6 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
 import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -80,7 +81,7 @@ const Content = ({ role, onClose }: ContentProps) => {
     });
 
     navigate({
-      to: "/projects/$projectId/roles/$roleSlug",
+      to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug` as const,
       params: {
         roleSlug: newRole.slug,
         projectId: currentWorkspace.id

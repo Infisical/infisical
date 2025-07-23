@@ -17,6 +17,7 @@ import {
   PageHeader
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -60,7 +61,7 @@ const Page = () => {
       });
       handlePopUpClose("deleteRole");
       navigate({
-        to: "/projects/$projectId/access-management",
+        to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
         params: {
           projectId
         },

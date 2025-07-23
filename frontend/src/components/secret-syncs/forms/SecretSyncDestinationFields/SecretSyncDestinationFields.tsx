@@ -9,6 +9,7 @@ import { AwsSecretsManagerSyncFields } from "./AwsSecretsManagerSyncFields";
 import { AzureAppConfigurationSyncFields } from "./AzureAppConfigurationSyncFields";
 import { AzureDevOpsSyncFields } from "./AzureDevOpsSyncFields";
 import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
+import { BitbucketSyncFields } from "./BitbucketSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
 import { ChecklySyncFields } from "./ChecklySyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
@@ -97,6 +98,8 @@ export const SecretSyncDestinationFields = () => {
       return <DigitalOceanAppPlatformSyncFields />;
     case SecretSync.Netlify:
       return <NetlifySyncFields />;
+    case SecretSync.Bitbucket:
+      return <BitbucketSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

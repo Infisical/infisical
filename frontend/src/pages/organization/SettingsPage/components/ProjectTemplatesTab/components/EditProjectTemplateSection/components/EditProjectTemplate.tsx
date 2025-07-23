@@ -5,8 +5,10 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/projectTemplates";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { ProjectTemplateDetailsModal } from "../../ProjectTemplateDetailsModal";
 import { ProjectTemplateEnvironmentsForm } from "./ProjectTemplateEnvironmentsForm";
@@ -24,7 +26,7 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
     "editDetails"
   ] as const);
 
-  const { id: templateId, name, description } = projectTemplate;
+  const { id: templateId, name, description, type } = projectTemplate;
 
   const deleteProjectTemplate = useDeleteProjectTemplate();
 
@@ -53,7 +55,10 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
       <div className="mb-4 flex items-start justify-between border-b border-bunker-400 pb-4">
         <div className="flex-col">
           <h3 className="text-xl font-semibold">{name}</h3>
-          <h2 className="text-sm text-mineshaft-400">{description || "Project Template"}</h2>
+          <h2 className="text-sm text-mineshaft-400">
+            {`${getProjectTitle(type)} - `}
+            {description || "Project Template"}
+          </h2>
         </div>
         {!isInfisicalTemplate && (
           <div className="flex gap-2">
@@ -94,10 +99,12 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
           </div>
         )}
       </div>
-      <ProjectTemplateEnvironmentsForm
-        isInfisicalTemplate={isInfisicalTemplate}
-        projectTemplate={projectTemplate}
-      />
+      {type === ProjectType.SecretManager && (
+        <ProjectTemplateEnvironmentsForm
+          isInfisicalTemplate={isInfisicalTemplate}
+          projectTemplate={projectTemplate}
+        />
+      )}
       <ProjectTemplateRolesSection
         isInfisicalTemplate={isInfisicalTemplate}
         projectTemplate={projectTemplate}

@@ -10,7 +10,7 @@ const SecretOverviewPageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/overview"
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/overview"
 )({
   component: OverviewPage,
   validateSearch: zodValidator(SecretOverviewPageQuerySchema),
@@ -24,7 +24,7 @@ export const Route = createFileRoute(
       {
         label: "Secrets",
         link: linkOptions({
-          to: "/projects/$projectId/secret-manager/overview",
+          to: "/projects/secret-management/$projectId/overview",
           params
         })
       }

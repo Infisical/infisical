@@ -33,7 +33,7 @@ export const NorthflankAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/northflank/create",
+        to: "/projects/secret-management/$projectId/integrations/northflank/create",
         params: {
           projectId: currentWorkspace.id
         },

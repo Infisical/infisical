@@ -7,7 +7,7 @@ import { localStorageService } from "@app/helpers/localStorage";
 import { GcpSecretManagerOAuthCallbackPageQueryParamsSchema } from "./GcpSecretManagerOauthCallbackPage/route";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/integrations/gcp-secret-manager/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/integrations/gcp-secret-manager/oauth2/callback"
 )({
   validateSearch: zodValidator(GcpSecretManagerOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ search }) => {
@@ -21,7 +21,7 @@ export const Route = createFileRoute(
       throw redirect({ to: "/organization/projects" });
     }
     throw redirect({
-      to: "/projects/$projectId/secret-manager/integrations/gcp-secret-manager/oauth2/callback",
+      to: "/projects/secret-management/$projectId/integrations/gcp-secret-manager/oauth2/callback",
       params: { projectId },
       search
     });

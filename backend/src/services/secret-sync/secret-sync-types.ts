@@ -73,6 +73,12 @@ import {
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
 import {
+  TBitbucketSync,
+  TBitbucketSyncInput,
+  TBitbucketSyncListItem,
+  TBitbucketSyncWithCredentials
+} from "./bitbucket/bitbucket-sync-types";
+import {
   TChecklySync,
   TChecklySyncInput,
   TChecklySyncListItem,
@@ -173,7 +179,8 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
-  | TNetlifySync;
+  | TNetlifySync
+  | TBitbucketSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -204,7 +211,8 @@ export type TSecretSyncWithCredentials =
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
-  | TNetlifySyncWithCredentials;
+  | TNetlifySyncWithCredentials
+  | TBitbucketSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -235,7 +243,8 @@ export type TSecretSyncInput =
   | TChecklySyncInput
   | TSupabaseSyncInput
   | TDigitalOceanAppPlatformSyncInput
-  | TNetlifySyncInput;
+  | TNetlifySyncInput
+  | TBitbucketSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -266,7 +275,8 @@ export type TSecretSyncListItem =
   | TChecklySyncListItem
   | TSupabaseSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
-  | TNetlifySyncListItem;
+  | TNetlifySyncListItem
+  | TBitbucketSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

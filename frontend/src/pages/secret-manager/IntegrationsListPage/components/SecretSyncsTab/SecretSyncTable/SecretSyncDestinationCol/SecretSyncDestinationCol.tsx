@@ -6,6 +6,7 @@ import { AwsSecretsManagerSyncDestinationCol } from "./AwsSecretsManagerSyncDest
 import { AzureAppConfigurationDestinationSyncCol } from "./AzureAppConfigurationDestinationSyncCol";
 import { AzureDevOpsSyncDestinationCol } from "./AzureDevOpsSyncDestinationCol";
 import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncCol";
+import { BitbucketSyncDestinationCol } from "./BitbucketSyncDestinationCol";
 import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { ChecklySyncDestinationCol } from "./ChecklySyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
@@ -94,6 +95,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <DigitalOceanAppPlatformSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Netlify:
       return <NetlifySyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Bitbucket:
+      return <BitbucketSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

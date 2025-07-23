@@ -28,6 +28,7 @@ import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
+import { BITBUCKET_SYNC_LIST_OPTION, BitbucketSyncFns } from "./bitbucket";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
 import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
@@ -87,7 +88,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
   [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION,
   [SecretSync.DigitalOceanAppPlatform]: DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
-  [SecretSync.Netlify]: NETLIFY_SYNC_LIST_OPTION
+  [SecretSync.Netlify]: NETLIFY_SYNC_LIST_OPTION,
+  [SecretSync.Bitbucket]: BITBUCKET_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -269,6 +271,8 @@ export const SecretSyncFns = {
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Netlify:
         return NetlifySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Bitbucket:
+        return BitbucketSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -382,6 +386,9 @@ export const SecretSyncFns = {
       case SecretSync.Netlify:
         secretMap = await NetlifySyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Bitbucket:
+        secretMap = await BitbucketSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -473,6 +480,8 @@ export const SecretSyncFns = {
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Netlify:
         return NetlifySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Bitbucket:
+        return BitbucketSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

@@ -85,4 +85,40 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
       return { repositories };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/environments`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        workspaceSlug: z.string().min(1).max(255),
+        repositorySlug: z.string().min(1).max(255)
+      }),
+      response: {
+        200: z.object({
+          environments: z.object({ slug: z.string(), name: z.string(), uuid: z.string() }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const {
+        params: { connectionId },
+        query: { workspaceSlug, repositorySlug }
+      } = req;
+
+      const environments = await server.services.appConnection.bitbucket.listEnvironments(
+        { connectionId, workspaceSlug, repositorySlug },
+        req.permission
+      );
+
+      return { environments };
+    }
+  });
 };

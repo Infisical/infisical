@@ -4,6 +4,8 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import {
@@ -24,13 +26,15 @@ const Page = () => {
 
   const updateSelectedTab = (tab: string) => {
     navigate({
-      to: "/projects/$projectId/access-management",
+      to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
       search: (prev) => ({ ...prev, selectedTab: tab }),
       params: {
         projectId: currentWorkspace.id
       }
     });
   };
+
+  const isSecretManager = currentWorkspace.type === ProjectType.SecretManager;
 
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -48,7 +52,9 @@ const Page = () => {
                 <p>Machine Identities</p>
               </div>
             </Tab>
-            <Tab value={ProjectAccessControlTabs.ServiceTokens}>Service Tokens</Tab>
+            {isSecretManager && (
+              <Tab value={ProjectAccessControlTabs.ServiceTokens}>Service Tokens</Tab>
+            )}
             <Tab value={ProjectAccessControlTabs.Roles}>Project Roles</Tab>
           </TabList>
           <TabPanel value={ProjectAccessControlTabs.Member}>
@@ -60,9 +66,11 @@ const Page = () => {
           <TabPanel value={ProjectAccessControlTabs.Identities}>
             <IdentityTab />
           </TabPanel>
-          <TabPanel value={ProjectAccessControlTabs.ServiceTokens}>
-            <ServiceTokenTab />
-          </TabPanel>
+          {isSecretManager && (
+            <TabPanel value={ProjectAccessControlTabs.ServiceTokens}>
+              <ServiceTokenTab />
+            </TabPanel>
+          )}
           <TabPanel value={ProjectAccessControlTabs.Roles}>
             <ProjectRoleListTab />
           </TabPanel>

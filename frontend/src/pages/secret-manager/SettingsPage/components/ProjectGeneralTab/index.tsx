@@ -1,1 +1,1 @@
-export { ProjectGeneralTab } from "./ProjectGeneralTab";
+export { SecretSettingsTab } from "./ProjectGeneralTab";

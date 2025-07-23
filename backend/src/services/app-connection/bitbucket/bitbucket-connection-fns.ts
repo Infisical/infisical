@@ -9,6 +9,7 @@ import { BitbucketConnectionMethod } from "./bitbucket-connection-enums";
 import {
   TBitbucketConnection,
   TBitbucketConnectionConfig,
+  TBitbucketEnvironment,
   TBitbucketRepo,
   TBitbucketWorkspace
 } from "./bitbucket-connection-types";
@@ -21,11 +22,15 @@ export const getBitbucketConnectionListItem = () => {
   };
 };
 
+export const createAuthHeader = (email: string, apiToken: string): string => {
+  return `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
+};
+
 export const getBitbucketUser = async ({ email, apiToken }: { email: string; apiToken: string }) => {
   try {
     const { data } = await request.get<{ username: string }>(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/user`, {
       headers: {
-        Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
+        Authorization: createAuthHeader(email, apiToken),
         Accept: "application/json"
       }
     });
@@ -57,7 +62,7 @@ export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnectio
   const { email, apiToken } = appConnection.credentials;
 
   const headers = {
-    Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
+    Authorization: createAuthHeader(email, apiToken),
     Accept: "application/json"
   };
 
@@ -89,7 +94,7 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
   const { email, apiToken } = appConnection.credentials;
 
   const headers = {
-    Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
+    Authorization: createAuthHeader(email, apiToken),
     Accept: "application/json"
   };
 
@@ -114,4 +119,44 @@ export const listBitbucketRepositories = async (appConnection: TBitbucketConnect
   }
 
   return allRepos;
+};
+
+export const listBitbucketEnvironments = async (
+  appConnection: TBitbucketConnection,
+  workspaceSlug: string,
+  repositorySlug: string
+) => {
+  const { email, apiToken } = appConnection.credentials;
+
+  const headers = {
+    Authorization: createAuthHeader(email, apiToken),
+    Accept: "application/json"
+  };
+
+  const environments: TBitbucketEnvironment[] = [];
+  let hasNextPage = true;
+
+  let environmentsUrl = `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(repositorySlug)}/environments?pagelen=100`;
+
+  let iterationCount = 0;
+  // Limit to 10 iterations, fetching at most 10 * 100 = 1000 environments
+  while (hasNextPage && iterationCount < 10) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data }: { data: { values: TBitbucketEnvironment[]; next: string } } = await request.get(environmentsUrl, {
+      headers
+    });
+
+    if (data?.values.length > 0) {
+      environments.push(...data.values);
+    }
+
+    if (data.next) {
+      environmentsUrl = data.next;
+    } else {
+      hasNextPage = false;
+    }
+    iterationCount += 1;
+  }
+
+  return environments;
 };
