@@ -378,6 +378,7 @@ export const SecretSyncFns = {
         break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Bitbucket:
         secretMap = await BitbucketSyncFns.getSecrets(secretSync);
         break;
