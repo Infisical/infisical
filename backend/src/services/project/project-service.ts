@@ -1948,6 +1948,13 @@ export const projectServiceFactory = ({
     const userDetails = await userDAL.findById(permission.id);
     const appCfg = getConfig();
 
+    let projectTypeUrl = project.type;
+    if (project.type === ProjectType.SecretManager) {
+      projectTypeUrl = "secret-management";
+    } else if (project.type === ProjectType.CertificateManager) {
+      projectTypeUrl = "cert-management";
+    }
+
     await smtpService.sendMail({
       template: SmtpTemplates.ProjectAccessRequest,
       recipients: filteredProjectMembers,
@@ -1958,7 +1965,7 @@ export const projectServiceFactory = ({
         projectName: project?.name,
         orgName: org?.name,
         note: comment,
-        callback_url: `${appCfg.SITE_URL}/${project.type}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`
+        callback_url: `${appCfg.SITE_URL}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`
       }
     });
   };
