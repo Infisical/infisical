@@ -1,4 +1,4 @@
-import { faCog, faCube, faHome, faLock, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faBook, faCog, faCube, faHome, faLock, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -80,6 +80,23 @@ export const KmsLayout = () => {
                             <FontAwesomeIcon icon={faUsers} />
                           </div>
                           Access Management
+                        </div>
+                      </MenuItem>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/kms/$projectId/audit-logs"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faBook} />
+                          </div>
+                          Audit Logs
                         </div>
                       </MenuItem>
                     )}
