@@ -1555,7 +1555,12 @@ export const registerRoutes = async (
     folderService,
     permissionService,
     folderDAL,
-    projectEnvDAL
+    projectEnvDAL,
+    secretApprovalRequestService,
+    secretApprovalPolicyService,
+    projectDAL,
+    secretV2BridgeService,
+    folderCommitDAL
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
@@ -1729,7 +1734,9 @@ export const registerRoutes = async (
     appConnectionDAL,
     permissionService,
     kmsService,
-    licenseService
+    licenseService,
+    gatewayService,
+    gatewayDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -1827,7 +1834,8 @@ export const registerRoutes = async (
     snapshotService,
     secretQueueService,
     queueService,
-    appConnectionDAL
+    appConnectionDAL,
+    gatewayService
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({

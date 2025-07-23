@@ -105,7 +105,7 @@ export const OrgAdminProjects = withPermission(
                 <TBody>
                   {isProjectsLoading && <TableSkeleton columns={4} innerKey="projects" />}
                   {!isProjectsLoading &&
-                    projects?.map(({ name, slug, createdAt, id, defaultProduct }) => (
+                    projects?.map(({ name, slug, createdAt, id, type }) => (
                       <Tr key={`project-${id}`} className="group w-full">
                         <Td>{name}</Td>
                         <Td>{slug}</Td>
@@ -126,7 +126,7 @@ export const OrgAdminProjects = withPermission(
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
-                                    handleAccessProject(defaultProduct, id);
+                                    handleAccessProject(type, id);
                                   }}
                                   icon={<FontAwesomeIcon icon={faSignIn} />}
                                   disabled={

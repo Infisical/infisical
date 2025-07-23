@@ -9,6 +9,7 @@ import {
   TOracleDBConnectionInput,
   TValidateOracleDBConnectionCredentialsSchema
 } from "@app/ee/services/app-connections/oracledb";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -143,6 +144,12 @@ import {
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
+  TOktaConnection,
+  TOktaConnectionConfig,
+  TOktaConnectionInput,
+  TValidateOktaConnectionCredentialsSchema
+} from "./okta";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -231,6 +238,7 @@ export type TAppConnection = { id: string } & (
   | TRailwayConnection
   | TChecklyConnection
   | TSupabaseConnection
+  | TOktaConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -272,6 +280,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRailwayConnectionInput
   | TChecklyConnectionInput
   | TSupabaseConnectionInput
+  | TOktaConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -282,7 +291,7 @@ export type TSqlConnectionInput =
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
-  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManagedCredentials"
+  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManagedCredentials" | "gatewayId"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "method" | "app">> & {
@@ -320,7 +329,8 @@ export type TAppConnectionConfig =
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
-  | TSupabaseConnectionConfig;
+  | TSupabaseConnectionConfig
+  | TOktaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -356,7 +366,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
-  | TValidateSupabaseConnectionCredentialsSchema;
+  | TValidateSupabaseConnectionCredentialsSchema
+  | TValidateOktaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
@@ -369,14 +380,17 @@ export type TListAwsConnectionIamUsers = {
 };
 
 export type TAppConnectionCredentialsValidator = (
-  appConnection: TAppConnectionConfig
+  appConnection: TAppConnectionConfig,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => Promise<TAppConnection["credentials"]>;
 
 export type TAppConnectionTransitionCredentialsToPlatform = (
   appConnection: TAppConnectionConfig,
-  callback: (credentials: TAppConnection["credentials"]) => Promise<TAppConnectionRaw>
+  callback: (credentials: TAppConnection["credentials"]) => Promise<TAppConnectionRaw>,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => Promise<TAppConnectionRaw>;
 
 export type TAppConnectionBaseConfig = {
   supportsPlatformManagedCredentials?: boolean;
+  supportsGateways?: boolean;
 };

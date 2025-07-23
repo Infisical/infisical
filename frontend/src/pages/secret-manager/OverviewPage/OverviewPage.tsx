@@ -667,7 +667,7 @@ export const OverviewPage = () => {
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({
-        to: "/projects/$projectId/secret-manager/secrets/$envSlug",
+        to: "/projects/secret-management/$projectId/secrets/$envSlug",
         params: {
           projectId: workspaceId,
           envSlug: slug
@@ -1420,7 +1420,7 @@ export const OverviewPage = () => {
                         iconSize="3x"
                       >
                         <Link
-                          to="/projects/$projectId/secret-manager/settings"
+                          to="/projects/secret-management/$projectId/settings"
                           params={{
                             projectId: workspaceId
                           }}

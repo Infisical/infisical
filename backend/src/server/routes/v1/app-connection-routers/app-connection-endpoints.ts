@@ -25,12 +25,14 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     credentials: I["credentials"];
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
+    gatewayId?: string | null;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
     credentials?: I["credentials"];
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
+    gatewayId?: string | null;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
@@ -224,10 +226,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, method, credentials, description, isPlatformManagedCredentials } = req.body;
+      const { name, method, credentials, description, isPlatformManagedCredentials, gatewayId } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
-        { name, method, app, credentials, description, isPlatformManagedCredentials },
+        { name, method, app, credentials, description, isPlatformManagedCredentials, gatewayId },
         req.permission
       )) as T;
 
@@ -270,11 +272,11 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, credentials, description, isPlatformManagedCredentials } = req.body;
+      const { name, credentials, description, isPlatformManagedCredentials, gatewayId } = req.body;
       const { connectionId } = req.params;
 
       const appConnection = (await server.services.appConnection.updateAppConnection(
-        { name, credentials, connectionId, description, isPlatformManagedCredentials },
+        { name, credentials, connectionId, description, isPlatformManagedCredentials, gatewayId },
         req.permission
       )) as T;
 

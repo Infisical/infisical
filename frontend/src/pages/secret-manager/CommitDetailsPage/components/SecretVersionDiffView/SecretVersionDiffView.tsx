@@ -1,7 +1,10 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback, useRef, useState } from "react";
-import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
+
+import { IconButton, Tooltip } from "@app/components/v2";
 
 export interface Version {
   id?: string;
@@ -32,6 +35,7 @@ interface SecretVersionDiffViewProps {
   showHeader?: boolean;
   customHeader?: JSX.Element;
   excludedFieldsHighlight?: string[];
+  onDiscard?: VoidFunction;
 }
 
 const isObject = (obj: JsonValue): obj is JsonObject => {
@@ -225,15 +229,12 @@ const renderJsonWithDiffs = (
 
   const getLineClass = (different: boolean) => {
     if (!different) return "flex";
-    return isOldVersion ? "flex bg-red-950 text-red-300" : "flex bg-green-950 text-green-300";
+    return isOldVersion
+      ? "flex bg-red-500/50 rounded-sm text-red-300"
+      : "flex bg-green-500/50 rounded-sm text-green-300";
   };
 
-  const getHighlightClass = (different: boolean) => {
-    if (!different) return "";
-    return isOldVersion ? "bg-red-900 rounded px-1" : "bg-green-900 rounded px-1";
-  };
-
-  const prefix = isDifferent ? (isOldVersion ? "-" : "+") : " ";
+  const prefix = isDifferent ? (isOldVersion ? " -" : " +") : " ";
   const keyDisplay = keyName ? `"${keyName}": ` : "";
   const comma = !isLastItem ? "," : "";
 
@@ -255,8 +256,8 @@ const renderJsonWithDiffs = (
         <div className="w-4 flex-shrink-0">{prefix}</div>
         <div>
           {indent}
-          {keyName && <span className={getHighlightClass(isDifferent)}>{keyDisplay}</span>}
-          <span className={getHighlightClass(isDifferent)}>{valueDisplay}</span>
+          {keyName && <span>{keyDisplay}</span>}
+          <span>{valueDisplay}</span>
           {comma}
         </div>
       </div>
@@ -269,8 +270,8 @@ const renderJsonWithDiffs = (
         <div className="w-4 flex-shrink-0">{prefix}</div>
         <div>
           {indent}
-          {keyName && <span className={getHighlightClass(isDifferent)}>{keyDisplay}</span>}
-          <span className={getHighlightClass(isDifferent)}>[]</span>
+          {keyName && <span>{keyDisplay}</span>}
+          <span>[]</span>
           {comma}
         </div>
       </div>
@@ -283,8 +284,8 @@ const renderJsonWithDiffs = (
         <div className="w-4 flex-shrink-0">{prefix}</div>
         <div>
           {indent}
-          {keyName && <span className={getHighlightClass(isDifferent)}>{keyDisplay}</span>}
-          <span className={getHighlightClass(isDifferent)}>{"{}"}</span>
+          {keyName && <span>{keyDisplay}</span>}
+          <span>{"{}"}</span>
           {comma}
         </div>
       </div>
@@ -320,16 +321,12 @@ const renderJsonWithDiffs = (
       <div key={reactKey}>
         <div className={getLineClass(isContainerAddedOrRemoved)}>
           <div className="w-4 flex-shrink-0">
-            {isContainerAddedOrRemoved ? (isOldVersion ? "-" : "+") : " "}
+            {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
             {indent}
-            {keyName && (
-              <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>
-                {keyDisplay}
-              </span>
-            )}
-            <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>[</span>
+            {keyName && <span>{keyDisplay}</span>}
+            <span>[</span>
           </div>
         </div>
 
@@ -357,11 +354,11 @@ const renderJsonWithDiffs = (
 
         <div className={getLineClass(isContainerAddedOrRemoved)}>
           <div className="w-4 flex-shrink-0">
-            {isContainerAddedOrRemoved ? (isOldVersion ? "-" : "+") : " "}
+            {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
             {indent}
-            <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>]</span>
+            <span>]</span>
             {comma}
           </div>
         </div>
@@ -376,16 +373,12 @@ const renderJsonWithDiffs = (
       <div key={reactKey}>
         <div className={getLineClass(isContainerAddedOrRemoved)}>
           <div className="w-4 flex-shrink-0">
-            {isContainerAddedOrRemoved ? (isOldVersion ? "-" : "+") : " "}
+            {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
             {indent}
-            {keyName && (
-              <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>
-                {keyDisplay}
-              </span>
-            )}
-            <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>{"{"}</span>
+            {keyName && <span>{keyDisplay}</span>}
+            <span>{"{"}</span>
           </div>
         </div>
 
@@ -414,12 +407,11 @@ const renderJsonWithDiffs = (
 
         <div className={getLineClass(isContainerAddedOrRemoved)}>
           <div className="w-4 flex-shrink-0">
-            {isContainerAddedOrRemoved ? (isOldVersion ? "-" : "+") : " "}
+            {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
             {indent}
-            <span className={isContainerAddedOrRemoved ? getHighlightClass(true) : ""}>{"}"}</span>
-            {comma}
+            <span>{"}"}</span>
           </div>
         </div>
       </div>
@@ -475,7 +467,9 @@ const formatDeletedJson = (json: JsonValue): JSX.Element => {
 
 const cleanVersionForComparison = (version: Version): JsonValue => {
   const { id, version: versionNumber, ...cleanVersion } = version;
-  return cleanVersion;
+  return Object.fromEntries(
+    Object.entries(cleanVersion).filter((entry) => typeof entry[1] !== "undefined")
+  );
 };
 
 export const SecretVersionDiffView = ({
@@ -484,7 +478,8 @@ export const SecretVersionDiffView = ({
   onToggleCollapse,
   showHeader = true,
   customHeader,
-  excludedFieldsHighlight = ["metadata", "tags"]
+  excludedFieldsHighlight = ["metadata", "tags"],
+  onDiscard
 }: SecretVersionDiffViewProps) => {
   const oldContainerRef = useRef<HTMLDivElement>(null);
   const newContainerRef = useRef<HTMLDivElement>(null);
@@ -527,7 +522,7 @@ export const SecretVersionDiffView = ({
     }
 
     oldVersionContent = (
-      <div className="font-mono text-sm">
+      <div className="w-fit min-w-[100%] font-mono text-sm">
         {renderJsonWithDiffs(
           cleanOldVersion,
           diffPaths,
@@ -543,7 +538,7 @@ export const SecretVersionDiffView = ({
       </div>
     );
     newVersionContent = (
-      <div className="font-mono text-sm">
+      <div className="w-fit min-w-[100%] font-mono text-sm">
         {renderJsonWithDiffs(
           cleanNewVersion,
           diffPaths,
@@ -583,19 +578,19 @@ export const SecretVersionDiffView = ({
     if (item.isDeleted) {
       textStyle = "line-through text-red-300";
       changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
           {isSecret ? "Secret" : "Folder"} Deleted
         </span>
       );
     } else if (item.isAdded) {
       changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
           {isSecret ? "Secret" : "Folder"} Added
         </span>
       );
     } else if (item.isUpdated) {
       changeBadge = (
-        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
           {isSecret ? "Secret" : "Folder"} Updated
         </span>
       );
@@ -615,32 +610,48 @@ export const SecretVersionDiffView = ({
         tabIndex={0}
         aria-expanded={!collapsed}
       >
-        <div className="flex items-center">
-          <span className={textStyle}>{key}</span>
+        <div className="flex min-w-0 flex-1 items-center">
+          <p className={twMerge(textStyle, "truncate")}>{key}</p>
           {changeBadge}
         </div>
-        <FontAwesomeIcon icon={collapsed ? faChevronDown : faChevronUp} className="text-gray-400" />
+        {onDiscard && (
+          <Tooltip side="left" content="Discard change">
+            <IconButton
+              ariaLabel="discard-change"
+              variant="plain"
+              colorSchema="danger"
+              size="sm"
+              className="ml-2"
+              onClick={onDiscard}
+            >
+              <FontAwesomeIcon icon={faTrash} />
+            </IconButton>
+          </Tooltip>
+        )}
+        <FontAwesomeIcon
+          icon={collapsed ? faChevronDown : faChevronUp}
+          className="ml-2 text-gray-400"
+        />
       </div>
     );
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border border-mineshaft-600 bg-mineshaft-800">
+    <div className="overflow-hidden border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t last:rounded-b last:border-b">
       {showHeader && renderHeader()}
-
       {!collapsed && (
-        <div className="border-t border-mineshaft-700 bg-mineshaft-900 px-6 py-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="border-t border-mineshaft-700 bg-mineshaft-900 p-3 text-mineshaft-100">
+          <div className="flex gap-3">
             <div
               ref={oldContainerRef}
-              className="thin-scrollbar max-h-96 overflow-auto whitespace-pre rounded border border-mineshaft-600 bg-mineshaft-900 p-4"
+              className="thin-scrollbar max-h-96 flex-1 overflow-auto whitespace-pre"
             >
               {oldVersionContent}
             </div>
-
+            <div className="max-h-96 w-[0.05rem] self-stretch bg-mineshaft-600" />
             <div
               ref={newContainerRef}
-              className="thin-scrollbar max-h-96 overflow-auto whitespace-pre rounded border border-mineshaft-600 bg-mineshaft-900 p-4"
+              className="thin-scrollbar max-h-96 flex-1 overflow-auto whitespace-pre"
             >
               {newVersionContent}
             </div>

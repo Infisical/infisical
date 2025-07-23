@@ -7,7 +7,7 @@ import { localStorageService } from "@app/helpers/localStorage";
 import { GitlabOAuthCallbackPageQueryParamsSchema } from "./GitlabOauthCallbackPage/route";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/integrations/gitlab/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/integrations/gitlab/oauth2/callback"
 )({
   validateSearch: zodValidator(GitlabOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ search }) => {
@@ -21,7 +21,7 @@ export const Route = createFileRoute(
       throw redirect({ to: "/organization/projects" });
     }
     throw redirect({
-      to: "/projects/$projectId/secret-manager/integrations/gitlab/oauth2/callback",
+      to: "/projects/secret-management/$projectId/integrations/gitlab/oauth2/callback",
       params: { projectId },
       search
     });

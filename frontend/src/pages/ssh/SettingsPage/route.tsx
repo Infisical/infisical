@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { SettingsPage } from "./SettingsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/ssh/_ssh-layout/settings"
+  "/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/settings"
 )({
   component: SettingsPage,
   beforeLoad: ({ context }) => {

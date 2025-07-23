@@ -3,13 +3,13 @@ import { subject } from "@casl/ability";
 import { useSortable } from "@dnd-kit/sortable";
 import {
   faCalendarCheck,
-  faClose,
   faFileImport,
   faFolder,
   faInfoCircle,
   faKey,
   faRotate,
   faSearch,
+  faTrash,
   faUpDown,
   faWarning,
   faXmark
@@ -237,7 +237,7 @@ export const SecretImportItem = ({
             </ProjectPermissionCan>
           )}
         </div>
-        <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-4 py-2">
+        <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 py-3.5 pl-4 pr-3">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
             a={subject(ProjectPermissionSub.SecretImports, {
@@ -281,7 +281,7 @@ export const SecretImportItem = ({
                 }}
                 isDisabled={!isAllowed}
               >
-                <FontAwesomeIcon icon={faClose} size="lg" />
+                <FontAwesomeIcon icon={faTrash} />
               </IconButton>
             )}
           </ProjectPermissionCan>

@@ -17,7 +17,6 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SshCaModal } from "../SshCasPage/components/SshCaModal";
@@ -53,7 +52,7 @@ const Page = () => {
 
       handlePopUpClose("deleteSshCa");
       navigate({
-        to: `/projects/$projectId/${ProjectType.SSH}/overview` as const,
+        to: "/projects/ssh/$projectId/overview",
         params: {
           projectId
         }

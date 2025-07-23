@@ -2,8 +2,9 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import isEqual from "lodash.isequal";
 
-import { SecretType, TableName } from "@app/db/schemas";
+import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -82,6 +83,7 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
+import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 
 export type TSecretRotationV2ServiceFactoryDep = {
@@ -107,6 +109,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queuePg">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -126,7 +129,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.Auth0ClientSecret]: auth0ClientSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.AzureClientSecret]: azureClientSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.OktaClientSecret]: oktaClientSecretRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -148,7 +152,8 @@ export const secretRotationV2ServiceFactory = ({
   keyStore,
   queueService,
   folderCommitService,
-  appConnectionDAL
+  appConnectionDAL,
+  gatewayService
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -218,7 +223,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -269,7 +274,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -315,7 +320,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -380,7 +385,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -424,7 +429,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -461,7 +466,8 @@ export const secretRotationV2ServiceFactory = ({
         rotationInterval: payload.rotationInterval
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
-      kmsService
+      kmsService,
+      gatewayService
     );
 
     // even though we have a db constraint we want to check before any rotation of credentials is attempted
@@ -625,7 +631,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -775,7 +781,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -824,7 +830,8 @@ export const secretRotationV2ServiceFactory = ({
           connection: appConnection
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
-        kmsService
+        kmsService,
+        gatewayService
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -907,7 +914,8 @@ export const secretRotationV2ServiceFactory = ({
           connection: appConnection
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
-        kmsService
+        kmsService,
+        gatewayService
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(
@@ -1105,7 +1113,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -1152,7 +1160,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -1204,7 +1212,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -1320,7 +1328,8 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const permissiveFolderMappings = folderMappings.filter(({ path, environment }) =>

@@ -37,7 +37,7 @@ export const validateAccountIds = z
 export const validatePrincipalArns = z
   .string()
   .trim()
-  .max(2048)
+  .max(4096)
   .default("")
   // Custom validation for ARN format
   .refine(

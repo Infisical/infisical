@@ -19,7 +19,6 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useDeletePkiCollection, useGetPkiCollectionById } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiCollectionModal } from "../AlertingPage/components/PkiCollectionModal";
@@ -57,7 +56,7 @@ export const PkiCollectionPage = () => {
       });
       handlePopUpClose("deletePkiCollection");
       navigate({
-        to: `/projects/$projectId/${ProjectType.CertificateManager}/certificates` as const,
+        to: "/projects/cert-management/$projectId/certificates",
         params: {
           projectId
         }

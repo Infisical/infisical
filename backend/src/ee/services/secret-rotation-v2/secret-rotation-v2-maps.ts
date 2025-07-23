@@ -9,7 +9,8 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.Auth0ClientSecret]: "Auth0 Client Secret",
   [SecretRotation.AzureClientSecret]: "Azure Client Secret",
   [SecretRotation.AwsIamUserSecret]: "AWS IAM User Secret",
-  [SecretRotation.LdapPassword]: "LDAP Password"
+  [SecretRotation.LdapPassword]: "LDAP Password",
+  [SecretRotation.OktaClientSecret]: "Okta Client Secret"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -20,5 +21,6 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.Auth0ClientSecret]: AppConnection.Auth0,
   [SecretRotation.AzureClientSecret]: AppConnection.AzureClientSecrets,
   [SecretRotation.AwsIamUserSecret]: AppConnection.AWS,
-  [SecretRotation.LdapPassword]: AppConnection.LDAP
+  [SecretRotation.LdapPassword]: AppConnection.LDAP,
+  [SecretRotation.OktaClientSecret]: AppConnection.Okta
 };

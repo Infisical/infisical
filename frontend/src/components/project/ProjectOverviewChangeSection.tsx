@@ -5,14 +5,12 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
+import { Button, FormControl, Input, TextArea } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const baseFormSchema = z.object({
   name: z.string().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
-  defaultProduct: z.nativeEnum(ProjectType).default(ProjectType.SecretManager),
   description: z
     .string()
     .trim()
@@ -52,7 +50,6 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
       reset({
         name: currentWorkspace.name,
         description: currentWorkspace.description ?? "",
-        defaultProduct: currentWorkspace.defaultProduct,
         ...(showSlugField && { slug: currentWorkspace.slug })
       });
     }
@@ -66,7 +63,6 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
         projectID: currentWorkspace.id,
         newProjectName: data.name,
         newProjectDescription: data.description,
-        defaultProduct: data.defaultProduct,
         ...(showSlugField &&
           "slug" in data && {
             newSlug: data.slug !== currentWorkspace.slug ? data.slug : undefined
@@ -216,31 +212,6 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
               </ProjectPermissionCan>
             </div>
           </div>
-          <Controller
-            control={control}
-            name="defaultProduct"
-            defaultValue={ProjectType.SecretManager}
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Default Product"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full max-w-md bg-mineshaft-800"
-                >
-                  <SelectItem value={ProjectType.SecretManager}>Secrets Manager</SelectItem>
-                  <SelectItem value={ProjectType.CertificateManager}>PKI Manager</SelectItem>
-                  <SelectItem value={ProjectType.KMS}>KMS</SelectItem>
-                  <SelectItem value={ProjectType.SSH}>SSH</SelectItem>
-                  <SelectItem value={ProjectType.SecretScanning}>Secret Scanning</SelectItem>
-                </Select>
-              </FormControl>
-            )}
-          />
           <div>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}

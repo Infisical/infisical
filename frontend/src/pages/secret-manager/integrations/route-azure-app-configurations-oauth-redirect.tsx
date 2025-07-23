@@ -7,7 +7,7 @@ import { localStorageService } from "@app/helpers/localStorage";
 import { AzureAppConfigurationOauthCallbackPageQueryParamsSchema } from "./AzureAppConfigurationOauthCallbackPage/route";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/integrations/azure-app-configuration/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback"
 )({
   validateSearch: zodValidator(AzureAppConfigurationOauthCallbackPageQueryParamsSchema),
   beforeLoad: ({ search }) => {
@@ -21,7 +21,7 @@ export const Route = createFileRoute(
       throw redirect({ to: "/organization/projects" });
     }
     throw redirect({
-      to: "/projects/$projectId/secret-manager/integrations/azure-app-configuration/oauth2/callback",
+      to: "/projects/secret-management/$projectId/integrations/azure-app-configuration/oauth2/callback",
       params: { projectId },
       search
     });

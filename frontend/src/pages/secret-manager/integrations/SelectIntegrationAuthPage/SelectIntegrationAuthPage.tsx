@@ -119,7 +119,7 @@ export const SelectIntegrationAuthPage = () => {
     if (integrationSlug === "github") {
       if (integrationAuth.projectId === currentWorkspace?.id) {
         navigate({
-          to: "/projects/$projectId/secret-manager/integrations/github/create",
+          to: "/projects/secret-management/$projectId/integrations/github/create",
           params: {
             projectId: currentWorkspace.id
           },
@@ -135,7 +135,7 @@ export const SelectIntegrationAuthPage = () => {
         });
 
         navigate({
-          to: "/projects/$projectId/secret-manager/integrations/github/create",
+          to: "/projects/secret-management/$projectId/integrations/github/create",
           params: {
             projectId: currentWorkspace.id
           },

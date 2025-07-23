@@ -25,7 +25,8 @@ export enum SecretSync {
   Supabase = "supabase",
   Zabbix = "zabbix",
   Railway = "railway",
-  Checkly = "checkly"
+  Checkly = "checkly",
+  Bitbucket = "bitbucket"
 }
 
 export enum SecretSyncInitialSyncBehavior {
