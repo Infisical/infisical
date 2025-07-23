@@ -45,11 +45,11 @@ type FormProps = {
 
 const PROJECT_TYPE_MENU_ITEMS = [
   {
-    label: "Secrets Manager",
+    label: "Secrets Management",
     value: ProjectType.SecretManager
   },
   {
-    label: "Certificates Manager",
+    label: "Certificates Management",
     value: ProjectType.CertificateManager
   },
   {
