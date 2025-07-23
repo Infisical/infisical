@@ -64,7 +64,7 @@ For methods like OIDC, these come as claims in the token and can be made availab
 
   </Tab>
   <Tab title="Kubernetes Login Attributes">
-				For identities authenticated using Kubernetes, the service account's namespace and name are available in their policy and can be accessed as follows:
+		For identities authenticated using Kubernetes, the service account's namespace and name are available in their policy and can be accessed as follows:
 
     ```
     {{ identity.auth.kubernetes.namespace }}
@@ -72,10 +72,9 @@ For methods like OIDC, these come as claims in the token and can be made availab
     ```
 
     <img src="/images/platform/access-controls/abac-policy-k8s-format.png" />
-
   </Tab>
   <Tab title="AWS Attributes">
-		For identities authenticated using AWS Auth, several attributes can be accessed:
+    For identities authenticated using AWS Auth, several attributes can be accessed:
 
     ```
     {{ identity.auth.aws.accountId }}
@@ -90,6 +89,6 @@ For methods like OIDC, these come as claims in the token and can be made availab
     <img src="/images/platform/access-controls/abac-policy-aws-format.png" />
   </Tab>
   <Tab title="Other Authentication Method Attributes">
-    At the moment we only support OIDC claims. Payloads on other authentication methods are not yet accessible.
+    At the moment we only support OIDC claims, Kubernetes attributes, and AWS attributes. Payloads on other authentication methods are not yet accessible.
   </Tab>
 </Tabs>

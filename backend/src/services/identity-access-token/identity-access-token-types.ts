@@ -22,7 +22,7 @@ export type TIdentityAccessTokenJwtPayload = {
 
       // Derived from ARN
       partition: string; // "aws", "aws-gov", "aws-cn"
-      service: string; // "iam"
+      service: string; // "iam", "sts"
       resourceType: string; // "user" or "role"
       resourceName: string;
     };
