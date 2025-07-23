@@ -1,8 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { TAccessApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-environment-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TSecretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-environment-dal";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -19,6 +21,8 @@ type TProjectEnvServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady">;
+  accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesIds">;
+  secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesIds">;
 };
 
 export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFactory>;
@@ -29,7 +33,9 @@ export const projectEnvServiceFactory = ({
   licenseService,
   keyStore,
   projectDAL,
-  folderDAL
+  folderDAL,
+  accessApprovalPolicyEnvironmentDAL,
+  secretApprovalPolicyEnvironmentDAL
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({
     projectId,
@@ -216,6 +222,20 @@ export const projectEnvServiceFactory = ({
       }
 
       const env = await projectEnvDAL.transaction(async (tx) => {
+        const secretApprovalRequest = await secretApprovalPolicyEnvironmentDAL.findAvailablePoliciesIds(id, tx);
+        if (secretApprovalRequest.length > 0) {
+          throw new BadRequestError({
+            message: "Environment is in use by a secret approval policy",
+            name: "DeleteEnvironment"
+          });
+        }
+        const accessApprovalPolicy = await accessApprovalPolicyEnvironmentDAL.findAvailablePoliciesIds(id, tx);
+        if (accessApprovalPolicy.length > 0) {
+          throw new BadRequestError({
+            message: "Environment is in use by an access approval policy",
+            name: "DeleteEnvironment"
+          });
+        }
         const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);
         if (!doc)
           throw new NotFoundError({

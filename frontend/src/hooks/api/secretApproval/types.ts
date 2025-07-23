@@ -6,7 +6,7 @@ export type TSecretApprovalPolicy = {
   workspace: string;
   name: string;
   envId: string;
-  environment: WorkspaceEnv;
+  environments: WorkspaceEnv[];
   secretPath?: string;
   approvals: number;
   approvers: Approver[];
@@ -48,7 +48,7 @@ export type TGetSecretApprovalPolicyOfBoardDTO = {
 export type TCreateSecretPolicyDTO = {
   workspaceId: string;
   name?: string;
-  environment: string;
+  environments: string[];
   secretPath: string;
   approvers?: Approver[];
   bypassers?: Bypasser[];
@@ -68,6 +68,7 @@ export type TUpdateSecretPolicyDTO = {
   enforcementLevel?: EnforcementLevel;
   // for invalidating list
   workspaceId: string;
+  environments?: string[];
 };
 
 export type TDeleteSecretPolicyDTO = {

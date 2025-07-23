@@ -86,6 +86,25 @@ export const accessApprovalRequestServiceFactory = ({
   projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
+  const $getEnvironmentFromPermissions = (permissions: unknown): string | null => {
+    if (!Array.isArray(permissions) || permissions.length === 0) {
+      return null;
+    }
+
+    const firstPermission = permissions[0] as unknown[];
+    if (!Array.isArray(firstPermission) || firstPermission.length < 3) {
+      return null;
+    }
+
+    const metadata = firstPermission[2] as Record<string, unknown>;
+    if (typeof metadata === "object" && metadata !== null && "environment" in metadata) {
+      const env = metadata.environment;
+      return typeof env === "string" ? env : null;
+    }
+
+    return null;
+  };
+
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
@@ -323,12 +342,26 @@ export const accessApprovalRequestServiceFactory = ({
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
     }
 
-    const { policy, environment } = accessApprovalRequest;
+    const { policy, environments, permissions } = accessApprovalRequest;
     if (policy.deletedAt) {
       throw new BadRequestError({
         message: "The policy associated with this access request has been deleted."
       });
     }
+
+    const permissionEnvironment = $getEnvironmentFromPermissions(permissions);
+    if (
+      !permissionEnvironment ||
+      (!environments.includes(permissionEnvironment) && status === ApprovalStatus.APPROVED)
+    ) {
+      throw new BadRequestError({
+        message: `The original policy ${policy.name} is not attached to environment '${permissionEnvironment}'.`
+      });
+    }
+    const environment = await projectEnvDAL.findOne({
+      projectId: accessApprovalRequest.projectId,
+      slug: permissionEnvironment
+    });
 
     const { membership, hasRole } = await permissionService.getProjectPermission({
       actor,
@@ -550,7 +583,7 @@ export const accessApprovalRequestServiceFactory = ({
                   requesterEmail: actingUser.email,
                   bypassReason: bypassReason || "No reason provided",
                   secretPath: policy.secretPath || "/",
-                  environment,
+                  environment: environment?.name || permissionEnvironment,
                   approvalUrl: `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`,
                   requestType: "access"
                 },
