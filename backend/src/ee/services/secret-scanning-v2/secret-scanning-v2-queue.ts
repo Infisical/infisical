@@ -596,7 +596,7 @@ export const secretScanningV2QueueServiceFactory = async ({
                   numberOfSecrets: payload.numberOfSecrets,
                   isDiffScan: payload.isDiffScan,
                   url: encodeURI(
-                    `${appCfg.SITE_URL}/projects/${projectId}/secret-scanning/findings?search=scanId:${payload.scanId}`
+                    `${appCfg.SITE_URL}/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
                   ),
                   timestamp
                 }
@@ -607,7 +607,7 @@ export const secretScanningV2QueueServiceFactory = async ({
                   timestamp,
                   errorMessage: payload.errorMessage,
                   url: encodeURI(
-                    `${appCfg.SITE_URL}/projects/${projectId}/secret-scanning/data-sources/${dataSource.type}/${dataSource.id}`
+                    `${appCfg.SITE_URL}/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
                   )
                 }
         });
