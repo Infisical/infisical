@@ -8,6 +8,7 @@ import {
   faCaretDown,
   faCheck,
   faEnvelope,
+  faExclamationTriangle,
   faInfo,
   faInfoCircle,
   faSignOut,
@@ -109,6 +110,9 @@ export const Navbar = () => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const [showAdminsModal, setShowAdminsModal] = useState(false);
+  const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(
+    subscription?.cardDeclined || false
+  );
 
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
@@ -195,8 +199,23 @@ export const Navbar = () => {
                 <FontAwesomeIcon icon={faBuilding} className="text-xs text-bunker-300" />
               </div>
               <div className="whitespace-nowrap">{currentOrg?.name}</div>
-              <div className="mr-1 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300 !no-underline">
-                {getPlan(subscription)}
+              <div className="flex items-center gap-1">
+                <div className="mr-1 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300 !no-underline">
+                  {getPlan(subscription)}
+                </div>
+                {subscription.cardDeclined && (
+                  <Tooltip
+                    content="Payment failed. Please update your payment method to continue using premium features."
+                    className="max-w-xs"
+                  >
+                    <div className="flex items-center">
+                      <FontAwesomeIcon
+                        icon={faExclamationTriangle}
+                        className="animate-pulse cursor-help text-xs text-primary-400"
+                      />
+                    </div>
+                  </Tooltip>
+                )}
               </div>
             </div>
           </Link>
@@ -394,6 +413,48 @@ export const Navbar = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Modal isOpen={showCardDeclinedModal} onOpenChange={setShowCardDeclinedModal}>
+        <ModalContent
+          title={
+            <div className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-primary-400" />
+              Your payment method has been declined
+            </div>
+          }
+        >
+          <div>
+            <div>
+              <div className="mb-1">
+                <p>
+                  Your payment method was declined and your subscription may be at risk. Please
+                  update your payment information to continue using premium features.
+                </p>
+              </div>
+              <div className="mt-4">
+                <div className="flex space-x-3">
+                  <Link to="/organization/billing" className="inline-flex">
+                    <Button
+                      colorSchema="primary"
+                      variant="solid"
+                      onClick={() => setShowCardDeclinedModal(false)}
+                    >
+                      Update Payment Method
+                    </Button>
+                    <Button
+                      colorSchema="secondary"
+                      variant="outline"
+                      className="ml-2"
+                      onClick={() => setShowCardDeclinedModal(false)}
+                    >
+                      Dismiss
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ModalContent>
+      </Modal>
       <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
         <ModalContent title="Server Administrators" subTitle="View all server administrators">
           <div className="mb-2">
