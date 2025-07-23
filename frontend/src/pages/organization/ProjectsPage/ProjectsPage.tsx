@@ -38,7 +38,7 @@ export const ProjectsPage = () => {
     "upgradePlan"
   ] as const);
 
-  let { data: serverDetails, isLoading } = useFetchServerStatus();
+  const { data: serverDetails, isLoading } = useFetchServerStatus();
 
   const { subscription } = useSubscription();
 
