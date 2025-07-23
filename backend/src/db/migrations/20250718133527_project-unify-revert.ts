@@ -7,6 +7,78 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ProjectType, TableName } from "../schemas";
 
 /* eslint-disable no-await-in-loop,@typescript-eslint/ban-ts-comment */
+
+// Single query to get all projects that need any kind of kickout
+const getProjectsNeedingKickouts = async (
+  knex: Knex
+): Promise<
+  Array<{
+    id: string;
+    defaultProduct: string;
+    needsSecretManager: boolean;
+    needsCertManager: boolean;
+    needsSecretScanning: boolean;
+    needsKms: boolean;
+    needsSsh: boolean;
+  }>
+> => {
+  const result = await knex.raw(
+    `
+SELECT DISTINCT
+  p.id,
+  p."defaultProduct",
+  
+  -- Use CASE with direct joins instead of EXISTS subqueries
+  CASE WHEN p."defaultProduct" != 'secret-manager' AND s.secret_exists IS NOT NULL THEN true ELSE false END AS "needsSecretManager",
+  CASE WHEN p."defaultProduct" != 'certificate-manager' AND ca.ca_exists IS NOT NULL THEN true ELSE false END AS "needsCertManager", 
+  CASE WHEN p."defaultProduct" != 'secret-scanning' AND ssds.ssds_exists IS NOT NULL THEN true ELSE false END AS "needsSecretScanning",
+  CASE WHEN p."defaultProduct" != 'kms' AND kk.kms_exists IS NOT NULL THEN true ELSE false END AS "needsKms",
+  CASE WHEN p."defaultProduct" != 'ssh' AND sc.ssh_exists IS NOT NULL THEN true ELSE false END AS "needsSsh"
+
+FROM projects p
+LEFT JOIN (
+  SELECT DISTINCT e."projectId", 1 as secret_exists
+  FROM secrets s
+  JOIN secret_folders sf ON sf.id = s."folderId"
+  JOIN project_environments e ON e.id = sf."envId"
+) s ON s."projectId" = p.id AND p."defaultProduct" != 'secret-manager'
+
+LEFT JOIN (
+  SELECT DISTINCT "projectId", 1 as ca_exists
+  FROM certificate_authorities
+) ca ON ca."projectId" = p.id AND p."defaultProduct" != 'certificate-manager'
+
+LEFT JOIN (
+  SELECT DISTINCT "projectId", 1 as ssds_exists
+  FROM secret_scanning_data_sources
+) ssds ON ssds."projectId" = p.id AND p."defaultProduct" != 'secret-scanning'
+
+LEFT JOIN (
+  SELECT DISTINCT "projectId", 1 as kms_exists
+  FROM kms_keys
+  WHERE "isReserved" = false
+) kk ON kk."projectId" = p.id AND p."defaultProduct" != 'kms'
+
+LEFT JOIN (
+  SELECT DISTINCT sca."projectId", 1 as ssh_exists
+  FROM ssh_certificates sc
+  JOIN ssh_certificate_authorities sca ON sca.id = sc."sshCaId"
+) sc ON sc."projectId" = p.id AND p."defaultProduct" != 'ssh'
+
+WHERE p."defaultProduct" IS NOT NULL
+  AND (
+    (p."defaultProduct" != 'secret-manager' AND s.secret_exists IS NOT NULL) OR
+    (p."defaultProduct" != 'certificate-manager' AND ca.ca_exists IS NOT NULL) OR
+    (p."defaultProduct" != 'secret-scanning' AND ssds.ssds_exists IS NOT NULL) OR
+    (p."defaultProduct" != 'kms' AND kk.kms_exists IS NOT NULL) OR
+    (p."defaultProduct" != 'ssh' AND sc.ssh_exists IS NOT NULL)
+  )
+    `
+  );
+
+  return result.rows;
+};
+
 const newProject = async (knex: Knex, projectId: string, projectType: ProjectType) => {
   const newProjectId = uuidV4();
   const project = await knex(TableName.Project).where("id", projectId).first();
@@ -199,77 +271,52 @@ const newProject = async (knex: Knex, projectId: string, projectType: ProjectTyp
 };
 
 const kickOutSecretManagerProject = async (knex: Knex, oldProjectId: string) => {
-  const secret = await knex(TableName.Secret)
-    .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-    .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
-    .where("projectId", oldProjectId)
-    .returning(`${TableName.Secret}.id`)
-    .first();
-  if (secret) {
-    const newProjectId = await newProject(knex, oldProjectId, ProjectType.SecretManager);
-    await knex(TableName.IntegrationAuth).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.Environment).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SecretBlindIndex).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SecretSync).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SecretTag).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SecretReminderRecipients).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.ServiceToken).where("projectId", oldProjectId).update("projectId", newProjectId);
-  }
+  const newProjectId = await newProject(knex, oldProjectId, ProjectType.SecretManager);
+  await knex(TableName.IntegrationAuth).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.Environment).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.SecretBlindIndex).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.SecretSync).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.SecretTag).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.SecretReminderRecipients).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.ServiceToken).where("projectId", oldProjectId).update("projectId", newProjectId);
 };
 
 const kickOutCertManagerProject = async (knex: Knex, oldProjectId: string) => {
-  const cas = await knex(TableName.CertificateAuthority).where("projectId", oldProjectId).returning("id").first();
-  if (cas) {
-    const newProjectId = await newProject(knex, oldProjectId, ProjectType.CertificateManager);
-    await knex(TableName.CertificateAuthority).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.Certificate).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.PkiSubscriber).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.PkiCollection).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.PkiAlert).where("projectId", oldProjectId).update("projectId", newProjectId);
-  }
+  const newProjectId = await newProject(knex, oldProjectId, ProjectType.CertificateManager);
+  await knex(TableName.CertificateAuthority).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.Certificate).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.PkiSubscriber).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.PkiCollection).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.PkiAlert).where("projectId", oldProjectId).update("projectId", newProjectId);
 };
 
 const kickOutSecretScanningProject = async (knex: Knex, oldProjectId: string) => {
-  const cas = await knex(TableName.SecretScanningDataSource).where("projectId", oldProjectId).returning("id").first();
-  if (cas) {
-    const newProjectId = await newProject(knex, oldProjectId, ProjectType.SecretScanning);
-    await knex(TableName.SecretScanningConfig).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SecretScanningDataSource).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SecretScanningFinding).where("projectId", oldProjectId).update("projectId", newProjectId);
-  }
+  const newProjectId = await newProject(knex, oldProjectId, ProjectType.SecretScanning);
+  await knex(TableName.SecretScanningConfig).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.SecretScanningDataSource).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.SecretScanningFinding).where("projectId", oldProjectId).update("projectId", newProjectId);
 };
 
 const kickOutKmsProject = async (knex: Knex, oldProjectId: string) => {
-  const kmsKeys = await knex(TableName.KmsKey)
+  const newProjectId = await newProject(knex, oldProjectId, ProjectType.KMS);
+  await knex(TableName.KmsKey)
     .where("projectId", oldProjectId)
     .andWhere("isReserved", false)
-    .returning("id")
-    .first();
-
-  if (kmsKeys) {
-    const newProjectId = await newProject(knex, oldProjectId, ProjectType.KMS);
-    await knex(TableName.KmsKey)
-      .where("projectId", oldProjectId)
-      .andWhere("isReserved", false)
-      .update("projectId", newProjectId);
-    await knex(TableName.KmipClient).where("projectId", oldProjectId).update("projectId", newProjectId);
-  }
+    .update("projectId", newProjectId);
+  await knex(TableName.KmipClient).where("projectId", oldProjectId).update("projectId", newProjectId);
 };
 
 const kickOutSshProject = async (knex: Knex, oldProjectId: string) => {
-  const hosts = await knex(TableName.SshCertificateAuthority).where("projectId", oldProjectId).returning("id").first();
-  if (hosts) {
-    const newProjectId = await newProject(knex, oldProjectId, ProjectType.SSH);
-    await knex(TableName.SshHost).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.ProjectSshConfig).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SshCertificateAuthority).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SecretScanningFinding).where("projectId", oldProjectId).update("projectId", newProjectId);
-    await knex(TableName.SshHostGroup).where("projectId", oldProjectId).update("projectId", newProjectId);
-  }
+  const newProjectId = await newProject(knex, oldProjectId, ProjectType.SSH);
+  await knex(TableName.SshHost).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.ProjectSshConfig).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.SshCertificateAuthority).where("projectId", oldProjectId).update("projectId", newProjectId);
+  await knex(TableName.SshHostGroup).where("projectId", oldProjectId).update("projectId", newProjectId);
 };
 
 const BATCH_SIZE = 1000;
 const MIGRATION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
 export async function up(knex: Knex): Promise<void> {
   const result = await knex.raw("SHOW statement_timeout");
   const originalTimeout = result.rows[0].statement_timeout;
@@ -301,26 +348,57 @@ export async function up(knex: Knex): Promise<void> {
         t.string("defaultProduct").nullable().alter();
       });
 
-      let projectsToBeSplit;
-      do {
-        // eslint-disable-next-line no-await-in-loop
-        projectsToBeSplit = await knex(TableName.Project)
-          .whereNotNull("defaultProduct")
-          .limit(BATCH_SIZE)
-          .select("id", "defaultProduct");
-        if (projectsToBeSplit.length) {
-          const ids: string[] = [];
-          for (const { id, defaultProduct } of projectsToBeSplit) {
-            if (defaultProduct !== ProjectType.SecretManager) await kickOutSecretManagerProject(knex, id);
-            if (defaultProduct !== ProjectType.CertificateManager) await kickOutCertManagerProject(knex, id);
-            if (defaultProduct !== ProjectType.KMS) await kickOutKmsProject(knex, id);
-            if (defaultProduct !== ProjectType.SSH) await kickOutSshProject(knex, id);
-            if (defaultProduct !== ProjectType.SecretScanning) await kickOutSecretScanningProject(knex, id);
-            ids.push(id);
+      // Get all projects that need kickouts in a single query
+      const projectsNeedingKickouts = await getProjectsNeedingKickouts(knex);
+      console.log("GOT PROJECTS", projectsNeedingKickouts.length);
+
+      // Process projects in batches to avoid overwhelming the database
+      for (let i = 0; i < projectsNeedingKickouts.length; i += projectsNeedingKickouts.length) {
+        const batch = projectsNeedingKickouts.slice(i, i + BATCH_SIZE);
+        const processedIds: string[] = [];
+
+        for (const project of batch) {
+          console.log("PROCESSING PROJECT", project.id);
+          const kickoutPromises: Promise<void>[] = [];
+
+          // Only add kickouts that are actually needed (flags are pre-computed)
+          if (project.needsSecretManager) {
+            kickoutPromises.push(kickOutSecretManagerProject(knex, project.id));
           }
-          await knex(TableName.Project).whereIn("id", ids).update("defaultProduct", null);
+          if (project.needsCertManager) {
+            kickoutPromises.push(kickOutCertManagerProject(knex, project.id));
+          }
+          if (project.needsKms) {
+            kickoutPromises.push(kickOutKmsProject(knex, project.id));
+          }
+          if (project.needsSsh) {
+            kickoutPromises.push(kickOutSshProject(knex, project.id));
+          }
+          if (project.needsSecretScanning) {
+            kickoutPromises.push(kickOutSecretScanningProject(knex, project.id));
+          }
+
+          // Execute all kickouts in parallel and handle any failures gracefully
+          if (kickoutPromises.length > 0) {
+            const results = await Promise.allSettled(kickoutPromises);
+
+            // Log any failures for debugging
+            results.forEach((res) => {
+              if (res.status === "rejected") {
+                throw new Error(`Migration failed for project ${project.id}: ${res.reason}`);
+              }
+            });
+          }
+
+          processedIds.push(project.id);
+          console.log("PROCESSING FINISHED", project.id);
         }
-      } while (projectsToBeSplit.length > 0);
+
+        // Clear defaultProduct for the processed batch
+        if (processedIds.length > 0) {
+          await knex(TableName.Project).whereIn("id", processedIds).update("defaultProduct", null);
+        }
+      }
     }
   } finally {
     await knex.raw(`SET statement_timeout = '${originalTimeout}'`);
