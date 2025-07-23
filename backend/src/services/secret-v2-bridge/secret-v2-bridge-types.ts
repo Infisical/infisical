@@ -358,6 +358,7 @@ export type TFindSecretsByFolderIdsFilter = {
   tagSlugs?: string[];
   metadataFilter?: { key?: string; value?: string }[];
   includeTagsInSearch?: boolean;
+  includeMetadataInSearch?: boolean;
   keys?: string[];
 };
 

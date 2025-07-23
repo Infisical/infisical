@@ -904,7 +904,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             projectId,
             path: secretPath,
             search,
-            tagSlugs: tags
+            tagSlugs: tags,
+            includeTagsInSearch: true,
+            includeMetadataInSearch: true
           });
 
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
@@ -924,7 +926,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 search,
                 limit: remainingLimit,
                 offset: adjustedOffset,
-                tagSlugs: tags
+                tagSlugs: tags,
+                includeTagsInSearch: true,
+                includeMetadataInSearch: true
               })
             ).secrets;
           }
@@ -1097,7 +1101,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           filters: {
             ...sharedFilters,
             tagSlugs: tags,
-            includeTagsInSearch: true
+            includeTagsInSearch: true,
+            includeMetadataInSearch: true
           }
         },
         req.permission

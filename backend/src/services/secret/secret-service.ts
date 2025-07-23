@@ -1137,6 +1137,8 @@ export const secretServiceFactory = ({
     | "environment"
     | "tagSlugs"
     | "search"
+    | "includeTagsInSearch"
+    | "includeMetadataInSearch"
   >) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
