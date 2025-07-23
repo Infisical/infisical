@@ -72,7 +72,7 @@ export const secretApprovalPolicyServiceFactory = ({
     if (!envIds && !envId) {
       throw new BadRequestError({ message: "At least one environment should be provided" });
     }
-    const policy = await secretApprovalPolicyDAL.findPoliciesByEnvIdAndSecretPath({
+    const policy = await secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
       envIds: envId ? [envId] : envIds || [],
       secretPath
     });

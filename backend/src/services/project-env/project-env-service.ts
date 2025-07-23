@@ -21,8 +21,8 @@ type TProjectEnvServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady">;
-  accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesIds">;
-  secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesIds">;
+  accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
+  secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
 };
 
 export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFactory>;
@@ -222,15 +222,15 @@ export const projectEnvServiceFactory = ({
       }
 
       const env = await projectEnvDAL.transaction(async (tx) => {
-        const secretApprovalRequest = await secretApprovalPolicyEnvironmentDAL.findAvailablePoliciesIds(id, tx);
-        if (secretApprovalRequest.length > 0) {
+        const secretApprovalPolicies = await secretApprovalPolicyEnvironmentDAL.findAvailablePoliciesByEnvId(id, tx);
+        if (secretApprovalPolicies.length > 0) {
           throw new BadRequestError({
             message: "Environment is in use by a secret approval policy",
             name: "DeleteEnvironment"
           });
         }
-        const accessApprovalPolicy = await accessApprovalPolicyEnvironmentDAL.findAvailablePoliciesIds(id, tx);
-        if (accessApprovalPolicy.length > 0) {
+        const accessApprovalPolicies = await accessApprovalPolicyEnvironmentDAL.findAvailablePoliciesByEnvId(id, tx);
+        if (accessApprovalPolicies.length > 0) {
           throw new BadRequestError({
             message: "Environment is in use by an access approval policy",
             name: "DeleteEnvironment"

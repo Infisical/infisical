@@ -5,7 +5,6 @@ export type TSecretApprovalPolicy = {
   id: string;
   workspace: string;
   name: string;
-  envId: string;
   environments: WorkspaceEnv[];
   secretPath?: string;
   approvals: number;

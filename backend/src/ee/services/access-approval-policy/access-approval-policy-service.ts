@@ -77,9 +77,9 @@ export const accessApprovalPolicyServiceFactory = ({
     if (!envId && !envIds) {
       throw new BadRequestError({ message: "Must provide either envId or envIds" });
     }
-    const policy = await accessApprovalPolicyDAL.findPoliciesByEnvIdAndSecretPath({
+    const policy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
       secretPath,
-      envIds: envId ? [envId] : envIds || []
+      envIds: envId ? [envId] : (envIds as string[])
     });
     return policyId ? policy && policy.id !== policyId : Boolean(policy);
   };

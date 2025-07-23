@@ -14,6 +14,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("envId").notNullable();
       t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       t.timestamps(true, true, true);
+      t.unique(["policyId", "envId"]);
     });
   }
   if (!(await knex.schema.hasTable(TableName.SecretApprovalPolicyEnvironment))) {
@@ -24,6 +25,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("envId").notNullable();
       t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
       t.timestamps(true, true, true);
+      t.unique(["policyId", "envId"]);
     });
   }
 

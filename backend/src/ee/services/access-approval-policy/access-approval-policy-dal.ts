@@ -144,7 +144,7 @@ export interface TAccessApprovalPolicyDALFactory
       }
     | undefined
   >;
-  findPoliciesByEnvIdAndSecretPath: (
+  findPolicyByEnvIdAndSecretPath: (
     { envIds, secretPath }: { envIds: string[]; secretPath: string },
     tx?: Knex
   ) => Promise<{
@@ -399,17 +399,17 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           void qb.where(`${TableName.AccessApprovalPolicy}.id`, "=", customFilter.policyId);
         }
       })
-      .where((qb) => {
-        if (customFilter?.envId) {
-          void qb.where(`${TableName.AccessApprovalPolicyEnvironment}.envId`, "=", customFilter.envId);
-        }
-      })
       .join(
         TableName.AccessApprovalPolicyEnvironment,
         `${TableName.AccessApprovalPolicy}.id`,
         `${TableName.AccessApprovalPolicyEnvironment}.policyId`
       )
       .join(TableName.Environment, `${TableName.AccessApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`)
+      .where((qb) => {
+        if (customFilter?.envId) {
+          void qb.where(`${TableName.AccessApprovalPolicyEnvironment}.envId`, "=", customFilter.envId);
+        }
+      })
       .leftJoin(
         TableName.AccessApprovalPolicyApprover,
         `${TableName.AccessApprovalPolicy}.id`,
@@ -612,7 +612,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
     }
   };
 
-  const findPoliciesByEnvIdAndSecretPath: TAccessApprovalPolicyDALFactory["findPoliciesByEnvIdAndSecretPath"] = async (
+  const findPolicyByEnvIdAndSecretPath: TAccessApprovalPolicyDALFactory["findPolicyByEnvIdAndSecretPath"] = async (
     { envIds, secretPath },
     tx
   ) => {
@@ -677,7 +677,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
       });
       return formattedDocs?.[0];
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindPoliciesByEnvIdAndSecretPath" });
+      throw new DatabaseError({ error, name: "findPolicyByEnvIdAndSecretPath" });
     }
   };
 
@@ -687,6 +687,6 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
     findById,
     softDeleteById,
     findLastValidPolicy,
-    findPoliciesByEnvIdAndSecretPath
+    findPolicyByEnvIdAndSecretPath
   };
 };

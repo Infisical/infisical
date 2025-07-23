@@ -92,7 +92,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectSlug: req.body.projectSlug,
-        name: req.body.name ?? `${req.body.environment || req.body.environments?.join("-")}-${nanoid(3)}`,
+        name:
+          req.body.name ?? `${req.body.environment || req.body.environments?.join("-").substring(0, 250)}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
       });
       return { approval };

@@ -8,7 +8,6 @@ export type TAccessApprovalPolicy = {
   name: string;
   approvals: number;
   secretPath: string;
-  envId: string;
   workspace: string;
   environments: WorkspaceEnv[];
   projectId: string;

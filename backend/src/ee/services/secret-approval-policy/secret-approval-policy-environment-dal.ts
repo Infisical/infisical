@@ -3,14 +3,14 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TSecretApprovalPolicyEnvironmentDALFactory = ReturnType<typeof secretApprovalPolicyEnvironmentDALFactory>;
 
 export const secretApprovalPolicyEnvironmentDALFactory = (db: TDbClient) => {
   const secretApprovalPolicyEnvironmentOrm = ormify(db, TableName.SecretApprovalPolicyEnvironment);
 
-  const findAvailablePoliciesIds = async (envId: string, tx?: Knex) => {
+  const findAvailablePoliciesByEnvId = async (envId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretApprovalPolicyEnvironment)
         .join(
@@ -18,14 +18,15 @@ export const secretApprovalPolicyEnvironmentDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalPolicyEnvironment}.policyId`,
           `${TableName.SecretApprovalPolicy}.id`
         )
-        .where({ [`${TableName.SecretApprovalPolicyEnvironment}.envId` as "envId"]: envId })
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter({ envId }, TableName.SecretApprovalPolicyEnvironment))
         .whereNull(`${TableName.SecretApprovalPolicy}.deletedAt`)
         .select(selectAllTableCols(TableName.SecretApprovalPolicyEnvironment));
       return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "findAvailablePoliciesIds" });
+      throw new DatabaseError({ error, name: "findAvailablePoliciesByEnvId" });
     }
   };
 
-  return { ...secretApprovalPolicyEnvironmentOrm, findAvailablePoliciesIds };
+  return { ...secretApprovalPolicyEnvironmentOrm, findAvailablePoliciesByEnvId };
 };

@@ -265,7 +265,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     return softDeletedPolicy;
   };
 
-  const findPoliciesByEnvIdAndSecretPath = async (
+  const findPolicyByEnvIdAndSecretPath = async (
     { envIds, secretPath }: { envIds: string[]; secretPath: string },
     tx?: Knex
   ) => {
@@ -330,9 +330,9 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
       });
       return formattedDocs?.[0];
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindPoliciesByEnvIdAndSecretPath" });
+      throw new DatabaseError({ error, name: "findPolicyByEnvIdAndSecretPath" });
     }
   };
 
-  return { ...secretApprovalPolicyOrm, findById, find, softDeleteById, findPoliciesByEnvIdAndSecretPath };
+  return { ...secretApprovalPolicyOrm, findById, find, softDeleteById, findPolicyByEnvIdAndSecretPath };
 };
