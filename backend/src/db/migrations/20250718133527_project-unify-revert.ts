@@ -350,7 +350,6 @@ export async function up(knex: Knex): Promise<void> {
 
       // Get all projects that need kickouts in a single query
       const projectsNeedingKickouts = await getProjectsNeedingKickouts(knex);
-      console.log("GOT PROJECTS", projectsNeedingKickouts.length);
 
       // Process projects in batches to avoid overwhelming the database
       for (let i = 0; i < projectsNeedingKickouts.length; i += projectsNeedingKickouts.length) {
@@ -358,7 +357,6 @@ export async function up(knex: Knex): Promise<void> {
         const processedIds: string[] = [];
 
         for (const project of batch) {
-          console.log("PROCESSING PROJECT", project.id);
           const kickoutPromises: Promise<void>[] = [];
 
           // Only add kickouts that are actually needed (flags are pre-computed)
@@ -391,7 +389,6 @@ export async function up(knex: Knex): Promise<void> {
           }
 
           processedIds.push(project.id);
-          console.log("PROCESSING FINISHED", project.id);
         }
 
         // Clear defaultProduct for the processed batch
