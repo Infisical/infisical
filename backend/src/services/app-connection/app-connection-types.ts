@@ -88,6 +88,12 @@ import {
   TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
 import {
+  TDigitalOceanConnection,
+  TDigitalOceanConnectionConfig,
+  TDigitalOceanConnectionInput,
+  TValidateDigitalOceanCredentialsSchema
+} from "./digital-ocean";
+import {
   TFlyioConnection,
   TFlyioConnectionConfig,
   TFlyioConnectionInput,
@@ -143,6 +149,12 @@ import {
 } from "./ldap";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
+import {
+  TOktaConnection,
+  TOktaConnectionConfig,
+  TOktaConnectionInput,
+  TValidateOktaConnectionCredentialsSchema
+} from "./okta";
 import {
   TPostgresConnection,
   TPostgresConnectionInput,
@@ -232,6 +244,8 @@ export type TAppConnection = { id: string } & (
   | TRailwayConnection
   | TChecklyConnection
   | TSupabaseConnection
+  | TDigitalOceanConnection
+  | TOktaConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -273,6 +287,8 @@ export type TAppConnectionInput = { id: string } & (
   | TRailwayConnectionInput
   | TChecklyConnectionInput
   | TSupabaseConnectionInput
+  | TDigitalOceanConnectionInput
+  | TOktaConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -321,7 +337,9 @@ export type TAppConnectionConfig =
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
-  | TSupabaseConnectionConfig;
+  | TSupabaseConnectionConfig
+  | TDigitalOceanConnectionConfig
+  | TOktaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -357,7 +375,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
-  | TValidateSupabaseConnectionCredentialsSchema;
+  | TValidateSupabaseConnectionCredentialsSchema
+  | TValidateDigitalOceanCredentialsSchema
+  | TValidateOktaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

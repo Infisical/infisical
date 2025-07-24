@@ -30,6 +30,7 @@ import {
   LdapConnectionMethod,
   MsSqlConnectionMethod,
   MySqlConnectionMethod,
+  OktaConnectionMethod,
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
@@ -42,6 +43,7 @@ import {
 } from "@app/hooks/api/appConnections/types";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
+import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
@@ -98,7 +100,12 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
   [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
   [AppConnection.Checkly]: { name: "Checkly", image: "Checkly.png" },
-  [AppConnection.Supabase]: { name: "Supabase", image: "Supabase.png" }
+  [AppConnection.Supabase]: { name: "Supabase", image: "Supabase.png" },
+  [AppConnection.DigitalOcean]: {
+    name: "Digital Ocean",
+    image: "Digital Ocean.png"
+  },
+  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -132,6 +139,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case CloudflareConnectionMethod.ApiToken:
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
+    case DigitalOceanConnectionMethod.ApiToken:
+    case OktaConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

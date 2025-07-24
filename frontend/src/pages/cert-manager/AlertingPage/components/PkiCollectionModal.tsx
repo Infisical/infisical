@@ -82,7 +82,7 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         navigate({
-          to: "/projects/$projectId/cert-manager/pki-collections/$collectionId",
+          to: "/projects/cert-management/$projectId/pki-collections/$collectionId",
           params: {
             projectId,
             collectionId

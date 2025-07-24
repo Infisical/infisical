@@ -38,7 +38,6 @@ import {
   PkiSubscriberStatus,
   pkiSubscriberStatusToNameMap
 } from "@app/hooks/api/pkiSubscriber/constants";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -76,7 +75,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                     key={`pki-subscriber-${subscriber.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/projects/$projectId/${ProjectType.CertificateManager}/subscribers/$subscriberName` as const,
+                        to: "/projects/cert-management/$projectId/subscribers/$subscriberName",
                         params: {
                           projectId: currentWorkspace.id,
                           subscriberName: subscriber.name

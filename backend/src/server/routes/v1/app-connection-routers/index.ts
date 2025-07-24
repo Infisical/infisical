@@ -14,6 +14,7 @@ import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
+import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -25,6 +26,7 @@ import { registerHumanitecConnectionRouter } from "./humanitec-connection-router
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
+import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
@@ -72,5 +74,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,
     [AppConnection.Checkly]: registerChecklyConnectionRouter,
-    [AppConnection.Supabase]: registerSupabaseConnectionRouter
+    [AppConnection.Supabase]: registerSupabaseConnectionRouter,
+    [AppConnection.DigitalOcean]: registerDigitalOceanConnectionRouter,
+    [AppConnection.Okta]: registerOktaConnectionRouter
   };

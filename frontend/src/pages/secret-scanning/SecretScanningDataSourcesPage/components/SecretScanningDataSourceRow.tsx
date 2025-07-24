@@ -156,7 +156,7 @@ export const SecretScanningDataSourceRow = ({
               onClick={(e) => {
                 e.stopPropagation();
                 navigate({
-                  to: "/projects/$projectId/secret-scanning/findings",
+                  to: "/projects/secret-scanning/$projectId/findings",
                   params: {
                     projectId
                   },

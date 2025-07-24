@@ -27,7 +27,7 @@ export const ProjectListToggle = ({ value, onChange }: Props) => {
         value={value}
         onValueChange={onChange}
         className="absolute left-0 top-0 h-full w-full cursor-pointer opacity-0"
-        dropdownContainerClassName="mt-10 ml-5"
+        position="popper"
       >
         <SelectItem value={ProjectListView.MyProjects}>My Projects</SelectItem>
         <SelectItem value={ProjectListView.AllProjects}>All Projects</SelectItem>

@@ -102,7 +102,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
 
   const goBackToHistory = () => {
     navigate({
-      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId",
+      to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
       params: {
         projectId: currentWorkspace.id,
         folderId,

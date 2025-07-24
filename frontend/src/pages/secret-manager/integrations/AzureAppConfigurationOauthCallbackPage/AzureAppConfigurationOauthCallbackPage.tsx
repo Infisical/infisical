@@ -28,7 +28,7 @@ export const AzureAppConfigurationOauthCallbackPage = () => {
         });
 
         navigate({
-          to: "/projects/$projectId/secret-manager/integrations/azure-app-configuration/create",
+          to: "/projects/secret-management/$projectId/integrations/azure-app-configuration/create",
           params: {
             projectId: currentWorkspace.id
           },

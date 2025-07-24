@@ -34,7 +34,7 @@ export const CommitDetailsPage = () => {
 
   const handleGoBackToHistory = () => {
     navigate({
-      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId",
+      to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
       params: {
         projectId: currentWorkspace.id,
         folderId,
@@ -49,7 +49,7 @@ export const CommitDetailsPage = () => {
 
   const handleGoToRollbackPreview = () => {
     navigate({
-      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId/$commitId/restore",
+      to: "/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
       params: {
         projectId: currentWorkspace.id,
         folderId,

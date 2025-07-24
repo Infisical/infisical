@@ -18,7 +18,6 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
@@ -71,7 +70,7 @@ const Page = () => {
 
       handlePopUpClose("deleteCa");
       navigate({
-        to: `/projects/$projectId/${ProjectType.CertificateManager}/certificate-authorities` as const,
+        to: "/projects/cert-management/$projectId/certificate-authorities",
         params: {
           projectId
         }

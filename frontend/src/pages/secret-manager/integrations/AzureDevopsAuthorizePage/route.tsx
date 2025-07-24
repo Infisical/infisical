@@ -5,7 +5,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { AzureDevopsAuthorizePage } from "./AzureDevopsAuthorizePage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/azure-devops/authorize"
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/azure-devops/authorize"
 )({
   component: AzureDevopsAuthorizePage,
   beforeLoad: ({ context, params }) => {
@@ -15,7 +15,7 @@ export const Route = createFileRoute(
         {
           label: "Integrations",
           link: linkOptions({
-            to: "/projects/$projectId/secret-manager/integrations",
+            to: "/projects/secret-management/$projectId/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.NativeIntegrations

@@ -3,6 +3,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import {
+  ActionProjectType,
   ProjectMembershipRole,
   ProjectUpgradeStatus,
   ProjectVersion,
@@ -45,6 +46,7 @@ import { ChangeType } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
@@ -128,6 +130,7 @@ type TSecretServiceFactoryDep = {
     "insertMany" | "insertApprovalSecretTags"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  reminderService: Pick<TReminderServiceFactory, "createReminder">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -150,7 +153,8 @@ export const secretServiceFactory = ({
   secretApprovalRequestSecretDAL,
   secretV2BridgeService,
   secretApprovalRequestService,
-  licenseService
+  licenseService,
+  reminderService
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -212,7 +216,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -329,7 +334,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -489,7 +495,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -547,7 +554,8 @@ export const secretServiceFactory = ({
           await secretQueueService.removeSecretReminder(
             {
               repeatDays: secret.secretReminderRepeatDays,
-              secretId: secret.id
+              secretId: secret.id,
+              projectId
             },
             tx
           );
@@ -604,7 +612,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     let paths: { folderId: string; path: string }[] = [];
@@ -709,7 +718,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
       environment,
@@ -814,7 +824,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretActions.Create,
@@ -900,7 +911,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -1022,7 +1034,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretActions.Delete,
@@ -1073,7 +1086,8 @@ export const secretServiceFactory = ({
           await secretQueueService.removeSecretReminder(
             {
               repeatDays: secret.secretReminderRepeatDays,
-              secretId: secret.id
+              secretId: secret.id,
+              projectId
             },
             tx
           );
@@ -1128,6 +1142,8 @@ export const secretServiceFactory = ({
     | "environment"
     | "tagSlugs"
     | "search"
+    | "includeTagsInSearch"
+    | "includeMetadataInSearch"
   >) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -1661,8 +1677,6 @@ export const secretServiceFactory = ({
                 secretComment,
                 secretValue,
                 tagIds,
-                reminderNote: secretReminderNote,
-                reminderRepeatDays: secretReminderRepeatDays,
                 secretMetadata
               }
             ]
@@ -1844,9 +1858,6 @@ export const secretServiceFactory = ({
                 secretComment,
                 secretValue,
                 tagIds,
-                reminderNote: secretReminderNote,
-                reminderRepeatDays: secretReminderRepeatDays,
-                secretReminderRecipients,
                 secretMetadata
               }
             ]
@@ -1855,9 +1866,6 @@ export const secretServiceFactory = ({
         return { type: SecretProtectionType.Approval as const, approval };
       }
       const secret = await secretV2BridgeService.updateSecret({
-        secretReminderRepeatDays,
-        secretReminderNote,
-        secretReminderRecipients,
         skipMultilineEncoding,
         tagIds,
         secretComment,
@@ -1875,6 +1883,21 @@ export const secretServiceFactory = ({
         secretValue,
         secretMetadata
       });
+
+      if (secretReminderRepeatDays) {
+        await reminderService.createReminder({
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          reminder: {
+            secretId: secret.id,
+            message: secretReminderNote,
+            repeatDays: secretReminderRepeatDays,
+            recipients: secretReminderRecipients
+          }
+        });
+      }
       return { type: SecretProtectionType.Direct as const, secret };
     }
 
@@ -2307,6 +2330,29 @@ export const secretServiceFactory = ({
         secrets: inputSecrets,
         mode
       });
+
+      await Promise.all(
+        inputSecrets
+          .filter((el) => el.secretReminderRepeatDays)
+          .map(async (secret) => {
+            await reminderService.createReminder({
+              actor,
+              actorId,
+              actorOrgId,
+              actorAuthMethod,
+              reminder: {
+                secretId: secrets.find(
+                  (el) =>
+                    (el.secretKey === secret.secretKey || el.secretKey === secret.newSecretName) &&
+                    el.secretPath === (secret.secretPath || secretPath)
+                )?.id,
+                message: secret.secretReminderNote,
+                repeatDays: secret.secretReminderRepeatDays
+              }
+            });
+          })
+      );
+
       return { type: SecretProtectionType.Direct as const, secrets };
     }
 
@@ -2551,7 +2597,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId: folder.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
     const secretVersions = await secretVersionDAL.findBySecretId(secretId, {
@@ -2643,7 +2690,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -2748,7 +2796,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -2854,7 +2903,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     if (!hasRole(ProjectMembershipRole.Admin))
@@ -2939,7 +2989,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const { botKey } = await projectBotService.getBotKey(project.id);
@@ -3346,7 +3397,8 @@ export const secretServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     if (!hasRole(ProjectMembershipRole.Admin))
@@ -3374,7 +3426,8 @@ export const secretServiceFactory = ({
       actorId: actor.id,
       projectId: params.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const secrets = secretV2BridgeService.getSecretsByFolderMappings({ ...params, userId: actor.id }, permission);

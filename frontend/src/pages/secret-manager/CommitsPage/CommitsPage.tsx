@@ -31,7 +31,7 @@ export const CommitsPage = () => {
 
   const handleSelectCommit = (commitId: string) => {
     navigate({
-      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId/$commitId",
+      to: "/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId",
       params: {
         projectId: currentWorkspace.id,
         folderId,

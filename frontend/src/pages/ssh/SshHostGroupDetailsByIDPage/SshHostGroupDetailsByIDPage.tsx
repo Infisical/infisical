@@ -18,7 +18,6 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useDeleteSshHostGroup, useGetSshHostGroupById } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SshHostGroupModal } from "../SshHostsPage/components/SshHostGroupModal";
@@ -54,7 +53,7 @@ const Page = () => {
 
       handlePopUpClose("deleteSshHostGroup");
       navigate({
-        to: `/projects/$projectId/${ProjectType.SSH}/overview` as const,
+        to: "/projects/ssh/$projectId/overview",
         params: {
           projectId
         }

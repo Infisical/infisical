@@ -135,7 +135,7 @@ export const OctopusDeployConfigurePage = () => {
         text: "Successfully created integration"
       });
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations",
+        to: "/projects/secret-management/$projectId/integrations",
         params: {
           projectId: currentWorkspace.id
         },

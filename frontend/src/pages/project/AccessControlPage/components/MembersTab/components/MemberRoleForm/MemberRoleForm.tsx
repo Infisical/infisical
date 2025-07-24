@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { Alert, AlertDescription } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
 import { MemberRbacSection } from "./MemberRbacSection";
@@ -21,7 +22,7 @@ export const MemberRoleForm = ({ projectMember, onOpenUpgradeModal }: Props) => 
       >
         <AlertDescription>
           <Link
-            to="/projects/$projectId/members/$membershipId"
+            to={`${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId` as const}
             params={{
               projectId: currentWorkspace.id,
               membershipId: projectMember.id

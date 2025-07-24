@@ -50,6 +50,7 @@ import {
   useUser,
   useWorkspace
 } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -311,7 +312,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     onKeyDown={(evt) => {
                       if (evt.key === "Enter") {
                         navigate({
-                          to: "/projects/$projectId/members/$membershipId",
+                          to: `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId`,
                           params: {
                             projectId: workspaceId,
                             membershipId
@@ -321,7 +322,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     }}
                     onClick={() =>
                       navigate({
-                        to: "/projects/$projectId/members/$membershipId",
+                        to: `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId`,
                         params: {
                           projectId: workspaceId,
                           membershipId

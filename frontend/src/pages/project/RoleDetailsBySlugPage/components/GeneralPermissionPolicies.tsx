@@ -124,7 +124,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   };
 
   return (
-    <div className="overflow-clip border border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md">
+    <div className="overflow-clip border border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md hover:bg-mineshaft-700">
       <div
         className="flex h-14 cursor-pointer items-center px-5 py-4 text-sm text-gray-300"
         role="button"
@@ -136,9 +136,9 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
           }
         }}
       >
-        <FontAwesomeIcon className="mr-8" icon={isOpen ? faChevronDown : faChevronRight} />
+        <FontAwesomeIcon className="mr-6 w-4" icon={isOpen ? faChevronDown : faChevronRight} />
 
-        <div className="flex-grow text-base">{title}</div>
+        <div className="flex-grow select-none text-base">{title}</div>
         {fields.length > 1 && (
           <div>
             <Tag size="xs" className="mr-2 px-2">

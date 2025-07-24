@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCircleQuestion, faEye } from "@fortawesome/free-regular-svg-icons";
@@ -52,9 +52,11 @@ import {
   useWorkspace
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretVersion } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { useGetReminder } from "@app/hooks/api/reminders";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
@@ -114,6 +116,7 @@ export const SecretDetailSidebar = ({
 
   const { permission } = useProjectPermission();
   const { currentWorkspace } = useWorkspace();
+  const { data: reminderData } = useGetReminder(secret?.id);
 
   const tagFields = useFieldArray({
     control,
@@ -220,23 +223,8 @@ export const SecretDetailSidebar = ({
     await onSaveSecret(secret, { ...secret, ...data }, () => reset());
   };
 
-  const handleReminderSubmit = async (
-    reminderRepeatDays: number | null | undefined,
-    reminderNote: string | null | undefined,
-    reminderRecipients: string[] | undefined
-  ) => {
-    await onSaveSecret(
-      secret,
-      { ...secret, reminderRepeatDays, reminderNote, isReminderEvent: true, reminderRecipients },
-      () => {}
-    );
-  };
-
   const [createReminderFormOpen, setCreateReminderFormOpen] = useToggle(false);
 
-  const secretReminderRepeatDays = watch("reminderRepeatDays");
-  const secretReminderNote = watch("reminderNote");
-  const secretReminderRecipients = watch("reminderRecipients");
   useEffect(() => {
     setValue(
       "reminderRecipients",
@@ -302,27 +290,33 @@ export const SecretDetailSidebar = ({
     }
   };
 
+  const getDaysUntilReminder = useMemo(() => {
+    return (): string => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      const target = new Date(reminderData?.nextReminderDate || "");
+      target.setHours(0, 0, 0, 0);
+
+      const diffTime = target.getTime() - now.getTime();
+      const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      return `Days until next reminder: ${daysRemaining}`;
+    };
+  }, [reminderData]);
+
   return (
     <>
       <CreateReminderForm
-        repeatDays={secretReminderRepeatDays}
-        note={secretReminderNote}
-        recipients={secretReminderRecipients}
         isOpen={createReminderFormOpen}
-        onOpenChange={(_, data) => {
+        onOpenChange={() => {
           setCreateReminderFormOpen.toggle();
-
-          if (data) {
-            const recipients = data.recipients?.length
-              ? data.recipients.map((recipient) => recipient.value)
-              : undefined;
-
-            setValue("reminderRepeatDays", data.days, { shouldDirty: false });
-            setValue("reminderNote", data.note, { shouldDirty: false });
-            setValue("reminderRecipients", recipients, { shouldDirty: false });
-            handleReminderSubmit(data.days, data.note, recipients);
-          }
         }}
+        workspaceId={currentWorkspace.id}
+        environment={environment}
+        secretPath={secretPath}
+        secretId={secret?.id}
+        reminder={reminderData}
       />
       <UpgradePlanModal
         isOpen={popUp.secretAccessUpgradePlan.isOpen}
@@ -734,14 +728,11 @@ export const SecretDetailSidebar = ({
                 )}
               />
               <FormControl>
-                {secretReminderRepeatDays && secretReminderRepeatDays > 0 ? (
+                {reminderData && reminderData.nextReminderDate ? (
                   <div className="flex items-center justify-between px-2">
                     <div className="flex items-center space-x-2">
                       <FontAwesomeIcon className="text-primary-500" icon={faClock} />
-                      <span className="text-sm text-bunker-300">
-                        Reminder every {secretReminderRepeatDays}{" "}
-                        {secretReminderRepeatDays > 1 ? "days" : "day"}
-                      </span>
+                      <span className="text-sm text-bunker-300">{getDaysUntilReminder()}</span>
                     </div>
                     <div>
                       <Button
@@ -990,7 +981,9 @@ export const SecretDetailSidebar = ({
                                 className="z-[100] capitalize"
                               >
                                 <Link
-                                  to="/projects/$projectId/members/$membershipId"
+                                  to={
+                                    `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId` as const
+                                  }
                                   params={{
                                     projectId: currentWorkspace.id,
                                     membershipId: user.membershipId
@@ -1021,7 +1014,9 @@ export const SecretDetailSidebar = ({
                                 className="z-[100]"
                               >
                                 <Link
-                                  to="/projects/$projectId/identities/$identityId"
+                                  to={
+                                    `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const
+                                  }
                                   params={{
                                     projectId: currentWorkspace.id,
                                     identityId: identity.id
@@ -1088,7 +1083,7 @@ export const SecretDetailSidebar = ({
                         isDisabled={isSubmitting || !isDirty || !isAllowed}
                         isLoading={isSubmitting}
                       >
-                        Save Changes
+                        Apply Changes
                       </Button>
                     )}
                   </ProjectPermissionCan>

@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import isEqual from "lodash.isequal";
 
-import { SecretType, TableName } from "@app/db/schemas";
+import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -83,6 +83,7 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
+import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 
 export type TSecretRotationV2ServiceFactoryDep = {
@@ -128,7 +129,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.Auth0ClientSecret]: auth0ClientSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.AzureClientSecret]: azureClientSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.OktaClientSecret]: oktaClientSecretRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -221,7 +223,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -272,7 +274,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -318,7 +320,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -383,7 +385,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -427,7 +429,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -629,7 +631,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -779,7 +781,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -1111,7 +1113,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -1158,7 +1160,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -1210,7 +1212,7 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId,
-
+      actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
 
@@ -1326,7 +1328,8 @@ export const secretRotationV2ServiceFactory = ({
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const permissiveFolderMappings = folderMappings.filter(({ path, environment }) =>

@@ -5,7 +5,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { SecretSyncDetailsByIDPage } from "./SecretSyncDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId"
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/secret-syncs/$destination/$syncId"
 )({
   component: SecretSyncDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -15,7 +15,7 @@ export const Route = createFileRoute(
         {
           label: "Integrations",
           link: linkOptions({
-            to: "/projects/$projectId/secret-manager/integrations",
+            to: "/projects/secret-management/$projectId/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.SecretSyncs

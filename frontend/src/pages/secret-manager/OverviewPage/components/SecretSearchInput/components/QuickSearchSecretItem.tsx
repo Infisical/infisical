@@ -1,6 +1,7 @@
 import {
   faCheck,
   faChevronRight,
+  faCode,
   faCopy,
   faEye,
   faFolder,
@@ -46,7 +47,7 @@ export const QuickSearchSecretItem = ({
   isSingleEnv,
   search
 }: Props) => {
-  const navigate = useNavigate({ from: "/projects/$projectId/secret-manager/overview" });
+  const navigate = useNavigate({ from: "/projects/secret-management/$projectId/overview" });
   const envSlugMap = new Map(environments.map((env) => [env.slug, env]));
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
     initialState: false
@@ -82,6 +83,17 @@ export const QuickSearchSecretItem = ({
     search.trim() &&
     secretGroupTags?.find((tag) => tag && tag.slug.toLowerCase().includes(search.toLowerCase()));
 
+  const secretGroupMetadata = secretGroup.flatMap((secret) => secret.secretMetadata);
+
+  const metadataMatch =
+    search.trim() &&
+    secretGroupMetadata?.find(
+      (metadata) =>
+        metadata &&
+        (metadata.key.toLowerCase().includes(search.toLowerCase()) ||
+          metadata.value.toLowerCase().includes(search.toLowerCase()))
+    );
+
   return (
     <Tr
       className="hover cursor-pointer bg-mineshaft-700 hover:bg-mineshaft-600"
@@ -107,6 +119,12 @@ export const QuickSearchSecretItem = ({
             <Badge variant="primary" className="flex items-center gap-1 whitespace-nowrap">
               <FontAwesomeIcon size="xs" icon={faTags} />
               {tagMatch.slug}
+            </Badge>
+          )}
+          {metadataMatch && !tagMatch && (
+            <Badge variant="primary" className="flex items-center gap-1 whitespace-nowrap">
+              <FontAwesomeIcon size="xs" icon={faCode} />
+              <p className="truncate">Metadata Match</p>
             </Badge>
           )}
           {isSingleEnv ? (

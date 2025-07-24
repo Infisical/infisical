@@ -21,6 +21,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
+import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
@@ -33,6 +34,7 @@ import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
+import { OktaConnectionForm } from "./OktaConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
@@ -149,6 +151,10 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <ChecklyConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Supabase:
       return <SupabaseConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.DigitalOcean:
+      return <DigitalOceanConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Okta:
+      return <OktaConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -253,6 +259,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <ChecklyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Supabase:
       return <SupabaseConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.DigitalOcean:
+      return <DigitalOceanConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Okta:
+      return <OktaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

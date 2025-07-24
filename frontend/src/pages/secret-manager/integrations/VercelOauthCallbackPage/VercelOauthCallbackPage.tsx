@@ -28,7 +28,7 @@ export const VercelOauthCallbackPage = () => {
         });
 
         navigate({
-          to: "/projects/$projectId/secret-manager/integrations/vercel/create",
+          to: "/projects/secret-management/$projectId/integrations/vercel/create",
           params: {
             projectId: currentWorkspace.id
           },

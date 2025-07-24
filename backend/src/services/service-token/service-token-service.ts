@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -65,7 +66,8 @@ export const serviceTokenServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
 
@@ -120,7 +122,8 @@ export const serviceTokenServiceFactory = ({
       actorId,
       projectId: serviceToken.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
 
@@ -154,7 +157,8 @@ export const serviceTokenServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
 
@@ -210,7 +214,7 @@ export const serviceTokenServiceFactory = ({
               substitutions: {
                 tokenName: token.name,
                 projectName: token.projectName,
-                url: `${appCfg.SITE_URL}/projects/${token.projectId}/secret-manager/access-management?selectedTab=service-tokens`
+                url: `${appCfg.SITE_URL}/projects/secret-management/${token.projectId}/access-management?selectedTab=service-tokens`
               }
             });
             await serviceTokenDAL.update({ id: token.id }, { expiryNotificationSent: true });

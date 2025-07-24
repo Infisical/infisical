@@ -4,6 +4,7 @@ import {
   faArrowDownAZ,
   faBorderAll,
   faCheck,
+  faCheckCircle,
   faFolderOpen,
   faList,
   faMagnifyingGlass,
@@ -16,10 +17,17 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   FormControl,
   IconButton,
   Input,
+  Lottie,
   Modal,
   ModalContent,
   Pagination,
@@ -27,7 +35,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
+import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -35,7 +43,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 type Props = {
   onAddNewProject: () => void;
@@ -98,6 +106,7 @@ export const AllProjectView = ({
   const navigate = useNavigate();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
+  const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType>();
   const {
     setPage,
     perPage,
@@ -124,7 +133,8 @@ export const AllProjectView = ({
     limit,
     offset,
     name: debouncedSearch || undefined,
-    orderDirection
+    orderDirection,
+    type: projectTypeFilter
   });
 
   useResetPageHelper({
@@ -133,6 +143,9 @@ export const AllProjectView = ({
     totalCount: searchedProjects?.totalCount || 0
   });
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Workspace;
+
+  const handleToggleFilterByProjectType = (el: ProjectType) =>
+    setProjectTypeFilter((state) => (state === el ? undefined : el));
 
   return (
     <div>
@@ -160,16 +173,62 @@ export const AllProjectView = ({
             </IconButton>
           </Tooltip>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div
+              className={twMerge(
+                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
+                projectTypeFilter && "border-primary-400 text-primary-400"
+              )}
+            >
+              <Tooltip content="Choose visible project type" className="mb-2">
+                <IconButton
+                  ariaLabel="project-types"
+                  className={twMerge(
+                    "min-w-[2.4rem] border-none hover:bg-mineshaft-600",
+                    projectTypeFilter && "text-primary-400"
+                  )}
+                  variant="plain"
+                  size="xs"
+                  colorSchema="secondary"
+                >
+                  <FontAwesomeIcon icon={faList} />
+                </IconButton>
+              </Tooltip>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="thin-scrollbar overflow-y-auto" align="end">
+            <DropdownMenuLabel>Filter By Project Type</DropdownMenuLabel>
+            {Object.values(ProjectType).map((el) => (
+              <DropdownMenuItem
+                key={`filter-item-${el}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleToggleFilterByProjectType(el);
+                }}
+                icon={projectTypeFilter === el && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <span>{getProjectTitle(el)}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Disabled across All Project view.">
-            <IconButton
-              variant="outline_bg"
-              ariaLabel="grid"
-              size="xs"
-              className="min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
-            >
-              <FontAwesomeIcon icon={faBorderAll} />
-            </IconButton>
+            <div className="flex cursor-not-allowed items-center justify-center">
+              <IconButton
+                variant="outline_bg"
+                ariaLabel="grid"
+                size="xs"
+                isDisabled
+                className="pointer-events-none min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
+              >
+                <FontAwesomeIcon icon={faBorderAll} />
+              </IconButton>
+            </div>
           </Tooltip>
           <IconButton
             variant="outline_bg"
@@ -184,7 +243,7 @@ export const AllProjectView = ({
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
-              colorSchema="primary"
+              colorSchema="secondary"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
                 if (isAddingProjectsAllowed) {
@@ -222,7 +281,7 @@ export const AllProjectView = ({
               onKeyDown={(evt) => {
                 if (evt.key === "Enter" && workspace.isMember) {
                   navigate({
-                    to: getProjectHomePage(workspace.defaultProduct),
+                    to: getProjectHomePage(workspace.type),
                     params: {
                       projectId: workspace.id
                     }
@@ -232,7 +291,7 @@ export const AllProjectView = ({
               onClick={() => {
                 if (workspace.isMember) {
                   navigate({
-                    to: getProjectHomePage(workspace.defaultProduct),
+                    to: getProjectHomePage(workspace.type),
                     params: {
                       projectId: workspace.id
                     }
@@ -241,38 +300,41 @@ export const AllProjectView = ({
               }}
               key={workspace.id}
               className={twMerge(
-                "group flex min-w-72 grid-cols-6 items-center justify-center border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
+                "group flex min-w-72 items-center justify-center border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
                 workspace.isMember ? "cursor-pointer hover:bg-mineshaft-700" : "cursor-default"
               )}
             >
-              <div className="w-full items-center">
-                <div className="flex flex-grow items-center">
-                  <div className="flex-grow truncate text-sm text-mineshaft-100">
-                    {workspace.name}
-                  </div>
-                  <div className="flex items-center">
-                    {workspace.isMember ? (
-                      <div className="flex items-center text-center text-sm text-primary">
-                        <FontAwesomeIcon icon={faCheck} className="mr-2" />
-                        Joined
-                      </div>
-                    ) : (
-                      <div className="opacity-0 transition-all group-hover:opacity-100">
-                        <Button
-                          size="xs"
-                          variant="outline_bg"
-                          onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
-                        >
-                          Request Access
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+              <div className="mr-3 flex min-w-0 flex-1 items-center gap-3">
+                <div className="rounded border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
+                  <Lottie
+                    className="h-[1.35rem] w-[1.35rem] shrink-0"
+                    icon={getProjectLottieIcon(workspace.type)}
+                  />
                 </div>
-                <div className="mt-1 max-w-lg overflow-hidden text-ellipsis whitespace-nowrap text-xs text-mineshaft-300">
-                  {workspace.description}
+                <div className="-mt-0.5 flex min-w-0 flex-col">
+                  <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
+                  <p className="truncate text-xs leading-4 text-mineshaft-300">
+                    {getProjectTitle(workspace.type)}{" "}
+                    {workspace.description ? `- ${workspace.description}` : ""}
+                  </p>
                 </div>
               </div>
+              {workspace.isMember ? (
+                <Badge className="flex items-center" variant="success">
+                  <FontAwesomeIcon icon={faCheck} className="mr-1" />
+                  <span>Joined</span>
+                </Badge>
+              ) : (
+                <div className="opacity-0 transition-all group-hover:opacity-100">
+                  <Button
+                    size="xs"
+                    variant="outline_bg"
+                    onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                  >
+                    Request Access
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
       </div>
