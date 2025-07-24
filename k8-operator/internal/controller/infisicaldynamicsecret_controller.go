@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	secretsv1alpha1 "github.com/Infisical/infisical/infisical-operator/api/v1alpha1"
 )
 
 // InfisicalDynamicSecretReconciler reconciles a InfisicalDynamicSecret object

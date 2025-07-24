@@ -3,8 +3,8 @@ package util
 import (
 	"fmt"
 
-	"github.com/Infisical/infisical/k8-operator/packages/api"
-	"github.com/Infisical/infisical/k8-operator/packages/model"
+	"github.com/Infisical/infisical/infisical-operator/packages/api"
+	"github.com/Infisical/infisical/infisical-operator/packages/model"
 	"github.com/go-resty/resty/v2"
 )
 
