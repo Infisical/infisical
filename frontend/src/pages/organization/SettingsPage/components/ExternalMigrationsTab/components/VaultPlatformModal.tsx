@@ -74,30 +74,33 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { isLoading, isDirty, isSubmitting, isValid }
+    formState: { isLoading, isDirty, isSubmitting, isValid, errors }
   } = useForm<TFormData>({
     resolver: zodResolver(formSchema)
   });
 
-  const onSubmit = async (data: TFormData) => {
-    try {
-      await importVault({
-        vaultAccessToken: data.vaultAccessToken,
-        vaultNamespace: data.vaultNamespace,
-        vaultUrl: data.vaultUrl,
-        mappingType: data.mappingType
-      });
-      createNotification({
-        title: "Import started",
-        text: "Your data is being imported. You will receive an email when the import is complete or if the import fails. This may take up to 10 minutes.",
-        type: "info"
-      });
+  console.log({
+    isSubmitting,
+    isLoading,
+    isValid,
+    errors
+  });
 
-      onClose();
-      reset();
-    } catch {
-      reset();
-    }
+  const onSubmit = async (data: TFormData) => {
+    await importVault({
+      vaultAccessToken: data.vaultAccessToken,
+      vaultNamespace: data.vaultNamespace,
+      vaultUrl: data.vaultUrl,
+      mappingType: data.mappingType
+    });
+    createNotification({
+      title: "Import started",
+      text: "Your data is being imported. You will receive an email when the import is complete or if the import fails. This may take up to 10 minutes.",
+      type: "info"
+    });
+
+    onClose();
+    reset();
   };
 
   return (
