@@ -199,6 +199,21 @@
                 ]
               },
               {
+                "group": "External Migrations",
+                "pages": [
+                  "documentation/platform/external-migrations/overview",
+                  "documentation/platform/external-migrations/envkey",
+                  "documentation/platform/external-migrations/vault"
+                ]
+              },
+              {
+                "group": "External Migrations",
+                "pages": [
+                  "documentation/platform/workflow-integrations/slack-integration",
+                  "documentation/platform/workflow-integrations/microsoft-teams-integration"
+                ]
+              },
+              {
                 "group": "Admin Consoles",
                 "pages": [
                   "documentation/platform/admin-panel/overview",

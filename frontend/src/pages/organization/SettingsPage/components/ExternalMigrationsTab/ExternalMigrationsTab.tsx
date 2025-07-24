@@ -9,7 +9,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { SelectImportFromPlatformModal } from "./components/SelectImportFromPlatformModal";
 
-export const ImportTab = () => {
+export const ExternalMigrationsTab = () => {
   const { membership } = useOrgPermission();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["selectImportPlatform"] as const);

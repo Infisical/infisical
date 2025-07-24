@@ -49,7 +49,7 @@ export const useImportVault = () => {
       mappingType
     }: {
       vaultAccessToken: string;
-      vaultNamespace: string;
+      vaultNamespace?: string;
       vaultUrl: string;
       mappingType: string;
     }) => {

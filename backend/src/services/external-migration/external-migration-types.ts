@@ -33,7 +33,7 @@ export type TImportEnvKeyDataDTO = {
 
 export type TImportVaultDataDTO = {
   vaultAccessToken: string;
-  vaultNamespace: string;
+  vaultNamespace?: string;
   mappingType: VaultMappingType;
   vaultUrl: string;
 } & Omit<TOrgPermission, "orgId">;

@@ -64,7 +64,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       body: z.object({
         vaultAccessToken: z.string(),
-        vaultNamespace: z.string(),
+        vaultNamespace: z.string().trim().optional(),
         vaultUrl: z.string(),
         mappingType: z.nativeEnum(VaultMappingType)
       })

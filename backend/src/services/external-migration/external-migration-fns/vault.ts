@@ -1,6 +1,10 @@
 import axios, { AxiosInstance } from "axios";
 import { v4 as uuidv4 } from "uuid";
 
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+
 import { InfisicalImportData, VaultMappingType } from "../external-migration-types";
 
 type VaultData = {
@@ -12,18 +16,25 @@ type VaultData = {
 
 const vaultFactory = () => {
   const getMounts = async (request: AxiosInstance) => {
-    const response = await request.get<
-      Record<
-        string,
-        {
-          accessor: string;
-          options: {
-            version?: string;
-          } | null;
-          type: string;
+    const response = await request
+      .get<
+        Record<
+          string,
+          {
+            accessor: string;
+            options: {
+              version?: string;
+            } | null;
+            type: string;
+          }
+        >
+      >("/v1/sys/mounts")
+      .catch((err) => {
+        if (axios.isAxiosError(err)) {
+          logger.error(err.response?.data, "External migration: Failed to get Vault mounts");
         }
-      >
-    >("/v1/sys/mounts");
+        throw err;
+      });
     return response.data;
   };
 
@@ -42,8 +53,11 @@ const vaultFactory = () => {
 
       return response.data.data.keys;
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) {
-        return null;
+      if (axios.isAxiosError(err)) {
+        logger.error(err.response?.data, "External migration: Failed to get Vault paths");
+        if (err.response?.status === 404) {
+          return null;
+        }
       }
       throw err;
     }
@@ -54,17 +68,24 @@ const vaultFactory = () => {
     { mountPath, secretPath }: { mountPath: string; secretPath: string }
   ) => {
     // For KV v2: /v1/{mount}/data/{path}
-    const response = await request.get<{
-      data: {
-        data: Record<string, string>; // KV v2 has nested data structure
-        metadata: {
-          created_time: string;
-          deletion_time: string;
-          destroyed: boolean;
-          version: number;
+    const response = await request
+      .get<{
+        data: {
+          data: Record<string, string>; // KV v2 has nested data structure
+          metadata: {
+            created_time: string;
+            deletion_time: string;
+            destroyed: boolean;
+            version: number;
+          };
         };
-      };
-    }>(`/v1/${mountPath}/data/${secretPath}`);
+      }>(`/v1/${mountPath}/data/${secretPath}`)
+      .catch((err) => {
+        if (axios.isAxiosError(err)) {
+          logger.error(err.response?.data, "External migration: Failed to get Vault secret");
+        }
+        throw err;
+      });
 
     return response.data.data.data;
   };
@@ -110,14 +131,14 @@ const vaultFactory = () => {
     accessToken
   }: {
     baseUrl: string;
-    namespace: string;
+    namespace?: string;
     accessToken: string;
   }): Promise<VaultData[]> {
     const request = axios.create({
       baseURL: baseUrl,
       headers: {
-        "X-Vault-Namespace": namespace,
-        "X-Vault-Token": accessToken
+        "X-Vault-Token": accessToken,
+        ...(namespace ? { "X-Vault-Namespace": namespace } : {})
       }
     });
 
@@ -152,7 +173,7 @@ const vaultFactory = () => {
         });
 
         allData.push({
-          namespace,
+          namespace: namespace || "",
           mount: mountPath.replace(/\/$/, ""),
           path: secretPath.replace(`${cleanMountPath}/`, ""),
           secretData
@@ -190,7 +211,7 @@ export const transformToInfisicalFormatNamespaceToProjects = (
   for (const data of vaultData) {
     const { namespace, mount, path, secretData } = data;
 
-    if (mappingType === "namespace") {
+    if (mappingType === VaultMappingType.Namespace) {
       // create project (namespace)
       if (!projectMap.has(namespace)) {
         const projectId = uuidv4();
@@ -214,7 +235,7 @@ export const transformToInfisicalFormatNamespaceToProjects = (
         });
       }
       environmentId = environmentMap.get(envKey)!;
-    } else if (mappingType === "key-vault") {
+    } else if (mappingType === VaultMappingType.KeyVault) {
       if (!projectMap.has(mount)) {
         const projectId = uuidv4();
         projectMap.set(mount, projectId);
@@ -294,10 +315,18 @@ export const importVaultDataFn = async ({
   mappingType
 }: {
   vaultAccessToken: string;
-  vaultNamespace: string;
+  vaultNamespace?: string;
   vaultUrl: string;
   mappingType: VaultMappingType;
 }) => {
+  await blockLocalAndPrivateIpAddresses(vaultUrl);
+
+  if (mappingType === VaultMappingType.Namespace && !vaultNamespace) {
+    throw new BadRequestError({
+      message: "Vault namespace is required when project mapping type is set to namespace."
+    });
+  }
+
   const vaultApi = vaultFactory();
 
   const vaultData = await vaultApi.collectVaultData({

@@ -62,7 +62,7 @@ const MAPPING_TYPE_MENU_ITEMS = [
 export const VaultPlatformModal = ({ onClose }: Props) => {
   const formSchema = z.object({
     vaultUrl: z.string().min(1),
-    vaultNamespace: z.string().min(1),
+    vaultNamespace: z.string().trim().optional(),
     vaultAccessToken: z.string().min(1),
     mappingType: z.nativeEnum(VaultMappingType).default(VaultMappingType.KeyVault)
   });
@@ -122,7 +122,7 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
               errorText={error?.message}
               isError={Boolean(error)}
             >
-              <Input type="password" placeholder="" {...field} />
+              <Input placeholder="" {...field} />
             </FormControl>
           )}
         />
@@ -132,7 +132,6 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
           render={({ field, fieldState: { error } }) => (
             <FormControl
               label="Vault Namespace"
-              isRequired
               errorText={error?.message}
               isError={Boolean(error)}
             >
