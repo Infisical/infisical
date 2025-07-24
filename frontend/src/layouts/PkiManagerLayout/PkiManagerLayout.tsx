@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import {
   faBell,
+  faBook,
   faCertificate,
   faCog,
   faFileLines,
@@ -144,6 +145,23 @@ export const PkiManagerLayout = () => {
                               <FontAwesomeIcon icon={faUsers} />
                             </div>
                             Access Management
+                          </div>
+                        </MenuItem>
+                      )}
+                    </Link>
+                    <Link
+                      to="/projects/cert-management/$projectId/audit-logs"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faBook} />
+                            </div>
+                            Audit Logs
                           </div>
                         </MenuItem>
                       )}
