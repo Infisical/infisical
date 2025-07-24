@@ -11,7 +11,7 @@ import { TReminderServiceFactory } from "./reminder-types";
 type TDailyReminderQueueServiceFactoryDep = {
   reminderService: TReminderServiceFactory;
   queueService: TQueueServiceFactory;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "transaction" | "findSecretsWithReminderRecipients">;
+  secretDAL: Pick<TSecretV2BridgeDALFactory, "transaction" | "findSecretsWithReminderRecipientsOld">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
 };
 
@@ -69,7 +69,7 @@ export const dailyReminderQueueServiceFactory = ({
 
           // Find existing secrets with pagination
           // eslint-disable-next-line no-await-in-loop
-          const secrets = await secretDAL.findSecretsWithReminderRecipients(batchIds, REMINDER_PRUNE_BATCH_SIZE);
+          const secrets = await secretDAL.findSecretsWithReminderRecipientsOld(batchIds, REMINDER_PRUNE_BATCH_SIZE);
           const secretsWithReminder = secrets.filter((secret) => secret.reminderRepeatDays);
 
           const foundSecretIds = new Set(secretsWithReminder.map((secret) => secret.id));
