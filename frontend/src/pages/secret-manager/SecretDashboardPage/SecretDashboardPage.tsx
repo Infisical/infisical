@@ -212,11 +212,11 @@ const Page = () => {
     searchFilter: (routerQueryParams.search as string) || "",
     // these should always be on by default for the UI, they will be disabled for the query below based off permissions
     include: {
-      [RowType.Folder]: true,
-      [RowType.Import]: true,
-      [RowType.DynamicSecret]: true,
-      [RowType.Secret]: true,
-      [RowType.SecretRotation]: true
+      [RowType.Folder]: false,
+      [RowType.Import]: false,
+      [RowType.DynamicSecret]: false,
+      [RowType.Secret]: false,
+      [RowType.SecretRotation]: false
     }
   };
 
@@ -242,6 +242,7 @@ const Page = () => {
     }
   }, [currentWorkspace, environment]);
 
+  const isResourceTypeFiltered = Object.values(filter.include).some(Boolean);
   const {
     data,
     isPending: isDetailsLoading,
@@ -255,12 +256,14 @@ const Page = () => {
     orderBy,
     search: debouncedSearchFilter,
     orderDirection,
-    includeImports: canReadSecretImports && filter.include.import,
-    includeFolders: filter.include.folder,
+    includeImports: canReadSecretImports && (isResourceTypeFiltered ? filter.include.import : true),
+    includeFolders: isResourceTypeFiltered ? filter.include.folder : true,
     viewSecretValue: canReadSecretValue,
-    includeDynamicSecrets: canReadDynamicSecret && filter.include.dynamic,
-    includeSecrets: canReadSecret && filter.include.secret,
-    includeSecretRotations: canReadSecretRotations && filter.include.rotation,
+    includeDynamicSecrets:
+      canReadDynamicSecret && (isResourceTypeFiltered ? filter.include.dynamic : true),
+    includeSecrets: canReadSecret && (isResourceTypeFiltered ? filter.include.secret : true),
+    includeSecretRotations:
+      canReadSecretRotations && (isResourceTypeFiltered ? filter.include.rotation : true),
     tags: filter.tags
   });
 
@@ -769,6 +772,19 @@ const Page = () => {
             isPITEnabled={isPITEnabled}
             hasPathPolicies={hasPathPolicies}
             onRequestAccess={(params) => handlePopUpOpen("requestAccess", params)}
+            onClearFilters={() =>
+              setFilter((prev) => ({
+                ...prev,
+                tags: {},
+                include: {
+                  secret: false,
+                  import: false,
+                  dynamic: false,
+                  rotation: false,
+                  folder: false
+                }
+              }))
+            }
           />
           <div
             className={twMerge(
