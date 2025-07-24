@@ -1,7 +1,8 @@
 import { Octokit } from "@octokit/rest";
 import sodium from "libsodium-wrappers";
 
-import { getGitHubClient } from "@app/services/app-connection/github";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { executeWithGitHubGateway } from "@app/services/app-connection/github";
 import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync/github/github-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -160,7 +161,11 @@ const putSecret = async (client: Octokit, secretSync: TGitHubSyncWithCredentials
 };
 
 export const GithubSyncFns = {
-  syncSecrets: async (secretSync: TGitHubSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (
+    secretSync: TGitHubSyncWithCredentials,
+    secretMap: TSecretMap,
+    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  ) => {
     switch (secretSync.destinationConfig.scope) {
       case GitHubSyncScope.Organization:
         if (Object.values(secretMap).length > 1000) {
@@ -187,63 +192,67 @@ export const GithubSyncFns = {
         );
     }
 
-    const client = getGitHubClient(secretSync.connection);
+    await executeWithGitHubGateway(secretSync.connection, gatewayService, async (client) => {
+      const encryptedSecrets = await getEncryptedSecrets(client, secretSync);
 
-    const encryptedSecrets = await getEncryptedSecrets(client, secretSync);
+      const publicKey = await getPublicKey(client, secretSync);
 
-    const publicKey = await getPublicKey(client, secretSync);
+      await sodium.ready.then(async () => {
+        for await (const key of Object.keys(secretMap)) {
+          // convert secret & base64 key to Uint8Array.
+          const binaryKey = sodium.from_base64(publicKey.key, sodium.base64_variants.ORIGINAL);
+          const binarySecretValue = sodium.from_string(secretMap[key].value);
 
-    await sodium.ready.then(async () => {
-      for await (const key of Object.keys(secretMap)) {
-        // convert secret & base64 key to Uint8Array.
-        const binaryKey = sodium.from_base64(publicKey.key, sodium.base64_variants.ORIGINAL);
-        const binarySecretValue = sodium.from_string(secretMap[key].value);
+          // encrypt secret using libsodium
+          const encryptedBytes = sodium.crypto_box_seal(binarySecretValue, binaryKey);
 
-        // encrypt secret using libsodium
-        const encryptedBytes = sodium.crypto_box_seal(binarySecretValue, binaryKey);
+          // convert encrypted Uint8Array to base64
+          const encryptedSecretValue = sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL);
 
-        // convert encrypted Uint8Array to base64
-        const encryptedSecretValue = sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL);
+          try {
+            await putSecret(client, secretSync, {
+              secret_name: key,
+              encrypted_value: encryptedSecretValue,
+              key_id: publicKey.key_id
+            });
+          } catch (error) {
+            throw new SecretSyncError({
+              error,
+              secretKey: key
+            });
+          }
+        }
+      });
 
-        try {
-          await putSecret(client, secretSync, {
-            secret_name: key,
-            encrypted_value: encryptedSecretValue,
-            key_id: publicKey.key_id
-          });
-        } catch (error) {
-          throw new SecretSyncError({
-            error,
-            secretKey: key
-          });
+      if (secretSync.syncOptions.disableSecretDeletion) return;
+
+      for await (const encryptedSecret of encryptedSecrets) {
+        if (!matchesSchema(encryptedSecret.name, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
+          // eslint-disable-next-line no-continue
+          continue;
+
+        if (!(encryptedSecret.name in secretMap)) {
+          await deleteSecret(client, secretSync, encryptedSecret);
         }
       }
     });
-
-    if (secretSync.syncOptions.disableSecretDeletion) return;
-
-    for await (const encryptedSecret of encryptedSecrets) {
-      if (!matchesSchema(encryptedSecret.name, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
-        // eslint-disable-next-line no-continue
-        continue;
-
-      if (!(encryptedSecret.name in secretMap)) {
-        await deleteSecret(client, secretSync, encryptedSecret);
-      }
-    }
   },
   getSecrets: async (secretSync: TGitHubSyncWithCredentials) => {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
-  removeSecrets: async (secretSync: TGitHubSyncWithCredentials, secretMap: TSecretMap) => {
-    const client = getGitHubClient(secretSync.connection);
+  removeSecrets: async (
+    secretSync: TGitHubSyncWithCredentials,
+    secretMap: TSecretMap,
+    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  ) => {
+    await executeWithGitHubGateway(secretSync.connection, gatewayService, async (client) => {
+      const encryptedSecrets = await getEncryptedSecrets(client, secretSync);
 
-    const encryptedSecrets = await getEncryptedSecrets(client, secretSync);
-
-    for await (const encryptedSecret of encryptedSecrets) {
-      if (encryptedSecret.name in secretMap) {
-        await deleteSecret(client, secretSync, encryptedSecret);
+      for await (const encryptedSecret of encryptedSecrets) {
+        if (encryptedSecret.name in secretMap) {
+          await deleteSecret(client, secretSync, encryptedSecret);
+        }
       }
-    }
+    });
   }
 };
