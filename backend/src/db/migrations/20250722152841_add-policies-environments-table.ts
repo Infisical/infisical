@@ -16,6 +16,19 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.unique(["policyId", "envId"]);
     });
+
+    const existingAccessApprovalPolicies = await knex(TableName.AccessApprovalPolicy)
+      .select(selectAllTableCols(TableName.AccessApprovalPolicy))
+      .whereNotNull(`${TableName.AccessApprovalPolicy}.envId`);
+
+    const accessApprovalPolicies = existingAccessApprovalPolicies.map(async (policy) => {
+      await knex(TableName.AccessApprovalPolicyEnvironment).insert({
+        policyId: policy.id,
+        envId: policy.envId
+      });
+    });
+
+    await Promise.all(accessApprovalPolicies);
   }
   if (!(await knex.schema.hasTable(TableName.SecretApprovalPolicyEnvironment))) {
     await knex.schema.createTable(TableName.SecretApprovalPolicyEnvironment, (t) => {
@@ -27,6 +40,19 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.unique(["policyId", "envId"]);
     });
+
+    const existingSecretApprovalPolicies = await knex(TableName.SecretApprovalPolicy)
+      .select(selectAllTableCols(TableName.SecretApprovalPolicy))
+      .whereNotNull(`${TableName.SecretApprovalPolicy}.envId`);
+
+    const secretApprovalPolicies = existingSecretApprovalPolicies.map(async (policy) => {
+      await knex(TableName.SecretApprovalPolicyEnvironment).insert({
+        policyId: policy.id,
+        envId: policy.envId
+      });
+    });
+
+    await Promise.all(secretApprovalPolicies);
   }
 
   await knex.schema.alterTable(TableName.AccessApprovalPolicy, (t) => {
@@ -45,32 +71,6 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.AccessApprovalPolicyEnvironment);
   await createOnUpdateTrigger(knex, TableName.SecretApprovalPolicyEnvironment);
-
-  const existingAccessApprovalPolicies = await knex(TableName.AccessApprovalPolicy)
-    .select(selectAllTableCols(TableName.AccessApprovalPolicy))
-    .whereNotNull(`${TableName.AccessApprovalPolicy}.envId`);
-
-  const accessApprovalPolicies = existingAccessApprovalPolicies.map(async (policy) => {
-    await knex(TableName.AccessApprovalPolicyEnvironment).insert({
-      policyId: policy.id,
-      envId: policy.envId
-    });
-  });
-
-  await Promise.all(accessApprovalPolicies);
-
-  const existingSecretApprovalPolicies = await knex(TableName.SecretApprovalPolicy)
-    .select(selectAllTableCols(TableName.SecretApprovalPolicy))
-    .whereNotNull(`${TableName.SecretApprovalPolicy}.envId`);
-
-  const secretApprovalPolicies = existingSecretApprovalPolicies.map(async (policy) => {
-    await knex(TableName.SecretApprovalPolicyEnvironment).insert({
-      policyId: policy.id,
-      envId: policy.envId
-    });
-  });
-
-  await Promise.all(secretApprovalPolicies);
 }
 
 export async function down(knex: Knex): Promise<void> {
