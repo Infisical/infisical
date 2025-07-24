@@ -4,6 +4,7 @@ import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
+  AzureClientSecretsConnectionAccessTokenOutputCredentialsSchema,
   AzureClientSecretsConnectionOAuthOutputCredentialsSchema,
   AzureClientSecretsConnectionSchema,
   CreateAzureClientSecretsConnectionSchema,
@@ -28,6 +29,10 @@ export type TAzureClientSecretsConnectionConfig = DiscriminativePick<
 
 export type TAzureClientSecretsConnectionCredentials = z.infer<
   typeof AzureClientSecretsConnectionOAuthOutputCredentialsSchema
+>;
+
+export type TAzureClientSecretsConnectionAccessTokenCredentials = z.infer<
+  typeof AzureClientSecretsConnectionAccessTokenOutputCredentialsSchema
 >;
 
 export interface ExchangeCodeAzureResponse {

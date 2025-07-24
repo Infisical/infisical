@@ -114,7 +114,7 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureClientSecrets:
-      return <AzureClientSecretsConnectionForm />;
+      return <AzureClientSecretsConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureDevOps:
       return <AzureDevOpsConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Windmill:
@@ -222,7 +222,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.AzureClientSecrets:
-      return <AzureClientSecretsConnectionForm appConnection={appConnection} />;
+      return <AzureClientSecretsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.AzureDevOps:
       return <AzureDevOpsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.Windmill:
