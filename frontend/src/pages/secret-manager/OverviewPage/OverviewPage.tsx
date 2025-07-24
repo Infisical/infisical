@@ -139,7 +139,6 @@ enum RowType {
   Folder = "folder",
   DynamicSecret = "dynamic",
   Secret = "secret",
-  Import = "import",
   SecretRotation = "rotation"
 }
 
