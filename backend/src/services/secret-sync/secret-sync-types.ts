@@ -73,6 +73,12 @@ import {
   TAzureKeyVaultSyncWithCredentials
 } from "./azure-key-vault";
 import {
+  TBitbucketSync,
+  TBitbucketSyncInput,
+  TBitbucketSyncListItem,
+  TBitbucketSyncWithCredentials
+} from "./bitbucket/bitbucket-sync-types";
+import {
   TChecklySync,
   TChecklySyncInput,
   TChecklySyncListItem,
@@ -90,6 +96,11 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import {
+  TDigitalOceanAppPlatformSyncInput,
+  TDigitalOceanAppPlatformSyncListItem,
+  TDigitalOceanAppPlatformSyncWithCredentials
+} from "./digital-ocean-app-platform/digital-ocean-app-platform-sync-types";
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
@@ -166,7 +177,8 @@ export type TSecretSync =
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
-  | TSupabaseSync;
+  | TSupabaseSync
+  | TBitbucketSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -195,7 +207,9 @@ export type TSecretSyncWithCredentials =
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
-  | TSupabaseSyncWithCredentials;
+  | TSupabaseSyncWithCredentials
+  | TDigitalOceanAppPlatformSyncWithCredentials
+  | TBitbucketSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -224,7 +238,9 @@ export type TSecretSyncInput =
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
-  | TSupabaseSyncInput;
+  | TSupabaseSyncInput
+  | TDigitalOceanAppPlatformSyncInput
+  | TBitbucketSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -253,7 +269,9 @@ export type TSecretSyncListItem =
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem
-  | TSupabaseSyncListItem;
+  | TSupabaseSyncListItem
+  | TDigitalOceanAppPlatformSyncListItem
+  | TBitbucketSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

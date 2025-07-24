@@ -15,6 +15,7 @@ import {
 } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
@@ -46,7 +47,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
       });
 
       navigate({
-        to: "/projects/$projectId/access-management",
+        to: `${getProjectBaseURL(currentWorkspace.type)}/access-management`,
         params: {
           projectId: currentWorkspace.id
         },

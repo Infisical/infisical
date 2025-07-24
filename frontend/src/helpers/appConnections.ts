@@ -17,9 +17,7 @@ import {
   AzureClientSecretsConnectionMethod,
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
-  BitbucketConnectionMethod,
   CamundaConnectionMethod,
-  ChecklyConnectionMethod,
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
   FlyioConnectionMethod,
@@ -28,19 +26,14 @@ import {
   GitHubRadarConnectionMethod,
   GitLabConnectionMethod,
   HCVaultConnectionMethod,
-  HerokuConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
   MsSqlConnectionMethod,
   MySqlConnectionMethod,
-  OCIConnectionMethod,
   OktaConnectionMethod,
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
-  RailwayConnectionMethod,
-  RenderConnectionMethod,
-  SupabaseConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
@@ -48,6 +41,14 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
+import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
+import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
+import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
+import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -100,6 +101,10 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
   [AppConnection.Checkly]: { name: "Checkly", image: "Checkly.png" },
   [AppConnection.Supabase]: { name: "Supabase", image: "Supabase.png" },
+  [AppConnection.DigitalOcean]: {
+    name: "Digital Ocean",
+    image: "Digital Ocean.png"
+  },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
 };
 
@@ -134,6 +139,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case CloudflareConnectionMethod.ApiToken:
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
+    case DigitalOceanConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:

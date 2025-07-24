@@ -35,6 +35,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Bitbucket]: "Bitbucket",
   [AppConnection.Checkly]: "Checkly",
   [AppConnection.Supabase]: "Supabase",
+  [AppConnection.DigitalOcean]: "DigitalOcean App Platform",
   [AppConnection.Okta]: "Okta"
 };
 
@@ -73,5 +74,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Bitbucket]: AppConnectionPlanType.Regular,
   [AppConnection.Checkly]: AppConnectionPlanType.Regular,
   [AppConnection.Supabase]: AppConnectionPlanType.Regular,
+  [AppConnection.DigitalOcean]: AppConnectionPlanType.Regular,
   [AppConnection.Okta]: AppConnectionPlanType.Regular
 };

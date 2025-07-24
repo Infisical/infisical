@@ -48,7 +48,7 @@ export const RundeckAuthorizePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/rundeck/create",
+        to: "/projects/secret-management/$projectId/integrations/rundeck/create",
         params: {
           projectId: currentWorkspace.id
         },

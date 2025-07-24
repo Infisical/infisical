@@ -67,7 +67,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                     key={`ssh-host-group-${group.id}`}
                     onClick={() =>
                       navigate({
-                        to: "/projects/$projectId/ssh/ssh-host-groups/$sshHostGroupId",
+                        to: "/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
                         params: {
                           projectId: currentWorkspace.id,
                           sshHostGroupId: group.id
@@ -168,7 +168,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: "/projects/$projectId/ssh/ssh-host-groups/$sshHostGroupId",
+                                    to: "/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
                                     params: {
                                       projectId: currentWorkspace.id,
                                       sshHostGroupId: group.id

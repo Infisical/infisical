@@ -31,14 +31,13 @@ import {
   useSubscription,
   useWorkspace
 } from "@app/context";
-import { getCurrentProductFromUrl, getProjectHomePage } from "@app/helpers/project";
+import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { Workspace } from "@app/hooks/api/workspace/types";
 
-// TODO(pta): add search to project select
 export const ProjectSelect = () => {
   const [searchProject, setSearchProject] = useState("");
   const { currentWorkspace } = useWorkspace();
@@ -102,9 +101,7 @@ export const ProjectSelect = () => {
     <div className="-mr-2 flex w-full items-center gap-1">
       <DropdownMenu modal={false}>
         <Link
-          to={getProjectHomePage(
-            getCurrentProductFromUrl(window.location.href) || currentWorkspace.defaultProduct
-          )}
+          to={getProjectHomePage(currentWorkspace.type)}
           params={{
             projectId: currentWorkspace.id
           }}
@@ -113,7 +110,7 @@ export const ProjectSelect = () => {
             <div>
               <FontAwesomeIcon icon={faTable} className="text-xs text-bunker-300" />
             </div>
-            <Tooltip content={currentWorkspace.name} className="max-w-96">
+            <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
               <div className="max-w-44 overflow-hidden text-ellipsis whitespace-nowrap">
                 {currentWorkspace?.name}
               </div>
@@ -161,7 +158,7 @@ export const ProjectSelect = () => {
                       // to reproduce change this back to router.push and switch between two projects with different env count
                       // look into this on dashboard revamp
                       const url = linkOptions({
-                        to: getProjectHomePage(workspace.defaultProduct),
+                        to: getProjectHomePage(workspace.type),
                         params: {
                           projectId: workspace.id
                         }

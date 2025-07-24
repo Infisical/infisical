@@ -869,7 +869,7 @@ export const secretSyncQueueFactory = ({
         secretPath: folder?.path,
         environment: environment?.name,
         projectName: project.name,
-        syncUrl: `${appCfg.SITE_URL}/projects/${projectId}/secret-manager/integrations/secret-syncs/${destination}/${secretSync.id}`
+        syncUrl: `${appCfg.SITE_URL}/projects/secret-management/${projectId}/integrations/secret-syncs/${destination}/${secretSync.id}`
       }
     });
   };

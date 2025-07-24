@@ -315,10 +315,12 @@ export const registerSecretRotationEndpoints = <
       querystring: z.object({
         deleteSecrets: z
           .enum(["true", "false"])
+          .optional()
           .transform((value) => value === "true")
           .describe(SecretRotations.DELETE(type).deleteSecrets),
         revokeGeneratedCredentials: z
           .enum(["true", "false"])
+          .optional()
           .transform((value) => value === "true")
           .describe(SecretRotations.DELETE(type).revokeGeneratedCredentials)
       }),

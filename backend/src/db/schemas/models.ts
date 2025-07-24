@@ -162,7 +162,7 @@ export enum TableName {
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
-  SecretReminderRecipients = "secret_reminder_recipients",
+  SecretReminderRecipients = "secret_reminder_recipients", // TODO(Carlos): Remove this in the future after migrating to the new reminder recipients table
   GithubOrgSyncConfig = "github_org_sync_configs",
   FolderCommit = "folder_commits",
   FolderCommitChanges = "folder_commit_changes",
@@ -174,7 +174,10 @@ export enum TableName {
   SecretScanningResource = "secret_scanning_resources",
   SecretScanningScan = "secret_scanning_scans",
   SecretScanningFinding = "secret_scanning_findings",
-  SecretScanningConfig = "secret_scanning_configs"
+  SecretScanningConfig = "secret_scanning_configs",
+  // reminders
+  Reminder = "reminders",
+  ReminderRecipient = "reminders_recipients"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -267,6 +270,16 @@ export enum ProjectType {
   KMS = "kms",
   SSH = "ssh",
   SecretScanning = "secret-scanning"
+}
+
+export enum ActionProjectType {
+  SecretManager = ProjectType.SecretManager,
+  CertificateManager = ProjectType.CertificateManager,
+  KMS = ProjectType.KMS,
+  SSH = ProjectType.SSH,
+  SecretScanning = ProjectType.SecretScanning,
+  // project operations that happen on all types
+  Any = "any"
 }
 
 export enum SortDirection {

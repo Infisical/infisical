@@ -36,7 +36,7 @@ export const RenderAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/render/create",
+        to: "/projects/secret-management/$projectId/integrations/render/create",
         params: {
           projectId: currentWorkspace.id
         },

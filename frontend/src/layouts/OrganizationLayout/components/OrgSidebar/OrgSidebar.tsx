@@ -1,12 +1,12 @@
 import {
   faBook,
   faCog,
-  faCubes,
   faDoorClosed,
   faInfinity,
   faMoneyBill,
   faPlug,
   faShare,
+  faTable,
   faUserCog,
   faUsers,
   faUserTie
@@ -56,7 +56,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                       <MenuItem isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
-                            <FontAwesomeIcon icon={faCubes} />
+                            <FontAwesomeIcon icon={faTable} />
                           </div>
                           Projects
                         </div>

@@ -6,7 +6,7 @@ import { SecretSharingSection } from "../SecretSharingSection";
 import { SecretSnapshotsLegacySection } from "../SecretSnapshotsLegacySection";
 import { SecretTagsSection } from "../SecretTagsSection";
 
-export const ProjectGeneralTab = () => {
+export const SecretSettingsTab = () => {
   return (
     <div>
       <EnvironmentSection />

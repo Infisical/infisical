@@ -167,7 +167,7 @@ export const secretRotationV2QueueServiceFactory = async ({
             environment: environment.name,
             projectName: project.name,
             rotationUrl: encodeURI(
-              `${appCfg.SITE_URL}/projects/${projectId}/secret-manager/secrets/${environment.slug}`
+              `${appCfg.SITE_URL}/projects/secret-management/${projectId}/secrets/${environment.slug}`
             )
           }
         });

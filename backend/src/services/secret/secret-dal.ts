@@ -5,8 +5,6 @@ import { TDbClient } from "@app/db";
 import { SecretsSchema, SecretType, TableName, TSecrets, TSecretsUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
-import { logger } from "@app/lib/logger";
-import { QueueName, TQueueServiceFactory } from "@app/queue";
 
 export type TSecretDALFactory = ReturnType<typeof secretDALFactory>;
 
@@ -383,94 +381,6 @@ export const secretDALFactory = (db: TDbClient) => {
     }
   };
 
-  const pruneSecretReminders = async (queueService: TQueueServiceFactory) => {
-    const REMINDER_PRUNE_BATCH_SIZE = 5_000;
-    const MAX_RETRY_ON_FAILURE = 3;
-    let numberOfRetryOnFailure = 0;
-    let deletedReminderCount = 0;
-
-    logger.info(`${QueueName.DailyResourceCleanUp}: secret reminders started`);
-
-    try {
-      const repeatableJobs = await queueService.getRepeatableJobs(QueueName.SecretReminder);
-      const reminderJobs = repeatableJobs
-        .map((job) => ({ secretId: job.id?.replace("reminder-", "") as string, jobKey: job.key }))
-        .filter(Boolean);
-
-      if (reminderJobs.length === 0) {
-        logger.info(`${QueueName.DailyResourceCleanUp}: no reminder jobs found`);
-        return;
-      }
-
-      for (let offset = 0; offset < reminderJobs.length; offset += REMINDER_PRUNE_BATCH_SIZE) {
-        try {
-          const batchIds = reminderJobs.slice(offset, offset + REMINDER_PRUNE_BATCH_SIZE).map((r) => r.secretId);
-
-          const payload = {
-            $in: {
-              id: batchIds
-            }
-          };
-
-          const opts = {
-            limit: REMINDER_PRUNE_BATCH_SIZE
-          };
-
-          // Find existing secrets with pagination
-          // eslint-disable-next-line no-await-in-loop
-          const [secrets, secretsV2] = await Promise.all([
-            ormify(db, TableName.Secret).find(payload, opts),
-            ormify(db, TableName.SecretV2).find(payload, opts)
-          ]);
-
-          const foundSecretIds = new Set([
-            ...secrets.map((secret) => secret.id),
-            ...secretsV2.map((secret) => secret.id)
-          ]);
-
-          // Find IDs that don't exist in either table
-          const secretIdsNotFound = batchIds.filter((secretId) => !foundSecretIds.has(secretId));
-
-          // Delete reminders for non-existent secrets
-          for (const secretId of secretIdsNotFound) {
-            const jobKey = reminderJobs.find((r) => r.secretId === secretId)?.jobKey;
-
-            if (jobKey) {
-              // eslint-disable-next-line no-await-in-loop
-              await queueService.stopRepeatableJobByKey(QueueName.SecretReminder, jobKey);
-              deletedReminderCount += 1;
-            }
-          }
-
-          numberOfRetryOnFailure = 0;
-        } catch (error) {
-          numberOfRetryOnFailure += 1;
-          logger.error(error, `Failed to process batch at offset ${offset}`);
-
-          if (numberOfRetryOnFailure >= MAX_RETRY_ON_FAILURE) {
-            break;
-          }
-
-          // Retry the current batch
-          offset -= REMINDER_PRUNE_BATCH_SIZE;
-
-          // eslint-disable-next-line no-promise-executor-return, @typescript-eslint/no-loop-func, no-await-in-loop
-          await new Promise((resolve) => setTimeout(resolve, 500 * numberOfRetryOnFailure));
-        }
-
-        // Small delay between batches
-        // eslint-disable-next-line no-promise-executor-return, @typescript-eslint/no-loop-func, no-await-in-loop
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
-    } catch (error) {
-      logger.error(error, "Failed to complete secret reminder pruning");
-    } finally {
-      logger.info(
-        `${QueueName.DailyResourceCleanUp}: secret reminders completed. Deleted ${deletedReminderCount} reminders`
-      );
-    }
-  };
-
   return {
     ...secretOrm,
     update,
@@ -485,7 +395,6 @@ export const secretDALFactory = (db: TDbClient) => {
     upsertSecretReferences,
     findReferencedSecretReferences,
     findAllProjectSecretValues,
-    pruneSecretReminders,
     findManySecretsWithTags
   };
 };

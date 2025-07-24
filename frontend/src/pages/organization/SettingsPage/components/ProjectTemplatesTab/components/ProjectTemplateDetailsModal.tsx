@@ -1,5 +1,6 @@
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -7,21 +8,25 @@ import {
   Button,
   FormControl,
   Input,
+  Lottie,
   Modal,
   ModalClose,
   ModalContent,
   TextArea
 } from "@app/components/v2";
+import { getProjectLottieIcon } from "@app/helpers/project";
 import {
   TProjectTemplate,
   useCreateProjectTemplate,
   useUpdateProjectTemplate
 } from "@app/hooks/api/projectTemplates";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
   name: slugSchema({ min: 1, max: 64, field: "Name" }),
-  description: z.string().max(500).optional()
+  description: z.string().max(500).optional(),
+  type: z.nativeEnum(ProjectType).optional()
 });
 
 export type FormData = z.infer<typeof formSchema>;
@@ -38,6 +43,29 @@ type FormProps = {
   onComplete: (template: TProjectTemplate) => void;
 };
 
+const PROJECT_TYPE_MENU_ITEMS = [
+  {
+    label: "Secrets Management",
+    value: ProjectType.SecretManager
+  },
+  {
+    label: "Certificates Management",
+    value: ProjectType.CertificateManager
+  },
+  {
+    label: "KMS",
+    value: ProjectType.KMS
+  },
+  {
+    label: "SSH",
+    value: ProjectType.SSH
+  },
+  {
+    label: "Secret Scanning",
+    value: ProjectType.SecretScanning
+  }
+];
+
 const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
   const createProjectTemplate = useCreateProjectTemplate();
   const updateProjectTemplate = useUpdateProjectTemplate();
@@ -45,12 +73,14 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
   const {
     handleSubmit,
     register,
+    control,
     formState: { isSubmitting, errors }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: projectTemplate?.name,
-      description: projectTemplate?.description
+      description: projectTemplate?.description,
+      type: ProjectType.SecretManager
     }
   });
 
@@ -90,6 +120,42 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
       >
         <Input autoFocus placeholder="my-project-template" {...register("name")} />
       </FormControl>
+      <Controller
+        control={control}
+        name="type"
+        defaultValue={ProjectType.SecretManager}
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            label="Project Type"
+            isError={Boolean(error)}
+            errorText={error?.message}
+            className="flex-1"
+          >
+            <div className="mt-2 grid grid-cols-5 gap-4">
+              {PROJECT_TYPE_MENU_ITEMS.map((el) => (
+                <div
+                  key={el.value}
+                  className={twMerge(
+                    "flex cursor-pointer flex-col items-center gap-2 rounded border border-mineshaft-600 p-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
+                    field.value === el.value && "border-primary-400 bg-mineshaft-600 opacity-100"
+                  )}
+                  onClick={() => field.onChange(el.value)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      field.onChange(el.value);
+                    }
+                  }}
+                >
+                  <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
+                  <div className="text-center text-xs">{el.label}</div>
+                </div>
+              ))}
+            </div>
+          </FormControl>
+        )}
+      />
       <FormControl
         label="Description (optional)"
         errorText={errors.description?.message}

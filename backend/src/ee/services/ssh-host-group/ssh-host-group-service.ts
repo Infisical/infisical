@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
@@ -79,7 +80,8 @@ export const sshHostGroupServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.SshHostGroups);
@@ -171,7 +173,8 @@ export const sshHostGroupServiceFactory = ({
       actorId,
       projectId: sshHostGroup.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SshHostGroups);
@@ -267,7 +270,8 @@ export const sshHostGroupServiceFactory = ({
       actorId,
       projectId: sshHostGroup.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHostGroups);
@@ -290,7 +294,8 @@ export const sshHostGroupServiceFactory = ({
       actorId,
       projectId: sshHostGroup.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.SshHostGroups);
@@ -316,7 +321,8 @@ export const sshHostGroupServiceFactory = ({
       actorId,
       projectId: sshHostGroup.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHostGroups);
@@ -354,7 +360,8 @@ export const sshHostGroupServiceFactory = ({
       actorId,
       projectId: sshHostGroup.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SshHostGroups);
@@ -393,7 +400,8 @@ export const sshHostGroupServiceFactory = ({
       actorId,
       projectId: sshHostGroup.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SshHostGroups);

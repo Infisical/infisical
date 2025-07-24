@@ -2290,6 +2290,9 @@ export const AppConnections = {
       accessKey: "The Key used to access Supabase.",
       instanceUrl: "The URL used to access Supabase."
     },
+    DIGITAL_OCEAN_APP_PLATFORM: {
+      apiToken: "The API token used to authenticate with Digital Ocean App Platform."
+    },
     OKTA: {
       instanceUrl: "The URL used to access your Okta organization.",
       apiToken: "The API token used to authenticate with Okta."
@@ -2506,6 +2509,11 @@ export const SecretSyncs = {
     SUPABASE: {
       projectId: "The ID of the Supabase project to sync secrets to.",
       projectName: "The name of the Supabase project to sync secrets to."
+    },
+    BITBUCKET: {
+      workspaceSlug: "The Bitbucket Workspace slug to sync secrets to.",
+      repositorySlug: "The Bitbucket Repository slug to sync secrets to.",
+      environmentId: "The Bitbucket Deployment Environment uuid to sync secrets to."
     }
   }
 };

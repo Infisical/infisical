@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { SigningAlgorithm } from "@app/lib/crypto/sign";
@@ -38,7 +39,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
 
@@ -77,7 +79,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
@@ -113,7 +116,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Delete, ProjectPermissionSub.Cmek);
@@ -129,7 +133,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
@@ -151,7 +156,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
@@ -172,7 +178,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
@@ -194,7 +201,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Encrypt, ProjectPermissionSub.Cmek);
@@ -221,7 +229,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
@@ -268,7 +277,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
@@ -291,7 +301,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Sign, ProjectPermissionSub.Cmek);
@@ -325,7 +336,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Verify, ProjectPermissionSub.Cmek);
@@ -360,7 +372,8 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
       actorId: actor.id,
       projectId: key.projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Decrypt, ProjectPermissionSub.Cmek);

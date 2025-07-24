@@ -24,7 +24,6 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { SshCaStatus, useListWorkspaceSshCas } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -62,7 +61,7 @@ export const SshCaTable = ({ handlePopUpOpen }: Props) => {
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/projects/$projectId/${ProjectType.SSH}/ca/$caId` as const,
+                        to: "/projects/ssh/$projectId/ca/$caId",
                         params: {
                           projectId: currentWorkspace.id,
                           caId: ca.id

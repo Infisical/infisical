@@ -1,8 +1,16 @@
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listBitbucketRepositories, listBitbucketWorkspaces } from "./bitbucket-connection-fns";
-import { TBitbucketConnection, TGetBitbucketRepositoriesDTO } from "./bitbucket-connection-types";
+import {
+  listBitbucketEnvironments,
+  listBitbucketRepositories,
+  listBitbucketWorkspaces
+} from "./bitbucket-connection-fns";
+import {
+  TBitbucketConnection,
+  TGetBitbucketEnvironmentsDTO,
+  TGetBitbucketRepositoriesDTO
+} from "./bitbucket-connection-types";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
@@ -26,8 +34,18 @@ export const bitbucketConnectionService = (getAppConnection: TGetAppConnectionFu
     return repositories;
   };
 
+  const listEnvironments = async (
+    { connectionId, workspaceSlug, repositorySlug }: TGetBitbucketEnvironmentsDTO,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.Bitbucket, connectionId, actor);
+    const environments = await listBitbucketEnvironments(appConnection, workspaceSlug, repositorySlug);
+    return environments;
+  };
+
   return {
     listWorkspaces,
-    listRepositories
+    listRepositories,
+    listEnvironments
   };
 };

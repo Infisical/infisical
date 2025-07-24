@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -37,7 +38,8 @@ export const assumePrivilegeServiceFactory = ({
       actorId: actorPermissionDetails.id,
       projectId,
       actorAuthMethod: actorPermissionDetails.authMethod,
-      actorOrgId: actorPermissionDetails.orgId
+      actorOrgId: actorPermissionDetails.orgId,
+      actionProjectType: ActionProjectType.Any
     });
 
     if (targetActorType === ActorType.USER) {
@@ -58,7 +60,8 @@ export const assumePrivilegeServiceFactory = ({
       actorId: targetActorId,
       projectId,
       actorAuthMethod: actorPermissionDetails.authMethod,
-      actorOrgId: actorPermissionDetails.orgId
+      actorOrgId: actorPermissionDetails.orgId,
+      actionProjectType: ActionProjectType.Any
     });
 
     const appCfg = getConfig();

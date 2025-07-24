@@ -61,6 +61,8 @@ import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/clou
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
+import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -145,6 +147,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
   [AppConnection.Checkly]: ValidateChecklyConnectionCredentialsSchema,
   [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
+  [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema
 };
 
@@ -607,6 +610,7 @@ export const appConnectionServiceFactory = ({
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
+    digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById)
   };
 };

@@ -51,6 +51,10 @@ import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
+import {
+  DigitalOceanConnectionListItemSchema,
+  SanitizedDigitalOceanConnectionSchema
+} from "@app/services/app-connection/digital-ocean";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -140,6 +144,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRailwayConnectionSchema.options,
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
+  ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options
 ]);
 
@@ -178,6 +183,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RailwayConnectionListItemSchema,
   ChecklyConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
+  DigitalOceanConnectionListItemSchema,
   OktaConnectionListItemSchema
 ]);
 

@@ -249,6 +249,7 @@ export type TCreateSecretReminderDTO = {
 export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;
+  projectId: string;
 };
 
 export type TBackFillSecretReferencesDTO = TProjectPermission;
@@ -358,6 +359,7 @@ export type TFindSecretsByFolderIdsFilter = {
   tagSlugs?: string[];
   metadataFilter?: { key?: string; value?: string }[];
   includeTagsInSearch?: boolean;
+  includeMetadataInSearch?: boolean;
   keys?: string[];
 };
 

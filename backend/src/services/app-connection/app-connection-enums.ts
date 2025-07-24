@@ -33,6 +33,7 @@ export enum AppConnection {
   Bitbucket = "bitbucket",
   Checkly = "checkly",
   Supabase = "supabase",
+  DigitalOcean = "digital-ocean",
   Okta = "okta"
 }
 
