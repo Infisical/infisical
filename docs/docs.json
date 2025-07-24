@@ -694,9 +694,9 @@
       },
       {
         "tab": "API Reference",
-        "groups": [
+        "menu": [
           {
-            "group": "Overview",
+            "item": "Overview",
             "pages": [
               "api-reference/overview/introduction",
               "api-reference/overview/authentication",
@@ -707,7 +707,7 @@
             ]
           },
           {
-            "group": "Endpoints",
+            "item": "Endpoints",
             "pages": [
               {
                 "group": "Identities",
@@ -1385,7 +1385,7 @@
                       "api-reference/endpoints/app-connections/databricks/delete"
                     ]
                   },
-                   {
+                  {
                     "group": "Digital Ocean",
                     "pages": [
                       "api-reference/endpoints/app-connections/digital-ocean/list",
@@ -2100,7 +2100,7 @@
             ]
           },
           {
-            "group": "Infisical PKI",
+            "item": "Infisical PKI",
             "pages": [
               {
                 "group": "Subscribers",
@@ -2202,7 +2202,7 @@
             ]
           },
           {
-            "group": "Infisical SSH",
+            "item": "Infisical SSH",
             "pages": [
               {
                 "group": "Hosts",
@@ -2264,7 +2264,7 @@
             ]
           },
           {
-            "group": "Infisical KMS",
+            "item": "Infisical KMS",
             "pages": [
               {
                 "group": "Keys",
@@ -2299,23 +2299,51 @@
       },
       {
         "tab": "SDKs",
-        "groups": [
+        "menu": [
           {
-            "group": "Overview",
+            "item": "Overview",
+            "icon": "house",
             "pages": ["sdks/overview"]
           },
           {
-            "group": "SDK's",
-            "pages": [
-              "sdks/languages/node",
-              "sdks/languages/python",
-              "sdks/languages/java",
-              "sdks/languages/csharp",
-              "sdks/languages/cpp",
-              "sdks/languages/rust",
-              "sdks/languages/go",
-              "sdks/languages/ruby"
-            ]
+            "item": "Node.js",
+            "icon": "/images/sdks/languages/node.svg",
+            "href": "https://github.com/Infisical/node-sdk-v2?tab=readme-ov-file#infisical-nodejs-sdk"
+          },
+          {
+            "item": "Python",
+            "icon": "/images/sdks/languages/python.svg",
+            "href": "https://github.com/Infisical/python-sdk-official?tab=readme-ov-file#infisical-python-sdk"
+          },
+          {
+            "item": "Java",
+            "icon": "/images/sdks/languages/java.svg",
+            "href": "https://github.com/Infisical/java-sdk?tab=readme-ov-file#infisical-java-sdk"
+          },
+          {
+            "item": ".NET",
+            "icon": "/images/sdks/languages/dotnet.svg",
+            "href": "https://github.com/Infisical/infisical-dotnet-sdk?tab=readme-ov-file#infisical-net-sdk"
+          },
+          {
+            "item": "C++",
+            "icon": "/images/sdks/languages/cpp.svg",
+            "href": "https://github.com/Infisical/infisical-cpp-sdk/?tab=readme-ov-file#infisical-c-sdk"
+          },
+          {
+            "item": "Rust",
+            "icon": "/images/sdks/languages/rust.svg",
+            "href": "https://github.com/Infisical/rust-sdk?tab=readme-ov-file#infisical--the-official-infisical-rust-sdk"
+          },
+          {
+            "item": "Go",
+            "icon": "/images/sdks/languages/go.svg",
+            "href": "https://github.com/Infisical/go-sdk?tab=readme-ov-file#infisical-go-sdk"
+          },
+          {
+            "item": "Ruby",
+            "icon": "/images/sdks/languages/ruby.svg",
+            "href": "https://github.com/Infisical/ruby-sdk?tab=readme-ov-file#infisical-ruby-sdk"
           }
         ]
       },
