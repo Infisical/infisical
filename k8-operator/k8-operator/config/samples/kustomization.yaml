@@ -1,0 +1,6 @@
+## Append samples of your project ##
+resources:
+- secrets_v1alpha1_infisicalsecret.yaml
+- secrets_v1alpha1_infisicalpushsecretsecret.yaml
+- secrets_v1alpha1_infisicaldynamicsecret.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
