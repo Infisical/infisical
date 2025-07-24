@@ -20,7 +20,7 @@ type Props = {
   isMulti?: boolean;
   iconClassName?: string;
   dropdownContainerStyle?: React.CSSProperties;
-  side: SelectPrimitive.SelectContentProps["side"];
+  side?: SelectPrimitive.SelectContentProps["side"];
 };
 
 export type SelectProps = Omit<SelectPrimitive.SelectProps, "disabled"> & Props;
