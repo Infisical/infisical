@@ -30,7 +30,7 @@ export const ExternalMigrationsTab = () => {
               <a
                 target="_blank"
                 rel="noopener noreferrer"
-                href="https://infisical.com/docs/documentation/guides/migrating-from-envkey"
+                href="https://infisical.com/docs/documentation/platform/external-migrations/overview"
               >
                 <div className="ml-2 inline-block rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
