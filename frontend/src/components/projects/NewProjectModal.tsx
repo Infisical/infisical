@@ -271,6 +271,8 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
                     value={value}
                     onValueChange={onChange}
                     className="w-full"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
                   >
                     {projectTemplates.length
                       ? projectTemplates.map((template) => (
@@ -306,6 +308,9 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
                         onChange(e);
                       }}
                       className="mb-12 w-full bg-mineshaft-600"
+                      position="popper"
+                      dropdownContainerClassName="max-w-none -top-1"
+                      side="top"
                     >
                       <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
                         Default Infisical KMS
