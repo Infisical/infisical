@@ -45,25 +45,21 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
       return;
     }
 
-    try {
-      await importEnvKey({
-        file: data.file,
-        decryptionKey: data.encryptionKey
-      });
-      createNotification({
-        title: "Import started",
-        text: "Your data is being imported. You will receive an email when the import is complete or if the import fails. This may take up to 10 minutes.",
-        type: "info"
-      });
+    await importEnvKey({
+      file: data.file,
+      decryptionKey: data.encryptionKey
+    });
+    createNotification({
+      title: "Import started",
+      text: "Your data is being imported. You will receive an email when the import is complete or if the import fails. This may take up to 10 minutes.",
+      type: "info"
+    });
 
-      onClose();
-      reset();
+    onClose();
+    reset();
 
-      if (fileUploadRef.current) {
-        fileUploadRef.current.value = "";
-      }
-    } catch {
-      reset();
+    if (fileUploadRef.current) {
+      fileUploadRef.current.value = "";
     }
   };
 

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { faKey } from "@fortawesome/free-solid-svg-icons";
+import { faKey, faVault } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
 
 import { EnvKeyPlatformModal } from "./EnvKeyPlatformModal";
+import { VaultPlatformModal } from "./VaultPlatformModal";
 
 type Props = {
   isOpen?: boolean;
@@ -22,6 +23,11 @@ const PLATFORM_LIST = [
     icon: faKey,
     platform: "env-key",
     title: "Env Key"
+  },
+  {
+    icon: faVault,
+    platform: "vault",
+    title: "Vault"
   }
 ] as const;
 
@@ -82,18 +88,32 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
               </div>
             </motion.div>
           )}
-          {wizardStep === WizardSteps.PlatformInputs &&
-            selectedPlatform?.platform === "env-key" && (
-              <motion.div
-                key="env-key-step"
-                transition={{ duration: 0.1 }}
-                initial={{ opacity: 0, translateX: 30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: -30 }}
-              >
-                <EnvKeyPlatformModal onClose={() => handleFormReset(false)} />
-              </motion.div>
-            )}
+          {wizardStep === WizardSteps.PlatformInputs && (
+            <>
+              {selectedPlatform?.platform === "env-key" && (
+                <motion.div
+                  key="env-key-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <EnvKeyPlatformModal onClose={() => handleFormReset(false)} />
+                </motion.div>
+              )}
+              {selectedPlatform?.platform === "vault" && (
+                <motion.div
+                  key="vault-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <VaultPlatformModal onClose={() => handleFormReset(false)} />
+                </motion.div>
+              )}
+            </>
+          )}
         </AnimatePresence>
       </ModalContent>
     </Modal>

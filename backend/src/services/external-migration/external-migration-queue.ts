@@ -19,7 +19,7 @@ import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-d
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { importDataIntoInfisicalFn } from "./external-migration-fns";
-import { ExternalPlatforms, TImportInfisicalDataCreate } from "./external-migration-types";
+import { ExternalPlatforms, ImportType, TImportInfisicalDataCreate } from "./external-migration-types";
 
 export type TExternalMigrationQueueFactoryDep = {
   smtpService: TSmtpService;
@@ -67,6 +67,7 @@ export const externalMigrationQueueFactory = ({
   const startImport = async (dto: {
     actorEmail: string;
     data: {
+      importType: ImportType;
       iv: string;
       tag: string;
       ciphertext: string;
