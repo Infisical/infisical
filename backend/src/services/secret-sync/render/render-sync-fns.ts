@@ -10,20 +10,24 @@ import { TRenderSecret, TRenderSyncWithCredentials } from "./render-sync-types";
 
 const MAX_RETRIES = 5;
 
-const sleep = async () =>
-  new Promise((resolve) => {
-    setTimeout(resolve, 2000);
-  });
-
 const retrySleep = async () =>
   new Promise((resolve) => {
     setTimeout(resolve, 60000);
   });
 
-const getRenderEnvironmentSecrets = async (
-  secretSync: TRenderSyncWithCredentials,
-  attempt = 0
-): Promise<TRenderSecret[]> => {
+const makeRequestWithRetry = async <T>(requestFn: () => Promise<T>, attempt = 0): Promise<T> => {
+  try {
+    return await requestFn();
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await retrySleep();
+      return await makeRequestWithRetry(requestFn, attempt + 1);
+    }
+    throw error;
+  }
+};
+
+const getRenderEnvironmentSecrets = async (secretSync: TRenderSyncWithCredentials): Promise<TRenderSecret[]> => {
   const {
     destinationConfig,
     connection: {
@@ -38,8 +42,8 @@ const getRenderEnvironmentSecrets = async (
   do {
     const url = cursor ? `${baseUrl}?cursor=${cursor}` : baseUrl;
 
-    try {
-      const { data } = await request.get<
+    const { data } = await makeRequestWithRetry(() =>
+      request.get<
         {
           envVar: {
             key: string;
@@ -52,32 +56,29 @@ const getRenderEnvironmentSecrets = async (
           Authorization: `Bearer ${apiKey}`,
           Accept: "application/json"
         }
-      });
+      })
+    );
 
-      const secrets = data.map((item) => ({
-        key: item.envVar.key,
-        value: item.envVar.value
-      }));
+    const secrets = data.map((item) => ({
+      key: item.envVar.key,
+      value: item.envVar.value
+    }));
 
-      allSecrets.push(...secrets);
-      cursor = data[data.length - 1]?.cursor;
-    } catch (error) {
-      if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
-        await retrySleep();
-        return await getRenderEnvironmentSecrets(secretSync, attempt + 1);
-      }
-      throw error;
+    allSecrets.push(...secrets);
+
+    if (data.length > 0 && data[data.length - 1]?.cursor) {
+      cursor = data[data.length - 1].cursor;
+    } else {
+      cursor = undefined;
     }
   } while (cursor);
 
   return allSecrets;
 };
 
-const putEnvironmentSecret = async (
+const batchUpdateEnvironmentSecrets = async (
   secretSync: TRenderSyncWithCredentials,
-  secretMap: TSecretMap,
-  key: string,
-  attempt = 0
+  envVars: Array<{ key: string; value: string }>
 ): Promise<void> => {
   const {
     destinationConfig,
@@ -86,92 +87,50 @@ const putEnvironmentSecret = async (
     }
   } = secretSync;
 
-  try {
-    await request.put(
-      `${IntegrationUrls.RENDER_API_URL}/v1/services/${destinationConfig.serviceId}/env-vars/${key}`,
-      {
-        key,
-        value: secretMap[key].value
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          Accept: "application/json"
-        }
+  await makeRequestWithRetry(() =>
+    request.put(`${IntegrationUrls.RENDER_API_URL}/v1/services/${destinationConfig.serviceId}/env-vars`, envVars, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json"
       }
-    );
-  } catch (error) {
-    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
-      await retrySleep();
-      return await putEnvironmentSecret(secretSync, secretMap, key, attempt + 1);
-    }
-    throw error;
-  }
-};
-
-const deleteEnvironmentSecret = async (
-  secretSync: TRenderSyncWithCredentials,
-  secret: Pick<TRenderSecret, "key">,
-  attempt = 0
-): Promise<void> => {
-  const {
-    destinationConfig,
-    connection: {
-      credentials: { apiKey }
-    }
-  } = secretSync;
-
-  try {
-    await request.delete(
-      `${IntegrationUrls.RENDER_API_URL}/v1/services/${destinationConfig.serviceId}/env-vars/${secret.key}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          Accept: "application/json"
-        }
-      }
-    );
-  } catch (error) {
-    if (isAxiosError(error) && error.response?.status === 404) {
-      // If the secret does not exist, we can ignore this error
-      return;
-    }
-
-    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
-      await retrySleep();
-      return await deleteEnvironmentSecret(secretSync, secret, attempt + 1);
-    }
-
-    throw error;
-  }
+    })
+  );
 };
 
 export const RenderSyncFns = {
   syncSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
     const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
 
-    for await (const key of Object.keys(secretMap)) {
-      // If value is empty skip it as render does not allow empty variables
-      if (secretMap[key].value === "") {
+    const finalEnvVars: Array<{ key: string; value: string }> = [];
+
+    for (const renderSecret of renderSecrets) {
+      const shouldKeep =
+        secretMap[renderSecret.key] ||
+        (secretSync.syncOptions.disableSecretDeletion &&
+          !matchesSchema(renderSecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema));
+
+      if (shouldKeep && !secretMap[renderSecret.key]) {
+        finalEnvVars.push({
+          key: renderSecret.key,
+          value: renderSecret.value
+        });
+      }
+    }
+
+    for (const [key, secret] of Object.entries(secretMap)) {
+      // Skip empty values as render does not allow empty variables
+      if (secret.value === "") {
         // eslint-disable-next-line no-continue
         continue;
       }
-      await putEnvironmentSecret(secretSync, secretMap, key);
-      await sleep();
+
+      finalEnvVars.push({
+        key,
+        value: secret.value
+      });
     }
 
-    if (secretSync.syncOptions.disableSecretDeletion) return;
-
-    for await (const renderSecret of renderSecrets) {
-      if (!matchesSchema(renderSecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
-        // eslint-disable-next-line no-continue
-        continue;
-
-      if (!secretMap[renderSecret.key]) {
-        await deleteEnvironmentSecret(secretSync, renderSecret);
-        await sleep();
-      }
-    }
+    await batchUpdateEnvironmentSecrets(secretSync, finalEnvVars);
   },
 
   getSecrets: async (secretSync: TRenderSyncWithCredentials): Promise<TSecretMap> => {
@@ -180,13 +139,17 @@ export const RenderSyncFns = {
   },
 
   removeSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
-    const encryptedSecrets = await getRenderEnvironmentSecrets(secretSync);
+    const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
+    const finalEnvVars: Array<{ key: string; value: string }> = [];
 
-    for await (const encryptedSecret of encryptedSecrets) {
-      if (encryptedSecret.key in secretMap) {
-        await deleteEnvironmentSecret(secretSync, encryptedSecret);
-        await sleep();
+    for (const renderSecret of renderSecrets) {
+      if (!(renderSecret.key in secretMap)) {
+        finalEnvVars.push({
+          key: renderSecret.key,
+          value: renderSecret.value
+        });
       }
     }
+    await batchUpdateEnvironmentSecrets(secretSync, finalEnvVars);
   }
 };
