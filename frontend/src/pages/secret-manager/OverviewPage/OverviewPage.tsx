@@ -1445,7 +1445,6 @@ export const OverviewPage = () => {
                         }
                         icon={faFolderBlank}
                         iconSize="3x"
-                        className="fixed"
                       >
                         <Button
                           className="mt-4"
