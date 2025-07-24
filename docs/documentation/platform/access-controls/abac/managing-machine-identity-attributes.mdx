@@ -74,16 +74,18 @@ For methods like OIDC, these come as claims in the token and can be made availab
     <img src="/images/platform/access-controls/abac-policy-k8s-format.png" />
   </Tab>
   <Tab title="AWS Attributes">
-    For identities authenticated using AWS Auth, several attributes can be accessed:
+    For identities authenticated using AWS Auth, several attributes can be accessed. On top of the 3 base attributes, there's 4 derived from the ARN. The example below includes comments showing how each derived attribute looks like based on this ARN: `arn:aws:iam::123456789012:user/example-user`
 
     ```
     {{ identity.auth.aws.accountId }}
     {{ identity.auth.aws.arn }}
     {{ identity.auth.aws.userId }}
-    {{ identity.auth.aws.partition }}
-    {{ identity.auth.aws.service }}
-    {{ identity.auth.aws.resourceType }}
-    {{ identity.auth.aws.resourceName }}
+
+    // Derived from ARN
+    {{ identity.auth.aws.partition }} // aws
+    {{ identity.auth.aws.service }} // iam
+    {{ identity.auth.aws.resourceType }} // user
+    {{ identity.auth.aws.resourceName }} // example-user
     ```
 
     <img src="/images/platform/access-controls/abac-policy-aws-format.png" />
