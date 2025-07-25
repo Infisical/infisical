@@ -190,12 +190,11 @@ ENV NODE_ENV production
 ENV STANDALONE_BUILD true
 ENV STANDALONE_MODE true
 ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
-ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV NODE_OPTIONS="--max-old-space-size=8192 --force-fips"
 
 # FIPS mode of operation:
 ENV OPENSSL_CONF=/backend/nodejs.fips.cnf
 ENV OPENSSL_MODULES=/usr/local/lib/ossl-modules
-ENV NODE_OPTIONS=--force-fips
 ENV FIPS_ENABLED=true
   
 
