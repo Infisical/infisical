@@ -112,7 +112,7 @@ const redeployService = async (secretSync: TRenderSyncWithCredentials) => {
       {
         headers: {
           Authorization: `Bearer ${apiKey}`,
-          "Accept-Encoding": "application/json"
+          Accept: "application/json"
         }
       }
     )

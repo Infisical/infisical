@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
-import { RenderSyncScope, RenderSyncType } from "@app/hooks/api/secretSyncs/render-sync";
+import { RenderSyncScope, RenderSyncType } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 export const RenderSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
