@@ -490,7 +490,7 @@ const Form = ({
             name="environments"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
-                label="Environment"
+                label="Environments"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
@@ -500,7 +500,7 @@ const Form = ({
                   value={value}
                   isMulti
                   onChange={onChange}
-                  placeholder="Select environment..."
+                  placeholder="Select environments..."
                   options={availableEnvironments}
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
