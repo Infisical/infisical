@@ -28,6 +28,10 @@ export async function up(knex: Knex): Promise<void> {
           .whereRaw(`"v2"."reminderRepeatDays" > 0`)
           .groupBy("v2.secretId");
       })
+      // Add LEFT JOIN with Reminder table to check for existing reminders
+      .leftJoin(TableName.Reminder, `${TableName.Reminder}.secretId`, `${TableName.SecretV2}.id`)
+      // Only include secrets that don't already have reminders
+      .whereNull(`${TableName.Reminder}.secretId`)
       .select(
         knex.ref("id").withSchema(TableName.SecretV2).as("secretId"),
         knex.ref("reminderRepeatDays").withSchema(TableName.SecretV2).as("reminderRepeatDays"),
