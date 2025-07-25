@@ -204,6 +204,18 @@ const envSchema = z
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
 
+    // Special Detection Feature
+    PARAMS_FOLDER_SECRET_DETECTION_PATHS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return undefined;
+          return JSON.parse(val) as { secretPath: string }[];
+        })
+    ),
+    PARAMS_FOLDER_SECRET_DETECTION_ENABLED: zodStrBool.default("false"),
+
     // HSM
     HSM_LIB_PATH: zpStr(z.string().optional()),
     HSM_PIN: zpStr(z.string().optional()),

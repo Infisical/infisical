@@ -52,7 +52,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             defaultAuthOrgAuthEnforced: z.boolean().nullish(),
             defaultAuthOrgAuthMethod: z.string().nullish(),
             isSecretScanningDisabled: z.boolean(),
-            kubernetesAutoFetchServiceAccountToken: z.boolean()
+            kubernetesAutoFetchServiceAccountToken: z.boolean(),
+            paramsFolderSecretDetectionEnabled: z.boolean()
           })
         })
       }
@@ -67,7 +68,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           fipsEnabled: crypto.isFipsModeEnabled(),
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
-          kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN
+          kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
+          paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED
         }
       };
     }

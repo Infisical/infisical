@@ -40,6 +40,7 @@ export type Workspace = {
   hasDeleteProtection: boolean;
   secretSharing: boolean;
   showSnapshotsLegacy: boolean;
+  secretDetectionIgnoreKeys: string[];
 };
 
 export type WorkspaceEnv = {
@@ -81,6 +82,7 @@ export type UpdateProjectDTO = {
   newSlug?: string;
   secretSharing?: boolean;
   showSnapshotsLegacy?: boolean;
+  secretDetectionIgnoreKeys?: string[];
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
