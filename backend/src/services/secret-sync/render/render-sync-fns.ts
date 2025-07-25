@@ -97,6 +97,28 @@ const batchUpdateEnvironmentSecrets = async (
   );
 };
 
+const redeployService = async (secretSync: TRenderSyncWithCredentials) => {
+  const {
+    destinationConfig,
+    connection: {
+      credentials: { apiKey }
+    }
+  } = secretSync;
+
+  await makeRequestWithRetry(() =>
+    request.post(
+      `${IntegrationUrls.RENDER_API_URL}/v1/services/${destinationConfig.serviceId}/deploys`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    )
+  );
+};
+
 export const RenderSyncFns = {
   syncSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
     const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
@@ -131,6 +153,10 @@ export const RenderSyncFns = {
     }
 
     await batchUpdateEnvironmentSecrets(secretSync, finalEnvVars);
+
+    if (secretSync.syncOptions.autoRedeployServices) {
+      await redeployService(secretSync);
+    }
   },
 
   getSecrets: async (secretSync: TRenderSyncWithCredentials): Promise<TSecretMap> => {
@@ -151,5 +177,9 @@ export const RenderSyncFns = {
       }
     }
     await batchUpdateEnvironmentSecrets(secretSync, finalEnvVars);
+
+    if (secretSync.syncOptions.autoRedeployServices) {
+      await redeployService(secretSync);
+    }
   }
 };

@@ -4,7 +4,11 @@ import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { RenderSyncScope, RenderSyncType } from "@app/hooks/api/secretSyncs/render-sync";
 
-export const RenderSyncDestinationSchema = BaseSecretSyncSchema().merge(
+export const RenderSyncDestinationSchema = BaseSecretSyncSchema(
+  z.object({
+    autoRedeployServices: z.boolean().optional()
+  })
+).merge(
   z.object({
     destination: z.literal(SecretSync.Render),
     destinationConfig: z.discriminatedUnion("scope", [

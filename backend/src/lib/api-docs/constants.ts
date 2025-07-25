@@ -2373,6 +2373,10 @@ export const SecretSyncs = {
       keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
       tags: "Optional tags to add to secrets synced by Infisical.",
       syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`
+    },
+    RENDER: {
+      autoRedeployServices:
+        "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
     }
   },
   DESTINATION_CONFIG: {

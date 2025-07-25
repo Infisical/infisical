@@ -16,6 +16,10 @@ export type TRenderSync = TRootSecretSync & {
     name: string;
     id: string;
   };
+
+  syncOptions: {
+    autoRedeployServices?: boolean;
+  };
 };
 
 export enum RenderSyncScope {
