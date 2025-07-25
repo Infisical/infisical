@@ -12,10 +12,12 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("policyId").notNullable();
       t.foreign("policyId").references("id").inTable(TableName.AccessApprovalPolicy).onDelete("CASCADE");
       t.uuid("envId").notNullable();
-      t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
+      t.foreign("envId").references("id").inTable(TableName.Environment);
       t.timestamps(true, true, true);
       t.unique(["policyId", "envId"]);
     });
+
+    await createOnUpdateTrigger(knex, TableName.AccessApprovalPolicyEnvironment);
 
     const existingAccessApprovalPolicies = await knex(TableName.AccessApprovalPolicy)
       .select(selectAllTableCols(TableName.AccessApprovalPolicy))
@@ -36,10 +38,12 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("policyId").notNullable();
       t.foreign("policyId").references("id").inTable(TableName.SecretApprovalPolicy).onDelete("CASCADE");
       t.uuid("envId").notNullable();
-      t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
+      t.foreign("envId").references("id").inTable(TableName.Environment);
       t.timestamps(true, true, true);
       t.unique(["policyId", "envId"]);
     });
+
+    await createOnUpdateTrigger(knex, TableName.SecretApprovalPolicyEnvironment);
 
     const existingSecretApprovalPolicies = await knex(TableName.SecretApprovalPolicy)
       .select(selectAllTableCols(TableName.SecretApprovalPolicy))
@@ -68,9 +72,6 @@ export async function up(knex: Knex): Promise<void> {
     // Add the new foreign key constraint with ON DELETE SET NULL
     t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("SET NULL");
   });
-
-  await createOnUpdateTrigger(knex, TableName.AccessApprovalPolicyEnvironment);
-  await createOnUpdateTrigger(knex, TableName.SecretApprovalPolicyEnvironment);
 }
 
 export async function down(knex: Knex): Promise<void> {

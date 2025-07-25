@@ -354,16 +354,19 @@ export const accessApprovalPolicyServiceFactory = ({
       envs = await projectEnvDAL.find({ $in: { slug: environments }, projectId: accessApprovalPolicy.projectId });
     }
 
-    if (
-      await $policyExists({
-        envIds: envs.map((env) => env.id),
-        secretPath: secretPath || accessApprovalPolicy.secretPath,
-        policyId: accessApprovalPolicy.id
-      })
-    ) {
-      throw new BadRequestError({
-        message: `A policy for secret path '${secretPath}' already exists`
-      });
+    for (const env of envs) {
+      if (
+        // eslint-disable-next-line no-await-in-loop
+        await $policyExists({
+          envId: env.id,
+          secretPath: secretPath || accessApprovalPolicy.secretPath,
+          policyId: accessApprovalPolicy.id
+        })
+      ) {
+        throw new BadRequestError({
+          message: `A policy for secret path '${secretPath || accessApprovalPolicy.secretPath}' already exists in environment '${env.slug}'`
+        });
+      }
     }
 
     const { permission } = await permissionService.getProjectPermission({
