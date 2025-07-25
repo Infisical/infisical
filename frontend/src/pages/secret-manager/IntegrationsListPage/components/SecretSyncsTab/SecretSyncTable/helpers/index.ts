@@ -180,7 +180,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.Netlify:
       primaryText = destinationConfig.siteName || destinationConfig.siteId || "All Sites";
-      secondaryText = destinationConfig.accountName ?? destinationConfig.accountId;
+      secondaryText = destinationConfig.accountName || destinationConfig.accountId;
       break;
     case SecretSync.Bitbucket:
       primaryText = destinationConfig.workspaceSlug;

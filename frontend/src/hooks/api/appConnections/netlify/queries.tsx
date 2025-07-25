@@ -10,7 +10,7 @@ const netlifyConnectionKeys = {
   listAccounts: (connectionId: string) =>
     [...netlifyConnectionKeys.all, "accounts", connectionId] as const,
   listSites: (connectionId: string, accountId: string) =>
-    [...netlifyConnectionKeys.all, "accounts", connectionId, accountId] as const
+    [...netlifyConnectionKeys.all, "sites", connectionId, accountId] as const
 };
 
 export const useNetlifyConnectionListAccounts = (
