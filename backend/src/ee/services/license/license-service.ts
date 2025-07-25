@@ -5,13 +5,14 @@
 // TODO(akhilmhdh): With tony find out the api structure and fill it here
 
 import { ForbiddenError } from "@casl/ability";
+import { AxiosError } from "axios";
 import { CronJob } from "cron";
 import { Knex } from "knex";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -603,10 +604,22 @@ export const licenseServiceFactory = ({
       });
     }
 
-    const { data } = await licenseServerCloudApi.request.delete(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods/${pmtMethodId}`
-    );
-    return data;
+    try {
+      const { data } = await licenseServerCloudApi.request.delete(
+        `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods/${pmtMethodId}`
+      );
+      return data;
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        throw new BadRequestError({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          message: `Failed to remove payment method: ${error.response?.data?.message}`
+        });
+      }
+      throw new BadRequestError({
+        message: "Unable to remove payment method"
+      });
+    }
   };
 
   const getOrgTaxIds = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgTaxIdDTO) => {
