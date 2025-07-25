@@ -15,5 +15,16 @@ export type TIdentityAccessTokenJwtPayload = {
       namespace: string;
       name: string;
     };
+    aws?: {
+      accountId: string;
+      arn: string;
+      userId: string;
+
+      // Derived from ARN
+      partition: string; // "aws", "aws-gov", "aws-cn"
+      service: string; // "iam", "sts"
+      resourceType: string; // "user" or "role"
+      resourceName: string;
+    };
   };
 };

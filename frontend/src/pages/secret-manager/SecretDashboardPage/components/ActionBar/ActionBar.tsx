@@ -136,6 +136,7 @@ type Props = {
   isPITEnabled: boolean;
   onRequestAccess: (actions: ProjectPermissionActions[]) => void;
   hasPathPolicies: boolean;
+  onClearFilters: () => void;
 };
 
 export const ActionBar = ({
@@ -159,7 +160,8 @@ export const ActionBar = ({
   isPITEnabled = false,
   usedBySecretSyncs,
   onRequestAccess,
-  hasPathPolicies
+  hasPathPolicies,
+  onClearFilters
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addFolder",
@@ -661,6 +663,9 @@ export const ActionBar = ({
     }
   };
 
+  const isTableFiltered =
+    Object.values(filter.tags).some(Boolean) || Object.values(filter.include).some(Boolean);
+
   return (
     <>
       <div className="mt-4 flex items-center space-x-2">
@@ -676,18 +681,22 @@ export const ActionBar = ({
         <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <IconButton
+              <Button
+                size="sm"
                 variant="outline_bg"
-                ariaLabel="Download"
                 className={twMerge(
-                  "transition-all",
-                  (Object.keys(filter.tags).length ||
-                    Object.values(filter.include).filter((include) => !include).length) &&
-                    "border-primary/50 text-primary"
+                  "flex h-[2.5rem]",
+                  isTableFiltered && "border-primary/40 bg-primary/10"
                 )}
+                leftIcon={
+                  <FontAwesomeIcon
+                    icon={faFilter}
+                    className={isTableFiltered ? "text-primary/80" : undefined}
+                  />
+                }
               >
-                <FontAwesomeIcon icon={faFilter} />
-              </IconButton>
+                Filters
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="p-0">
               <DropdownMenuGroup>Filter By</DropdownMenuGroup>
@@ -762,51 +771,62 @@ export const ActionBar = ({
                   <span>Secrets</span>
                 </div>
               </DropdownMenuItem>
-              <DropdownSubMenu>
-                <DropdownSubMenuTrigger
-                  iconPos="right"
-                  icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
-                >
-                  Tags
-                </DropdownSubMenuTrigger>
-                <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
-                  <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                    Apply Tags to Filter Secrets
-                  </DropdownMenuLabel>
-                  {tags.map(({ id, slug, color }) => (
-                    <DropdownMenuItem
-                      onClick={(evt) => {
-                        evt.preventDefault();
-                        onToggleTagFilter(slug);
-                      }}
-                      key={id}
-                      icon={filter?.tags[slug] && <FontAwesomeIcon icon={faCheckCircle} />}
-                      iconPos="right"
-                    >
-                      <div className="flex items-center">
-                        <div
-                          className="mr-2 h-2 w-2 rounded-full"
-                          style={{ background: color || "#bec2c8" }}
-                        />
-                        {slug}
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownSubMenuContent>
-              </DropdownSubMenu>
+              {Boolean(tags.length) && (
+                <DropdownSubMenu>
+                  <DropdownSubMenuTrigger
+                    iconPos="right"
+                    icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
+                  >
+                    Tags
+                  </DropdownSubMenuTrigger>
+                  <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                    <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                      Apply Tags to Filter Secrets
+                    </DropdownMenuLabel>
+                    {tags.map(({ id, slug, color }) => (
+                      <DropdownMenuItem
+                        onClick={(evt) => {
+                          evt.preventDefault();
+                          onToggleTagFilter(slug);
+                        }}
+                        key={id}
+                        icon={filter?.tags[slug] && <FontAwesomeIcon icon={faCheckCircle} />}
+                        iconPos="right"
+                      >
+                        <div className="flex items-center">
+                          <div
+                            className="mr-2 h-2 w-2 rounded-full"
+                            style={{ background: color || "#bec2c8" }}
+                          />
+                          {slug}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownSubMenuContent>
+                </DropdownSubMenu>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        {isTableFiltered && (
+          <Button variant="plain" colorSchema="secondary" onClick={onClearFilters}>
+            Clear Filters
+          </Button>
+        )}
+        <div className="flex-grow" />
         <div>
           {isProtectedBranch && (
             <Tooltip content={`Protected by policy ${protectedBranchPolicyName}`}>
-              <IconButton variant="outline_bg" ariaLabel="protected">
+              <IconButton
+                variant="outline_bg"
+                className="border-primary/40 bg-primary/10"
+                ariaLabel="protected"
+              >
                 <FontAwesomeIcon icon={faLock} className="text-primary" />
               </IconButton>
             </Tooltip>
           )}
         </div>
-        <div className="flex-grow" />
         <div>
           <IconButton variant="outline_bg" ariaLabel="Download" onClick={handleSecretDownload}>
             <FontAwesomeIcon icon={faDownload} />

@@ -199,6 +199,14 @@
                 ]
               },
               {
+                "group": "External Migrations",
+                "pages": [
+                  "documentation/platform/external-migrations/overview",
+                  "documentation/platform/external-migrations/envkey",
+                  "documentation/platform/external-migrations/vault"
+                ]
+              },
+              {
                 "group": "Admin Consoles",
                 "pages": [
                   "documentation/platform/admin-panel/overview",
