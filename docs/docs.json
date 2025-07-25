@@ -207,13 +207,6 @@
                 ]
               },
               {
-                "group": "External Migrations",
-                "pages": [
-                  "documentation/platform/workflow-integrations/slack-integration",
-                  "documentation/platform/workflow-integrations/microsoft-teams-integration"
-                ]
-              },
-              {
                 "group": "Admin Consoles",
                 "pages": [
                   "documentation/platform/admin-panel/overview",
