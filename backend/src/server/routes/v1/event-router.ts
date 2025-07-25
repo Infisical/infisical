@@ -1,75 +1,87 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
+import { pipeline } from "stream/promises";
 import { z } from "zod";
 
-import { writeLimit } from "@app/server/config/rateLimiter";
-import { TopicName } from "@app/services/events";
+import { ActionProjectType } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
+import { ServerSentEventsResponse } from "@app/services/event-bus/response";
+import { EventSchema, TopicName } from "@app/services/event-bus/types";
+
+const EventName = z.string().refine(
+  (arg) => {
+    const [source, subject, action] = arg.split(":");
+
+    return source === "infisical" && !!subject && !!action;
+  },
+  {
+    message: "Event name must be in format 'source:subject:action'"
+  }
+);
 
 export const registerEventRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/subscribe",
+    url: "/subscribe/project-events",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       body: z.object({
         projectId: z.string().trim(),
-        events: z.array(
+        register: z.array(
           z.object({
-            type: z.string()
+            event: EventName,
+            conditions: z.object({
+              secretPath: z.string(),
+              environmentSlug: z.string().optional()
+            })
           })
         )
       })
     },
-    // onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
     handler: async (req, reply) => {
       try {
         const res = reply.raw;
 
         reply.hijack();
 
-        res.writeHead(200, {
-          "Cache-Control": "no-cache",
-          "Content-Type": "text/event-stream",
-          Connection: "keep-alive",
-          "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": "*" // TODO: Testing
-        });
-
-        res.flushHeaders();
+        res.writeHead(200, ServerSentEventsResponse.getHeaders()).flushHeaders();
 
         const { events } = req.server.services;
 
         const control = new AbortController();
 
-        control.signal.addEventListener("abort", () => {
-          if (!res.writableEnded) res.end();
-        });
-
         res.on("close", () => {
           try {
             control.abort();
+            if (!res.writableEnded) res.end();
           } catch (e) {
             logger.debug(e, "Request aborted");
           }
         });
 
-        const stream = await events.subscribe(TopicName.CoreServers, control.signal);
+        const permission = {
+          actor: req.auth.actor,
+          projectId: req.body.projectId,
+          actionProjectType: ActionProjectType.Any,
+          actorAuthMethod: req.auth.authMethod,
+          actorId: req.permission.id,
+          actorOrgId: req.permission.orgId
+        };
 
-        for await (const event of stream()) {
-          logger.info( event.data,`Sending sse to client: ${event.type}`);
-
-          if (res.writableEnded) {
-            logger.info("Response has ended, stopping event stream");
-            break;
+        const stream = await events.subscribe(TopicName.CoreServers, {
+          permission,
+          readable: {
+            objectMode: true,
+            signal: control.signal
           }
+        });
 
-          const serialized = events.serialize({
-            id: event.time,
-            event: event.type,
-            data: JSON.stringify(event)
-          });
-
-          res.write(serialized);
-        }
+        await pipeline(stream, new ServerSentEventsResponse(), res);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
@@ -84,28 +96,21 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/publish",
     config: {
-      rateLimit: writeLimit // TODO: Change this to a more appropriate limit
+      rateLimit: writeLimit
     },
     schema: {
-      body: z.record(z.string(), z.any()),
+      body: EventSchema,
       response: {
         200: z.object({
           message: z.string()
         })
       }
     },
-    // onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
     handler: async (req, res) => {
       const { events } = req.server.services;
 
-      await events.publish(TopicName.CoreServers, {
-        source: "infisical-api",
-        type: "secrets-manager",
-        data: {
-          event_type: "test_event",
-          payload: req.body
-        }
-      });
+      await events.publish(TopicName.CoreServers, req.body);
 
       return res.code(200).send({
         message: "Event published successfully"

@@ -308,7 +308,7 @@ import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
-import { eventServiceFactory } from "@app/services/events";
+import { eventServiceFactory } from "@app/services/event-bus";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
@@ -1938,7 +1938,9 @@ export const registerRoutes = async (
   });
 
   const redis = buildRedisFromConfig(envConfig);
-  const eventsService = eventServiceFactory(redis);
+  const eventsService = eventServiceFactory(redis, keyStore, permissionService, {
+    heartbeat: 30
+  });
 
   await eventsService.init();
 
