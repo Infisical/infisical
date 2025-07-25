@@ -9,8 +9,14 @@ export const NetlifySyncDestinationSection = ({ secretSync }: Props) => {
   const { destinationConfig } = secretSync;
 
   return (
-    <GenericFieldLabel label="Account">
-      {destinationConfig.accountName ?? destinationConfig.accountId}
-    </GenericFieldLabel>
+    <>
+      <GenericFieldLabel label="Account">
+        {destinationConfig.accountName ?? destinationConfig.accountId}
+      </GenericFieldLabel>
+      <GenericFieldLabel label="Site">
+        {destinationConfig.siteName ?? destinationConfig.siteId}
+      </GenericFieldLabel>
+      <GenericFieldLabel label="Context">{destinationConfig.context}</GenericFieldLabel>
+    </>
   );
 };

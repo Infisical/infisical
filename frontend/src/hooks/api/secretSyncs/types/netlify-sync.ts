@@ -10,6 +10,7 @@ export type TNetlifySync = TRootSecretSync & {
     accountName: string;
     siteId?: string;
     siteName?: string;
+    context: string;
   };
   connection: {
     app: AppConnection.Netlify;
