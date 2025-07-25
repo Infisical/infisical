@@ -1,8 +1,12 @@
-import { Octokit } from "@octokit/rest";
 import sodium from "libsodium-wrappers";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { executeWithGitHubGateway } from "@app/services/app-connection/github";
+import {
+  getGitHubAppAuthToken,
+  GitHubConnectionMethod,
+  makePaginatedGitHubRequest,
+  requestWithGitHubGateway
+} from "@app/services/app-connection/github";
 import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync/github/github-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -13,151 +17,155 @@ import { TGitHubPublicKey, TGitHubSecret, TGitHubSecretPayload, TGitHubSyncWithC
 
 // TODO: rate limit handling
 
-const getEncryptedSecrets = async (client: Octokit, secretSync: TGitHubSyncWithCredentials) => {
-  let encryptedSecrets: TGitHubSecret[];
+const getEncryptedSecrets = async (
+  secretSync: TGitHubSyncWithCredentials,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
+  const { destinationConfig, connection } = secretSync;
 
-  const { destinationConfig } = secretSync;
-
+  let path: string;
   switch (destinationConfig.scope) {
     case GitHubSyncScope.Organization: {
-      encryptedSecrets = await client.paginate("GET /orgs/{org}/actions/secrets", {
-        org: destinationConfig.org
-      });
+      path = `/orgs/${destinationConfig.org}/actions/secrets`;
       break;
     }
     case GitHubSyncScope.Repository: {
-      encryptedSecrets = await client.paginate("GET /repos/{owner}/{repo}/actions/secrets", {
-        owner: destinationConfig.owner,
-        repo: destinationConfig.repo
-      });
-
+      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/actions/secrets`;
       break;
     }
     case GitHubSyncScope.RepositoryEnvironment:
     default: {
-      encryptedSecrets = await client.paginate("GET /repos/{owner}/{repo}/environments/{environment_name}/secrets", {
-        owner: destinationConfig.owner,
-        repo: destinationConfig.repo,
-        environment_name: destinationConfig.env
-      });
+      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/environments/${destinationConfig.env}/secrets`;
       break;
     }
   }
 
-  return encryptedSecrets;
+  return makePaginatedGitHubRequest<TGitHubSecret, { secrets: TGitHubSecret[] }>(
+    connection,
+    gatewayService,
+    path,
+    (data) => data.secrets
+  );
 };
 
-const getPublicKey = async (client: Octokit, secretSync: TGitHubSyncWithCredentials) => {
-  let publicKey: TGitHubPublicKey;
+const getPublicKey = async (
+  secretSync: TGitHubSyncWithCredentials,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  token: string
+) => {
+  const { destinationConfig, connection } = secretSync;
 
-  const { destinationConfig } = secretSync;
-
+  let path: string;
   switch (destinationConfig.scope) {
     case GitHubSyncScope.Organization: {
-      publicKey = (
-        await client.request("GET /orgs/{org}/actions/secrets/public-key", {
-          org: destinationConfig.org
-        })
-      ).data;
+      path = `/orgs/${destinationConfig.org}/actions/secrets/public-key`;
       break;
     }
     case GitHubSyncScope.Repository: {
-      publicKey = (
-        await client.request("GET /repos/{owner}/{repo}/actions/secrets/public-key", {
-          owner: destinationConfig.owner,
-          repo: destinationConfig.repo
-        })
-      ).data;
+      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/actions/secrets/public-key`;
       break;
     }
     case GitHubSyncScope.RepositoryEnvironment:
     default: {
-      publicKey = (
-        await client.request("GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/public-key", {
-          owner: destinationConfig.owner,
-          repo: destinationConfig.repo,
-          environment_name: destinationConfig.env
-        })
-      ).data;
+      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/environments/${destinationConfig.env}/secrets/public-key`;
       break;
     }
   }
 
-  return publicKey;
+  const response = await requestWithGitHubGateway<TGitHubPublicKey>(connection, gatewayService, {
+    url: `https://api.${connection.credentials.host || "github.com"}${path}`,
+    method: "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
+
+  return response.data;
 };
 
 const deleteSecret = async (
-  client: Octokit,
   secretSync: TGitHubSyncWithCredentials,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  token: string,
   encryptedSecret: TGitHubSecret
 ) => {
-  const { destinationConfig } = secretSync;
+  const { destinationConfig, connection } = secretSync;
 
+  let path: string;
   switch (destinationConfig.scope) {
     case GitHubSyncScope.Organization: {
-      await client.request(`DELETE /orgs/{org}/actions/secrets/{secret_name}`, {
-        org: destinationConfig.org,
-        secret_name: encryptedSecret.name
-      });
+      path = `/orgs/${destinationConfig.org}/actions/secrets/${encryptedSecret.name}`;
       break;
     }
     case GitHubSyncScope.Repository: {
-      await client.request("DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-        owner: destinationConfig.owner,
-        repo: destinationConfig.repo,
-        secret_name: encryptedSecret.name
-      });
+      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/actions/secrets/${encryptedSecret.name}`;
       break;
     }
     case GitHubSyncScope.RepositoryEnvironment:
     default: {
-      await client.request("DELETE /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}", {
-        owner: destinationConfig.owner,
-        repo: destinationConfig.repo,
-        environment_name: destinationConfig.env,
-        secret_name: encryptedSecret.name
-      });
+      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/environments/${destinationConfig.env}/secrets/${encryptedSecret.name}`;
       break;
     }
   }
+
+  await requestWithGitHubGateway(connection, gatewayService, {
+    url: `https://api.${connection.credentials.host || "github.com"}${path}`,
+    method: "DELETE",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
 };
 
-const putSecret = async (client: Octokit, secretSync: TGitHubSyncWithCredentials, payload: TGitHubSecretPayload) => {
-  const { destinationConfig } = secretSync;
+const putSecret = async (
+  secretSync: TGitHubSyncWithCredentials,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  token: string,
+  payload: TGitHubSecretPayload
+) => {
+  const { destinationConfig, connection } = secretSync;
+
+  let path: string;
+  let body: Record<string, string | number[]> = payload;
 
   switch (destinationConfig.scope) {
     case GitHubSyncScope.Organization: {
       const { visibility, selectedRepositoryIds } = destinationConfig;
-
-      await client.request(`PUT /orgs/{org}/actions/secrets/{secret_name}`, {
-        org: destinationConfig.org,
+      path = `/orgs/${destinationConfig.org}/actions/secrets/${payload.secret_name}`;
+      body = {
         ...payload,
         visibility,
         ...(visibility === GitHubSyncVisibility.Selected && {
           selected_repository_ids: selectedRepositoryIds
         })
-      });
+      };
       break;
     }
     case GitHubSyncScope.Repository: {
-      await client.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
-        owner: destinationConfig.owner,
-        repo: destinationConfig.repo,
-        ...payload
-      });
+      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/actions/secrets/${payload.secret_name}`;
       break;
     }
     case GitHubSyncScope.RepositoryEnvironment:
     default: {
-      await client.request("PUT /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}", {
-        owner: destinationConfig.owner,
-        repo: destinationConfig.repo,
-        environment_name: destinationConfig.env,
-        ...payload
-      });
+      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/environments/${destinationConfig.env}/secrets/${payload.secret_name}`;
       break;
     }
   }
+
+  await requestWithGitHubGateway(connection, gatewayService, {
+    url: `https://api.${connection.credentials.host || "github.com"}${path}`,
+    method: "PUT",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28"
+    },
+    data: body
+  });
 };
 
 export const GithubSyncFns = {
@@ -192,50 +200,52 @@ export const GithubSyncFns = {
         );
     }
 
-    await executeWithGitHubGateway(secretSync.connection, gatewayService, async (client) => {
-      const encryptedSecrets = await getEncryptedSecrets(client, secretSync);
+    const { connection } = secretSync;
+    const token =
+      connection.method === GitHubConnectionMethod.OAuth
+        ? connection.credentials.accessToken
+        : await getGitHubAppAuthToken(connection);
 
-      const publicKey = await getPublicKey(client, secretSync);
+    const encryptedSecrets = await getEncryptedSecrets(secretSync, gatewayService);
+    const publicKey = await getPublicKey(secretSync, gatewayService, token);
 
-      await sodium.ready.then(async () => {
-        for await (const key of Object.keys(secretMap)) {
-          // convert secret & base64 key to Uint8Array.
-          const binaryKey = sodium.from_base64(publicKey.key, sodium.base64_variants.ORIGINAL);
-          const binarySecretValue = sodium.from_string(secretMap[key].value);
+    await sodium.ready;
+    for await (const key of Object.keys(secretMap)) {
+      // convert secret & base64 key to Uint8Array.
+      const binaryKey = sodium.from_base64(publicKey.key, sodium.base64_variants.ORIGINAL);
+      const binarySecretValue = sodium.from_string(secretMap[key].value);
 
-          // encrypt secret using libsodium
-          const encryptedBytes = sodium.crypto_box_seal(binarySecretValue, binaryKey);
+      // encrypt secret using libsodium
+      const encryptedBytes = sodium.crypto_box_seal(binarySecretValue, binaryKey);
 
-          // convert encrypted Uint8Array to base64
-          const encryptedSecretValue = sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL);
+      // convert encrypted Uint8Array to base64
+      const encryptedSecretValue = sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL);
 
-          try {
-            await putSecret(client, secretSync, {
-              secret_name: key,
-              encrypted_value: encryptedSecretValue,
-              key_id: publicKey.key_id
-            });
-          } catch (error) {
-            throw new SecretSyncError({
-              error,
-              secretKey: key
-            });
-          }
-        }
-      });
-
-      if (secretSync.syncOptions.disableSecretDeletion) return;
-
-      for await (const encryptedSecret of encryptedSecrets) {
-        if (!matchesSchema(encryptedSecret.name, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
-          // eslint-disable-next-line no-continue
-          continue;
-
-        if (!(encryptedSecret.name in secretMap)) {
-          await deleteSecret(client, secretSync, encryptedSecret);
-        }
+      try {
+        await putSecret(secretSync, gatewayService, token, {
+          secret_name: key,
+          encrypted_value: encryptedSecretValue,
+          key_id: publicKey.key_id
+        });
+      } catch (error) {
+        throw new SecretSyncError({
+          error,
+          secretKey: key
+        });
       }
-    });
+    }
+
+    if (secretSync.syncOptions.disableSecretDeletion) return;
+
+    for await (const encryptedSecret of encryptedSecrets) {
+      if (!matchesSchema(encryptedSecret.name, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
+        // eslint-disable-next-line no-continue
+        continue;
+
+      if (!(encryptedSecret.name in secretMap)) {
+        await deleteSecret(secretSync, gatewayService, token, encryptedSecret);
+      }
+    }
   },
   getSecrets: async (secretSync: TGitHubSyncWithCredentials) => {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
@@ -245,14 +255,18 @@ export const GithubSyncFns = {
     secretMap: TSecretMap,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
   ) => {
-    await executeWithGitHubGateway(secretSync.connection, gatewayService, async (client) => {
-      const encryptedSecrets = await getEncryptedSecrets(client, secretSync);
+    const { connection } = secretSync;
+    const token =
+      connection.method === GitHubConnectionMethod.OAuth
+        ? connection.credentials.accessToken
+        : await getGitHubAppAuthToken(connection);
 
-      for await (const encryptedSecret of encryptedSecrets) {
-        if (encryptedSecret.name in secretMap) {
-          await deleteSecret(client, secretSync, encryptedSecret);
-        }
+    const encryptedSecrets = await getEncryptedSecrets(secretSync, gatewayService);
+
+    for await (const encryptedSecret of encryptedSecrets) {
+      if (encryptedSecret.name in secretMap) {
+        await deleteSecret(secretSync, gatewayService, token, encryptedSecret);
       }
-    });
+    }
   }
 };
