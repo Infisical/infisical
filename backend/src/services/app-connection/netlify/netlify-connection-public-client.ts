@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable class-methods-use-this */
 import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode, isAxiosError } from "axios";
@@ -24,15 +25,27 @@ export function getNetlifyRatelimiter(response: AxiosResponse): {
   isRatelimited: boolean;
   wait: () => Promise<void>;
 } {
-  const wait = () => {
+  const wait = (seconds: number = 60) => {
     return new Promise<void>((res) => {
-      setTimeout(res, 60 * 1000); // Wait for 60 seconds
+      setTimeout(res, seconds * 1000);
     });
   };
 
+  let remaining = parseInt(response.headers["X-RateLimit-Remaining"] as string, 10);
+  let isRatelimited = response.status === HttpStatusCode.TooManyRequests;
+
+  if (isRatelimited) {
+    if (Math.round(remaining) > 0) {
+      isRatelimited = true;
+      remaining += 1; // Jitter to ensure we wait at least 1 second
+    } else {
+      remaining = 60;
+    }
+  }
+
   return {
-    isRatelimited: response.status === HttpStatusCode.TooManyRequests,
-    wait,
+    isRatelimited,
+    wait: () => wait(remaining),
     maxAttempts: 3
   };
 }

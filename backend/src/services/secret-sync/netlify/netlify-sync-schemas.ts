@@ -22,6 +22,7 @@ const NetlifySyncDestinationConfigSchema = z.object({
     .string()
     .min(1, "Account Name is required")
     .max(255, "Account Name must be less than 255 characters")
+    .optional()
     .describe(SecretSyncs.DESTINATION_CONFIG.NETLIFY.accountName),
   siteId: z
     .string()
