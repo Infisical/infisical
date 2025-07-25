@@ -47,8 +47,21 @@ export async function up(knex: Knex): Promise<void> {
     if (secretsWithLatestVersions.length > 0) {
       secretsWithLatestVersions.forEach((secret) => {
         if (!secret.reminderRepeatDays) return;
-        const nextReminderDate = new Date(secret.createdAt);
+
+        const now = new Date();
+        const createdAt = new Date(secret.createdAt);
+        let nextReminderDate = new Date(createdAt);
         nextReminderDate.setDate(nextReminderDate.getDate() + secret.reminderRepeatDays);
+
+        // If the next reminder date is in the past, calculate the proper next occurrence
+        if (nextReminderDate < now) {
+          const daysSinceCreation = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+          const daysIntoCurrentCycle = daysSinceCreation % secret.reminderRepeatDays;
+          const daysUntilNextReminder = secret.reminderRepeatDays - daysIntoCurrentCycle;
+
+          nextReminderDate = new Date(now);
+          nextReminderDate.setDate(now.getDate() + daysUntilNextReminder);
+        }
 
         reminderInserts.push({
           secretId: secret.secretId,
