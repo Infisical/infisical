@@ -14,6 +14,7 @@ import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-qu
 import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 
@@ -184,25 +185,23 @@ export const scanSecretPolicyViolations = async (
 
   const tempFolder = await createTempFolder();
   try {
-    let iter = 0;
-    for await (const secret of secrets) {
-      if (ignoreKeys.includes(secret.secretKey)) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
+    const scanPromises = secrets
+      .filter((secret) => !ignoreKeys.includes(secret.secretKey))
+      .map(async (secret) => {
+        const secretFilePath = join(tempFolder, `${crypto.nativeCrypto.randomUUID()}.txt`);
+        await writeTextToFile(secretFilePath, `${secret.secretKey}=${secret.secretValue}`);
 
-      iter += 1;
-      const secretFilePath = join(tempFolder, `${iter}.txt`);
-      await writeTextToFile(secretFilePath, `${secret.secretKey}=${secret.secretValue}`);
-      try {
-        await scanFile(secretFilePath);
-      } catch (error) {
-        throw new BadRequestError({
-          message: `Secret value detected in ${secret.secretKey}. Please add this instead to the designated secrets path in the project.`,
-          name: "SecretPolicyViolation"
-        });
-      }
-    }
+        try {
+          await scanFile(secretFilePath);
+        } catch (error) {
+          throw new BadRequestError({
+            message: `Secret value detected in ${secret.secretKey}. Please add this instead to the designated secrets path in the project.`,
+            name: "SecretPolicyViolation"
+          });
+        }
+      });
+
+    await Promise.all(scanPromises);
   } finally {
     await deleteTempFolder(tempFolder);
   }
