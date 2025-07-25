@@ -26,16 +26,16 @@ const getEncryptedSecrets = async (
   let path: string;
   switch (destinationConfig.scope) {
     case GitHubSyncScope.Organization: {
-      path = `/orgs/${destinationConfig.org}/actions/secrets`;
+      path = `/orgs/${encodeURIComponent(destinationConfig.org)}/actions/secrets`;
       break;
     }
     case GitHubSyncScope.Repository: {
-      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/actions/secrets`;
+      path = `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/actions/secrets`;
       break;
     }
     case GitHubSyncScope.RepositoryEnvironment:
     default: {
-      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/environments/${destinationConfig.env}/secrets`;
+      path = `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/environments/${encodeURIComponent(destinationConfig.env)}/secrets`;
       break;
     }
   }
@@ -58,16 +58,16 @@ const getPublicKey = async (
   let path: string;
   switch (destinationConfig.scope) {
     case GitHubSyncScope.Organization: {
-      path = `/orgs/${destinationConfig.org}/actions/secrets/public-key`;
+      path = `/orgs/${encodeURIComponent(destinationConfig.org)}/actions/secrets/public-key`;
       break;
     }
     case GitHubSyncScope.Repository: {
-      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/actions/secrets/public-key`;
+      path = `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/actions/secrets/public-key`;
       break;
     }
     case GitHubSyncScope.RepositoryEnvironment:
     default: {
-      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/environments/${destinationConfig.env}/secrets/public-key`;
+      path = `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/environments/${encodeURIComponent(destinationConfig.env)}/secrets/public-key`;
       break;
     }
   }
@@ -96,16 +96,16 @@ const deleteSecret = async (
   let path: string;
   switch (destinationConfig.scope) {
     case GitHubSyncScope.Organization: {
-      path = `/orgs/${destinationConfig.org}/actions/secrets/${encryptedSecret.name}`;
+      path = `/orgs/${encodeURIComponent(destinationConfig.org)}/actions/secrets/${encodeURIComponent(encryptedSecret.name)}`;
       break;
     }
     case GitHubSyncScope.Repository: {
-      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/actions/secrets/${encryptedSecret.name}`;
+      path = `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/actions/secrets/${encodeURIComponent(encryptedSecret.name)}`;
       break;
     }
     case GitHubSyncScope.RepositoryEnvironment:
     default: {
-      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/environments/${destinationConfig.env}/secrets/${encryptedSecret.name}`;
+      path = `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/environments/${encodeURIComponent(destinationConfig.env)}/secrets/${encodeURIComponent(encryptedSecret.name)}`;
       break;
     }
   }
@@ -135,7 +135,7 @@ const putSecret = async (
   switch (destinationConfig.scope) {
     case GitHubSyncScope.Organization: {
       const { visibility, selectedRepositoryIds } = destinationConfig;
-      path = `/orgs/${destinationConfig.org}/actions/secrets/${payload.secret_name}`;
+      path = `/orgs/${encodeURIComponent(destinationConfig.org)}/actions/secrets/${encodeURIComponent(payload.secret_name)}`;
       body = {
         ...payload,
         visibility,
@@ -146,12 +146,12 @@ const putSecret = async (
       break;
     }
     case GitHubSyncScope.Repository: {
-      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/actions/secrets/${payload.secret_name}`;
+      path = `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/actions/secrets/${encodeURIComponent(payload.secret_name)}`;
       break;
     }
     case GitHubSyncScope.RepositoryEnvironment:
     default: {
-      path = `/repos/${destinationConfig.owner}/${destinationConfig.repo}/environments/${destinationConfig.env}/secrets/${payload.secret_name}`;
+      path = `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/environments/${encodeURIComponent(destinationConfig.env)}/secrets/${encodeURIComponent(payload.secret_name)}`;
       break;
     }
   }

@@ -241,7 +241,7 @@ export const getGitHubEnvironments = async (
     return await makePaginatedGitHubRequest<GitHubEnvironment, { environments: GitHubEnvironment[] }>(
       appConnection,
       gatewayService,
-      `/repos/${owner}/${repo}/environments`,
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/environments`,
       (data) => data.environments
     );
   } catch (error) {
