@@ -173,12 +173,6 @@ export const dailyReminderQueueServiceFactory = ({
       { pattern: "0 */1 * * *", utc: true },
       QueueName.SecretReminderMigration // just a job id
     );
-
-    await queueService.queue(QueueName.SecretReminderMigration, QueueJobs.SecretReminderMigration, undefined, {
-      delay: 5000,
-      jobId: QueueName.SecretReminderMigration,
-      repeat: { pattern: "0 */1 * * *", utc: true }
-    });
   };
 
   queueService.listen(QueueName.DailyReminders, "failed", (_, err) => {
