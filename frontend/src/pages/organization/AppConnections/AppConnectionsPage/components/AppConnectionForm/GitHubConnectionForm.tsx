@@ -46,9 +46,11 @@ type Props = {
 const formSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.GitHub),
   method: z.nativeEnum(GitHubConnectionMethod),
-  credentials: z.object({
-    host: z.string().optional()
-  })
+  credentials: z
+    .object({
+      host: z.string().optional()
+    })
+    .optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -92,7 +94,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
     );
 
     const githubHost =
-      formData.credentials.host && formData.credentials.host.length > 0
+      formData.credentials?.host && formData.credentials.host.length > 0
         ? `https://${formData.credentials.host}`
         : "https://github.com";
 
