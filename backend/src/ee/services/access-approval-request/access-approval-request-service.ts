@@ -327,6 +327,15 @@ export const accessApprovalRequestServiceFactory = ({
       requests = requests.filter((request) => request.environment === envSlug);
     }
 
+    requests = requests.map((request) => {
+      const permissionEnvironment = $getEnvironmentFromPermissions(request.permissions);
+
+      if (permissionEnvironment) {
+        request.environmentName = permissionEnvironment;
+      }
+      return request;
+    });
+
     return { requests };
   };
 
