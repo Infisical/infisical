@@ -308,12 +308,11 @@ export const reminderServiceFactory = ({
     );
 
     const newReminders = await reminderDAL.insertMany(
-      processedReminders.map(({ secretId, message, repeatDays, nextReminderDate, projectId }) => ({
+      processedReminders.map(({ secretId, message, repeatDays, nextReminderDate }) => ({
         secretId,
         message,
         repeatDays,
-        nextReminderDate,
-        projectId
+        nextReminderDate
       })),
       tx
     );
