@@ -645,7 +645,7 @@ export const projectServiceFactory = ({
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -667,6 +667,12 @@ export const projectServiceFactory = ({
       }
     }
 
+    if (update.secretDetectionIgnoreKeys && !hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only admins can update secret detection ignore keys"
+      });
+    }
+
     const updatedProject = await projectDAL.updateById(project.id, {
       name: update.name,
       description: update.description,
@@ -676,7 +682,8 @@ export const projectServiceFactory = ({
       slug: update.slug,
       secretSharing: update.secretSharing,
       defaultProduct: update.defaultProduct,
-      showSnapshotsLegacy: update.showSnapshotsLegacy
+      showSnapshotsLegacy: update.showSnapshotsLegacy,
+      secretDetectionIgnoreKeys: update.secretDetectionIgnoreKeys
     });
 
     return updatedProject;

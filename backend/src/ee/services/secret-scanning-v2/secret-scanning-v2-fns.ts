@@ -1,11 +1,20 @@
 import { AxiosError } from "axios";
 import { exec } from "child_process";
+import { join } from "path";
+import picomatch from "picomatch";
 import RE2 from "re2";
 
-import { readFindingsFile } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import {
+  createTempFolder,
+  deleteTempFolder,
+  readFindingsFile,
+  writeTextToFile
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
@@ -38,6 +47,19 @@ export function scanDirectory(inputPath: string, outputPath: string, configPath?
     const command = `cd ${inputPath} && infisical scan --exit-code=77 -r "${outputPath}" ${configPath ? `-c ${configPath}` : ""}`;
     exec(command, (error) => {
       if (error && error.code !== 77) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+export function scanFile(inputPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const command = `infisical scan --exit-code=77 --source "${inputPath}" --no-git`;
+    exec(command, (error) => {
+      if (error && error.code === 77) {
         reject(error);
       } else {
         resolve();
@@ -139,4 +161,49 @@ export const parseScanErrorMessage = (err: unknown): string => {
   return errorMessage.length <= MAX_MESSAGE_LENGTH
     ? errorMessage
     : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
+};
+
+export const scanSecretPolicyViolations = async (
+  secretPath: string,
+  secrets: { secretKey: string; secretValue: string }[],
+  ignoreKeys: string[]
+) => {
+  const appCfg = getConfig();
+
+  if (!appCfg.PARAMS_FOLDER_SECRET_DETECTION_ENABLED) {
+    return;
+  }
+  const paramFolderSecretDetectionPaths = appCfg.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.map((el) => el.secretPath) ?? [];
+  const isPathMatched = paramFolderSecretDetectionPaths.some((pattern) =>
+    picomatch.isMatch(secretPath, pattern, { strictSlashes: false })
+  );
+
+  if (!isPathMatched) {
+    return;
+  }
+
+  const tempFolder = await createTempFolder();
+  try {
+    let iter = 0;
+    for await (const secret of secrets) {
+      if (ignoreKeys.includes(secret.secretKey)) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      iter += 1;
+      const secretFilePath = join(tempFolder, `${iter}.txt`);
+      await writeTextToFile(secretFilePath, `${secret.secretKey}=${secret.secretValue}`);
+      try {
+        await scanFile(secretFilePath);
+      } catch (error) {
+        throw new BadRequestError({
+          message: `Secret value detected in ${secret.secretKey}. Please add this instead to the designated secrets path in the project.`,
+          name: "SecretPolicyViolation"
+        });
+      }
+    }
+  } finally {
+    await deleteTempFolder(tempFolder);
+  }
 };

@@ -25,6 +25,7 @@ import {
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -38,6 +39,7 @@ import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
@@ -88,6 +90,7 @@ import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   secretVersionDAL: TSecretVersionV2DALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -126,6 +129,7 @@ export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServ
  */
 export const secretV2BridgeServiceFactory = ({
   secretDAL,
+  projectDAL,
   projectEnvDAL,
   secretTagDAL,
   secretVersionDAL,
@@ -293,6 +297,18 @@ export const secretV2BridgeServiceFactory = ({
         secretName,
         secretTags: tags?.map((el) => el.slug)
       })
+    );
+
+    const project = await projectDAL.findById(projectId);
+    await scanSecretPolicyViolations(
+      secretPath,
+      [
+        {
+          secretKey: inputSecret.secretName,
+          secretValue: inputSecret.secretValue
+        }
+      ],
+      project.secretDetectionIgnoreKeys || []
     );
 
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
@@ -505,6 +521,20 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const { secretName, secretValue } = inputSecret;
+
+    if (secretValue) {
+      const project = await projectDAL.findById(projectId);
+      await scanSecretPolicyViolations(
+        secretPath,
+        [
+          {
+            secretKey: inputSecret.newSecretName || secretName,
+            secretValue
+          }
+        ],
+        project.secretDetectionIgnoreKeys || []
+      );
+    }
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -1585,6 +1615,9 @@ export const secretV2BridgeServiceFactory = ({
     if (secrets.length)
       throw new BadRequestError({ message: `Secret already exist: ${secrets.map((el) => el.key).join(",")}` });
 
+    const project = await projectDAL.findById(projectId);
+    await scanSecretPolicyViolations(secretPath, inputSecrets, project.secretDetectionIgnoreKeys || []);
+
     // get all tags
     const sanitizedTagIds = inputSecrets.flatMap(({ tagIds = [] }) => tagIds);
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
@@ -1924,6 +1957,18 @@ export const secretV2BridgeServiceFactory = ({
           }
         });
         await $validateSecretReferences(projectId, permission, secretReferences, tx);
+
+        const project = await projectDAL.findById(projectId);
+        await scanSecretPolicyViolations(
+          secretPath,
+          secretsToUpdate
+            .filter((el) => el.secretValue)
+            .map((el) => ({
+              secretKey: el.newSecretName || el.secretKey,
+              secretValue: el.secretValue as string
+            })),
+          project.secretDetectionIgnoreKeys || []
+        );
 
         const bulkUpdatedSecrets = await fnSecretBulkUpdate({
           folderId,
