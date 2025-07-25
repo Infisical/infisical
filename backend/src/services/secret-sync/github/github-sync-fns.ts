@@ -171,9 +171,11 @@ const putSecret = async (
 export const GithubSyncFns = {
   syncSecrets: async (
     secretSync: TGitHubSyncWithCredentials,
-    secretMap: TSecretMap,
+    ogSecretMap: TSecretMap,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
   ) => {
+    const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
+
     switch (secretSync.destinationConfig.scope) {
       case GitHubSyncScope.Organization:
         if (Object.values(secretMap).length > 1000) {
@@ -252,9 +254,11 @@ export const GithubSyncFns = {
   },
   removeSecrets: async (
     secretSync: TGitHubSyncWithCredentials,
-    secretMap: TSecretMap,
+    ogSecretMap: TSecretMap,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
   ) => {
+    const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
+
     const { connection } = secretSync;
     const token =
       connection.method === GitHubConnectionMethod.OAuth

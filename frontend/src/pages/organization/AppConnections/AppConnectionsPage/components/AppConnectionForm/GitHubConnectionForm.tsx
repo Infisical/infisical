@@ -20,6 +20,7 @@ import {
   SelectItem,
   Tooltip
 } from "@app/components/v2";
+import { useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -80,6 +81,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
     formState: { isSubmitting, isDirty }
   } = form;
 
+  const { subscription } = useSubscription();
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   const selectedMethod = watch("method");
@@ -173,80 +175,81 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
             </FormControl>
           )}
         />
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="enterprise-options" className="data-[state=open]:border-none">
-            <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-              <div className="order-1 ml-3">GitHub Enterprise Options</div>
-            </AccordionTrigger>
-            <AccordionContent childrenClassName="px-0">
-              <OrgPermissionCan
-                I={OrgGatewayPermissionActions.AttachGateways}
-                a={OrgPermissionSubjects.Gateway}
-              >
-                {(isAllowed) => (
-                  <Controller
-                    control={control}
-                    name="gatewayId"
-                    defaultValue=""
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        label="Gateway"
-                      >
-                        <Tooltip
-                          isDisabled={isAllowed}
-                          content="Restricted access. You don't have permission to attach gateways to resources."
+        {subscription.gateway && (
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="enterprise-options" className="data-[state=open]:border-none">
+              <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                <div className="order-1 ml-3">GitHub Enterprise Options</div>
+              </AccordionTrigger>
+              <AccordionContent childrenClassName="px-0">
+                <OrgPermissionCan
+                  I={OrgGatewayPermissionActions.AttachGateways}
+                  a={OrgPermissionSubjects.Gateway}
+                >
+                  {(isAllowed) => (
+                    <Controller
+                      control={control}
+                      name="gatewayId"
+                      defaultValue=""
+                      render={({ field: { value, onChange }, fieldState: { error } }) => (
+                        <FormControl
+                          isError={Boolean(error?.message)}
+                          errorText={error?.message}
+                          label="Gateway"
                         >
-                          <div>
-                            <Select
-                              isDisabled={!isAllowed}
-                              value={value as string}
-                              onValueChange={onChange}
-                              className="w-full border border-mineshaft-500"
-                              dropdownContainerClassName="max-w-none"
-                              isLoading={isGatewaysLoading}
-                              placeholder="Default: Internet Gateway"
-                              position="popper"
-                            >
-                              <SelectItem
-                                value={null as unknown as string}
-                                onClick={() => onChange(undefined)}
+                          <Tooltip
+                            isDisabled={isAllowed}
+                            content="Restricted access. You don't have permission to attach gateways to resources."
+                          >
+                            <div>
+                              <Select
+                                isDisabled={!isAllowed}
+                                value={value as string}
+                                onValueChange={onChange}
+                                className="w-full border border-mineshaft-500"
+                                dropdownContainerClassName="max-w-none"
+                                isLoading={isGatewaysLoading}
+                                placeholder="Default: Internet Gateway"
+                                position="popper"
                               >
-                                Internet Gateway
-                              </SelectItem>
-                              {gateways?.map((el) => (
-                                <SelectItem value={el.id} key={el.id}>
-                                  {el.name}
+                                <SelectItem
+                                  value={null as unknown as string}
+                                  onClick={() => onChange(undefined)}
+                                >
+                                  Internet Gateway
                                 </SelectItem>
-                              ))}
-                            </Select>
-                          </div>
-                        </Tooltip>
-                      </FormControl>
-                    )}
-                  />
-                )}
-              </OrgPermissionCan>
-              <Controller
-                name="credentials.host"
-                control={control}
-                shouldUnregister
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    errorText={error?.message}
-                    isError={Boolean(error?.message)}
-                    label="Hostname"
-                    isOptional
-                  >
-                    <Input {...field} placeholder="github.com" />
-                  </FormControl>
-                )}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
+                                {gateways?.map((el) => (
+                                  <SelectItem value={el.id} key={el.id}>
+                                    {el.name}
+                                  </SelectItem>
+                                ))}
+                              </Select>
+                            </div>
+                          </Tooltip>
+                        </FormControl>
+                      )}
+                    />
+                  )}
+                </OrgPermissionCan>
+                <Controller
+                  name="credentials.host"
+                  control={control}
+                  shouldUnregister
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      errorText={error?.message}
+                      isError={Boolean(error?.message)}
+                      label="Hostname"
+                      isOptional
+                    >
+                      <Input {...field} placeholder="github.com" />
+                    </FormControl>
+                  )}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        )}
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"

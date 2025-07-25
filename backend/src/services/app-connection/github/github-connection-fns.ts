@@ -116,6 +116,18 @@ export const getGitHubAppAuthToken = async (appConnection: TGitHubConnection) =>
   return token;
 };
 
+function extractNextPageUrl(linkHeader: string | undefined): string | null {
+  if (!linkHeader) return null;
+
+  const links = linkHeader.split(",");
+  const nextLink = links.find((link) => link.includes('rel="next"'));
+
+  if (!nextLink) return null;
+
+  const match = new RE2(/<([^>]+)>/).exec(nextLink);
+  return match ? match[1] : null;
+}
+
 export const makePaginatedGitHubRequest = async <T, R = T[]>(
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -128,8 +140,9 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
     method === GitHubConnectionMethod.OAuth ? credentials.accessToken : await getGitHubAppAuthToken(appConnection);
   let url: string | null = `https://api.${credentials.host || "github.com"}${path}`;
   let results: T[] = [];
+  let i = 0;
 
-  while (url) {
+  while (url && i < 1000) {
     // eslint-disable-next-line no-await-in-loop
     const response: AxiosResponse<R> = await requestWithGitHubGateway<R>(appConnection, gatewayService, {
       url,
@@ -144,14 +157,8 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
     const items = dataMapper ? dataMapper(response.data) : (response.data as unknown as T[]);
     results = results.concat(items);
 
-    const linkHeader = response.headers.link as string | undefined;
-    const nextLink =
-      typeof linkHeader === "string" ? linkHeader.split(",").find((s) => s.includes('rel="next"')) : undefined;
-    if (nextLink) {
-      url = new RE2(/<(.+)>/).exec(nextLink)?.[1] || null;
-    } else {
-      url = null;
-    }
+    url = extractNextPageUrl(response.headers.link as string | undefined);
+    i += 1;
   }
 
   return results;
