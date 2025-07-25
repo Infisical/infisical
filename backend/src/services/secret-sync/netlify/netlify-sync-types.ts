@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { TNetlifyConnection, TNetlifyVariable } from "@app/services/app-connection/netlify";
+import { TNetlifyConnection } from "@app/services/app-connection/netlify";
 
 import { CreateNetlifySyncSchema, NetlifySyncListItemSchema, NetlifySyncSchema } from "./netlify-sync-schemas";
 
@@ -13,5 +13,3 @@ export type TNetlifySyncInput = z.infer<typeof CreateNetlifySyncSchema>;
 export type TNetlifySyncWithCredentials = TNetlifySync & {
   connection: TNetlifyConnection;
 };
-
-export type TNetlifySecret = TNetlifyVariable;

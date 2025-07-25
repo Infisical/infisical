@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -12,18 +13,32 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 import { NetlifySyncContext } from "./netlify-sync-constants";
 
 const NetlifySyncDestinationConfigSchema = z.object({
-  accountId: z.string().min(1, "Account ID is required").max(255, "Account ID must be less than 255 characters"),
-  accountName: z.string().min(1, "Account Name is required").max(255, "Account ID must be less than 255 characters"),
-  siteId: z.string().min(1, "Site ID is required").max(255, "Site ID must be less than 255 characters").optional(),
+  accountId: z
+    .string()
+    .min(1, "Account ID is required")
+    .max(255, "Account ID must be less than 255 characters")
+    .describe(SecretSyncs.DESTINATION_CONFIG.NETLIFY.accountId),
+  accountName: z
+    .string()
+    .min(1, "Account Name is required")
+    .max(255, "Account Name must be less than 255 characters")
+    .describe(SecretSyncs.DESTINATION_CONFIG.NETLIFY.accountName),
+  siteId: z
+    .string()
+    .min(1, "Site ID is required")
+    .max(255, "Site ID must be less than 255 characters")
+    .optional()
+    .describe(SecretSyncs.DESTINATION_CONFIG.NETLIFY.siteId),
   siteName: z
     .string()
     .min(1, "Site Name is required")
     .max(255, "Site Name must be less than 255 characters")
-    .optional(),
-  context: z.nativeEnum(NetlifySyncContext).optional()
+    .optional()
+    .describe(SecretSyncs.DESTINATION_CONFIG.NETLIFY.siteName),
+  context: z.nativeEnum(NetlifySyncContext).optional().describe(SecretSyncs.DESTINATION_CONFIG.NETLIFY.context)
 });
 
-const NetlifySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
+const NetlifySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 export const NetlifySyncSchema = BaseSecretSyncSchema(SecretSync.Netlify, NetlifySyncOptionsConfig).extend({
   destination: z.literal(SecretSync.Netlify),
@@ -48,5 +63,5 @@ export const NetlifySyncListItemSchema = z.object({
   name: z.literal("Netlify"),
   connection: z.literal(AppConnection.Netlify),
   destination: z.literal(SecretSync.Netlify),
-  canImportSecrets: z.literal(false)
+  canImportSecrets: z.literal(true)
 });

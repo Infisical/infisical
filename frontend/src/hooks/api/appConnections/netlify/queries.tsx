@@ -8,9 +8,9 @@ import { TNetlifyAccount, TNetlifySite } from "./types";
 const netlifyConnectionKeys = {
   all: [...appConnectionKeys.all, "netlify"] as const,
   listAccounts: (connectionId: string) =>
-    [...netlifyConnectionKeys.all, "workspace-scopes", connectionId] as const,
+    [...netlifyConnectionKeys.all, "accounts", connectionId] as const,
   listSites: (connectionId: string, accountId: string) =>
-    [...netlifyConnectionKeys.all, "workspace-scopes", connectionId, accountId, "sites"] as const
+    [...netlifyConnectionKeys.all, "accounts", connectionId, accountId] as const
 };
 
 export const useNetlifyConnectionListAccounts = (

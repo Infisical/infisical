@@ -52,7 +52,7 @@ export const ProjectsPage = () => {
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      
+
       {!isLoading && !serverDetails?.redisConfigured && (
         <div className="mb-4 flex flex-col items-start justify-start text-3xl">
           <p className="mb-4 mr-4 font-semibold text-white">Announcements</p>

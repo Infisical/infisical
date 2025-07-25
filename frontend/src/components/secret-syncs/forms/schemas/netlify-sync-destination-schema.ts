@@ -20,7 +20,7 @@ export const NetlifySyncDestinationSchema = BaseSecretSyncSchema().merge(
       accountName: z.string(),
       siteId: z.string().optional(),
       siteName: z.string().optional(),
-      context: z.nativeEnum(NetlifySyncContext).optional()
+      context: z.nativeEnum(NetlifySyncContext).optional().default(NetlifySyncContext.All)
     })
   })
 );

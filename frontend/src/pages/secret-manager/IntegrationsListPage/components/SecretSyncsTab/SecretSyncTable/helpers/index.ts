@@ -179,8 +179,8 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = "Digital Ocean App";
       break;
     case SecretSync.Netlify:
-      primaryText = destinationConfig.accountName;
-      secondaryText = "Netlify Account";
+      primaryText = destinationConfig.siteName || destinationConfig.siteId || "All Sites";
+      secondaryText = destinationConfig.accountName ?? destinationConfig.accountId;
       break;
     case SecretSync.Bitbucket:
       primaryText = destinationConfig.workspaceSlug;

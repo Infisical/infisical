@@ -71,7 +71,7 @@ export const NetlifySyncFields = () => {
                 setValue("destinationConfig.accountName", v?.name ?? "");
               }}
               options={accounts}
-              placeholder="Select an account..."
+              placeholder="Select a netlify account..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />
@@ -105,7 +105,7 @@ export const NetlifySyncFields = () => {
                 }
               }}
               options={sites}
-              placeholder="Select a site..."
+              placeholder="Select a netlify site..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />
@@ -132,7 +132,7 @@ export const NetlifySyncFields = () => {
                 onChange(v?.value);
               }}
               options={contexts}
-              placeholder="Select a site..."
+              placeholder="Select a netlify context..."
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}
             />

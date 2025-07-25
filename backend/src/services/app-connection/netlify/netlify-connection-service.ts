@@ -17,7 +17,7 @@ export const netlifyConnectionService = (getAppConnection: TGetAppConnectionFunc
     const appConnection = await getAppConnection(AppConnection.Netlify, connectionId, actor);
     try {
       const accounts = await NetlifyPublicAPI.getNetlifyAccounts(appConnection);
-      return accounts!;
+      return accounts;
     } catch (error) {
       logger.error(error, "Failed to list accounts on Netlify");
       return [];
@@ -28,7 +28,7 @@ export const netlifyConnectionService = (getAppConnection: TGetAppConnectionFunc
     const appConnection = await getAppConnection(AppConnection.Netlify, connectionId, actor);
     try {
       const sites = await NetlifyPublicAPI.getSites(appConnection, accountId);
-      return sites!;
+      return sites;
     } catch (error) {
       logger.error(error, "Failed to list sites on Netlify");
       return [];

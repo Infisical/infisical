@@ -35,7 +35,7 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(NetlifyConnectionMethod.AccessToken),
     credentials: z.object({
-      accessToken: z.string().trim().min(1, "Service Access Token required")
+      accessToken: z.string().trim().min(1, "Netlify Access Token required")
     })
   })
 ]);
@@ -68,12 +68,12 @@ export const NetlifyConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
-              tooltipText={`The type of token you would like to use to connect with ${
+              tooltipText={`The auth method you would like to connect with ${
                 APP_CONNECTION_MAP[AppConnection.Netlify].name
               }. This field cannot be changed after creation.`}
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="Token Type"
+              label="Method"
             >
               <Select
                 isDisabled={isUpdate}
@@ -102,7 +102,7 @@ export const NetlifyConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="API Key Value"
+              label="Access Token Value"
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"

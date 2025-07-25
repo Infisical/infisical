@@ -36,8 +36,8 @@ description: "Learn how to configure a Netlify Sync for Infisical."
         ![Configure Destination](/images/secret-syncs/netlify/sync-destination.png)
 
         - **Netlify Connection**: The Netlify Connection to authenticate with.
-        - **Account ID**: The Netlify Account to be used.
-        - **Site ID**: The Netlify site where secrets should be synced.
+        - **Account**: The Netlify Account to be used.
+        - **Site**: The Netlify site where secrets should be synced.
         - **Context**: The Netlify deployment context where secrets should be created in.
       </Step>
       <Step title="Configure Sync Options">
@@ -48,7 +48,7 @@ description: "Learn how to configure a Netlify Sync for Infisical."
         - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
           - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
         <Note>
-          Netlify does not support importing existing secrets.
+          Netlify only supports importing non-secret values.
         </Note>
         - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
         <Note>
@@ -102,7 +102,7 @@ description: "Learn how to configure a Netlify Sync for Infisical."
                 },
                 "destinationConfig": {
                     "siteId": "site-abc123",
-                    "siteName": "netlify-marketing-site",
+                    "accountId": "account-abc123",
                     "context": "dev"
                 }
             }'
@@ -149,7 +149,7 @@ description: "Learn how to configure a Netlify Sync for Infisical."
             "destination": "netlify",
             "destinationConfig": {
                 "siteId": "site-abc123",
-                "siteName": "netlify-marketing-site",
+                "accountId": "account-abc123",
                 "context": "dev"
             }
         }

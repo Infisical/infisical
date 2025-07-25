@@ -55,11 +55,7 @@ class NetlifyPublicClient {
     });
   }
 
-  async send<T>(
-    connection: TNetlifyConnectionConfig,
-    config: AxiosRequestConfig,
-    retryAttempt = 0
-  ): Promise<T | undefined> {
+  async send<T>(connection: TNetlifyConnectionConfig, config: AxiosRequestConfig, retryAttempt = 0): Promise<T> {
     const response = await this.client.request<T>({
       ...config,
       timeout: 1000 * 60, // 60 seconds timeout
@@ -173,14 +169,12 @@ class NetlifyPublicClient {
 
   async upsertVariable(connection: TNetlifyConnectionConfig, params: NetlifyParams, variable: TNetlifyVariable) {
     const res = await this.getVariable(connection, params, variable);
-    console.log("HEREEE", variable, params, res);
+
     if (!res) {
       return this.createVariable(connection, params, variable);
     }
 
-    await this.updateVariable(connection, params, variable);
-
-    return res;
+    return this.updateVariable(connection, params, variable);
   }
 
   async deleteVariable(
