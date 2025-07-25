@@ -22,10 +22,12 @@ export async function up(knex: Knex): Promise<void> {
       })
       .whereIn([`${TableName.SecretVersionV2}.secretId`, `${TableName.SecretVersionV2}.version`], (qb) => {
         void qb
-          .select(["secretId", knex.raw("MAX(version) as version")])
+          .select(["v2.secretId", knex.raw("MIN(v2.version) as version")])
           .from(`${TableName.SecretVersionV2} as v2`)
+          .innerJoin(`${TableName.SecretV2} as s2`, "v2.secretId", "s2.id")
+          .whereRaw(`v2."reminderRepeatDays" = s2."reminderRepeatDays"`)
           .whereNotNull("v2.reminderRepeatDays")
-          .whereRaw(`"v2"."reminderRepeatDays" > 0`)
+          .whereRaw(`v2."reminderRepeatDays" > 0`)
           .groupBy("v2.secretId");
       })
       // Add LEFT JOIN with Reminder table to check for existing reminders
@@ -56,7 +58,7 @@ export async function up(knex: Knex): Promise<void> {
         });
       });
 
-      const commitBatches = chunkArray(reminderInserts, 9000);
+      const commitBatches = chunkArray(reminderInserts, 2000);
       for (const commitBatch of commitBatches) {
         const insertedReminders = (await knex
           .batchInsert(TableName.Reminder, commitBatch)
@@ -79,7 +81,7 @@ export async function up(knex: Knex): Promise<void> {
           userId: recipient.userId
         }));
 
-        const filteredRecipients = reminderRecipients.filter((recipient) => !!recipient.reminderId);
+        const filteredRecipients = reminderRecipients.filter((recipient) => Boolean(recipient.reminderId));
         await knex.batchInsert(TableName.ReminderRecipient, filteredRecipients);
       }
       logger.info(`Successfully migrated ${reminderInserts.length} secret reminders`);
