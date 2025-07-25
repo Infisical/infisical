@@ -10,6 +10,7 @@ import { request as httpRequest } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -30,7 +31,7 @@ export const getGitHubConnectionListItem = () => {
 };
 
 export const requestWithGitHubGateway = async <T>(
-  appConnection: { gatewayId?: string | null; credentials: { host?: string } },
+  appConnection: { gatewayId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   requestConfig: AxiosRequestConfig
 ): Promise<AxiosResponse<T>> => {
@@ -42,6 +43,8 @@ export const requestWithGitHubGateway = async <T>(
   }
 
   const url = new URL(requestConfig.url as string);
+
+  await blockLocalAndPrivateIpAddresses(url.toString());
 
   const [targetHost] = await verifyHostInputValidity(url.host, true);
   const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
