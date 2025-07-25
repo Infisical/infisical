@@ -205,7 +205,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Pr
             >
               <Input
                 {...field}
-                placeholder="e4f34ea5-ad23-4291-8585-66d20d603cc8"
+                placeholder="00000000-0000-0000-0000-000000000000"
                 onChange={(e) => {
                   field.onChange(e.target.value);
                   setValue("credentials.tenantId", e.target.value);
@@ -223,12 +223,11 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Pr
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  tooltipText="Your Azure Client ID."
                   isError={Boolean(error?.message)}
                   label="Client ID"
                   errorText={error?.message}
                 >
-                  <Input {...field} placeholder="myclientid" />
+                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
                 </FormControl>
               )}
             />
@@ -237,7 +236,6 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Pr
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  tooltipText="Your Azure Client Secret."
                   isError={Boolean(error?.message)}
                   label="Client Secret"
                   errorText={error?.message}

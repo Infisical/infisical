@@ -26,16 +26,18 @@ export const AzureClientSecretsConnectionOAuthOutputCredentialsSchema = z.object
   expiresAt: z.number()
 });
 
-export const AzureClientSecretsConnectionAccessTokenInputCredentialsSchema = z.object({
+export const AzureClientSecretsConnectionClientSecretInputCredentialsSchema = z.object({
   clientId: z
     .string()
     .trim()
     .min(1, "Client ID required")
+    .max(50, "Client ID must be at most 50 characters long")
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.clientId),
   clientSecret: z
     .string()
     .trim()
     .min(1, "Client Secret required")
+    .max(50, "Client Secret must be at most 50 characters long")
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.clientSecret),
   tenantId: z
     .string()
@@ -44,7 +46,7 @@ export const AzureClientSecretsConnectionAccessTokenInputCredentialsSchema = z.o
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.tenantId)
 });
 
-export const AzureClientSecretsConnectionAccessTokenOutputCredentialsSchema = z.object({
+export const AzureClientSecretsConnectionClientSecretOutputCredentialsSchema = z.object({
   clientId: z.string(),
   clientSecret: z.string(),
   tenantId: z.string(),
@@ -65,7 +67,7 @@ export const ValidateAzureClientSecretsConnectionCredentialsSchema = z.discrimin
     method: z
       .literal(AzureClientSecretsConnectionMethod.ClientSecret)
       .describe(AppConnections.CREATE(AppConnection.AzureClientSecrets).method),
-    credentials: AzureClientSecretsConnectionAccessTokenInputCredentialsSchema.describe(
+    credentials: AzureClientSecretsConnectionClientSecretInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureClientSecrets).credentials
     )
   })
@@ -80,7 +82,7 @@ export const UpdateAzureClientSecretsConnectionSchema = z
     credentials: z
       .union([
         AzureClientSecretsConnectionOAuthInputCredentialsSchema,
-        AzureClientSecretsConnectionAccessTokenInputCredentialsSchema
+        AzureClientSecretsConnectionClientSecretInputCredentialsSchema
       ])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureClientSecrets).credentials)
@@ -100,7 +102,7 @@ export const AzureClientSecretsConnectionSchema = z.intersection(
     }),
     z.object({
       method: z.literal(AzureClientSecretsConnectionMethod.ClientSecret),
-      credentials: AzureClientSecretsConnectionAccessTokenOutputCredentialsSchema
+      credentials: AzureClientSecretsConnectionClientSecretOutputCredentialsSchema
     })
   ])
 );
@@ -114,7 +116,7 @@ export const SanitizedAzureClientSecretsConnectionSchema = z.discriminatedUnion(
   }),
   BaseAzureClientSecretsConnectionSchema.extend({
     method: z.literal(AzureClientSecretsConnectionMethod.ClientSecret),
-    credentials: AzureClientSecretsConnectionAccessTokenOutputCredentialsSchema.pick({
+    credentials: AzureClientSecretsConnectionClientSecretOutputCredentialsSchema.pick({
       clientId: true,
       tenantId: true
     })

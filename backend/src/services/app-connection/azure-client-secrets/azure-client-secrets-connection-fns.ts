@@ -17,7 +17,7 @@ import { AppConnection } from "../app-connection-enums";
 import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets-connection-enums";
 import {
   ExchangeCodeAzureResponse,
-  TAzureClientSecretsConnectionAccessTokenCredentials,
+  TAzureClientSecretsConnectionClientSecretCredentials,
   TAzureClientSecretsConnectionConfig,
   TAzureClientSecretsConnectionCredentials
 } from "./azure-client-secrets-connection-types";
@@ -101,7 +101,7 @@ export const getAzureConnectionAccessToken = async (
         orgId: appConnection.orgId,
         kmsService,
         encryptedCredentials: appConnection.encryptedCredentials
-      })) as TAzureClientSecretsConnectionAccessTokenCredentials;
+      })) as TAzureClientSecretsConnectionClientSecretCredentials;
       const { accessToken, expiresAt, clientId, clientSecret, tenantId } = accessTokenCredentials;
       if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
         return accessToken;
