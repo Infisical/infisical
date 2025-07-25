@@ -14,6 +14,80 @@ services:
       - backend
       - frontend
 
+
+  backend:
+    # container_name: infisical-dev-api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev.fips
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    ports:
+      - 4000:4000
+      - 9464:9464 # for OTEL collection of Prometheus metrics
+    environment:
+      - NODE_ENV=development
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - TELEMETRY_ENABLED=false
+    volumes:
+      - ./backend/src:/app/src
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  backend_2:
+    # container_name: infisical-dev-api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev.fips
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    # ports:
+    #   - 4000:4000
+    #   - 9464:9464 # for OTEL collection of Prometheus metrics
+    environment:
+      - NODE_ENV=development
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - TELEMETRY_ENABLED=false
+    volumes:
+      - ./backend/src:/app/src
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  backend_3:
+    # container_name: infisical-dev-api
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev.fips
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    # ports:
+    #   - 4000:4000
+    #   - 9464:9464 # for OTEL collection of Prometheus metrics
+    environment:
+      - NODE_ENV=development
+      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+      - TELEMETRY_ENABLED=false
+    volumes:
+      - ./backend/src:/app/src
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+
   db:
     image: postgres:14-alpine
     ports:
@@ -56,29 +130,6 @@ services:
       POSTGRES_USER: infisical
       POSTGRES_DB: infisical-test
 
-  backend:
-    container_name: infisical-dev-api
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev.fips
-    depends_on:
-      db:
-        condition: service_started
-      redis:
-        condition: service_started
-    env_file:
-      - .env
-    ports:
-      - 4000:4000
-      - 9464:9464 # for OTEL collection of Prometheus metrics
-    environment:
-      - NODE_ENV=development
-      - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
-      - TELEMETRY_ENABLED=false
-    volumes:
-      - ./backend/src:/app/src
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   prometheus:
     image: prom/prometheus
@@ -198,3 +249,7 @@ volumes:
   ldap_data:
   ldap_config:
   grafana_storage:
+
+networks:
+  app_network:
+    driver: bridge

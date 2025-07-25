@@ -308,6 +308,8 @@ import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { eventServiceFactory } from "@app/services/events";
+import { buildRedisFromConfig } from "@app/lib/config/redis";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -1935,6 +1937,11 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const redis = buildRedisFromConfig(envConfig);
+  const eventsService = eventServiceFactory(redis);
+
+  await eventsService.init();
+
   // setup the communication with license key server
   await licenseService.init();
 
@@ -2062,7 +2069,8 @@ export const registerRoutes = async (
     githubOrgSync: githubOrgSyncConfigService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
-    reminder: reminderService
+    reminder: reminderService,
+    events: eventsService
   });
 
   const cronJobs: CronJob[] = [];
