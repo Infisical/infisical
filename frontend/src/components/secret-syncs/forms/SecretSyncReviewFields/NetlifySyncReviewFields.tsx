@@ -15,8 +15,8 @@ export const NetlifySyncReviewFields = () => {
   return (
     <>
       <GenericFieldLabel label="Account">{accountName || accountId}</GenericFieldLabel>
-      <GenericFieldLabel label="Site">{siteName || siteId}</GenericFieldLabel>
-      <GenericFieldLabel label="Context">{context}</GenericFieldLabel>
+      <GenericFieldLabel label="Site">{siteName || siteId || "None"}</GenericFieldLabel>
+      <GenericFieldLabel label="Context">{context || "None"}</GenericFieldLabel>
     </>
   );
 };

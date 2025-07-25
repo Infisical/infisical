@@ -57,7 +57,7 @@ export const NetlifySyncFields = () => {
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Select an account"
+            label="Account"
             isRequired
             tooltipClassName="max-w-md"
           >
@@ -71,7 +71,7 @@ export const NetlifySyncFields = () => {
                 setValue("destinationConfig.accountName", v?.name ?? "");
               }}
               options={accounts}
-              placeholder="Netlify Account"
+              placeholder="Select an account..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />
@@ -85,7 +85,7 @@ export const NetlifySyncFields = () => {
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Select a site"
+            label="Site"
             isOptional
             helperText="If you do not select a site, the secrets will be synced to all sites in the account."
             tooltipClassName="max-w-md"
@@ -105,7 +105,7 @@ export const NetlifySyncFields = () => {
                 }
               }}
               options={sites}
-              placeholder="Netlify Site"
+              placeholder="Select a site..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />
@@ -119,7 +119,7 @@ export const NetlifySyncFields = () => {
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label="Select a context"
+            label="Context"
             isOptional
             helperText="If you do not select a context, the secrets will be synced to all contexts."
             tooltipClassName="max-w-md"
@@ -129,10 +129,10 @@ export const NetlifySyncFields = () => {
               value={contexts.find((p) => p.value === value) ?? undefined}
               onChange={(option) => {
                 const v = option as SingleValue<{ label: string; value: NetlifySyncContext }>;
-                onChange(v?.value);
+                if (v) onChange(v.value);
               }}
               options={contexts}
-              placeholder="Netlify Context"
+              placeholder="Select a context..."
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}
             />
