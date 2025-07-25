@@ -1,5 +1,5 @@
 /* eslint-disable no-case-declarations */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
@@ -53,6 +53,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
 import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
+import { useResizableColWidth } from "@app/hooks/useResizableColWidth";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { SecretRotationListView } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView";
@@ -103,6 +104,8 @@ const Page = () => {
 
   const { permission } = useProjectPermission();
   const { mutateAsync: createCommit } = useCreateCommit();
+
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
   const { isBatchMode, pendingChanges } = useBatchMode();
@@ -483,6 +486,14 @@ const Page = () => {
     handlePopUpClose("snapshots");
   }, []);
 
+  const { handleMouseDown, isResizing, colWidth } = useResizableColWidth({
+    initialWidth: 320,
+    minWidth: 100,
+    maxWidth: tableRef.current
+      ? tableRef.current.clientWidth - 148 // ensure value column can't collapse completely
+      : 800
+  });
+
   useEffect(() => {
     // restore filters for path if set
     const restore = filterHistory.get(secretPath);
@@ -787,6 +798,7 @@ const Page = () => {
             }
           />
           <div
+            ref={tableRef}
             className={twMerge(
               "thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300",
               isNotEmpty && "rounded-b-none"
@@ -820,20 +832,34 @@ const Page = () => {
                       />
                     </div>
                   </Tooltip>
-                  <div
-                    className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
-                    role="button"
-                    tabIndex={0}
-                    onClick={handleSortToggle}
-                    onKeyDown={(evt) => {
-                      if (evt.key === "Enter") handleSortToggle();
-                    }}
-                  >
-                    Key
-                    <FontAwesomeIcon
-                      icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
-                      className="ml-2"
+                  <div className="relative">
+                    <div
+                      tabIndex={-1}
+                      role="button"
+                      className={`absolute -right-[0.05rem] z-40 h-full w-0.5 cursor-ew-resize hover:bg-blue-400/20 ${
+                        isResizing ? "bg-blue-400/75" : "bg-transparent"
+                      }`}
+                      onMouseDown={handleMouseDown}
                     />
+                    <div className="pointer-events-none absolute -right-[0.04rem] top-2 z-30">
+                      <div className="h-5 w-0.5 rounded-[1.5px] bg-gray-400 opacity-50" />
+                    </div>
+                    <div
+                      className="flex flex-shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
+                      style={{ width: colWidth }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleSortToggle}
+                      onKeyDown={(evt) => {
+                        if (evt.key === "Enter") handleSortToggle();
+                      }}
+                    >
+                      Key
+                      <FontAwesomeIcon
+                        icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
+                        className="ml-2"
+                      />
+                    </div>
                   </div>
                   <div className="flex-grow px-4 py-2">Value</div>
                 </div>
@@ -927,6 +953,7 @@ const Page = () => {
               )}
               {canReadSecret && Boolean(mergedSecrets?.length) && (
                 <SecretListView
+                  colWidth={colWidth}
                   secrets={mergedSecrets}
                   tags={tags}
                   isVisible={isVisible}

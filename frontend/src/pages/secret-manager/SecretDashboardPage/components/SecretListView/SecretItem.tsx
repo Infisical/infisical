@@ -90,6 +90,7 @@ type Props = {
   }[];
   isPending?: boolean;
   pendingAction?: PendingAction;
+  colWidth: number;
 };
 
 export const SecretItem = memo(
@@ -108,7 +109,8 @@ export const SecretItem = memo(
     handleSecretShare,
     importedBy,
     isPending,
-    pendingAction
+    pendingAction,
+    colWidth
   }: Props) => {
     const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
       "editSecret"
@@ -383,7 +385,10 @@ export const SecretItem = memo(
                 </>
               )}
             </div>
-            <div className="flex h-11 w-80 flex-shrink-0 items-center px-4 py-2">
+            <div
+              className="flex h-11 flex-shrink-0 items-center px-4 py-2"
+              style={{ width: colWidth }}
+            >
               <Controller
                 name="key"
                 control={control}
