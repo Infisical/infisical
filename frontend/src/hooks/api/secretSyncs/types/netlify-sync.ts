@@ -8,8 +8,8 @@ export type TNetlifySync = TRootSecretSync & {
   destinationConfig: {
     accountId: string;
     accountName: string;
-    siteId: string;
-    siteName: string;
+    siteId?: string;
+    siteName?: string;
   };
   connection: {
     app: AppConnection.Netlify;
