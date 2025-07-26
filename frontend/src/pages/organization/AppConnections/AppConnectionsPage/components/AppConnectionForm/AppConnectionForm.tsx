@@ -33,6 +33,7 @@ import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
+import { NetlifyConnectionForm } from "./NetlifyConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
@@ -153,6 +154,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <SupabaseConnectionForm onSubmit={onSubmit} />;
     case AppConnection.DigitalOcean:
       return <DigitalOceanConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Netlify:
+      return <NetlifyConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} />;
     default:

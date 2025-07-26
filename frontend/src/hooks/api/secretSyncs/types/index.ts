@@ -21,6 +21,7 @@ import { TGitLabSync } from "./gitlab-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TNetlifySync } from "./netlify-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
@@ -67,6 +68,7 @@ export type TSecretSync =
   | TChecklySync
   | TSupabaseSync
   | TDigitalOceanAppPlatformSync
+  | TNetlifySync
   | TBitbucketSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };

@@ -44,6 +44,7 @@ import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
+import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
@@ -82,6 +83,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   RailwaySyncSchema,
   ChecklySyncSchema,
   DigitalOceanAppPlatformSyncSchema,
+  NetlifySyncSchema,
   BitbucketSyncSchema
 ]);
 
@@ -114,6 +116,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   RailwaySyncListItemSchema,
   ChecklySyncListItemSchema,
   SupabaseSyncListItemSchema,
+  NetlifySyncListItemSchema,
   BitbucketSyncListItemSchema
 ]);
 

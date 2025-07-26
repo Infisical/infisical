@@ -75,6 +75,10 @@ import {
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
+import {
+  NetlifyConnectionListItemSchema,
+  SanitizedNetlifyConnectionSchema
+} from "@app/services/app-connection/netlify";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
 import {
   PostgresConnectionListItemSchema,
@@ -145,6 +149,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
+  ...SanitizedNetlifyConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options
 ]);
 
@@ -184,6 +189,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ChecklyConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
+  NetlifyConnectionListItemSchema,
   OktaConnectionListItemSchema
 ]);
 

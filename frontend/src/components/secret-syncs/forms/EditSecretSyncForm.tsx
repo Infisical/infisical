@@ -31,7 +31,7 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
       environment: secretSync.environment ?? undefined,
       secretPath: secretSync.folder?.path,
       description: secretSync.description ?? ""
-    },
+    } as Partial<TSecretSyncForm>,
     reValidateMode: "onChange"
   });
 
