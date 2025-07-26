@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+
+  <style>
+    body {
+      background-color: black;
+      color: lime;
+      font-family: "Hack";
+    }
+  </style>
+  <body>
+    <h1>EventSource Example</h1>
+
+    <div>
+      <p>This page listens for server-sent events from the backend.</p>
+      <p>Open your browser's console to see the received events.</p>
+
+      <ul id="event-list">
+        <!-- Events will be dynamically added here -->
+      </ul>
+    </div>
+
+    <script>
+      const list = document.getElementById("event-list");
+
+      async function stream() {
+        const response = await fetch("http://localhost:8080/api/v1/events/subscribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            Connection: "keep-alive",
+          },
+          body: JSON.stringify({
+            projectId: "project-id-123",
+            events: [
+              {
+                type: "secret.created",
+              },
+            ],
+          }),
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            console.log("Received line:", line);
+            if (line.startsWith("data:")) {
+              const data = line.slice(5).trim();
+              const listItem = document.createElement("li");
+              listItem.textContent = `Event(${event.id}): ${data.event}, Data: ${JSON.stringify(data.data)}`;
+              list.appendChild(listItem);
+            }
+          }
+        }
+      }
+
+      stream().catch((error) => {
+        console.error("Error in streaming:", error);
+      });
+
+      // source.onmessage = function (event) {
+      //   const data = JSON.parse(event.data);
+      //   console.log("Received data:", data);
+      // const listItem = document.createElement("li");
+      // listItem.textContent = `Event(${event.id}): ${data.event}, Data: ${JSON.stringify(data.data)}`;
+      // list.appendChild(listItem);
+      //   // You can update the UI or perform actions based on the received data
+      // };
+    </script>
+  </body>
+</html>

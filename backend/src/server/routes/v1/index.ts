@@ -55,6 +55,7 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
+import { registerEventRouter } from "./event-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -183,4 +184,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/reminders" }
   );
+
+  await server.register(registerEventRouter, { prefix: "/events" });
 };
