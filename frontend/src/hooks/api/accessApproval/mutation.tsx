@@ -17,7 +17,7 @@ export const useCreateAccessApprovalPolicy = () => {
 
   return useMutation<object, object, TCreateAccessPolicyDTO>({
     mutationFn: async ({
-      environment,
+      environments,
       projectSlug,
       approvals,
       approvers,
@@ -29,7 +29,7 @@ export const useCreateAccessApprovalPolicy = () => {
       approvalsRequired
     }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
-        environment,
+        environments,
         projectSlug,
         approvals,
         bypassers,
@@ -63,7 +63,8 @@ export const useUpdateAccessApprovalPolicy = () => {
       secretPath,
       enforcementLevel,
       allowedSelfApprovals,
-      approvalsRequired
+      approvalsRequired,
+      environments
     }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
@@ -73,7 +74,8 @@ export const useUpdateAccessApprovalPolicy = () => {
         name,
         enforcementLevel,
         allowedSelfApprovals,
-        approvalsRequired
+        approvalsRequired,
+        environments
       });
       return data;
     },

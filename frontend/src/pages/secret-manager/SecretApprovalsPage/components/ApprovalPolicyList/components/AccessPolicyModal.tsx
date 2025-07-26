@@ -54,7 +54,7 @@ type Props = {
 
 const formSchema = z
   .object({
-    environment: z.object({ slug: z.string(), name: z.string() }),
+    environments: z.array(z.object({ slug: z.string(), name: z.string() })).min(1),
     name: z.string().optional(),
     secretPath: z.string().trim().min(1),
     approvals: z.number().min(1).default(1),
@@ -134,7 +134,7 @@ const Form = ({
     values: editValues
       ? ({
           ...editValues,
-          environment: editValues.environment,
+          environments: editValues.environments,
           userApprovers:
             editValues?.approvers
               ?.filter((approver) => approver.type === ApproverType.User)
@@ -191,7 +191,7 @@ const Form = ({
   const { currentWorkspace } = useWorkspace();
   const { data: groups } = useListWorkspaceGroups(projectId);
 
-  const environments = currentWorkspace?.environments || [];
+  const availableEnvironments = currentWorkspace?.environments || [];
   const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
 
   const { mutateAsync: createAccessApprovalPolicy } = useCreateAccessApprovalPolicy();
@@ -204,11 +204,11 @@ const Form = ({
 
   const formUserBypassers = watch("userBypassers");
   const formGroupBypassers = watch("groupBypassers");
-  const formEnvironment = watch("environment")?.slug;
+  const formEnvironments = watch("environments");
   const bypasserCount = (formUserBypassers || []).length + (formGroupBypassers || []).length;
 
   const handleCreatePolicy = async ({
-    environment,
+    environments,
     groupApprovers,
     userApprovers,
     groupBypassers,
@@ -226,7 +226,7 @@ const Form = ({
           ...data,
           approvers: [...userApprovers, ...groupApprovers],
           bypassers: bypassers.length > 0 ? bypassers : undefined,
-          environment: environment.slug,
+          environments: environments.map((env) => env.slug),
           workspaceId: currentWorkspace?.id || ""
         });
       } else {
@@ -242,7 +242,7 @@ const Form = ({
             numberOfApprovals: el.approvals
           })),
           bypassers: bypassers.length > 0 ? bypassers : undefined,
-          environment: environment.slug,
+          environments: environments.map((env) => env.slug),
           projectSlug
         });
       }
@@ -261,7 +261,7 @@ const Form = ({
   };
 
   const handleUpdatePolicy = async ({
-    environment,
+    environments,
     userApprovers,
     groupApprovers,
     userBypassers,
@@ -281,7 +281,8 @@ const Form = ({
           ...data,
           approvers: [...userApprovers, ...groupApprovers],
           bypassers: bypassers.length > 0 ? bypassers : undefined,
-          workspaceId: currentWorkspace?.id || ""
+          workspaceId: currentWorkspace?.id || "",
+          environments: environments.map((env) => env.slug)
         });
       } else {
         await updateAccessApprovalPolicy({
@@ -297,7 +298,7 @@ const Form = ({
             numberOfApprovals: el.approvals
           })),
           bypassers: bypassers.length > 0 ? bypassers : undefined,
-          environment: environment.slug,
+          environments: environments.map((env) => env.slug),
           projectSlug
         });
       }
@@ -479,28 +480,28 @@ const Form = ({
                 <SecretPathInput
                   {...field}
                   value={field.value || ""}
-                  environment={formEnvironment}
+                  environment={formEnvironments?.[0]?.slug || ""}
                 />
               </FormControl>
             )}
           />
           <Controller
             control={control}
-            name="environment"
+            name="environments"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
-                label="Environment"
+                label="Environments"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
                 className="flex-1"
               >
                 <FilterableSelect
-                  isDisabled={isEditMode}
                   value={value}
+                  isMulti
                   onChange={onChange}
-                  placeholder="Select environment..."
-                  options={environments}
+                  placeholder="Select environments..."
+                  options={availableEnvironments}
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
                 />

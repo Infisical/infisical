@@ -26,6 +26,7 @@ export interface TAccessApprovalPolicyDALFactory
     >,
     customFilter?: {
       policyId?: string;
+      envId?: string;
     },
     tx?: Knex
   ) => Promise<
@@ -55,11 +56,6 @@ export interface TAccessApprovalPolicyDALFactory
       allowedSelfApprovals: boolean;
       secretPath: string;
       deletedAt?: Date | null | undefined;
-      environment: {
-        id: string;
-        name: string;
-        slug: string;
-      };
       projectId: string;
       bypassers: (
         | {
@@ -72,6 +68,11 @@ export interface TAccessApprovalPolicyDALFactory
             type: BypasserType.Group;
           }
       )[];
+      environments: {
+        id: string;
+        name: string;
+        slug: string;
+      }[];
     }[]
   >;
   findById: (
@@ -95,11 +96,11 @@ export interface TAccessApprovalPolicyDALFactory
         allowedSelfApprovals: boolean;
         secretPath: string;
         deletedAt?: Date | null | undefined;
-        environment: {
+        environments: {
           id: string;
           name: string;
           slug: string;
-        };
+        }[];
         projectId: string;
       }
     | undefined
@@ -143,6 +144,26 @@ export interface TAccessApprovalPolicyDALFactory
       }
     | undefined
   >;
+  findPolicyByEnvIdAndSecretPath: (
+    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    tx?: Knex
+  ) => Promise<{
+    name: string;
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    approvals: number;
+    enforcementLevel: string;
+    allowedSelfApprovals: boolean;
+    secretPath: string;
+    deletedAt?: Date | null | undefined;
+    environments: {
+      id: string;
+      name: string;
+      slug: string;
+    }[];
+    projectId: string;
+  }>;
 }
 
 export interface TAccessApprovalPolicyServiceFactory {
@@ -367,6 +388,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
     filter: TFindFilter<TAccessApprovalPolicies & { projectId: string }>,
     customFilter?: {
       policyId?: string;
+      envId?: string;
     }
   ) => {
     const result = await tx(TableName.AccessApprovalPolicy)
@@ -377,7 +399,17 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           void qb.where(`${TableName.AccessApprovalPolicy}.id`, "=", customFilter.policyId);
         }
       })
-      .join(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
+      .join(
+        TableName.AccessApprovalPolicyEnvironment,
+        `${TableName.AccessApprovalPolicy}.id`,
+        `${TableName.AccessApprovalPolicyEnvironment}.policyId`
+      )
+      .join(TableName.Environment, `${TableName.AccessApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`)
+      .where((qb) => {
+        if (customFilter?.envId) {
+          void qb.where(`${TableName.AccessApprovalPolicyEnvironment}.envId`, "=", customFilter.envId);
+        }
+      })
       .leftJoin(
         TableName.AccessApprovalPolicyApprover,
         `${TableName.AccessApprovalPolicy}.id`,
@@ -404,7 +436,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
       .select(tx.ref("bypasserGroupId").withSchema(TableName.AccessApprovalPolicyBypasser))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
-      .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
+      .select(tx.ref("id").withSchema(TableName.Environment).as("environmentId"))
       .select(tx.ref("projectId").withSchema(TableName.Environment))
       .select(selectAllTableCols(TableName.AccessApprovalPolicy));
 
@@ -448,6 +480,15 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
               sequence: approverSequence,
               approvalsRequired
             })
+          },
+          {
+            key: "environmentId",
+            label: "environments" as const,
+            mapper: ({ environmentId: id, envName, envSlug }) => ({
+              id,
+              name: envName,
+              slug: envSlug
+            })
           }
         ]
       });
@@ -470,11 +511,6 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
         data: docs,
         key: "id",
         parentMapper: (data) => ({
-          environment: {
-            id: data.envId,
-            name: data.envName,
-            slug: data.envSlug
-          },
           projectId: data.projectId,
           ...AccessApprovalPoliciesSchema.parse(data)
           // secretPath: data.secretPath || undefined,
@@ -517,6 +553,15 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
               id,
               type: BypasserType.Group as const
             })
+          },
+          {
+            key: "environmentId",
+            label: "environments" as const,
+            mapper: ({ environmentId: id, envName, envSlug }) => ({
+              id,
+              name: envName,
+              slug: envSlug
+            })
           }
         ]
       });
@@ -545,14 +590,20 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
           buildFindFilter(
             {
-              envId,
               secretPath
             },
             TableName.AccessApprovalPolicy
           )
         )
+        .join(
+          TableName.AccessApprovalPolicyEnvironment,
+          `${TableName.AccessApprovalPolicyEnvironment}.policyId`,
+          `${TableName.AccessApprovalPolicy}.id`
+        )
+        .where(`${TableName.AccessApprovalPolicyEnvironment}.envId`, "=", envId)
         .orderBy("deletedAt", "desc")
         .orderByRaw(`"deletedAt" IS NULL`)
+        .select(selectAllTableCols(TableName.AccessApprovalPolicy))
         .first();
 
       return result;
@@ -561,5 +612,81 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
     }
   };
 
-  return { ...accessApprovalPolicyOrm, find, findById, softDeleteById, findLastValidPolicy };
+  const findPolicyByEnvIdAndSecretPath: TAccessApprovalPolicyDALFactory["findPolicyByEnvIdAndSecretPath"] = async (
+    { envIds, secretPath },
+    tx
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.AccessApprovalPolicy)
+        .join(
+          TableName.AccessApprovalPolicyEnvironment,
+          `${TableName.AccessApprovalPolicyEnvironment}.policyId`,
+          `${TableName.AccessApprovalPolicy}.id`
+        )
+        .join(
+          TableName.Environment,
+          `${TableName.AccessApprovalPolicyEnvironment}.envId`,
+          `${TableName.Environment}.id`
+        )
+        .where(
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          buildFindFilter(
+            {
+              $in: {
+                envId: envIds
+              }
+            },
+            TableName.AccessApprovalPolicyEnvironment
+          )
+        )
+        .where(
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          buildFindFilter(
+            {
+              secretPath
+            },
+            TableName.AccessApprovalPolicy
+          )
+        )
+        .whereNull(`${TableName.AccessApprovalPolicy}.deletedAt`)
+        .orderBy("deletedAt", "desc")
+        .orderByRaw(`"deletedAt" IS NULL`)
+        .select(selectAllTableCols(TableName.AccessApprovalPolicy))
+        .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
+        .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
+        .select(db.ref("id").withSchema(TableName.Environment).as("environmentId"))
+        .select(db.ref("projectId").withSchema(TableName.Environment));
+      const formattedDocs = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (data) => ({
+          projectId: data.projectId,
+          ...AccessApprovalPoliciesSchema.parse(data)
+        }),
+        childrenMapper: [
+          {
+            key: "environmentId",
+            label: "environments" as const,
+            mapper: ({ environmentId: id, envName, envSlug }) => ({
+              id,
+              name: envName,
+              slug: envSlug
+            })
+          }
+        ]
+      });
+      return formattedDocs?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findPolicyByEnvIdAndSecretPath" });
+    }
+  };
+
+  return {
+    ...accessApprovalPolicyOrm,
+    find,
+    findById,
+    softDeleteById,
+    findLastValidPolicy,
+    findPolicyByEnvIdAndSecretPath
+  };
 };

@@ -37,7 +37,7 @@ import { TWorkspaceUser } from "@app/hooks/api/users/types";
 interface IPolicy {
   id: string;
   name: string;
-  environment: WorkspaceEnv;
+  environments: WorkspaceEnv[];
   projectId?: string;
   secretPath?: string;
   approvals: number;
@@ -112,7 +112,7 @@ export const ApprovalPolicyRow = ({
         onClick={() => setIsExpanded.toggle()}
       >
         <Td>{policy.name || <span className="text-mineshaft-400">Unnamed Policy</span>}</Td>
-        <Td>{policy.environment.name}</Td>
+        <Td>{policy.environments.map((env) => env.name).join(", ")}</Td>
         <Td>{policy.secretPath || "*"}</Td>
         <Td>
           <Badge

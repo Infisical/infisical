@@ -537,6 +537,11 @@ export const secretApprovalRequestServiceFactory = ({
         message: "The policy associated with this secret approval request has been deleted."
       });
     }
+    if (!policy.envId) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request is not linked to the environment."
+      });
+    }
 
     const { hasRole } = await permissionService.getProjectPermission({
       actor: ActorType.USER,

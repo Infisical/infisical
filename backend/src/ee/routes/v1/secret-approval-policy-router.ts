@@ -17,34 +17,45 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
-      body: z.object({
-        workspaceId: z.string(),
-        name: z.string().optional(),
-        environment: z.string(),
-        secretPath: z
-          .string()
-          .min(1, { message: "Secret path cannot be empty" })
-          .transform((val) => removeTrailingSlash(val)),
-        approvers: z
-          .discriminatedUnion("type", [
-            z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
-            z.object({ type: z.literal(ApproverType.User), id: z.string().optional(), username: z.string().optional() })
-          ])
-          .array()
-          .min(1, { message: "At least one approver should be provided" })
-          .max(100, "Cannot have more than 100 approvers"),
-        bypassers: z
-          .discriminatedUnion("type", [
-            z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
-            z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), username: z.string().optional() })
-          ])
-          .array()
-          .max(100, "Cannot have more than 100 bypassers")
-          .optional(),
-        approvals: z.number().min(1).default(1),
-        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        allowedSelfApprovals: z.boolean().default(true)
-      }),
+      body: z
+        .object({
+          workspaceId: z.string(),
+          name: z.string().optional(),
+          environment: z.string().optional(),
+          environments: z.string().array().optional(),
+          secretPath: z
+            .string()
+            .min(1, { message: "Secret path cannot be empty" })
+            .transform((val) => removeTrailingSlash(val)),
+          approvers: z
+            .discriminatedUnion("type", [
+              z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
+              z.object({
+                type: z.literal(ApproverType.User),
+                id: z.string().optional(),
+                username: z.string().optional()
+              })
+            ])
+            .array()
+            .min(1, { message: "At least one approver should be provided" })
+            .max(100, "Cannot have more than 100 approvers"),
+          bypassers: z
+            .discriminatedUnion("type", [
+              z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
+              z.object({
+                type: z.literal(BypasserType.User),
+                id: z.string().optional(),
+                username: z.string().optional()
+              })
+            ])
+            .array()
+            .max(100, "Cannot have more than 100 bypassers")
+            .optional(),
+          approvals: z.number().min(1).default(1),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
+          allowedSelfApprovals: z.boolean().default(true)
+        })
+        .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
       response: {
         200: z.object({
           approval: sapPubSchema
@@ -60,7 +71,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         projectId: req.body.workspaceId,
         ...req.body,
-        name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
+        name: req.body.name ?? `${req.body.environment || req.body.environments?.join(",")}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
       });
       return { approval };
@@ -103,7 +114,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional()
           .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
-        allowedSelfApprovals: z.boolean().default(true)
+        allowedSelfApprovals: z.boolean().default(true),
+        environments: z.array(z.string()).optional()
       }),
       response: {
         200: z.object({

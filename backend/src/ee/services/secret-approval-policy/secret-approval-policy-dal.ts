@@ -23,6 +23,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>,
     customFilter?: {
       sapId?: string;
+      envId?: string;
     }
   ) =>
     tx(TableName.SecretApprovalPolicy)
@@ -33,7 +34,17 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
           void qb.where(`${TableName.SecretApprovalPolicy}.id`, "=", customFilter.sapId);
         }
       })
-      .join(TableName.Environment, `${TableName.SecretApprovalPolicy}.envId`, `${TableName.Environment}.id`)
+      .join(
+        TableName.SecretApprovalPolicyEnvironment,
+        `${TableName.SecretApprovalPolicyEnvironment}.policyId`,
+        `${TableName.SecretApprovalPolicy}.id`
+      )
+      .join(TableName.Environment, `${TableName.SecretApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`)
+      .where((qb) => {
+        if (customFilter?.envId) {
+          void qb.where(`${TableName.SecretApprovalPolicyEnvironment}.envId`, "=", customFilter.envId);
+        }
+      })
       .leftJoin(
         TableName.SecretApprovalPolicyApprover,
         `${TableName.SecretApprovalPolicy}.id`,
@@ -97,7 +108,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
       .select(
         tx.ref("name").withSchema(TableName.Environment).as("envName"),
         tx.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-        tx.ref("id").withSchema(TableName.Environment).as("envId"),
+        tx.ref("id").withSchema(TableName.Environment).as("environmentId"),
         tx.ref("projectId").withSchema(TableName.Environment)
       )
       .select(selectAllTableCols(TableName.SecretApprovalPolicy))
@@ -146,6 +157,15 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
               firstName,
               lastName
             })
+          },
+          {
+            key: "environmentId",
+            label: "environments" as const,
+            mapper: ({ environmentId, envName, envSlug }) => ({
+              id: environmentId,
+              name: envName,
+              slug: envSlug
+            })
           }
         ]
       });
@@ -160,6 +180,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     filter: TFindFilter<TSecretApprovalPolicies & { projectId: string }>,
     customFilter?: {
       sapId?: string;
+      envId?: string;
     },
     tx?: Knex
   ) => {
@@ -221,6 +242,15 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
             mapper: ({ approverGroupUserId: userId }) => ({
               userId
             })
+          },
+          {
+            key: "environmentId",
+            label: "environments" as const,
+            mapper: ({ environmentId, envName, envSlug }) => ({
+              id: environmentId,
+              name: envName,
+              slug: envSlug
+            })
           }
         ]
       });
@@ -235,5 +265,74 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     return softDeletedPolicy;
   };
 
-  return { ...secretApprovalPolicyOrm, findById, find, softDeleteById };
+  const findPolicyByEnvIdAndSecretPath = async (
+    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    tx?: Knex
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretApprovalPolicy)
+        .join(
+          TableName.SecretApprovalPolicyEnvironment,
+          `${TableName.SecretApprovalPolicyEnvironment}.policyId`,
+          `${TableName.SecretApprovalPolicy}.id`
+        )
+        .join(
+          TableName.Environment,
+          `${TableName.SecretApprovalPolicyEnvironment}.envId`,
+          `${TableName.Environment}.id`
+        )
+        .where(
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          buildFindFilter(
+            {
+              $in: {
+                envId: envIds
+              }
+            },
+            TableName.SecretApprovalPolicyEnvironment
+          )
+        )
+        .where(
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          buildFindFilter(
+            {
+              secretPath
+            },
+            TableName.SecretApprovalPolicy
+          )
+        )
+        .whereNull(`${TableName.SecretApprovalPolicy}.deletedAt`)
+        .orderBy("deletedAt", "desc")
+        .orderByRaw(`"deletedAt" IS NULL`)
+        .select(selectAllTableCols(TableName.SecretApprovalPolicy))
+        .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
+        .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
+        .select(db.ref("id").withSchema(TableName.Environment).as("environmentId"))
+        .select(db.ref("projectId").withSchema(TableName.Environment));
+      const formattedDocs = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (data) => ({
+          projectId: data.projectId,
+          ...SecretApprovalPoliciesSchema.parse(data)
+        }),
+        childrenMapper: [
+          {
+            key: "environmentId",
+            label: "environments" as const,
+            mapper: ({ environmentId: id, envName, envSlug }) => ({
+              id,
+              name: envName,
+              slug: envSlug
+            })
+          }
+        ]
+      });
+      return formattedDocs?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findPolicyByEnvIdAndSecretPath" });
+    }
+  };
+
+  return { ...secretApprovalPolicyOrm, findById, find, softDeleteById, findPolicyByEnvIdAndSecretPath };
 };

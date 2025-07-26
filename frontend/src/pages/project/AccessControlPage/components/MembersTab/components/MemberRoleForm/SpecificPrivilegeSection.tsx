@@ -155,8 +155,8 @@ export const SpecificPrivilegeSecretForm = ({
 
   const selectablePaths = useMemo(() => {
     if (!policies) return [];
-    const environmentPolicies = policies.filter(
-      (policy) => policy.environment.slug === selectedEnvironment
+    const environmentPolicies = policies.filter((policy) =>
+      policy.environments.find((env) => env.slug === selectedEnvironment)
     );
 
     privilegeForm.setValue("secretPath", "", {

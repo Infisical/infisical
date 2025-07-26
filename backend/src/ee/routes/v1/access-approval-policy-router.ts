@@ -17,52 +17,66 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
-      body: z.object({
-        projectSlug: z.string().trim(),
-        name: z.string().optional(),
-        secretPath: z.string().trim().min(1, { message: "Secret path cannot be empty" }).transform(removeTrailingSlash),
-        environment: z.string(),
-        approvers: z
-          .discriminatedUnion("type", [
-            z.object({
-              type: z.literal(ApproverType.Group),
-              id: z.string(),
-              sequence: z.number().int().default(1)
-            }),
-            z.object({
-              type: z.literal(ApproverType.User),
-              id: z.string().optional(),
-              username: z.string().optional(),
-              sequence: z.number().int().default(1)
+      body: z
+        .object({
+          projectSlug: z.string().trim(),
+          name: z.string().optional(),
+          secretPath: z
+            .string()
+            .trim()
+            .min(1, { message: "Secret path cannot be empty" })
+            .transform(removeTrailingSlash),
+          environment: z.string().optional(),
+          environments: z.string().array().optional(),
+          approvers: z
+            .discriminatedUnion("type", [
+              z.object({
+                type: z.literal(ApproverType.Group),
+                id: z.string(),
+                sequence: z.number().int().default(1)
+              }),
+              z.object({
+                type: z.literal(ApproverType.User),
+                id: z.string().optional(),
+                username: z.string().optional(),
+                sequence: z.number().int().default(1)
+              })
+            ])
+            .array()
+            .max(100, "Cannot have more than 100 approvers")
+            .min(1, { message: "At least one approver should be provided" })
+            .refine(
+              // @ts-expect-error this is ok
+              (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
+              "Must provide either username or id"
+            ),
+          bypassers: z
+            .discriminatedUnion("type", [
+              z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
+              z.object({
+                type: z.literal(BypasserType.User),
+                id: z.string().optional(),
+                username: z.string().optional()
+              })
+            ])
+            .array()
+            .max(100, "Cannot have more than 100 bypassers")
+            .optional(),
+          approvalsRequired: z
+            .object({
+              numberOfApprovals: z.number().int(),
+              stepNumber: z.number().int()
             })
-          ])
-          .array()
-          .max(100, "Cannot have more than 100 approvers")
-          .min(1, { message: "At least one approver should be provided" })
-          .refine(
-            // @ts-expect-error this is ok
-            (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
-            "Must provide either username or id"
-          ),
-        bypassers: z
-          .discriminatedUnion("type", [
-            z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
-            z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), username: z.string().optional() })
-          ])
-          .array()
-          .max(100, "Cannot have more than 100 bypassers")
-          .optional(),
-        approvalsRequired: z
-          .object({
-            numberOfApprovals: z.number().int(),
-            stepNumber: z.number().int()
-          })
-          .array()
-          .optional(),
-        approvals: z.number().min(1).default(1),
-        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        allowedSelfApprovals: z.boolean().default(true)
-      }),
+            .array()
+            .optional(),
+          approvals: z.number().min(1).default(1),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
+          allowedSelfApprovals: z.boolean().default(true)
+        })
+        .refine(
+          (val) => Boolean(val.environment) || Boolean(val.environments),
+          "Must provide either environment or environments"
+        ),
       response: {
         200: z.object({
           approval: sapPubSchema
@@ -78,7 +92,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         ...req.body,
         projectSlug: req.body.projectSlug,
-        name: req.body.name ?? `${req.body.environment}-${nanoid(3)}`,
+        name:
+          req.body.name ?? `${req.body.environment || req.body.environments?.join("-").substring(0, 250)}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
       });
       return { approval };
@@ -211,6 +226,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         approvals: z.number().min(1).optional(),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
         allowedSelfApprovals: z.boolean().default(true),
+        environments: z.array(z.string()).optional(),
         approvalsRequired: z
           .object({
             numberOfApprovals: z.number().int(),

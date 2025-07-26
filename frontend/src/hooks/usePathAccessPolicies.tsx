@@ -49,7 +49,8 @@ export const usePathAccessPolicies = ({ secretPath, environment }: Params) => {
   return useMemo(() => {
     const pathPolicies = policies?.filter(
       (policy) =>
-        policy.environment.slug === environment && matchesPath(secretPath, policy.secretPath)
+        policy.environments?.some((env) => env.slug === environment) &&
+        matchesPath(secretPath, policy.secretPath)
     );
 
     return {

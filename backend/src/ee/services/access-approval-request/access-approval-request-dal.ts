@@ -65,7 +65,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
           deletedAt: Date | null | undefined;
         };
         projectId: string;
-        environment: string;
+        environments: string[];
         requestedByUser: {
           userId: string;
           email: string | null | undefined;
@@ -515,7 +515,17 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         `accessApprovalReviewerUser.id`
       )
 
-      .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
+      .leftJoin(
+        TableName.AccessApprovalPolicyEnvironment,
+        `${TableName.AccessApprovalPolicy}.id`,
+        `${TableName.AccessApprovalPolicyEnvironment}.policyId`
+      )
+
+      .leftJoin(
+        TableName.Environment,
+        `${TableName.AccessApprovalPolicyEnvironment}.envId`,
+        `${TableName.Environment}.id`
+      )
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
@@ -683,6 +693,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               lastName,
               username
             })
+          },
+          {
+            key: "environment",
+            label: "environments" as const,
+            mapper: ({ environment }) => environment
           }
         ]
       });

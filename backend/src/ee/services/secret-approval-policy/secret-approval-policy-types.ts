@@ -5,7 +5,8 @@ import { ApproverType, BypasserType } from "../access-approval-policy/access-app
 export type TCreateSapDTO = {
   approvals: number;
   secretPath: string;
-  environment: string;
+  environment?: string;
+  environments?: string[];
   approvers: ({ type: ApproverType.Group; id: string } | { type: ApproverType.User; id?: string; username?: string })[];
   bypassers?: (
     | { type: BypasserType.Group; id: string }
@@ -29,6 +30,7 @@ export type TUpdateSapDTO = {
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals?: boolean;
+  environments?: string[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteSapDTO = {

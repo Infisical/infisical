@@ -26,7 +26,8 @@ export enum BypasserType {
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
-  environment: string;
+  environment?: string;
+  environments?: string[];
   approvers: (
     | { type: ApproverType.Group; id: string; sequence?: number }
     | { type: ApproverType.User; id?: string; username?: string; sequence?: number }
@@ -58,6 +59,7 @@ export type TUpdateAccessApprovalPolicy = {
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
+  environments?: string[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
@@ -113,6 +115,15 @@ export interface TAccessApprovalPolicyServiceFactory {
       slug: string;
       position: number;
     };
+    environments: {
+      name: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      projectId: string;
+      slug: string;
+      position: number;
+    }[];
     projectId: string;
     name: string;
     id: string;
@@ -153,6 +164,11 @@ export interface TAccessApprovalPolicyServiceFactory {
       name: string;
       slug: string;
     };
+    environments: {
+      id: string;
+      name: string;
+      slug: string;
+    }[];
     projectId: string;
   }>;
   updateAccessApprovalPolicy: ({
@@ -168,13 +184,19 @@ export interface TAccessApprovalPolicyServiceFactory {
     approvals,
     enforcementLevel,
     allowedSelfApprovals,
-    approvalsRequired
+    approvalsRequired,
+    environments
   }: TUpdateAccessApprovalPolicy) => Promise<{
     environment: {
       id: string;
       name: string;
       slug: string;
     };
+    environments: {
+      id: string;
+      name: string;
+      slug: string;
+    }[];
     projectId: string;
     name: string;
     id: string;
@@ -225,6 +247,11 @@ export interface TAccessApprovalPolicyServiceFactory {
         name: string;
         slug: string;
       };
+      environments: {
+        id: string;
+        name: string;
+        slug: string;
+      }[];
       projectId: string;
       bypassers: (
         | {
@@ -276,6 +303,11 @@ export interface TAccessApprovalPolicyServiceFactory {
       name: string;
       slug: string;
     };
+    environments: {
+      id: string;
+      name: string;
+      slug: string;
+    }[];
     projectId: string;
     bypassers: (
       | {

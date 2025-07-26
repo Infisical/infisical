@@ -166,17 +166,20 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
   const filteredPolicies = useMemo(
     () =>
       policies
-        .filter(({ policyType, environment, name, secretPath }) => {
+        .filter(({ policyType, environments, name, secretPath }) => {
           if (filters.type && policyType !== filters.type) return false;
 
-          if (filters.environmentIds.length && !filters.environmentIds.includes(environment.id))
+          if (
+            filters.environmentIds.length &&
+            !environments.some((env) => filters.environmentIds.includes(env.id))
+          )
             return false;
 
           const searchValue = search.trim().toLowerCase();
 
           return (
             name.toLowerCase().includes(searchValue) ||
-            environment.name.toLowerCase().includes(searchValue) ||
+            environments.some((env) => env.name.toLowerCase().includes(searchValue)) ||
             (secretPath ?? "*").toLowerCase().includes(searchValue)
           );
         })
@@ -189,9 +192,18 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                 .toLowerCase()
                 .localeCompare(policyTwo.policyType.toLowerCase());
             case PolicyOrderBy.Environment:
-              return policyOne.environment.name
-                .toLowerCase()
-                .localeCompare(policyTwo.environment.name.toLowerCase());
+              // eslint-disable-next-line no-case-declarations
+              const getFirstEnvName = (policy: { environments: { name: string }[] }) => {
+                if (!policy.environments?.length) return "";
+                return (
+                  policy.environments
+                    .map((env) => env.name?.toLowerCase() || "")
+                    .filter((name) => name)
+                    .sort()[0] || ""
+                );
+              };
+
+              return getFirstEnvName(policyOne).localeCompare(getFirstEnvName(policyTwo));
             case PolicyOrderBy.SecretPath:
               return (policyOne.secretPath ?? "*")
                 .toLowerCase()
