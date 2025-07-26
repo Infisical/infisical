@@ -4,6 +4,7 @@ import { Job } from "bullmq";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -96,6 +97,7 @@ type TSecretSyncQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 type SecretSyncActionJob = Job<
@@ -138,7 +140,8 @@ export const secretSyncQueueFactory = ({
   secretVersionTagV2BridgeDAL,
   resourceMetadataDAL,
   folderCommitService,
-  licenseService
+  licenseService,
+  gatewayService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -353,7 +356,8 @@ export const secretSyncQueueFactory = ({
 
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
-      kmsService
+      kmsService,
+      gatewayService
     });
 
     if (!Object.keys(importedSecrets).length) return {};
@@ -481,7 +485,8 @@ export const secretSyncQueueFactory = ({
 
       await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
         appConnectionDAL,
-        kmsService
+        kmsService,
+        gatewayService
       });
 
       isSynced = true;
@@ -730,7 +735,8 @@ export const secretSyncQueueFactory = ({
         secretMap,
         {
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayService
         }
       );
 

@@ -30,7 +30,8 @@ type BaseFormData = {
   isUpdate?: boolean;
 };
 
-type GithubFormData = BaseFormData & Pick<TGitHubConnection, "name" | "method" | "description">;
+type GithubFormData = BaseFormData &
+  Pick<TGitHubConnection, "name" | "method" | "description" | "gatewayId" | "credentials">;
 
 type GithubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
@@ -395,7 +396,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitHub);
 
-    const { connectionId, name, description, returnUrl } = formData;
+    const { connectionId, name, description, returnUrl, gatewayId, credentials } = formData;
 
     try {
       if (connectionId) {
@@ -406,14 +407,18 @@ export const OAuthCallbackPage = () => {
                 connectionId,
                 credentials: {
                   code: code as string,
-                  installationId: installationId as string
-                }
+                  installationId: installationId as string,
+                  host: credentials.host
+                },
+                gatewayId
               }
             : {
                 connectionId,
                 credentials: {
-                  code: code as string
-                }
+                  code: code as string,
+                  host: credentials.host
+                },
+                gatewayId
               })
         });
       } else {
@@ -426,14 +431,18 @@ export const OAuthCallbackPage = () => {
                 method: GitHubConnectionMethod.App,
                 credentials: {
                   code: code as string,
-                  installationId: installationId as string
-                }
+                  installationId: installationId as string,
+                  host: credentials.host
+                },
+                gatewayId
               }
             : {
                 method: GitHubConnectionMethod.OAuth,
                 credentials: {
-                  code: code as string
-                }
+                  code: code as string,
+                  host: credentials.host
+                },
+                gatewayId
               })
         });
       }

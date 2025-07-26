@@ -11,20 +11,24 @@ import {
 import { GitHubConnectionMethod } from "./github-connection-enums";
 
 export const GitHubConnectionOAuthInputCredentialsSchema = z.object({
-  code: z.string().trim().min(1, "OAuth code required")
+  code: z.string().trim().min(1, "OAuth code required"),
+  host: z.string().trim().optional()
 });
 
 export const GitHubConnectionAppInputCredentialsSchema = z.object({
   code: z.string().trim().min(1, "GitHub App code required"),
-  installationId: z.string().min(1, "GitHub App Installation ID required")
+  installationId: z.string().min(1, "GitHub App Installation ID required"),
+  host: z.string().trim().optional()
 });
 
 export const GitHubConnectionOAuthOutputCredentialsSchema = z.object({
-  accessToken: z.string()
+  accessToken: z.string(),
+  host: z.string().trim().optional()
 });
 
 export const GitHubConnectionAppOutputCredentialsSchema = z.object({
-  installationId: z.string()
+  installationId: z.string(),
+  host: z.string().trim().optional()
 });
 
 export const ValidateGitHubConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -43,7 +47,9 @@ export const ValidateGitHubConnectionCredentialsSchema = z.discriminatedUnion("m
 ]);
 
 export const CreateGitHubConnectionSchema = ValidateGitHubConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.GitHub)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.GitHub, {
+    supportsGateways: true
+  })
 );
 
 export const UpdateGitHubConnectionSchema = z
@@ -53,7 +59,11 @@ export const UpdateGitHubConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.GitHub).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.GitHub));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.GitHub, {
+      supportsGateways: true
+    })
+  );
 
 const BaseGitHubConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.GitHub) });
 

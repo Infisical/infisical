@@ -14,6 +14,11 @@ export const blockLocalAndPrivateIpAddresses = async (url: string) => {
   if (appCfg.isDevelopmentMode) return;
 
   const validUrl = new URL(url);
+
+  if (validUrl.username || validUrl.password) {
+    throw new BadRequestError({ message: "URLs with user credentials (e.g., user:pass@) are not allowed" });
+  }
+
   const inputHostIps: string[] = [];
   if (isIPv4(validUrl.hostname)) {
     inputHostIps.push(validUrl.hostname);
