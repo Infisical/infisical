@@ -1,73 +1,103 @@
+/* eslint-disable no-continue */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable class-methods-use-this */
-import { Duplex, ReadableOptions } from "node:stream";
+import { Readable, ReadableOptions } from "node:stream";
 
-import { ForbiddenError, MongoAbility } from "@casl/ability";
+import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import { Redis } from "ioredis";
 import { z } from "zod";
 
-import {
-  TGetProjectPermissionArg,
-  TPermissionServiceFactory
-} from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { EventSchema, TopicName } from "./types";
+import { EventData, EventSchema, TopicName } from "./types";
 
-interface SubscriptionOptions {
-  permission: TGetProjectPermissionArg;
-  readable: ReadableOptions;
+interface SubscriptionOptions extends Pick<ReadableOptions, "objectMode" | "signal"> {
+  topic: TopicName;
+  actorId: string;
+  onPermissionCheck: (ability: MongoAbility<ProjectPermissionSet, MongoQuery>) => Promise<void> | void;
+  getPermissions: () => Promise<MongoAbility<ProjectPermissionSet, MongoQuery>>;
 }
-class Subscription extends Duplex {
+
+class Subscription extends Readable {
   permissions?: MongoAbility<ProjectPermissionSet, MongoQuery>;
 
   constructor(
     private client: Redis,
-    private channel: TopicName,
-    options: SubscriptionOptions
+    public options: SubscriptionOptions
   ) {
-    super(options.readable);
-    this.setup();
+    super({ objectMode: true, signal: options.signal });
+
+    this.client.on("error", this.emit.bind(this, "error"));
   }
 
-  setPermissions(permissions: MongoAbility<ProjectPermissionSet, MongoQuery>) {
-    this.permissions = permissions;
+  async init() {
+    try {
+      await this.client.subscribe(this.options.topic);
+      this.client.on("message", this.onMessage);
+    } catch (error) {
+      this.emit("error", error);
+    }
   }
 
-  _write(chunk: Buffer, encoding: BufferEncoding, callback: (error?: Error | null | undefined) => void) {
-    if (Buffer.isBuffer(chunk) || typeof chunk === "string") {
-      this.push(JSON.parse(chunk.toString(encoding ?? "utf-8")));
-    } else {
-      this.push(chunk, encoding ?? "utf-8");
+  send(data: unknown) {
+    if (!this.push(data)) {
+      logger.warn("Backpressure detected: dropped manual event");
+    }
+  }
+
+  private onMessage = (_channel: string, message: string) => {
+    try {
+      const parsed = JSON.parse(message) as EventData;
+      // Immediately push the event downstream. No buffering.
+      if (!this.push(parsed)) {
+        // If push returns false, stream is full — drop the message
+        logger.warn("Backpressure detected: dropping event");
+      }
+    } catch (error) {
+      this.emit("error", error);
+    }
+  };
+
+  async refresh() {
+    try {
+      this.permissions = await this.options.getPermissions();
+      await this.check();
+    } catch (error) {
+      this.emit("error", error);
+    }
+  }
+
+  async check() {
+    if (!this.permissions) {
+      this.emit("error", new Error("Subscription not initialized"));
+      return;
     }
 
-    callback();
+    try {
+      await this.options.onPermissionCheck(this.permissions);
+    } catch (error) {
+      this.emit("error", error);
+    }
   }
 
-  setup() {
-    this.client.on("error", this.emit.bind(this, "error"));
-
-    void this.client.subscribe(this.channel, (err) => {
-      if (err) {
-        return logger.error(err);
-      }
-
-      // Just write the message to the stream - we don't buffer it
-      this.client.on("message", (_, message) => {
-        this.write(message);
-      });
-    });
+  _read() {
+    // No-op: we push manually on Redis messages
   }
 
-  // Manually push chunks to the stream
-  _read() {}
+  _destroy(error: Error | null, callback: (error?: Error | null) => void) {
+    this.client.removeListener("message", this.onMessage);
+    callback(error);
+  }
+
+  close() {
+    if (this.closed) return;
+    this.push(null); // Signal end of stream
+    this.emit("close"); // Explicitly emit 'close'
+  }
 }
 
 type EventServiceOptions = {
@@ -77,76 +107,107 @@ type EventServiceOptions = {
   heartbeat: number | false;
 };
 
-export function eventServiceFactory(
-  conn: Redis,
-  kv: TKeyStoreFactory,
-  permissions: TPermissionServiceFactory,
-  options: EventServiceOptions
-) {
+export function eventServiceFactory(conn: Redis, keyStore: TKeyStoreFactory, options: EventServiceOptions) {
   let heartbeatInterval: NodeJS.Timeout | undefined;
+
   const publisher = conn.duplicate();
 
   const clients = new Set<Subscription>();
 
-  async function init(topics: TopicName[] = [TopicName.CoreServers]) {
-    conn.on("error", (e) => {
+  /**
+   * Initializes the event bus by subscribing to the specified topics.
+   */
+  async function init(topics: TopicName[] = Object.values(TopicName)) {
+    publisher.on("error", (e) => {
       logger.error(e, "Redis subscription error");
     });
 
     await conn.subscribe(...topics);
   }
 
-  function heartbeat() {
-    clients.forEach((client) => {
-      if (client.writable) {
-        client.write({ type: "heartbeat", time: new Date().toISOString() });
+  /**
+   * Sends a heartbeat message to all connected clients.
+   * This is used to keep the connection alive and check if clients are still connected.
+   */
+  const heartbeat = () => {
+    for (const client of clients) {
+      if (client.closed) continue;
+      client.send({ type: "heartbeat", time: new Date().toISOString() });
+    }
+  };
+
+  const refresh = () => {
+    try {
+      for (const client of clients) {
+        if (!client.permissions) continue;
+        void client.refresh();
       }
-    });
-  }
+    } catch (error) {
+      logger.error(error, "Error refreshing permissions for event bus clients");
+    }
+  };
 
   if (options.heartbeat) {
     heartbeatInterval = setInterval(heartbeat, options.heartbeat * 1000);
   }
 
-  function destroy() {
-    if (heartbeatInterval) {
-      clearInterval(heartbeatInterval);
-    }
+  const refreshInterval = setInterval(refresh, 60 * 1000 * 1);
 
-    clients.forEach((client) => {
-      client.destroy?.();
-    });
+  const subscribe = async (opts: SubscriptionOptions) => {
+    const key = KeyStorePrefixes.EventBusSubscription(opts.topic, opts.actorId);
 
-    clients.clear();
-  }
-
-  async function subscribe(topic: TopicName, opts: SubscriptionOptions) {
-    const stream = new Subscription(conn, topic, opts);
-
-    const perm = await permissions.getProjectPermission(opts.permission);
-
-    ForbiddenError.from(perm.permission).throwUnlessCan(
-      ProjectPermissionActions.Subscribe,
-      ProjectPermissionSub.Project
-    );
-
-    stream.setPermissions(perm.permission);
-
+    const stream = new Subscription(conn, opts);
     clients.add(stream);
 
-    stream.on("close", () => {
-      clients.delete(stream);
+    stream.on("error", (error: Error) => {
+      if (error) {
+        stream.send({
+          type: "error",
+          data: {
+            message: error.message
+          }
+        });
+        stream.close();
+      }
     });
 
+    stream.on("close", () => {
+      stream.destroy();
+      clients.delete(stream);
+      void keyStore.decrementBy(key, 1);
+    });
+
+    /**
+     * Need to rework the connection tracking logic - I have a better idea in mind
+     */
+    const connectionCount = await keyStore.getItem(key);
+
+    console.log(`Connection count for ${opts.topic}: ${connectionCount}`);
+
+    if (connectionCount && parseInt(connectionCount, 10) >= 2) {
+      stream.emit(
+        "error",
+        new RateLimitError({
+          message: `Too many connections for topic ${opts.topic}. Maximum of 5 connections allowed.`
+        })
+      );
+    }
+
+    await stream.init();
+    await stream.refresh();
+
+    await keyStore.incrementBy(key, 1);
+    await keyStore.setExpiry(key, 60 * 5); // 5 minutes
+
     return stream;
-  }
+  };
 
   /**
    * Publishes an event to the specified topic.
    * @param topic - The topic to publish the event to.
    * @param event - The event data to publish.
    */
-  async function publish<T extends z.input<typeof EventSchema>>(topic: TopicName, event: T) {
+  const publish = async <T extends z.input<typeof EventSchema>>(topic: TopicName, event: T) => {
     // @Sid - I think we can skip validation here since the event is already validated in the route handler
     // const { data, success, error } = await EventSchema.safeParseAsync(event);
 
@@ -162,9 +223,25 @@ export function eventServiceFactory(
         return logger.error(err, `Error publishing to channel ${topic}`);
       }
     });
-  }
+  };
 
-  return { init, publish, subscribe, destroy };
+  const close = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+    }
+
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+
+    for (const client of clients) {
+      client.close();
+    }
+
+    clients.clear();
+  };
+
+  return { init, publish, subscribe, close };
 }
 
 export type TEventService = ReturnType<typeof eventServiceFactory>;

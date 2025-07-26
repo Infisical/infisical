@@ -1,12 +1,25 @@
 import { z } from "zod";
 
+import { ProjectType } from "@app/db/schemas";
+
 export enum TopicName {
   CoreServers = "infisical::core-servers"
 }
 
+export const EventName = z.string().refine(
+  (arg) => {
+    const [source, subject, action] = arg.split(":");
+
+    return source === "infisical" && !!subject && !!action;
+  },
+  {
+    message: "Event name must be in format 'source:subject:action'"
+  }
+);
+
 export const EventSchema = z.object({
   datacontenttype: z.literal("application/json").optional().default("application/json"),
-  type: z.string(),
+  type: z.nativeEnum(ProjectType),
   source: z.string(),
   time: z
     .string()

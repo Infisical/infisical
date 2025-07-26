@@ -52,7 +52,8 @@ const buildAdminPermissionRules = () => {
         ProjectPermissionActions.Read,
         ProjectPermissionActions.Edit,
         ProjectPermissionActions.Create,
-        ProjectPermissionActions.Delete
+        ProjectPermissionActions.Delete,
+        ProjectPermissionActions.Subscribe
       ],
       el
     );
@@ -177,7 +178,10 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.DynamicSecrets
   );
 
-  can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
+  can(
+    [ProjectPermissionActions.Edit, ProjectPermissionActions.Delete, ProjectPermissionActions.Subscribe],
+    ProjectPermissionSub.Project
+  );
   can([ProjectPermissionActions.Read, ProjectPermissionActions.Create], ProjectPermissionSub.SecretRollback);
   can([ProjectPermissionActions.Edit], ProjectPermissionSub.Kms);
   can(
@@ -474,6 +478,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
   can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+  can(ProjectPermissionActions.Subscribe, ProjectPermissionSub.Project);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
   can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);

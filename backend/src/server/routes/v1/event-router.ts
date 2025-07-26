@@ -1,25 +1,16 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
+import { ForbiddenError } from "@casl/ability";
 import { pipeline } from "stream/promises";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ServerSentEventsResponse } from "@app/services/event-bus/response";
-import { EventSchema, TopicName } from "@app/services/event-bus/types";
-
-const EventName = z.string().refine(
-  (arg) => {
-    const [source, subject, action] = arg.split(":");
-
-    return source === "infisical" && !!subject && !!action;
-  },
-  {
-    message: "Event name must be in format 'source:subject:action'"
-  }
-);
+import { EventName, EventSchema, TopicName } from "@app/services/event-bus/types";
 
 export const registerEventRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -51,7 +42,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
 
         res.writeHead(200, ServerSentEventsResponse.getHeaders()).flushHeaders();
 
-        const { events } = req.server.services;
+        const { events, permission } = req.server.services;
 
         const control = new AbortController();
 
@@ -64,24 +55,31 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
           }
         });
 
-        const permission = {
-          actor: req.auth.actor,
-          projectId: req.body.projectId,
-          actionProjectType: ActionProjectType.Any,
-          actorAuthMethod: req.auth.authMethod,
+        const stream = await events.subscribe({
+          topic: TopicName.CoreServers,
           actorId: req.permission.id,
-          actorOrgId: req.permission.orgId
-        };
+          signal: control.signal,
+          async getPermissions() {
+            const ability = await permission.getProjectPermission({
+              actor: req.auth.actor,
+              projectId: req.body.projectId,
+              actionProjectType: ActionProjectType.Any,
+              actorAuthMethod: req.auth.authMethod,
+              actorId: req.permission.id,
+              actorOrgId: req.permission.orgId
+            });
 
-        const stream = await events.subscribe(TopicName.CoreServers, {
-          permission,
-          readable: {
-            objectMode: true,
-            signal: control.signal
+            return ability.permission;
+          },
+          onPermissionCheck(permissions) {
+            ForbiddenError.from(permissions).throwUnlessCan(
+              ProjectPermissionActions.Subscribe,
+              ProjectPermissionSub.Project
+            );
           }
         });
 
-        await pipeline(stream, new ServerSentEventsResponse(), res);
+        await pipeline(stream, new ServerSentEventsResponse(), res, { signal: control.signal });
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;

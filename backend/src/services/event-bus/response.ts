@@ -32,7 +32,7 @@ export class ServerSentEventsResponse extends Transform {
       }
 
       if (chunk.data) {
-        payload += `data: ${JSON.stringify(chunk.data)}\n`;
+        payload += `data: ${JSON.stringify(chunk)}\n`;
       }
 
       payload += "\n";

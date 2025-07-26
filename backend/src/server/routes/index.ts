@@ -119,6 +119,7 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
+import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
@@ -152,6 +153,7 @@ import { certificateTemplateDALFactory } from "@app/services/certificate-templat
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
+import { eventServiceFactory } from "@app/services/event-bus";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -308,8 +310,6 @@ import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
-import { eventServiceFactory } from "@app/services/event-bus";
-import { buildRedisFromConfig } from "@app/lib/config/redis";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -1938,8 +1938,8 @@ export const registerRoutes = async (
   });
 
   const redis = buildRedisFromConfig(envConfig);
-  const eventsService = eventServiceFactory(redis, keyStore, permissionService, {
-    heartbeat: 30
+  const eventsService = eventServiceFactory(redis, keyStore, {
+    heartbeat: 10
   });
 
   await eventsService.init();
@@ -2188,5 +2188,6 @@ export const registerRoutes = async (
   server.addHook("onClose", async () => {
     cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
+    eventsService.close();
   });
 };
