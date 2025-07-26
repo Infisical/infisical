@@ -1,9 +1,8 @@
 import { ComponentType } from "react";
 import { Abilities, AbilityTuple, Generics, SubjectType } from "@casl/ability";
-import { faLock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { AccessRestrictedBanner } from "@app/components/v2";
 import { TOrgPermission, useOrgPermission } from "@app/context";
 
 type Props<T extends Abilities> = (T extends AbilityTuple
@@ -14,11 +13,11 @@ type Props<T extends Abilities> = (T extends AbilityTuple
   : {
       action: string;
       subject: string;
-    }) & { className?: string; containerClassName?: string };
+    }) & { containerClassName?: string };
 
 export const withPermission = <T extends object, J extends TOrgPermission>(
   Component: ComponentType<T>,
-  { action, subject, className, containerClassName }: Props<Generics<J>["abilities"]>
+  { action, subject, containerClassName }: Props<Generics<J>["abilities"]>
 ) => {
   const HOC = (hocProps: T) => {
     const { permission } = useOrgPermission();
@@ -33,22 +32,7 @@ export const withPermission = <T extends object, J extends TOrgPermission>(
             containerClassName
           )}
         >
-          <div
-            className={twMerge(
-              "flex items-end space-x-12 rounded-md bg-mineshaft-800 p-16 text-bunker-300",
-              className
-            )}
-          >
-            <div>
-              <FontAwesomeIcon icon={faLock} size="6x" />
-            </div>
-            <div>
-              <div className="mb-2 text-4xl font-medium">Access Restricted</div>
-              <div className="text-sm">
-                Your role has limited permissions, please <br /> contact your admin to gain access
-              </div>
-            </div>
-          </div>
+          <AccessRestrictedBanner />
         </div>
       );
     }

@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+export * from "./AccessRestrictedBanner";
 export * from "./Accordion";
 export * from "./Alert";
 export * from "./Badge";

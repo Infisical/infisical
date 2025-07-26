@@ -975,12 +975,12 @@ const Page = () => {
                 />
               )}
               {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}
-              {!canReadSecret &&
-                !canReadDynamicSecret &&
-                !canReadSecretImports &&
-                folders?.length === 0 && <PermissionDeniedBanner />}
             </div>
           </div>
+          {!canReadSecret &&
+            !canReadDynamicSecret &&
+            !canReadSecretImports &&
+            folders?.length === 0 && <PermissionDeniedBanner />}
           {!isDetailsLoading &&
             (totalCount > 0 ||
               pendingChanges.secrets.length > 0 ||
