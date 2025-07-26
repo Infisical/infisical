@@ -17,9 +17,12 @@ import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
+import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
+import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
+import { secretImportVersionDALFactory } from "@app/services/secret-import/secret-import-version-dal";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
@@ -83,7 +86,10 @@ export const getMigrationPITServices = async ({
   const userDAL = userDALFactory(db);
   const identityDAL = identityDALFactory(db);
   const folderDAL = secretFolderDALFactory(db);
+  const envDAL = projectEnvDALFactory(db);
+  const secretImportDAL = secretImportDALFactory(db);
   const folderVersionDAL = secretFolderVersionDALFactory(db);
+  const importVersionDAL = secretImportVersionDALFactory(db);
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
   const folderCheckpointResourcesDAL = folderCheckpointResourcesDALFactory(db);
   const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
@@ -126,7 +132,10 @@ export const getMigrationPITServices = async ({
     userDAL,
     identityDAL,
     folderDAL,
+    envDAL,
+    secretImportDAL,
     folderVersionDAL,
+    importVersionDAL,
     secretVersionV2BridgeDAL,
     projectDAL,
     folderCheckpointResourcesDAL,

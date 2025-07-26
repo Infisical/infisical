@@ -168,12 +168,20 @@ export const CommitDetailsTab = ({
   addedChanges.forEach((change) => {
     changedItems.push({
       id: change.id,
-      type: change.secretVersionId || change.secretKey ? "secret" : "folder",
+      type:
+        change.secretVersionId || change.secretKey
+          ? "secret"
+          : change.folderName
+            ? "folder"
+            : "import",
       versionId: change.secretVersionId || change.id,
       folderName: change.folderName,
       folderVersion: change.folderVersion,
       secretKey: change.secretKey,
       secretVersion: change.secretVersion,
+      importPath: change.importPath,
+      importPosition: change.importPosition,
+      importVersion: change.importVersion,
       isAdded: true,
       versions: change.versions,
       changeId: change.id
@@ -184,12 +192,20 @@ export const CommitDetailsTab = ({
   updatedChanges.forEach((change) => {
     changedItems.push({
       id: change.id,
-      type: change.secretVersionId || change.secretKey ? "secret" : "folder",
+      type:
+        change.secretVersionId || change.secretKey
+          ? "secret"
+          : change.folderName
+            ? "folder"
+            : "import",
       versionId: change.secretVersionId || change.id,
       folderName: change.folderName,
       folderVersion: change.folderVersion,
       secretKey: change.secretKey,
       secretVersion: change.secretVersion,
+      importPath: change.importPath,
+      importPosition: change.importPosition,
+      importVersion: change.importVersion,
       isUpdated: true,
       versions: change.versions,
       changeId: change.id
@@ -200,11 +216,19 @@ export const CommitDetailsTab = ({
   deletedChanges.forEach((change) => {
     changedItems.push({
       id: change.id,
-      type: change.secretVersionId || change.secretKey ? "secret" : "folder",
+      type:
+        change.secretVersionId || change.secretKey
+          ? "secret"
+          : change.folderName
+            ? "folder"
+            : "import",
       secretKey: change.secretKey,
       folderName: change.folderName,
+      importPosition: change.importPosition,
+      importPath: change.importPath,
       secretVersion: change.secretVersion,
       folderVersion: change.folderVersion,
+      importVersion: change.importVersion,
       isDeleted: true,
       versions: change.versions,
       changeId: change.id

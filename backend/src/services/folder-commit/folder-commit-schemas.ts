@@ -39,6 +39,13 @@ const folderVersionSchema = z.object({
   description: z.string().optional().nullable()
 });
 
+// Import-specific versions schema
+const importVersionSchema = z.object({
+  version: z.string().optional(),
+  position: z.number(),
+  importPath: z.string()
+});
+
 // Secret commit change schema
 const secretCommitChangeSchema = baseChangeSchema.extend({
   resourceType: z.literal("secret"),
@@ -59,10 +66,22 @@ const folderCommitChangeSchema = baseChangeSchema.extend({
   versions: z.array(folderVersionSchema).optional()
 });
 
+// Import commit change schema
+const importCommitChangeSchema = baseChangeSchema.extend({
+  resourceType: z.literal("import"),
+  importVersionId: z.string().optional().nullable(),
+  importChangeId: z.string(),
+  importVersion: z.union([z.string(), z.number()]),
+  importPosition: z.number(),
+  importPath: z.string(),
+  versions: z.array(importVersionSchema).optional()
+});
+
 // Discriminated union for commit changes
 export const commitChangeSchema = z.discriminatedUnion("resourceType", [
   secretCommitChangeSchema,
-  folderCommitChangeSchema
+  folderCommitChangeSchema,
+  importCommitChangeSchema
 ]);
 
 // Commit schema

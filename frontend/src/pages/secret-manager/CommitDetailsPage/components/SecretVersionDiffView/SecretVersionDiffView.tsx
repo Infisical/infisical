@@ -15,7 +15,7 @@ type JsonObject = { [key: string]: JsonValue };
 type JsonArray = JsonValue[];
 
 export interface DiffViewItem {
-  type: "secret" | "folder";
+  type: "secret" | "folder" | "import";
   isAdded?: boolean;
   isDeleted?: boolean;
   isUpdated?: boolean;
@@ -560,13 +560,17 @@ export const SecretVersionDiffView = ({
     return null;
   }
 
+  const capitalizeFirstLetter = (str: string) => {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
   const renderHeader = () => {
     if (customHeader) {
       return customHeader;
     }
 
-    const isSecret = item.type === "secret";
-    const key = isSecret ? item.secretKey || "Unnamed Secret" : item.folderName || "Unnamed Folder";
+    const key = item.secretKey || item.folderName || item.importPath;
     let textStyle = "text-white";
     let changeBadge = null;
 
@@ -574,19 +578,19 @@ export const SecretVersionDiffView = ({
       textStyle = "line-through text-red-300";
       changeBadge = (
         <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
-          {isSecret ? "Secret" : "Folder"} Deleted
+          {capitalizeFirstLetter(item.type)} Deleted
         </span>
       );
     } else if (item.isAdded) {
       changeBadge = (
         <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
-          {isSecret ? "Secret" : "Folder"} Added
+          {capitalizeFirstLetter(item.type)} Added
         </span>
       );
     } else if (item.isUpdated) {
       changeBadge = (
         <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
-          {isSecret ? "Secret" : "Folder"} Updated
+          {capitalizeFirstLetter(item.type)} Updated
         </span>
       );
     }

@@ -8,12 +8,14 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { ResourceType, TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import {
   isFolderCommitChange,
+  isImportCommitChange,
   isSecretCommitChange
 } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
+import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 
@@ -21,6 +23,7 @@ type TPitServiceFactoryDep = {
   folderCommitService: TFolderCommitServiceFactory;
   secretService: Pick<TSecretServiceFactory, "getSecretVersionsV2ByIds" | "getChangeVersions">;
   folderService: Pick<TSecretFolderServiceFactory, "getFolderById" | "getFolderVersions">;
+  secretImportService: Pick<TSecretImportServiceFactory, "getImportVersions">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
@@ -32,6 +35,7 @@ export const pitServiceFactory = ({
   folderCommitService,
   secretService,
   folderService,
+  secretImportService,
   permissionService,
   folderDAL,
   projectEnvDAL
@@ -165,6 +169,12 @@ export const pitServiceFactory = ({
           change,
           (Number.parseInt(change.folderVersion, 10) - 1).toString(),
           change.folderChangeId
+        );
+      } else if (isImportCommitChange(change)) {
+        change.versions = await secretImportService.getImportVersions(
+          change,
+          (Number.parseInt(change.importVersion, 10) - 1).toString(),
+          change.importChangeId
         );
       }
     }
@@ -391,6 +401,7 @@ export const pitServiceFactory = ({
       success: true,
       secretChangesCount: response.secretChangesCount,
       folderChangesCount: response.folderChangesCount,
+      importChangesCount: response.importChangesCount,
       totalChanges: response.totalChanges
     };
   };

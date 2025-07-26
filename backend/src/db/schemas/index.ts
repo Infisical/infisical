@@ -111,6 +111,7 @@ export * from "./secret-approval-requests-secrets-v2";
 export * from "./secret-blind-indexes";
 export * from "./secret-folder-versions";
 export * from "./secret-folders";
+export * from "./secret-import-versions";
 export * from "./secret-imports";
 export * from "./secret-references";
 export * from "./secret-references-v2";

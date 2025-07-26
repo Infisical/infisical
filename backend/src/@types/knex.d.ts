@@ -338,6 +338,9 @@ import {
   TSecretImports,
   TSecretImportsInsert,
   TSecretImportsUpdate,
+  TSecretImportVersions,
+  TSecretImportVersionsInsert,
+  TSecretImportVersionsUpdate,
   TSecretReferences,
   TSecretReferencesInsert,
   TSecretReferencesUpdate,
@@ -753,6 +756,11 @@ declare module "knex/types/tables" {
       TSecretImports,
       TSecretImportsInsert,
       TSecretImportsUpdate
+    >;
+    [TableName.SecretImportVersion]: KnexOriginal.CompositeTableType<
+      TSecretImportVersions,
+      TSecretImportVersionsInsert,
+      TSecretImportVersionsUpdate
     >;
     [TableName.Integration]: KnexOriginal.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
     [TableName.Webhook]: KnexOriginal.CompositeTableType<TWebhooks, TWebhooksInsert, TWebhooksUpdate>;

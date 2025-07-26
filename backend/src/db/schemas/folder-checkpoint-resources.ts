@@ -12,6 +12,7 @@ export const FolderCheckpointResourcesSchema = z.object({
   folderCheckpointId: z.string().uuid(),
   secretVersionId: z.string().uuid().nullable().optional(),
   folderVersionId: z.string().uuid().nullable().optional(),
+  importVersionId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

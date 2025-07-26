@@ -1,10 +1,18 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
+import pathLib from "path";
 
-import { TSecretFolders, TSecretFolderVersions, TSecretV2TagJunctionInsert, TSecretVersionsV2 } from "@app/db/schemas";
+import {
+  TSecretFolders,
+  TSecretFolderVersions,
+  TSecretImportVersions,
+  TSecretV2TagJunctionInsert,
+  TSecretVersionsV2
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
@@ -20,9 +28,12 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TSecretImportVersionDALFactory } from "../secret-import/secret-import-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
@@ -44,7 +55,8 @@ export enum CommitType {
 
 export enum ResourceType {
   SECRET = "secret",
-  FOLDER = "folder"
+  FOLDER = "folder",
+  IMPORT = "import"
 }
 
 type TCreateCommitDTO = {
@@ -61,6 +73,7 @@ type TCreateCommitDTO = {
     type: string;
     secretVersionId?: string;
     folderVersionId?: string;
+    importVersionId?: string;
     isUpdate?: boolean;
     folderId?: string;
   }[];
@@ -72,6 +85,7 @@ type TCommitChangeDTO = {
   changeType: string;
   secretVersionId?: string;
   folderVersionId?: string;
+  importVersionId?: string;
 };
 
 type BaseChange = {
@@ -111,6 +125,17 @@ type FolderChange = BaseChange & {
   }[];
 };
 
+type ImportChange = BaseChange & {
+  type: ResourceType.IMPORT;
+  importPath: string;
+  importVersion: string;
+  importPosition: number;
+  versions?: {
+    position: number;
+    importPath: string;
+  }[];
+};
+
 type SecretTargetChange = {
   type: ResourceType.SECRET;
   id: string;
@@ -129,7 +154,17 @@ type FolderTargetChange = {
   fromVersion?: string;
 };
 
-export type ResourceChange = SecretChange | FolderChange;
+type ImportTargetChange = {
+  type: ResourceType.IMPORT;
+  id: string;
+  versionId: string;
+  importPath: string;
+  importVersion: string;
+  importPosition: number;
+  fromVersion?: string;
+};
+
+export type ResourceChange = SecretChange | FolderChange | ImportChange;
 
 type ActorInfo = {
   actorType: string;
@@ -140,6 +175,7 @@ type ActorInfo = {
 type StateChangeResult = {
   secretChangesCount: number;
   folderChangesCount: number;
+  importChangesCount: number;
   totalChanges: number;
 };
 
@@ -153,7 +189,10 @@ type TFolderCommitServiceFactoryDep = {
   userDAL: TUserDALFactory;
   identityDAL: TIdentityDALFactory;
   folderDAL: TSecretFolderDALFactory;
+  envDAL: TProjectEnvDALFactory;
+  secretImportDAL: TSecretImportDALFactory;
   folderVersionDAL: TSecretFolderVersionDALFactory;
+  importVersionDAL: TSecretImportVersionDALFactory;
   secretVersionV2BridgeDAL: TSecretVersionV2DALFactory;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectByEnvId">;
@@ -183,7 +222,10 @@ export const folderCommitServiceFactory = ({
   userDAL,
   identityDAL,
   folderDAL,
+  envDAL,
+  secretImportDAL,
   folderVersionDAL,
+  importVersionDAL,
   secretVersionV2BridgeDAL,
   projectDAL,
   secretV2BridgeDAL,
@@ -236,6 +278,7 @@ export const folderCommitServiceFactory = ({
       resources.push(
         ...Object.values(folderVersions).map((folderVersion) => ({
           folderVersionId: folderVersion.id,
+          importVersionId: undefined,
           secretVersionId: undefined
         }))
       );
@@ -244,7 +287,11 @@ export const folderCommitServiceFactory = ({
     const secretVersions = await secretVersionV2BridgeDAL.findLatestVersionByFolderId(folderId, tx);
     if (secretVersions.length > 0) {
       resources.push(
-        ...secretVersions.map((secretVersion) => ({ secretVersionId: secretVersion.id, folderVersionId: undefined }))
+        ...secretVersions.map((secretVersion) => ({
+          secretVersionId: secretVersion.id,
+          importVersionId: undefined,
+          folderVersionId: undefined
+        }))
       );
     }
 
@@ -316,7 +363,7 @@ export const folderCommitServiceFactory = ({
   const reconstructFolderState = async (
     folderCommitId: string,
     tx?: Knex
-  ): Promise<(SecretTargetChange | FolderTargetChange)[]> => {
+  ): Promise<(SecretTargetChange | FolderTargetChange | ImportTargetChange)[]> => {
     const targetCommit = await folderCommitDAL.findById(folderCommitId, tx);
     if (!targetCommit) {
       throw new NotFoundError({ message: `Commit with ID ${folderCommitId} not found` });
@@ -333,7 +380,7 @@ export const folderCommitServiceFactory = ({
 
     const checkpointResources = await folderCheckpointResourcesDAL.findByCheckpointId(nearestCheckpoint.id, tx);
 
-    const folderState: Record<string, SecretTargetChange | FolderTargetChange> = {};
+    const folderState: Record<string, SecretTargetChange | FolderTargetChange | ImportTargetChange> = {};
 
     // Add all checkpoint resources to initial state
     checkpointResources.forEach((resource) => {
@@ -353,6 +400,15 @@ export const folderCommitServiceFactory = ({
           folderName: resource.folderName,
           folderVersion: resource.folderVersion
         } as FolderTargetChange;
+      } else if (resource.importVersionId && resource.referencedImportId) {
+        folderState[`import-${resource.referencedImportId}`] = {
+          type: ResourceType.IMPORT,
+          id: resource.referencedImportId,
+          versionId: resource.importVersionId,
+          importPath: resource.importPath,
+          importVersion: resource.importVersion,
+          importPosition: resource.importPosition
+        } as ImportTargetChange;
       }
     });
 
@@ -394,6 +450,21 @@ export const folderCommitServiceFactory = ({
               folderName: change.folderName,
               folderVersion: change.folderVersion
             } as FolderTargetChange;
+          } else if (change.changeType.toLowerCase() === "delete") {
+            delete folderState[key];
+          }
+        } else if (change.importVersionId && change.referencedImportId) {
+          const key = `import-${change.referencedImportId}`;
+
+          if (change.changeType.toLowerCase() === "add") {
+            folderState[key] = {
+              type: ResourceType.IMPORT,
+              id: change.referencedImportId,
+              versionId: change.importVersionId,
+              importPath: change.importPath,
+              importVersion: change.importVersion,
+              importPosition: change.importPosition
+            } as ImportTargetChange;
           } else if (change.changeType.toLowerCase() === "delete") {
             delete folderState[key];
           }
@@ -467,7 +538,7 @@ export const folderCommitServiceFactory = ({
     const targetState = await reconstructFolderState(targetCommitId, tx);
 
     // Create lookup maps for easier comparison
-    const currentMap: Record<string, SecretTargetChange | FolderTargetChange> = {};
+    const currentMap: Record<string, SecretTargetChange | FolderTargetChange | ImportTargetChange> = {};
     const targetMap: Record<
       string,
       {
@@ -478,6 +549,8 @@ export const folderCommitServiceFactory = ({
         secretVersion?: string;
         folderName?: string;
         folderVersion?: string;
+        importPath?: string;
+        importVersion?: string;
         fromVersion?: string;
       }
     > = {};
@@ -526,12 +599,25 @@ export const folderCommitServiceFactory = ({
             folderVersion: currentResource.folderVersion,
             fromVersion: currentResource.versionId
           });
+        } else if (currentResource.type === ResourceType.IMPORT) {
+          differences.push({
+            type: ResourceType.IMPORT,
+            id: currentResource.id,
+            versionId: currentResource.versionId,
+            changeType: ChangeType.DELETE,
+            commitId: targetCommit.commitId,
+            importPath: currentResource.importPath,
+            importVersion: currentResource.importVersion,
+            importPosition: currentResource.importPosition,
+            fromVersion: currentResource.versionId
+          });
         }
       } else if (currentResource.versionId !== targetResource.versionId) {
         // Resource was updated
         if (targetResource.type === ResourceType.SECRET) {
           const secretCurrentResource = currentResource as SecretTargetChange;
           const secretTargetResource = targetResource as SecretTargetChange;
+
           differences.push({
             type: ResourceType.SECRET,
             id: secretTargetResource.id,
@@ -556,6 +642,21 @@ export const folderCommitServiceFactory = ({
             folderName: folderTargetResource.folderName,
             folderVersion: folderTargetResource.folderVersion,
             fromVersion: folderCurrentResource.folderVersion
+          });
+        } else if (targetResource.type === ResourceType.IMPORT) {
+          const importCurrentResource = currentResource as ImportTargetChange;
+          const importTargetResource = targetResource as ImportTargetChange;
+
+          differences.push({
+            type: ResourceType.IMPORT,
+            id: importTargetResource.id,
+            versionId: importTargetResource.versionId,
+            changeType: ChangeType.UPDATE,
+            commitId: targetCommit.commitId,
+            importPath: importTargetResource.importPath,
+            importVersion: importTargetResource.importVersion,
+            importPosition: importTargetResource.importPosition,
+            fromVersion: importCurrentResource.importVersion
           });
         }
       }
@@ -589,6 +690,19 @@ export const folderCommitServiceFactory = ({
             createdAt: targetCommit.createdAt,
             folderName: folderTargetResource.folderName,
             folderVersion: folderTargetResource.folderVersion
+          });
+        } else if (targetResource.type === ResourceType.IMPORT) {
+          const importTargetResource = targetResource as ImportTargetChange;
+          differences.push({
+            type: ResourceType.IMPORT,
+            id: importTargetResource.id,
+            versionId: importTargetResource.versionId,
+            changeType: ChangeType.CREATE,
+            commitId: targetCommit.commitId,
+            createdAt: targetCommit.createdAt,
+            importPath: importTargetResource.importPath,
+            importVersion: importTargetResource.importVersion,
+            importPosition: importTargetResource.importPosition
           });
         }
       }
@@ -645,6 +759,28 @@ export const folderCommitServiceFactory = ({
               secretValue: el.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
                 : ""
+            }));
+            const uniqueVersions = versionsShaped.filter(
+              (item, index, arr) =>
+                arr.findIndex((other) =>
+                  Object.entries(item).every(
+                    ([key, value]) => JSON.stringify(value) === JSON.stringify(other[key as keyof typeof other])
+                  )
+                ) === index
+            );
+            if (uniqueVersions.length === 1) {
+              removeNoChangeUpdate.push(change.id);
+            }
+          } else if (change.type === ResourceType.IMPORT && change.importVersion && change.fromVersion) {
+            const versions = await importVersionDAL.find({
+              importId: change.id,
+              $in: {
+                version: [Number(change.importVersion), Number(change.fromVersion)]
+              }
+            });
+            const versionsShaped = versions.map((version) => ({
+              position: version.position,
+              importPath: version.importPath
             }));
             const uniqueVersions = versionsShaped.filter(
               (item, index, arr) =>
@@ -864,7 +1000,7 @@ export const folderCommitServiceFactory = ({
    */
   const createCommit = async (data: TCreateCommitDTO, tx?: Knex) => {
     try {
-      const metadata = { ...data.actor.metadata } || {};
+      const metadata = { ...data.actor.metadata };
 
       if (data.actor.type === ActorType.USER && data.actor.metadata?.id) {
         const user = await userDAL.findById(data.actor.metadata?.id, tx);
@@ -917,6 +1053,7 @@ export const folderCommitServiceFactory = ({
               changeType: change.type,
               secretVersionId: change.secretVersionId,
               folderVersionId: change.folderVersionId,
+              importVersionId: change.importVersionId,
               isUpdate: change.isUpdate || false
             })),
             tx
@@ -1330,12 +1467,211 @@ export const folderCommitServiceFactory = ({
       return commitChanges;
     };
 
+    /**
+     * Process import changes when applying import state differences
+     */
+    const processImportChanges = async (
+      changes: ResourceChange[],
+      importVersions: Record<string, TSecretImportVersions>
+    ) => {
+      const commitChanges = [];
+
+      // Filter only import changes using discriminated union
+      const importChanges = changes.filter(
+        (change): change is ResourceChange & ImportChange => change.type === ResourceType.IMPORT
+      );
+
+      for (const change of importChanges) {
+        const importVersion = importVersions[change.id];
+
+        switch (change.changeType) {
+          case "create":
+            if (importVersion) {
+              // Shift every import up to make space for the creation of the new one
+              const lastPos = await secretImportDAL.findLastImportPosition(folderId, tx);
+              await secretImportDAL.updateAllPosition(folderId, lastPos + 1, importVersion.position, 1, tx);
+
+              const newImport = {
+                id: change.id,
+                folderId,
+                version: (importVersion.version || 1) + 1,
+                position: importVersion.position,
+                importEnv: importVersion.importEnv,
+                importPath: importVersion.importPath,
+                isReplication: importVersion.isReplication,
+                isReserved: importVersion.isReserved
+              };
+
+              await secretImportDAL.create(newImport, tx);
+
+              const newImportVersion = await importVersionDAL.create(
+                {
+                  importId: change.id,
+                  version: (importVersion.version || 1) + 1,
+                  position: importVersion.position,
+                  importEnv: importVersion.importEnv,
+                  importPath: importVersion.importPath,
+                  isReplication: importVersion.isReplication,
+                  isReserved: importVersion.isReserved
+                },
+                tx
+              );
+
+              commitChanges.push({
+                type: ChangeType.ADD,
+                importVersionId: newImportVersion.id
+              });
+
+              // Create a ghost folder with it's state reconstructed from reconstructUpToCommit
+              if (importVersion.isReplication) {
+                const env = await envDAL.findById(importVersion.importEnv, tx);
+                if (!env) break;
+
+                const sourceFolder = await folderDAL.findBySecretPath(projectId, env.slug, importVersion.importPath);
+
+                if (sourceFolder) {
+                  const existingImport = await secretImportDAL.findOne({
+                    folderId: sourceFolder.id,
+                    importEnv: importVersion.importEnv,
+                    importPath: importVersion.importPath
+                  });
+
+                  if (existingImport) throw new BadRequestError({ message: `Cyclic import not allowed` });
+
+                  const destinationReplicationFolder = await folderDAL.findOne({
+                    parentId: folderId,
+                    name: getReplicationFolderName(change.id),
+                    isReserved: true
+                  });
+
+                  if (!destinationReplicationFolder) {
+                    await folderDAL.create({
+                      parentId: folderId,
+                      name: getReplicationFolderName(change.id),
+                      envId: env.id,
+                      isReserved: true
+                    });
+                  }
+                }
+              }
+            }
+            break;
+
+          case "update":
+            if (change.versionId) {
+              const latestVersionDetails = await importVersionDAL.findByIdsWithLatestVersion(
+                [change.id],
+                [change.versionId],
+                tx
+              );
+              if (latestVersionDetails && Object.keys(latestVersionDetails).length > 0) {
+                const versionDetails = Object.values(latestVersionDetails)[0];
+                await secretImportDAL.updateById(
+                  change.id,
+                  {
+                    version: (versionDetails.version || 1) + 1,
+                    position: versionDetails.position,
+                    importPath: versionDetails.importPath // This should never change
+                  },
+                  tx
+                );
+
+                const newImportVersion = await importVersionDAL.create(
+                  {
+                    importId: change.id,
+                    version: (versionDetails.version || 1) + 1,
+                    position: versionDetails.position,
+                    importEnv: versionDetails.importEnv,
+                    importPath: versionDetails.importPath,
+                    isReplication: versionDetails.isReplication,
+                    isReserved: versionDetails.isReserved
+                  },
+                  tx
+                );
+
+                commitChanges.push({
+                  type: ChangeType.ADD,
+                  isUpdate: true,
+                  importVersionId: newImportVersion.id
+                });
+
+                const updatedImports = await secretImportDAL.updateAllPosition(
+                  folderId,
+                  change.importPosition,
+                  newImportVersion.position,
+                  1,
+                  tx
+                );
+
+                for (const updatedImport of updatedImports) {
+                  // eslint-disable-next-line no-await-in-loop
+                  const importVersionNested = await importVersionDAL.create(
+                    {
+                      importId: updatedImport.id,
+                      position: updatedImport.position,
+                      importEnv: updatedImport.importEnv,
+                      importPath: updatedImport.importPath,
+                      isReplication: updatedImport.isReplication,
+                      isReserved: updatedImport.isReserved,
+                      version: updatedImport.version
+                    },
+                    tx
+                  );
+
+                  commitChanges.push({
+                    type: ChangeType.ADD,
+                    isUpdate: true,
+                    importVersionId: importVersionNested.id
+                  });
+                }
+              }
+            }
+            break;
+
+          case "delete": {
+            const doc = await secretImportDAL.deleteById(change.id, tx);
+
+            commitChanges.push({
+              type: ChangeType.DELETE,
+              importVersionId: change.versionId,
+              importId: change.id
+            });
+
+            if (doc.isReplication) {
+              const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+              const secretPath = folderWithPath?.path || "";
+              const env = await envDAL.findById(doc.importEnv, tx);
+              if (!env) break;
+
+              // Find and delete ghost (replicated) folder
+              const replicationFolderPath = pathLib.join(secretPath, getReplicationFolderName(doc.id));
+              const replicatedFolder = await folderDAL.findBySecretPath(projectId, env.slug, replicationFolderPath, tx);
+              if (replicatedFolder) {
+                await folderDAL.deleteById(replicatedFolder.id, tx);
+              }
+            }
+
+            await secretImportDAL.updateAllPosition(folderId, doc.position, -1, 1, tx);
+
+            break;
+          }
+
+          default:
+            throw new BadRequestError({ message: `Unknown change type: ${change.changeType}` });
+        }
+      }
+      return commitChanges;
+    };
+
     // Group differences by type for more efficient processing using discriminated unions
     const secretChanges = differences.filter(
       (diff): diff is ResourceChange & SecretChange => diff.type === ResourceType.SECRET
     );
     const folderChanges = differences.filter(
       (diff): diff is ResourceChange & FolderChange => diff.type === ResourceType.FOLDER
+    );
+    const importChanges = differences.filter(
+      (diff): diff is ResourceChange & ImportChange => diff.type === ResourceType.IMPORT
     );
 
     // Batch fetch necessary data
@@ -1352,14 +1688,21 @@ export const folderCommitServiceFactory = ({
       tx
     );
 
+    const importVersions = await importVersionDAL.findByIdsWithLatestVersion(
+      importChanges.map((diff) => diff.id),
+      importChanges.map((diff) => diff.versionId),
+      tx
+    );
+
     // Process changes in parallel
-    const [secretCommitChanges, folderCommitChanges] = await Promise.all([
+    const [secretCommitChanges, folderCommitChanges, importCommitChanges] = await Promise.all([
       processSecretChanges(differences, secretVersions, actorInfo, folderId, tx),
-      processFolderChanges(differences, folderVersions)
+      processFolderChanges(differences, folderVersions),
+      processImportChanges(differences, importVersions)
     ]);
 
     // Combine all changes
-    const allCommitChanges = [...secretCommitChanges, ...folderCommitChanges];
+    const allCommitChanges = [...secretCommitChanges, ...folderCommitChanges, ...importCommitChanges];
 
     // Create a commit with all the changes
     await createCommit(
@@ -1382,6 +1725,7 @@ export const folderCommitServiceFactory = ({
     return {
       secretChangesCount: secretChanges.length,
       folderChangesCount: folderChanges.length,
+      importChangesCount: importChanges.length,
       totalChanges: differences.length
     };
   };
@@ -1592,6 +1936,7 @@ export const folderCommitServiceFactory = ({
           changeType: change.type,
           secretVersionId: change.secretVersionId,
           folderVersionId: change.folderVersionId,
+          importVersionId: change.importVersionId,
           isUpdate: false
         }))
       };
