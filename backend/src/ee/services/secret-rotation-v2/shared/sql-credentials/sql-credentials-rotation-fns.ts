@@ -84,7 +84,8 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   const issueCredentials: TRotationFactoryIssueCredentials<TSqlCredentialsRotationGeneratedCredentials> = async (
     callback
   ) => {
-    // const connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS
+    // For SQL, since we get existing users, we change both their passwords
+    // on issue to invalidate their existing passwords
     // For SQL, since we get existing users, we change both their passwords
     // on issue to invalidate their existing passwords
     const credentialsSet = [
