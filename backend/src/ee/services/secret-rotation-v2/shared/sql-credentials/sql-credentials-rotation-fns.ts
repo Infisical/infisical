@@ -7,12 +7,13 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   executeWithPotentialGateway,
   SQL_CONNECTION_ALTER_LOGIN_STATEMENT
 } from "@app/services/app-connection/shared/sql";
 
-import { generatePassword } from "../utils";
+import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "../utils";
 import {
   TSqlCredentialsRotationGeneratedCredentials,
   TSqlCredentialsRotationWithConnection
@@ -32,6 +33,11 @@ const redactPasswords = (e: unknown, credentials: TSqlCredentialsRotationGenerat
   return redactedMessage;
 };
 
+const ORACLE_PASSWORD_REQUIREMENTS = {
+  ...DEFAULT_PASSWORD_REQUIREMENTS,
+  length: 30
+};
+
 export const sqlCredentialsRotationFactory: TRotationFactory<
   TSqlCredentialsRotationWithConnection,
   TSqlCredentialsRotationGeneratedCredentials
@@ -42,6 +48,9 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     activeIndex,
     secretsMapping
   } = secretRotation;
+
+  const passwordRequirement =
+    connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
 
   const executeOperation = <T>(
     operation: (client: Knex) => Promise<T>,
@@ -65,7 +74,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   const $validateCredentials = async (credentials: TSqlCredentialsRotationGeneratedCredentials[number]) => {
     try {
       await executeOperation(async (client) => {
-        await client.raw("SELECT 1");
+        await client.raw(connection.app === AppConnection.OracleDB ? `SELECT 1 FROM DUAL` : `Select 1`);
       }, credentials);
     } catch (error) {
       throw new Error(redactPasswords(error, [credentials]));
@@ -75,11 +84,12 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   const issueCredentials: TRotationFactoryIssueCredentials<TSqlCredentialsRotationGeneratedCredentials> = async (
     callback
   ) => {
+    // const connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS
     // For SQL, since we get existing users, we change both their passwords
     // on issue to invalidate their existing passwords
     const credentialsSet = [
-      { username: username1, password: generatePassword() },
-      { username: username2, password: generatePassword() }
+      { username: username1, password: generatePassword(passwordRequirement) },
+      { username: username2, password: generatePassword(passwordRequirement) }
     ];
 
     try {
@@ -105,7 +115,10 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     credentialsToRevoke,
     callback
   ) => {
-    const revokedCredentials = credentialsToRevoke.map(({ username }) => ({ username, password: generatePassword() }));
+    const revokedCredentials = credentialsToRevoke.map(({ username }) => ({
+      username,
+      password: generatePassword(passwordRequirement)
+    }));
 
     try {
       await executeOperation(async (client) => {
@@ -128,7 +141,10 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     callback
   ) => {
     // generate new password for the next active user
-    const credentials = { username: activeIndex === 0 ? username2 : username1, password: generatePassword() };
+    const credentials = {
+      username: activeIndex === 0 ? username2 : username1,
+      password: generatePassword(passwordRequirement)
+    };
 
     try {
       await executeOperation(async (client) => {
