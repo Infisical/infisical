@@ -211,10 +211,9 @@ const envSchema = z
         .optional()
         .transform((val) => {
           if (!val) return undefined;
-          return JSON.parse(val) as { secretPath: string }[];
+          return JSON.parse(val) as { secretPath: string; projectId: string }[];
         })
     ),
-    PARAMS_FOLDER_SECRET_DETECTION_ENABLED: zodStrBool.default("false"),
 
     // HSM
     HSM_LIB_PATH: zpStr(z.string().optional()),
@@ -353,7 +352,8 @@ const envSchema = z
     isHsmConfigured:
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
-    SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
+    SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(","),
+    PARAMS_FOLDER_SECRET_DETECTION_ENABLED: (data.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.length ?? 0) > 0
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;

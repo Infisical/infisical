@@ -265,7 +265,7 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   hasDeleteProtection: true,
   secretSharing: true,
   showSnapshotsLegacy: true,
-  secretDetectionIgnoreKeys: true
+  secretDetectionIgnoreValues: true
 });
 
 export const SanitizedTagSchema = SecretTagsSchema.pick({

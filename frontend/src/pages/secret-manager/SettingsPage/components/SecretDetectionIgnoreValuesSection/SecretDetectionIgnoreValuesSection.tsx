@@ -12,9 +12,9 @@ import { useUpdateProject } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const formSchema = z.object({
-  ignoreKeys: z
+  ignoreValues: z
     .object({
-      key: z.string().trim().min(1, "Secret key name is required")
+      value: z.string().trim().min(1, "Secret value is required")
     })
     .array()
     .default([])
@@ -22,7 +22,7 @@ const formSchema = z.object({
 
 type TForm = z.infer<typeof formSchema>;
 
-export const SecretDetectionIgnoreKeysSection = () => {
+export const SecretDetectionIgnoreValuesSection = () => {
   const { currentWorkspace } = useWorkspace();
   const { membership } = useProjectPermission();
   const { mutateAsync: updateProject } = useUpdateProject();
@@ -35,37 +35,39 @@ export const SecretDetectionIgnoreKeysSection = () => {
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      ignoreKeys: []
+      ignoreValues: []
     }
   });
 
-  const ignoreKeysFormFields = useFieldArray({
+  const ignoreValuesFormFields = useFieldArray({
     control,
-    name: "ignoreKeys"
+    name: "ignoreValues"
   });
 
   useEffect(() => {
-    const existingIgnoreKeys = currentWorkspace?.secretDetectionIgnoreKeys || [];
+    const existingIgnoreValues = currentWorkspace?.secretDetectionIgnoreValues || [];
     reset({
-      ignoreKeys:
-        existingIgnoreKeys.length > 0 ? existingIgnoreKeys.map((key) => ({ key })) : [{ key: "" }] // Show one empty field by default
+      ignoreValues:
+        existingIgnoreValues.length > 0
+          ? existingIgnoreValues.map((value) => ({ value }))
+          : [{ value: "" }] // Show one empty field by default
     });
-  }, [currentWorkspace?.secretDetectionIgnoreKeys, reset]);
+  }, [currentWorkspace?.secretDetectionIgnoreValues, reset]);
 
-  const handleIgnoreKeysSubmit = async ({ ignoreKeys }: TForm) => {
+  const handleIgnoreValuesSubmit = async ({ ignoreValues }: TForm) => {
     try {
       await updateProject({
         projectID: currentWorkspace.id,
-        secretDetectionIgnoreKeys: ignoreKeys.map((item) => item.key)
+        secretDetectionIgnoreValues: ignoreValues.map((item) => item.value)
       });
 
       createNotification({
-        text: "Successfully updated secret detection ignore keys",
+        text: "Successfully updated secret detection ignore values",
         type: "success"
       });
     } catch {
       createNotification({
-        text: "Failed updating secret detection ignore keys",
+        text: "Failed updating secret detection ignore values",
         type: "error"
       });
     }
@@ -78,41 +80,41 @@ export const SecretDetectionIgnoreKeysSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-semibold">Secret Detection Ignore Keys</p>
+        <p className="text-xl font-semibold">Secret Detection Ignore Values</p>
       </div>
       <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
-        Define secret keys that should be ignored when scanning parameter folders for misplaced
-        secrets. These keys will not trigger policy violation alerts even if they contain sensitive
-        data.
+        Define secret values that should be ignored when scanning parameter folders for misplaced
+        secrets. These values will not trigger policy violation alerts even if they contain
+        sensitive data.
       </p>
 
-      <form onSubmit={handleSubmit(handleIgnoreKeysSubmit)} autoComplete="off">
+      <form onSubmit={handleSubmit(handleIgnoreValuesSubmit)} autoComplete="off">
         <div className="mb-4">
-          <p className="mb-3 text-sm font-medium text-gray-300">Ignored Secret Keys</p>
+          <p className="mb-3 text-sm font-medium text-gray-300">Ignored Secret Values</p>
           <div className="flex flex-col space-y-2">
-            {ignoreKeysFormFields.fields.map(({ id: ignoreKeyFieldId }, i) => (
-              <div key={ignoreKeyFieldId} className="flex items-end space-x-2">
+            {ignoreValuesFormFields.fields.map(({ id: ignoreValueFieldId }, i) => (
+              <div key={ignoreValueFieldId} className="flex items-end space-x-2">
                 <div className="flex-grow">
-                  {i === 0 && <span className="text-xs text-mineshaft-400">Secret Key Name</span>}
+                  {i === 0 && <span className="text-xs text-mineshaft-400">Secret Value</span>}
                   <Controller
                     control={control}
-                    name={`ignoreKeys.${i}.key`}
+                    name={`ignoreValues.${i}.value`}
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
                         className="mb-0"
                       >
-                        <Input {...field} placeholder="PUBLIC_API_KEY" isDisabled={!isAdmin} />
+                        <Input {...field} placeholder="sk-1234567890abcdef" isDisabled={!isAdmin} />
                       </FormControl>
                     )}
                   />
                 </div>
                 <IconButton
-                  ariaLabel="delete ignore key"
+                  ariaLabel="delete ignore value"
                   className="bottom-0.5 h-9"
                   variant="outline_bg"
-                  onClick={() => ignoreKeysFormFields.remove(i)}
+                  onClick={() => ignoreValuesFormFields.remove(i)}
                   isDisabled={!isAdmin}
                 >
                   <FontAwesomeIcon icon={faTrash} />
@@ -124,10 +126,10 @@ export const SecretDetectionIgnoreKeysSection = () => {
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 size="xs"
                 variant="outline_bg"
-                onClick={() => ignoreKeysFormFields.append({ key: "" })}
+                onClick={() => ignoreValuesFormFields.append({ value: "" })}
                 isDisabled={!isAdmin}
               >
-                Add Ignore Key
+                Add Ignore Value
               </Button>
             </div>
           </div>

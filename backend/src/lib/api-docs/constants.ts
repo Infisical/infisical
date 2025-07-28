@@ -705,7 +705,7 @@ export const PROJECTS = {
     secretSharing: "Enable or disable secret sharing for the project.",
     showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
     defaultProduct: "The default product in which the project will open",
-    secretDetectionIgnoreKeys: "The list of secret keys to ignore for secret detection."
+    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."

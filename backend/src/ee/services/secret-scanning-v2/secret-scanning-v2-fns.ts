@@ -165,28 +165,29 @@ export const parseScanErrorMessage = (err: unknown): string => {
 };
 
 export const scanSecretPolicyViolations = async (
+  projectId: string,
   secretPath: string,
   secrets: { secretKey: string; secretValue: string }[],
-  ignoreKeys: string[]
+  ignoreValues: string[]
 ) => {
   const appCfg = getConfig();
 
   if (!appCfg.PARAMS_FOLDER_SECRET_DETECTION_ENABLED) {
     return;
   }
-  const paramFolderSecretDetectionPaths = appCfg.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.map((el) => el.secretPath) ?? [];
-  const isPathMatched = paramFolderSecretDetectionPaths.some((pattern) =>
-    picomatch.isMatch(secretPath, pattern, { strictSlashes: false })
+
+  const match = appCfg.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.find(
+    (el) => el.projectId === projectId && picomatch.isMatch(secretPath, el.secretPath, { strictSlashes: false })
   );
 
-  if (!isPathMatched) {
+  if (!match) {
     return;
   }
 
   const tempFolder = await createTempFolder();
   try {
     const scanPromises = secrets
-      .filter((secret) => !ignoreKeys.includes(secret.secretKey))
+      .filter((secret) => !ignoreValues.includes(secret.secretValue))
       .map(async (secret) => {
         const secretFilePath = join(tempFolder, `${crypto.nativeCrypto.randomUUID()}.txt`);
         await writeTextToFile(secretFilePath, `${secret.secretKey}=${secret.secretValue}`);

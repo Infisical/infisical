@@ -667,9 +667,9 @@ export const projectServiceFactory = ({
       }
     }
 
-    if (update.secretDetectionIgnoreKeys && !hasRole(ProjectMembershipRole.Admin)) {
+    if (update.secretDetectionIgnoreValues && !hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
-        message: "Only admins can update secret detection ignore keys"
+        message: "Only admins can update secret detection ignore values"
       });
     }
 
@@ -683,7 +683,7 @@ export const projectServiceFactory = ({
       secretSharing: update.secretSharing,
       defaultProduct: update.defaultProduct,
       showSnapshotsLegacy: update.showSnapshotsLegacy,
-      secretDetectionIgnoreKeys: update.secretDetectionIgnoreKeys
+      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues
     });
 
     return updatedProject;

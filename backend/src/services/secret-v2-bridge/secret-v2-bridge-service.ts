@@ -301,6 +301,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const project = await projectDAL.findById(projectId);
     await scanSecretPolicyViolations(
+      projectId,
       secretPath,
       [
         {
@@ -308,7 +309,7 @@ export const secretV2BridgeServiceFactory = ({
           secretValue: inputSecret.secretValue
         }
       ],
-      project.secretDetectionIgnoreKeys || []
+      project.secretDetectionIgnoreValues || []
     );
 
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
@@ -525,6 +526,7 @@ export const secretV2BridgeServiceFactory = ({
     if (secretValue) {
       const project = await projectDAL.findById(projectId);
       await scanSecretPolicyViolations(
+        projectId,
         secretPath,
         [
           {
@@ -532,7 +534,7 @@ export const secretV2BridgeServiceFactory = ({
             secretValue
           }
         ],
-        project.secretDetectionIgnoreKeys || []
+        project.secretDetectionIgnoreValues || []
       );
     }
 
@@ -1616,7 +1618,7 @@ export const secretV2BridgeServiceFactory = ({
       throw new BadRequestError({ message: `Secret already exist: ${secrets.map((el) => el.key).join(",")}` });
 
     const project = await projectDAL.findById(projectId);
-    await scanSecretPolicyViolations(secretPath, inputSecrets, project.secretDetectionIgnoreKeys || []);
+    await scanSecretPolicyViolations(projectId, secretPath, inputSecrets, project.secretDetectionIgnoreValues || []);
 
     // get all tags
     const sanitizedTagIds = inputSecrets.flatMap(({ tagIds = [] }) => tagIds);
@@ -1960,6 +1962,7 @@ export const secretV2BridgeServiceFactory = ({
 
         const project = await projectDAL.findById(projectId);
         await scanSecretPolicyViolations(
+          projectId,
           secretPath,
           secretsToUpdate
             .filter((el) => el.secretValue)
@@ -1967,7 +1970,7 @@ export const secretV2BridgeServiceFactory = ({
               secretKey: el.newSecretName || el.secretKey,
               secretValue: el.secretValue as string
             })),
-          project.secretDetectionIgnoreKeys || []
+          project.secretDetectionIgnoreValues || []
         );
 
         const bulkUpdatedSecrets = await fnSecretBulkUpdate({

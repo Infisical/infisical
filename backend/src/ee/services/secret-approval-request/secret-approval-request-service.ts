@@ -1410,6 +1410,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const project = await projectDAL.findById(projectId);
     await scanSecretPolicyViolations(
+      projectId,
       secretPath,
       [
         ...(data[SecretOperations.Create] || []),
@@ -1418,7 +1419,7 @@ export const secretApprovalRequestServiceFactory = ({
         secretKey: el.secretKey,
         secretValue: el.secretValue as string
       })),
-      project.secretDetectionIgnoreKeys || []
+      project.secretDetectionIgnoreValues || []
     );
 
     // for created secret approval change

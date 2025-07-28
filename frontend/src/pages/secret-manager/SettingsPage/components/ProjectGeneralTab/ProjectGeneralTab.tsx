@@ -4,7 +4,7 @@ import { AutoCapitalizationSection } from "../AutoCapitalizationSection";
 import { BackfillSecretReferenceSecretion } from "../BackfillSecretReferenceSection";
 import { EnvironmentSection } from "../EnvironmentSection";
 import { PointInTimeVersionLimitSection } from "../PointInTimeVersionLimitSection";
-import { SecretDetectionIgnoreKeysSection } from "../SecretDetectionIgnoreKeysSection/SecretDetectionIgnoreKeysSection";
+import { SecretDetectionIgnoreValuesSection } from "../SecretDetectionIgnoreValuesSection/SecretDetectionIgnoreValuesSection";
 import { SecretSharingSection } from "../SecretSharingSection";
 import { SecretSnapshotsLegacySection } from "../SecretSnapshotsLegacySection";
 import { SecretTagsSection } from "../SecretTagsSection";
@@ -20,7 +20,7 @@ export const SecretSettingsTab = () => {
       <SecretSharingSection />
       <SecretSnapshotsLegacySection />
       <PointInTimeVersionLimitSection />
-      {config.paramsFolderSecretDetectionEnabled && <SecretDetectionIgnoreKeysSection />}
+      {config.paramsFolderSecretDetectionEnabled && <SecretDetectionIgnoreValuesSection />}
       <BackfillSecretReferenceSecretion />
     </div>
   );
