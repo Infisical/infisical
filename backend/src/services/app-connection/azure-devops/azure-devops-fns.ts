@@ -23,7 +23,7 @@ import {
 } from "./azure-devops-types";
 
 export const getAzureDevopsConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID } = getConfig();
 
   return {
     name: "Azure DevOps" as const,
@@ -32,7 +32,7 @@ export const getAzureDevopsConnectionListItem = () => {
       AzureDevOpsConnectionMethod.OAuth,
       AzureDevOpsConnectionMethod.AccessToken
     ],
-    oauthClientId: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID
+    oauthClientId: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID
   };
 };
 
@@ -63,11 +63,7 @@ export const getAzureDevopsConnection = async (
   switch (appConnection.method) {
     case AzureDevOpsConnectionMethod.OAuth:
       const appCfg = getConfig();
-      const azureClientId =
-        appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID;
-      const azureClientSecret =
-        appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
-      if (!azureClientId || !azureClientSecret) {
+      if (!appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || !appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET) {
         throw new BadRequestError({
           message: `Azure environment variables have not been configured`
         });
@@ -85,8 +81,8 @@ export const getAzureDevopsConnection = async (
         new URLSearchParams({
           grant_type: "refresh_token",
           scope: `https://app.vssps.visualstudio.com/.default`,
-          client_id: azureClientId,
-          client_secret: azureClientSecret,
+          client_id: appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID,
+          client_secret: appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET,
           refresh_token: refreshToken
         })
       );
@@ -123,13 +119,8 @@ export const getAzureDevopsConnection = async (
 export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDevOpsConnectionConfig) => {
   const { credentials: inputCredentials, method } = config;
 
-  const {
-    INF_APP_CONNECTION_AZURE_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
-    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET,
-    SITE_URL
-  } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET, SITE_URL } =
+    getConfig();
 
   switch (method) {
     case AzureDevOpsConnectionMethod.OAuth:
@@ -137,9 +128,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
         throw new InternalServerError({ message: "SITE_URL env var is required to complete Azure OAuth flow" });
       }
 
-      const azureClientId = INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID;
-      const azureClientSecret = INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET || INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
-      if (!azureClientId || !azureClientSecret) {
+      if (!INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || !INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET) {
         throw new InternalServerError({
           message: `Azure ${getAppConnectionMethodName(method)} environment variables have not been configured`
         });
@@ -156,8 +145,8 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
             grant_type: "authorization_code",
             code: oauthCredentials.code,
             scope: `https://app.vssps.visualstudio.com/.default`,
-            client_id: azureClientId,
-            client_secret: azureClientSecret,
+            client_id: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID,
+            client_secret: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET,
             redirect_uri: `${SITE_URL}/organization/app-connections/azure/oauth/callback`
           })
         );
