@@ -29,8 +29,6 @@ export const GitLabDataSourceConfigFields = () => {
     }
   >();
 
-  console.log(formState);
-
   const connectionId = useWatch({ control, name: "connection.id" });
   const isUpdate = Boolean(watch("id"));
 

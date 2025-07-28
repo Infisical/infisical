@@ -128,7 +128,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       });
     } catch (error) {
       if (error instanceof GitbeakerRequestError) {
-        throw new BadRequestError({ message: error.message });
+        throw new BadRequestError({ message: `${error.message}: ${error.cause?.description ?? "Unknown Error"}` });
       }
 
       throw error;

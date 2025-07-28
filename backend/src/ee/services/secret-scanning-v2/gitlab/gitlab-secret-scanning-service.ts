@@ -22,7 +22,7 @@ export const gitlabSecretScanningService = (
       logger.warn(
         `secretScanningV2PushEvent: GitLab - Insufficient data [changes=${
           payload.total_commits_count ?? 0
-        }] [projectName=${payload.project.path_with_namespace}] [projectId=${payload.project.id}]`
+        }] [projectName=${payload.project?.path_with_namespace ?? "unknown"}] [projectId=${payload.project?.id ?? "unknown"}]`
       );
       return;
     }

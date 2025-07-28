@@ -70,7 +70,7 @@ export const RESOURCE_DESCRIPTION_HELPER: Record<
     pluralNoun: "projects",
     singularNoun: "project",
     pluralTitle: "Projects",
-    singularTitle: "project"
+    singularTitle: "Project"
   }
 };
 
