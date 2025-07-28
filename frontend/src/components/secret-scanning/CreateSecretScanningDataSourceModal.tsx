@@ -75,7 +75,6 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
             </div>
           )
         }
-        onPointerDownOutside={(e) => e.preventDefault()}
         className={selectedDataSource ? "max-w-2xl" : "max-w-3xl"}
         subTitle={
           selectedDataSource ? undefined : "Select a data source to configure secret scanning for."
