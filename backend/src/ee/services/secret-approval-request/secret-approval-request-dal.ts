@@ -40,6 +40,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalRequest}.policyId`,
         `${TableName.SecretApprovalPolicy}.id`
       )
+      .leftJoin(TableName.SecretApprovalPolicyEnvironment, (bd) => {
+        bd.on(
+          `${TableName.SecretApprovalPolicy}.id`,
+          "=",
+          `${TableName.SecretApprovalPolicyEnvironment}.policyId`
+        ).andOn(`${TableName.SecretApprovalPolicyEnvironment}.envId`, "=", `${TableName.SecretFolder}.envId`);
+      })
       .leftJoin<TUsers>(
         db(TableName.Users).as("statusChangedByUser"),
         `${TableName.SecretApprovalRequest}.statusChangedByUserId`,
@@ -146,7 +153,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("projectId").withSchema(TableName.Environment),
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
-        tx.ref("envId").withSchema(TableName.SecretApprovalPolicy).as("policyEnvId"),
+        tx.ref("envId").withSchema(TableName.SecretApprovalPolicyEnvironment).as("policyEnvId"),
         tx.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
         tx.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),
         tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
