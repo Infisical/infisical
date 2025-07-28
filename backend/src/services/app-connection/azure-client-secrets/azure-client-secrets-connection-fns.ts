@@ -23,7 +23,7 @@ import {
 } from "./azure-client-secrets-connection-types";
 
 export const getAzureClientSecretsConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_CLIENT_ID } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID } = getConfig();
 
   return {
     name: "Azure Client Secrets" as const,
@@ -32,7 +32,7 @@ export const getAzureClientSecretsConnectionListItem = () => {
       AzureClientSecretsConnectionMethod.OAuth,
       AzureClientSecretsConnectionMethod.ClientSecret
     ],
-    oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_ID
+    oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID
   };
 };
 
@@ -64,7 +64,11 @@ export const getAzureConnectionAccessToken = async (
   const currentTime = Date.now();
   switch (appConnection.method) {
     case AzureClientSecretsConnectionMethod.OAuth:
-      if (!appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID || !appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET) {
+      const azureClientId =
+        appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID;
+      const azureClientSecret =
+        appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_SECRET || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
+      if (!azureClientId || !azureClientSecret) {
         throw new BadRequestError({
           message: `Azure OAuth environment variables have not been configured`
         });
@@ -74,8 +78,8 @@ export const getAzureConnectionAccessToken = async (
         new URLSearchParams({
           grant_type: "refresh_token",
           scope: `openid offline_access https://graph.microsoft.com/.default`,
-          client_id: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID,
-          client_secret: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+          client_id: azureClientId,
+          client_secret: azureClientSecret,
           refresh_token: refreshToken
         })
       );
@@ -142,7 +146,13 @@ export const getAzureConnectionAccessToken = async (
 export const validateAzureClientSecretsConnectionCredentials = async (config: TAzureClientSecretsConnectionConfig) => {
   const { credentials: inputCredentials, method } = config;
 
-  const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRET, SITE_URL } = getConfig();
+  const {
+    INF_APP_CONNECTION_AZURE_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_SECRET,
+    SITE_URL
+  } = getConfig();
 
   switch (method) {
     case AzureClientSecretsConnectionMethod.OAuth:
@@ -150,7 +160,11 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
         throw new InternalServerError({ message: "SITE_URL env var is required to complete Azure OAuth flow" });
       }
 
-      if (!INF_APP_CONNECTION_AZURE_CLIENT_ID || !INF_APP_CONNECTION_AZURE_CLIENT_SECRET) {
+      const azureClientId = INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID;
+      const azureClientSecret =
+        INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_SECRET || INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
+
+      if (!azureClientId || !azureClientSecret) {
         throw new InternalServerError({
           message: `Azure ${getAppConnectionMethodName(method)} environment variables have not been configured`
         });
@@ -166,8 +180,8 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
             grant_type: "authorization_code",
             code: inputCredentials.code,
             scope: `openid offline_access https://graph.microsoft.com/.default`,
-            client_id: INF_APP_CONNECTION_AZURE_CLIENT_ID,
-            client_secret: INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+            client_id: azureClientId,
+            client_secret: azureClientSecret,
             redirect_uri: `${SITE_URL}/organization/app-connections/azure/oauth/callback`
           })
         );

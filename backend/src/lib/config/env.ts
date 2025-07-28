@@ -264,6 +264,14 @@ const envSchema = z
     // azure app
     INF_APP_CONNECTION_AZURE_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_CLIENT_SECRET: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_SECRET: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET: zpStr(z.string().optional()),
 
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
@@ -460,6 +468,38 @@ export const overwriteSchema: {
       },
       {
         key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET",
         description: "The Client Secret of your Azure application."
       }
     ]

@@ -26,7 +26,11 @@ export const getAzureConnectionAccessToken = async (
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
   const appCfg = getConfig();
-  if (!appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID || !appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET) {
+  const azureClientId =
+    appCfg.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID;
+  const azureClientSecret =
+    appCfg.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
+  if (!azureClientId || !azureClientSecret) {
     throw new BadRequestError({
       message: `Azure environment variables have not been configured`
     });
@@ -57,8 +61,8 @@ export const getAzureConnectionAccessToken = async (
     new URLSearchParams({
       grant_type: "refresh_token",
       scope: `openid offline_access`,
-      client_id: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID,
-      client_secret: appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+      client_id: azureClientId,
+      client_secret: azureClientSecret,
       refresh_token: credentials.refreshToken
     })
   );
@@ -92,22 +96,31 @@ export const getAzureConnectionAccessToken = async (
 };
 
 export const getAzureKeyVaultConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_CLIENT_ID } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_ID } = getConfig();
 
   return {
     name: "Azure Key Vault" as const,
     app: AppConnection.AzureKeyVault as const,
     methods: Object.values(AzureKeyVaultConnectionMethod) as [AzureKeyVaultConnectionMethod.OAuth],
-    oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_ID
+    oauthClientId: INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID
   };
 };
 
 export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureKeyVaultConnectionConfig) => {
   const { credentials: inputCredentials, method } = config;
 
-  const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRET, SITE_URL } = getConfig();
+  const {
+    INF_APP_CONNECTION_AZURE_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET,
+    SITE_URL
+  } = getConfig();
 
-  if (!INF_APP_CONNECTION_AZURE_CLIENT_ID || !INF_APP_CONNECTION_AZURE_CLIENT_SECRET) {
+  const azureClientId = INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID;
+  const azureClientSecret = INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET || INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
+
+  if (!azureClientId || !azureClientSecret) {
     throw new InternalServerError({
       message: `Azure ${getAppConnectionMethodName(method)} environment variables have not been configured`
     });
@@ -123,8 +136,8 @@ export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureK
         grant_type: "authorization_code",
         code: inputCredentials.code,
         scope: `openid offline_access https://vault.azure.net/.default`,
-        client_id: INF_APP_CONNECTION_AZURE_CLIENT_ID,
-        client_secret: INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+        client_id: azureClientId,
+        client_secret: azureClientSecret,
         redirect_uri: `${SITE_URL}/organization/app-connections/azure/oauth/callback`
       })
     );
