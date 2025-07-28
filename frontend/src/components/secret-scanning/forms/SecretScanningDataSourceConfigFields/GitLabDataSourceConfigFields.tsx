@@ -23,7 +23,7 @@ enum ScanMethod {
 }
 
 export const GitLabDataSourceConfigFields = () => {
-  const { control, watch, setValue, formState } = useFormContext<
+  const { control, watch, setValue } = useFormContext<
     TSecretScanningDataSourceForm & {
       type: SecretScanningDataSource.GitLab;
     }
