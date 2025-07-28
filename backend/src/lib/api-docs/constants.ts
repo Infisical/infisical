@@ -2246,7 +2246,9 @@ export const AppConnections = {
     },
     AZURE_CLIENT_SECRETS: {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
-      tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
@@ -2374,6 +2376,10 @@ export const SecretSyncs = {
       keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
       tags: "Optional tags to add to secrets synced by Infisical.",
       syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`
+    },
+    RENDER: {
+      autoRedeployServices:
+        "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
     }
   },
   DESTINATION_CONFIG: {

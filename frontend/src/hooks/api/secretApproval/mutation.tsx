@@ -10,7 +10,7 @@ export const useCreateSecretApprovalPolicy = () => {
 
   return useMutation<object, object, TCreateSecretPolicyDTO>({
     mutationFn: async ({
-      environment,
+      environments,
       workspaceId,
       approvals,
       approvers,
@@ -21,7 +21,7 @@ export const useCreateSecretApprovalPolicy = () => {
       allowedSelfApprovals
     }) => {
       const { data } = await apiRequest.post("/api/v1/secret-approvals", {
-        environment,
+        environments,
         workspaceId,
         approvals,
         approvers,
@@ -53,7 +53,8 @@ export const useUpdateSecretApprovalPolicy = () => {
       secretPath,
       name,
       enforcementLevel,
-      allowedSelfApprovals
+      allowedSelfApprovals,
+      environments
     }) => {
       const { data } = await apiRequest.patch(`/api/v1/secret-approvals/${id}`, {
         approvals,
@@ -62,7 +63,8 @@ export const useUpdateSecretApprovalPolicy = () => {
         secretPath,
         name,
         enforcementLevel,
-        allowedSelfApprovals
+        allowedSelfApprovals,
+        environments
       });
       return data;
     },

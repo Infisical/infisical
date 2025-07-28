@@ -14,7 +14,7 @@ import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal
 import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
 
 import { isBase64 } from "../../base64";
-import { getConfig } from "../../config/env";
+import { getConfig, TEnvConfig } from "../../config/env";
 import { CryptographyError } from "../../errors";
 import { logger } from "../../logger";
 import { asymmetricFipsValidated } from "./asymmetric-fips";
@@ -106,12 +106,12 @@ const cryptographyFactory = () => {
     }
   };
 
-  const $setFipsModeEnabled = (enabled: boolean) => {
+  const $setFipsModeEnabled = (enabled: boolean, envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">) => {
     // If FIPS is enabled, we need to validate that the ENCRYPTION_KEY is in a base64 format, and is a 256-bit key.
     if (enabled) {
       crypto.setFips(true);
 
-      const appCfg = getConfig();
+      const appCfg = envCfg || getConfig();
 
       if (appCfg.ENCRYPTION_KEY) {
         // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
@@ -141,14 +141,14 @@ const cryptographyFactory = () => {
     $isInitialized = true;
   };
 
-  const initialize = async (superAdminDAL: TSuperAdminDALFactory) => {
+  const initialize = async (superAdminDAL: TSuperAdminDALFactory, envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">) => {
     if ($isInitialized) {
       return isFipsModeEnabled();
     }
 
     if (process.env.FIPS_ENABLED !== "true") {
       logger.info("Cryptography module initialized in normal operation mode.");
-      $setFipsModeEnabled(false);
+      $setFipsModeEnabled(false, envCfg);
       return false;
     }
 
@@ -158,11 +158,11 @@ const cryptographyFactory = () => {
     if (serverCfg) {
       if (serverCfg.fipsEnabled) {
         logger.info("[FIPS]: Instance is configured for FIPS mode of operation. Continuing startup with FIPS enabled.");
-        $setFipsModeEnabled(true);
+        $setFipsModeEnabled(true, envCfg);
         return true;
       }
       logger.info("[FIPS]: Instance age predates FIPS mode inception date. Continuing without FIPS.");
-      $setFipsModeEnabled(false);
+      $setFipsModeEnabled(false, envCfg);
       return false;
     }
 
@@ -171,7 +171,7 @@ const cryptographyFactory = () => {
     // TODO(daniel): check if it's an enterprise deployment
 
     // if there is no server cfg, and FIPS_MODE is `true`, its a fresh FIPS deployment. We need to set the fipsEnabled to true.
-    $setFipsModeEnabled(true);
+    $setFipsModeEnabled(true, envCfg);
     return true;
   };
 

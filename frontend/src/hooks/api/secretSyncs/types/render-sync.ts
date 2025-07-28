@@ -1,6 +1,6 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
-import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
+import { RootSyncOptions, TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
 export type TRenderSync = TRootSecretSync & {
   destination: SecretSync.Render;
@@ -15,6 +15,10 @@ export type TRenderSync = TRootSecretSync & {
     app: AppConnection.Render;
     name: string;
     id: string;
+  };
+
+  syncOptions: RootSyncOptions & {
+    autoRedeployServices?: boolean;
   };
 };
 

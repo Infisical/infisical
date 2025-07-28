@@ -35,7 +35,7 @@ import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
-import { RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
@@ -121,6 +121,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Render:
       DestinationFieldsComponent = <RenderSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <RenderSyncOptionsReviewFields />;
       break;
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;
