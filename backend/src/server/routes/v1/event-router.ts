@@ -4,13 +4,15 @@ import { pipeline } from "stream/promises";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ServerSentEventsResponse } from "@app/services/event-bus/response";
-import { EventName, EventSchema, TopicName } from "@app/services/event-bus/types";
+import { getServerSentEventsHeaders } from "@app/services/event/event-sse-stream";
+import { EventName } from "@app/services/event/types";
 
 export const registerEventRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -33,32 +35,38 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
         )
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       try {
-        const res = reply.raw;
+        const { sse, permission } = req.server.services;
+        const { redis } = req.server;
+
+        const key = KeyStorePrefixes.SseConnection(req.body.projectId, req.permission.id);
+
+        const count = await redis.get(key);
+
+        if (count && parseInt(count, 10) >= 5) {
+          throw new RateLimitError({
+            message: `Too many active connections for project ${req.body.projectId}. Please close some connections before opening a new one.`
+          });
+        }
 
         reply.hijack();
 
-        res.writeHead(200, ServerSentEventsResponse.getHeaders()).flushHeaders();
-
-        const { events, permission } = req.server.services;
+        reply.raw.writeHead(200, getServerSentEventsHeaders()).flushHeaders();
 
         const control = new AbortController();
 
-        res.on("close", () => {
+        reply.raw.on("close", () => {
           try {
             control.abort();
-            if (!res.writableEnded) res.end();
+            if (!reply.raw.writableEnded) reply.raw.end();
           } catch (e) {
             logger.debug(e, "Request aborted");
           }
         });
 
-        const stream = await events.subscribe({
-          topic: TopicName.CoreServers,
-          actorId: req.permission.id,
-          signal: control.signal,
+        const stream = await sse.subscribe({
           async getPermissions() {
             const ability = await permission.getProjectPermission({
               actor: req.auth.actor,
@@ -73,13 +81,19 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
           },
           onPermissionCheck(permissions) {
             ForbiddenError.from(permissions).throwUnlessCan(
-              ProjectPermissionActions.Subscribe,
-              ProjectPermissionSub.Project
+              ProjectPermissionSecretActions.Subscribe,
+              ProjectPermissionSub.Secrets
             );
+          },
+          onClose() {
+            void redis.decr(key);
           }
         });
 
-        await pipeline(stream, new ServerSentEventsResponse(), res, { signal: control.signal });
+        await redis.incr(key);
+        await redis.expire(key, 60 * 5); // Set expiration to 5 minutes to avoid ratelimit locking
+
+        await pipeline(stream, reply.raw, { signal: control.signal });
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
@@ -87,32 +101,6 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
 
         throw error;
       }
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/publish",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      body: EventSchema,
-      response: {
-        200: z.object({
-          message: z.string()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
-    handler: async (req, res) => {
-      const { events } = req.server.services;
-
-      await events.publish(TopicName.CoreServers, req.body);
-
-      return res.code(200).send({
-        message: "Event published successfully"
-      });
     }
   });
 };

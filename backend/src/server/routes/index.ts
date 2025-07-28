@@ -119,7 +119,6 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
-import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
@@ -153,7 +152,8 @@ import { certificateTemplateDALFactory } from "@app/services/certificate-templat
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
-import { eventServiceFactory } from "@app/services/event-bus";
+import { eventBusFactory } from "@app/services/event/event-bus-service";
+import { sseServiceFactory } from "@app/services/event/event-sse-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -493,6 +493,11 @@ export const registerRoutes = async (
   const projectMicrosoftTeamsConfigDAL = projectMicrosoftTeamsConfigDALFactory(db);
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
 
+  const eventBusService = eventBusFactory(server.redis);
+  const sseService = sseServiceFactory(eventBusService, {
+    heartbeat: 10
+  });
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     orgRoleDAL,
@@ -550,7 +555,8 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL
+    auditLogStreamDAL,
+    eventBusService,
   });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
@@ -1937,13 +1943,6 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const redis = buildRedisFromConfig(envConfig);
-  const eventsService = eventServiceFactory(redis, keyStore, {
-    heartbeat: 10
-  });
-
-  await eventsService.init();
-
   // setup the communication with license key server
   await licenseService.init();
 
@@ -1965,6 +1964,7 @@ export const registerRoutes = async (
   await kmsService.startService();
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();
+  await eventBusService.init();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -2072,7 +2072,8 @@ export const registerRoutes = async (
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
-    events: eventsService
+    bus: eventBusService,
+    sse: sseService
   });
 
   const cronJobs: CronJob[] = [];
@@ -2188,6 +2189,7 @@ export const registerRoutes = async (
   server.addHook("onClose", async () => {
     cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
-    eventsService.close();
+    await eventBusService.close();
+    sseService.close();
   });
 };

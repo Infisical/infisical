@@ -199,7 +199,3 @@ volumes:
   ldap_data:
   ldap_config:
   grafana_storage:
-
-networks:
-  app_network:
-    driver: bridge

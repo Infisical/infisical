@@ -6,16 +6,7 @@ export enum TopicName {
   CoreServers = "infisical::core-servers"
 }
 
-export const EventName = z.string().refine(
-  (arg) => {
-    const [source, subject, action] = arg.split(":");
-
-    return source === "infisical" && !!subject && !!action;
-  },
-  {
-    message: "Event name must be in format 'source:subject:action'"
-  }
-);
+export const EventName = z.union([z.literal("infisical:secret:create"), z.literal("infisical:secret:update")]);
 
 export const EventSchema = z.object({
   datacontenttype: z.literal("application/json").optional().default("application/json"),

@@ -14,8 +14,7 @@ export enum ProjectPermissionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
-  Delete = "delete",
-  Subscribe = "subscribe"
+  Delete = "delete"
 }
 
 export enum ProjectPermissionCommitsActions {
@@ -37,7 +36,8 @@ export enum ProjectPermissionSecretActions {
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
-  Delete = "delete"
+  Delete = "delete",
+  Subscribe = "subscribe"
 }
 
 export enum ProjectPermissionCmekActions {
@@ -336,7 +336,6 @@ export type ProjectPermissionSet =
   | [ProjectPermissionKmipActions, ProjectPermissionSub.Kmip]
   | [ProjectPermissionCmekActions, ProjectPermissionSub.Cmek]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
-  | [ProjectPermissionActions.Subscribe, ProjectPermissionSub]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Project]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
   | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback]
@@ -909,16 +908,6 @@ export const buildServiceTokenProjectPermission = (
         }
       }
     );
-
-    [ProjectPermissionSub.Project].forEach((subject) => {
-      if (canRead) {
-        can(ProjectPermissionActions.Subscribe, subject, {
-          // @ts-expect-error type
-          secretPath: { $glob: secretPath },
-          environment
-        });
-      }
-    });
   });
 
   return build({ conditionsMatcher });

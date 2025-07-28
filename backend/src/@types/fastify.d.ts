@@ -56,6 +56,8 @@ import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-a
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
+import { TEventBusService } from "@app/services/event/event-bus-service";
+import { TServerSentEventsService } from "@app/services/event/event-sse-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
@@ -112,7 +114,6 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
-import { TEventService } from "@app/services/event-bus";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {
@@ -297,7 +298,8 @@ declare module "fastify" {
       internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
       pkiTemplate: TPkiTemplatesServiceFactory;
       reminder: TReminderServiceFactory;
-      events: TEventService;
+      bus: TEventBusService;
+      sse: TServerSentEventsService;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
