@@ -1,0 +1,730 @@
+---
+title: "Terraform"
+---
+
+A comprehensive guide for using Infisical with Terraform, from quick bootstrapping to production-ready implementations. Each section is expandable based on what you need.
+
+## Prerequisites:
+
+```tf
+# Required versions
+terraform >= 1.10.0  # For ephemeral resources support
+infisical >= 0.4.0   # Latest provider features
+
+# Important: Always use the latest provider version
+# Check: https://registry.terraform.io/providers/Infisical/infisical/latest
+
+# Set up authentication (choose one method)
+# Method 1: Machine Identity with Universal Auth (Recommended)
+export INFISICAL_CLIENT_ID="your-machine-identity-client-id"
+export INFISICAL_CLIENT_SECRET="your-machine-identity-client-secret"
+
+# Method 2: OIDC Auth (Recommended for CI/CD)
+export INFISICAL_IDENTITY_ID="your-machine-identity-id"
+# OIDC JWT token will be auto-injected in CI/CD environments
+
+# Method 3: Service Token (Legacy - not recommended)
+# export INFISICAL_TOKEN="your-service-token"
+```
+
+## What You'll Learn
+
+- Quick Start: Get running in 15 minutes with basic setup
+- Foundation: Project and environment organization
+- Static Secrets: Traditional secret management
+- Dynamic Secrets: Temporary credentials for databases and cloud providers
+- App Connections: Required integrations for syncs and rotations
+- Secret Rotation: Automated credential lifecycle
+- Secret Syncing: External secret store synchronization
+- Access Control: RBAC and security policies
+- Production Examples: Real-world implementation patterns
+
+## Configuration
+
+<AccordionGroup>
+	<Accordion title="Bootstrap / Basic Setup">
+
+	Get Infisical up and running quickly with this 15-minute bootstrap guide.
+
+	<Steps>
+		<Step title="Create Your First Project">
+            Navigate to your project's integrations tab in Infisical.
+
+            ```tf
+            # bootstrap/main.tf
+            terraform {
+                required_providers {
+                    infisical = {
+                        source  = "infisical/infisical"
+                        version = "~> 0.4"
+                    }
+                }
+            }
+
+            # Provider with proper authentication
+            provider "infisical" {
+                host = "https://app.infisical.com"  # Optional for cloud, required for self-hosted
+                auth {
+                    universal {
+                        client_id = var.infisical_client_id
+                        client_secret = var.infisical_client_secret
+                    }
+                    # OR use OIDC authentication (recommended for CI/CD)
+                    # oidc {
+                    #   identity_id = var.infisical_identity_id
+                    # }
+                }
+            }
+
+            # For CI/CD with OIDC (GitHub Actions example)
+            # provider "infisical" {
+            #   host = "https://app.infisical.com"
+            #   auth {
+            #     oidc {
+            #       identity_id = var.infisical_identity_id
+            #       # JWT token automatically sourced from INFISICAL_AUTH_JWT env var
+            #     }
+            #   }
+            # }
+
+            # Create your project
+            resource "infisical_project" "main" {
+                name = "my-app"
+                slug = "my-app"
+            }
+
+            # Create environments
+            locals {
+                environments = ["dev", "staging", "prod"]
+            }
+
+            # Output project details
+            output "project_id" {
+                value = infisical_project.main.id
+            }
+            ```
+		</Step>
+		<Step title="Add Your First Secrets">
+			```tf
+			# bootstrap/secrets.tf
+
+            # Add database credentials
+            resource "infisical_secret" "database_url" {
+                for_each = toset(local.environments)
+                
+                workspace_id = infisical_project.main.id
+                env_slug     = each.key
+                folder_path  = "/database"
+                
+                key   = "DATABASE_URL"
+                value = "postgresql://user:pass@${each.key}-db.internal:5432/app"
+                
+                comment = "Main database connection for ${each.key}"
+            }
+
+            # Add API keys
+            resource "infisical_secret" "api_keys" {
+                for_each = toset(local.environments)
+                
+                workspace_id = infisical_project.main.id
+                env_slug     = each.key
+                folder_path  = "/api"
+                
+                key   = "STRIPE_KEY"
+                value = each.key == "prod" ? var.stripe_prod_key : var.stripe_test_key
+                
+                comment = "Stripe API key"
+            }
+
+            # Add multiple secrets at once
+            locals {
+                common_secrets = {
+                    JWT_SECRET     = random_password.jwt.result
+                    SESSION_SECRET = random_password.session.result
+                    ENCRYPTION_KEY = random_password.encryption.result
+                }
+            }
+
+            resource "random_password" "jwt" {
+                length  = 32
+                special = true
+            }
+
+            resource "random_password" "session" {
+                length  = 32
+                special = true
+            }
+
+            resource "random_password" "encryption" {
+                length  = 32
+                special = true
+            }
+
+            resource "infisical_secret" "common" {
+                for_each = {
+                    for item in flatten([
+                        for env in local.environments : [
+                            for key, value in local.common_secrets : {
+                                id    = "${env}-${key}"
+                                env   = env
+                                key   = key
+                                value = value
+                            }
+                        ]
+                    ]) : item.id => item
+                }
+                
+                workspace_id = infisical_project.main.id
+                env_slug     = each.value.env
+                folder_path  = "/api"
+                
+                key   = each.value.key
+                value = each.value.value
+            }
+			```
+		</Step>
+		<Step title="Use Secrets in Your Application">
+			```tf
+			# bootstrap/usage.tf
+
+            # Ephemeral retrieval - secrets never touch state file!
+            ephemeral "infisical_secret" "database_url" {
+                name = "DATABASE_URL"
+                workspace_id = infisical_project.main.id
+                env_slug = "prod"
+                folder_path = "/database"
+            }
+
+            ephemeral "infisical_secret" "api_key" {
+                name = "API_KEY"
+                workspace_id = infisical_project.main.id
+                env_slug = "prod"
+                folder_path = "/api"
+            }
+
+            ephemeral "infisical_secret" "stripe_key" {
+                name = "STRIPE_KEY"
+                workspace_id = infisical_project.main.id
+                env_slug = "prod"
+                folder_path = "/api"
+            }
+
+            # Use with AWS Lambda
+            resource "aws_lambda_function" "api" {
+                function_name = "my-app-api"
+                runtime       = "nodejs18.x"
+                handler       = "index.handler"
+                
+                environment {
+                    variables = {
+                        DATABASE_URL = ephemeral.infisical_secret.database_url.value
+                        API_KEY      = ephemeral.infisical_secret.api_key.value
+                        STRIPE_KEY   = ephemeral.infisical_secret.stripe_key.value
+                    }
+                }
+            }
+
+            # Use with Kubernetes
+            resource "kubernetes_secret" "app_secrets" {
+                metadata {
+                    name      = "app-secrets"
+                    namespace = "default"
+                }
+                
+                data = {
+                    DATABASE_URL = ephemeral.infisical_secret.database_url.value
+                    API_KEY      = ephemeral.infisical_secret.api_key.value
+                }
+            }
+
+            # Use with Docker/ECS
+            resource "aws_ecs_task_definition" "app" {
+                family = "my-app"
+                
+                container_definitions = jsonencode([
+                    {
+                        name  = "app"
+                        image = "myapp:latest"
+                        
+                        environment = [
+                            {
+                                name  = "DATABASE_URL"
+                                value = ephemeral.infisical_secret.database_url.value
+                            },
+                            {
+                                name  = "API_KEY"
+                                value = ephemeral.infisical_secret.api_key.value
+                            }
+                        ]
+                    }
+                ])
+            }
+			```
+		</Step>
+	</Steps>
+	</Accordion>
+	<Accordion title="Project Structure & Organization">
+    
+    Set up a well-organized Infisical project structure for scalability.
+
+	## Configuration
+    ```tf
+    # foundation/main.tf
+    terraform {
+        required_version = ">= 1.10.0"
+        
+        required_providers {
+            infisical = {
+                source  = "infisical/infisical"
+                version = "~> 0.4"
+            }
+        }
+    }
+
+    provider "infisical" {
+        host = "https://app.infisical.com"  # Optional for cloud, required for self-hosted
+        auth {
+            universal {
+                client_id = var.infisical_client_id
+                client_secret = var.infisical_client_secret
+            }
+        }
+    }
+
+    # Create main project
+    resource "infisical_project" "main" {
+        name = var.project_name
+        slug = var.project_slug
+    }
+    ```
+
+    ## Environment and Folder Structure
+    ```tf
+    # foundation/structure.tf
+
+    locals {
+        # Standard folder structure for each environment
+        folder_structure = [
+            "/api",
+            "/database", 
+            "/third-party",
+            "/infrastructure",
+            "/ci-cd"
+        ]
+        
+        # Create all combinations
+        folder_matrix = flatten([
+            for env in var.environments : [
+                for folder in local.folder_structure : {
+                    key    = "${env}${folder}"
+                    env    = env
+                    folder = folder
+                }
+            ]
+        ])
+    }
+
+    # Create folder structure markers
+    resource "infisical_secret" "folder_readme" {
+        for_each = { for item in local.folder_matrix : item.key => item }
+        
+        workspace_id = infisical_project.main.id
+        env_slug     = each.value.env
+        folder_path  = each.value.folder
+        
+        key   = "_README"
+        value = "Folder: ${each.value.folder} in ${each.value.env} environment"
+        
+        comment = "Folder structure marker"
+    }
+    ```
+
+    ## Variables and Outputs
+    ```tf
+    # foundation/variables.tf
+    variable "project_name" {
+        description = "Name of the Infisical project"
+        type        = string
+    }
+
+    variable "project_slug" {
+        description = "URL-friendly identifier for the project"
+        type        = string
+    }
+
+    variable "environments" {
+        description = "List of environments to create"
+        type        = list(string)
+        default     = ["dev", "staging", "prod"]
+    }
+
+    variable "infisical_client_id" {
+        description = "Infisical machine identity client ID"
+        type        = string
+        sensitive   = true
+    }
+
+    variable "infisical_client_secret" {
+        description = "Infisical machine identity client secret"
+        type        = string
+        sensitive   = true
+    }
+
+    # foundation/outputs.tf
+    output "project_id" {
+        value       = infisical_project.main.id
+        description = "The ID of the created project"
+    }
+
+    output "project_slug" {
+        value       = infisical_project.main.slug
+        description = "The slug of the created project"
+    }
+
+    output "environments" {
+        value       = var.environments
+        description = "List of configured environments"
+    }
+    ```
+
+    ## Usage Example
+    ```tf
+    module "infisical_foundation" {
+        source = "./foundation"
+        
+        project_name = "my-infrastructure"
+        project_slug = "my-infrastructure"
+        
+        environments = ["dev", "staging", "prod"]
+        
+        # Authentication
+        infisical_client_id     = var.infisical_client_id
+        infisical_client_secret = var.infisical_client_secret
+    }
+    ```
+	</Accordion>
+    <Accordion title="Static Secrets Management">
+    Create and manage traditional secrets like API keys, passwords, and configuration values.
+
+    ## Basic Secret Creation
+    ```tf
+    # Single secret creation
+    resource "infisical_secret" "api_key" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/api"
+        
+        key   = "API_KEY"
+        value = var.api_key_value
+        
+        comment = "Main API authentication key"
+    }
+
+    # Create multiple secrets at once
+    resource "infisical_secret" "database_config" {
+        for_each = {
+            DB_HOST     = var.db_host
+            DB_PORT     = var.db_port
+            DB_NAME     = var.db_name
+            DB_USER     = var.db_user
+            DB_PASSWORD = var.db_password
+        }
+        
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/database"
+        
+        key   = each.key
+        value = each.value
+        
+        comment = "Database configuration"
+    }
+    ```
+
+    ## Environment-Specific Secrets
+    ```tf
+    # Read environment-specific secrets (most common pattern)
+    locals {
+        environments = ["dev", "staging", "prod"]
+        secret_names = ["API_URL", "LOG_LEVEL", "DATABASE_URL", "REDIS_URL"]
+    }
+
+    # Fetch secrets for each environment
+    ephemeral "infisical_secret" "env_secrets" {
+        for_each = {
+            for item in flatten([
+                for env in local.environments : [
+                    for secret in local.secret_names : {
+                        key = "${env}-${secret}"
+                        env = env
+                        secret_name = secret
+                    }
+                ]
+            ]) : item.key => item
+        }
+        
+        name = each.value.secret_name
+        workspace_id = var.project_id
+        env_slug = each.value.env
+        folder_path = "/api"
+    }
+
+    # Use environment-specific secrets
+    resource "aws_lambda_function" "api" {
+        for_each = toset(local.environments)
+        
+        function_name = "my-app-api-${each.key}"
+        runtime = "nodejs18.x"
+        handler = "index.handler"
+        
+        environment {
+            variables = {
+                API_URL = ephemeral.infisical_secret.env_secrets["${each.key}-API_URL"].value
+                LOG_LEVEL = ephemeral.infisical_secret.env_secrets["${each.key}-LOG_LEVEL"].value
+                DATABASE_URL = ephemeral.infisical_secret.env_secrets["${each.key}-DATABASE_URL"].value
+            }
+        }
+    }
+
+    # Alternative: Fetch all secrets from environment folders
+    ephemeral "infisical_secret" "api_url" {
+        for_each = toset(local.environments)
+        
+        name = "API_URL"
+        workspace_id = var.project_id
+        env_slug = each.key
+        folder_path = "/api"
+    }
+
+    ephemeral "infisical_secret" "database_url" {
+        for_each = toset(local.environments)
+        
+        name = "DATABASE_URL"
+        workspace_id = var.project_id
+        env_slug = each.key
+        folder_path = "/database"
+    }
+
+    # Use with cleaner syntax
+    resource "aws_ecs_service" "app" {
+        for_each = toset(local.environments)
+        
+        name = "app-${each.key}"
+        
+        # Use environment-specific values
+        task_definition = aws_ecs_task_definition.app[each.key].arn
+    }
+
+    resource "aws_ecs_task_definition" "app" {
+        for_each = toset(local.environments)
+        
+        family = "app-${each.key}"
+        
+        container_definitions = jsonencode([
+            {
+                name = "app"
+                image = "myapp:latest"
+                environment = [
+                    {
+                        name = "API_URL"
+                        value = ephemeral.infisical_secret.api_url[each.key].value
+                    },
+                    {
+                        name = "DATABASE_URL" 
+                        value = ephemeral.infisical_secret.database_url[each.key].value
+                    },
+                    {
+                        name = "ENVIRONMENT"
+                        value = each.key
+                    }
+                ]
+            }
+        ])
+    }
+    ```
+    ## Creating Environment-Specific Secrets
+    ```tf
+    # Only use this pattern if you need to CREATE secrets with different values per environment
+    locals {
+        # Define environment-specific values to CREATE in Infisical
+        env_configs = {
+            dev = {
+                replicas = "1"
+                cpu_limit = "100m"
+                memory_limit = "128Mi"
+            }
+            staging = {
+                replicas = "2"
+                cpu_limit = "200m"
+                memory_limit = "256Mi"
+            }
+            prod = {
+                replicas = "5"
+                cpu_limit = "500m"
+                memory_limit = "512Mi"
+            }
+        }
+    }
+
+    # Create configuration secrets for each environment
+    resource "infisical_secret" "env_config" {
+        for_each = {
+            for item in flatten([
+                for env, config in local.env_configs : [
+                    for key, value in config : {
+                        id = "${env}-${key}"
+                        env = env
+                        key = upper(key)
+                        value = value
+                    }
+                ]
+            ]) : item.id => item
+        }
+        
+        workspace_id = var.project_id
+        env_slug = each.value.env
+        folder_path = "/infrastructure"
+        
+        key = each.value.key
+        value = each.value.value
+        
+        comment = "Infrastructure configuration for ${each.value.env}"
+    }
+    ```
+    ## Service-Specific Organization
+    ```tf
+    # Organize secrets by service
+    locals {
+        services = {
+            payment = {
+                folder = "/third-party/payment"
+                secrets = {
+                    STRIPE_PUBLIC_KEY  = var.stripe_public_key
+                    STRIPE_SECRET_KEY  = var.stripe_secret_key
+                    STRIPE_WEBHOOK_SECRET = var.stripe_webhook_secret
+                }
+            }
+            email = {
+                folder = "/third-party/email"
+                secrets = {
+                    SENDGRID_API_KEY = var.sendgrid_api_key
+                    FROM_EMAIL       = "noreply@example.com"
+                    REPLY_TO_EMAIL   = "support@example.com"
+                }
+            }
+            storage = {
+                folder = "/third-party/storage"
+                secrets = {
+                    S3_BUCKET        = var.s3_bucket_name
+                    S3_REGION        = var.aws_region
+                    CLOUDFRONT_URL   = var.cloudfront_url
+                }
+            }
+        }
+    }
+
+    # Create service secrets
+    resource "infisical_secret" "service_secrets" {
+        for_each = {
+            for item in flatten([
+                for service_name, service in local.services : [
+                    for key, value in service.secrets : {
+                        id      = "${service_name}-${key}"
+                        folder  = service.folder
+                        key     = key
+                        value   = value
+                        service = service_name
+                    }
+                ]
+            ]) : item.id => item
+        }
+        
+        workspace_id = var.project_id
+        env_slug     = var.environment
+        folder_path  = each.value.folder
+        
+        key   = each.value.key
+        value = each.value.value
+        
+        comment = "${each.value.service} service configuration"
+    }
+    ```
+
+    ## Complex Secret Types
+    ```tf
+    # Store JSON configuration
+    resource "infisical_secret" "app_config" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/api"
+        
+        key = "APP_CONFIG"
+        value = jsonencode({
+            features = {
+                new_ui        = true
+                beta_features = false
+                api_version   = "v2"
+            }
+            rate_limits = {
+                anonymous = 100
+                authenticated = 1000
+                premium = 10000
+            }
+        })
+        
+        comment = "Application feature configuration"
+    }
+
+    # Store certificates (base64 encoded)
+    resource "infisical_secret" "tls_cert" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/infrastructure"
+        
+        key   = "TLS_CERTIFICATE"
+        value = base64encode(file("${path.module}/certs/server.crt"))
+        
+        comment = "TLS certificate for API gateway"
+    }
+    ```
+
+    ## Retreiving Secrets
+    ```tf
+    # Best practice: Use ephemeral resources
+    ephemeral "infisical_secret" "api_key" {
+        name = "API_KEY"
+        workspace_id = var.project_id
+        env_slug = "prod"
+        folder_path = "/api"
+    }
+
+    # Access specific secrets
+    output "api_key" {
+        value     = ephemeral.infisical_secret.api_key.value
+        sensitive = true
+    }
+
+    # Use in other resources
+    ephemeral "infisical_secret" "db_user" {
+        name = "DB_USER"
+        workspace_id = var.project_id
+        env_slug = "prod"
+        folder_path = "/database"
+    }
+
+    ephemeral "infisical_secret" "db_password" {
+        name = "DB_PASSWORD"
+        workspace_id = var.project_id
+        env_slug = "prod"
+        folder_path = "/database"
+    }
+
+    resource "aws_db_instance" "main" {
+        username = ephemeral.infisical_secret.db_user.value
+        password = ephemeral.infisical_secret.db_password.value
+        
+        # Other configuration...
+    }
+    ```
+    </Accordion>
+</AccordionGroup>
