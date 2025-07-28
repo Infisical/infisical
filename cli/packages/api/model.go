@@ -593,10 +593,16 @@ type GetRawSecretsV3Request struct {
 
 type GetRawSecretsV3Response struct {
 	Secrets []struct {
-		ID            string `json:"_id"`
-		Version       int    `json:"version"`
-		Workspace     string `json:"workspace"`
-		Type          string `json:"type"`
+		ID        string `json:"_id"`
+		Version   int    `json:"version"`
+		Workspace string `json:"workspace"`
+		Type      string `json:"type"`
+		Tags      []struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Slug  string `json:"slug"`
+			Color string `json:"color"`
+		} `json:"tags"`
 		Environment   string `json:"environment"`
 		SecretKey     string `json:"secretKey"`
 		SecretValue   string `json:"secretValue"`
