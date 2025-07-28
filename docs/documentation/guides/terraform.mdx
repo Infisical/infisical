@@ -2,7 +2,19 @@
 title: "Terraform"
 ---
 
-A comprehensive guide for using Infisical with Terraform, from quick bootstrapping to production-ready implementations. Each section is expandable based on what you need.
+A comprehensive guide for using Infisical with Terraform, from quick bootstrapping to production-ready implementations.
+
+## What It Covers
+
+- <b>Quick Start</b>: Get running in 15 minutes with basic setup
+- <b>Foundation</b>: Project and environment organization
+- <b>Static Secrets</b>: Traditional secret management
+- <b>Dynamic Secrets</b>: Temporary credentials for databases and cloud providers
+- <b>App Connections</b>: Required integrations for syncs and rotations
+- <b>Secret Rotation</b>: Automated credential lifecycle
+- <b>Secret Syncing</b>: External secret store synchronization
+- <b>Access Control</b>: RBAC and security policies
+- <b>Production Examples</b>: Real-world implementation patterns
 
 ## Prerequisites:
 
@@ -22,22 +34,7 @@ export INFISICAL_CLIENT_SECRET="your-machine-identity-client-secret"
 # Method 2: OIDC Auth (Recommended for CI/CD)
 export INFISICAL_IDENTITY_ID="your-machine-identity-id"
 # OIDC JWT token will be auto-injected in CI/CD environments
-
-# Method 3: Service Token (Legacy - not recommended)
-# export INFISICAL_TOKEN="your-service-token"
 ```
-
-## What You'll Learn
-
-- Quick Start: Get running in 15 minutes with basic setup
-- Foundation: Project and environment organization
-- Static Secrets: Traditional secret management
-- Dynamic Secrets: Temporary credentials for databases and cloud providers
-- App Connections: Required integrations for syncs and rotations
-- Secret Rotation: Automated credential lifecycle
-- Secret Syncing: External secret store synchronization
-- Access Control: RBAC and security policies
-- Production Examples: Real-world implementation patterns
 
 ## Configuration
 
@@ -336,6 +333,128 @@ export INFISICAL_IDENTITY_ID="your-machine-identity-id"
         value = "Folder: ${each.value.folder} in ${each.value.env} environment"
         
         comment = "Folder structure marker"
+    }
+    ```
+
+    ## Project Organization and Management
+    ```tf
+    # Create custom project environments
+    resource "infisical_project_environment" "environments" {
+        for_each = {
+            development = { name = "Development", slug = "dev" }
+            testing     = { name = "Testing", slug = "test" }
+            staging     = { name = "Staging", slug = "staging" }
+            production  = { name = "Production", slug = "prod" }
+        }
+        
+        project_id = var.project_id
+        name       = each.value.name
+        slug       = each.value.slug
+    }
+
+    # Create project templates for consistent setup
+    resource "infisical_project_template" "standard_template" {
+        name        = "Standard Application Template"
+        description = "Standard template for application projects"
+        
+        # Template configuration
+        environments = [
+            {
+                name = "Development"
+                slug = "dev"
+            },
+            {
+                name = "Staging" 
+                slug = "staging"
+            },
+            {
+                name = "Production"
+                slug = "prod"
+            }
+        ]
+        
+        # Default roles
+        roles = [
+            {
+                name        = "Developer"
+                slug        = "developer"
+                description = "Development team access"
+            },
+            {
+                name        = "DevOps"
+                slug        = "devops" 
+                description = "DevOps team access"
+            }
+        ]
+    }
+
+    # Create organized folder structure
+    resource "infisical_secret_folder" "folder_structure" {
+        for_each = {
+            api           = "/api"
+            database      = "/database"
+            third_party   = "/third-party"
+            infrastructure = "/infrastructure"
+            ci_cd         = "/ci-cd"
+        }
+        
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = each.value
+        folder_name  = each.key
+    }
+
+    # Create tags for secret organization
+    resource "infisical_secret_tag" "tags" {
+        for_each = {
+            critical    = { name = "Critical", color = "#FF0000" }
+            sensitive   = { name = "Sensitive", color = "#FFA500" }
+            public      = { name = "Public", color = "#00FF00" }
+            deprecated  = { name = "Deprecated", color = "#808080" }
+            rotate_monthly = { name = "Rotate Monthly", color = "#0000FF" }
+        }
+        
+        workspace_id = var.project_id
+        name         = each.value.name
+        slug         = each.key
+        color        = each.value.color
+    }
+
+    # Import secrets from external sources
+    resource "infisical_secret_import" "external_secrets" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/imported"
+        
+        # Import configuration
+        import_env_slug    = "dev"
+        import_folder_path = "/api"
+        
+        # Position in the secrets list
+        position = 1
+        
+        # Import behavior
+        is_replicated = true
+    }
+
+    # Apply tags to secrets
+    resource "infisical_secret" "tagged_secrets" {
+        for_each = var.critical_secrets
+        
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/api"
+        
+        key   = each.key
+        value = each.value
+        
+        # Apply tags
+        tag_ids = [
+            infisical_secret_tag.tags["critical"].id,
+            infisical_secret_tag.tags["rotate_monthly"].id
+        ]
+        
+        comment = "Critical secret requiring monthly rotation"
     }
     ```
 
@@ -727,4 +846,1112 @@ export INFISICAL_IDENTITY_ID="your-machine-identity-id"
     }
     ```
     </Accordion>
+    <Accordion title="App Connections">
+        Set up app connections required for syncing and secret rotations. These must be created before configuring syncs or rotations.
+
+        ## AWS App Connection
+        ```tf
+        # AWS connection using access keys
+        resource "infisical_app_connection_aws" "primary" {
+            workspace_id = var.project_id
+            
+            name        = "aws-primary"
+            description = "Primary AWS account connection"
+            
+            # Authentication method 1: Access keys
+            access_key_id     = var.aws_access_key_id
+            secret_access_key = var.aws_secret_access_key
+            region           = var.aws_region
+        }
+
+        # AWS connection using IAM role (recommended)
+        resource "infisical_app_connection_aws" "production" {
+            workspace_id = var.project_id
+            
+            name        = "aws-production"
+            description = "Production AWS connection using IAM role"
+            
+            # Authentication method 2: IAM role
+            assume_role_arn = var.aws_role_arn
+            region         = var.aws_region
+            
+            # Optional: External ID for additional security
+            external_id = var.aws_external_id
+        }
+
+        # Multiple region connections
+        resource "infisical_app_connection_aws" "multi_region" {
+            for_each = var.aws_regions
+            
+            workspace_id = var.project_id
+            
+            name        = "aws-${each.key}"
+            description = "AWS connection for ${each.value.name} region"
+            
+            access_key_id     = var.aws_access_key_id
+            secret_access_key = var.aws_secret_access_key
+            region           = each.value.region
+        }
+
+        output "aws_connection_ids" {
+            value = {
+                primary    = infisical_app_connection_aws.primary.id
+                production = infisical_app_connection_aws.production.id
+                regions    = { for k, v in infisical_app_connection_aws.multi_region : k => v.id }
+            }
+            description = "AWS connection IDs for use in syncs and secret rotations"
+        }
+        ```
+
+        ## GCP App Connection
+
+        ```tf
+        resource "infisical_app_connection_gcp" "main" {
+            workspace_id = var.project_id
+            
+            name        = "gcp-main"
+            description = "GCP connection for secret management"
+            
+            # Service account JSON key
+            service_account_json = var.gcp_service_account_json
+        }
+
+        # Multiple GCP projects
+        resource "infisical_app_connection_gcp" "projects" {
+            for_each = var.gcp_projects
+            
+            workspace_id = var.project_id
+            
+            name                 = "gcp-${each.key}"
+            description          = "GCP connection for ${each.value.name} project"
+            service_account_json = each.value.service_account_json
+        }
+
+        output "gcp_connection_ids" {
+            value = {
+                main     = infisical_app_connection_gcp.main.id
+                projects = { for k, v in infisical_app_connection_gcp.projects : k => v.id }
+            }
+        }
+        ```
+
+        ## GitHub App Connection
+        ```tf
+        resource "infisical_app_connection_github" "org" {
+            workspace_id = var.project_id
+            
+            name        = "github-org"
+            description = "GitHub organization connection"
+            
+            # Authentication
+            github_token = var.github_pat_token
+            
+            # Organization-level connection
+            organization = var.github_organization
+        }
+
+        # Repository-specific connections
+        resource "infisical_app_connection_github" "repos" {
+            for_each = var.github_repositories
+            
+            workspace_id = var.project_id
+            
+            name        = "github-${each.key}"
+            description = "GitHub connection for ${each.value.name} repository"
+            
+            github_token = var.github_pat_token
+            owner        = each.value.owner
+            repository   = each.value.repository
+        }
+
+        output "github_connection_ids" {
+            value = {
+                org   = infisical_app_connection_github.org.id
+                repos = { for k, v in infisical_app_connection_github.repos : k => v.id }
+            }
+        }
+        ```
+
+        ## Database App Connections
+        ```tf
+        # MySQL connection for rotation
+        resource "infisical_app_connection_mysql" "main" {
+            workspace_id = var.project_id
+            
+            name        = "mysql-main"
+            description = "MySQL connection for credential rotation"
+            
+            host     = var.mysql_host
+            port     = var.mysql_port
+            database = var.mysql_database
+            
+            # Admin credentials for rotation operations
+            username = var.mysql_admin_user
+            password = var.mysql_admin_password
+            
+            # SSL configuration
+            ssl_mode = "required"
+            ca_cert  = var.mysql_ca_cert
+        }
+
+        # PostgreSQL connection
+        resource "infisical_app_connection_postgres" "main" {
+            workspace_id = var.project_id
+            
+            name        = "postgres-main"
+            description = "PostgreSQL connection for credential management"
+            
+            host     = var.postgres_host
+            port     = var.postgres_port
+            database = var.postgres_database
+            
+            username = var.postgres_admin_user
+            password = var.postgres_admin_password
+            
+            # SSL configuration
+            ssl_mode = "require"
+        }
+
+        output "database_connection_ids" {
+            value = {
+                mysql    = infisical_app_connection_mysql.main.id
+                postgres = infisical_app_connection_postgres.main.id
+            }
+        }
+        ```
+    </Accordion>
+    <Accordion title="Dynamic Secrets">
+    Generate temporary credentials on-demand for databases, cloud providers, and more.
+
+    ## AWS IAM Dynamic Secrets
+    ```tf
+    # Dynamic AWS IAM user with custom policy
+    resource "infisical_dynamic_secret_aws_iam" "app_user" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/infrastructure/aws"
+        
+        name = "app-dynamic-user"
+        
+        # Reference the AWS app connection
+        app_connection_id = var.aws_connection_id
+        
+        # IAM user configuration
+        aws_iam_username = "infisical-{{timestamp}}-{{random}}"
+        
+        # Attach AWS managed policies
+        aws_iam_policy_arns = [
+            "arn:aws:iam::aws:policy/ReadOnlyAccess"
+        ]
+        
+        # Custom inline policy
+        aws_iam_policies = jsonencode({
+            Version = "2012-10-17"
+            Statement = [
+                {
+                    Effect = "Allow"
+                    Action = [
+                        "s3:GetObject",
+                        "s3:PutObject",
+                        "s3:DeleteObject"
+                    ]
+                    Resource = "arn:aws:s3:::my-app-bucket/*"
+                },
+                {
+                    Effect = "Allow"
+                    Action = [
+                        "s3:ListBucket"
+                    ]
+                    Resource = "arn:aws:s3:::my-app-bucket"
+                }
+            ]
+        })
+        
+        # Path for organizing IAM users
+        aws_iam_path = "/infisical/dynamic/"
+        
+        # TTL configuration
+        default_ttl = "3600"  # 1 hour
+        max_ttl     = "86400" # 24 hours
+    }
+
+    # Retrieve dynamic credentials
+    ephemeral "infisical_dynamic_secret_lease" "aws_creds" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/infrastructure/aws"
+        secret_name  = infisical_dynamic_secret_aws_iam.app_user.name
+        
+        # Optional: Custom TTL for this lease
+        ttl = "1800" # 30 minutes
+    }
+
+    # Use in AWS provider
+    provider "aws" {
+        alias = "dynamic"
+        
+        access_key = ephemeral.infisical_dynamic_secret_lease.aws_creds.access_key_id
+        secret_key = ephemeral.infisical_dynamic_secret_lease.aws_creds.secret_access_key
+        region     = var.aws_region
+    }
+    ```
+
+    ## SQL Database Dynamic Secrets
+    ```tf
+    # Admin credentials for database operations
+    ephemeral "infisical_secret" "db_admin_user" {
+        name = "DB_ADMIN_USER"
+        workspace_id = var.project_id
+        env_slug = "prod"
+        folder_path = "/database/admin"
+    }
+
+    ephemeral "infisical_secret" "db_admin_pass" {
+        name = "DB_ADMIN_PASS"
+        workspace_id = var.project_id
+        env_slug = "prod"
+        folder_path = "/database/admin"
+    }
+
+    # Dynamic SQL Database user (works with PostgreSQL, MySQL, etc.)
+    resource "infisical_dynamic_secret_sql_database" "app_user" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/database/dynamic"
+        
+        name = "sql-db-app-user"
+        
+        # Database connection
+        host     = var.database_host
+        port     = var.database_port
+        database = var.database_name
+        
+        # Admin credentials
+        username = ephemeral.infisical_secret.db_admin_user.value
+        password = ephemeral.infisical_secret.db_admin_pass.value
+        
+        # Database type (postgresql, mysql, etc.)
+        db_type = "postgresql"
+        
+        # SSL configuration
+        ca = var.database_ca_cert
+        
+        # User creation statements
+        creation_statements = [
+            "CREATE ROLE \"{{username}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';",
+            "GRANT CONNECT ON DATABASE ${var.database_name} TO \"{{username}}\";",
+            "GRANT USAGE ON SCHEMA public TO \"{{username}}\";",
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO \"{{username}}\";",
+            "GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO \"{{username}}\";"
+        ]
+        
+        # Cleanup statements
+        revocation_statements = [
+            "REASSIGN OWNED BY \"{{username}}\" TO postgres;",
+            "DROP OWNED BY \"{{username}}\";",
+            "DROP ROLE IF EXISTS \"{{username}}\";"
+        ]
+        
+        # TTL settings
+        default_ttl = "3600"  # 1 hour
+        max_ttl     = "86400" # 24 hours
+    }
+
+    # MySQL example
+    resource "infisical_dynamic_secret_sql_database" "mysql_user" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/database/dynamic"
+        
+        name = "mysql-app-user"
+        
+        # Connection details
+        host     = var.mysql_host
+        port     = 3306
+        database = var.mysql_database
+        db_type  = "mysql"
+        
+        # Admin credentials
+        username = ephemeral.infisical_secret.db_admin_user.value
+        password = ephemeral.infisical_secret.db_admin_pass.value
+        
+        # SSL configuration
+        ca = var.mysql_ca_cert
+        
+        # User creation
+        creation_statements = [
+            "CREATE USER '{{username}}'@'%' IDENTIFIED BY '{{password}}';",
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON ${var.mysql_database}.* TO '{{username}}'@'%';",
+            "FLUSH PRIVILEGES;"
+        ]
+        
+        # Cleanup
+        revocation_statements = [
+            "DROP USER IF EXISTS '{{username}}'@'%';",
+            "FLUSH PRIVILEGES;"
+        ]
+        
+        default_ttl = "3600"
+        max_ttl     = "86400"
+    }
+
+    # Get dynamic credentials
+    ephemeral "infisical_dynamic_secret_lease" "db_creds" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/database/dynamic"
+        secret_name  = infisical_dynamic_secret_sql_database.app_user.name
+    }
+    ```
+
+    ## Kubernetes Dynamic Secrets
+    ```tf
+    # Dynamic Kubernetes service account
+    resource "infisical_dynamic_secret_kubernetes" "app_service_account" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/kubernetes/dynamic"
+        
+        name = "k8s-app-service-account"
+        
+        # Kubernetes cluster configuration
+        kubernetes_host = var.kubernetes_host
+        kubernetes_ca_cert = var.kubernetes_ca_cert
+        kubernetes_token = var.kubernetes_admin_token
+        
+        # Service account configuration
+        default_service_account_name = "infisical-{{timestamp}}"
+        default_namespace = "default"
+        
+        # Additional namespaces where service account should have access
+        allowed_namespaces = ["production", "staging"]
+        
+        # Cluster role bindings
+        cluster_role_bindings = [
+            {
+                name = "infisical-readonly"
+                cluster_role = "view"
+            }
+        ]
+        
+        # Role bindings
+        role_bindings = [
+            {
+                name = "infisical-secrets-access"
+                namespace = "production"
+                role = "secret-reader"
+            }
+        ]
+        
+        # TTL settings
+        default_ttl = "3600"  # 1 hour
+        max_ttl     = "86400" # 24 hours
+    }
+
+    # Get dynamic Kubernetes credentials
+    ephemeral "infisical_dynamic_secret_lease" "k8s_creds" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/kubernetes/dynamic"
+        secret_name  = infisical_dynamic_secret_kubernetes.app_service_account.name
+    }
+    ```
+
+    </Accordion>
+    <Accordion title="Secret Rotation">
+    ## MySQL Credential Rotation
+    ```tf
+    # Ensure app connection exists
+    resource "infisical_app_connection_mysql" "rotation" {
+        workspace_id = var.project_id
+        
+        name = "mysql-rotation-connection"
+        
+        host     = var.mysql_host
+        port     = 3306
+        database = var.mysql_database
+        
+        # Admin credentials for rotation
+        username = var.mysql_admin_user
+        password = var.mysql_admin_password
+        
+        ssl_mode = "required"
+    }
+
+    # Create the secret to be rotated
+    resource "infisical_secret" "mysql_app_password" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/database"
+        
+        key   = "MYSQL_APP_PASSWORD"
+        value = var.initial_mysql_password
+        
+        comment = "MySQL application user password (auto-rotated)"
+    }
+
+    # Configure rotation
+    resource "infisical_secret_rotation_mysql_credentials" "app_user" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/database"
+        
+        # Secret key to rotate
+        secret_key = infisical_secret.mysql_app_password.key
+        
+        # Rotation schedule (in days)
+        rotation_interval = 30
+        
+        # Connection details (using app connection)
+        db_host = var.mysql_host
+        db_port = 3306
+        db_name = var.mysql_database
+        
+        # Admin credentials for performing rotation
+        db_username = var.mysql_admin_user
+        db_password = var.mysql_admin_password
+        
+        # User whose password will be rotated
+        username_to_rotate = "app_user"
+        
+        # Custom rotation statements (optional)
+        rotation_statements = [
+            "ALTER USER '{{username}}'@'%' IDENTIFIED BY '{{password}}';",
+            "FLUSH PRIVILEGES;"
+        ]
+        
+        # Ensure app connection exists
+        depends_on = [infisical_app_connection_mysql.rotation]
+    }
+    ```
+
+    ## AWS IAM User Secret Rotation
+    ```tf
+    # Create the AWS IAM user secret to be rotated
+    resource "infisical_secret" "aws_iam_secret" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/aws"
+        
+        key   = "AWS_IAM_SECRET_KEY"
+        value = var.initial_aws_secret_key
+        
+        comment = "AWS IAM user secret key (auto-rotated)"
+    }
+
+    # Configure AWS IAM user secret rotation
+    resource "infisical_secret_rotation_aws_iam_user_secret" "iam_user" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/aws"
+        
+        # Secret key to rotate
+        secret_key = infisical_secret.aws_iam_secret.key
+        
+        # Rotation schedule (in days)
+        rotation_interval = 30
+        
+        # AWS configuration
+        aws_region = var.aws_region
+        
+        # IAM user whose secret key will be rotated
+        iam_username = var.aws_iam_username
+        
+        # AWS credentials for performing rotation (admin credentials)
+        aws_access_key_id = var.aws_admin_access_key_id
+        aws_secret_access_key = var.aws_admin_secret_access_key
+        
+        # Optional: External ID for cross-account access
+        external_id = var.aws_external_id
+    }
+    ```
+
+    ## Azure Client Secret Rotation
+    ```tf
+    # App connection for Azure
+    resource "infisical_app_connection_azure" "rotation" {
+        workspace_id = var.project_id
+        
+        name = "azure-rotation-connection"
+        
+        tenant_id = var.azure_tenant_id
+        client_id = var.azure_client_id
+        client_secret = var.azure_client_secret
+    }
+
+    # Create the secret to be rotated
+    resource "infisical_secret" "azure_client_secret" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/azure"
+        
+        key   = "AZURE_CLIENT_SECRET"
+        value = var.initial_azure_client_secret
+        
+        comment = "Azure client secret (auto-rotated)"
+    }
+
+    # Configure rotation
+    resource "infisical_secret_rotation_azure_client_secret" "app_client" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/azure"
+        
+        # Secret key to rotate
+        secret_key = infisical_secret.azure_client_secret.key
+        
+        # Rotation schedule (in days)
+        rotation_interval = 30
+        
+        # Azure configuration
+        azure_tenant_id = var.azure_tenant_id
+        azure_client_id = var.azure_client_id
+        
+        # Admin credentials for performing rotation
+        azure_client_secret = var.azure_admin_client_secret
+        
+        # Target application registration
+        target_application_id = var.target_azure_app_id
+        
+        # Ensure app connection exists
+        depends_on = [infisical_app_connection_azure.rotation]
+    }
+    ```
+    </Accordion>
+    <Accordion title="Secret Syncing">
+
+    Synchronize secrets to external secret stores (Requires app connections to be created first).
+
+    ## AWS Secrets Manager Sync
+    ```tf
+    # Sync to AWS Secrets Manager
+    resource "infisical_secret_sync_aws_secrets_manager" "production" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/api"
+        
+        # REQUIRED: Reference app connection
+        app_connection_id = var.aws_connection_id
+        
+        # AWS configuration
+        aws_region = "us-east-1"
+        
+        # Secret naming in AWS
+        secret_name_prefix = "infisical/"
+        secret_name_suffix = "-prod"
+        
+        # Sync behavior
+        should_sync_secrets   = true
+        should_remove_secrets = false  # Keep in AWS even if deleted from Infisical
+        
+        # KMS encryption
+        kms_key_id = var.kms_key_id
+        
+        # AWS tags
+        aws_tags = {
+            ManagedBy   = "Infisical"
+            Environment = "production"
+            Project     = var.project_name
+        }
+        
+        # Sync specific secrets only
+        secret_whitelist = [
+            "API_KEY",
+            "DATABASE_URL",
+            "REDIS_URL"
+        ]
+        
+        depends_on = [infisical_app_connection_aws.main]
+    }
+
+    # Multi-region sync
+    resource "infisical_secret_sync_aws_secrets_manager" "multi_region" {
+        for_each = var.aws_regions
+        
+        workspace_id      = var.project_id
+        env_slug          = "prod"
+        folder_path       = "/infrastructure"
+        app_connection_id = var.aws_connection_ids[each.key]
+        
+        aws_region = each.value
+        
+        secret_name_prefix = "infisical/${each.key}/"
+        
+        depends_on = [infisical_app_connection_aws.multi_region]
+    }
+    ```
+
+    ## Azure Key Vault Sync
+    ```tf
+    resource "infisical_secret_sync_azure_key_vault" "production" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/api"
+        
+        # REQUIRED: Azure app connection
+        app_connection_id = var.azure_connection_id
+        
+        # Azure Key Vault details
+        key_vault_url = var.azure_key_vault_url
+        
+        # Secret naming
+        secret_name_prefix = "infisical-"
+        secret_name_suffix = "-prod"
+        
+        # Sync behavior
+        should_sync_secrets   = true
+        should_remove_secrets = false
+        
+        depends_on = [infisical_app_connection_azure.main]
+    }
+    ```
+
+    ## GCP Secret Manager Sync
+    ```tf
+    resource "infisical_secret_sync_gcp_secret_manager" "production" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/api"
+        
+        # REQUIRED: GCP app connection
+        app_connection_id = var.gcp_connection_id
+        
+        # GCP project
+        gcp_project_id = var.gcp_project_id
+        
+        # Secret naming
+        secret_name_prefix = "infisical-"
+        
+        # Replication policy
+        replication_policy = "automatic"  # or "user_managed"
+        
+        # Labels for GCP secrets
+        gcp_labels = {
+            managed-by  = "infisical"
+            environment = "production"
+            team        = "platform"
+        }
+        
+        depends_on = [infisical_app_connection_gcp.main]
+    }
+    ```
+
+    ## GitHub Secret Sync
+    ```tf
+    # Sync to GitHub repository secrets
+    resource "infisical_secret_sync_github" "ci_secrets" {
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/ci"
+        
+        # REQUIRED: GitHub app connection (configured via UI)
+        app_connection_id = var.github_connection_id
+        
+        # Target repository
+        github_owner = var.github_owner
+        github_repo  = var.github_repository
+        
+        # Secret scope
+        secret_scope = "repository"  # or "environment"
+        
+        # Only sync CI/CD related secrets
+        secret_whitelist = [
+            "DOCKER_REGISTRY_TOKEN",
+            "NPM_TOKEN",
+            "DEPLOY_KEY"
+        ]
+    }
+
+    # Sync to multiple repositories
+    resource "infisical_secret_sync_github" "multi_repo" {
+        for_each = var.github_repositories
+        
+        workspace_id = var.project_id
+        env_slug     = "prod"
+        folder_path  = "/ci/shared"
+        
+        app_connection_id = var.github_connection_ids[each.key]
+        
+        github_owner = each.value.owner
+        github_repo  = each.value.repo
+        
+        secret_scope = "repository"
+    }
+    ```
+    </Accordion>
+
+    <Accordion title="Access Controls & Authentication">
+    Implement RBAC, machine identities, and security policies.
+
+    ## Machine Identities
+    ```tf
+    # CI/CD Machine Identity
+    resource "infisical_identity" "ci_cd" {
+        name = "github-actions"
+        auth_method = "universal-auth"
+        role = "admin"
+    }
+
+    # Configure Universal Auth for the machine identity
+    resource "infisical_identity_universal_auth" "ci_cd" {
+        identity_id = infisical_identity.ci_cd.id
+        
+        # Access token lifetime
+        access_token_ttl = 3600  # 1 hour
+        access_token_max_ttl = 86400  # 24 hours
+        
+        # Trusted IPs (optional)
+        access_token_trusted_ips = var.ci_ip_addresses
+    }
+
+    # Get client secret for the universal auth
+    resource "infisical_identity_universal_auth_client_secret" "ci_cd" {
+        identity_id = infisical_identity.ci_cd.id
+        description = "GitHub Actions CI/CD client secret"
+        ttl = 0  # No expiration
+    }
+
+    # Application service identities
+    resource "infisical_identity" "services" {
+        for_each = var.services
+        
+        name = "${each.key}-service"
+        auth_method = "universal-auth"
+        role = "member"
+    }
+
+    resource "infisical_identity_universal_auth" "services" {
+        for_each = var.services
+        
+        identity_id = infisical_identity.services[each.key].id
+        access_token_ttl = 7200  # 2 hours
+        access_token_max_ttl = 86400  # 24 hours
+    }
+
+    # Add identities to project
+    resource "infisical_project_identity" "ci_cd" {
+        project_id = var.project_id
+        identity_id = infisical_identity.ci_cd.id
+        roles = [
+            {
+                role_slug = "admin"
+            }
+        ]
+    }
+
+    resource "infisical_project_identity" "services" {
+        for_each = var.services
+        
+        project_id = var.project_id
+        identity_id = infisical_identity.services[each.key].id
+        roles = [
+            {
+                role_slug = "developer"
+            }
+        ]
+    }
+
+    # Output credentials for CI/CD
+    output "ci_cd_credentials" {
+        value = {
+            client_id     = infisical_identity_universal_auth.ci_cd.client_id
+            client_secret = infisical_identity_universal_auth_client_secret.ci_cd.client_secret
+        }
+        sensitive = true
+    }
+    ```
+
+    ## RBAC Configuration
+    ```tf
+    # Define custom project roles
+    resource "infisical_project_role" "developer" {
+        project_id = var.project_id
+        
+        name        = "developer"
+        description = "Developer access to non-production environments"
+        slug        = "developer"
+        
+        permissions = [
+            {
+                action = "read"
+                subject = "secrets"
+                conditions = {
+                    environment = ["dev", "staging"]
+                }
+            },
+            {
+                action = "write"
+                subject = "secrets"
+                conditions = {
+                    environment = ["dev"]
+                }
+            }
+        ]
+    }
+
+    resource "infisical_project_role" "devops" {
+        project_id = var.project_id
+        
+        name        = "devops"
+        description = "DevOps team with full access"
+        slug        = "devops"
+        
+        permissions = [
+            {
+                action = "*"
+                subject = "secrets"
+            },
+            {
+                action = "*"
+                subject = "integrations"
+            },
+            {
+                action = "read"
+                subject = "audit-logs"
+            }
+        ]
+    }
+
+    # Create groups
+    resource "infisical_group" "teams" {
+        for_each = var.team_groups
+        
+        name        = each.key
+        slug        = each.key
+        role        = "member"
+    }
+
+    # Create project groups
+    resource "infisical_project_group" "teams" {
+        for_each = var.team_groups
+        
+        project_id = var.project_id
+        group_id   = infisical_group.teams[each.key].id
+        roles = [
+            {
+                role_slug = each.value.role_slug
+            }
+        ]
+    }
+
+    # Add users to project with specific roles
+    resource "infisical_project_user" "team_members" {
+        for_each = var.team_members
+        
+        project_id = var.project_id
+        username   = each.value.username
+        roles = [
+            {
+                role_slug = each.value.role_slug
+            }
+        ]
+    }
+    ```
+
+    ## Advanced Access Controls
+    ```tf
+    # Specific privileges for identities
+    resource "infisical_project_identity_specific_privilege" "ci_cd_privileges" {
+        project_id  = var.project_id
+        identity_id = infisical_identity.ci_cd.id
+        
+        privilege = {
+            permissions = [
+                {
+                    action = "read"
+                    subject = "secrets"
+                    conditions = {
+                        environment = ["dev", "staging", "prod"]
+                        secret_path = ["/ci-cd/*", "/shared/*"]
+                    }
+                },
+                {
+                    action = "write"
+                    subject = "secrets"
+                    conditions = {
+                        environment = ["dev", "staging"]
+                        secret_path = ["/ci-cd/*"]
+                    }
+                }
+            ]
+        }
+        
+        # Temporary access
+        is_temporary = true
+        temporary_mode = "relative"
+        temporary_range = "3600"  # 1 hour
+        temporary_access_start_time = timestamp()
+    }
+
+    # Secret approval policies
+    resource "infisical_secret_approval_policy" "production" {
+        project_id = var.project_id
+        
+        name = "production-approval"
+        environment = "prod"
+        secret_path = "/*"
+        
+        policy = [
+            {
+                approval_threshold = 2
+                approver_user_ids = var.approver_user_ids
+            }
+        ]
+        
+        enforcement_level = "hard"
+    }
+
+    # Access approval policies
+    resource "infisical_access_approval_policy" "privilege_escalation" {
+        project_id = var.project_id
+        
+        name = "privilege-escalation-approval"
+        
+        policy = [
+            {
+                approval_threshold = 1
+                approver_user_ids = var.admin_user_ids
+            }
+        ]
+        
+        enforcement_level = "hard"
+    }
+    ```
+
+    ## Cloud-Native Authentication
+    ```tf
+    # AWS IAM Authentication
+    resource "infisical_identity" "aws_service" {
+        name = "aws-lambda-service"
+        auth_method = "aws-iam"
+        role = "member"
+    }
+
+    resource "infisical_identity_aws_auth" "aws_service" {
+        identity_id = infisical_identity.aws_service.id
+        
+        type = "iam"
+        allowed_principal_arns = [
+            "arn:aws:iam::123456789012:role/lambda-execution-role"
+        ]
+        allowed_account_ids = ["123456789012"]
+        
+        access_token_ttl = 3600
+        access_token_max_ttl = 7200
+    }
+
+    # Kubernetes Authentication
+    resource "infisical_identity" "k8s_service" {
+        name = "kubernetes-service"
+        auth_method = "kubernetes"
+        role = "member"
+    }
+
+    resource "infisical_identity_kubernetes_auth" "k8s_service" {
+        identity_id = infisical_identity.k8s_service.id
+        
+        kubernetes_host = var.kubernetes_host
+        ca_cert = var.kubernetes_ca_cert
+        token_reviewer_jwt = var.token_reviewer_jwt
+        
+        allowed_namespaces = ["production", "staging"]
+        allowed_names = ["infisical-service-account"]
+        
+        access_token_ttl = 3600
+        access_token_max_ttl = 7200
+    }
+
+    # GCP Authentication
+    resource "infisical_identity" "gcp_service" {
+        name = "gcp-compute-service"
+        auth_method = "gcp-iam"
+        role = "member"
+    }
+
+    resource "infisical_identity_gcp_auth" "gcp_service" {
+        identity_id = infisical_identity.gcp_service.id
+        
+        type = "iam"
+        allowed_service_accounts = [
+            "my-service@my-project.iam.gserviceaccount.com"
+        ]
+        allowed_projects = ["my-project"]
+        allowed_zones = ["us-central1-a", "us-central1-b"]
+        
+        access_token_ttl = 3600
+        access_token_max_ttl = 7200
+    }
+
+    # Azure Authentication  
+    resource "infisical_identity" "azure_service" {
+        name = "azure-vm-service"
+        auth_method = "azure"
+        role = "member"
+    }
+
+    resource "infisical_identity_azure_auth" "azure_service" {
+        identity_id = infisical_identity.azure_service.id
+        
+        tenant_id = var.azure_tenant_id
+        resource = "https://management.azure.com/"
+        
+        allowed_service_principal_ids = [var.azure_service_principal_id]
+        
+        access_token_ttl = 3600
+        access_token_max_ttl = 7200
+    }
+
+    # OIDC Authentication (for CI/CD)
+    resource "infisical_identity" "oidc_ci" {
+        name = "oidc-github-actions"
+        auth_method = "oidc"
+        role = "member"
+    }
+
+    resource "infisical_identity_oidc_auth" "oidc_ci" {
+        identity_id = infisical_identity.oidc_ci.id
+        
+        oidc_discovery_url = "https://token.actions.githubusercontent.com"
+        ca_cert = ""
+        bound_issuer = "https://token.actions.githubusercontent.com"
+        bound_audiences = ["https://github.com/myorg"]
+        
+        bound_claims = {
+            sub = "repo:myorg/myrepo:ref:refs/heads/main"
+        }
+        
+        bound_subject = "repo:myorg/myrepo:ref:refs/heads/main"
+        
+        access_token_ttl = 900  # 15 minutes
+        access_token_max_ttl = 1800  # 30 minutes
+    }
+    ```
+    </Accordion>
 </AccordionGroup>
+
+## Best Practices
+### Security
+- Always use ephemeral resources to avoid secrets in state
+- Use Machine Identity with Universal Auth for interactive environments
+- Use OIDC Auth for CI/CD pipelines to eliminate long-lived credentials
+- Implement least privilege access control
+- Enable audit logging for compliance
+- Use dynamic secrets where possible to reduce credential lifetime
+
+### Authentication
+
+- Universal Auth: Use for development and interactive environments
+- OIDC Auth: Preferred for CI/CD pipelines (GitHub Actions, GitLab CI, etc.)
+
+### Organization
+
+- Use consistent folder structure across environments
+- Separate production and non-production secrets
+- Tag and document all secrets
+- Group related secrets together
+
+### Operations
+
+- Create app connections before configuring syncs or rotations
+- Implement rotation strategies for all long-lived credentials
+- Use machine identities for all automated access
