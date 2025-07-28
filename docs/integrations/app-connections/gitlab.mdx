@@ -26,8 +26,22 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
 
           Create the application. As part of the form, set the **Redirect URI** to `https://your-domain.com/organization/app-connections/gitlab/oauth/callback`.
 
-          ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-top.png)
-          ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-bottom.png)
+            Depending on your use case, add one or more of the following scopes to your application:
+
+            <Tabs>
+                <Tab title="Secret Sync">
+                    For Secret Syncs, your application will require the `api` scope:
+
+                    ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-top-secret-sync.png)
+                    ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-bottom-secret-sync.png)
+                </Tab>
+                <Tab title="Secret Scanning">
+                    For Secret Scanning, your application will require the `api` and `read_repository` scopes:
+
+                    ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-top-secret-scanning.png)
+                    ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-bottom-secret-scanning.png)
+                </Tab>
+            </Tabs>
 
           <Tip>
             The domain you defined in the Redirect URI should be equivalent to the `SITE_URL` configured in your Infisical instance.
@@ -96,16 +110,22 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
             ![GitLab Personal Access Tokens](/images/app-connections/gitlab/gitlab-add-access-token.png)
           </Step>
           <Step title="Configure Token">
-            <Tabs>
-              <Tab title="Secret Sync">
-              For Secret Syncs, your token will require the ability to access the API:
               Fill in the token details:
               - **Token name**: A descriptive name for the token (e.g., "connection-token")
               - **Expiration date**: Set an appropriate expiration date
-              - **Select scopes**: Choose the **api** scope for full API access
+              - **Select scopes**: Depending on your use case, add one or more of the following scopes:
 
-              ![GitLab Personal Token Form](/images/app-connections/gitlab/gitlab-personal-access-token-form.png)
+            <Tabs>
+              <Tab title="Secret Sync">
+                  For Secret Syncs, your token will require the `api` scope:
+
+                  ![GitLab Personal Token Form](/images/app-connections/gitlab/gitlab-personal-access-token-form-secret-sync.png)
               </Tab>
+                <Tab title="Secret Scanning">
+                    For Secret Scanning, your token will require the `api` and `read_repository` scopes:
+
+                    ![GitLab Personal Token Form](/images/app-connections/gitlab/gitlab-personal-access-token-form-secret-scanning.png)
+                </Tab>
             </Tabs>
 
             <Info>
@@ -134,17 +154,22 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
             ![GitLab Project Access Tokens](/images/app-connections/gitlab/gitlab-project-access-token-list.png)
           </Step>
           <Step title="Configure Token">
-            <Tabs>
-            <Tab title="Secret Sync">
-                  For Secret Syncs, your token will require the ability to access the API and be at least an **Owner**:
-                  Fill in the token details:
-                  - **Token name**: A descriptive name for the token
-                  - **Expiration date**: Set an appropriate expiration date
-                  - **Select role**: Choose **Owner** or higher role
-                  - **Select scopes**: Choose the **api** scope for API access
+              Fill in the token details:
+              - **Token name**: A descriptive name for the token
+              - **Expiration date**: Set an appropriate expiration date
+              - **Select role and scopes**: Depending on your use case, add the required role and one or more of the following scopes:
 
-                  ![GitLab Create Project Token](/images/app-connections/gitlab/gitlab-project-access-token-form.png)
-              </Tab>
+            <Tabs>
+                <Tab title="Secret Sync">
+                  For Secret Syncs, your token will require the `api` scope and at least the **Owner** role:
+
+                  ![GitLab Create Project Token](/images/app-connections/gitlab/gitlab-project-access-token-form-secret-sync.png)
+                </Tab>
+                <Tab title="Secret Scanning">
+                    For Secret Scanning, your token will require the `api` and `read_repository` scopes and the **Maintainer** role:
+
+                    ![GitLab Create Project Token](/images/app-connections/gitlab/gitlab-project-access-token-form-secret-scanning.png)
+                </Tab>
             </Tabs>
 
             <Info>

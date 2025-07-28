@@ -13,7 +13,7 @@ const gitlabConnectionKeys = {
     [...gitlabConnectionKeys.all, "groups", connectionId] as const
 };
 
-export const useGitlabConnectionListProjects = (
+export const useGitLabConnectionListProjects = (
   connectionId: string,
   options?: Omit<
     UseQueryOptions<
@@ -38,7 +38,7 @@ export const useGitlabConnectionListProjects = (
   });
 };
 
-export const useGitlabConnectionListGroups = (
+export const useGitLabConnectionListGroups = (
   connectionId: string,
   options?: Omit<
     UseQueryOptions<

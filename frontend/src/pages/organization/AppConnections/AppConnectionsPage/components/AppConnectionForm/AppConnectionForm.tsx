@@ -137,7 +137,7 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <RenderConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} />;
-    case AppConnection.Gitlab:
+    case AppConnection.GitLab:
       return <GitLabConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
@@ -245,7 +245,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <RenderConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-    case AppConnection.Gitlab:
+    case AppConnection.GitLab:
       return <GitLabConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;

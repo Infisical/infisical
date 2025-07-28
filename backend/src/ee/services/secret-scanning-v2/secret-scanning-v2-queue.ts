@@ -16,6 +16,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -48,6 +49,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem">;
 };
@@ -62,7 +64,8 @@ export const secretScanningV2QueueServiceFactory = async ({
   smtpService,
   kmsService,
   auditLogService,
-  keyStore
+  keyStore,
+  appConnectionDAL
 }: TSecretRotationV2QueueServiceFactoryDep) => {
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
@@ -71,7 +74,10 @@ export const secretScanningV2QueueServiceFactory = async ({
     try {
       const { type } = dataSource;
 
-      const factory = SECRET_SCANNING_FACTORY_MAP[type]();
+      const factory = SECRET_SCANNING_FACTORY_MAP[type]({
+        kmsService,
+        appConnectionDAL
+      });
 
       const rawResources = await factory.listRawResources(dataSource);
 
@@ -171,7 +177,10 @@ export const secretScanningV2QueueServiceFactory = async ({
         let connection: TAppConnection | null = null;
         if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
-        const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]();
+        const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
+          kmsService,
+          appConnectionDAL
+        });
 
         const findingsPath = join(tempFolder, "findings.json");
 
@@ -329,7 +338,10 @@ export const secretScanningV2QueueServiceFactory = async ({
     dataSourceId,
     dataSourceType
   }: Pick<TQueueSecretScanningResourceDiffScan, "payload" | "dataSourceId" | "dataSourceType">) => {
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]();
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]({
+      kmsService,
+      appConnectionDAL
+    });
 
     const resourcePayload = factory.getDiffScanResourcePayload(payload);
 
@@ -391,7 +403,10 @@ export const secretScanningV2QueueServiceFactory = async ({
 
       if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
 
-      const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]();
+      const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
+        kmsService,
+        appConnectionDAL
+      });
 
       const tempFolder = await createTempFolder();
 

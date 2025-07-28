@@ -46,6 +46,7 @@ import {
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
@@ -53,12 +54,14 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
+import { gitlabSecretScanningService } from "./gitlab/gitlab-secret-scanning-service";
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue";
 
 export type TSecretScanningV2ServiceFactoryDep = {
   secretScanningV2DAL: TSecretScanningV2DALFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretScanningV2Queue: Pick<
@@ -76,6 +79,7 @@ export const secretScanningV2ServiceFactory = ({
   appConnectionService,
   licenseService,
   secretScanningV2Queue,
+  appConnectionDAL,
   kmsService
 }: TSecretScanningV2ServiceFactoryDep) => {
   const $checkListSecretScanningDataSourcesByProjectIdPermissions = async (
@@ -255,7 +259,10 @@ export const secretScanningV2ServiceFactory = ({
       );
     }
 
-    const factory = SECRET_SCANNING_FACTORY_MAP[payload.type]();
+    const factory = SECRET_SCANNING_FACTORY_MAP[payload.type]({
+      appConnectionDAL,
+      kmsService
+    });
 
     try {
       const createdDataSource = await factory.initialize(
@@ -363,6 +370,31 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
+    let connection: TAppConnection | null = null;
+    if (dataSource.connectionId) {
+      // validates permission to connect and app is valid for data source
+      connection = await appConnectionService.connectAppConnectionById(
+        SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
+        dataSource.connectionId,
+        actor
+      );
+    }
+
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
+      appConnectionDAL,
+      kmsService
+    });
+
+    if (payload.config) {
+      await factory.validateConfigUpdate({
+        dataSource: {
+          ...dataSource,
+          connection
+        } as TSecretScanningDataSourceWithConnection,
+        config: payload.config as TSecretScanningDataSourceWithConnection["config"]
+      });
+    }
+
     try {
       const updatedDataSource = await secretScanningV2DAL.dataSources.updateById(dataSourceId, payload);
 
@@ -416,7 +448,10 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
-    const factory = SECRET_SCANNING_FACTORY_MAP[type]();
+    const factory = SECRET_SCANNING_FACTORY_MAP[type]({
+      appConnectionDAL,
+      kmsService
+    });
 
     let connection: TAppConnection | null = null;
     if (dataSource.connection) {
@@ -903,6 +938,7 @@ export const secretScanningV2ServiceFactory = ({
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,
     github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
-    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)
+    bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService),
+    gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)
   };
 };
