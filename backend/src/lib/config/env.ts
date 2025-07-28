@@ -261,9 +261,25 @@ const envSchema = z
     // gcp app
     INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL: zpStr(z.string().optional()),
 
-    // azure app
+    // Legacy Single Multi Purpose Azure App Connection
     INF_APP_CONNECTION_AZURE_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // Azure App Configuration App Connection
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // Azure Key Vault App Connection
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // Azure Client Secrets App Connection
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET: zpStr(z.string().optional()),
+
+    // Azure DevOps App Connection
+    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET: zpStr(z.string().optional()),
 
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
@@ -341,7 +357,23 @@ const envSchema = z
     isHsmConfigured:
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
-    SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(",")
+    SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(","),
+    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID:
+      data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET:
+      data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID:
+      data.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET:
+      data.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID:
+      data.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET:
+      data.INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID:
+      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET:
+      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
@@ -451,15 +483,54 @@ export const overwriteSchema: {
       }
     ]
   },
-  azure: {
-    name: "Azure",
+  azureAppConfiguration: {
+    name: "Azure App Configuration",
     fields: [
       {
-        key: "INF_APP_CONNECTION_AZURE_CLIENT_ID",
+        key: "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID",
         description: "The Application (Client) ID of your Azure application."
       },
       {
-        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+        key: "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      }
+    ]
+  },
+  azureKeyVault: {
+    name: "Azure Key Vault",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      }
+    ]
+  },
+  azureClientSecrets: {
+    name: "Azure Client Secrets",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET",
+        description: "The Client Secret of your Azure application."
+      }
+    ]
+  },
+  azureDevOps: {
+    name: "Azure DevOps",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID",
+        description: "The Application (Client) ID of your Azure application."
+      },
+      {
+        key: "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET",
         description: "The Client Secret of your Azure application."
       }
     ]
