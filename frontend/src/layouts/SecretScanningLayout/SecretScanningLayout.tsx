@@ -10,14 +10,37 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { Badge, Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
+import {
+  ProjectPermissionSub,
+  useProjectPermission,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
+import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
+import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const SecretScanningLayout = () => {
   const { currentWorkspace } = useWorkspace();
   const { assumedPrivilegeDetails } = useProjectPermission();
+
+  const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
+
+  const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(
+    currentWorkspace.id,
+    {
+      enabled:
+        subscription.secretScanning &&
+        permission.can(
+          ProjectPermissionSecretScanningFindingActions.Read,
+          ProjectPermissionSub.SecretScanningFindings
+        ),
+      refetchInterval: 30000
+    }
+  );
 
   return (
     <div className="dark hidden h-full w-full flex-col overflow-x-hidden md:flex">
@@ -63,11 +86,16 @@ export const SecretScanningLayout = () => {
                   >
                     {({ isActive }) => (
                       <MenuItem isSelected={isActive}>
-                        <div className="mx-1 flex gap-2">
+                        <div className="mx-1 flex w-full gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                           </div>
-                          Findings
+                          <span>Findings</span>
+                          {Boolean(unresolvedFindings) && (
+                            <Badge variant="primary" className="ml-auto mr-2 h-min">
+                              {unresolvedFindings}
+                            </Badge>
+                          )}
                         </div>
                       </MenuItem>
                     )}
