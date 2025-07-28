@@ -87,7 +87,6 @@ export type TKeyStoreFactory = {
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
-  decrementBy: (key: string, value: number) => Promise<number>;
   acquireLock(
     resources: string[],
     duration: number,
@@ -152,7 +151,6 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
   };
 
   const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
-  const decrementBy = async (key: string, value: number) => redis.decrby(key, value);
 
   const setExpiry = async (key: string, expiryInSeconds: number) => redis.expire(key, expiryInSeconds);
 
@@ -205,7 +203,6 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     deleteItem,
     deleteItems,
     incrementBy,
-    decrementBy,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
     },
