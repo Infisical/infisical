@@ -22,7 +22,6 @@ export const KmipPage = () => {
             description="Integrate with Infisical KMS via Key Management Interoperability Protocol."
           />
           <ProjectPermissionCan
-            passThrough={false}
             renderGuardBanner
             I={ProjectPermissionKmipActions.ReadClients}
             a={ProjectPermissionSub.Kmip}
