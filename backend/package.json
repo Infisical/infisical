@@ -25,6 +25,7 @@
     "outputPath": "binary"
   },
   "scripts": {
+    "preinstall": "npm-force-resolutions",
     "binary:build": "npm run binary:clean && npm run build:frontend && npm run build && npm run binary:babel-frontend && npm run binary:babel-backend && npm run binary:rename-imports",
     "binary:package": "pkg --no-bytecode --public-packages \"*\" --public --target host .",
     "binary:babel-backend": " babel ./dist -d ./dist",
@@ -181,7 +182,7 @@
     "ajv": "^8.12.0",
     "argon2": "^0.31.2",
     "aws-sdk": "^2.1553.0",
-    "axios": "^1.6.7",
+    "axios": "^1.11.0",
     "axios-retry": "^4.0.0",
     "bcrypt": "^5.1.1",
     "botbuilder": "^4.23.2",
