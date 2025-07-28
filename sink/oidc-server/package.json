@@ -16,6 +16,6 @@
     "express": "^4.21.2",
     "form-data": "^4.0.2",
     "jose": "^6.0.10",
-    "oidc-provider": "^8.8.1"
+    "oidc-provider": "^9.1.1"
   }
 }
