@@ -23,7 +23,7 @@ import {
 } from "./azure-client-secrets-connection-types";
 
 export const getAzureClientSecretsConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID } = getConfig();
 
   return {
     name: "Azure Client Secrets" as const,
@@ -32,7 +32,7 @@ export const getAzureClientSecretsConnectionListItem = () => {
       AzureClientSecretsConnectionMethod.OAuth,
       AzureClientSecretsConnectionMethod.ClientSecret
     ],
-    oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID
+    oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID
   };
 };
 
@@ -65,9 +65,9 @@ export const getAzureConnectionAccessToken = async (
   switch (appConnection.method) {
     case AzureClientSecretsConnectionMethod.OAuth:
       const azureClientId =
-        appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID;
+        appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_ID;
       const azureClientSecret =
-        appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_SECRET || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
+        appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET || appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
       if (!azureClientId || !azureClientSecret) {
         throw new BadRequestError({
           message: `Azure OAuth environment variables have not been configured`
@@ -149,8 +149,8 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
   const {
     INF_APP_CONNECTION_AZURE_CLIENT_ID,
     INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_SECRET,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET,
     SITE_URL
   } = getConfig();
 
@@ -160,9 +160,9 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
         throw new InternalServerError({ message: "SITE_URL env var is required to complete Azure OAuth flow" });
       }
 
-      const azureClientId = INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID;
+      const azureClientId = INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID || INF_APP_CONNECTION_AZURE_CLIENT_ID;
       const azureClientSecret =
-        INF_APP_CONNECTION_AZURE_CLIENT_SECRET_CLIENT_SECRET || INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
+        INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET || INF_APP_CONNECTION_AZURE_CLIENT_SECRET;
 
       if (!azureClientId || !azureClientSecret) {
         throw new InternalServerError({
