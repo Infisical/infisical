@@ -1929,6 +1929,516 @@ export INFISICAL_IDENTITY_ID="your-machine-identity-id"
     </Accordion>
 </AccordionGroup>
 
+## Production Examples
+<AccordionGroup>
+    <Accordion title="Multi-Cloud Infrastructure Setup">
+    Complete production setup for organizations using AWS and GCP with automated credential rotation and dynamic secrets.
+    ```tf
+    # production/multi-cloud/main.tf
+    terraform {
+        required_providers {
+            infisical = {
+                source  = "infisical/infisical"
+                version = "~> 0.4"
+            }
+        }
+    }
+
+    provider "infisical" {
+        host = "https://app.infisical.com"  # Only required for self-hosted
+        auth {
+            universal {
+                client_id     = var.infisical_client_id
+                client_secret = var.infisical_client_secret
+            }
+        }
+    }
+
+    # Create production project
+    resource "infisical_project" "production" {
+        name = "production-infrastructure"
+        slug = "prod-infra"
+        
+        # Optional settings
+        description = "Production infrastructure secrets"
+        audit_log_retention_days = 365
+        has_delete_protection = true
+        should_create_default_envs = true  # Creates dev, staging, prod
+    }
+
+    # AWS App Connection - Using IAM Role (Recommended for production)
+    resource "infisical_app_connection_aws" "production_assume_role" {
+        name   = "aws-prod-assume-role"
+        method = "assume-role"
+        
+        credentials = {
+            role_arn = var.aws_production_role_arn
+        }
+        
+        description = "Production AWS account using IAM role"
+    }
+
+    # AWS App Connection - Using Access Keys (for development)
+    resource "infisical_app_connection_aws" "development_access_key" {
+        name   = "aws-dev-access-key"
+        method = "access-key"
+        
+        credentials = {
+            access_key_id     = var.aws_dev_access_key_id
+            secret_access_key = var.aws_dev_secret_access_key
+        }
+        
+        description = "Development AWS account using access keys"
+    }
+
+    # GCP App Connection
+    resource "infisical_app_connection_gcp" "production" {
+        name   = "gcp-production"
+        method = "service-account-impersonation"
+        
+        credentials = {
+            service_account_email = var.gcp_service_account_email
+        }
+        
+        description = "Production GCP project connection"
+    }
+
+    # Dynamic AWS IAM credentials for deployments
+    resource "infisical_dynamic_secret_aws_iam" "deployment_credentials" {
+        name             = "deployment-credentials"
+        project_slug     = infisical_project.production.slug
+        environment_slug = "prod"
+        path             = "/"
+        
+        default_ttl = "2h"
+        max_ttl     = "4h"
+        
+        configuration = {
+            method = "assume_role"
+            
+            # For assume role method
+            assume_role_config = {
+                role_arn = infisical_app_connection_aws.production_assume_role.credentials.role_arn
+            }
+            
+            region = "us-east-1"
+            
+            # IAM user configuration
+            aws_path = "/deployment/"
+            permission_boundary_policy_arn = var.permission_boundary_arn
+            
+            # Attach managed policies
+            policy_arns = join(",", [
+                "arn:aws:iam::aws:policy/AmazonECSTaskExecutionRolePolicy",
+                "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+            ])
+            
+            # Inline policy
+            policy_document = jsonencode({
+                Version = "2012-10-17"
+                Statement = [
+                    {
+                        Effect = "Allow"
+                        Action = [
+                            "ecs:UpdateService",
+                            "ecs:DescribeServices",
+                            "cloudformation:DescribeStacks"
+                        ]
+                        Resource = "*"
+                    }
+                ]
+            })
+        }
+        
+        username_template = "infisical-deploy-{{randomUsername}}-{{timestamp}}"
+    }
+
+    # Static secrets for cross-cloud configuration
+    resource "infisical_secret" "aws_config" {
+        for_each = {
+            AWS_ACCOUNT_ID = var.aws_account_id
+            AWS_REGION     = "us-east-1"
+            AWS_ROLE_ARN   = var.aws_production_role_arn
+        }
+        
+        name         = each.key
+        value        = each.value
+        env_slug     = "prod"
+        workspace_id = infisical_project.production.id
+        folder_path  = "/cloud/aws"
+    }
+
+    resource "infisical_secret" "gcp_config" {
+        for_each = {
+            GCP_PROJECT_ID    = var.gcp_project_id
+            GCP_REGION        = "us-central1"
+            GCP_SERVICE_EMAIL = var.gcp_service_account_email
+        }
+        
+        name         = each.key
+        value        = each.value
+        env_slug     = "prod"
+        workspace_id = infisical_project.production.id
+        folder_path  = "/cloud/gcp"
+    }
+
+    # Cross-cloud VPN configuration
+    resource "infisical_secret" "vpn_config" {
+        name         = "CROSS_CLOUD_VPN_PSK"
+        value        = var.vpn_preshared_key
+        env_slug     = "prod"
+        workspace_id = infisical_project.production.id
+        folder_path  = "/infrastructure/vpn"
+        
+        secret_reminder = {
+            note        = "Rotate VPN pre-shared key with network team"
+            repeat_days = 90
+        }
+    }
+
+    # AWS Secrets Manager Sync
+    resource "infisical_secret_sync_aws_secrets_manager" "production" {
+        name          = "aws-secrets-sync-prod"
+        description   = "Sync production secrets to AWS Secrets Manager"
+        project_id    = infisical_project.production.id
+        environment   = "prod"
+        secret_path   = "/cloud/aws"
+        connection_id = infisical_app_connection_aws.production_assume_role.id
+        
+        sync_options = {
+            initial_sync_behavior = "overwrite-destination"
+            aws_kms_key_id       = var.aws_kms_key_id
+            sync_secret_metadata_as_tags = false
+            
+            tags = [
+                {
+                    key   = "ManagedBy"
+                    value = "Infisical"
+                },
+                {
+                    key   = "Environment"
+                    value = "Production"
+                }
+            ]
+        }
+        
+        destination_config = {
+            aws_region       = "us-east-1"
+            mapping_behavior = "one-to-one"  # Each secret gets its own AWS secret
+        }
+        
+        auto_sync_enabled = true
+    }
+
+    # AWS Parameter Store Sync for non-sensitive configuration
+    resource "infisical_secret_sync_aws_parameter_store" "config" {
+        name          = "aws-parameter-store-config"
+        description   = "Sync configuration to AWS Parameter Store"
+        project_id    = infisical_project.production.id
+        environment   = "prod"
+        secret_path   = "/config"
+        connection_id = infisical_app_connection_aws.production_assume_role.id
+        
+        sync_options = {
+            initial_sync_behavior = "import-prioritize-destination"
+            disable_secret_deletion = true  # Don't delete from Parameter Store
+            
+            tags = [
+                {
+                    key   = "Application"
+                    value = "Infrastructure"
+                }
+            ]
+        }
+        
+        destination_config = {
+            aws_region = "us-east-1"
+            path       = "/infisical/prod/"
+        }
+        
+        auto_sync_enabled = true
+    }
+
+    # GCP Secret Manager Sync
+    resource "infisical_secret_sync_gcp_secret_manager" "production" {
+        name          = "gcp-secrets-sync-prod"
+        description   = "Sync production secrets to GCP Secret Manager"
+        project_id    = infisical_project.production.id
+        environment   = "prod"
+        secret_path   = "/cloud/gcp"
+        connection_id = infisical_app_connection_gcp.production.id
+        
+        sync_options = {
+            initial_sync_behavior = "overwrite-destination"
+        }
+        
+        destination_config = {
+            project_id = var.gcp_project_id
+        }
+        
+        auto_sync_enabled = true
+    }
+
+    # Outputs
+    output "project_id" {
+        value = infisical_project.production.id
+        description = "The ID of the production project"
+    }
+
+    output "aws_connection_ids" {
+        value = {
+            production = infisical_app_connection_aws.production_assume_role.id
+            development = infisical_app_connection_aws.development_access_key.id
+        }
+        description = "AWS connection IDs for reference"
+    }
+    ```
+    </Accordion>
+
+    <Accordion title="Database Secrets Management with Rotation">
+    Production database setup with automated MySQL credential rotation and dynamic SQL secrets.
+
+    ```tf
+    # production/database/main.tf
+
+    resource "infisical_project" "database" {
+        name = "database-management"
+        slug = "db-mgmt"
+        
+        description = "Database credential management and rotation"
+        audit_log_retention_days = 90
+    }
+
+    # MySQL App Connection - Required for rotation
+    resource "infisical_app_connection_mysql" "production" {
+        name        = "mysql-production"
+        description = "Production MySQL connection for credential rotation"
+        method      = "username-and-password"
+        
+        credentials = {
+            host     = var.mysql_host
+            port     = 3306
+            database = var.mysql_database
+            username = var.mysql_admin_user
+            password = var.mysql_admin_password
+            
+            # SSL configuration
+            ssl_enabled            = true
+            ssl_certificate        = var.mysql_ca_cert
+            ssl_reject_unauthorized = true
+        }
+    }
+
+    # Create initial secrets for MySQL users
+    resource "infisical_secret" "mysql_user1" {
+        name         = "MYSQL_USER1"
+        value        = "app_user_primary"
+        env_slug     = "prod"
+        workspace_id = infisical_project.database.id
+        folder_path  = "/database/mysql"
+    }
+
+    resource "infisical_secret" "mysql_password1" {
+        name         = "MYSQL_PASSWORD1"
+        value        = var.initial_mysql_password1
+        env_slug     = "prod"
+        workspace_id = infisical_project.database.id
+        folder_path  = "/database/mysql"
+    }
+
+    resource "infisical_secret" "mysql_user2" {
+        name         = "MYSQL_USER2"
+        value        = "app_user_secondary"
+        env_slug     = "prod"
+        workspace_id = infisical_project.database.id
+        folder_path  = "/database/mysql"
+    }
+
+    resource "infisical_secret" "mysql_password2" {
+        name         = "MYSQL_PASSWORD2"
+        value        = var.initial_mysql_password2
+        env_slug     = "prod"
+        workspace_id = infisical_project.database.id
+        folder_path  = "/database/mysql"
+    }
+
+    # Active username/password secrets for application use
+    resource "infisical_secret" "mysql_active_username" {
+        name         = "MYSQL_USERNAME"
+        value        = "app_user_primary"  # Initially set to user1
+        env_slug     = "prod"
+        workspace_id = infisical_project.database.id
+        folder_path  = "/database/mysql"
+    }
+
+    resource "infisical_secret" "mysql_active_password" {
+        name         = "MYSQL_PASSWORD"
+        value        = var.initial_mysql_password1  # Initially set to password1
+        env_slug     = "prod"
+        workspace_id = infisical_project.database.id
+        folder_path  = "/database/mysql"
+    }
+
+    # MySQL Credential Rotation
+    resource "infisical_secret_rotation_mysql_credentials" "app_users" {
+        name          = "mysql-app-user-rotation"
+        project_id    = infisical_project.database.id
+        environment   = "prod"
+        secret_path   = "/database/mysql"
+        connection_id = infisical_app_connection_mysql.production.id
+        
+        parameters = {
+            username1 = "app_user_primary"    # Must exist in database
+            username2 = "app_user_secondary"  # Must exist in database
+        }
+        
+        secrets_mapping = {
+            username = "MYSQL_USERNAME"  # Active username secret
+            password = "MYSQL_PASSWORD"  # Active password secret
+        }
+        
+        # Rotation configuration
+        auto_rotation_enabled = true
+        rotation_interval     = 30  # days
+        
+        rotate_at_utc = {
+            hours   = 2   # 2 AM UTC
+            minutes = 0
+        }
+        
+        description = "Rotate MySQL app user credentials every 30 days"
+    }
+
+    # Dynamic SQL Database credentials for temporary access
+    resource "infisical_dynamic_secret_sql_database" "postgres_readonly" {
+        name             = "postgres-readonly-access"
+        project_slug     = infisical_project.database.slug
+        environment_slug = "prod"
+        path             = "/"
+        
+        default_ttl = "2h"
+        max_ttl     = "4h"
+        
+        configuration = {
+            client   = "postgres"
+            host     = var.postgres_host
+            port     = "5432"
+            database = var.postgres_database
+            username = var.postgres_admin_user
+            password = var.postgres_admin_password
+            
+            # User creation SQL
+            creation_statement = <<-EOT
+                CREATE USER "{{username}}" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';
+                GRANT CONNECT ON DATABASE "${var.postgres_database}" TO "{{username}}";
+                GRANT USAGE ON SCHEMA public TO "{{username}}";
+                GRANT SELECT ON ALL TABLES IN SCHEMA public TO "{{username}}";
+            EOT
+            
+            # User cleanup SQL
+            revocation_statement = <<-EOT
+                REASSIGN OWNED BY "{{username}}" TO postgres;
+                DROP OWNED BY "{{username}}";
+                DROP ROLE IF EXISTS "{{username}}";
+            EOT
+            
+            # Renewal SQL (optional)
+            renew_statement = <<-EOT
+                ALTER ROLE "{{username}}" VALID UNTIL '{{expiration}}';
+            EOT
+            
+            # Password requirements
+            password_requirements = {
+                length = 32
+                required = {
+                    digits    = 4
+                    lowercase = 4
+                    symbols   = 4
+                    uppercase = 4
+                }
+                allowed_symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+            }
+        }
+        
+        username_template = "readonly_{{randomUsername}}_{{timestamp}}"
+        
+        metadata = [
+            {
+                key   = "purpose"
+                value = "read-only-access"
+            },
+            {
+                key   = "managed-by"
+                value = "infisical"
+            }
+        ]
+    }
+
+    # Dynamic MySQL credentials for debugging
+    resource "infisical_dynamic_secret_sql_database" "mysql_debug" {
+        name             = "mysql-debug-access"
+        project_slug     = infisical_project.database.slug
+        environment_slug = "prod"
+        path             = "/"
+        
+        default_ttl = "1h"
+        max_ttl     = "2h"
+        
+        configuration = {
+            client   = "mysql"
+            host     = var.mysql_host
+            port     = "3306"
+            database = var.mysql_database
+            username = var.mysql_admin_user
+            password = var.mysql_admin_password
+            
+            creation_statement = <<-EOT
+                CREATE USER '{{username}}'@'%' IDENTIFIED BY '{{password}}';
+                GRANT SELECT, SHOW VIEW ON ${var.mysql_database}.* TO '{{username}}'@'%';
+                FLUSH PRIVILEGES;
+            EOT
+            
+            revocation_statement = <<-EOT
+                DROP USER IF EXISTS '{{username}}'@'%';
+                FLUSH PRIVILEGES;
+            EOT
+            
+            password_requirements = {
+                length = 24
+                required = {
+                    digits    = 3
+                    lowercase = 3
+                    uppercase = 3
+                    symbols   = 2
+                }
+            }
+        }
+        
+        username_template = "debug_{{randomUsername}}"
+    }
+
+    # Database connection strings
+    resource "infisical_secret" "connection_strings" {
+        for_each = {
+            MYSQL_URL = "mysql://${infisical_secret.mysql_active_username.value}:${infisical_secret.mysql_active_password.value}@${var.mysql_host}:3306/${var.mysql_database}"
+            POSTGRES_URL = "postgresql://${var.postgres_readonly_user}:${var.postgres_readonly_password}@${var.postgres_host}:5432/${var.postgres_database}"
+        }
+        
+        name         = each.key
+        value        = each.value
+        env_slug     = "prod"
+        workspace_id = infisical_project.database.id
+        folder_path  = "/database/connections"
+        
+        secret_reminder = {
+            note        = "Update connection string after credential rotation"
+            repeat_days = 30
+        }
+    }
+    ```
+    </Accordion>
+</AccordionGroup>
+
 ## Best Practices
 ### Security
 - Always use ephemeral resources to avoid secrets in state
