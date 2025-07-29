@@ -5,10 +5,11 @@ import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { extractAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { getServerSentEventsHeaders } from "@app/services/event/event-sse-stream";
@@ -38,14 +39,14 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       try {
-        const { sse, permission } = req.server.services;
-        const { redis } = req.server;
+        const config = getConfig();
+        const { token, authMode } = await extractAuth(req, config.AUTH_SECRET);
 
-        const key = KeyStorePrefixes.SseConnection(req.body.projectId, req.permission.id);
+        const { sse, permission, identityAccessToken, authToken } = req.server.services;
 
-        const count = await redis.get(key);
+        const count = await sse.getActiveConnectionsCount(req.body.projectId, req.permission.id);
 
-        if (count && parseInt(count, 10) >= 5) {
+        if (count >= 5) {
           throw new RateLimitError({
             message: `Too many active connections for project ${req.body.projectId}. Please close some connections before opening a new one.`
           });
@@ -67,7 +68,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
         });
 
         const stream = await sse.subscribe({
-          async getPermissions() {
+          async getAuthInfo() {
             const ability = await permission.getProjectPermission({
               actor: req.auth.actor,
               projectId: req.body.projectId,
@@ -77,21 +78,26 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
               actorOrgId: req.permission.orgId
             });
 
-            return ability.permission;
+            return { permission: ability.permission, actorId: req.permission.id, projectId: req.body.projectId };
           },
-          onPermissionCheck(permissions) {
-            ForbiddenError.from(permissions).throwUnlessCan(
+          async onAuthRefresh(info) {
+            switch (authMode) {
+              case AuthMode.JWT:
+                await authToken.fnValidateJwtIdentity(token);
+                break;
+              case AuthMode.IDENTITY_ACCESS_TOKEN:
+                await identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
+                break;
+              default:
+                throw new Error("Unsupported authentication method");
+            }
+
+            ForbiddenError.from(info.permission).throwUnlessCan(
               ProjectPermissionSecretActions.Subscribe,
               ProjectPermissionSub.Secrets
             );
-          },
-          onClose() {
-            void redis.decr(key);
           }
         });
-
-        await redis.incr(key);
-        await redis.expire(key, 60 * 5); // Set expiration to 5 minutes to avoid ratelimit locking
 
         await pipeline(stream, reply.raw, { signal: control.signal });
       } catch (error) {

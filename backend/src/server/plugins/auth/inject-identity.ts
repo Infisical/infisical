@@ -56,7 +56,7 @@ export type TAuthMode =
       authMethod: null;
     };
 
-const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
+export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const apiKey = req.headers?.["x-api-key"];
   if (apiKey) {
     return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;

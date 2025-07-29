@@ -52,7 +52,6 @@ export const eventBusFactory = (publisher: Redis) => {
     const listener = (channel: string, message: string) => {
       try {
         const parsed = JSON.parse(message) as T;
-        logger.info(parsed, `Received message from channel ${channel}:`);
         const thenable = fn(parsed);
 
         // If the function returns a Promise, catch any errors that occur during processing.

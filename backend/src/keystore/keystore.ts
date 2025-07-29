@@ -47,7 +47,10 @@ export const KeyStorePrefixes = {
     `identity-access-token-status:${identityAccessTokenId}`,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
-  SseConnection: (project: string, identity: string) => `sse-connections:${project}:${identity}`
+  ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
+    `sse-connections:${projectId}:${identityId}` as const,
+  ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
+    `sse-connections:${projectId}:${identityId}:${connectionId}` as const
 };
 
 export const KeyStoreTtls = {
