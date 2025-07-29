@@ -687,6 +687,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
       body: z.object({
         email: z.string().email().trim().min(1),
         password: z.string().trim().min(1),
