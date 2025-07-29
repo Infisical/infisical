@@ -1,7 +1,3 @@
-/* eslint-disable no-continue */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable class-methods-use-this */
-
 import Redis from "ioredis";
 import { z } from "zod";
 
@@ -64,7 +60,6 @@ export const eventBusFactory = (publisher: Redis) => {
         logger.error(error, `Error parsing message data from channel ${channel}`);
       }
     };
-
     subscriber.on("message", listener);
 
     return () => {

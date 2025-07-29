@@ -7,7 +7,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TEventBusService } from "@app/services/event/event-bus-service";
-import { TopicName } from "@app/services/event/types";
+import { TopicName, toPublishableEvent } from "@app/services/event/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
@@ -15,7 +15,7 @@ import { providerSpecificPayload } from "../audit-log-stream/audit-log-stream-fn
 import { LogStreamHeaders } from "../audit-log-stream/audit-log-stream-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
-import { EventType, TCreateAuditLogDTO } from "./audit-log-types";
+import { TCreateAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogQueueServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
@@ -265,14 +265,13 @@ export const auditLogQueueServiceFactory = async ({
       )
     );
 
-    if (event.type === EventType.UPDATE_SECRET || event.type === EventType.CREATE_SECRET) {
+    const publishable = toPublishableEvent(event);
+
+    if (publishable) {
       await eventBusService.publish(TopicName.CoreServers, {
         type: ProjectType.SecretManager,
         source: "infiscal",
-        data: {
-          event_type: event.type,
-          payload: event.metadata
-        }
+        data: publishable.data
       });
     }
   });

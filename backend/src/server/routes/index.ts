@@ -494,9 +494,7 @@ export const registerRoutes = async (
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
 
   const eventBusService = eventBusFactory(server.redis);
-  const sseService = sseServiceFactory(eventBusService, server.redis, {
-    heartbeat: 10
-  });
+  const sseService = sseServiceFactory(eventBusService, server.redis);
 
   const permissionService = permissionServiceFactory({
     permissionDAL,

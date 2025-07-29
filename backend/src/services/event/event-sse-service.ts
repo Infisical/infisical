@@ -5,32 +5,30 @@ import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 
 import { TEventBusService } from "./event-bus-service";
-import { EventStreamClient, IEventStreamClientOpts } from "./event-sse-stream";
+import { createEventStreamClient, EventStreamClient, IEventStreamClientOpts } from "./event-sse-stream";
+import { EventData, EventSecret, RegisteredEvent, toBusEventName } from "./types";
 
-export type TEventServiceOptions = {
-  heartbeat: number | false; // Interval in seconds to send heartbeat messages
-};
+const AUTH_REFRESH_INTERVAL = 60 * 1000;
+const HEART_BEAT_INTERVAL = 15 * 1000;
 
-export const sseServiceFactory = (bus: TEventBusService, redis: Redis, options: TEventServiceOptions) => {
+export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
   let heartbeatInterval: NodeJS.Timeout | null = null;
 
   const clients = new Set<EventStreamClient>();
 
-  if (options.heartbeat) {
-    heartbeatInterval = setInterval(() => {
-      for (const client of clients) {
-        if (client.closed) continue;
-        void client.ping();
-      }
-    }, options.heartbeat * 1000);
-  }
+  heartbeatInterval = setInterval(() => {
+    for (const client of clients) {
+      if (client.stream.closed) continue;
+      void client.ping();
+    }
+  }, HEART_BEAT_INTERVAL);
 
   const refreshInterval = setInterval(() => {
     for (const client of clients) {
-      if (client.closed) continue;
+      if (client.stream.closed) continue;
       void client.refresh();
     }
-  }, 60 * 1000);
+  }, AUTH_REFRESH_INTERVAL);
 
   const removeActiveConnection = async (projectId: string, identityId: string, connectionId: string) => {
     const set = KeyStorePrefixes.ActiveSSEConnectionsSet(projectId, identityId);
@@ -43,63 +41,88 @@ export const sseServiceFactory = (bus: TEventBusService, redis: Redis, options: 
     const set = KeyStorePrefixes.ActiveSSEConnectionsSet(projectId, identityId);
     const connections = await redis.lrange(set, 0, -1);
 
-    for await (const c of connections) {
-      const key = KeyStorePrefixes.ActiveSSEConnections(projectId, identityId, c);
-      const exists = await redis.exists(key);
+    if (connections.length === 0) {
+      return 0; // No active connections
+    }
 
-      if (!exists) {
-        await removeActiveConnection(projectId, identityId, c);
+    const keys = connections.map((c) => KeyStorePrefixes.ActiveSSEConnections(projectId, identityId, c));
+
+    const values = await redis.mget(...keys);
+
+    // eslint-disable-next-line no-plusplus
+    for (let i = 0; i < values.length; i++) {
+      if (values[i] === null) {
+        // eslint-disable-next-line no-await-in-loop
+        await removeActiveConnection(projectId, identityId, connections[i]);
       }
     }
 
     return redis.llen(set);
   };
 
-  const onDisconnect = async (stream: EventStreamClient) => {
+  const onDisconnect = async (client: EventStreamClient) => {
     try {
-      stream.destroy();
-      clients.delete(stream);
-      const { actorId, projectId } = stream.auth!;
-      await removeActiveConnection(projectId, actorId, stream.id);
+      client.close();
+      clients.delete(client);
+      await removeActiveConnection(client.auth.projectId, client.auth.actorId, client.id);
     } catch (error) {
       logger.error(error, "Error during SSE stream disconnection");
     }
   };
 
+  function filterEventsForClient(client: EventStreamClient, event: EventData, registered: RegisteredEvent[]) {
+    const eventName = toBusEventName(event.data.eventType);
+    const match = registered.find((r) => r.event === eventName);
+    if (!match) return;
+
+    const { secretPath, environmentSlug } = match.conditions ?? {};
+
+    const matches = (item: EventSecret) => {
+      const isPathMatch = !secretPath || secretPath === "/" || secretPath === item.secretPath;
+      const isEnvMatch = !environmentSlug || environmentSlug === item.environment;
+      return isPathMatch && isEnvMatch;
+    };
+
+    const item = event.data.payload;
+
+    if (Array.isArray(item)) {
+      const filtered = item.filter((ev) => matches(ev));
+      return client.send({
+        ...event,
+        data: {
+          ...event.data,
+          payload: filtered
+        }
+      });
+    }
+
+    if (matches(item)) {
+      client.send(event);
+    }
+  }
   const subscribe = async (
     opts: IEventStreamClientOpts & {
       onClose?: () => void;
     }
   ) => {
-    const stream = new EventStreamClient(redis, opts);
+    const client = createEventStreamClient(redis, opts);
 
     // Set up event listener on event bus
-    const unsubscribe = bus.subscribe(stream.send);
+    const unsubscribe = bus.subscribe((event) => {
+      if (event.type !== opts.type) return;
+      filterEventsForClient(client, event, opts.registered);
+    });
 
-    clients.add(stream);
-
-    stream.on("close", () => {
+    client.stream.on("close", () => {
       unsubscribe();
-      void onDisconnect(stream); // This will never throw
+      void onDisconnect(client); // This will never throw
     });
 
-    stream.on("error", (error: Error) => {
-      if (error.name !== "AbortError") {
-        logger.error(error, "Error in SSE stream client");
-        stream.send({
-          type: "error",
-          data: {
-            message: error.message
-          }
-        });
-      }
+    await client.open();
 
-      stream.close();
-    });
+    clients.add(client);
 
-    await stream.open();
-
-    return stream;
+    return client;
   };
 
   const close = () => {

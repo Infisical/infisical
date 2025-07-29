@@ -1,19 +1,16 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { pipeline } from "stream/promises";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import { RateLimitError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { readLimit } from "@app/server/config/rateLimiter";
-import { extractAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { getServerSentEventsHeaders } from "@app/services/event/event-sse-stream";
-import { EventName } from "@app/services/event/types";
+import { EventRegisterSchema } from "@app/services/event/types";
 
 export const registerEventRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -25,23 +22,12 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         projectId: z.string().trim(),
-        register: z.array(
-          z.object({
-            event: EventName,
-            conditions: z.object({
-              secretPath: z.string(),
-              environmentSlug: z.string().optional()
-            })
-          })
-        )
+        register: z.array(EventRegisterSchema)
       })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       try {
-        const config = getConfig();
-        const { token, authMode } = await extractAuth(req, config.AUTH_SECRET);
-
         const { sse, permission, identityAccessToken, authToken } = req.server.services;
 
         const count = await sse.getActiveConnectionsCount(req.body.projectId, req.permission.id);
@@ -52,22 +38,9 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
           });
         }
 
-        reply.hijack();
-
-        reply.raw.writeHead(200, getServerSentEventsHeaders()).flushHeaders();
-
-        const control = new AbortController();
-
-        reply.raw.on("close", () => {
-          try {
-            control.abort();
-            if (!reply.raw.writableEnded) reply.raw.end();
-          } catch (e) {
-            logger.debug(e, "Request aborted");
-          }
-        });
-
-        const stream = await sse.subscribe({
+        const client = await sse.subscribe({
+          type: ProjectType.SecretManager,
+          registered: req.body.register,
           async getAuthInfo() {
             const ability = await permission.getProjectPermission({
               actor: req.auth.actor,
@@ -81,27 +54,45 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
             return { permission: ability.permission, actorId: req.permission.id, projectId: req.body.projectId };
           },
           async onAuthRefresh(info) {
-            switch (authMode) {
+            switch (req.auth.authMode) {
               case AuthMode.JWT:
-                await authToken.fnValidateJwtIdentity(token);
+                await authToken.fnValidateJwtIdentity(req.auth.token);
                 break;
               case AuthMode.IDENTITY_ACCESS_TOKEN:
-                await identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
+                await identityAccessToken.fnValidateIdentityAccessToken(req.auth.token, req.realIp);
                 break;
               default:
                 throw new Error("Unsupported authentication method");
             }
 
-            ForbiddenError.from(info.permission).throwUnlessCan(
-              ProjectPermissionSecretActions.Subscribe,
-              ProjectPermissionSub.Secrets
-            );
+            req.body.register.forEach((r) => {
+              if (r.conditions) {
+                return ForbiddenError.from(info.permission).throwUnlessCan(
+                  ProjectPermissionSecretActions.Subscribe,
+                  subject(ProjectPermissionSub.Secrets, {
+                    environment: r.conditions.environmentSlug,
+                    secretPath: r.conditions.secretPath ?? "/"
+                  })
+                );
+              }
+
+              return ForbiddenError.from(info.permission).throwUnlessCan(
+                ProjectPermissionSecretActions.Subscribe,
+                ProjectPermissionSub.Secrets
+              );
+            });
           }
         });
 
-        await pipeline(stream, reply.raw, { signal: control.signal });
+        // Switches to manual response and enable SSE streaming
+        reply.hijack();
+        reply.raw.writeHead(200, getServerSentEventsHeaders()).flushHeaders();
+        reply.raw.on("close", client.abort);
+
+        await pipeline(client.stream, reply.raw, { signal: client.signal });
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
+          // If the stream is aborted, we don't need to do anything
           return;
         }
 

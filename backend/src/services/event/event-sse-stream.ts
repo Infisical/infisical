@@ -1,4 +1,3 @@
-/* eslint-disable class-methods-use-this */
 /* eslint-disable no-underscore-dangle */
 import { Readable } from "node:stream";
 
@@ -7,27 +6,30 @@ import { MongoQuery } from "@ucast/mongo2js";
 import Redis from "ioredis";
 import { nanoid } from "nanoid";
 
+import { ProjectType } from "@app/db/schemas";
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 
-import { EventData } from "./types";
+import { EventData, RegisteredEvent } from "./types";
 
-export const getServerSentEventsHeaders = () => {
-  return {
+export const getServerSentEventsHeaders = () =>
+  ({
     "Cache-Control": "no-cache",
     "Content-Type": "text/event-stream",
     Connection: "keep-alive",
-    "X-Accel-Buffering": "no" // Disable buffering for Nginx
-  } as const;
-};
+    "X-Accel-Buffering": "no"
+  }) as const;
 
 type TAuthInfo = {
   actorId: string;
   projectId: string;
   permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
 };
+
 export interface IEventStreamClientOpts {
+  type: ProjectType;
+  registered: RegisteredEvent[];
   onAuthRefresh: (info: TAuthInfo) => Promise<void> | void;
   getAuthInfo: () => Promise<TAuthInfo> | TAuthInfo;
 }
@@ -41,112 +43,119 @@ interface EventMessage {
 function serializeSseEvent(chunk: EventMessage): string {
   let payload = "";
 
-  if (chunk.time) {
-    payload += `id: ${chunk.time}\n`;
-  }
+  if (chunk.time) payload += `id: ${chunk.time}\n`;
+  if (chunk.type) payload += `event: ${chunk.type}\n`;
+  if (chunk.data) payload += `data: ${JSON.stringify(chunk)}\n`;
 
-  if (chunk.type) {
-    payload += `event: ${chunk.type}\n`;
-  }
-
-  if (chunk.data) {
-    payload += `data: ${JSON.stringify(chunk)}\n`;
-  }
-
-  payload += "\n";
-
-  return payload;
+  return `${payload}\n`;
 }
 
-export class EventStreamClient extends Readable {
+export type EventStreamClient = {
   id: string;
+  stream: Readable;
+  open: () => Promise<void>;
+  send: (data: EventMessage | EventData) => void;
+  ping: () => Promise<void>;
+  refresh: () => Promise<void>;
+  close: () => void;
+  get auth(): TAuthInfo;
+  signal: AbortSignal;
+  abort: () => void;
+};
 
-  auth?: TAuthInfo;
+export function createEventStreamClient(redis: Redis, options: IEventStreamClientOpts): EventStreamClient {
+  const id = `sse-${nanoid()}`;
+  const control = new AbortController();
+  let auth: TAuthInfo | undefined;
 
-  constructor(
-    private redis: Redis,
-    public options: IEventStreamClientOpts
-  ) {
-    super({ objectMode: true });
-    this.id = `sse-${nanoid()}`;
-  }
+  const stream = new Readable({
+    objectMode: true
+  });
 
-  /**
-   * Marks the connection as active in Redis.
-   * This is used to track active SSE connections for a user.
-   * It adds the connection ID to a set of active connections and sets an expiration time.
-   * This should be called when the connection is established.
-   * @throws {never}
-   */
-  async open() {
-    await this.refresh(); // Initialize permissions before marking a connection as active
-    const { actorId, projectId } = this.auth!;
+  // We will manually push data to the stream
+  stream._read = () => {};
 
-    const set = KeyStorePrefixes.ActiveSSEConnectionsSet(projectId, actorId);
-    const key = KeyStorePrefixes.ActiveSSEConnections(projectId, actorId, this.id);
-
-    await Promise.all([this.redis.rpush(set, this.id), this.redis.set(key, "1", "EX", 60)]);
-  }
-
-  send = (data: EventMessage | EventData) => {
+  const send = (data: EventMessage | EventData) => {
     const chunk = serializeSseEvent(data);
-    if (!this.push(chunk)) {
-      logger.warn("Backpressure detected: dropped manual event");
+    if (!stream.push(chunk)) {
+      logger.debug("Backpressure detected: dropped manual event");
     }
   };
 
-  /**
-   * Sends a ping message to the client.
-   * This is used to keep the connection alive and check if clients are still connected.
-   * It sets a key in Redis to mark the connection as active.
-   * @throws {never}
-   */
-  async ping() {
-    const { actorId, projectId } = this.auth!;
-    const key = KeyStorePrefixes.ActiveSSEConnections(projectId, actorId, this.id);
+  stream.on("error", (error: Error) => stream.destroy(error));
 
-    await this.redis.set(key, "1", "EX", 60); // Expiry is double of the heartbeat interval
+  const open = async () => {
+    auth = await options.getAuthInfo();
+    await options.onAuthRefresh(auth);
 
-    this.send({
-      type: "ping",
-      time: Date.now()
+    const { actorId, projectId } = auth;
+    const set = KeyStorePrefixes.ActiveSSEConnectionsSet(projectId, actorId);
+    const key = KeyStorePrefixes.ActiveSSEConnections(projectId, actorId, id);
+
+    await Promise.all([redis.rpush(set, id), redis.set(key, "1", "EX", 60)]);
+  };
+
+  const ping = async () => {
+    if (!auth) return; // Avoid race condition if ping is called before open
+
+    const { actorId, projectId } = auth;
+    const key = KeyStorePrefixes.ActiveSSEConnections(projectId, actorId, id);
+
+    await redis.set(key, "1", "EX", 60);
+
+    send({
+      type: "ping"
     });
-  }
+  };
 
-  /**
-   * Refreshes the permissions and checks them.
-   * This is useful if the permissions might have changed.
-   * Call it to ensure the client has the latest permissions before checking.
-   * @throws {never}
-   */
-  async refresh() {
+  const close = () => {
+    if (stream.closed) return;
+    stream.push(null);
+    stream.destroy();
+  };
+
+  const refresh = async () => {
     try {
-      this.auth = await this.options.getAuthInfo();
-      await this.check();
+      auth = await options.getAuthInfo();
+      await options.onAuthRefresh(auth);
     } catch (error) {
-      this.emit("error", error);
+      if (error instanceof Error) {
+        send({
+          type: "error",
+          data: {
+            message: error.message
+          }
+        });
+        return close();
+      }
+      stream.emit("error", error);
     }
-  }
+  };
 
-  async check() {
-    if (!this.auth) {
-      this.emit("error", new Error("Permissions not initialized"));
-      return;
-    }
-
+  const abort = () => {
     try {
-      await this.options.onAuthRefresh(this.auth);
+      control.abort();
     } catch (error) {
-      this.emit("error", error);
+      logger.debug(error, "Error aborting SSE stream");
     }
-  }
+  };
 
-  _read() {
-    // No-op: we push manually on Redis messages
-  }
+  return {
+    id,
+    stream,
+    open,
+    send,
+    ping,
+    refresh,
+    close,
+    signal: control.signal,
+    abort,
+    get auth() {
+      if (!auth) {
+        throw new Error("Auth info not set");
+      }
 
-  close() {
-    if (this.closed) return;
-    this.push(null); // Signal end of stream
-  }
+      return auth;
+    }
+  };
 }
