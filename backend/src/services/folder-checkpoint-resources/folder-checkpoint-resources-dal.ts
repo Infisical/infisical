@@ -5,7 +5,9 @@ import {
   TableName,
   TFolderCheckpointResources,
   TFolderCheckpoints,
+  TFolderCommits,
   TSecretFolderVersions,
+  TSecretImportVersions,
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -27,10 +29,15 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
     (TFolderCheckpointResources & {
       referencedSecretId?: string;
       referencedFolderId?: string;
+      referencedImportId?: string;
       folderName?: string;
       folderVersion?: string;
       secretKey?: string;
       secretVersion?: string;
+      importPath?: string;
+      importVersion?: string;
+      importPosition?: number;
+      reservedFolderId?: string;
     })[]
   > => {
     try {
@@ -46,19 +53,36 @@ export const folderCheckpointResourcesDALFactory = (db: TDbClient) => {
           `${TableName.FolderCheckpointResources}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
+        .leftJoin<TSecretImportVersions>(
+          TableName.SecretImportVersion,
+          `${TableName.FolderCheckpointResources}.importVersionId`,
+          `${TableName.SecretImportVersion}.id`
+        )
+        .leftJoin<TFolderCommits>(
+          TableName.FolderCommit,
+          `${TableName.FolderCheckpointResources}.reservedFolderCommitId`,
+          `${TableName.FolderCommit}.id`
+        )
         .select(selectAllTableCols(TableName.FolderCheckpointResources))
         .select(
           db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),
           db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("referencedFolderId"),
+          db.ref("importId").withSchema(TableName.SecretImportVersion).as("referencedImportId"),
           db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),
           db.ref("version").withSchema(TableName.SecretFolderVersion).as("folderVersion"),
           db.ref("key").withSchema(TableName.SecretVersionV2).as("secretKey"),
-          db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion")
+          db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion"),
+          db.ref("importPath").withSchema(TableName.SecretImportVersion),
+          db.ref("version").withSchema(TableName.SecretImportVersion).as("importVersion"),
+          db.ref("position").withSchema(TableName.SecretImportVersion).as("importPosition"),
+          db.ref("folderId").withSchema(TableName.FolderCommit).as("reservedFolderId")
         );
+
       return docs.map((doc) => ({
         ...doc,
         folderVersion: doc.folderVersion?.toString(),
-        secretVersion: doc.secretVersion?.toString()
+        secretVersion: doc.secretVersion?.toString(),
+        importVersion: doc.importVersion?.toString()
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByCheckpointId" });

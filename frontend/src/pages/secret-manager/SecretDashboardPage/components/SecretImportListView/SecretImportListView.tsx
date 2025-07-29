@@ -157,13 +157,22 @@ export const SecretImportListView = ({
       const newIndex = items.findIndex(({ id }) => id === over?.id);
       const newImportOrder = arrayMove(items, oldIndex, newIndex);
       setItems(newImportOrder);
+
+      // Determine the position based on whether the 'over' item is a replication
+      const overItem = items.find(({ id }) => id === over?.id);
+
+      let position = newIndex + 1;
+      if (overItem?.isReplication && newIndex > oldIndex) {
+        position = newIndex + 2;
+      }
+
       updateSecretImport({
         projectId: workspaceId,
         environment,
         path: secretPath,
         id: active.id as string,
         import: {
-          position: newIndex + 1
+          position
         }
       });
     }

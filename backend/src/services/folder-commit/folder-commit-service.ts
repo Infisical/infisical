@@ -2,7 +2,13 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { TSecretFolders, TSecretFolderVersions, TSecretV2TagJunctionInsert, TSecretVersionsV2 } from "@app/db/schemas";
+import {
+  TSecretFolders,
+  TSecretFolderVersions,
+  TSecretImportVersions,
+  TSecretV2TagJunctionInsert,
+  TSecretVersionsV2
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -13,16 +19,22 @@ import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TFolderCheckpointDALFactory } from "../folder-checkpoint/folder-checkpoint-dal";
 import { TFolderCheckpointResourcesDALFactory } from "../folder-checkpoint-resources/folder-checkpoint-resources-dal";
-import { TFolderCommitChangesDALFactory } from "../folder-commit-changes/folder-commit-changes-dal";
+import {
+  CommitChangeWithCommitInfo,
+  TFolderCommitChangesDALFactory
+} from "../folder-commit-changes/folder-commit-changes-dal";
 import { TFolderTreeCheckpointDALFactory } from "../folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { TFolderTreeCheckpointResourcesDALFactory } from "../folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TSecretImportVersionDALFactory } from "../secret-import/secret-import-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
@@ -44,7 +56,9 @@ export enum CommitType {
 
 export enum ResourceType {
   SECRET = "secret",
-  FOLDER = "folder"
+  FOLDER = "folder",
+  IMPORT = "import",
+  RESERVED_FOLDER = "reserved_folder"
 }
 
 type TCreateCommitDTO = {
@@ -61,6 +75,8 @@ type TCreateCommitDTO = {
     type: string;
     secretVersionId?: string;
     folderVersionId?: string;
+    importVersionId?: string;
+    reservedFolderCommitId?: string;
     isUpdate?: boolean;
     folderId?: string;
   }[];
@@ -72,6 +88,8 @@ type TCommitChangeDTO = {
   changeType: string;
   secretVersionId?: string;
   folderVersionId?: string;
+  importVersionId?: string;
+  reservedFolderCommitId?: string;
 };
 
 type BaseChange = {
@@ -111,6 +129,25 @@ type FolderChange = BaseChange & {
   }[];
 };
 
+type ImportChange = BaseChange & {
+  type: ResourceType.IMPORT;
+  importPath: string;
+  importVersion: string;
+  importPosition: number;
+  versions?: {
+    position: number;
+    importPath: string;
+  }[];
+};
+
+type ReservedFolderChange = BaseChange & {
+  type: ResourceType.RESERVED_FOLDER;
+  reservedFolderCommitId: string;
+  versions?: {
+    reservedFolderCommitId: string;
+  }[];
+};
+
 type SecretTargetChange = {
   type: ResourceType.SECRET;
   id: string;
@@ -129,7 +166,25 @@ type FolderTargetChange = {
   fromVersion?: string;
 };
 
-export type ResourceChange = SecretChange | FolderChange;
+type ImportTargetChange = {
+  type: ResourceType.IMPORT;
+  id: string;
+  versionId: string;
+  importPath: string;
+  importVersion: string;
+  importPosition: number;
+  fromVersion?: string;
+};
+
+type ReservedFolderTargetChange = {
+  type: ResourceType.RESERVED_FOLDER;
+  id: string; // reserved folder ID
+  versionId: string; // reserved folder commit UUID
+  reservedFolderCommitId: string; // reserved folder commit UUID
+  fromVersion?: string;
+};
+
+export type ResourceChange = SecretChange | FolderChange | ImportChange | ReservedFolderChange;
 
 type ActorInfo = {
   actorType: string;
@@ -140,6 +195,8 @@ type ActorInfo = {
 type StateChangeResult = {
   secretChangesCount: number;
   folderChangesCount: number;
+  importChangesCount: number;
+  reservedFolderChangesCount: number;
   totalChanges: number;
 };
 
@@ -153,7 +210,10 @@ type TFolderCommitServiceFactoryDep = {
   userDAL: TUserDALFactory;
   identityDAL: TIdentityDALFactory;
   folderDAL: TSecretFolderDALFactory;
+  envDAL: TProjectEnvDALFactory;
+  secretImportDAL: TSecretImportDALFactory;
   folderVersionDAL: TSecretFolderVersionDALFactory;
+  importVersionDAL: TSecretImportVersionDALFactory;
   secretVersionV2BridgeDAL: TSecretVersionV2DALFactory;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectByEnvId">;
@@ -183,7 +243,10 @@ export const folderCommitServiceFactory = ({
   userDAL,
   identityDAL,
   folderDAL,
+  envDAL,
+  secretImportDAL,
   folderVersionDAL,
+  importVersionDAL,
   secretVersionV2BridgeDAL,
   projectDAL,
   secretV2BridgeDAL,
@@ -236,7 +299,9 @@ export const folderCommitServiceFactory = ({
       resources.push(
         ...Object.values(folderVersions).map((folderVersion) => ({
           folderVersionId: folderVersion.id,
-          secretVersionId: undefined
+          secretVersionId: undefined,
+          importVersionId: undefined,
+          reservedFolderCommitId: undefined
         }))
       );
     }
@@ -244,7 +309,12 @@ export const folderCommitServiceFactory = ({
     const secretVersions = await secretVersionV2BridgeDAL.findLatestVersionByFolderId(folderId, tx);
     if (secretVersions.length > 0) {
       resources.push(
-        ...secretVersions.map((secretVersion) => ({ secretVersionId: secretVersion.id, folderVersionId: undefined }))
+        ...secretVersions.map((secretVersion) => ({
+          secretVersionId: secretVersion.id,
+          folderVersionId: undefined,
+          importVersionId: undefined,
+          reservedFolderCommitId: undefined
+        }))
       );
     }
 
@@ -316,7 +386,7 @@ export const folderCommitServiceFactory = ({
   const reconstructFolderState = async (
     folderCommitId: string,
     tx?: Knex
-  ): Promise<(SecretTargetChange | FolderTargetChange)[]> => {
+  ): Promise<(SecretTargetChange | FolderTargetChange | ImportTargetChange | ReservedFolderTargetChange)[]> => {
     const targetCommit = await folderCommitDAL.findById(folderCommitId, tx);
     if (!targetCommit) {
       throw new NotFoundError({ message: `Commit with ID ${folderCommitId} not found` });
@@ -333,7 +403,10 @@ export const folderCommitServiceFactory = ({
 
     const checkpointResources = await folderCheckpointResourcesDAL.findByCheckpointId(nearestCheckpoint.id, tx);
 
-    const folderState: Record<string, SecretTargetChange | FolderTargetChange> = {};
+    const folderState: Record<
+      string,
+      SecretTargetChange | FolderTargetChange | ImportTargetChange | ReservedFolderTargetChange
+    > = {};
 
     // Add all checkpoint resources to initial state
     checkpointResources.forEach((resource) => {
@@ -353,6 +426,22 @@ export const folderCommitServiceFactory = ({
           folderName: resource.folderName,
           folderVersion: resource.folderVersion
         } as FolderTargetChange;
+      } else if (resource.importVersionId && resource.referencedImportId) {
+        folderState[`import-${resource.referencedImportId}`] = {
+          type: ResourceType.IMPORT,
+          id: resource.referencedImportId,
+          versionId: resource.importVersionId,
+          importPath: resource.importPath,
+          importVersion: resource.importVersion,
+          importPosition: resource.importPosition
+        } as ImportTargetChange;
+      } else if (resource.reservedFolderCommitId && resource.reservedFolderId) {
+        folderState[`reserved-folder-${resource.reservedFolderId}`] = {
+          type: ResourceType.RESERVED_FOLDER,
+          id: resource.reservedFolderId,
+          versionId: resource.reservedFolderCommitId,
+          reservedFolderCommitId: resource.reservedFolderCommitId
+        } as ReservedFolderTargetChange;
       }
     });
 
@@ -394,6 +483,34 @@ export const folderCommitServiceFactory = ({
               folderName: change.folderName,
               folderVersion: change.folderVersion
             } as FolderTargetChange;
+          } else if (change.changeType.toLowerCase() === "delete") {
+            delete folderState[key];
+          }
+        } else if (change.importVersionId && change.referencedImportId) {
+          const key = `import-${change.referencedImportId}`;
+
+          if (change.changeType.toLowerCase() === "add") {
+            folderState[key] = {
+              type: ResourceType.IMPORT,
+              id: change.referencedImportId,
+              versionId: change.importVersionId,
+              importPath: change.importPath,
+              importVersion: change.importVersion,
+              importPosition: change.importPosition
+            } as ImportTargetChange;
+          } else if (change.changeType.toLowerCase() === "delete") {
+            delete folderState[key];
+          }
+        } else if (change.reservedFolderCommitId && change.reservedFolderId) {
+          const key = `reserved-folder-${change.reservedFolderId}`;
+
+          if (change.changeType.toLowerCase() === "add") {
+            folderState[key] = {
+              type: ResourceType.RESERVED_FOLDER,
+              id: change.reservedFolderId,
+              versionId: change.reservedFolderCommitId,
+              reservedFolderCommitId: change.reservedFolderCommitId
+            } as ReservedFolderTargetChange;
           } else if (change.changeType.toLowerCase() === "delete") {
             delete folderState[key];
           }
@@ -457,6 +574,29 @@ export const folderCommitServiceFactory = ({
               folderVersion: resource.folderVersion
             };
           }
+          if (resource.type === ResourceType.IMPORT) {
+            return {
+              type: ResourceType.IMPORT,
+              id: resource.id,
+              versionId: resource.versionId,
+              changeType: defaultOperation as ChangeType,
+              commitId: targetCommit.commitId,
+              importPath: resource.importPath,
+              importPosition: resource.importPosition,
+              importVersion: resource.importVersion
+            };
+          }
+
+          if (resource.type === ResourceType.RESERVED_FOLDER) {
+            return {
+              type: ResourceType.RESERVED_FOLDER,
+              id: resource.id,
+              versionId: resource.versionId,
+              changeType: defaultOperation as ChangeType,
+              commitId: targetCommit.commitId,
+              reservedFolderCommitId: resource.reservedFolderCommitId
+            };
+          }
           return null;
         })
         .filter((change): change is ResourceChange => !!change);
@@ -467,7 +607,10 @@ export const folderCommitServiceFactory = ({
     const targetState = await reconstructFolderState(targetCommitId, tx);
 
     // Create lookup maps for easier comparison
-    const currentMap: Record<string, SecretTargetChange | FolderTargetChange> = {};
+    const currentMap: Record<
+      string,
+      SecretTargetChange | FolderTargetChange | ImportTargetChange | ReservedFolderTargetChange
+    > = {};
     const targetMap: Record<
       string,
       {
@@ -478,6 +621,9 @@ export const folderCommitServiceFactory = ({
         secretVersion?: string;
         folderName?: string;
         folderVersion?: string;
+        importPath?: string;
+        importVersion?: string;
+        reservedFolderCommitId?: string;
         fromVersion?: string;
       }
     > = {};
@@ -526,12 +672,35 @@ export const folderCommitServiceFactory = ({
             folderVersion: currentResource.folderVersion,
             fromVersion: currentResource.versionId
           });
+        } else if (currentResource.type === ResourceType.IMPORT) {
+          differences.push({
+            type: ResourceType.IMPORT,
+            id: currentResource.id,
+            versionId: currentResource.versionId,
+            changeType: ChangeType.DELETE,
+            commitId: targetCommit.commitId,
+            importPath: currentResource.importPath,
+            importVersion: currentResource.importVersion,
+            importPosition: currentResource.importPosition,
+            fromVersion: currentResource.versionId
+          });
+        } else if (currentResource.type === ResourceType.RESERVED_FOLDER) {
+          differences.push({
+            type: ResourceType.RESERVED_FOLDER,
+            id: currentResource.id,
+            versionId: currentResource.versionId,
+            changeType: ChangeType.DELETE,
+            commitId: targetCommit.commitId,
+            reservedFolderCommitId: currentResource.reservedFolderCommitId,
+            fromVersion: currentResource.versionId
+          });
         }
       } else if (currentResource.versionId !== targetResource.versionId) {
         // Resource was updated
         if (targetResource.type === ResourceType.SECRET) {
           const secretCurrentResource = currentResource as SecretTargetChange;
           const secretTargetResource = targetResource as SecretTargetChange;
+
           differences.push({
             type: ResourceType.SECRET,
             id: secretTargetResource.id,
@@ -556,6 +725,34 @@ export const folderCommitServiceFactory = ({
             folderName: folderTargetResource.folderName,
             folderVersion: folderTargetResource.folderVersion,
             fromVersion: folderCurrentResource.folderVersion
+          });
+        } else if (targetResource.type === ResourceType.IMPORT) {
+          const importCurrentResource = currentResource as ImportTargetChange;
+          const importTargetResource = targetResource as ImportTargetChange;
+
+          differences.push({
+            type: ResourceType.IMPORT,
+            id: importTargetResource.id,
+            versionId: importTargetResource.versionId,
+            changeType: ChangeType.UPDATE,
+            commitId: targetCommit.commitId,
+            importPath: importTargetResource.importPath,
+            importVersion: importTargetResource.importVersion,
+            importPosition: importTargetResource.importPosition,
+            fromVersion: importCurrentResource.importVersion
+          });
+        } else if (targetResource.type === ResourceType.RESERVED_FOLDER) {
+          const rfCurrentResource = currentResource as ReservedFolderTargetChange;
+          const rfTargetResource = targetResource as ReservedFolderTargetChange;
+
+          differences.push({
+            type: ResourceType.RESERVED_FOLDER,
+            id: rfTargetResource.id,
+            versionId: rfTargetResource.versionId,
+            changeType: ChangeType.UPDATE,
+            commitId: targetCommit.commitId,
+            reservedFolderCommitId: rfTargetResource.reservedFolderCommitId,
+            fromVersion: rfCurrentResource.reservedFolderCommitId
           });
         }
       }
@@ -589,6 +786,30 @@ export const folderCommitServiceFactory = ({
             createdAt: targetCommit.createdAt,
             folderName: folderTargetResource.folderName,
             folderVersion: folderTargetResource.folderVersion
+          });
+        } else if (targetResource.type === ResourceType.IMPORT) {
+          const importTargetResource = targetResource as ImportTargetChange;
+          differences.push({
+            type: ResourceType.IMPORT,
+            id: importTargetResource.id,
+            versionId: importTargetResource.versionId,
+            changeType: ChangeType.CREATE,
+            commitId: targetCommit.commitId,
+            createdAt: targetCommit.createdAt,
+            importPath: importTargetResource.importPath,
+            importVersion: importTargetResource.importVersion,
+            importPosition: importTargetResource.importPosition
+          });
+        } else if (targetResource.type === ResourceType.RESERVED_FOLDER) {
+          const rfTargetResource = targetResource as ReservedFolderTargetChange;
+          differences.push({
+            type: ResourceType.RESERVED_FOLDER,
+            id: rfTargetResource.id,
+            versionId: rfTargetResource.versionId,
+            changeType: ChangeType.CREATE,
+            commitId: targetCommit.commitId,
+            createdAt: targetCommit.createdAt,
+            reservedFolderCommitId: rfTargetResource.reservedFolderCommitId
           });
         }
       }
@@ -657,6 +878,40 @@ export const folderCommitServiceFactory = ({
             if (uniqueVersions.length === 1) {
               removeNoChangeUpdate.push(change.id);
             }
+          } else if (change.type === ResourceType.IMPORT && change.importVersion && change.fromVersion) {
+            const versions = await importVersionDAL.find({
+              importId: change.id,
+              $in: {
+                version: [Number(change.importVersion), Number(change.fromVersion)]
+              }
+            });
+            const versionsShaped = versions.map((version) => ({
+              position: version.position,
+              importPath: version.importPath
+            }));
+            const uniqueVersions = versionsShaped.filter(
+              (item, index, arr) =>
+                arr.findIndex((other) =>
+                  Object.entries(item).every(
+                    ([key, value]) => JSON.stringify(value) === JSON.stringify(other[key as keyof typeof other])
+                  )
+                ) === index
+            );
+            if (uniqueVersions.length === 1) {
+              removeNoChangeUpdate.push(change.id);
+            }
+          } else if (
+            change.type === ResourceType.RESERVED_FOLDER &&
+            change.reservedFolderCommitId &&
+            change.fromVersion
+          ) {
+            const res = await compareFolderStates({
+              targetCommitId: change.reservedFolderCommitId,
+              currentCommitId: change.fromVersion,
+              tx
+            });
+
+            removeNoChangeUpdate.concat(res.map((v) => v.id));
           }
         }
       })
@@ -864,7 +1119,7 @@ export const folderCommitServiceFactory = ({
    */
   const createCommit = async (data: TCreateCommitDTO, tx?: Knex) => {
     try {
-      const metadata = { ...data.actor.metadata } || {};
+      const metadata = { ...data.actor.metadata };
 
       if (data.actor.type === ActorType.USER && data.actor.metadata?.id) {
         const user = await userDAL.findById(data.actor.metadata?.id, tx);
@@ -917,6 +1172,8 @@ export const folderCommitServiceFactory = ({
               changeType: change.type,
               secretVersionId: change.secretVersionId,
               folderVersionId: change.folderVersionId,
+              importVersionId: change.importVersionId,
+              reservedFolderCommitId: change.reservedFolderCommitId,
               isUpdate: change.isUpdate || false
             })),
             tx
@@ -1330,12 +1587,292 @@ export const folderCommitServiceFactory = ({
       return commitChanges;
     };
 
+    /**
+     * Process import changes when applying import state differences
+     */
+    const processImportChanges = async (
+      changes: ResourceChange[],
+      importVersions: Record<string, TSecretImportVersions>
+    ) => {
+      const commitChanges = [];
+
+      const importChanges = changes.filter(
+        (change): change is ResourceChange & ImportChange => change.type === ResourceType.IMPORT
+      );
+
+      for (const change of importChanges) {
+        const importVersion = importVersions[change.id];
+
+        switch (change.changeType) {
+          case "create":
+            if (importVersion) {
+              const lastPos = await secretImportDAL.findLastImportPosition(folderId, tx);
+              await secretImportDAL.updateAllPosition(folderId, lastPos + 1, importVersion.position, 1, tx);
+
+              const newImport = {
+                id: change.id,
+                folderId,
+                version: (importVersion.version || 1) + 1,
+                position: importVersion.position,
+                importEnv: importVersion.importEnv,
+                importPath: importVersion.importPath,
+                isReplication: importVersion.isReplication,
+                isReserved: importVersion.isReserved
+              };
+
+              await secretImportDAL.create(newImport, tx);
+
+              const newImportVersion = await importVersionDAL.create(
+                {
+                  importId: change.id,
+                  version: (importVersion.version || 1) + 1,
+                  position: importVersion.position,
+                  importEnv: importVersion.importEnv,
+                  importPath: importVersion.importPath,
+                  isReplication: importVersion.isReplication,
+                  isReserved: importVersion.isReserved
+                },
+                tx
+              );
+
+              commitChanges.push({
+                type: ChangeType.ADD,
+                importVersionId: newImportVersion.id
+              });
+            }
+            break;
+
+          case "update":
+            if (change.versionId) {
+              const latestVersionDetails = await importVersionDAL.findByIdsWithLatestVersion(
+                [change.id],
+                [change.versionId],
+                tx
+              );
+              if (latestVersionDetails && Object.keys(latestVersionDetails).length > 0) {
+                const versionDetails = Object.values(latestVersionDetails)[0];
+                await secretImportDAL.updateById(
+                  change.id,
+                  {
+                    version: (versionDetails.version || 1) + 1,
+                    position: versionDetails.position,
+                    importPath: versionDetails.importPath // This should never change
+                  },
+                  tx
+                );
+
+                const newImportVersion = await importVersionDAL.create(
+                  {
+                    importId: change.id,
+                    version: (versionDetails.version || 1) + 1,
+                    position: versionDetails.position,
+                    importEnv: versionDetails.importEnv,
+                    importPath: versionDetails.importPath,
+                    isReplication: versionDetails.isReplication,
+                    isReserved: versionDetails.isReserved
+                  },
+                  tx
+                );
+
+                commitChanges.push({
+                  type: ChangeType.ADD,
+                  isUpdate: true,
+                  importVersionId: newImportVersion.id
+                });
+
+                const updatedImports = await secretImportDAL.updateAllPosition(
+                  folderId,
+                  change.importPosition,
+                  newImportVersion.position,
+                  1,
+                  tx
+                );
+
+                for (const updatedImport of updatedImports) {
+                  // eslint-disable-next-line no-await-in-loop
+                  const importVersionNested = await importVersionDAL.create(
+                    {
+                      importId: updatedImport.id,
+                      position: updatedImport.position,
+                      importEnv: updatedImport.importEnv,
+                      importPath: updatedImport.importPath,
+                      isReplication: updatedImport.isReplication,
+                      isReserved: updatedImport.isReserved,
+                      version: updatedImport.version
+                    },
+                    tx
+                  );
+
+                  commitChanges.push({
+                    type: ChangeType.ADD,
+                    isUpdate: true,
+                    importVersionId: importVersionNested.id
+                  });
+                }
+              }
+            }
+            break;
+
+          case "delete": {
+            const doc = await secretImportDAL.deleteById(change.id, tx);
+
+            commitChanges.push({
+              type: ChangeType.DELETE,
+              importVersionId: change.versionId,
+              importId: change.id
+            });
+
+            await secretImportDAL.updateAllPosition(folderId, doc.position, -1, 1, tx);
+
+            break;
+          }
+
+          default:
+            throw new BadRequestError({ message: `Unknown change type: ${change.changeType}` });
+        }
+      }
+      return commitChanges;
+    };
+
+    /**
+     * Process reserved folder changes when applying reserved folder state differences
+     */
+    const processReservedFolderChanges = async (changes: ResourceChange[]) => {
+      // TODO(andrey): This was implemented wrong and actually needs to push the changes to the GHOST folder, creating a commit on there
+      // Then point to that commit using a new commit on the parent FOLDER
+      //
+      // We're putting the issue on hold so I'm not going to waste time adding this for now
+
+      const commitChanges = [];
+
+      const reservedFolderChanges = changes.filter(
+        (change): change is ResourceChange & ReservedFolderChange => change.type === ResourceType.RESERVED_FOLDER
+      );
+
+      for (const change of reservedFolderChanges) {
+        const ghostFolderId = change.id;
+
+        let diff: ResourceChange[] = [];
+
+        if (change.changeType === "create") {
+          diff = await compareFolderStates({
+            currentCommitId: undefined,
+            targetCommitId: change.reservedFolderCommitId,
+            tx
+          });
+          commitChanges.push({
+            type: ChangeType.ADD,
+            isUpdate: true,
+            reservedFolderCommitId: change.reservedFolderCommitId
+          });
+        } else if (change.changeType === "update") {
+          if (!change.fromVersion) {
+            throw new BadRequestError({
+              message: "Reserved folder previous version (fromVersion) is required for update"
+            });
+          }
+
+          diff = await compareFolderStates({
+            currentCommitId: change.fromVersion,
+            targetCommitId: change.reservedFolderCommitId,
+            tx
+          });
+
+          commitChanges.push({
+            type: ChangeType.ADD,
+            isUpdate: true,
+            reservedFolderCommitId: change.reservedFolderCommitId
+          });
+        } else if (change.changeType === "delete") {
+          if (!change.fromVersion) {
+            throw new BadRequestError({
+              message: "Reserved folder previous version (fromVersion) is required for delete"
+            });
+          }
+
+          const currentGhostFolderStateContents = await reconstructFolderState(change.fromVersion, tx);
+
+          diff = currentGhostFolderStateContents
+            .map((resource) => {
+              const baseChange: ResourceChange = {
+                type: resource.type,
+                id: resource.id,
+                versionId: resource.versionId,
+                changeType: ChangeType.DELETE,
+                commitId: BigInt(0),
+                fromVersion: resource.versionId
+              } as ResourceChange;
+
+              switch (resource.type) {
+                case ResourceType.SECRET:
+                  return {
+                    ...baseChange,
+                    secretKey: resource.secretKey,
+                    secretVersion: resource.secretVersion,
+                    secretId: resource.id
+                  } as ResourceChange;
+                case ResourceType.FOLDER:
+                  return {
+                    ...baseChange,
+                    folderName: resource.folderName,
+                    folderVersion: resource.folderVersion
+                  } as ResourceChange;
+                case ResourceType.IMPORT:
+                  return {
+                    ...baseChange,
+                    importPath: resource.importPath,
+                    importVersion: resource.importVersion,
+                    importPosition: resource.importPosition
+                  } as ResourceChange;
+                case ResourceType.RESERVED_FOLDER:
+                  return {
+                    ...baseChange,
+                    reservedFolderCommitId: resource.reservedFolderCommitId
+                  } as ResourceChange;
+                default:
+                  return null;
+              }
+            })
+            .filter((c): c is ResourceChange => c !== null);
+
+          commitChanges.push({
+            type: ChangeType.ADD,
+            isUpdate: true,
+            reservedFolderCommitId: change.reservedFolderCommitId,
+            id: ghostFolderId
+          });
+        } else {
+          throw new BadRequestError({ message: `Unknown change type for reserved folder: ${change.changeType}` });
+        }
+
+        if (diff.length > 0) {
+          await applyFolderStateDifferencesFn({
+            differences: diff,
+            actorInfo,
+            folderId: ghostFolderId,
+            projectId,
+            reconstructNewFolders: true,
+            reconstructUpToCommit: change.reservedFolderCommitId,
+            step: step + 1,
+            tx
+          });
+        }
+      }
+      return commitChanges;
+    };
+
     // Group differences by type for more efficient processing using discriminated unions
     const secretChanges = differences.filter(
       (diff): diff is ResourceChange & SecretChange => diff.type === ResourceType.SECRET
     );
     const folderChanges = differences.filter(
       (diff): diff is ResourceChange & FolderChange => diff.type === ResourceType.FOLDER
+    );
+    const importChanges = differences.filter(
+      (diff): diff is ResourceChange & ImportChange => diff.type === ResourceType.IMPORT
+    );
+    const reservedFolderChanges = differences.filter(
+      (diff): diff is ResourceChange & ReservedFolderChange => diff.type === ResourceType.RESERVED_FOLDER
     );
 
     // Batch fetch necessary data
@@ -1352,14 +1889,28 @@ export const folderCommitServiceFactory = ({
       tx
     );
 
+    const importVersions = await importVersionDAL.findByIdsWithLatestVersion(
+      importChanges.map((diff) => diff.id),
+      importChanges.map((diff) => diff.versionId),
+      tx
+    );
+
     // Process changes in parallel
-    const [secretCommitChanges, folderCommitChanges] = await Promise.all([
-      processSecretChanges(differences, secretVersions, actorInfo, folderId, tx),
-      processFolderChanges(differences, folderVersions)
-    ]);
+    const [secretCommitChanges, folderCommitChanges, importCommitChanges, reservedFolderCommitChanges] =
+      await Promise.all([
+        processSecretChanges(differences, secretVersions, actorInfo, folderId, tx),
+        processFolderChanges(differences, folderVersions),
+        processImportChanges(differences, importVersions),
+        processReservedFolderChanges(differences)
+      ]);
 
     // Combine all changes
-    const allCommitChanges = [...secretCommitChanges, ...folderCommitChanges];
+    const allCommitChanges = [
+      ...secretCommitChanges,
+      ...folderCommitChanges,
+      ...importCommitChanges,
+      ...reservedFolderCommitChanges
+    ];
 
     // Create a commit with all the changes
     await createCommit(
@@ -1382,6 +1933,8 @@ export const folderCommitServiceFactory = ({
     return {
       secretChangesCount: secretChanges.length,
       folderChangesCount: folderChanges.length,
+      importChangesCount: importChanges.length,
+      reservedFolderChangesCount: reservedFolderChanges.length,
       totalChanges: differences.length
     };
   };
@@ -1552,9 +2105,24 @@ export const folderCommitServiceFactory = ({
       projectId
     });
     const changes = await folderCommitChangesDAL.findByCommitId(commitId, projectId);
+
+    const updatedChanges: CommitChangeWithCommitInfo[] = [];
+
+    for (const change of changes) {
+      if (change.reservedFolderCommitId) {
+        const nestedChanges = await folderCommitChangesDAL.findByCommitId(change.reservedFolderCommitId, projectId);
+
+        for (const nestedChange of nestedChanges) {
+          updatedChanges.push(nestedChange);
+        }
+      } else {
+        updatedChanges.push(change);
+      }
+    }
+
     const commit = await folderCommitDAL.findById(commitId, undefined, projectId);
     const latestCommit = await folderCommitDAL.findLatestCommit(commit.folderId, projectId);
-    return { ...commit, changes, isLatest: commit.id === latestCommit?.id };
+    return { ...commit, changes: updatedChanges, isLatest: commit.id === latestCommit?.id };
   };
 
   /**
@@ -1592,6 +2160,8 @@ export const folderCommitServiceFactory = ({
           changeType: change.type,
           secretVersionId: change.secretVersionId,
           folderVersionId: change.folderVersionId,
+          importVersionId: change.importVersionId,
+          reservedFolderCommitId: change.reservedFolderCommitId,
           isUpdate: false
         }))
       };

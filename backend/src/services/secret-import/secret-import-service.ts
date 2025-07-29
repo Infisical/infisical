@@ -17,6 +17,7 @@ import {
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { ChangeType, CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -39,6 +40,7 @@ import {
   TResyncSecretImportReplicationDTO,
   TUpdateSecretImportDTO
 } from "./secret-import-types";
+import { TSecretImportVersionDALFactory } from "./secret-import-version-dal";
 
 type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
@@ -52,6 +54,8 @@ type TSecretImportServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  importVersionDAL: Pick<TSecretImportVersionDALFactory, "create" | "findLatestImportVersions" | "find">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit" | "getLatestCommit">;
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
@@ -69,7 +73,9 @@ export const secretImportServiceFactory = ({
   licenseService,
   projectBotService,
   secretV2BridgeDAL,
-  kmsService
+  kmsService,
+  importVersionDAL,
+  folderCommitService
 }: TSecretImportServiceFactoryDep) => {
   const createImport = async ({
     environment,
@@ -136,6 +142,8 @@ export const secretImportServiceFactory = ({
       if (existingImport) throw new BadRequestError({ message: `Cyclic import not allowed` });
     }
 
+    const changes: { type: CommitType.ADD; importVersionId: string }[] = [];
+
     const secImport = await secretImportDAL.transaction(async (tx) => {
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
       const doc = await secretImportDAL.create(
@@ -148,8 +156,27 @@ export const secretImportServiceFactory = ({
         },
         tx
       );
+
+      const importVersion = await importVersionDAL.create(
+        {
+          importId: doc.id,
+          position: doc.position,
+          importEnv: doc.importEnv,
+          importPath: doc.importPath,
+          isReplication: doc.isReplication,
+          isReserved: doc.isReserved,
+          version: doc.version
+        },
+        tx
+      );
+
+      changes.push({
+        type: CommitType.ADD,
+        importVersionId: importVersion.id
+      });
+
       if (doc.isReplication) {
-        await secretImportDAL.create(
+        const rep = await secretImportDAL.create(
           {
             folderId: folder.id,
             position: lastPos + 2,
@@ -159,8 +186,38 @@ export const secretImportServiceFactory = ({
           },
           tx
         );
+
+        const importVersionRep = await importVersionDAL.create(
+          {
+            importId: rep.id,
+            position: rep.position,
+            importEnv: rep.importEnv,
+            importPath: rep.importPath,
+            isReplication: rep.isReplication,
+            isReserved: rep.isReserved,
+            version: rep.version
+          },
+          tx
+        );
+
+        changes.push({
+          type: CommitType.ADD,
+          importVersionId: importVersionRep.id
+        });
       }
       return doc;
+    });
+
+    await folderCommitService.createCommit({
+      actor: {
+        type: actor,
+        metadata: {
+          id: actorId
+        }
+      },
+      message: "Import Created",
+      folderId: folder.id,
+      changes
     });
 
     if (secImport.isReplication && sourceFolder) {
@@ -245,40 +302,128 @@ export const secretImportServiceFactory = ({
       if (existingImport) throw new BadRequestError({ message: "Cyclic import not allowed" });
     }
 
+    const changes: { type: CommitType.ADD; isUpdate: true; importVersionId: string }[] = [];
+
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
       const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
       if (!secImp) throw ERR_SEC_IMP_NOT_FOUND;
       if (data.position) {
-        if (secImp.isReplication) {
-          await secretImportDAL.updateAllPosition(folder.id, secImp.position, data.position, 2, tx);
-        } else {
-          await secretImportDAL.updateAllPosition(folder.id, secImp.position, data.position, 1, tx);
+        const updatedImports = secImp.isReplication
+          ? await secretImportDAL.updateAllPosition(folder.id, secImp.position, data.position, 2, tx)
+          : await secretImportDAL.updateAllPosition(folder.id, secImp.position, data.position, 1, tx);
+
+        for (const updatedImport of updatedImports) {
+          // eslint-disable-next-line no-await-in-loop
+          const importVersion = await importVersionDAL.create(
+            {
+              importId: updatedImport.id,
+              position: updatedImport.position,
+              importEnv: updatedImport.importEnv,
+              importPath: updatedImport.importPath,
+              isReplication: updatedImport.isReplication,
+              isReserved: updatedImport.isReserved,
+              version: updatedImport.version
+            },
+            tx
+          );
+
+          // eslint-disable-next-line no-await-in-loop
+          changes.push({
+            type: CommitType.ADD,
+            isUpdate: true,
+            importVersionId: importVersion.id
+          });
         }
       }
+
+      let newPosition = data.position;
+
       if (secImp.isReplication) {
+        // If a replication is moved from a lower position to a higher position then it will "hop" over it's attached reserved folder
+        // We need to decrement the position by 1 in order to let the reserved folder take the actual target position, and give this one a position below it
+        // This should only happen if moving UP in positions, not down
+        if (newPosition && newPosition > secImp.position) {
+          newPosition -= 1;
+        }
+
         const replicationFolderPath = path.join(secretPath, getReplicationFolderName(secImp.id));
-        await secretImportDAL.update(
+        const [rep] = await secretImportDAL.update(
           {
             folderId: folder.id,
             importEnv: folder.environment.id,
             importPath: replicationFolderPath,
             isReserved: true
           },
-          { position: data?.position ? data.position + 1 : undefined },
+          { position: newPosition ? newPosition + 1 : undefined },
           tx
         );
+
+        const importVersionRep = await importVersionDAL.create(
+          {
+            importId: rep.id,
+            position: rep.position,
+            importEnv: rep.importEnv,
+            importPath: rep.importPath,
+            isReplication: rep.isReplication,
+            isReserved: rep.isReserved,
+            version: rep.version
+          },
+          tx
+        );
+
+        changes.push({
+          type: CommitType.ADD,
+          isUpdate: true,
+          importVersionId: importVersionRep.id
+        });
       }
+
       const [doc] = await secretImportDAL.update(
         { id, folderId: folder.id },
         {
           // when moving replicated import, the position is meant for reserved import
           // replicated one should always be behind the reserved import
-          position: data.position,
+          position: newPosition,
           importEnv: data?.environment ? importedEnv.id : undefined,
           importPath: data?.path
         },
         tx
       );
+
+      const importVersion = await importVersionDAL.create(
+        {
+          importId: doc.id,
+          position: doc.position,
+          importEnv: doc.importEnv,
+          importPath: doc.importPath,
+          isReplication: doc.isReplication,
+          isReserved: doc.isReserved,
+          version: doc.version
+        },
+        tx
+      );
+
+      changes.push({
+        type: CommitType.ADD,
+        isUpdate: true,
+        importVersionId: importVersion.id
+      });
+
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: actor,
+            metadata: {
+              id: actorId
+            }
+          },
+          message: "Import Updated",
+          folderId: folder.id,
+          changes
+        },
+        tx
+      );
+
       return doc;
     });
 
@@ -315,14 +460,24 @@ export const secretImportServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
 
+    const changes: { type: CommitType.DELETE; importVersionId?: string; reservedFolderCommitId?: string }[] = [];
+
     const secImport = await secretImportDAL.transaction(async (tx) => {
       const [doc] = await secretImportDAL.delete({ folderId: folder.id, id }, tx);
       if (!doc) throw new NotFoundError({ message: `Secret import with folder ID '${id}' not found` });
+
+      const importVersions = await importVersionDAL.findLatestImportVersions([doc.id], tx);
+
+      changes.push({
+        type: CommitType.DELETE,
+        importVersionId: importVersions[doc.id].id
+      });
+
       if (doc.isReplication) {
         const replicationFolderPath = path.join(secretPath, getReplicationFolderName(doc.id));
         const replicatedFolder = await folderDAL.findBySecretPath(projectId, environment, replicationFolderPath, tx);
         if (replicatedFolder) {
-          await secretImportDAL.delete(
+          const reservedImportDoc = await secretImportDAL.findOne(
             {
               folderId: folder.id,
               importEnv: folder.environment.id,
@@ -331,8 +486,52 @@ export const secretImportServiceFactory = ({
             },
             tx
           );
+
+          if (reservedImportDoc) {
+            const reservedImportVersions = await importVersionDAL.findLatestImportVersions([reservedImportDoc.id], tx);
+            const reservedImportVersion = reservedImportVersions[reservedImportDoc.id];
+
+            await secretImportDAL.delete(
+              {
+                folderId: folder.id,
+                importEnv: folder.environment.id,
+                importPath: replicationFolderPath,
+                isReserved: true
+              },
+              tx
+            );
+
+            if (reservedImportVersion) {
+              changes.push({
+                type: CommitType.DELETE,
+                importVersionId: reservedImportVersion.id
+              });
+            }
+          }
+
           await folderDAL.deleteById(replicatedFolder.id, tx);
+
+          const latestCommitForReplicatedFolder = await folderCommitService.getLatestCommit({
+            folderId: replicatedFolder.id,
+            projectId,
+            actor,
+            actorId,
+            actorAuthMethod,
+            actorOrgId
+          });
+
+          if (!latestCommitForReplicatedFolder) {
+            throw new NotFoundError({
+              message: `Latest commit for replicated folder with ID '${replicatedFolder.id}' not found`
+            });
+          }
+
+          changes.push({
+            type: CommitType.DELETE,
+            reservedFolderCommitId: latestCommitForReplicatedFolder?.id
+          });
         }
+
         await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, 2, tx);
       } else {
         await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, 1, tx);
@@ -345,6 +544,18 @@ export const secretImportServiceFactory = ({
         });
       }
       return { ...doc, importEnv };
+    });
+
+    await folderCommitService.createCommit({
+      actor: {
+        type: actor,
+        metadata: {
+          id: actorId
+        }
+      },
+      message: "Import Deleted",
+      folderId: folder.id,
+      changes
     });
 
     await secretQueueService.syncSecrets({
@@ -921,6 +1132,45 @@ export const secretImportServiceFactory = ({
     return result;
   };
 
+  const getImportVersionsByIds = async ({
+    importId,
+    importVersions
+  }: {
+    importId: string;
+    importVersions: string[];
+  }) => {
+    const versions = await importVersionDAL.find({
+      importId,
+      $in: {
+        version: importVersions.map((v) => Number.parseInt(v, 10))
+      }
+    });
+    return versions;
+  };
+
+  const getImportVersions = async (
+    change: {
+      importVersion?: string;
+      isUpdate?: boolean;
+      changeType?: string;
+    },
+    fromVersion: string,
+    importId: string
+  ) => {
+    const currentVersion = change.importVersion || "1";
+    // eslint-disable-next-line no-await-in-loop
+    const versions = await getImportVersionsByIds({
+      importId,
+      importVersions:
+        change.isUpdate || change.changeType === ChangeType.UPDATE ? [currentVersion, fromVersion] : [currentVersion]
+    });
+    return versions.map((v) => ({
+      version: v.version?.toString() || "1",
+      position: v.position,
+      importPath: v.importPath
+    }));
+  };
+
   return {
     createImport,
     updateImport,
@@ -934,6 +1184,7 @@ export const secretImportServiceFactory = ({
     fnSecretsFromImports,
     getProjectImportMultiEnvCount,
     getImportsMultiEnv,
-    getFolderIsImportedBy
+    getFolderIsImportedBy,
+    getImportVersions
   };
 };

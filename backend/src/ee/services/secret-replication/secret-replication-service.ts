@@ -10,7 +10,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
+import { CommitType, TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -216,7 +216,7 @@ export const secretReplicationServiceFactory = ({
       importEnv: folder.envId
     });
 
-    // CASE: normal mode <- link import  <- replicated import
+    // CASE: normal mode <- link import <- replicated import
     const nonReplicatedDestinationImports = destinationSecretImports.filter(({ isReplication }) => !isReplication);
     if (nonReplicatedDestinationImports.length) {
       // keep calling sync secret for all the imports made
@@ -327,6 +327,7 @@ export const secretReplicationServiceFactory = ({
               name: getReplicationFolderName(destinationSecretImport.id),
               isReserved: true
             });
+
             if (!destinationReplicationFolder) {
               destinationReplicationFolder = await folderDAL.create({
                 parentId: destinationFolder.id,
@@ -384,10 +385,10 @@ export const secretReplicationServiceFactory = ({
               .filter(({ key }) => !sourceSecretsGroupByKey[key]?.[0])
               .map((el) => ({ ...el, operation: SecretOperations.Delete }));
 
-            const isEmtpy =
+            const isEmpty =
               locallyCreatedSecrets.length + locallyUpdatedSecrets.length + locallyDeletedSecrets.length === 0;
             // eslint-disable-next-line
-            if (isEmtpy) continue;
+            if (isEmpty) continue;
 
             const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
               projectId,
@@ -445,6 +446,7 @@ export const secretReplicationServiceFactory = ({
                 if (locallyCreatedSecrets.length) {
                   await fnSecretV2BridgeBulkInsert({
                     folderId: destinationReplicationFolderId,
+                    parentFolderId: destinationFolder.id,
                     orgId,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     secretDAL: secretV2BridgeDAL,
@@ -471,6 +473,7 @@ export const secretReplicationServiceFactory = ({
                   await fnSecretV2BridgeBulkUpdate({
                     orgId,
                     folderId: destinationReplicationFolderId,
+                    parentFolderId: destinationFolder.id,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     folderCommitService,
                     secretDAL: secretV2BridgeDAL,
@@ -508,6 +511,52 @@ export const secretReplicationServiceFactory = ({
                     },
                     tx
                   );
+
+                  const secretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(
+                    destinationReplicationFolderId,
+                    locallyDeletedSecrets.map(({ id }) => id)
+                  );
+
+                  const commitChanges = Object.entries(secretVersions)
+                    .filter(([, { type }]) => type === SecretType.Shared)
+                    .map(([, sv]) => ({
+                      type: CommitType.DELETE,
+                      secretVersionId: sv.id
+                    }));
+
+                  if (commitChanges.length > 0) {
+                    const commit = await folderCommitService.createCommit(
+                      {
+                        actor: {
+                          type: ActorType.PLATFORM
+                        },
+                        message: "Secret Deleted",
+                        folderId: destinationReplicationFolderId,
+                        changes: commitChanges
+                      },
+                      tx
+                    );
+
+                    if (commit) {
+                      await folderCommitService.createCommit(
+                        {
+                          actor: {
+                            type: ActorType.PLATFORM
+                          },
+                          message: "Secret Deleted Through Import",
+                          folderId: destinationFolder.id,
+                          changes: [
+                            {
+                              type: CommitType.ADD,
+                              isUpdate: true,
+                              reservedFolderCommitId: commit.id
+                            }
+                          ]
+                        },
+                        tx
+                      );
+                    }
+                  }
                 }
               });
 

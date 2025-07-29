@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSecretImports } from "@app/db/schemas";
+import { TableName, TSecretImports, TSecretImportsUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -22,30 +22,38 @@ export const secretImportDALFactory = (db: TDbClient) => {
     return lastPos?.position || 0;
   };
 
+  // updateAllPosition updates positions of secret imports in a folder and returns the updated imports
   const updateAllPosition = async (folderId: string, pos: number, targetPos: number, positionInc = 1, tx?: Knex) => {
     try {
+      // Handles import deletion
       if (targetPos === -1) {
-        // this means delete
-        await (tx || db)(TableName.SecretImport)
+        return await (tx || db)(TableName.SecretImport)
           .where({ folderId })
           .andWhere("position", ">", pos)
-          .decrement("position", positionInc);
-        return;
+          .decrement("position", positionInc)
+          .increment("version", 1)
+          .returning("*");
       }
 
+      // Handles moving an import to a higher position
       if (targetPos > pos) {
-        await (tx || db)(TableName.SecretImport)
+        return await (tx || db)(TableName.SecretImport)
           .where({ folderId })
           .where("position", "<=", targetPos)
           .andWhere("position", ">", pos)
-          .decrement("position", positionInc);
-      } else {
-        await (tx || db)(TableName.SecretImport)
-          .where({ folderId })
-          .where("position", ">=", targetPos)
-          .andWhere("position", "<", pos)
-          .increment("position", positionInc);
+          .decrement("position", positionInc)
+          .increment("version", 1)
+          .returning("*");
       }
+
+      // Handles moving an import to a lower position
+      return await (tx || db)(TableName.SecretImport)
+        .where({ folderId })
+        .where("position", ">=", targetPos)
+        .andWhere("position", "<", pos)
+        .increment("position", positionInc)
+        .increment("version", 1)
+        .returning("*");
     } catch (error) {
       throw new DatabaseError({ error, name: "Update position" });
     }
@@ -321,8 +329,22 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const update = async (filter: Partial<TSecretImports>, data: TSecretImportsUpdate, tx?: Knex) => {
+    try {
+      const imp = await (tx || db)(TableName.SecretImport)
+        .where(filter)
+        .update(data)
+        .increment("version", 1)
+        .returning("*");
+      return imp;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "SecretImportUpdate" });
+    }
+  };
+
   return {
     ...secretImportOrm,
+    update,
     find,
     findById,
     findByFolderIds,

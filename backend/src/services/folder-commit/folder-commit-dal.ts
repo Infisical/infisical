@@ -7,6 +7,7 @@ import {
   TFolderCommits,
   TProjectEnvironments,
   TSecretFolderVersions,
+  TSecretImportVersions,
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -197,10 +198,15 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       changes: (TFolderCommitChanges & {
         referencedSecretId?: string;
         referencedFolderId?: string;
+        referencedImportId?: string;
         folderName?: string;
         folderVersion?: string;
         secretKey?: string;
         secretVersion?: string;
+        importPath?: string;
+        importVersion?: string;
+        importPosition?: number;
+        reservedFolderId?: string;
       })[];
     })[]
   > => {
@@ -235,14 +241,30 @@ export const folderCommitDALFactory = (db: TDbClient) => {
           `${TableName.FolderCommitChanges}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
+        .leftJoin<TSecretImportVersions>(
+          TableName.SecretImportVersion,
+          `${TableName.FolderCommitChanges}.importVersionId`,
+          `${TableName.SecretImportVersion}.id`
+        )
+        .leftJoin<TFolderCommits>(
+          TableName.FolderCommit,
+          `${TableName.FolderCommitChanges}.reservedFolderCommitId`,
+          `${TableName.FolderCommit}.id`
+        )
         .select(selectAllTableCols(TableName.FolderCommitChanges))
         .select(
           db.ref("secretId").withSchema(TableName.SecretVersionV2).as("referencedSecretId"),
           db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("referencedFolderId"),
+          db.ref("importId").withSchema(TableName.SecretImportVersion).as("referencedImportId"),
           db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),
           db.ref("version").withSchema(TableName.SecretFolderVersion).as("folderVersion"),
           db.ref("key").withSchema(TableName.SecretVersionV2).as("secretKey"),
-          db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion")
+          db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion"),
+          db.ref("importPath").withSchema(TableName.SecretImportVersion),
+          db.ref("version").withSchema(TableName.SecretImportVersion).as("importVersion"),
+          db.ref("position").withSchema(TableName.SecretImportVersion).as("importPosition"),
+          db.ref("position").withSchema(TableName.SecretImportVersion).as("importPosition"),
+          db.ref("folderId").withSchema(TableName.FolderCommit).as("reservedFolderId")
         );
 
       // Organize changes by commit ID

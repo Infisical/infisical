@@ -23,13 +23,18 @@ export type TFolderCommitChanges = {
   isUpdate: boolean;
   secretVersionId: string | null;
   folderVersionId: string | null;
+  importVersionId: string | null;
+  reservedFolderCommitId: string | null;
   createdAt: string;
   updatedAt: string;
   versions: SecretVersions[];
   secretKey?: string;
   folderName?: string;
+  importPath?: string;
+  importPosition?: number;
   secretVersion?: string;
   folderVersion?: string;
+  importVersion?: string;
 };
 
 export type FolderReconstructedItem = {
@@ -40,6 +45,9 @@ export type FolderReconstructedItem = {
   folderVersion?: number;
   secretKey?: string;
   secretVersion?: number;
+  importPath?: string;
+  importPosition?: number;
+  importVersion?: number;
 };
 
 export type CommitWithChanges = {

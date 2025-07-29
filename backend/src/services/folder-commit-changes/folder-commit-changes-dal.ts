@@ -10,6 +10,7 @@ import {
   TSecretFolderVersions,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import { TSecretImportVersions } from "@app/db/schemas/secret-import-versions";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -57,8 +58,35 @@ export type FolderCommitChange = BaseCommitChangeInfo & {
   }[];
 };
 
+// Import-specific change
+export type ImportCommitChange = BaseCommitChangeInfo & {
+  resourceType: "import";
+  importPosition: number;
+  importPath: string;
+  importVersion: string;
+  importChangeId: string;
+  versions?: {
+    version: string;
+    position: number;
+    importPath: string;
+  }[];
+};
+
+// Reserved folder-specific change
+export type ReservedFolderCommitChange = BaseCommitChangeInfo & {
+  resourceType: "reserved_folder";
+  reservedFolderCommitId: string;
+  versions?: {
+    reservedFolderCommitId: string;
+  }[];
+};
+
 // Discriminated union
-export type CommitChangeWithCommitInfo = SecretCommitChange | FolderCommitChange;
+export type CommitChangeWithCommitInfo =
+  | SecretCommitChange
+  | FolderCommitChange
+  | ImportCommitChange
+  | ReservedFolderCommitChange;
 
 // Type guards
 export const isSecretCommitChange = (change: CommitChangeWithCommitInfo): change is SecretCommitChange =>
@@ -66,6 +94,9 @@ export const isSecretCommitChange = (change: CommitChangeWithCommitInfo): change
 
 export const isFolderCommitChange = (change: CommitChangeWithCommitInfo): change is FolderCommitChange =>
   change.resourceType === "folder";
+
+export const isImportCommitChange = (change: CommitChangeWithCommitInfo): change is ImportCommitChange =>
+  change.resourceType === "import";
 
 export const folderCommitChangesDALFactory = (db: TDbClient) => {
   const folderCommitChangesOrm = ormify(db, TableName.FolderCommitChanges);
@@ -93,6 +124,11 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
           `${TableName.FolderCommitChanges}.folderVersionId`,
           `${TableName.SecretFolderVersion}.id`
         )
+        .leftJoin<TSecretImportVersions>(
+          TableName.SecretImportVersion,
+          `${TableName.FolderCommitChanges}.importVersionId`,
+          `${TableName.SecretImportVersion}.id`
+        )
         .leftJoin<TProjectEnvironments>(
           TableName.Environment,
           `${TableName.FolderCommit}.envId`,
@@ -108,6 +144,10 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderName"),
           db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderChangeId"),
           db.ref("version").withSchema(TableName.SecretFolderVersion).as("folderVersion"),
+          db.ref("importId").withSchema(TableName.SecretImportVersion).as("importChangeId"),
+          db.ref("version").withSchema(TableName.SecretImportVersion).as("importVersion"),
+          db.ref("position").withSchema(TableName.SecretImportVersion).as("importPosition"),
+          db.ref("importPath").withSchema(TableName.SecretImportVersion),
           db.ref("key").withSchema(TableName.SecretVersionV2).as("secretKey"),
           db.ref("version").withSchema(TableName.SecretVersionV2).as("secretVersion"),
           db.ref("secretId").withSchema(TableName.SecretVersionV2),
@@ -128,6 +168,23 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
             secretVersion: doc.secretVersion.toString(),
             secretId: doc.secretId
           } as SecretCommitChange;
+        }
+        if (doc.importVersion !== null) {
+          return {
+            ...doc,
+            resourceType: "import",
+            importVersion: doc.importVersion.toString(),
+            importChangeId: doc.importChangeId,
+            importPosition: doc.importPosition,
+            importPath: doc.importPath
+          };
+        }
+        if (doc.reservedFolderCommitId != null) {
+          return {
+            ...doc,
+            resourceType: "reserved_folder",
+            reservedFolderCommitId: doc.reservedFolderCommitId
+          };
         }
         return {
           ...doc,

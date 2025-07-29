@@ -13,7 +13,9 @@ export const FolderCheckpointResourcesSchema = z.object({
   secretVersionId: z.string().uuid().nullable().optional(),
   folderVersionId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  importVersionId: z.string().uuid().nullable().optional(),
+  reservedFolderCommitId: z.string().uuid().nullable().optional()
 });
 
 export type TFolderCheckpointResources = z.infer<typeof FolderCheckpointResourcesSchema>;

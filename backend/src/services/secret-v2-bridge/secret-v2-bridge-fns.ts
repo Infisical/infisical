@@ -67,6 +67,7 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
 export const fnSecretBulkInsert = async ({
   // TODO: Pick types here
   folderId,
+  parentFolderId,
   orgId,
   inputSecrets,
   secretDAL,
@@ -142,7 +143,7 @@ export const fnSecretBulkInsert = async ({
     }));
 
   if (commitChanges.length > 0) {
-    await folderCommitService.createCommit(
+    const commit = await folderCommitService.createCommit(
       {
         actor: {
           type: actorType || ActorType.PLATFORM,
@@ -156,6 +157,26 @@ export const fnSecretBulkInsert = async ({
       },
       tx
     );
+
+    if (parentFolderId && commit) {
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: ActorType.PLATFORM
+          },
+          message: "Secret Created Through Import",
+          folderId: parentFolderId,
+          changes: [
+            {
+              type: CommitType.ADD,
+              isUpdate: true,
+              reservedFolderCommitId: commit.id
+            }
+          ]
+        },
+        tx
+      );
+    }
   }
 
   await secretDAL.upsertSecretReferences(
@@ -209,6 +230,7 @@ export const fnSecretBulkUpdate = async ({
   tx,
   inputSecrets,
   folderId,
+  parentFolderId,
   orgId,
   secretDAL,
   secretVersionDAL,
@@ -367,7 +389,7 @@ export const fnSecretBulkUpdate = async ({
       secretVersionId: sv.id
     }));
   if (commitChanges.length > 0) {
-    await folderCommitService.createCommit(
+    const commit = await folderCommitService.createCommit(
       {
         actor: {
           type: actorType || ActorType.PLATFORM,
@@ -381,6 +403,26 @@ export const fnSecretBulkUpdate = async ({
       },
       tx
     );
+
+    if (parentFolderId && commit) {
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: ActorType.PLATFORM
+          },
+          message: "Secret Updated Through Import",
+          folderId: parentFolderId,
+          changes: [
+            {
+              type: CommitType.ADD,
+              isUpdate: true,
+              reservedFolderCommitId: commit.id
+            }
+          ]
+        },
+        tx
+      );
+    }
   }
 
   return secretsWithTags.map((secret) => ({ ...secret, _id: secret.id }));

@@ -165,6 +165,7 @@ export type TSecretReference = { environment: string; secretPath: string; secret
 
 export type TFnSecretBulkInsert = {
   folderId: string;
+  parentFolderId?: string; // For reserved folders that need to create a second commit on the parent folder to point to their first one
   orgId: string;
   tx?: Knex;
   inputSecrets: Array<
@@ -198,6 +199,7 @@ type TRequireReferenceIfValue =
 
 export type TFnSecretBulkUpdate = {
   folderId: string;
+  parentFolderId?: string; // For reserved folders that need to create a second commit on the parent folder to point to their first one
   orgId: string;
   inputSecrets: {
     filter: Partial<TSecretsV2>;
