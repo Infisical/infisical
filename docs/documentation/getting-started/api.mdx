@@ -66,7 +66,7 @@ In this brief, we'll explore how to fetch a secret back from a project on [Infis
         #### Sample request
 
         ```
-        curl --location --request POST 'https://app.infisical.com/api/v1/auth/universal-auth/login' \
+        curl --location --request POST 'http://localhost:8080/api/v1/auth/universal-auth/login' \
         --header 'Content-Type: application/x-www-form-urlencoded' \
         --data-urlencode 'clientSecret=<client_secret>' \
         --data-urlencode 'clientId=<client_id>'
