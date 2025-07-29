@@ -664,6 +664,10 @@ export const ORGANIZATIONS = {
     organizationId: "The ID of the organization to delete the membership from.",
     membershipId: "The ID of the membership to delete."
   },
+  BULK_DELETE_USER_MEMBERSHIPS: {
+    organizationId: "The ID of the organization to delete the memberships from.",
+    membershipIds: "The IDs of the memberships to delete."
+  },
   LIST_IDENTITY_MEMBERSHIPS: {
     orgId: "The ID of the organization to get identity memberships from.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",

@@ -25,6 +25,14 @@ export type TDeleteOrgMembershipDTO = {
   actorAuthMethod: ActorAuthMethod;
 };
 
+export type TDeleteOrgMembershipsDTO = {
+  userId: string;
+  orgId: string;
+  membershipIds: string[];
+  actorOrgId: string | undefined;
+  actorAuthMethod: ActorAuthMethod;
+};
+
 export type TInviteUserToOrgDTO = {
   inviteeEmails: string[];
   organizationRoleSlug: string;

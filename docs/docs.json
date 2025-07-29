@@ -900,6 +900,7 @@
                   "api-reference/endpoints/organizations/memberships",
                   "api-reference/endpoints/organizations/update-membership",
                   "api-reference/endpoints/organizations/delete-membership",
+                  "api-reference/endpoints/organizations/bulk-delete-memberships",
                   "api-reference/endpoints/organizations/list-identity-memberships",
                   "api-reference/endpoints/organizations/workspaces"
                 ]
