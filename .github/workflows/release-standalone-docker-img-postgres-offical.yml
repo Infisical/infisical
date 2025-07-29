@@ -79,12 +79,7 @@ jobs:
               working-directory: backend
             - name: version output
               run: |
-                  echo "Output Value: ${{ steps.version.outputs.major }}"
-                  echo "Output Value: ${{ steps.version.outputs.minor }}"
-                  echo "Output Value: ${{ steps.version.outputs.patch }}"
-                  echo "Output Value: ${{ steps.version.outputs.version }}"
-                  echo "Output Value: ${{ steps.version.outputs.version_type }}"
-                  echo "Output Value: ${{ steps.version.outputs.increment }}"
+                  echo "Version: ${{ steps.version.outputs.major }}"
             - name: Save commit hashes for tag
               id: commit
               uses: pr-mpt/actions-commit-hash@v2
