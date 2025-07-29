@@ -1,5 +1,0 @@
-[infisical]
-name=Infisical CLI
-baseurl=https://yum.fury.io/infisical/
-enabled=1
-gpgcheck=0
