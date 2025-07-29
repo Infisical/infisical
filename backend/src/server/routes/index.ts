@@ -1238,6 +1238,7 @@ export const registerRoutes = async (
 
   const secretV2BridgeService = secretV2BridgeServiceFactory({
     folderDAL,
+    projectDAL,
     secretVersionDAL: secretVersionV2BridgeDAL,
     folderCommitService,
     secretQueueService,

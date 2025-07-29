@@ -204,6 +204,17 @@ const envSchema = z
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
 
+    // Special Detection Feature
+    PARAMS_FOLDER_SECRET_DETECTION_PATHS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return undefined;
+          return JSON.parse(val) as { secretPath: string; projectId: string }[];
+        })
+    ),
+
     // HSM
     HSM_LIB_PATH: zpStr(z.string().optional()),
     HSM_PIN: zpStr(z.string().optional()),
@@ -358,6 +369,7 @@ const envSchema = z
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(","),
+    PARAMS_FOLDER_SECRET_DETECTION_ENABLED: (data.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.length ?? 0) > 0,
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID:
       data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET:

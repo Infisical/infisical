@@ -369,7 +369,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECTS.UPDATE.slug),
         secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing),
         showSnapshotsLegacy: z.boolean().optional().describe(PROJECTS.UPDATE.showSnapshotsLegacy),
-        defaultProduct: z.nativeEnum(ProjectType).optional().describe(PROJECTS.UPDATE.defaultProduct)
+        defaultProduct: z.nativeEnum(ProjectType).optional().describe(PROJECTS.UPDATE.defaultProduct),
+        secretDetectionIgnoreValues: z
+          .array(z.string())
+          .optional()
+          .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues)
       }),
       response: {
         200: z.object({
@@ -392,7 +396,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           hasDeleteProtection: req.body.hasDeleteProtection,
           slug: req.body.slug,
           secretSharing: req.body.secretSharing,
-          showSnapshotsLegacy: req.body.showSnapshotsLegacy
+          showSnapshotsLegacy: req.body.showSnapshotsLegacy,
+          secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
