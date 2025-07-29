@@ -80,17 +80,12 @@ export const SecretDetectionIgnoreValuesSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-semibold">Secret Detection Ignore Values</p>
+        <p className="text-xl font-semibold">Secret Detection</p>
       </div>
-      <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
-        Define secret values that should be ignored when scanning parameter folders for misplaced
-        secrets. These values will not trigger policy violation alerts even if they contain
-        sensitive data.
-      </p>
+      <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">Define secret values to ignore when scanning designated parameter folders. Add values here to prevent false positives or allow approved sensitive data. These ignored values will not trigger policy violation alerts.</p>
 
       <form onSubmit={handleSubmit(handleIgnoreValuesSubmit)} autoComplete="off">
         <div className="mb-4">
-          <p className="mb-3 text-sm font-medium text-gray-300">Ignored Secret Values</p>
           <div className="flex flex-col space-y-2">
             {ignoreValuesFormFields.fields.map(({ id: ignoreValueFieldId }, i) => (
               <div key={ignoreValueFieldId} className="flex items-end space-x-2">
@@ -129,7 +124,7 @@ export const SecretDetectionIgnoreValuesSection = () => {
                 onClick={() => ignoreValuesFormFields.append({ value: "" })}
                 isDisabled={!isAdmin}
               >
-                Add Ignore Value
+                Add value to ignore
               </Button>
             </div>
           </div>
