@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, ModalClose, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -75,6 +76,7 @@ export const MySqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
     formState: { isSubmitting, isDirty }
   } = form;
 
+  const { subscription } = useSubscription();
   const isPlatformManagedCredentials = appConnection?.isPlatformManagedCredentials ?? false;
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
@@ -96,55 +98,57 @@ export const MySqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }}
       >
         {!isUpdate && <GenericAppConnectionsFields />}
-        <OrgPermissionCan
-          I={OrgGatewayPermissionActions.AttachGateways}
-          a={OrgPermissionSubjects.Gateway}
-        >
-          {(isAllowed) => (
-            <Controller
-              control={control}
-              name="gatewayId"
-              defaultValue=""
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error?.message)}
-                  errorText={error?.message}
-                  label="Gateway"
-                >
-                  <Tooltip
-                    isDisabled={isAllowed}
-                    content="Restricted access. You don't have permission to attach gateways to resources."
+        {subscription.gateway && (
+          <OrgPermissionCan
+            I={OrgGatewayPermissionActions.AttachGateways}
+            a={OrgPermissionSubjects.Gateway}
+          >
+            {(isAllowed) => (
+              <Controller
+                control={control}
+                name="gatewayId"
+                defaultValue=""
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    isError={Boolean(error?.message)}
+                    errorText={error?.message}
+                    label="Gateway"
                   >
-                    <div>
-                      <Select
-                        isDisabled={!isAllowed}
-                        value={value as string}
-                        onValueChange={onChange}
-                        className="w-full border border-mineshaft-500"
-                        dropdownContainerClassName="max-w-none"
-                        isLoading={isGatewaysLoading}
-                        placeholder="Default: Internet Gateway"
-                        position="popper"
-                      >
-                        <SelectItem
-                          value={null as unknown as string}
-                          onClick={() => onChange(undefined)}
+                    <Tooltip
+                      isDisabled={isAllowed}
+                      content="Restricted access. You don't have permission to attach gateways to resources."
+                    >
+                      <div>
+                        <Select
+                          isDisabled={!isAllowed}
+                          value={value as string}
+                          onValueChange={onChange}
+                          className="w-full border border-mineshaft-500"
+                          dropdownContainerClassName="max-w-none"
+                          isLoading={isGatewaysLoading}
+                          placeholder="Default: Internet Gateway"
+                          position="popper"
                         >
-                          Internet Gateway
-                        </SelectItem>
-                        {gateways?.map((el) => (
-                          <SelectItem value={el.id} key={el.id}>
-                            {el.name}
+                          <SelectItem
+                            value={null as unknown as string}
+                            onClick={() => onChange(undefined)}
+                          >
+                            Internet Gateway
                           </SelectItem>
-                        ))}
-                      </Select>
-                    </div>
-                  </Tooltip>
-                </FormControl>
-              )}
-            />
-          )}
-        </OrgPermissionCan>
+                          {gateways?.map((el) => (
+                            <SelectItem value={el.id} key={el.id}>
+                              {el.name}
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      </div>
+                    </Tooltip>
+                  </FormControl>
+                )}
+              />
+            )}
+          </OrgPermissionCan>
+        )}
         <Controller
           name="method"
           control={control}

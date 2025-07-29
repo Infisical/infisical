@@ -1044,6 +1044,15 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const gatewayService = gatewayServiceFactory({
+    permissionService,
+    gatewayDAL,
+    kmsService,
+    licenseService,
+    orgGatewayConfigDAL,
+    keyStore
+  });
+
   const secretSyncQueue = secretSyncQueueFactory({
     queueService,
     secretSyncDAL,
@@ -1067,7 +1076,8 @@ export const registerRoutes = async (
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
     appConnectionDAL,
-    licenseService
+    licenseService,
+    gatewayService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1488,15 +1498,6 @@ export const registerRoutes = async (
     identityUaClientSecretDAL,
     identityUaDAL,
     licenseService
-  });
-
-  const gatewayService = gatewayServiceFactory({
-    permissionService,
-    gatewayDAL,
-    kmsService,
-    licenseService,
-    orgGatewayConfigDAL,
-    keyStore
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({

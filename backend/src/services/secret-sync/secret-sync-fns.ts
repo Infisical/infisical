@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import { BadRequestError } from "@app/lib/errors";
@@ -97,6 +98,7 @@ export const listSecretSyncOptions = () => {
 type TSyncSecretDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 // Add schema to secret keys
@@ -191,7 +193,7 @@ export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService }: TSyncSecretDeps
   ): Promise<void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -201,7 +203,7 @@ export const SecretSyncFns = {
       case SecretSync.AWSSecretsManager:
         return AwsSecretsManagerSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return GithubSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService);
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
@@ -395,7 +397,7 @@ export const SecretSyncFns = {
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService }: TSyncSecretDeps
   ): Promise<void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -405,7 +407,7 @@ export const SecretSyncFns = {
       case SecretSync.AWSSecretsManager:
         return AwsSecretsManagerSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return GithubSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService);
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
