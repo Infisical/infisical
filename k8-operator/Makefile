@@ -1,5 +1,6 @@
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+VERSION ?= latest
+IMG ?= infisical/kubernetes-operator:${VERSION} # ${VERSION} will be replaced by the version in the CI step
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -23,6 +24,28 @@ SHELL = /usr/bin/env bash -o pipefail
 all: build
 
 ##@ General
+
+HELMIFY ?= $(LOCALBIN)/helmify
+
+.PHONY: helmify
+helmify: $(HELMIFY) ## Download helmify locally if necessary.
+$(HELMIFY): $(LOCALBIN)
+	test -s $(LOCALBIN)/helmify || GOBIN=$(LOCALBIN) go install github.com/arttor/helmify/cmd/helmify@latest
+    
+legacy-helm: manifests kustomize helmify
+	$(KUSTOMIZE) build config/default | $(HELMIFY) ../helm-charts/secrets-operator
+
+helm: manifests kustomize helmify
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	./scripts/generate-helm.sh
+	cd config/manager && $(KUSTOMIZE) edit set image controller=controller:latest  # reset back
+
+## Yaml for Kubectl 
+kubectl-install: manifests kustomize
+	mkdir -p kubectl-install
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default > kubectl-install/install-secrets-operator.yaml
+
 
 # The help target prints out all targets with their descriptions organized
 # beneath their categories. The categories are represented by '##@' and the

@@ -44,10 +44,7 @@ jobs:
 
             - name: Generate Helm Chart
               working-directory: k8-operator
-              run: make helm
-
-            - name: Update Helm Chart Version
-              run: ./k8-operator/scripts/update-version.sh ${{ steps.extract_version.outputs.version }}
+              run: make helm VERSION=${{ steps.extract_version.outputs.version }}
 
             - name: Debug - Check file changes
               run: |
