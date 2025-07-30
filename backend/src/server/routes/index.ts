@@ -835,7 +835,6 @@ export const registerRoutes = async (
     projectDAL,
     permissionService,
     projectUserMembershipRoleDAL,
-    userDAL,
     projectBotDAL,
     projectKeyDAL,
     projectMembershipDAL

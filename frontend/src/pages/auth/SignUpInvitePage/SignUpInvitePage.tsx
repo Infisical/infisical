@@ -1,6 +1,3 @@
-/* eslint-disable no-nested-ternary */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";

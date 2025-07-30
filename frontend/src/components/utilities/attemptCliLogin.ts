@@ -43,7 +43,7 @@ const attemptLogin = async ({
   const telemetry = new Telemetry().getInstance();
 
   if (loginMode === LoginMode.ServerSide) {
-    console.log("attempting login with server side");
+    console.log("Attempting login with server side...");
     const data = await loginV3({
       email,
       password,
@@ -51,7 +51,7 @@ const attemptLogin = async ({
       captchaToken
     }).catch((err) => {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
-        if (err.response.data.error === "LegacyEncryptionScheme") {
+        if (err.response?.data?.error === "LegacyEncryptionScheme") {
           createNotification({
             text: "Failed to login without SRP, attempting to authenticate with legacy SRP authentication.",
             type: "error"

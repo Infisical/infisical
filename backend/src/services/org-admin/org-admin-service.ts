@@ -11,7 +11,6 @@ import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TUserDALFactory } from "../user/user-dal";
 import { TAccessProjectDTO, TListOrgProjectsDTO } from "./org-admin-types";
 
 type TOrgAdminServiceFactoryDep = {
@@ -23,7 +22,6 @@ type TOrgAdminServiceFactoryDep = {
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "create">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserId">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create" | "delete">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
@@ -36,7 +34,6 @@ export const orgAdminServiceFactory = ({
   projectMembershipDAL,
   projectKeyDAL,
   projectBotDAL,
-  userDAL,
   projectUserMembershipRoleDAL,
   smtpService
 }: TOrgAdminServiceFactoryDep) => {
@@ -141,10 +138,6 @@ export const orgAdminServiceFactory = ({
         message: `Project bot for project with ID '${projectId}' not found`
       });
     }
-
-    const userEncryptionKey = await userDAL.findUserEncKeyByUserId(actorId);
-    if (!userEncryptionKey)
-      throw new NotFoundError({ message: `User encryption key for user with ID '${actorId}' not found` });
 
     const updatedMembership = await projectMembershipDAL.transaction(async (tx) => {
       const newProjectMembership = await projectMembershipDAL.create(

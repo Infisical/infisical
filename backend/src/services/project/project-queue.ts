@@ -191,10 +191,6 @@ export const projectQueueFactory = ({
         approvalSecrets.push(...secretApprovals);
       }
 
-      if (!oldProjectKey.sender.publicKey) {
-        throw new Error("Old project key is not valid");
-      }
-
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
       const decryptedSecretVersions = decryptSecretVersions(secretVersions, userPrivateKey, oldProjectKey);
       const decryptedApprovalSecrets = decryptSecretApprovals(approvalSecrets, userPrivateKey, oldProjectKey);

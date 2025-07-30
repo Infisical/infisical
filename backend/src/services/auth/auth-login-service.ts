@@ -382,6 +382,15 @@ export const authLoginServiceFactory = ({
     await verifyCaptcha(userEnc, captchaToken);
 
     if (!(await crypto.hashing().compareHash(password, userEnc.hashedPassword))) {
+      await userDAL.update(
+        { id: userEnc.userId },
+        {
+          $incr: {
+            consecutiveFailedPasswordAttempts: 1
+          }
+        }
+      );
+
       throw new BadRequestError({ message: "Invalid username or email" });
     }
 
@@ -397,7 +406,6 @@ export const authLoginServiceFactory = ({
     });
 
     return {
-      mfaEnabled: userEnc.isMfaEnabled,
       tokens: {
         accessToken: token.access,
         refreshToken: token.refresh

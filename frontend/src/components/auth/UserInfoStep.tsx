@@ -110,8 +110,6 @@ export default function UserInfoStep({
           attributionSource
         });
 
-        console.log("Signed up", JSON.stringify(response, null, 2));
-
         // unset signup JWT token and set JWT token
         SecurityClient.setSignupToken("");
         SecurityClient.setToken(response.token);

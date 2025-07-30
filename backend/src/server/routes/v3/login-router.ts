@@ -206,7 +206,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       const userAgent = req.headers["user-agent"];
       if (!userAgent) throw new Error("user agent header is required");
 
-      const { tokens, mfaEnabled } = await server.services.login.login({
+      const { tokens } = await server.services.login.login({
         email: req.body.email,
         password: req.body.password,
         ip: req.realIp,
@@ -233,7 +233,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         maxAge: 0
       });
 
-      return { accessToken: tokens.accessToken, mfaEnabled };
+      return { accessToken: tokens.accessToken };
     }
   });
 };
