@@ -12,7 +12,7 @@ import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Spinner } from "@app/components/v2";
+import { Button, ContentLoader, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
@@ -28,15 +28,6 @@ import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
-
-const LoadingScreen = () => {
-  return (
-    <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-      <Spinner />
-      <p className="text-white opacity-80">Loading, please wait</p>
-    </div>
-  );
-};
 
 export const SelectOrganizationSection = () => {
   const navigate = useNavigate();
@@ -228,7 +219,11 @@ export const SelectOrganizationSection = () => {
     !user ||
     ((isInitialOrgCheckLoading || defaultSelectedOrg) && !shouldShowMfa)
   ) {
-    return <LoadingScreen />;
+    return (
+      <div className="h-screen w-screen bg-bunker-800">
+        <ContentLoader />
+      </div>
+    );
   }
 
   return (
