@@ -408,7 +408,7 @@ export const OAuthCallbackPage = () => {
                 credentials: {
                   code: code as string,
                   installationId: installationId as string,
-                  host: credentials.host
+                  ...(credentials?.host && { host: credentials.host })
                 },
                 gatewayId
               }
@@ -416,7 +416,7 @@ export const OAuthCallbackPage = () => {
                 connectionId,
                 credentials: {
                   code: code as string,
-                  host: credentials.host
+                  ...(credentials?.host && { host: credentials.host })
                 },
                 gatewayId
               })
@@ -432,7 +432,7 @@ export const OAuthCallbackPage = () => {
                 credentials: {
                   code: code as string,
                   installationId: installationId as string,
-                  host: credentials.host
+                  ...(credentials?.host && { host: credentials.host })
                 },
                 gatewayId
               }
@@ -440,7 +440,7 @@ export const OAuthCallbackPage = () => {
                 method: GitHubConnectionMethod.OAuth,
                 credentials: {
                   code: code as string,
-                  host: credentials.host
+                  ...(credentials?.host && { host: credentials.host })
                 },
                 gatewayId
               })
