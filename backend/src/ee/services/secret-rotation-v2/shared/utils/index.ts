@@ -11,7 +11,7 @@ type TPasswordRequirements = {
   allowedSymbols?: string;
 };
 
-const DEFAULT_PASSWORD_REQUIREMENTS: TPasswordRequirements = {
+export const DEFAULT_PASSWORD_REQUIREMENTS: TPasswordRequirements = {
   length: 48,
   required: {
     lowercase: 1,

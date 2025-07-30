@@ -7,6 +7,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
 import { withPermission } from "@app/hoc";
+import { Workspace } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { LogsDateFilter } from "./LogsDateFilter";
@@ -24,10 +25,11 @@ type Props = {
   refetchInterval?: number;
   showFilters?: boolean;
   pageView?: boolean;
+  project?: Workspace;
 };
 
 export const LogsSection = withPermission(
-  ({ presets, refetchInterval, showFilters = true, pageView = false }: Props) => {
+  ({ presets, refetchInterval, showFilters = true, pageView = false, project }: Props) => {
     const { subscription } = useSubscription();
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
@@ -83,7 +85,12 @@ export const LogsSection = withPermission(
                 />
               )}
               {showFilters && (
-                <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
+                <LogsFilter
+                  project={project}
+                  presets={presets}
+                  setFilter={setLogFilter}
+                  filter={logFilter}
+                />
               )}
             </div>
           </div>
@@ -94,7 +101,7 @@ export const LogsSection = withPermission(
                 secretPath: logFilter.secretPath || undefined,
                 secretKey: logFilter.secretKey || undefined,
                 eventMetadata: logFilter?.eventMetadata,
-                projectId: logFilter?.project?.id,
+                projectId: project?.id || logFilter?.project?.id,
                 actorType: presets?.actorType,
                 limit: 15,
                 eventType: logFilter?.eventType,
@@ -119,7 +126,7 @@ export const LogsSection = withPermission(
 
     return (
       <div className="space-y-2">
-        <div className="flex w-full justify-end">
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {showFilters && (
             <LogsDateFilter
               filter={dateFilter}

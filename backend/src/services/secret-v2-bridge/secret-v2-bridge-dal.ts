@@ -875,6 +875,48 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findSecretsWithReminderRecipientsOld = async (ids: string[], limit: number, tx?: Knex) => {
+    try {
+      // Create a subquery to get limited secret IDs
+      const limitedSecretIds = (tx || db)(TableName.SecretV2)
+        .whereIn(`${TableName.SecretV2}.id`, ids)
+        .limit(limit)
+        .select("id");
+
+      // Join with all recipients for the limited secrets
+      const docs = await (tx || db)(TableName.SecretV2)
+        .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
+        .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
+        .leftJoin(
+          TableName.SecretReminderRecipients,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretReminderRecipients}.secretId`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("userId").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientUserId"));
+
+      const data = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretsV2Schema.parse(el)
+        }),
+        childrenMapper: [
+          {
+            key: "reminderRecipientUserId",
+            label: "recipients" as const,
+            mapper: ({ reminderRecipientUserId }) => reminderRecipientUserId
+          }
+        ]
+      });
+
+      return data;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findSecretsWithReminderRecipientsOld" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -893,6 +935,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findOne,
     find,
     invalidateSecretCacheByProjectId,
-    findSecretsWithReminderRecipients
+    findSecretsWithReminderRecipients,
+    findSecretsWithReminderRecipientsOld
   };
 };

@@ -30,10 +30,10 @@ For methods like OIDC, these come as claims in the token and can be made availab
 
 <Tabs>
   <Tab title="OIDC Login Attributes">
-    1. Navigate to the Identity Authentication settings and select the OIDC Auth Method.  
-    2. In the **Advanced section**, locate the Claim Mapping configuration.  
-    3. Map the OIDC claims to permission attributes by specifying:  
-       - **Attribute Name:** The identifier to be used in your policies (e.g., department).  
+    1. Navigate to the Identity Authentication settings and select the OIDC Auth Method.
+    2. In the **Advanced section**, locate the Claim Mapping configuration.
+    3. Map the OIDC claims to permission attributes by specifying:
+       - **Attribute Name:** The identifier to be used in your policies (e.g., department).
        - **Claim Path:** The dot notation path to the claim in the OIDC token (e.g., user.department).
 
     For example, if your OIDC provider returns:
@@ -64,7 +64,7 @@ For methods like OIDC, these come as claims in the token and can be made availab
 
   </Tab>
   <Tab title="Kubernetes Login Attributes">
-				For identities authenticated using Kubernetes, the service account's namespace and name are available in their policy and can be accessed as follows:
+		For identities authenticated using Kubernetes, the service account's namespace and name are available in their policy and can be accessed as follows:
 
     ```
     {{ identity.auth.kubernetes.namespace }}
@@ -72,9 +72,25 @@ For methods like OIDC, these come as claims in the token and can be made availab
     ```
 
     <img src="/images/platform/access-controls/abac-policy-k8s-format.png" />
+  </Tab>
+  <Tab title="AWS Attributes">
+    For identities authenticated using AWS Auth, several attributes can be accessed. On top of the 3 base attributes, there's 4 derived from the ARN. The example below includes comments showing how each derived attribute looks like based on this ARN: `arn:aws:iam::123456789012:user/example-user`
 
+    ```
+    {{ identity.auth.aws.accountId }}
+    {{ identity.auth.aws.arn }}
+    {{ identity.auth.aws.userId }}
+
+    // Derived from ARN
+    {{ identity.auth.aws.partition }} // aws
+    {{ identity.auth.aws.service }} // iam
+    {{ identity.auth.aws.resourceType }} // user
+    {{ identity.auth.aws.resourceName }} // example-user
+    ```
+
+    <img src="/images/platform/access-controls/abac-policy-aws-format.png" />
   </Tab>
   <Tab title="Other Authentication Method Attributes">
-    At the moment we only support OIDC claims. Payloads on other authentication methods are not yet accessible.
+    At the moment we only support OIDC claims, Kubernetes attributes, and AWS attributes. Payloads on other authentication methods are not yet accessible.
   </Tab>
 </Tabs>

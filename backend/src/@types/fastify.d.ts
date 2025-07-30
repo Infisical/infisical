@@ -126,6 +126,15 @@ declare module "@fastify/request-context" {
         namespace: string;
         name: string;
       };
+      aws?: {
+        accountId: string;
+        arn: string;
+        userId: string;
+        partition: string;
+        service: string;
+        resourceType: string;
+        resourceName: string;
+      };
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
     assumedPrivilegeDetails?: { requesterId: string; actorId: string; actorType: ActorType; projectId: string };

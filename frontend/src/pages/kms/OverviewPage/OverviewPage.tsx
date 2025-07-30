@@ -22,7 +22,6 @@ export const OverviewPage = () => {
             description="Manage keys and perform cryptographic operations."
           />
           <ProjectPermissionCan
-            passThrough={false}
             renderGuardBanner
             I={ProjectPermissionActions.Read}
             a={ProjectPermissionSub.Cmek}

@@ -13,6 +13,7 @@ import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
+import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -40,6 +41,9 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
         <AwsSecretsManagerSyncOptionsSection secretSync={secretSync} />
       );
       break;
+    case SecretSync.Render:
+      AdditionalSyncOptionsComponent = <RenderSyncOptionsSection secretSync={secretSync} />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:
@@ -56,7 +60,6 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.OCIVault:
     case SecretSync.OnePass:
     case SecretSync.Heroku:
-    case SecretSync.Render:
     case SecretSync.Flyio:
     case SecretSync.GitLab:
     case SecretSync.CloudflarePages:

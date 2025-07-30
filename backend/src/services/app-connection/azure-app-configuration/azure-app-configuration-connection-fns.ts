@@ -14,13 +14,13 @@ import {
 } from "./azure-app-configuration-connection-types";
 
 export const getAzureAppConfigurationConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_CLIENT_ID } = getConfig();
+  const { INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID } = getConfig();
 
   return {
     name: "Azure App Configuration" as const,
     app: AppConnection.AzureAppConfiguration as const,
     methods: Object.values(AzureAppConfigurationConnectionMethod) as [AzureAppConfigurationConnectionMethod.OAuth],
-    oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_ID
+    oauthClientId: INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID
   };
 };
 
@@ -29,9 +29,16 @@ export const validateAzureAppConfigurationConnectionCredentials = async (
 ) => {
   const { credentials: inputCredentials, method } = config;
 
-  const { INF_APP_CONNECTION_AZURE_CLIENT_ID, INF_APP_CONNECTION_AZURE_CLIENT_SECRET, SITE_URL } = getConfig();
+  const {
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET,
+    SITE_URL
+  } = getConfig();
 
-  if (!INF_APP_CONNECTION_AZURE_CLIENT_ID || !INF_APP_CONNECTION_AZURE_CLIENT_SECRET) {
+  if (
+    !INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID ||
+    !INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET
+  ) {
     throw new InternalServerError({
       message: `Azure ${getAppConnectionMethodName(method)} environment variables have not been configured`
     });
@@ -47,8 +54,8 @@ export const validateAzureAppConfigurationConnectionCredentials = async (
         grant_type: "authorization_code",
         code: inputCredentials.code,
         scope: `openid offline_access https://azconfig.io/.default`,
-        client_id: INF_APP_CONNECTION_AZURE_CLIENT_ID,
-        client_secret: INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+        client_id: INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID,
+        client_secret: INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET,
         redirect_uri: `${SITE_URL}/organization/app-connections/azure/oauth/callback`
       })
     );

@@ -69,6 +69,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
+import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
@@ -535,6 +536,11 @@ export const secretApprovalRequestServiceFactory = ({
     if (policy.deletedAt) {
       throw new BadRequestError({
         message: "The policy associated with this secret approval request has been deleted."
+      });
+    }
+    if (!policy.envId) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request is not linked to the environment."
       });
     }
 
@@ -1406,6 +1412,20 @@ export const secretApprovalRequestServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
+
+    const project = await projectDAL.findById(projectId);
+    await scanSecretPolicyViolations(
+      projectId,
+      secretPath,
+      [
+        ...(data[SecretOperations.Create] || []),
+        ...(data[SecretOperations.Update] || []).filter((el) => el.secretValue)
+      ].map((el) => ({
+        secretKey: el.secretKey,
+        secretValue: el.secretValue as string
+      })),
+      project.secretDetectionIgnoreValues || []
+    );
 
     // for created secret approval change
     const createdSecrets = data[SecretOperations.Create];

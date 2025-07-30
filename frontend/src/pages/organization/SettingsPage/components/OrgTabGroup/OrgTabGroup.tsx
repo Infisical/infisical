@@ -5,7 +5,7 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
-import { ImportTab } from "../ImportTab";
+import { ExternalMigrationsTab } from "../ExternalMigrationsTab";
 import { KmipTab } from "../KmipTab/OrgKmipTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
@@ -39,7 +39,11 @@ export const OrgTabGroup = () => {
       component: OrgWorkflowIntegrationTab
     },
     { name: "Audit Log Streams", key: "tag-audit-log-streams", component: AuditLogStreamsTab },
-    { name: "Import", key: "tab-import", component: ImportTab },
+    {
+      name: "External Migrations",
+      key: "tab-external-migrations",
+      component: ExternalMigrationsTab
+    },
     {
       name: "Project Templates",
       key: "project-templates",

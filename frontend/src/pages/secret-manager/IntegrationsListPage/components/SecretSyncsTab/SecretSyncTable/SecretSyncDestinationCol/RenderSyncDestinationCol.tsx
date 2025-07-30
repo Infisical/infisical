@@ -1,5 +1,5 @@
 import { useRenderConnectionListServices } from "@app/hooks/api/appConnections/render";
-import { TRenderSync } from "@app/hooks/api/secretSyncs/render-sync";
+import { TRenderSync } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 import { getSecretSyncDestinationColValues } from "../helpers";
 import { SecretSyncTableCell } from "../SecretSyncTableCell";

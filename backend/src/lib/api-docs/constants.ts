@@ -704,7 +704,8 @@ export const PROJECTS = {
     hasDeleteProtection: "Enable or disable delete protection for the project.",
     secretSharing: "Enable or disable secret sharing for the project.",
     showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
-    defaultProduct: "The default product in which the project will open"
+    defaultProduct: "The default product in which the project will open",
+    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -2245,7 +2246,9 @@ export const AppConnections = {
     },
     AZURE_CLIENT_SECRETS: {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
-      tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
@@ -2373,6 +2376,10 @@ export const SecretSyncs = {
       keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
       tags: "Optional tags to add to secrets synced by Infisical.",
       syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`
+    },
+    RENDER: {
+      autoRedeployServices:
+        "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
     }
   },
   DESTINATION_CONFIG: {

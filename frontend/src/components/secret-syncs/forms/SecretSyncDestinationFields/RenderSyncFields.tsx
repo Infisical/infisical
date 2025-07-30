@@ -9,7 +9,7 @@ import {
   useRenderConnectionListServices
 } from "@app/hooks/api/appConnections/render";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
-import { RenderSyncScope, RenderSyncType } from "@app/hooks/api/secretSyncs/render-sync";
+import { RenderSyncScope, RenderSyncType } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 import { TSecretSyncForm } from "../schemas";
 

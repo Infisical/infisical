@@ -59,7 +59,6 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useGetReminder } from "@app/hooks/api/reminders";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
 
@@ -269,9 +268,9 @@ export const SecretDetailSidebar = ({
   ) => {
     switch (actorType) {
       case ActorType.USER:
-        return `/${ProjectType.SecretManager}/${currentWorkspace.id}/members/${membershipId}`;
+        return `/projects/secret-management/${currentWorkspace.id}/members/${membershipId}`;
       case ActorType.IDENTITY:
-        return `/${ProjectType.SecretManager}/${currentWorkspace.id}/identities/${actorId}`;
+        return `/projects/secret-management/${currentWorkspace.id}/identities/${actorId}`;
       default:
         return null;
     }
