@@ -73,6 +73,7 @@ export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
   function filterEventsForClient(client: EventStreamClient, event: EventData, registered: RegisteredEvent[]) {
     const eventName = toBusEventName(event.data.eventType);
     const match = registered.find((r) => r.event === eventName);
+
     if (!match) return;
 
     const { secretPath, environmentSlug } = match.conditions ?? {};
@@ -84,7 +85,6 @@ export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
     };
 
     const item = event.data.payload;
-
     if (Array.isArray(item)) {
       const filtered = item.filter((ev) => matches(ev));
       return client.send({

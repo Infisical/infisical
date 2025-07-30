@@ -21,7 +21,8 @@ export enum ProjectPermissionSecretActions {
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
-  Delete = "delete"
+  Delete = "delete",
+  Subscribe = "subscribe"
 }
 
 export enum ProjectPermissionDynamicSecretActions {
