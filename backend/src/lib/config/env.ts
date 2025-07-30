@@ -385,7 +385,45 @@ const envSchema = z
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID:
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET
+      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+    
+    // Computed display port for external access (handles Docker port mapping and nginx proxy)
+    displayPort: (() => {
+      const isProduction = data.NODE_ENV === "production" || IS_PACKAGED;
+      const isDevelopment = data.NODE_ENV === "development";
+      const isTest = data.NODE_ENV === "test";
+      const port = data.PORT || (IS_PACKAGED ? 8080 : 4000);
+      
+      // Development: backend runs on 4000 but users access via nginx on 8080
+      if (isDevelopment) {
+        return 8080;
+      }
+      
+      // Test environment: typically doesn't need external access, use internal port
+      if (isTest) {
+        return port;
+      }
+      
+      // If in production and SITE_URL points to the problematic default localhost:8080,
+      // assume Docker port mapping to standard HTTP port 80
+      if (isProduction && data.SITE_URL === "http://localhost:8080") {
+        return 80;
+      }
+      
+      // If SITE_URL is configured, try to extract port from it
+      if (data.SITE_URL) {
+        try {
+          const url = new URL(data.SITE_URL);
+          return url.port ? parseInt(url.port, 10) : (url.protocol === "https:" ? 443 : 80);
+        } catch {
+          // Invalid URL, fallback to internal port
+          return port;
+        }
+      }
+      
+      // Default to internal port
+      return port;
+    })()
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
