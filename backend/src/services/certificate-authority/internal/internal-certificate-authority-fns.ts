@@ -9,7 +9,8 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { isFQDN } from "@app/lib/validator/validate-url";
+import { isFQDN, isURL } from "@app/lib/validator/validate-url";
+import { isIP } from "net";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -152,12 +153,20 @@ export const InternalCertificateAuthorityFns = ({
       extensions.push(extendedKeyUsagesExtension);
     }
 
-    let altNamesArray: { type: "email" | "dns"; value: string }[] = [];
+    let altNamesArray: { type: "email" | "dns" | "ip" | "url"; value: string }[] = [];
 
     if (subscriber.subjectAlternativeNames?.length) {
       altNamesArray = subscriber.subjectAlternativeNames.map((altName) => {
         if (z.string().email().safeParse(altName).success) {
           return { type: "email", value: altName };
+        }
+
+        if(isURL(altName)) {
+          return { type: "url", value: altName };
+        }
+
+        if (isIP(altName)) {
+          return { type: "ip", value: altName };
         }
 
         if (isFQDN(altName, { allow_wildcard: true })) {
@@ -418,7 +427,7 @@ export const InternalCertificateAuthorityFns = ({
       );
     }
 
-    let altNamesArray: { type: "email" | "dns"; value: string }[] = [];
+    let altNamesArray: { type: "email" | "dns" | "ip" | "url"; value: string }[] = [];
 
     if (altNames) {
       altNamesArray = altNames.split(",").map((altName) => {
@@ -428,6 +437,14 @@ export const InternalCertificateAuthorityFns = ({
 
         if (isFQDN(altName, { allow_wildcard: true })) {
           return { type: "dns", value: altName };
+        }
+
+        if(isURL(altName)) {
+          return { type: "url", value: altName };
+        }
+
+        if (isIP(altName)) {
+          return { type: "ip", value: altName };
         }
 
         throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });

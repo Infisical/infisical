@@ -1,6 +1,6 @@
 import dns from "node:dns/promises";
 
-import { isIPv4 } from "net";
+import { isIP, isIPv4 } from "net";
 import RE2 from "re2";
 
 import { getConfig } from "@app/lib/config/env";
@@ -132,4 +132,115 @@ export const isFQDN = (str: string, options: FQDNOptions = {}): boolean => {
 
     return true;
   });
+};
+
+type URLValidationOptions = {
+  protocols?: string[];
+  require_tld?: boolean;
+  require_protocol?: boolean;
+  require_host?: boolean;
+  require_port?: boolean;
+  require_valid_protocol?: boolean;
+  allow_underscores?: boolean;
+  allow_trailing_dot?: boolean;
+  allow_protocol_relative_urls?: boolean;
+  validate_length?: boolean;
+  max_allowed_length?: number;
+  disallow_auth?: boolean;
+};
+
+const defaultUrlOptions: URLValidationOptions = {
+  protocols: ["http", "https", "ftp"],
+  require_tld: true,
+  require_protocol: true,
+  require_host: true,
+  require_port: false,
+  require_valid_protocol: true,
+  allow_underscores: false,
+  allow_trailing_dot: false,
+  allow_protocol_relative_urls: false,
+  validate_length: true,
+  max_allowed_length: 2084
+};
+
+// credits: https://github.com/validatorjs/validator.js/blob/f5da7fb6ed59b94695e6fcb2e970c80029509919/src/lib/isURL.js
+export const isURL = (str: string, options: URLValidationOptions = {}): boolean => {
+  if (typeof str !== "string") {
+    throw new TypeError("Expected a string");
+  }
+
+  const opts = { ...defaultUrlOptions, ...options };
+
+  if (!str || new RE2(/[\s<>]/).test(str)) return false; // Invalid chars like space, < >
+
+  if (opts.validate_length && str.length > opts.max_allowed_length!) return false; // URL too long
+
+  let protocol: string | undefined;
+  let host: string = "";
+  let hostname: string;
+  let port: number | undefined;
+  let portStr: string | undefined;
+  let urlWithoutAuth: string;
+
+  let split = str.split("#");
+  urlWithoutAuth = split.shift()!;
+
+  split = urlWithoutAuth.split("?");
+  urlWithoutAuth = split.shift()!;
+
+  split = urlWithoutAuth.split("://");
+  if (split.length > 1) {
+    protocol = split.shift()!.toLowerCase();
+    if (opts.require_valid_protocol && !opts.protocols!.includes(protocol)) return false; // Unsupported protocol
+  } else if (opts.require_protocol) return false; // Protocol required but missing
+  else if (urlWithoutAuth.startsWith("//")) {
+    if (!opts.allow_protocol_relative_urls) return false; // Protocol-relative not allowed
+    urlWithoutAuth = urlWithoutAuth.slice(2);
+  }
+
+  urlWithoutAuth = split.join("://");
+
+  if (!urlWithoutAuth && !opts.require_host) return true;
+
+  split = urlWithoutAuth.split("/");
+  const authority = split.shift()!;
+  const authorityParts = authority.split("@");
+
+  if (authorityParts.length > 1) {
+    if (opts.disallow_auth) return false; // Auth info not allowed
+    const auth = authorityParts.shift()!;
+    if (!auth || (auth.includes(":") && auth.split(":").length > 2)) return false; // Malformed auth
+  }
+
+  hostname = authorityParts.join("@");
+
+  const ipv6Match = hostname.match(/^\[([^\]]+)\](?::([0-9]+))?$/);
+  if (ipv6Match) {
+    host = ipv6Match[1];
+    portStr = ipv6Match[2];
+  } else {
+    const hostSplit = hostname.split(":");
+    host = hostSplit.shift()!;
+    portStr = hostSplit.length > 0 ? hostSplit.join(":") : undefined;
+  }
+
+  if (portStr !== undefined) {
+    if (!/^[0-9]+$/.test(portStr)) return false; // Port must be numeric
+    port = parseInt(portStr, 10);
+    if (port <= 0 || port > 65535) return false; // Port out of range
+  } else if (opts.require_port) return false; // Port required but missing
+
+  if (!host && opts.require_host) return false; // Host required but missing
+
+  const isHostValid =
+    isIP(host) ||
+    isFQDN(host, {
+      require_tld: opts.require_tld,
+      allow_underscores: opts.allow_underscores,
+      allow_trailing_dot: opts.allow_trailing_dot
+    });
+    
+  if (!isHostValid) return false; // Invalid host format
+
+  return true;
 };
