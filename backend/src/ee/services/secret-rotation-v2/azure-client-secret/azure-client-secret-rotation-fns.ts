@@ -21,6 +21,8 @@ const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
 
 type AzureErrorResponse = { error: { message: string } };
 
+const EXPIRY_PADDING_IN_DAYS = 3;
+
 const sleep = async () =>
   new Promise((resolve) => {
     setTimeout(resolve, 1000);
@@ -33,7 +35,8 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   const {
     connection,
     parameters: { objectId, clientId: clientIdParam },
-    secretsMapping
+    secretsMapping,
+    rotationInterval
   } = secretRotation;
 
   /**
@@ -50,7 +53,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     )}-${now.getFullYear()}`;
 
     const endDateTime = new Date();
-    endDateTime.setFullYear(now.getFullYear() + 5);
+    endDateTime.setDate(now.getDate() + rotationInterval * 2 + EXPIRY_PADDING_IN_DAYS); // give 72 hour buffer
 
     try {
       const { data } = await request.post<AzureAddPasswordResponse>(
@@ -195,6 +198,12 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     callback
   ) => {
     const credentials = await $rotateClientSecret();
+
+    // 2.5 years as expiry is set to x2 interval for the inactive period of credential
+    if (rotationInterval > Math.floor(365 * 2.5) - EXPIRY_PADDING_IN_DAYS) {
+      throw new BadRequestError({ message: "Azure does not support token duration over 5 years" });
+    }
+
     return callback(credentials);
   };
 
