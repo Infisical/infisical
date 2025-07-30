@@ -121,7 +121,7 @@ export function createEventStreamClient(redis: Redis, options: IEventStreamClien
         send({
           type: "error",
           data: {
-            message: error.message
+            ...error
           }
         });
         return close();

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
-import { ForbiddenError, subject } from "@casl/ability";
+import { subject } from "@casl/ability";
 import { pipeline } from "stream/promises";
 import { z } from "zod";
 
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { RateLimitError } from "@app/lib/errors";
+import { ForbiddenRequestError, RateLimitError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -22,7 +22,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         projectId: z.string().trim(),
-        register: z.array(EventRegisterSchema)
+        register: z.array(EventRegisterSchema).max(10)
       })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -66,20 +66,26 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
             }
 
             req.body.register.forEach((r) => {
-              if (r.conditions) {
-                return ForbiddenError.from(info.permission).throwUnlessCan(
-                  ProjectPermissionSecretActions.Subscribe,
-                  subject(ProjectPermissionSub.Secrets, {
-                    environment: r.conditions.environmentSlug,
-                    secretPath: r.conditions.secretPath ?? "/"
-                  })
-                );
-              }
-
-              return ForbiddenError.from(info.permission).throwUnlessCan(
+              const allowed = info.permission.can(
                 ProjectPermissionSecretActions.Subscribe,
-                ProjectPermissionSub.Secrets
+                subject(ProjectPermissionSub.Secrets, {
+                  environment: r.conditions?.environmentSlug ?? "",
+                  secretPath: r.conditions?.secretPath ?? "/",
+                  eventType: r.event
+                })
               );
+
+              if (!allowed) {
+                throw new ForbiddenRequestError({
+                  name: "PermissionDenied",
+                  message: `You are not allowed to subscribe on secrets`,
+                  details: {
+                    event: r.event,
+                    environmentSlug: r.conditions?.environmentSlug,
+                    secretPath: r.conditions?.secretPath ?? "/"
+                  }
+                });
+              }
             });
           }
         });

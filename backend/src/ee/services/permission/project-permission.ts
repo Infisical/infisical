@@ -205,6 +205,7 @@ export type SecretSubjectFields = {
   secretPath: string;
   secretName?: string;
   secretTags?: string[];
+  eventType?: string;
 };
 
 export type SecretFolderSubjectFields = {
@@ -484,7 +485,17 @@ const SecretConditionV2Schema = z
       .object({
         [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
       })
-      .partial()
+      .partial(),
+    eventType: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
   })
   .partial();
 
