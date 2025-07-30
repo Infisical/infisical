@@ -199,7 +199,8 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   ) => {
     const credentials = await $rotateClientSecret();
 
-    if (rotationInterval > 365 * 5 - EXPIRY_PADDING_IN_DAYS) {
+    // 2.5 years as expiry is set to x2 interval for the inactive period of credential
+    if (rotationInterval > Math.floor(365 * 2.5) - EXPIRY_PADDING_IN_DAYS) {
       throw new BadRequestError({ message: "Azure does not support token duration over 5 years" });
     }
 
