@@ -10,6 +10,7 @@ import {
   faMagnifyingGlass,
   faSearch,
   faUsers,
+  faUserShield,
   faUserSlash,
   faUserXmark
 } from "@fortawesome/free-solid-svg-icons";
@@ -44,6 +45,7 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import {
@@ -499,15 +501,24 @@ export const OrgMembersTable = ({
                           }}
                         />
                       </Td>
-                      <Td className={isActive ? "" : "text-mineshaft-400"}>
-                        {name ?? <span className="text-mineshaft-400">Not Set</span>}
-                        {u.superAdmin && (
-                          <Badge variant="primary" className="ml-2">
-                            Server Admin
-                          </Badge>
-                        )}
+                      <Td className={twMerge("max-w-0", isActive ? "" : "text-mineshaft-400")}>
+                        <div className="flex items-center">
+                          <p className="truncate">
+                            {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                          </p>
+                          {u.superAdmin && (
+                            <Badge variant="primary" className="ml-2 w-min whitespace-nowrap">
+                              <span className="hidden xl:inline">Server Admin</span>
+                              <Tooltip content="Server Admin">
+                                <FontAwesomeIcon className="xl:hidden" icon={faUserShield} />
+                              </Tooltip>
+                            </Badge>
+                          )}
+                        </div>
                       </Td>
-                      <Td className={isActive ? "" : "text-mineshaft-400"}>{username}</Td>
+                      <Td className={twMerge("max-w-0", isActive ? "" : "text-mineshaft-400")}>
+                        <p className="truncate">{username}</p>
+                      </Td>
                       <Td>
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}

@@ -266,30 +266,37 @@ export const OrgMembersSection = () => {
           <div className="mt-4 text-sm text-mineshaft-400">
             The following members will be removed:
           </div>
-          <div className="mt-2 max-h-[20rem] overflow-y-auto rounded border border-red/40 bg-red/10 p-4 text-sm text-red-200">
-            <ul className="ml-4 list-disc">
+          <div className="mt-2 max-h-[20rem] overflow-y-auto rounded border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+            <ul className="list-disc">
               {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
                 const email = member.user.email ?? member.user.username ?? member.inviteEmail;
                 return (
-                  <li key={member.id} className="flex items-center">
-                    <span className={userId === member.user.id ? "line-through" : ""}>
-                      {member.user.firstName || member.user.lastName
-                        ? `${`${member.user.firstName} ${member.user.lastName}`.trim()} (${email})`
-                        : email}
-                    </span>
-                    {userId === member.user.id && (
-                      <Tooltip content="You cannot remove yourself from this organization">
-                        <div className="inline-block">
-                          <Badge
-                            variant="danger"
-                            className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
-                          >
-                            <FontAwesomeIcon icon={faBan} />
-                            <span>Ignored</span>
-                          </Badge>
-                        </div>
-                      </Tooltip>
-                    )}
+                  <li key={member.id}>
+                    <div className="flex items-center">
+                      <p className={userId === member.user.id ? "line-through" : ""}>
+                        {member.user.firstName || member.user.lastName ? (
+                          <>
+                            {`${`${member.user.firstName} ${member.user.lastName}`.trim()} `}(
+                            <span className="break-all">{email}</span>)
+                          </>
+                        ) : (
+                          <span className="break-all">{email}</span>
+                        )}{" "}
+                      </p>
+                      {userId === member.user.id && (
+                        <Tooltip content="You cannot remove yourself from this organization">
+                          <div className="inline-block">
+                            <Badge
+                              variant="danger"
+                              className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
+                            >
+                              <FontAwesomeIcon icon={faBan} />
+                              <span>Ignored</span>
+                            </Badge>
+                          </div>
+                        </Tooltip>
+                      )}
+                    </div>
                   </li>
                 );
               })}
