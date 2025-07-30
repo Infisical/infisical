@@ -13,7 +13,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configuration-sync-types";
 
 type TAzureAppConfigurationSyncFactoryDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 

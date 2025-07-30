@@ -496,7 +496,7 @@ export const overwriteSchema: {
     ]
   },
   azureAppConfiguration: {
-    name: "Azure App Configuration",
+    name: "Azure App Connection: App Configuration",
     fields: [
       {
         key: "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID",
@@ -509,7 +509,7 @@ export const overwriteSchema: {
     ]
   },
   azureKeyVault: {
-    name: "Azure Key Vault",
+    name: "Azure App Connection: Key Vault",
     fields: [
       {
         key: "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID",
@@ -522,7 +522,7 @@ export const overwriteSchema: {
     ]
   },
   azureClientSecrets: {
-    name: "Azure Client Secrets",
+    name: "Azure App Connection: Client Secrets",
     fields: [
       {
         key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID",
@@ -535,7 +535,7 @@ export const overwriteSchema: {
     ]
   },
   azureDevOps: {
-    name: "Azure DevOps",
+    name: "Azure App Connection: DevOps",
     fields: [
       {
         key: "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID",

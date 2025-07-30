@@ -58,6 +58,27 @@ Infisical currently only supports one method for connecting to Azure, which is O
 
 </Accordion>
 
+<Accordion title="Client Secret Authentication">
+  To use client secret authentication, ensure your Azure Service Principal has the required permissions and is connected to the Azure Key Vault instances you want to use.
+
+  **Prerequisites:**
+  - Set up Azure and have an existing Key Vault instance.
+  - The service principal must be connected to your target Azure Key Vault instance(s)
+
+  <Steps>
+    <Step title="Assign API permissions to the service principal">
+
+      Configure the required API permissions for your App Registration to interact with Azure Key Vault:
+
+      #### Azure Key Vault permissions
+
+      Set the API permissions of your Azure service principal to include `user_impersonation` for the Key Vault API.
+      ![Azure key vault](/images/app-connections/azure/keyvault-azure-permissions.png)
+
+    </Step>
+  </Steps>
+</Accordion>
+
 ## Setup Azure Connection in Infisical
 
 <Steps>

@@ -58,6 +58,26 @@ Infisical currently only supports one method for connecting to Azure, which is O
     </Steps>    
 
 </Accordion>
+<Accordion title="Client Secret Authentication">
+  To use client secret authentication, ensure your Azure Service Principal has the required permissions and is connected to the Azure App Configuration resources you want to use.
+
+  **Prerequisites:**
+  - Set up Azure and have an existing App Configuration instance.
+  - The service principal must be connected to your target Azure App Configuration resource(s)
+
+  <Steps>
+    <Step title="Assign API permissions to the service principal">
+
+      Configure the required API permissions for your App Registration to interact with Azure App Configuration:
+
+      #### Azure App Configuration permissions
+    
+      Set the API permissions of your Azure service principal to include the following Azure App Configuration permissions: `KeyValue.Delete`, `KeyValue.Read`, and `KeyValue.Write`.
+      
+      ![Azure app config](../../images/integrations/azure-app-configuration/app-api-permissions.png)
+    </Step>
+  </Steps>
+</Accordion>
 
 ## Setup Azure Connection in Infisical
 
