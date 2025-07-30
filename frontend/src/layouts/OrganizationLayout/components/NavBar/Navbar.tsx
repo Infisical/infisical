@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -110,9 +110,14 @@ export const Navbar = () => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const [showAdminsModal, setShowAdminsModal] = useState(false);
-  const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(
-    subscription?.cardDeclined || false
-  );
+  const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
+
+  useEffect(() => {
+    if (subscription?.cardDeclined && !sessionStorage.getItem("paymentFailed")) {
+      sessionStorage.setItem("paymentFailed", "true");
+      setShowCardDeclinedModal(true);
+    }
+  }, [subscription]);
 
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
@@ -205,7 +210,7 @@ export const Navbar = () => {
                 </div>
                 {subscription.cardDeclined && (
                   <Tooltip
-                    content="Payment failed. Please update your payment method to continue using premium features."
+                    content={`Your payment could not be processed${subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}. Please update your payment method to continue enjoying premium features.`}
                     className="max-w-xs"
                   >
                     <div className="flex items-center">
@@ -418,7 +423,7 @@ export const Navbar = () => {
           title={
             <div className="flex items-center gap-2">
               <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-primary-400" />
-              Your payment method has been declined
+              Your payment could not be processed.
             </div>
           }
         >
@@ -426,8 +431,9 @@ export const Navbar = () => {
             <div>
               <div className="mb-1">
                 <p>
-                  Your payment method was declined and your subscription may be at risk. Please
-                  update your payment information to continue using premium features.
+                  We were unable to process your last payment
+                  {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
+                  Please update your payment information to continue using premium features.
                 </p>
               </div>
               <div className="mt-4">

@@ -295,8 +295,19 @@ export const licenseServiceFactory = ({
     return data;
   };
 
-  const getOrgPlan = async ({ orgId, actor, actorId, actorOrgId, actorAuthMethod, projectId }: TOrgPlanDTO) => {
+  const getOrgPlan = async ({
+    orgId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    refreshCache
+  }: TOrgPlanDTO) => {
     await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (refreshCache) {
+      await refreshPlan(orgId);
+    }
     const plan = await getPlan(orgId, projectId);
     return plan;
   };

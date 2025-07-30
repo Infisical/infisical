@@ -54,4 +54,5 @@ export type SubscriptionPlan = {
   enterpriseSecretSyncs: boolean;
   enterpriseAppConnections: boolean;
   cardDeclined?: boolean;
+  cardDeclinedReason?: string;
 };
