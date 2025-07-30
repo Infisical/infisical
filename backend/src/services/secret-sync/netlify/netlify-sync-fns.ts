@@ -12,7 +12,7 @@ export const NetlifySyncFns = {
 
     const params = {
       account_id: config.accountId,
-      context_name: config.context ?? "all", // Only used in the case of getVariables
+      context_name: config.context, // Only used in the case of getVariables
       site_id: config.siteId
     };
 
@@ -43,7 +43,7 @@ export const NetlifySyncFns = {
 
     const params = {
       account_id: config.accountId,
-      context_name: config.context ?? "all", // Only used in the case of getVariables
+      context_name: config.context,
       site_id: config.siteId
     };
 
@@ -58,10 +58,11 @@ export const NetlifySyncFns = {
         await NetlifyPublicAPI.upsertVariable(secretSync.connection, params, {
           key,
           is_secret: true,
+          scopes: ["builds", "functions", "runtime"],
           values: [
             {
               value: entry.value,
-              context: config.context ?? "all"
+              context: config.context
             }
           ]
         });

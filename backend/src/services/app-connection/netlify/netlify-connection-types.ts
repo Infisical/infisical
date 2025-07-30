@@ -27,12 +27,13 @@ export type TNetlifyVariable = {
   created_at?: string;
   updated_at?: string;
   is_secret?: boolean;
+  scopes?: ("builds" | "functions" | "runtime" | "post_processing")[];
   values: TNetlifyVariableValue[];
 };
 
 export type TNetlifyVariableValue = {
   id?: string;
-  context: string; // "all", "dev", "branch-deploy", etc.
+  context?: string; // "all", "dev", "branch-deploy", etc.
   value?: string; // Omitted in response if `is_secret` is true
   site_id?: string; // Optional: overrides at site-level
   created_at?: string;

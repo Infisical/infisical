@@ -116,12 +116,12 @@ class NetlifyPublicClient {
   async createVariable(
     connection: TNetlifyConnectionConfig,
     { account_id, ...params }: NetlifyParams,
-    variable: TNetlifyVariable
+    ...variables: TNetlifyVariable[]
   ) {
     const res = await this.send<TNetlifyVariable>(connection, {
       method: "POST",
       url: `/accounts/${account_id}/env`,
-      data: [variable],
+      data: variables,
       params
     });
 

@@ -4,7 +4,7 @@ import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export enum NetlifySyncContext {
-  All = "all",
+  // All = "all", - Netlify doesn't allow "all" as the context when using is_secret: true
   DeployPreview = "deploy-preview",
   Production = "production",
   BranchDeploy = "branch-deploy",
@@ -20,7 +20,7 @@ export const NetlifySyncDestinationSchema = BaseSecretSyncSchema().merge(
       accountName: z.string(),
       siteId: z.string().optional(),
       siteName: z.string().optional(),
-      context: z.nativeEnum(NetlifySyncContext).optional().default(NetlifySyncContext.All)
+      context: z.nativeEnum(NetlifySyncContext).optional()
     })
   })
 );
