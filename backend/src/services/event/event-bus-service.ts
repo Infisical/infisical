@@ -5,7 +5,8 @@ import { logger } from "@app/lib/logger";
 
 import { EventSchema, TopicName } from "./types";
 
-export const eventBusFactory = (publisher: Redis) => {
+export const eventBusFactory = (redis: Redis) => {
+  const publisher = redis.duplicate();
   // Duplicate the publisher to create a subscriber.
   // This is necessary because Redis does not allow a single connection to both publish and subscribe.
   const subscriber = publisher.duplicate();
