@@ -76,13 +76,16 @@ const getConnectionConfig = ({
   }
 };
 
-export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection, "credentials" | "app">) => {
+export const getSqlConnectionClient = async (
+  appConnection: Pick<TSqlConnection, "credentials" | "app" | "gatewayId">
+) => {
   const {
     app,
-    credentials: { host: baseHost, database, port, password, username }
+    credentials: { host: baseHost, database, port, password, username },
+    gatewayId
   } = appConnection;
 
-  const [host] = await verifyHostInputValidity(baseHost);
+  const [host] = await verifyHostInputValidity(baseHost, !!gatewayId);
 
   const client = knex({
     client: SQL_CONNECTION_CLIENT_MAP[app],
