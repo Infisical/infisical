@@ -13,6 +13,6 @@ export async function up(knex: Knex): Promise<void> {
   });
 }
 
-export async function down(knex: Knex): Promise<void> {
+export async function down(): Promise<void> {
   // do nothing for now to avoid breaking down migrations
 }
