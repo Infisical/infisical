@@ -11,6 +11,7 @@ import {
   accessApprovalPolicyBypasserDALFactory
 } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
+import { accessApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-environment-dal";
 import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
@@ -76,6 +77,7 @@ import {
   secretApprovalPolicyBypasserDALFactory
 } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
+import { secretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-environment-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
@@ -427,9 +429,11 @@ export const registerRoutes = async (
   const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
   const accessApprovalPolicyBypasserDAL = accessApprovalPolicyBypasserDALFactory(db);
   const accessApprovalRequestReviewerDAL = accessApprovalRequestReviewerDALFactory(db);
+  const accessApprovalPolicyEnvironmentDAL = accessApprovalPolicyEnvironmentDALFactory(db);
 
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const sapBypasserDAL = secretApprovalPolicyBypasserDALFactory(db);
+  const sapEnvironmentDAL = secretApprovalPolicyEnvironmentDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
   const secretApprovalRequestReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
@@ -567,6 +571,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     secretApprovalPolicyBypasserDAL: sapBypasserDAL,
+    secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL,
     permissionService,
     secretApprovalPolicyDAL,
     licenseService,
@@ -1045,6 +1050,15 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const gatewayService = gatewayServiceFactory({
+    permissionService,
+    gatewayDAL,
+    kmsService,
+    licenseService,
+    orgGatewayConfigDAL,
+    keyStore
+  });
+
   const secretSyncQueue = secretSyncQueueFactory({
     queueService,
     secretSyncDAL,
@@ -1068,7 +1082,8 @@ export const registerRoutes = async (
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
     appConnectionDAL,
-    licenseService
+    licenseService,
+    gatewayService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1162,7 +1177,9 @@ export const registerRoutes = async (
     keyStore,
     licenseService,
     projectDAL,
-    folderDAL
+    folderDAL,
+    accessApprovalPolicyEnvironmentDAL,
+    secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL
   });
 
   const projectRoleService = projectRoleServiceFactory({
@@ -1237,6 +1254,7 @@ export const registerRoutes = async (
 
   const secretV2BridgeService = secretV2BridgeServiceFactory({
     folderDAL,
+    projectDAL,
     secretVersionDAL: secretVersionV2BridgeDAL,
     folderCommitService,
     secretQueueService,
@@ -1323,6 +1341,7 @@ export const registerRoutes = async (
     accessApprovalPolicyDAL,
     accessApprovalPolicyApproverDAL,
     accessApprovalPolicyBypasserDAL,
+    accessApprovalPolicyEnvironmentDAL,
     groupDAL,
     permissionService,
     projectEnvDAL,
@@ -1485,15 +1504,6 @@ export const registerRoutes = async (
     identityUaClientSecretDAL,
     identityUaDAL,
     licenseService
-  });
-
-  const gatewayService = gatewayServiceFactory({
-    permissionService,
-    gatewayDAL,
-    kmsService,
-    licenseService,
-    orgGatewayConfigDAL,
-    keyStore
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({

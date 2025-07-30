@@ -93,6 +93,13 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
       name: z.string(),
       slug: z.string()
     }),
+    environments: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        slug: z.string()
+      })
+    ),
     projectId: z.string()
   })
 );
@@ -264,7 +271,8 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   auditLogsRetentionDays: true,
   hasDeleteProtection: true,
   secretSharing: true,
-  showSnapshotsLegacy: true
+  showSnapshotsLegacy: true,
+  secretDetectionIgnoreValues: true
 });
 
 export const SanitizedTagSchema = SecretTagsSchema.pick({

@@ -19,6 +19,7 @@ import {
   TSecretApprovalPolicyBypasserDALFactory
 } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
+import { TSecretApprovalPolicyEnvironmentDALFactory } from "./secret-approval-policy-environment-dal";
 import {
   TCreateSapDTO,
   TDeleteSapDTO,
@@ -36,12 +37,13 @@ const getPolicyScore = (policy: { secretPath?: string | null }) =>
 type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
+  secretApprovalPolicyEnvironmentDAL: TSecretApprovalPolicyEnvironmentDALFactory;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprovalPolicyServiceFactory>;
@@ -51,27 +53,30 @@ export const secretApprovalPolicyServiceFactory = ({
   permissionService,
   secretApprovalPolicyApproverDAL,
   secretApprovalPolicyBypasserDAL,
+  secretApprovalPolicyEnvironmentDAL,
   projectEnvDAL,
   userDAL,
   licenseService,
   secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const $policyExists = async ({
+    envIds,
     envId,
     secretPath,
     policyId
   }: {
-    envId: string;
+    envIds?: string[];
+    envId?: string;
     secretPath: string;
     policyId?: string;
   }) => {
-    const policy = await secretApprovalPolicyDAL
-      .findOne({
-        envId,
-        secretPath,
-        deletedAt: null
-      })
-      .catch(() => null);
+    if (!envIds && !envId) {
+      throw new BadRequestError({ message: "At least one environment should be provided" });
+    }
+    const policy = await secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
+      envIds: envId ? [envId] : envIds || [],
+      secretPath
+    });
 
     return policyId ? policy && policy.id !== policyId : Boolean(policy);
   };
@@ -88,6 +93,7 @@ export const secretApprovalPolicyServiceFactory = ({
     projectId,
     secretPath,
     environment,
+    environments,
     enforcementLevel,
     allowedSelfApprovals
   }: TCreateSapDTO) => {
@@ -127,17 +133,23 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    if (!env) {
-      throw new NotFoundError({
-        message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
-      });
+    const mergedEnvs = (environment ? [environment] : environments) || [];
+    if (mergedEnvs.length === 0) {
+      throw new BadRequestError({ message: "Must provide either environment or environments" });
+    }
+    const envs = await projectEnvDAL.find({ $in: { slug: mergedEnvs }, projectId });
+    if (!envs.length || envs.length !== mergedEnvs.length) {
+      const notFoundEnvs = mergedEnvs.filter((env) => !envs.find((el) => el.slug === env));
+      throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
     }
 
-    if (await $policyExists({ envId: env.id, secretPath })) {
-      throw new BadRequestError({
-        message: `A policy for secret path '${secretPath}' already exists in environment '${environment}'`
-      });
+    for (const env of envs) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await $policyExists({ envId: env.id, secretPath })) {
+        throw new BadRequestError({
+          message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
+        });
+      }
     }
 
     let groupBypassers: string[] = [];
@@ -181,13 +193,20 @@ export const secretApprovalPolicyServiceFactory = ({
     const secretApproval = await secretApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await secretApprovalPolicyDAL.create(
         {
-          envId: env.id,
+          envId: envs[0].id,
           approvals,
           secretPath,
           name,
           enforcementLevel,
           allowedSelfApprovals
         },
+        tx
+      );
+      await secretApprovalPolicyEnvironmentDAL.insertMany(
+        envs.map((env) => ({
+          envId: env.id,
+          policyId: doc.id
+        })),
         tx
       );
 
@@ -253,12 +272,13 @@ export const secretApprovalPolicyServiceFactory = ({
       return doc;
     });
 
-    return { ...secretApproval, environment: env, projectId };
+    return { ...secretApproval, environments: envs, projectId, environment: envs[0] };
   };
 
   const updateSecretApprovalPolicy = async ({
     approvers,
     bypassers,
+    environments,
     secretPath,
     name,
     actorId,
@@ -288,17 +308,26 @@ export const secretApprovalPolicyServiceFactory = ({
         message: `Secret approval policy with ID '${secretPolicyId}' not found`
       });
     }
-
+    let envs = secretApprovalPolicy.environments;
     if (
-      await $policyExists({
-        envId: secretApprovalPolicy.envId,
-        secretPath: secretPath || secretApprovalPolicy.secretPath,
-        policyId: secretApprovalPolicy.id
-      })
+      environments &&
+      (environments.length !== envs.length || environments.some((env) => !envs.find((el) => el.slug === env)))
     ) {
-      throw new BadRequestError({
-        message: `A policy for secret path '${secretPath}' already exists in environment '${secretApprovalPolicy.environment.slug}'`
-      });
+      envs = await projectEnvDAL.find({ $in: { slug: environments }, projectId: secretApprovalPolicy.projectId });
+    }
+    for (const env of envs) {
+      if (
+        // eslint-disable-next-line no-await-in-loop
+        await $policyExists({
+          envId: env.id,
+          secretPath: secretPath || secretApprovalPolicy.secretPath,
+          policyId: secretApprovalPolicy.id
+        })
+      ) {
+        throw new BadRequestError({
+          message: `A policy for secret path '${secretPath || secretApprovalPolicy.secretPath}' already exists in environment '${env.slug}'`
+        });
+      }
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -415,6 +444,17 @@ export const secretApprovalPolicyServiceFactory = ({
         );
       }
 
+      if (environments) {
+        await secretApprovalPolicyEnvironmentDAL.delete({ policyId: doc.id }, tx);
+        await secretApprovalPolicyEnvironmentDAL.insertMany(
+          envs.map((env) => ({
+            envId: env.id,
+            policyId: doc.id
+          })),
+          tx
+        );
+      }
+
       await secretApprovalPolicyBypasserDAL.delete({ policyId: doc.id }, tx);
 
       if (bypasserUserIds.length) {
@@ -441,7 +481,8 @@ export const secretApprovalPolicyServiceFactory = ({
     });
     return {
       ...updatedSap,
-      environment: secretApprovalPolicy.environment,
+      environments: secretApprovalPolicy.environments,
+      environment: secretApprovalPolicy.environments[0],
       projectId: secretApprovalPolicy.projectId
     };
   };
@@ -487,7 +528,12 @@ export const secretApprovalPolicyServiceFactory = ({
       const updatedPolicy = await secretApprovalPolicyDAL.softDeleteById(secretPolicyId, tx);
       return updatedPolicy;
     });
-    return { ...deletedPolicy, projectId: sapPolicy.projectId, environment: sapPolicy.environment };
+    return {
+      ...deletedPolicy,
+      projectId: sapPolicy.projectId,
+      environments: sapPolicy.environments,
+      environment: sapPolicy.environments[0]
+    };
   };
 
   const getSecretApprovalPolicyByProjectId = async ({
@@ -520,7 +566,7 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const policies = await secretApprovalPolicyDAL.find({ envId: env.id, deletedAt: null });
+    const policies = await secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id });
     if (!policies.length) return;
     // this will filter policies either without scoped to secret path or the one that matches with secret path
     const policiesFilteredByPath = policies.filter(

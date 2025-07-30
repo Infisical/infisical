@@ -1,14 +1,12 @@
 import { ComponentType } from "react";
 import { AbilityTuple } from "@casl/ability";
-import { faLock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { AccessRestrictedBanner } from "@app/components/v2";
 import { useProjectPermission } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 
 type Props<T extends AbilityTuple> = {
-  className?: string;
   containerClassName?: string;
   action: T[0];
   subject: T[1];
@@ -16,7 +14,7 @@ type Props<T extends AbilityTuple> = {
 
 export const withProjectPermission = <T extends object>(
   Component: ComponentType<Omit<Props<ProjectPermissionSet>, "action" | "subject"> & T>,
-  { action, subject, className, containerClassName }: Props<ProjectPermissionSet>
+  { action, subject, containerClassName }: Props<ProjectPermissionSet>
 ) => {
   const HOC = (hocProps: Omit<Props<ProjectPermissionSet>, "action" | "subject"> & T) => {
     const { permission } = useProjectPermission();
@@ -31,23 +29,7 @@ export const withProjectPermission = <T extends object>(
             containerClassName
           )}
         >
-          <div
-            className={twMerge(
-              "flex items-end space-x-12 rounded-md bg-mineshaft-800 p-16 text-bunker-300",
-              className
-            )}
-          >
-            <div>
-              <FontAwesomeIcon icon={faLock} size="6x" />
-            </div>
-            <div>
-              <div className="mb-2 text-4xl font-medium">Permission Denied</div>
-              <div className="text-sm">
-                You do not have permission to this page. <br /> Kindly contact your organization
-                administrator
-              </div>
-            </div>
-          </div>
+          <AccessRestrictedBanner />
         </div>
       );
     }

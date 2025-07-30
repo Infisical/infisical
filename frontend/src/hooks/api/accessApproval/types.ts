@@ -8,9 +8,8 @@ export type TAccessApprovalPolicy = {
   name: string;
   approvals: number;
   secretPath: string;
-  envId: string;
   workspace: string;
-  environment: WorkspaceEnv;
+  environments: WorkspaceEnv[];
   projectId: string;
   policyType: PolicyType;
   approversRequired: boolean;
@@ -166,7 +165,7 @@ export type TGetSecretApprovalPolicyOfBoardDTO = {
 export type TCreateAccessPolicyDTO = {
   projectSlug: string;
   name?: string;
-  environment: string;
+  environments: string[];
   approvers?: Approver[];
   bypassers?: Bypasser[];
   approvals?: number;
@@ -182,7 +181,7 @@ export type TUpdateAccessPolicyDTO = {
   approvers?: Approver[];
   bypassers?: Bypasser[];
   secretPath?: string;
-  environment?: string;
+  environments?: string[];
   approvals?: number;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals: boolean;

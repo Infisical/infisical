@@ -51,6 +51,7 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
+  colWidth: number;
 };
 
 export const SecretListView = ({
@@ -62,7 +63,8 @@ export const SecretListView = ({
   isVisible,
   isProtectedBranch = false,
   usedBySecretSyncs,
-  importedBy
+  importedBy,
+  colWidth
 }: Props) => {
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -554,6 +556,7 @@ export const SecretListView = ({
       ))}
       {secrets.map((secret) => (
         <SecretItem
+          colWidth={colWidth}
           environment={environment}
           secretPath={secretPath}
           tags={wsTags}

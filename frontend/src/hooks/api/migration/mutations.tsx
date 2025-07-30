@@ -15,7 +15,7 @@ export const useImportEnvKey = () => {
       formData.append("file", file);
 
       try {
-        const response = await apiRequest.post("/api/v3/migrate/env-key/", formData, {
+        const response = await apiRequest.post("/api/v3/external-migration/env-key/", formData, {
           headers: {
             "Content-Type": "multipart/form-data"
           },
@@ -35,6 +35,29 @@ export const useImportEnvKey = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getAllUserWorkspace()
+      });
+    }
+  });
+};
+
+export const useImportVault = () => {
+  return useMutation({
+    mutationFn: async ({
+      vaultAccessToken,
+      vaultNamespace,
+      vaultUrl,
+      mappingType
+    }: {
+      vaultAccessToken: string;
+      vaultNamespace?: string;
+      vaultUrl: string;
+      mappingType: string;
+    }) => {
+      await apiRequest.post("/api/v3/external-migration/vault/", {
+        vaultAccessToken,
+        vaultNamespace,
+        vaultUrl,
+        mappingType
       });
     }
   });
