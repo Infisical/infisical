@@ -387,7 +387,9 @@ export const OrgMembersTable = ({
                   onCheckedChange={() => {
                     if (isPageSelected) {
                       setSelectedMemberIds((prev) =>
-                        prev.filter((member) => !filteredMembersPage.find((m) => m.id !== member))
+                        prev.filter(
+                          (memberId) => !filteredMembersPage.find((m) => m.id === memberId)
+                        )
                       );
                     } else {
                       setSelectedMemberIds((prev) => [

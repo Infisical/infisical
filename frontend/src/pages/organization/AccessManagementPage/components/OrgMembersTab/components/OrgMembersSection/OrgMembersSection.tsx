@@ -159,7 +159,7 @@ export const OrgMembersSection = () => {
         )}
       >
         <div className="flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <div className="mr-2 text-sm">{selectedMemberIds.length > 0} Selected</div>
+          <div className="mr-2 text-sm">{selectedMemberIds.length} Selected</div>
           <button
             type="button"
             className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
@@ -271,7 +271,7 @@ export const OrgMembersSection = () => {
               {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
                 const email = member.user.email ?? member.user.username ?? member.inviteEmail;
                 return (
-                  <li className="flex items-center">
+                  <li key={member.id} className="flex items-center">
                     <span className={userId === member.user.id ? "line-through" : ""}>
                       {member.user.firstName || member.user.lastName
                         ? `${`${member.user.firstName} ${member.user.lastName}`.trim()} (${email})`

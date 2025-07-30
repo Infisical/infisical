@@ -339,7 +339,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("id").withSchema(TableName.ProjectMembership),
-          db.ref("userId").withSchema(TableName.ProjectMembership),
           db.ref("isGhost").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),

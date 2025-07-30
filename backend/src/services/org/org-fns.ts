@@ -15,7 +15,7 @@ type TDeleteOrgMembership = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
-  userId: string;
+  userId?: string;
 };
 
 type TDeleteOrgMemberships = {
@@ -27,7 +27,7 @@ type TDeleteOrgMemberships = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
-  userId: string;
+  userId?: string;
 };
 
 export const deleteOrgMembershipFn = async ({
@@ -44,7 +44,7 @@ export const deleteOrgMembershipFn = async ({
   const deletedMembership = await orgDAL.transaction(async (tx) => {
     const orgMembership = await orgDAL.deleteMembershipById(orgMembershipId, orgId, tx);
 
-    if (orgMembership.userId === userId) {
+    if (userId && orgMembership.userId === userId) {
       // scott: this is temporary, we will add a leave org endpoint with proper handling to ensure org isn't abandoned/broken
       throw new BadRequestError({ message: "You cannot remove yourself from an organization" });
     }
@@ -125,7 +125,7 @@ export const deleteOrgMembershipsFn = async ({
       .filter((member) => Boolean(member.userId))
       .map((member) => member.userId) as string[];
 
-    if (membershipUserIds.includes(userId)) {
+    if (userId && membershipUserIds.includes(userId)) {
       // scott: this is temporary, we will add a leave org endpoint with proper handling to ensure org isn't abandoned/broken
       throw new BadRequestError({ message: "You cannot remove yourself from an organization" });
     }
