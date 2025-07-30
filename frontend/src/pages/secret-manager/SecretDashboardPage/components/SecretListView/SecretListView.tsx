@@ -11,13 +11,24 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { commitKeys } from "@app/hooks/api/folderCommits/queries";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { WsTag } from "@app/hooks/api/types";
+import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
-import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
+import {
+  PendingSecretChange,
+  PendingSecretCreate,
+  PendingSecretDelete,
+  PendingSecretUpdate,
+  useBatchMode,
+  useBatchModeActions,
+  useSelectedSecretActions,
+  useSelectedSecrets
+} from "../../SecretMainPage.store";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { HIDDEN_SECRET_VALUE, HIDDEN_SECRET_VALUE_API_MASK, SecretItem } from "./SecretItem";
@@ -40,6 +51,7 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
+  colWidth: number;
 };
 
 export const SecretListView = ({
@@ -51,7 +63,8 @@ export const SecretListView = ({
   isVisible,
   isProtectedBranch = false,
   usedBySecretSyncs,
-  importedBy
+  importedBy,
+  colWidth
 }: Props) => {
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -63,22 +76,29 @@ export const SecretListView = ({
 
   // strip of side effect queries
   const { mutateAsync: createSecretV3 } = useCreateSecretV3({
-    options: {
-      onSuccess: undefined
-    }
+    options: { onSuccess: undefined }
   });
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
-    options: {
-      onSuccess: undefined
-    }
+    options: { onSuccess: undefined }
   });
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3({
-    options: {
-      onSuccess: undefined
-    }
+    options: { onSuccess: undefined }
   });
+
   const selectedSecrets = useSelectedSecrets();
   const { toggle: toggleSelectedSecret } = useSelectedSecretActions();
+  const { isBatchMode, pendingChanges } = useBatchMode();
+  useNavigationBlocker({
+    shouldBlock: pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0,
+    message:
+      "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
+    context: {
+      workspaceId,
+      environment,
+      secretPath
+    }
+  });
+  const { addPendingChange } = useBatchModeActions();
 
   const handleSecretOperation = async (
     operation: "create" | "update" | "delete",
@@ -170,11 +190,56 @@ export const SecretListView = ({
     );
   };
 
+  function getTrueOriginalSecret(
+    currentSecret: SecretV3RawSanitized,
+    pendingSecrets: PendingSecretChange[]
+  ): Omit<SecretV3RawSanitized, "tags"> & {
+    tags?: { id: string; slug: string }[];
+  } {
+    // Find if there's already a pending change for this secret
+    const existingChange = pendingSecrets.find((change) => change.id === currentSecret.id);
+
+    if (!existingChange || existingChange.type === "create") {
+      // If no existing change or it's a creation, current secret is the original
+      return {
+        ...currentSecret,
+        tags: currentSecret.tags?.map((tag) => ({
+          id: tag.id,
+          slug: tag.slug
+        }))
+      };
+    }
+
+    if (existingChange.type === "update") {
+      // If there's an existing update, reconstruct the original from the stored original values
+      return {
+        ...currentSecret,
+        key: existingChange.secretKey, // Original key
+        value: existingChange.originalValue || currentSecret.value,
+        comment: existingChange.originalComment || currentSecret.comment,
+        skipMultilineEncoding:
+          existingChange.originalSkipMultilineEncoding ?? currentSecret.skipMultilineEncoding,
+        tags:
+          existingChange.originalTags?.map((tag) => ({
+            id: tag.id,
+            slug: tag.slug
+          })) || currentSecret.tags,
+        secretMetadata: existingChange.originalSecretMetadata || currentSecret.secretMetadata
+      };
+    }
+
+    return {
+      ...currentSecret,
+      tags: currentSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug }))
+    };
+  }
+
+  // Improved handleSaveSecret function
   const handleSaveSecret = useCallback(
     async (
       orgSecret: SecretV3RawSanitized,
       modSecret: Omit<SecretV3RawSanitized, "tags"> & {
-        tags?: { id: string }[];
+        tags?: { id: string; name?: string; slug?: string }[];
         secretMetadata?: { key: string; value: string }[];
       },
       cb?: () => void
@@ -192,7 +257,9 @@ export const SecretListView = ({
         reminderNote,
         reminderRecipients,
         secretMetadata,
-        isReminderEvent
+        isReminderEvent,
+        isPending,
+        pendingAction
       } = modSecret;
       const hasKeyChanged = oldKey !== key && key;
 
@@ -246,6 +313,80 @@ export const SecretListView = ({
 
         // shared secret change
         if (!isSharedSecUnchanged && !personalAction) {
+          if (isBatchMode) {
+            const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
+
+            if (isEditingPendingCreation) {
+              const updatedCreate: PendingSecretCreate = {
+                id: orgSecret.id,
+                type: PendingAction.Create,
+                secretKey: key,
+                secretValue: value || "",
+                secretComment: comment || "",
+                skipMultilineEncoding: modSecret.skipMultilineEncoding || false,
+                tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || [],
+                secretMetadata: secretMetadata || [],
+                timestamp: Date.now(),
+                resourceType: "secret",
+                originalKey: oldKey
+              };
+
+              addPendingChange(updatedCreate, {
+                workspaceId,
+                environment,
+                secretPath
+              });
+            } else {
+              const trueOriginalSecret = getTrueOriginalSecret(orgSecret, pendingChanges.secrets);
+
+              const updateChange: PendingSecretUpdate = {
+                id: orgSecret.id,
+                type: PendingAction.Update,
+                secretKey: trueOriginalSecret.key,
+                ...(key !== trueOriginalSecret.key && { newSecretName: key }),
+                ...(value !== trueOriginalSecret.value && {
+                  originalValue: trueOriginalSecret.value,
+                  secretValue: value
+                }),
+                ...(comment !== trueOriginalSecret.comment && {
+                  originalComment: trueOriginalSecret.comment,
+                  secretComment: comment
+                }),
+                ...(modSecret.skipMultilineEncoding !==
+                  trueOriginalSecret.skipMultilineEncoding && {
+                  originalSkipMultilineEncoding: trueOriginalSecret.skipMultilineEncoding,
+                  skipMultilineEncoding: modSecret.skipMultilineEncoding
+                }),
+                ...(!isSameTags && {
+                  originalTags:
+                    trueOriginalSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
+                  tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || []
+                }),
+                ...(JSON.stringify(secretMetadata) !==
+                  JSON.stringify(trueOriginalSecret.secretMetadata) && {
+                  originalSecretMetadata: trueOriginalSecret.secretMetadata || [],
+                  secretMetadata: secretMetadata || []
+                }),
+
+                timestamp: Date.now(),
+                resourceType: "secret",
+                existingSecret: orgSecret
+              };
+
+              addPendingChange(updateChange, {
+                workspaceId,
+                environment,
+                secretPath
+              });
+            }
+
+            if (!isReminderEvent) {
+              handlePopUpClose("secretDetail");
+            }
+            if (cb) cb();
+            return;
+          }
+
           await handleSecretOperation("update", SecretType.Shared, oldKey, {
             value,
             tags: tagIds,
@@ -314,12 +455,41 @@ export const SecretListView = ({
         });
       }
     },
-    [environment, secretPath, isProtectedBranch]
+    [
+      environment,
+      secretPath,
+      isProtectedBranch,
+      isBatchMode,
+      workspaceId,
+      addPendingChange,
+      pendingChanges.secrets
+    ]
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key, id: secretId } = popUp.deleteSecret?.data as SecretV3RawSanitized;
+    const { key, id: secretId, value } = popUp.deleteSecret?.data as SecretV3RawSanitized;
     try {
+      if (isBatchMode) {
+        const deleteChange: PendingSecretDelete = {
+          id: `${secretId}`,
+          type: PendingAction.Delete,
+          secretKey: key,
+          secretValue: value || "",
+          timestamp: Date.now(),
+          resourceType: "secret"
+        };
+
+        addPendingChange(deleteChange, {
+          workspaceId,
+          environment,
+          secretPath
+        });
+
+        handlePopUpClose("deleteSecret");
+        handlePopUpClose("secretDetail");
+        return;
+      }
+
       await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
       // wrap this in another function and then reuse
       queryClient.invalidateQueries({
@@ -362,7 +532,10 @@ export const SecretListView = ({
     (popUp.deleteSecret?.data as SecretV3RawSanitized)?.key,
     environment,
     secretPath,
-    isProtectedBranch
+    isProtectedBranch,
+    isBatchMode,
+    workspaceId,
+    addPendingChange
   ]);
 
   // for optimization on minimise re-rendering of secret items
@@ -383,6 +556,7 @@ export const SecretListView = ({
       ))}
       {secrets.map((secret) => (
         <SecretItem
+          colWidth={colWidth}
           environment={environment}
           secretPath={secretPath}
           tags={wsTags}
@@ -401,6 +575,8 @@ export const SecretListView = ({
               value: secret.valueOverride ?? secret.value
             })
           }
+          isPending={secret.isPending}
+          pendingAction={secret.pendingAction}
         />
       ))}
       <DeleteActionModal

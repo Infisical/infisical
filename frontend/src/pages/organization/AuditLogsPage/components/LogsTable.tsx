@@ -1,6 +1,5 @@
 import { Fragment } from "react";
-import { faFile, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFile } from "@fortawesome/free-solid-svg-icons";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -14,9 +13,9 @@ import {
   Td,
   Th,
   THead,
-  Tooltip,
   Tr
 } from "@app/components/v2";
+import { Timezone } from "@app/helpers/datetime";
 import { useGetAuditLogs } from "@app/hooks/api";
 import { TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 
@@ -25,11 +24,12 @@ import { LogsTableRow } from "./LogsTableRow";
 type Props = {
   filter: TGetAuditLogsFilter;
   refetchInterval?: number;
+  timezone: Timezone;
 };
 
 const AUDIT_LOG_LIMIT = 30;
 
-export const LogsTable = ({ filter, refetchInterval }: Props) => {
+export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
   // Determine the project ID for filtering
   const filterProjectId =
     // Use the projectId from the filter if it exists
@@ -57,16 +57,7 @@ export const LogsTable = ({ filter, refetchInterval }: Props) => {
               <Th className="w-24">
                 <Spinner size="xs" className={twMerge(isPending ? "opacity-100" : "opacity-0")} />
               </Th>
-              <Th className="w-64">
-                Timestamp
-                <Tooltip
-                  className="normal-case"
-                  content="Time displayed in your system's time zone."
-                  sideOffset={10}
-                >
-                  <FontAwesomeIcon icon={faInfoCircle} className="ml-1" />
-                </Tooltip>
-              </Th>
+              <Th className="w-64">Timestamp</Th>
               <Th>Event</Th>
             </Tr>
           </THead>
@@ -79,6 +70,7 @@ export const LogsTable = ({ filter, refetchInterval }: Props) => {
                       rowNumber={index + i * AUDIT_LOG_LIMIT + 1}
                       auditLog={auditLog}
                       key={`audit-log-${auditLog.id}`}
+                      timezone={timezone}
                     />
                   ))}
                 </Fragment>
@@ -96,7 +88,7 @@ export const LogsTable = ({ filter, refetchInterval }: Props) => {
       </TableContainer>
       {!isEmpty && (
         <Button
-          className="mb-20 mt-4 px-4 py-3 text-sm"
+          className="mt-4 px-4 py-3 text-sm"
           isFullWidth
           variant="outline_bg"
           isLoading={isFetchingNextPage}

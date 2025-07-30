@@ -14,6 +14,7 @@ import { SecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
 import { TSecretSyncForm } from "../schemas";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
 import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptionsFields";
+import { RenderSyncOptionsFields } from "./RenderSyncOptionsFields";
 
 type Props = {
   hideInitialSync?: boolean;
@@ -38,6 +39,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.AWSSecretsManager:
       AdditionalSyncOptionsFieldsComponent = <AwsSecretsManagerSyncOptionsFields />;
       break;
+    case SecretSync.Render:
+      AdditionalSyncOptionsFieldsComponent = <RenderSyncOptionsFields />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:
@@ -54,7 +58,6 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.OnePass:
     case SecretSync.OCIVault:
     case SecretSync.Heroku:
-    case SecretSync.Render:
     case SecretSync.Flyio:
     case SecretSync.GitLab:
     case SecretSync.CloudflarePages:
@@ -63,6 +66,8 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Railway:
     case SecretSync.Checkly:
     case SecretSync.Supabase:
+    case SecretSync.DigitalOceanAppPlatform:
+    case SecretSync.Bitbucket:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

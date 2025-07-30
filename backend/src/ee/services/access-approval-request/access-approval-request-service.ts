@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -86,6 +86,25 @@ export const accessApprovalRequestServiceFactory = ({
   projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
+  const $getEnvironmentFromPermissions = (permissions: unknown): string | null => {
+    if (!Array.isArray(permissions) || permissions.length === 0) {
+      return null;
+    }
+
+    const firstPermission = permissions[0] as unknown[];
+    if (!Array.isArray(firstPermission) || firstPermission.length < 3) {
+      return null;
+    }
+
+    const metadata = firstPermission[2] as Record<string, unknown>;
+    if (typeof metadata === "object" && metadata !== null && "environment" in metadata) {
+      const env = metadata.environment;
+      return typeof env === "string" ? env : null;
+    }
+
+    return null;
+  };
+
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
@@ -107,7 +126,8 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -216,7 +236,7 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const approvalUrl = `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`;
+      const approvalUrl = `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`;
 
       await triggerWorkflowIntegrationNotification({
         input: {
@@ -289,7 +309,8 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -305,6 +326,15 @@ export const accessApprovalRequestServiceFactory = ({
     if (envSlug) {
       requests = requests.filter((request) => request.environment === envSlug);
     }
+
+    requests = requests.map((request) => {
+      const permissionEnvironment = $getEnvironmentFromPermissions(request.permissions);
+
+      if (permissionEnvironment) {
+        request.environmentName = permissionEnvironment;
+      }
+      return request;
+    });
 
     return { requests };
   };
@@ -323,19 +353,34 @@ export const accessApprovalRequestServiceFactory = ({
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
     }
 
-    const { policy, environment } = accessApprovalRequest;
+    const { policy, environments, permissions } = accessApprovalRequest;
     if (policy.deletedAt) {
       throw new BadRequestError({
         message: "The policy associated with this access request has been deleted."
       });
     }
 
+    const permissionEnvironment = $getEnvironmentFromPermissions(permissions);
+    if (
+      !permissionEnvironment ||
+      (!environments.includes(permissionEnvironment) && status === ApprovalStatus.APPROVED)
+    ) {
+      throw new BadRequestError({
+        message: `The original policy ${policy.name} is not attached to environment '${permissionEnvironment}'.`
+      });
+    }
+    const environment = await projectEnvDAL.findOne({
+      projectId: accessApprovalRequest.projectId,
+      slug: permissionEnvironment
+    });
+
     const { membership, hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     if (!membership) {
@@ -550,8 +595,8 @@ export const accessApprovalRequestServiceFactory = ({
                   requesterEmail: actingUser.email,
                   bypassReason: bypassReason || "No reason provided",
                   secretPath: policy.secretPath || "/",
-                  environment,
-                  approvalUrl: `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`,
+                  environment: environment?.name || permissionEnvironment,
+                  approvalUrl: `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`,
                   requestType: "access"
                 },
                 template: SmtpTemplates.AccessSecretRequestBypassed
@@ -582,7 +627,8 @@ export const accessApprovalRequestServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });

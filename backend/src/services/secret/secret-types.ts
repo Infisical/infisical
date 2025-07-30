@@ -212,6 +212,8 @@ export type TGetSecretsRawDTO = {
   limit?: number;
   search?: string;
   keys?: string[];
+  includeTagsInSearch?: boolean;
+  includeMetadataInSearch?: boolean;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {
@@ -310,6 +312,7 @@ export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
     secretMetadata?: ResourceMetadataDTO;
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
+    secretPath?: string;
   }[];
 };
 
@@ -410,6 +413,7 @@ export type TCreateSecretReminderDTO = {
   oldSecret: TPartialSecret;
   newSecret: TPartialSecret;
   projectId: string;
+  secretReminderRecipients: string[];
 
   deleteRecipients?: boolean;
 };
@@ -417,6 +421,7 @@ export type TCreateSecretReminderDTO = {
 export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;
+  projectId: string;
   deleteRecipients?: boolean;
 };
 
@@ -544,3 +549,33 @@ export enum SecretProtectionType {
 }
 
 export type TStartSecretsV2MigrationDTO = TProjectPermission;
+
+export type TProcessNewCommitRawDTO = {
+  secrets: {
+    create?: {
+      secretKey: string;
+      secretValue: string;
+      secretComment?: string;
+      skipMultilineEncoding?: boolean;
+      tagIds?: string[];
+      secretMetadata?: ResourceMetadataDTO;
+      metadata?: { source?: string };
+    }[];
+    update?: {
+      secretKey: string;
+      newSecretName?: string;
+      secretValue?: string;
+      secretComment?: string;
+      skipMultilineEncoding?: boolean;
+      tagIds?: string[];
+      secretMetadata?: ResourceMetadataDTO;
+      metadata?: { source?: string };
+    }[];
+    delete?: { secretKey: string }[];
+  };
+  folders: {
+    create?: { folderName: string; description?: string }[];
+    update?: { folderName: string; description?: string | null; id: string }[];
+    delete?: { folderName: string; id: string }[];
+  };
+};

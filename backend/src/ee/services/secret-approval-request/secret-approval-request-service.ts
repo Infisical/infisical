@@ -1,7 +1,9 @@
 /* eslint-disable no-nested-ternary */
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import {
+  ActionProjectType,
   ProjectMembershipRole,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
@@ -67,6 +69,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
+import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
@@ -183,7 +186,8 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId, policyId);
@@ -210,7 +214,8 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -262,7 +267,8 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -411,7 +417,8 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -480,7 +487,8 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId: secretApprovalRequest.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -530,13 +538,19 @@ export const secretApprovalRequestServiceFactory = ({
         message: "The policy associated with this secret approval request has been deleted."
       });
     }
+    if (!policy.envId) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request is not linked to the environment."
+      });
+    }
 
     const { hasRole } = await permissionService.getProjectPermission({
       actor: ActorType.USER,
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     if (
@@ -954,7 +968,7 @@ export const secretApprovalRequestServiceFactory = ({
           bypassReason,
           secretPath: policy.secretPath,
           environment: env.name,
-          approvalUrl: `${cfg.SITE_URL}/projects/${project.id}/secret-manager/approval`
+          approvalUrl: `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`
         },
         template: SmtpTemplates.AccessSecretRequestBypassed
       });
@@ -1088,7 +1102,8 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -1368,8 +1383,9 @@ export const secretApprovalRequestServiceFactory = ({
     policy,
     projectId,
     secretPath,
-    environment
-  }: TGenerateSecretApprovalRequestV2BridgeDTO) => {
+    environment,
+    trx: providedTx
+  }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
     if (actor === ActorType.SERVICE || actor === ActorType.Machine)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
@@ -1378,7 +1394,8 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1395,6 +1412,20 @@ export const secretApprovalRequestServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
+
+    const project = await projectDAL.findById(projectId);
+    await scanSecretPolicyViolations(
+      projectId,
+      secretPath,
+      [
+        ...(data[SecretOperations.Create] || []),
+        ...(data[SecretOperations.Update] || []).filter((el) => el.secretValue)
+      ].map((el) => ({
+        secretKey: el.secretKey,
+        secretValue: el.secretValue as string
+      })),
+      project.secretDetectionIgnoreValues || []
+    );
 
     // for created secret approval change
     const createdSecrets = data[SecretOperations.Create];
@@ -1595,7 +1626,7 @@ export const secretApprovalRequestServiceFactory = ({
       );
     });
 
-    const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
+    const executeApprovalRequestCreation = async (tx: Knex) => {
       const doc = await secretApprovalRequestDAL.create(
         {
           folderId,
@@ -1657,7 +1688,11 @@ export const secretApprovalRequestServiceFactory = ({
       }
 
       return { ...doc, commits: approvalCommits };
-    });
+    };
+
+    const secretApprovalRequest = providedTx
+      ? await executeApprovalRequestCreation(providedTx)
+      : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
     const user = await userDAL.findById(actorId);
     const env = await projectEnvDAL.findOne({ id: policy.envId });

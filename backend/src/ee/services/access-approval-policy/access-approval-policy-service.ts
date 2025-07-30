@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -20,6 +21,7 @@ import {
   TAccessApprovalPolicyBypasserDALFactory
 } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
+import { TAccessApprovalPolicyEnvironmentDALFactory } from "./access-approval-policy-environment-dal";
 import {
   ApproverType,
   BypasserType,
@@ -44,12 +46,14 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
+  accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
 };
 
 export const accessApprovalPolicyServiceFactory = ({
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
   accessApprovalPolicyBypasserDAL,
+  accessApprovalPolicyEnvironmentDAL,
   groupDAL,
   permissionService,
   projectEnvDAL,
@@ -62,21 +66,22 @@ export const accessApprovalPolicyServiceFactory = ({
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $policyExists = async ({
     envId,
+    envIds,
     secretPath,
     policyId
   }: {
-    envId: string;
+    envId?: string;
+    envIds?: string[];
     secretPath: string;
     policyId?: string;
   }) => {
-    const policy = await accessApprovalPolicyDAL
-      .findOne({
-        envId,
-        secretPath,
-        deletedAt: null
-      })
-      .catch(() => null);
-
+    if (!envId && !envIds) {
+      throw new BadRequestError({ message: "Must provide either envId or envIds" });
+    }
+    const policy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
+      secretPath,
+      envIds: envId ? [envId] : (envIds as string[])
+    });
     return policyId ? policy && policy.id !== policyId : Boolean(policy);
   };
 
@@ -92,6 +97,7 @@ export const accessApprovalPolicyServiceFactory = ({
     bypassers,
     projectSlug,
     environment,
+    environments,
     enforcementLevel,
     allowedSelfApprovals,
     approvalsRequired
@@ -116,20 +122,31 @@ export const accessApprovalPolicyServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
-    const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id });
-    if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
+    const mergedEnvs = (environment ? [environment] : environments) || [];
+    if (mergedEnvs.length === 0) {
+      throw new BadRequestError({ message: "Must provide either environment or environments" });
+    }
+    const envs = await projectEnvDAL.find({ $in: { slug: mergedEnvs }, projectId: project.id });
+    if (!envs.length || envs.length !== mergedEnvs.length) {
+      const notFoundEnvs = mergedEnvs.filter((env) => !envs.find((el) => el.slug === env));
+      throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
+    }
 
-    if (await $policyExists({ envId: env.id, secretPath })) {
-      throw new BadRequestError({
-        message: `A policy for secret path '${secretPath}' already exists in environment '${environment}'`
-      });
+    for (const env of envs) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await $policyExists({ envId: env.id, secretPath })) {
+        throw new BadRequestError({
+          message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
+        });
+      }
     }
 
     let approverUserIds = userApprovers;
@@ -197,13 +214,17 @@ export const accessApprovalPolicyServiceFactory = ({
     const accessApproval = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const doc = await accessApprovalPolicyDAL.create(
         {
-          envId: env.id,
+          envId: envs[0].id,
           approvals,
           secretPath,
           name,
           enforcementLevel,
           allowedSelfApprovals
         },
+        tx
+      );
+      await accessApprovalPolicyEnvironmentDAL.insertMany(
+        envs.map((el) => ({ policyId: doc.id, envId: el.id })),
         tx
       );
 
@@ -258,7 +279,7 @@ export const accessApprovalPolicyServiceFactory = ({
       return doc;
     });
 
-    return { ...accessApproval, environment: env, projectId: project.id };
+    return { ...accessApproval, environments: envs, projectId: project.id, environment: envs[0] };
   };
 
   const getAccessApprovalPolicyByProjectSlug: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyByProjectSlug"] =
@@ -272,11 +293,15 @@ export const accessApprovalPolicyServiceFactory = ({
         actorId,
         projectId: project.id,
         actorAuthMethod,
-        actorOrgId
+        actorOrgId,
+        actionProjectType: ActionProjectType.SecretManager
       });
 
       const accessApprovalPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
-      return accessApprovalPolicies;
+      return accessApprovalPolicies.map((policy) => ({
+        ...policy,
+        environment: policy.environments[0]
+      }));
     };
 
   const updateAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["updateAccessApprovalPolicy"] = async ({
@@ -292,7 +317,8 @@ export const accessApprovalPolicyServiceFactory = ({
     approvals,
     enforcementLevel,
     allowedSelfApprovals,
-    approvalsRequired
+    approvalsRequired,
+    environments
   }: TUpdateAccessApprovalPolicy) => {
     const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
 
@@ -320,16 +346,27 @@ export const accessApprovalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
     }
 
+    let envs = accessApprovalPolicy.environments;
     if (
-      await $policyExists({
-        envId: accessApprovalPolicy.envId,
-        secretPath: secretPath || accessApprovalPolicy.secretPath,
-        policyId: accessApprovalPolicy.id
-      })
+      environments &&
+      (environments.length !== envs.length || environments.some((env) => !envs.find((el) => el.slug === env)))
     ) {
-      throw new BadRequestError({
-        message: `A policy for secret path '${secretPath}' already exists in environment '${accessApprovalPolicy.environment.slug}'`
-      });
+      envs = await projectEnvDAL.find({ $in: { slug: environments }, projectId: accessApprovalPolicy.projectId });
+    }
+
+    for (const env of envs) {
+      if (
+        // eslint-disable-next-line no-await-in-loop
+        await $policyExists({
+          envId: env.id,
+          secretPath: secretPath || accessApprovalPolicy.secretPath,
+          policyId: accessApprovalPolicy.id
+        })
+      ) {
+        throw new BadRequestError({
+          message: `A policy for secret path '${secretPath || accessApprovalPolicy.secretPath}' already exists in environment '${env.slug}'`
+        });
+      }
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -337,7 +374,8 @@ export const accessApprovalPolicyServiceFactory = ({
       actorId,
       projectId: accessApprovalPolicy.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
@@ -484,6 +522,14 @@ export const accessApprovalPolicyServiceFactory = ({
         );
       }
 
+      if (environments) {
+        await accessApprovalPolicyEnvironmentDAL.delete({ policyId: doc.id }, tx);
+        await accessApprovalPolicyEnvironmentDAL.insertMany(
+          envs.map((env) => ({ policyId: doc.id, envId: env.id })),
+          tx
+        );
+      }
+
       await accessApprovalPolicyBypasserDAL.delete({ policyId: doc.id }, tx);
 
       if (bypasserUserIds.length) {
@@ -513,7 +559,8 @@ export const accessApprovalPolicyServiceFactory = ({
 
     return {
       ...updatedPolicy,
-      environment: accessApprovalPolicy.environment,
+      environments: accessApprovalPolicy.environments,
+      environment: accessApprovalPolicy.environments[0],
       projectId: accessApprovalPolicy.projectId
     };
   };
@@ -533,7 +580,8 @@ export const accessApprovalPolicyServiceFactory = ({
       actorId,
       projectId: policy.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
@@ -563,7 +611,10 @@ export const accessApprovalPolicyServiceFactory = ({
       }
     });
 
-    return policy;
+    return {
+      ...policy,
+      environment: policy.environments[0]
+    };
   };
 
   const getAccessPolicyCountByEnvSlug: TAccessApprovalPolicyServiceFactory["getAccessPolicyCountByEnvSlug"] = async ({
@@ -583,7 +634,8 @@ export const accessApprovalPolicyServiceFactory = ({
       actorId,
       projectId: project.id,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
     if (!membership) {
       throw new ForbiddenRequestError({ message: "You are not a member of this project" });
@@ -592,11 +644,13 @@ export const accessApprovalPolicyServiceFactory = ({
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const policies = await accessApprovalPolicyDAL.find({
-      envId: environment.id,
-      projectId: project.id,
-      deletedAt: null
-    });
+    const policies = await accessApprovalPolicyDAL.find(
+      {
+        projectId: project.id,
+        deletedAt: null
+      },
+      { envId: environment.id }
+    );
     if (!policies) throw new NotFoundError({ message: `No policies found in environment with slug '${envSlug}'` });
 
     return { count: policies.length };
@@ -622,12 +676,16 @@ export const accessApprovalPolicyServiceFactory = ({
       actorId,
       projectId: policy.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    return policy;
+    return {
+      ...policy,
+      environment: policy.environments[0]
+    };
   };
 
   return {

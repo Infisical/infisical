@@ -18,7 +18,7 @@ export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
 
 export const GenericCreateAppConnectionFieldsSchema = (
   app: AppConnection,
-  { supportsPlatformManagedCredentials = false }: TAppConnectionBaseConfig = {}
+  { supportsPlatformManagedCredentials = false, supportsGateways = false }: TAppConnectionBaseConfig = {}
 ) =>
   z.object({
     name: slugSchema({ field: "name" }).describe(AppConnections.CREATE(app).name),
@@ -30,12 +30,23 @@ export const GenericCreateAppConnectionFieldsSchema = (
       .describe(AppConnections.CREATE(app).description),
     isPlatformManagedCredentials: supportsPlatformManagedCredentials
       ? z.boolean().optional().default(false).describe(AppConnections.CREATE(app).isPlatformManagedCredentials)
-      : z.literal(false).optional().describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
+      : z
+          .literal(false, {
+            errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          })
+          .optional()
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+    gatewayId: supportsGateways
+      ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+      : z
+          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
   });
 
 export const GenericUpdateAppConnectionFieldsSchema = (
   app: AppConnection,
-  { supportsPlatformManagedCredentials = false }: TAppConnectionBaseConfig = {}
+  { supportsPlatformManagedCredentials = false, supportsGateways = false }: TAppConnectionBaseConfig = {}
 ) =>
   z.object({
     name: slugSchema({ field: "name" }).describe(AppConnections.UPDATE(app).name).optional(),
@@ -47,5 +58,16 @@ export const GenericUpdateAppConnectionFieldsSchema = (
       .describe(AppConnections.UPDATE(app).description),
     isPlatformManagedCredentials: supportsPlatformManagedCredentials
       ? z.boolean().optional().describe(AppConnections.UPDATE(app).isPlatformManagedCredentials)
-      : z.literal(false).optional().describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
+      : z
+          .literal(false, {
+            errorMap: () => ({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          })
+          .optional()
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+    gatewayId: supportsGateways
+      ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+      : z
+          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
   });

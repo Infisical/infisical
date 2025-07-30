@@ -4,7 +4,6 @@ import { MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 import { faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
@@ -14,6 +13,7 @@ import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
@@ -121,6 +121,8 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     (role?.slug ?? "") as ProjectMembershipRole
   );
 
+  const isSecretManagerProject = currentWorkspace.type === ProjectType.SecretManager;
+
   const permissions = form.watch("permissions");
 
   const formattedPermissions = useMemo(
@@ -163,7 +165,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                 <Button
                   colorSchema="secondary"
                   type="submit"
-                  className={twMerge("h-10 border")}
+                  className="h-10 border"
                   isDisabled={isSubmitting || !isDirty}
                   isLoading={isSubmitting}
                   leftIcon={<FontAwesomeIcon icon={faSave} />}
@@ -171,7 +173,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                   Save
                 </Button>
                 <div className="ml-2 border-l border-mineshaft-500 pl-4">
-                  <AddPoliciesButton isDisabled={isDisabled} />
+                  <AddPoliciesButton isDisabled={isDisabled} projectType={currentWorkspace.type} />
                 </div>
               </div>
             )}
@@ -206,7 +208,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           </div>
         </FormProvider>
       </form>
-      {showAccessTree && (
+      {isSecretManagerProject && showAccessTree && (
         <AccessTree
           permissions={formattedPermissions}
           subject={showAccessTree}

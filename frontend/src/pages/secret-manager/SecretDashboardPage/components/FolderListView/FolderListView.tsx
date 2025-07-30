@@ -1,7 +1,15 @@
 import { subject } from "@casl/ability";
-import { faClose, faFolder, faInfoCircle, faPencilSquare } from "@fortawesome/free-solid-svg-icons";
+import {
+  faClose,
+  faEdit,
+  faFolder,
+  faInfoCircle,
+  faPencilSquare,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -11,8 +19,15 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
-import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
+import { PendingAction, TSecretFolder } from "@app/hooks/api/secretFolders/types";
 
+import {
+  PendingFolderCreate,
+  PendingFolderDelete,
+  PendingFolderUpdate,
+  useBatchMode,
+  useBatchModeActions
+} from "../../SecretMainPage.store";
 import { FolderForm } from "../ActionBar/FolderForm";
 
 type Props = {
@@ -42,10 +57,62 @@ export const FolderListView = ({
 
   const { mutateAsync: updateFolder } = useUpdateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
+  const { isBatchMode } = useBatchMode();
+  const { addPendingChange, removePendingChange } = useBatchModeActions();
 
-  const handleFolderUpdate = async (newFolderName: string, newFolderDescription: string | null) => {
+  const handleFolderUpdate = async (
+    newFolderName: string,
+    newFolderDescription: string | null,
+    oldFolderName?: string,
+    oldFolderDescription?: string
+  ) => {
     try {
-      const { id: folderId } = popUp.updateFolder.data as TSecretFolder;
+      const updateFolderData = popUp.updateFolder.data;
+      if (!updateFolderData) throw new Error("Update folder data is required");
+      const { id: folderId, pendingAction, isPending } = updateFolderData as TSecretFolder;
+
+      if (isBatchMode) {
+        const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
+
+        if (isEditingPendingCreation) {
+          const updatedCreate: PendingFolderCreate = {
+            id: folderId,
+            type: PendingAction.Create,
+            folderName: newFolderName,
+            description: newFolderDescription || undefined,
+            parentPath: secretPath,
+            timestamp: Date.now(),
+            resourceType: "folder"
+          };
+
+          addPendingChange(updatedCreate, {
+            workspaceId,
+            environment,
+            secretPath
+          });
+        } else {
+          const updateChange: PendingFolderUpdate = {
+            id: folderId,
+            type: PendingAction.Update,
+            originalFolderName: oldFolderName || "",
+            folderName: newFolderName,
+            originalDescription: oldFolderDescription,
+            description: newFolderDescription || undefined,
+            timestamp: Date.now(),
+            resourceType: "folder"
+          };
+
+          addPendingChange(updateChange, {
+            workspaceId,
+            environment,
+            secretPath
+          });
+        }
+
+        handlePopUpClose("updateFolder");
+        return;
+      }
+
       await updateFolder({
         folderId,
         name: newFolderName,
@@ -68,15 +135,45 @@ export const FolderListView = ({
     }
   };
 
+  const handleDeletePending = (id: string) => {
+    removePendingChange(id, "folder", {
+      workspaceId,
+      environment,
+      secretPath
+    });
+  };
+
   const handleFolderDelete = async () => {
     try {
-      const { id: folderId } = popUp.deleteFolder.data as TSecretFolder;
+      const folderData = popUp.deleteFolder?.data as TSecretFolder;
+
+      if (isBatchMode) {
+        const pendingFolderDelete: PendingFolderDelete = {
+          id: folderData.id,
+          folderName: folderData.name,
+          folderPath: secretPath,
+          resourceType: "folder",
+          type: PendingAction.Delete,
+          timestamp: Date.now()
+        };
+
+        addPendingChange(pendingFolderDelete, {
+          workspaceId,
+          environment,
+          secretPath
+        });
+
+        handlePopUpClose("deleteFolder");
+        return;
+      }
+
       await deleteFolder({
-        folderId,
+        folderId: folderData.id,
         path: secretPath,
         environment,
         projectId: workspaceId
       });
+
       handlePopUpClose("deleteFolder");
       createNotification({
         type: "success",
@@ -91,7 +188,10 @@ export const FolderListView = ({
     }
   };
 
-  const handleFolderClick = (name: string) => {
+  const handleFolderClick = (name: string, isPending?: boolean) => {
+    if (isPending) {
+      return;
+    }
     const path = `${secretPathQueryparam === "/" ? "" : secretPathQueryparam}/${name}`;
     navigate({
       search: (el) => ({ ...el, secretPath: path })
@@ -100,10 +200,16 @@ export const FolderListView = ({
 
   return (
     <>
-      {folders.map(({ name, id, description }) => (
+      {folders.map(({ name, id, description, pendingAction, isPending }) => (
         <div
           key={id}
-          className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
+          className={twMerge(
+            "group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700",
+            isPending && "bg-mineshaft-700/60",
+            pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
+            pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
+            pendingAction === PendingAction.Create && "border-l-2 border-l-green-600/75"
+          )}
         >
           <div className="flex w-11 items-center px-5 py-3 text-yellow-700">
             <FontAwesomeIcon icon={faFolder} />
@@ -113,9 +219,9 @@ export const FolderListView = ({
             role="button"
             tabIndex={0}
             onKeyDown={(evt) => {
-              if (evt.key === "Enter") handleFolderClick(name);
+              if (evt.key === "Enter") handleFolderClick(name, isPending);
             }}
-            onClick={() => handleFolderClick(name)}
+            onClick={() => handleFolderClick(name, isPending)}
           >
             {name}
             {description && (
@@ -128,46 +234,72 @@ export const FolderListView = ({
               </Tooltip>
             )}
           </div>
-          <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Edit}
-              a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
-              renderTooltip
-              allowedLabel="Edit"
-            >
-              {(isAllowed) => (
-                <IconButton
-                  ariaLabel="edit-folder"
-                  variant="plain"
-                  size="sm"
-                  className="p-0 opacity-0 group-hover:opacity-100"
-                  onClick={() => handlePopUpOpen("updateFolder", { id, name, description })}
-                  isDisabled={!isAllowed}
-                >
-                  <FontAwesomeIcon icon={faPencilSquare} size="lg" />
-                </IconButton>
-              )}
-            </ProjectPermissionCan>
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Delete}
-              a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
-              renderTooltip
-              allowedLabel="Delete"
-            >
-              {(isAllowed) => (
-                <IconButton
-                  ariaLabel="delete-folder"
-                  variant="plain"
-                  size="md"
-                  className="p-0 opacity-0 group-hover:opacity-100"
-                  onClick={() => handlePopUpOpen("deleteFolder", { id, name })}
-                  isDisabled={!isAllowed}
-                >
-                  <FontAwesomeIcon icon={faClose} size="lg" />
-                </IconButton>
-              )}
-            </ProjectPermissionCan>
-          </div>
+          {isPending ? (
+            <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-3 py-3">
+              <IconButton
+                ariaLabel="edit-folder"
+                variant="plain"
+                size="sm"
+                className="p-0 opacity-0 group-hover:opacity-100"
+                isDisabled
+                onClick={() => {}}
+              >
+                <FontAwesomeIcon icon={faPencilSquare} size="lg" />
+              </IconButton>
+
+              <IconButton
+                ariaLabel="delete-folder"
+                variant="plain"
+                size="md"
+                className="p-0 opacity-0 group-hover:opacity-100"
+                onClick={() => handleDeletePending(id)}
+              >
+                <FontAwesomeIcon icon={faClose} size="lg" />
+              </IconButton>
+            </div>
+          ) : (
+            <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-3 py-3">
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
+                renderTooltip
+                allowedLabel="Edit"
+              >
+                {(isAllowed) => (
+                  <IconButton
+                    ariaLabel="edit-folder"
+                    variant="plain"
+                    size="sm"
+                    className="p-0 opacity-0 group-hover:opacity-100"
+                    onClick={() => handlePopUpOpen("updateFolder", { id, name, description })}
+                    isDisabled={!isAllowed}
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </IconButton>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Delete}
+                a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}
+                renderTooltip
+                allowedLabel="Delete"
+              >
+                {(isAllowed) => (
+                  <IconButton
+                    ariaLabel="delete-folder"
+                    variant="plain"
+                    colorSchema="danger"
+                    size="md"
+                    className="p-0 opacity-0 group-hover:opacity-100"
+                    onClick={() => handlePopUpOpen("deleteFolder", { id, name })}
+                    isDisabled={!isAllowed}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </IconButton>
+                )}
+              </ProjectPermissionCan>
+            </div>
+          )}
         </div>
       ))}
       <Modal

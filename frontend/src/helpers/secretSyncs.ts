@@ -4,9 +4,9 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
-import { RenderSyncScope } from "@app/hooks/api/secretSyncs/render-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
   [SecretSync.AWSParameterStore]: { name: "AWS Parameter Store", image: "Amazon Web Services.png" },
@@ -101,6 +101,14 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Supabase]: {
     name: "Supabase",
     image: "Supabase.png"
+  },
+  [SecretSync.DigitalOceanAppPlatform]: {
+    name: "Digital Ocean App Platform",
+    image: "Digital Ocean.png"
+  },
+  [SecretSync.Bitbucket]: {
+    name: "Bitbucket",
+    image: "Bitbucket.png"
   }
 };
 
@@ -131,7 +139,9 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
-  [SecretSync.Checkly]: AppConnection.Checkly
+  [SecretSync.Checkly]: AppConnection.Checkly,
+  [SecretSync.DigitalOceanAppPlatform]: AppConnection.DigitalOcean,
+  [SecretSync.Bitbucket]: AppConnection.Bitbucket
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

@@ -51,6 +51,7 @@ export type TServerConfig = {
   invalidatingCache: boolean;
   fipsEnabled: boolean;
   envOverrides?: Record<string, string>;
+  paramsFolderSecretDetectionEnabled: boolean;
 };
 
 export type TUpdateServerConfigDTO = {

@@ -31,7 +31,7 @@ export const CommitsPage = () => {
 
   const handleSelectCommit = (commitId: string) => {
     navigate({
-      to: "/projects/$projectId/secret-manager/commits/$environment/$folderId/$commitId",
+      to: "/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId",
       params: {
         projectId: currentWorkspace.id,
         folderId,
@@ -52,7 +52,7 @@ export const CommitsPage = () => {
           title="Commits"
           description="Track, inspect, and restore your secrets and folders with confidence. View the complete history of changes made to your environment, examine specific modifications at each commit point, and preview the exact impact before rolling back to previous states."
         />
-        <NoticeBannerV2 title="" className="mb-2">
+        <NoticeBannerV2 title="Secret Snapshots Update" className="mb-2">
           <p className="my-1 text-sm text-mineshaft-300">
             Secret Snapshots have been officially renamed to Commits. Going forward, all secret
             changes will be tracked as Commits. If you made changes before this update, you can

@@ -43,7 +43,7 @@ export const HasuraCloudAuthorizePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/hasura-cloud/create",
+        to: "/projects/secret-management/$projectId/integrations/hasura-cloud/create",
         params: {
           projectId: currentWorkspace.id
         },

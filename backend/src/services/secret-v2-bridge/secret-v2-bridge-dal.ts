@@ -415,6 +415,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     filters?: {
       search?: string;
       tagSlugs?: string[];
+      includeTagsInSearch?: boolean;
+      includeMetadataInSearch?: boolean;
     }
   ) => {
     try {
@@ -433,17 +435,27 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .whereIn("folderId", folderIds)
         .where((bd) => {
           if (filters?.search) {
-            void bd.whereILike("key", `%${filters?.search}%`);
+            void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
+            if (filters?.includeTagsInSearch) {
+              void bd.orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
+            }
+            if (filters?.includeMetadataInSearch) {
+              void bd
+                .orWhereILike(`${TableName.ResourceMetadata}.key`, `%${filters?.search}%`)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, `%${filters?.search}%`);
+            }
           }
         })
         .where((bd) => {
-          void bd.whereNull("userId").orWhere({ userId: userId || null });
+          void bd
+            .whereNull(`${TableName.SecretV2}.userId`)
+            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
-        .countDistinct("key");
+        .countDistinct(`${TableName.SecretV2}.key`);
 
       // only need to join tags if filtering by tag slugs
       const slugs = filters?.tagSlugs?.filter(Boolean);
-      if (slugs && slugs.length > 0) {
+      if ((slugs && slugs.length > 0) || filters?.includeTagsInSearch) {
         void query
           .leftJoin(
             TableName.SecretV2JnTag,
@@ -454,18 +466,31 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             TableName.SecretTag,
             `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
             `${TableName.SecretTag}.id`
-          )
-          .whereIn("slug", slugs);
+          );
+
+        if (slugs?.length) {
+          void query.whereIn("slug", slugs);
+        }
+      }
+
+      if (filters?.includeMetadataInSearch) {
+        void query.leftJoin(
+          TableName.ResourceMetadata,
+          `${TableName.SecretV2}.id`,
+          `${TableName.ResourceMetadata}.secretId`
+        );
       }
 
       const secrets = await query;
 
+      // @ts-expect-error not inferred by knex
       return Number(secrets[0]?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "get folder secret count" });
     }
   };
 
+  // This method currently uses too many joins which is not performant, in case we need to add more filters we should consider refactoring this method
   const findByFolderIds = async (dto: {
     folderIds: string[];
     userId?: string;
@@ -485,12 +510,14 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
         .where((bd) => {
           if (filters?.search) {
+            void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
             if (filters?.includeTagsInSearch) {
+              void bd.orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
+            }
+            if (filters?.includeMetadataInSearch) {
               void bd
-                .whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`)
-                .orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
-            } else {
-              void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
+                .orWhereILike(`${TableName.ResourceMetadata}.key`, `%${filters?.search}%`)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, `%${filters?.search}%`);
             }
           }
 
@@ -513,18 +540,15 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`
         )
-        .leftJoin(
-          TableName.SecretReminderRecipients,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretReminderRecipients}.secretId`
-        )
-        .leftJoin(TableName.Users, `${TableName.SecretReminderRecipients}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .leftJoin(
           TableName.SecretRotationV2SecretMapping,
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+        .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
+        .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
+        .leftJoin(TableName.Users, `${TableName.ReminderRecipient}.userId`, `${TableName.Users}.id`)
         .where((qb) => {
           if (filters?.metadataFilter && filters.metadataFilter.length > 0) {
             filters.metadataFilter.forEach((meta) => {
@@ -547,7 +571,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             }) as rank`
           )
         )
-        .select(db.ref("id").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientId"))
+        .select(db.ref("id").withSchema(TableName.Reminder).as("reminderId"))
+        .select(db.ref("message").withSchema(TableName.Reminder).as("reminderNote"))
+        .select(db.ref("repeatDays").withSchema(TableName.Reminder).as("reminderRepeatDays"))
+        .select(db.ref("nextReminderDate").withSchema(TableName.Reminder).as("nextReminderDate"))
+        .select(db.ref("id").withSchema(TableName.ReminderRecipient).as("reminderRecipientId"))
         .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
         .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
         .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
@@ -809,6 +837,86 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findSecretsWithReminderRecipients = async (ids: string[], limit: number, tx?: Knex) => {
+    try {
+      // Create a subquery to get limited secret IDs
+      const limitedSecretIds = (tx || db)(TableName.SecretV2)
+        .whereIn(`${TableName.SecretV2}.id`, ids)
+        .limit(limit)
+        .select("id");
+
+      // Join with all recipients for the limited secrets
+      const docs = await (tx || db)(TableName.SecretV2)
+        .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
+        .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
+        .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
+        .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("userId").withSchema(TableName.ReminderRecipient).as("reminderRecipientUserId"));
+
+      const data = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretsV2Schema.parse(el)
+        }),
+        childrenMapper: [
+          {
+            key: "reminderRecipientUserId",
+            label: "recipients" as const,
+            mapper: ({ reminderRecipientUserId }) => reminderRecipientUserId
+          }
+        ]
+      });
+
+      return data;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretsWithReminderRecipients" });
+    }
+  };
+
+  const findSecretsWithReminderRecipientsOld = async (ids: string[], limit: number, tx?: Knex) => {
+    try {
+      // Create a subquery to get limited secret IDs
+      const limitedSecretIds = (tx || db)(TableName.SecretV2)
+        .whereIn(`${TableName.SecretV2}.id`, ids)
+        .limit(limit)
+        .select("id");
+
+      // Join with all recipients for the limited secrets
+      const docs = await (tx || db)(TableName.SecretV2)
+        .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
+        .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
+        .leftJoin(
+          TableName.SecretReminderRecipients,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretReminderRecipients}.secretId`
+        )
+        .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("userId").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientUserId"));
+
+      const data = sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: (el) => ({
+          _id: el.id,
+          ...SecretsV2Schema.parse(el)
+        }),
+        childrenMapper: [
+          {
+            key: "reminderRecipientUserId",
+            label: "recipients" as const,
+            mapper: ({ reminderRecipientUserId }) => reminderRecipientUserId
+          }
+        ]
+      });
+
+      return data;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findSecretsWithReminderRecipientsOld" });
+    }
+  };
+
   return {
     ...secretOrm,
     update,
@@ -826,6 +934,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByFolderIds,
     findOne,
     find,
-    invalidateSecretCacheByProjectId
+    invalidateSecretCacheByProjectId,
+    findSecretsWithReminderRecipients,
+    findSecretsWithReminderRecipientsOld
   };
 };

@@ -7,6 +7,7 @@ import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
+import { OktaClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
 import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
@@ -23,7 +24,8 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   Auth0ClientSecretRotationListItemSchema,
   AzureClientSecretRotationListItemSchema,
   AwsIamUserSecretRotationListItemSchema,
-  LdapPasswordRotationListItemSchema
+  LdapPasswordRotationListItemSchema,
+  OktaClientSecretRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

@@ -2,9 +2,9 @@ import { ReactNode, useMemo, useState } from "react";
 import { faFolderOpen, faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowDownAZ,
-  faArrowRight,
   faArrowUpZA,
   faBorderAll,
+  faCheckCircle,
   faList,
   faMagnifyingGlass,
   faPlus,
@@ -13,12 +13,26 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, Input, Pagination, Skeleton, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  IconButton,
+  Input,
+  Lottie,
+  Pagination,
+  Skeleton,
+  Tooltip
+} from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
+import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -29,7 +43,7 @@ import { useGetUserWorkspaces } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 type Props = {
   onAddNewProject: () => void;
@@ -53,6 +67,9 @@ export const MyProjectView = ({
 }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
+  const [projectTypeFilter, setProjectTypeFilter] = useState<Partial<Record<ProjectType, boolean>>>(
+    {}
+  );
 
   const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserWorkspaces();
   const {
@@ -67,6 +84,7 @@ export const MyProjectView = ({
   } = usePagination(ProjectOrderBy.Name, {
     initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
   });
+  const isTableFilteredByType = Boolean(Object.values(projectTypeFilter).some((el) => el));
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -88,13 +106,18 @@ export const MyProjectView = ({
   const filteredWorkspaces = useMemo(
     () =>
       workspaces
-        .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
+        .filter((ws) => {
+          if (isTableFilteredByType && !projectTypeFilter?.[ws.type]) {
+            return false;
+          }
+          return ws?.name?.toLowerCase().includes(searchFilter.toLowerCase());
+        })
         .sort((a, b) =>
           orderDirection === OrderByDirection.ASC
             ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
             : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
         ),
-    [searchFilter, orderDirection, workspaces]
+    [searchFilter, orderDirection, workspaces, projectTypeFilter]
   );
 
   useResetPageHelper({
@@ -116,6 +139,15 @@ export const MyProjectView = ({
       workspacesWithFaveProp: workspacesWithFav
     };
   }, [filteredWorkspaces, projectFavorites, offset, limit, page]);
+
+  const handleToggleFilterByProjectType = (type: ProjectType) => {
+    setProjectTypeFilter((state) => {
+      return {
+        ...(state || {}),
+        [type]: !state?.[type]
+      };
+    });
+  };
 
   const addProjectToFavorites = async (projectId: string) => {
     try {
@@ -153,61 +185,53 @@ export const MyProjectView = ({
     <div
       onClick={() => {
         navigate({
-          to: getProjectHomePage(workspace.defaultProduct),
+          to: getProjectHomePage(workspace.type),
           params: {
             projectId: workspace.id
           }
         });
       }}
       key={workspace.id}
-      className="flex h-40 min-w-72 cursor-pointer flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+      className="cursor-pointer overflow-clip rounded border border-l-[4px] border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 p-4 transition-transform duration-100 hover:scale-[103%] hover:border-l-primary hover:bg-mineshaft-700"
     >
-      <div className="flex flex-row justify-between">
-        <div className="mt-0 truncate text-lg text-mineshaft-100">{workspace.name}</div>
-        {isFavorite ? (
-          <FontAwesomeIcon
-            icon={faSolidStar}
-            className="text-sm text-yellow-600 hover:text-mineshaft-400"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeProjectFromFavorites(workspace.id);
-            }}
+      <div className="flex items-center gap-4">
+        <div className="rounded border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
+          <Lottie
+            className="h-[1.75rem] w-[1.75rem] shrink-0"
+            icon={getProjectLottieIcon(workspace.type)}
           />
-        ) : (
-          <FontAwesomeIcon
-            icon={faStar}
-            className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
-            onClick={(e) => {
-              e.stopPropagation();
-              addProjectToFavorites(workspace.id);
-            }}
-          />
-        )}
-      </div>
-
-      <div
-        className="mb-2.5 mt-1 grow text-sm text-mineshaft-300"
-        style={{
-          overflow: "hidden",
-          display: "-webkit-box",
-          WebkitBoxOrient: "vertical",
-          WebkitLineClamp: 2
-        }}
-      >
-        {workspace.description}
-      </div>
-
-      <div className="flex w-full flex-row items-end justify-between place-self-end">
-        <button type="button">
-          <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 px-4 py-2 text-sm text-mineshaft-300 transition-all hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
-            Explore{" "}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg font-semibold text-mineshaft-100">{workspace.name}</p>
+          <p className="truncate text-sm leading-4 text-mineshaft-300">
+            {getProjectTitle(workspace.type)}
+          </p>
+        </div>
+        <div className="mt-0.5 self-start">
+          {isFavorite ? (
             <FontAwesomeIcon
-              icon={faArrowRight}
-              className="pl-1.5 pr-0.5 duration-200 hover:pl-2 hover:pr-0"
+              icon={faSolidStar}
+              className="text-sm text-yellow-600 hover:text-mineshaft-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeProjectFromFavorites(workspace.id);
+              }}
             />
-          </div>
-        </button>
+          ) : (
+            <FontAwesomeIcon
+              icon={faStar}
+              className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                addProjectToFavorites(workspace.id);
+              }}
+            />
+          )}
+        </div>
       </div>
+      <p className="mt-4 truncate text-sm text-mineshaft-400">
+        {workspace.description || "No description"}
+      </p>
     </div>
   );
   const renderProjectListItem = (workspace: Workspace, isFavorite: boolean, index: number) => (
@@ -215,21 +239,33 @@ export const MyProjectView = ({
     <div
       onClick={() => {
         navigate({
-          to: getProjectHomePage(workspace.defaultProduct),
+          to: getProjectHomePage(workspace.type),
           params: {
             projectId: workspace.id
           }
         });
       }}
       key={workspace.id}
-      className={`group grid h-14 min-w-72 cursor-pointer grid-cols-6 border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
+      className={`group flex min-w-72 cursor-pointer border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:bg-mineshaft-700 ${
         index === 0 && "rounded-t-md"
       }`}
     >
-      <div className="flex items-center sm:col-span-3 lg:col-span-4">
-        <div className="truncate text-sm text-mineshaft-100">{workspace.name}</div>
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="rounded border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
+          <Lottie
+            className="h-[1.35rem] w-[1.35rem] shrink-0"
+            icon={getProjectLottieIcon(workspace.type)}
+          />
+        </div>
+        <div className="-mt-0.5 flex min-w-0 flex-col">
+          <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
+          <p className="truncate text-xs leading-4 text-mineshaft-300">
+            {getProjectTitle(workspace.type)}{" "}
+            {workspace.description ? `- ${workspace.description}` : ""}
+          </p>
+        </div>
       </div>
-      <div className="flex items-center justify-end sm:col-span-3 lg:col-span-2">
+      <div className="flex items-center justify-end">
         {isFavorite ? (
           <FontAwesomeIcon
             icon={faSolidStar}
@@ -258,7 +294,7 @@ export const MyProjectView = ({
     switch (projectsViewMode) {
       case ProjectsViewMode.GRID:
         projectsComponents = (
-          <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {isProjectViewLoading &&
               Array.apply(0, Array(3)).map((_x, i) => (
                 <div
@@ -320,7 +356,18 @@ export const MyProjectView = ({
         <div className="text-center font-light">No projects match search...</div>
       </div>
     );
+  } else if (filteredWorkspaces.length === 0 && isTableFilteredByType) {
+    projectsComponents = (
+      <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
+        <FontAwesomeIcon
+          icon={faSearch}
+          className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
+        />
+        <div className="text-center font-light">No projects match filters...</div>
+      </div>
+    );
   }
+
   return (
     <div>
       <div className="flex w-full flex-row">
@@ -351,6 +398,49 @@ export const MyProjectView = ({
             </IconButton>
           </Tooltip>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div
+              className={twMerge(
+                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
+                isTableFilteredByType && "border-primary-400 text-primary-400"
+              )}
+            >
+              <Tooltip content="Choose visible project type" className="mb-2">
+                <IconButton
+                  ariaLabel="project-types"
+                  className={twMerge(
+                    "min-w-[2.4rem] border-none hover:bg-mineshaft-600",
+                    isTableFilteredByType && "text-primary-400"
+                  )}
+                  variant="plain"
+                  size="xs"
+                  colorSchema="secondary"
+                >
+                  <FontAwesomeIcon icon={faList} />
+                </IconButton>
+              </Tooltip>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="thin-scrollbar overflow-y-auto" align="end">
+            <DropdownMenuLabel>Filter By Project Type</DropdownMenuLabel>
+            {Object.values(ProjectType).map((el) => (
+              <DropdownMenuItem
+                key={`filter-item-${el}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleToggleFilterByProjectType(el);
+                }}
+                icon={projectTypeFilter?.[el] && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                <div className="flex items-center gap-2">
+                  <span>{getProjectTitle(el)}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <IconButton
             variant="outline_bg"
@@ -385,7 +475,7 @@ export const MyProjectView = ({
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
-              colorSchema="primary"
+              colorSchema="secondary"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
                 if (isAddingProjectsAllowed) {
@@ -417,7 +507,7 @@ export const MyProjectView = ({
           onChangePerPage={handlePerPageChange}
         />
       )}
-      {isWorkspaceEmpty && (
+      {isWorkspaceEmpty && !isTableFilteredByType && (
         <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
           <FontAwesomeIcon
             icon={faFolderOpen}

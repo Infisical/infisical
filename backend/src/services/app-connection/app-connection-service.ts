@@ -3,8 +3,14 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
+import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -55,6 +61,8 @@ import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/clou
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
+import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -73,6 +81,8 @@ import { humanitecConnectionService } from "./humanitec/humanitec-connection-ser
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
+import { ValidateOktaConnectionCredentialsSchema } from "./okta";
+import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
@@ -96,6 +106,8 @@ export type TAppConnectionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayDAL: Pick<TGatewayDALFactory, "find">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -134,14 +146,18 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
   [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
   [AppConnection.Checkly]: ValidateChecklyConnectionCredentialsSchema,
-  [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema
+  [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
+  [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
+  [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
   kmsService,
-  licenseService
+  licenseService,
+  gatewayService,
+  gatewayDAL
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnectionsByOrg = async (actor: OrgServiceActor, app?: AppConnection) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -222,7 +238,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const createAppConnection = async (
-    { method, app, credentials, ...params }: TCreateAppConnectionDTO,
+    { method, app, credentials, gatewayId, ...params }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -238,6 +254,20 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
+    if (gatewayId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway) {
+        throw new NotFoundError({
+          message: `Gateway with ID ${gatewayId} not found for org`
+        });
+      }
+    }
+
     await enterpriseAppCheck(
       licenseService,
       app,
@@ -245,12 +275,16 @@ export const appConnectionServiceFactory = ({
       "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     );
 
-    const validatedCredentials = await validateAppConnectionCredentials({
-      app,
-      credentials,
-      method,
-      orgId: actor.orgId
-    } as TAppConnectionConfig);
+    const validatedCredentials = await validateAppConnectionCredentials(
+      {
+        app,
+        credentials,
+        method,
+        orgId: actor.orgId,
+        gatewayId
+      } as TAppConnectionConfig,
+      gatewayService
+    );
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
@@ -265,6 +299,7 @@ export const appConnectionServiceFactory = ({
           encryptedCredentials,
           method,
           app,
+          gatewayId,
           ...params
         });
       };
@@ -277,9 +312,11 @@ export const appConnectionServiceFactory = ({
             app,
             orgId: actor.orgId,
             credentials: validatedCredentials,
-            method
+            method,
+            gatewayId
           } as TAppConnectionConfig,
-          (platformCredentials) => createConnection(platformCredentials)
+          (platformCredentials) => createConnection(platformCredentials),
+          gatewayService
         );
       } else {
         connection = await createConnection(validatedCredentials);
@@ -300,7 +337,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
-    { connectionId, credentials, ...params }: TUpdateAppConnectionDTO,
+    { connectionId, credentials, gatewayId, ...params }: TUpdateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
@@ -327,6 +364,22 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
+    if (gatewayId !== appConnection.gatewayId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
+      if (gatewayId) {
+        const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
+        if (!gateway) {
+          throw new NotFoundError({
+            message: `Gateway with ID ${gatewayId} not found for org`
+          });
+        }
+      }
+    }
+
     // prevent updating credentials or management status if platform managed
     if (appConnection.isPlatformManagedCredentials && (params.isPlatformManagedCredentials === false || credentials)) {
       throw new BadRequestError({
@@ -351,12 +404,16 @@ export const appConnectionServiceFactory = ({
           } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
-      updatedCredentials = await validateAppConnectionCredentials({
-        app,
-        orgId: actor.orgId,
-        credentials,
-        method
-      } as TAppConnectionConfig);
+      updatedCredentials = await validateAppConnectionCredentials(
+        {
+          app,
+          orgId: actor.orgId,
+          credentials,
+          method,
+          gatewayId
+        } as TAppConnectionConfig,
+        gatewayService
+      );
 
       if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
@@ -375,6 +432,7 @@ export const appConnectionServiceFactory = ({
         return appConnectionDAL.updateById(connectionId, {
           orgId: actor.orgId,
           encryptedCredentials,
+          gatewayId,
           ...params
         });
       };
@@ -391,9 +449,11 @@ export const appConnectionServiceFactory = ({
             app,
             orgId: actor.orgId,
             credentials: updatedCredentials,
-            method
+            method,
+            gatewayId
           } as TAppConnectionConfig,
-          (platformCredentials) => updateConnection(platformCredentials)
+          (platformCredentials) => updateConnection(platformCredentials),
+          gatewayService
         );
       } else {
         updatedConnection = await updateConnection(updatedCredentials);
@@ -549,6 +609,8 @@ export const appConnectionServiceFactory = ({
     railway: railwayConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
-    supabase: supabaseConnectionService(connectAppConnectionById)
+    supabase: supabaseConnectionService(connectAppConnectionById),
+    digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
+    okta: oktaConnectionService(connectAppConnectionById)
   };
 };

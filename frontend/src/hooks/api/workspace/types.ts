@@ -24,7 +24,7 @@ export type Workspace = {
   __v: number;
   id: string;
   name: string;
-  defaultProduct: ProjectType;
+  type: ProjectType;
   description?: string;
   orgId: string;
   version: ProjectVersion;
@@ -40,6 +40,7 @@ export type Workspace = {
   hasDeleteProtection: boolean;
   secretSharing: boolean;
   showSnapshotsLegacy: boolean;
+  secretDetectionIgnoreValues: string[];
 };
 
 export type WorkspaceEnv = {
@@ -68,6 +69,7 @@ export type TGetUpgradeProjectStatusDTO = {
 // mutation dto
 export type CreateWorkspaceDTO = {
   projectName: string;
+  type: ProjectType;
   projectDescription?: string;
   kmsKeyId?: string;
   template?: string;
@@ -80,7 +82,7 @@ export type UpdateProjectDTO = {
   newSlug?: string;
   secretSharing?: boolean;
   showSnapshotsLegacy?: boolean;
-  defaultProduct?: ProjectType;
+  secretDetectionIgnoreValues?: string[];
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
@@ -184,6 +186,7 @@ export type TSearchProjectsDTO = {
   name?: string;
   limit?: number;
   offset?: number;
+  type?: ProjectType;
   options?: { enabled?: boolean };
   orderBy?: ProjectIdentityOrderBy;
   orderDirection?: OrderByDirection;

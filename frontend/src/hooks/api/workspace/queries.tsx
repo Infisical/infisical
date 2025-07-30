@@ -255,12 +255,13 @@ export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { project: Workspace } }, object, CreateWorkspaceDTO>({
-    mutationFn: async ({ projectName, projectDescription, kmsKeyId, template }) =>
+    mutationFn: async ({ projectName, projectDescription, kmsKeyId, template, type }) =>
       createWorkspace({
         projectName,
         projectDescription,
         kmsKeyId,
-        template
+        template,
+        type
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -281,7 +282,7 @@ export const useUpdateProject = () => {
       newSlug,
       secretSharing,
       showSnapshotsLegacy,
-      defaultProduct
+      secretDetectionIgnoreValues
     }) => {
       const { data } = await apiRequest.patch<{ workspace: Workspace }>(
         `/api/v1/workspace/${projectID}`,
@@ -289,9 +290,9 @@ export const useUpdateProject = () => {
           name: newProjectName,
           description: newProjectDescription,
           slug: newSlug,
-          defaultProduct,
           secretSharing,
-          showSnapshotsLegacy
+          showSnapshotsLegacy,
+          secretDetectionIgnoreValues
         }
       );
       return data.workspace;

@@ -1,26 +1,14 @@
 import { FunctionComponent, ReactNode } from "react";
 import { BoundCanProps, Can } from "@casl/react";
-import { faLock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { TOrgPermission, useOrgPermission } from "@app/context/OrgPermissionContext";
 
-import { Tooltip } from "../v2";
+import { AccessRestrictedBanner, Tooltip } from "../v2";
 
 export const OrgPermissionGuardBanner = () => {
   return (
     <div className="container mx-auto flex h-full items-center justify-center">
-      <div className="flex items-end space-x-12 rounded-md bg-mineshaft-800 p-16 text-bunker-300">
-        <div>
-          <FontAwesomeIcon icon={faLock} size="6x" />
-        </div>
-        <div>
-          <div className="mb-2 text-4xl font-medium">Access Restricted</div>
-          <div className="text-sm">
-            Your role has limited permissions, please <br /> contact your admin to gain access
-          </div>
-        </div>
-      </div>
+      <AccessRestrictedBanner />
     </div>
   );
 };

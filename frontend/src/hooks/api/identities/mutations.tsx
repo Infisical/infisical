@@ -86,6 +86,7 @@ export const useCreateIdentity = () => {
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
     }
   });
 };
@@ -110,6 +111,7 @@ export const useUpdateIdentity = () => {
         queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
     }
   });
 };
@@ -130,6 +132,7 @@ export const useDeleteIdentity = () => {
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
     }
   });
 };

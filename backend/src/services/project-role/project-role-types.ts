@@ -1,4 +1,4 @@
-import { ProjectMembershipRole, TOrgRolesUpdate, TProjectRolesInsert } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType, TOrgRolesUpdate, TProjectRolesInsert } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export enum ProjectRoleServiceIdentifierType {
@@ -37,5 +37,6 @@ export type TListRolesDTO = {
 
 export type TGetPredefinedRolesDTO = {
   projectId: string;
+  projectType: ProjectType;
   roleFilter?: ProjectMembershipRole;
 };

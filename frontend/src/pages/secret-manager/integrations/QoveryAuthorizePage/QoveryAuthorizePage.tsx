@@ -36,7 +36,7 @@ export const QoveryAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/$projectId/secret-manager/integrations/qovery/create",
+        to: "/projects/secret-management/$projectId/integrations/qovery/create",
         params: {
           projectId: currentWorkspace.id
         },

@@ -40,6 +40,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -249,7 +250,7 @@ export const ProjectRoleList = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
-                      to: "/projects/$projectId/roles/$roleSlug",
+                      to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug`,
                       params: {
                         projectId: currentWorkspace.id,
                         roleSlug: slug
@@ -291,7 +292,7 @@ export const ProjectRoleList = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: "/projects/$projectId/roles/$roleSlug",
+                                    to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug`,
                                     params: {
                                       projectId: currentWorkspace.id,
                                       roleSlug: slug

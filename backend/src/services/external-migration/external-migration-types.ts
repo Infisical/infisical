@@ -1,4 +1,16 @@
+import { TOrgPermission } from "@app/lib/types";
+
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+
+export enum ImportType {
+  EnvKey = "envkey",
+  Vault = "vault"
+}
+
+export enum VaultMappingType {
+  Namespace = "namespace",
+  KeyVault = "key-vault"
+}
 
 export type InfisicalImportData = {
   projects: Array<{ name: string; id: string }>;
@@ -14,14 +26,17 @@ export type InfisicalImportData = {
   }>;
 };
 
-export type TImportEnvKeyDataCreate = {
+export type TImportEnvKeyDataDTO = {
   decryptionKey: string;
   encryptedJson: { nonce: string; data: string };
-  actor: ActorType;
-  actorId: string;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
+} & Omit<TOrgPermission, "orgId">;
+
+export type TImportVaultDataDTO = {
+  vaultAccessToken: string;
+  vaultNamespace?: string;
+  mappingType: VaultMappingType;
+  vaultUrl: string;
+} & Omit<TOrgPermission, "orgId">;
 
 export type TImportInfisicalDataCreate = {
   data: InfisicalImportData;

@@ -21,7 +21,6 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useListWorkspacePkiCollections } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -61,7 +60,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                     key={`pki-collection-${pkiCollection.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/projects/$projectId/${ProjectType.CertificateManager}/pki-collections/$collectionId` as const,
+                        to: "/projects/cert-management/$projectId/pki-collections/$collectionId",
                         params: {
                           projectId,
                           collectionId: pkiCollection.id

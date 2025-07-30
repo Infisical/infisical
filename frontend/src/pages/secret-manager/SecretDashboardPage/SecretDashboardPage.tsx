@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+/* eslint-disable no-case-declarations */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
@@ -48,7 +49,11 @@ import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
+import { SecretV3RawSanitized } from "@app/hooks/api/types";
 import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
+import { useResizableColWidth } from "@app/hooks/useResizableColWidth";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { SecretRotationListView } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretRotationListView";
@@ -56,6 +61,7 @@ import { SecretRotationListView } from "@app/pages/secret-manager/SecretDashboar
 import { SecretTableResourceCount } from "../OverviewPage/components/SecretTableResourceCount";
 import { SecretV2MigrationSection } from "../OverviewPage/components/SecretV2MigrationSection";
 import { ActionBar } from "./components/ActionBar";
+import { CommitForm } from "./components/CommitForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { DynamicSecretListView } from "./components/DynamicSecretListView";
 import { FolderListView } from "./components/FolderListView";
@@ -65,8 +71,11 @@ import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView, SecretNoAccessListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
 import {
+  PendingChanges,
   PopUpNames,
   StoreProvider,
+  useBatchMode,
+  useBatchModeActions,
   usePopUpAction,
   usePopUpState,
   useSelectedSecretActions,
@@ -94,8 +103,13 @@ const Page = () => {
   });
 
   const { permission } = useProjectPermission();
+  const { mutateAsync: createCommit } = useCreateCommit();
+
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
+  const { isBatchMode, pendingChanges } = useBatchMode();
+  const { loadPendingChanges, setExistingKeys } = useBatchModeActions();
 
   const {
     offset,
@@ -127,6 +141,12 @@ const Page = () => {
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
   const secretPath = (routerQueryParams.secretPath as string) || "/";
+
+  useEffect(() => {
+    if (isBatchMode && workspaceId && environment && secretPath) {
+      loadPendingChanges({ workspaceId, environment, secretPath });
+    }
+  }, [isBatchMode, workspaceId, environment, secretPath, loadPendingChanges]);
 
   const canReadSecret = hasSecretReadValueOrDescribePermission(
     permission,
@@ -195,11 +215,11 @@ const Page = () => {
     searchFilter: (routerQueryParams.search as string) || "",
     // these should always be on by default for the UI, they will be disabled for the query below based off permissions
     include: {
-      [RowType.Folder]: true,
-      [RowType.Import]: true,
-      [RowType.DynamicSecret]: true,
-      [RowType.Secret]: true,
-      [RowType.SecretRotation]: true
+      [RowType.Folder]: false,
+      [RowType.Import]: false,
+      [RowType.DynamicSecret]: false,
+      [RowType.Secret]: false,
+      [RowType.SecretRotation]: false
     }
   };
 
@@ -217,7 +237,7 @@ const Page = () => {
         type: "error"
       });
       navigate({
-        to: "/projects/$projectId/secret-manager/overview",
+        to: "/projects/secret-management/$projectId/overview",
         params: {
           projectId: workspaceId
         }
@@ -225,6 +245,7 @@ const Page = () => {
     }
   }, [currentWorkspace, environment]);
 
+  const isResourceTypeFiltered = Object.values(filter.include).some(Boolean);
   const {
     data,
     isPending: isDetailsLoading,
@@ -238,12 +259,14 @@ const Page = () => {
     orderBy,
     search: debouncedSearchFilter,
     orderDirection,
-    includeImports: canReadSecretImports && filter.include.import,
-    includeFolders: filter.include.folder,
+    includeImports: canReadSecretImports && (isResourceTypeFiltered ? filter.include.import : true),
+    includeFolders: isResourceTypeFiltered ? filter.include.folder : true,
     viewSecretValue: canReadSecretValue,
-    includeDynamicSecrets: canReadDynamicSecret && filter.include.dynamic,
-    includeSecrets: canReadSecret && filter.include.secret,
-    includeSecretRotations: canReadSecretRotations && filter.include.rotation,
+    includeDynamicSecrets:
+      canReadDynamicSecret && (isResourceTypeFiltered ? filter.include.dynamic : true),
+    includeSecrets: canReadSecret && (isResourceTypeFiltered ? filter.include.secret : true),
+    includeSecretRotations:
+      canReadSecretRotations && (isResourceTypeFiltered ? filter.include.rotation : true),
     tags: filter.tags
   });
 
@@ -292,6 +315,30 @@ const Page = () => {
     secretPath
   });
   const isProtectedBranch = Boolean(boardPolicy);
+
+  const handleCreateCommit = async (changes: PendingChanges, message: string) => {
+    try {
+      await createCommit({
+        workspaceId,
+        environment,
+        secretPath,
+        pendingChanges: changes,
+        message
+      });
+      createNotification({
+        text: isProtectedBranch
+          ? "Requested changes have been sent for review"
+          : "Changes committed successfully",
+        type: "success"
+      });
+    } catch (error) {
+      createNotification({
+        text: "Failed to commit changes",
+        type: "error"
+      });
+      console.error(error);
+    }
+  };
 
   const {
     data: snapshotList,
@@ -345,7 +392,7 @@ const Page = () => {
   const handleOnClickRollbackMode = () => {
     if (isPITEnabled) {
       navigate({
-        to: "/projects/$projectId/secret-manager/commits/$environment/$folderId",
+        to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
         params: {
           projectId: workspaceId,
           folderId,
@@ -376,8 +423,20 @@ const Page = () => {
       imports?.length ||
       dynamicSecrets?.length ||
       secretRotations?.length ||
-      noAccessSecretCount
+      noAccessSecretCount ||
+      pendingChanges.secrets.length ||
+      pendingChanges.folders.length
   );
+
+  useEffect(() => {
+    if (data && isBatchMode) {
+      const existingSecretKeys = [...(secrets?.map((s) => s.key) || [])];
+
+      const existingFolderNames = folders?.map((f) => f.name) || [];
+
+      setExistingKeys(existingSecretKeys, existingFolderNames);
+    }
+  }, [data, isBatchMode, setExistingKeys, secrets, importedSecrets, folders]);
 
   const handleSortToggle = () =>
     setOrderDirection((state) =>
@@ -426,6 +485,14 @@ const Page = () => {
     setSnapshotId(null);
     handlePopUpClose("snapshots");
   }, []);
+
+  const { handleMouseDown, isResizing, colWidth } = useResizableColWidth({
+    initialWidth: 320,
+    minWidth: 100,
+    maxWidth: tableRef.current
+      ? tableRef.current.clientWidth - 148 // ensure value column can't collapse completely
+      : 800
+  });
 
   useEffect(() => {
     // restore filters for path if set
@@ -506,6 +573,143 @@ const Page = () => {
     setDebouncedSearchFilter("");
   };
 
+  const getMergedSecretsWithPending = () => {
+    if (!isBatchMode || pendingChanges.secrets.length === 0) {
+      return secrets;
+    }
+
+    const mergedSecrets = [...(secrets || [])];
+
+    pendingChanges.secrets.forEach((change) => {
+      switch (change.type) {
+        case PendingAction.Create:
+          mergedSecrets.unshift({
+            id: change.id,
+            key: change.secretKey,
+            value: change.secretValue,
+            comment: change.secretComment || "",
+            skipMultilineEncoding: change.skipMultilineEncoding || false,
+            tags: change.tags || [],
+            secretMetadata: change.secretMetadata || [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            version: 1,
+            isPending: true,
+            pendingAction: PendingAction.Create
+          } as unknown as SecretV3RawSanitized);
+          break;
+
+        case PendingAction.Update:
+          const updateIndex = mergedSecrets.findIndex((s) => s.key === change.secretKey);
+          if (updateIndex >= 0) {
+            mergedSecrets[updateIndex] = {
+              ...mergedSecrets[updateIndex],
+              key: change.newSecretName || change.secretKey,
+              value:
+                change.secretValue !== undefined
+                  ? change.secretValue
+                  : mergedSecrets[updateIndex].value,
+              comment:
+                change.secretComment !== undefined
+                  ? change.secretComment
+                  : mergedSecrets[updateIndex].comment,
+              skipMultilineEncoding:
+                change.skipMultilineEncoding !== undefined
+                  ? change.skipMultilineEncoding
+                  : mergedSecrets[updateIndex].skipMultilineEncoding,
+              secretMetadata: change.secretMetadata || mergedSecrets[updateIndex].secretMetadata,
+              isPending: true,
+              pendingAction: PendingAction.Update,
+              tags: change.tags
+                ? change.tags?.map((tag) => ({
+                    id: tag.id,
+                    slug: tag.slug,
+                    projectId: workspaceId,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    __v: 0
+                  })) || []
+                : mergedSecrets[updateIndex].tags
+            };
+          }
+          break;
+
+        case PendingAction.Delete:
+          const deleteIndex = mergedSecrets.findIndex((s) => s.key === change.secretKey);
+          if (deleteIndex >= 0) {
+            mergedSecrets[deleteIndex] = {
+              ...mergedSecrets[deleteIndex],
+              isPending: true,
+              pendingAction: PendingAction.Delete
+            };
+          }
+          break;
+
+        default:
+          break;
+      }
+    });
+
+    return mergedSecrets;
+  };
+
+  const getMergedFoldersWithPending = () => {
+    if (!isBatchMode || pendingChanges.folders.length === 0) {
+      return folders;
+    }
+
+    const mergedFolders = [...(folders || [])];
+
+    pendingChanges.folders.forEach((change) => {
+      switch (change.type) {
+        case PendingAction.Create:
+          mergedFolders.unshift({
+            id: change.id,
+            name: change.folderName,
+            description: change.description,
+            parentId: null,
+            isPending: true,
+            pendingAction: PendingAction.Create
+          } as any);
+          break;
+
+        case PendingAction.Update:
+          const updateIndex = mergedFolders.findIndex((f) => f.id === change.id);
+          if (updateIndex >= 0) {
+            mergedFolders[updateIndex] = {
+              ...mergedFolders[updateIndex],
+              name: change.folderName,
+              description:
+                change.description !== undefined
+                  ? change.description
+                  : mergedFolders[updateIndex].description,
+              isPending: true,
+              pendingAction: PendingAction.Update
+            };
+          }
+          break;
+
+        case PendingAction.Delete:
+          const deleteIndex = mergedFolders.findIndex((f) => f.id === change.id);
+          if (deleteIndex >= 0) {
+            mergedFolders[deleteIndex] = {
+              ...mergedFolders[deleteIndex],
+              isPending: true,
+              pendingAction: PendingAction.Delete
+            };
+          }
+          break;
+
+        default:
+          break;
+      }
+    });
+
+    return mergedFolders;
+  };
+
+  const mergedSecrets = getMergedSecretsWithPending();
+  const mergedFolders = getMergedFoldersWithPending();
   return (
     <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:[color-scheme:dark]">
       <PageHeader
@@ -563,6 +767,7 @@ const Page = () => {
             projectSlug={projectSlug}
             secretPath={secretPath}
             isVisible={isVisible}
+            isBatchMode={isBatchMode}
             filter={filter}
             tags={tags}
             onVisibilityToggle={handleToggleVisibility}
@@ -578,8 +783,22 @@ const Page = () => {
             isPITEnabled={isPITEnabled}
             hasPathPolicies={hasPathPolicies}
             onRequestAccess={(params) => handlePopUpOpen("requestAccess", params)}
+            onClearFilters={() =>
+              setFilter((prev) => ({
+                ...prev,
+                tags: {},
+                include: {
+                  secret: false,
+                  import: false,
+                  dynamic: false,
+                  rotation: false,
+                  folder: false
+                }
+              }))
+            }
           />
           <div
+            ref={tableRef}
             className={twMerge(
               "thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300",
               isNotEmpty && "rounded-b-none"
@@ -613,20 +832,34 @@ const Page = () => {
                       />
                     </div>
                   </Tooltip>
-                  <div
-                    className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
-                    role="button"
-                    tabIndex={0}
-                    onClick={handleSortToggle}
-                    onKeyDown={(evt) => {
-                      if (evt.key === "Enter") handleSortToggle();
-                    }}
-                  >
-                    Key
-                    <FontAwesomeIcon
-                      icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
-                      className="ml-2"
+                  <div className="relative">
+                    <div
+                      tabIndex={-1}
+                      role="button"
+                      className={`absolute -right-[0.05rem] z-40 h-full w-0.5 cursor-ew-resize hover:bg-blue-400/20 ${
+                        isResizing ? "bg-blue-400/75" : "bg-transparent"
+                      }`}
+                      onMouseDown={handleMouseDown}
                     />
+                    <div className="pointer-events-none absolute -right-[0.04rem] top-2 z-30">
+                      <div className="h-5 w-0.5 rounded-[1.5px] bg-gray-400 opacity-50" />
+                    </div>
+                    <div
+                      className="flex flex-shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
+                      style={{ width: colWidth }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleSortToggle}
+                      onKeyDown={(evt) => {
+                        if (evt.key === "Enter") handleSortToggle();
+                      }}
+                    >
+                      Key
+                      <FontAwesomeIcon
+                        icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
+                        className="ml-2"
+                      />
+                    </div>
                   </div>
                   <div className="flex-grow px-4 py-2">Value</div>
                 </div>
@@ -698,9 +931,9 @@ const Page = () => {
                   importedSecrets={importedSecrets}
                 />
               )}
-              {Boolean(folders?.length) && (
+              {Boolean(mergedFolders?.length) && (
                 <FolderListView
-                  folders={folders}
+                  folders={mergedFolders}
                   environment={environment}
                   workspaceId={workspaceId}
                   secretPath={secretPath}
@@ -718,9 +951,10 @@ const Page = () => {
               {canReadSecretRotations && Boolean(secretRotations?.length) && (
                 <SecretRotationListView secretRotations={secretRotations} />
               )}
-              {canReadSecret && Boolean(secrets?.length) && (
+              {canReadSecret && Boolean(mergedSecrets?.length) && (
                 <SecretListView
-                  secrets={secrets}
+                  colWidth={colWidth}
+                  secrets={mergedSecrets}
                   tags={tags}
                   isVisible={isVisible}
                   environment={environment}
@@ -731,32 +965,50 @@ const Page = () => {
                   usedBySecretSyncs={usedBySecretSyncs}
                 />
               )}
+              {(pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0) && (
+                <CommitForm
+                  onCommit={handleCreateCommit}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  isCommitting={false}
+                />
+              )}
               {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}
-              {!canReadSecret &&
-                !canReadDynamicSecret &&
-                !canReadSecretImports &&
-                folders?.length === 0 && <PermissionDeniedBanner />}
             </div>
           </div>
-          {!isDetailsLoading && totalCount > 0 && (
-            <Pagination
-              startAdornment={
-                <SecretTableResourceCount
-                  dynamicSecretCount={totalDynamicSecretCount}
-                  importCount={totalImportCount}
-                  secretCount={totalSecretCount}
-                  folderCount={totalFolderCount}
-                  secretRotationCount={totalSecretRotationCount}
-                />
-              }
-              className="rounded-b-md border-t border-solid border-t-mineshaft-600"
-              count={totalCount}
-              page={page}
-              perPage={perPage}
-              onChangePage={(newPage) => setPage(newPage)}
-              onChangePerPage={handlePerPageChange}
-            />
-          )}
+          {!canReadSecret &&
+            !canReadDynamicSecret &&
+            !canReadSecretImports &&
+            folders?.length === 0 && <PermissionDeniedBanner />}
+          {!isDetailsLoading &&
+            (totalCount > 0 ||
+              pendingChanges.secrets.length > 0 ||
+              pendingChanges.folders.length > 0) && (
+              <Pagination
+                startAdornment={
+                  <SecretTableResourceCount
+                    dynamicSecretCount={totalDynamicSecretCount}
+                    importCount={totalImportCount}
+                    secretCount={
+                      totalSecretCount +
+                      pendingChanges.secrets.filter((s) => s.type === PendingAction.Create).length
+                    }
+                    folderCount={
+                      totalFolderCount +
+                      pendingChanges.folders.filter((f) => f.type === PendingAction.Create).length
+                    }
+                    secretRotationCount={totalSecretRotationCount}
+                  />
+                }
+                className="rounded-b-md border-t border-solid border-t-mineshaft-600"
+                count={totalCount + pendingChanges.secrets.length + pendingChanges.folders.length}
+                page={page}
+                perPage={perPage}
+                onChangePage={(newPage) => setPage(newPage)}
+                onChangePerPage={handlePerPageChange}
+              />
+            )}
           <Modal
             isOpen={createSecretPopUp.isOpen}
             onOpenChange={(state) => togglePopUp(PopUpNames.CreateSecretForm, state)}
@@ -772,6 +1024,7 @@ const Page = () => {
                 secretPath={secretPath}
                 autoCapitalize={currentWorkspace?.autoCapitalization}
                 isProtectedBranch={isProtectedBranch}
+                isBatchMode={isBatchMode}
               />
             </ModalContent>
           </Modal>

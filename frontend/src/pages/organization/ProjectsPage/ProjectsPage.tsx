@@ -38,7 +38,8 @@ export const ProjectsPage = () => {
     "upgradePlan"
   ] as const);
 
-  const { data: serverDetails } = useFetchServerStatus();
+  const { data: serverDetails, isLoading } = useFetchServerStatus();
+
   const { subscription } = useSubscription();
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
@@ -51,7 +52,8 @@ export const ProjectsPage = () => {
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      {!serverDetails?.redisConfigured && (
+
+      {!isLoading && !serverDetails?.redisConfigured && (
         <div className="mb-4 flex flex-col items-start justify-start text-3xl">
           <p className="mb-4 mr-4 font-semibold text-white">Announcements</p>
           <div className="flex w-full items-center rounded-md border border-blue-400/70 bg-blue-900/70 p-2 text-base text-mineshaft-100">

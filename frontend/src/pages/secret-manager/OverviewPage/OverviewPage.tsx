@@ -10,13 +10,12 @@ import {
   faArrowRight,
   faArrowRightToBracket,
   faArrowUp,
-  faFileImport,
+  faFilter,
   faFingerprint,
   faFolder,
   faFolderBlank,
   faFolderPlus,
   faKey,
-  faList,
   faPlus,
   faRotate
 } from "@fortawesome/free-solid-svg-icons";
@@ -96,7 +95,12 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
-import { SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
+import {
+  SecretType,
+  SecretV3RawSanitized,
+  TSecretFolder,
+  WorkspaceEnv
+} from "@app/hooks/api/types";
 import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import {
   useDynamicSecretOverview,
@@ -135,7 +139,6 @@ enum RowType {
   Folder = "folder",
   DynamicSecret = "dynamic",
   Secret = "secret",
-  Import = "import",
   SecretRotation = "rotation"
 }
 
@@ -144,11 +147,10 @@ type Filter = {
 };
 
 const DEFAULT_FILTER_STATE = {
-  [RowType.Folder]: true,
-  [RowType.DynamicSecret]: true,
-  [RowType.Secret]: true,
-  [RowType.Import]: true,
-  [RowType.SecretRotation]: true
+  [RowType.Folder]: false,
+  [RowType.DynamicSecret]: false,
+  [RowType.Secret]: false,
+  [RowType.SecretRotation]: false
 };
 
 const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
@@ -265,11 +267,8 @@ export const OverviewPage = () => {
     )
   );
 
-  const [visibleEnvs, setVisibleEnvs] = useState(userAvailableEnvs);
-
-  useEffect(() => {
-    setVisibleEnvs(userAvailableEnvs);
-  }, [userAvailableEnvs]);
+  const [filteredEnvs, setFilteredEnvs] = useState<WorkspaceEnv[]>([]);
+  const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
 
   const {
     secretImports,
@@ -282,6 +281,7 @@ export const OverviewPage = () => {
     environments: (userAvailableEnvs || []).map(({ slug }) => slug)
   });
 
+  const isFilteredByResources = Object.values(filter).some(Boolean);
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
       projectId: workspaceId,
@@ -289,11 +289,11 @@ export const OverviewPage = () => {
       secretPath,
       orderDirection,
       orderBy,
-      includeFolders: filter.folder,
-      includeDynamicSecrets: filter.dynamic,
-      includeSecrets: filter.secret,
-      includeImports: filter.import,
-      includeSecretRotations: filter.rotation,
+      includeFolders: isFilteredByResources ? filter.folder : true,
+      includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
+      includeSecrets: isFilteredByResources ? filter.secret : true,
+      includeImports: true,
+      includeSecretRotations: isFilteredByResources ? filter.rotation : true,
       search: debouncedSearchFilter,
       limit,
       offset
@@ -529,10 +529,10 @@ export const OverviewPage = () => {
   };
 
   const handleEnvSelect = (envId: string) => {
-    if (visibleEnvs.map((env) => env.id).includes(envId)) {
-      setVisibleEnvs(visibleEnvs.filter((env) => env.id !== envId));
+    if (filteredEnvs.map((env) => env.id).includes(envId)) {
+      setFilteredEnvs(filteredEnvs.filter((env) => env.id !== envId));
     } else {
-      setVisibleEnvs(visibleEnvs.concat(userAvailableEnvs.filter((env) => env.id === envId)));
+      setFilteredEnvs(filteredEnvs.concat(userAvailableEnvs.filter((env) => env.id === envId)));
     }
   };
 
@@ -667,7 +667,7 @@ export const OverviewPage = () => {
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({
-        to: "/projects/$projectId/secret-manager/secrets/$envSlug",
+        to: "/projects/secret-management/$projectId/secrets/$envSlug",
         params: {
           projectId: workspaceId,
           envSlug: slug
@@ -792,11 +792,11 @@ export const OverviewPage = () => {
     envNames: string[],
     envs: { environment: string; importedBy: ProjectSecretsImportedBy[] }[]
   ): ProjectSecretsImportedBy[] => {
-    const filteredEnvs = envs.filter((env) => envNames.includes(env.environment));
+    const environments = envs.filter((env) => envNames.includes(env.environment));
 
-    if (filteredEnvs.length === 0) return [];
+    if (environments.length === 0) return [];
 
-    const allImportedBy = filteredEnvs.flatMap((env) => env.importedBy);
+    const allImportedBy = environments.flatMap((env) => env.importedBy);
     const groupedBySlug: Record<string, ProjectSecretsImportedBy[]> = {};
 
     allImportedBy.forEach((item) => {
@@ -902,9 +902,7 @@ export const OverviewPage = () => {
 
   const isTableEmpty = totalCount === 0;
 
-  const isTableFiltered =
-    Boolean(Object.values(filter).filter((enabled) => !enabled).length) ||
-    userAvailableEnvs.length !== visibleEnvs.length;
+  const isTableFiltered = isFilteredByResources || filteredEnvs.length > 0;
 
   if (!isProjectV3)
     return (
@@ -969,26 +967,42 @@ export const OverviewPage = () => {
         <div className="mt-4 flex items-center justify-between">
           <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
           <div className="flex flex-row items-center justify-center space-x-2">
+            {isTableFiltered && (
+              <Button
+                variant="plain"
+                colorSchema="secondary"
+                onClick={() => {
+                  setFilteredEnvs([]);
+                  setFilter(DEFAULT_FILTER_STATE);
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
             {userAvailableEnvs.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <IconButton
-                    ariaLabel="Environments"
-                    variant="plain"
+                  <Button
                     size="sm"
+                    variant="outline_bg"
                     className={twMerge(
-                      "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                      isTableFiltered && "border-primary/50 text-primary"
+                      "flex h-[2.5rem]",
+                      isTableFiltered && "border-primary/40 bg-primary/10"
                     )}
+                    leftIcon={
+                      <FontAwesomeIcon
+                        icon={faFilter}
+                        className={isTableFiltered ? "text-primary/80" : undefined}
+                      />
+                    }
                   >
-                    <Tooltip content="Choose visible environments" className="mb-2">
-                      <FontAwesomeIcon icon={faList} />
-                    </Tooltip>
-                  </IconButton>
+                    Filters
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="thin-scrollbar max-h-[70vh] overflow-y-auto"
                   align="end"
+                  sideOffset={2}
                 >
                   {/* <DropdownMenuItem className="px-1.5" asChild>
                     <Button
@@ -1002,20 +1016,8 @@ export const OverviewPage = () => {
                       Create an environment
                     </Button>
                   </DropdownMenuItem> */}
-                  <DropdownMenuLabel>Filter project resources</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleToggleRowType(RowType.Import);
-                    }}
-                    icon={filter[RowType.Import] && <FontAwesomeIcon icon={faCheckCircle} />}
-                    iconPos="right"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
-                      <span>Imports</span>
-                    </div>
-                  </DropdownMenuItem>
+                  <DropdownMenuLabel>Filter by Resource</DropdownMenuLabel>
+
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
@@ -1070,11 +1072,11 @@ export const OverviewPage = () => {
                       <span>Secrets</span>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuLabel>Choose visible environments</DropdownMenuLabel>
+                  <DropdownMenuLabel>Filter by Environment</DropdownMenuLabel>
                   {userAvailableEnvs.map((availableEnv) => {
                     const { id: envId, name } = availableEnv;
 
-                    const isEnvSelected = visibleEnvs.map((env) => env.id).includes(envId);
+                    const isEnvSelected = filteredEnvs.map((env) => env.id).includes(envId);
                     return (
                       <DropdownMenuItem
                         onClick={(e) => {
@@ -1082,7 +1084,6 @@ export const OverviewPage = () => {
                           handleEnvSelect(envId);
                         }}
                         key={envId}
-                        disabled={visibleEnvs?.length === 1}
                         icon={isEnvSelected && <FontAwesomeIcon icon={faCheckCircle} />}
                         iconPos="right"
                       >
@@ -1405,13 +1406,6 @@ export const OverviewPage = () => {
                     className="bg-mineshaft-700"
                   />
                 )}
-                {userAvailableEnvs.length > 0 && visibleEnvs.length === 0 && (
-                  <Tr>
-                    <Td colSpan={visibleEnvs.length + 1}>
-                      <EmptyState title="You have no visible environments" iconSize="3x" />
-                    </Td>
-                  </Tr>
-                )}
                 {userAvailableEnvs.length === 0 && (
                   <Tr>
                     <Td colSpan={visibleEnvs.length + 1}>
@@ -1420,7 +1414,7 @@ export const OverviewPage = () => {
                         iconSize="3x"
                       >
                         <Link
-                          to="/projects/$projectId/secret-manager/settings"
+                          to="/projects/secret-management/$projectId/settings"
                           params={{
                             projectId: workspaceId
                           }}
@@ -1444,8 +1438,8 @@ export const OverviewPage = () => {
                     <Td colSpan={visibleEnvs.length + 1}>
                       <EmptyState
                         title={
-                          debouncedSearchFilter
-                            ? "No secret found for your search, add one now"
+                          isTableFiltered || debouncedSearchFilter
+                            ? "No secrets found for your search, add one now"
                             : "Let's add some secrets"
                         }
                         icon={faFolderBlank}

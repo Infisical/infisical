@@ -1,8 +1,10 @@
+/* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -12,14 +14,21 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
-import { ChangeType, CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import {
+  ChangeType,
+  CommitType,
+  TCommitResourceChangeDTO,
+  TFolderCommitServiceFactory
+} from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   TCreateFolderDTO,
+  TCreateManyFoldersDTO,
   TDeleteFolderDTO,
+  TDeleteManyFoldersDTO,
   TGetFolderByIdDTO,
   TGetFolderDTO,
   TGetFoldersDeepByEnvsDTO,
@@ -69,7 +78,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -236,21 +246,32 @@ export const secretFolderServiceFactory = ({
     actor,
     actorId,
     projectSlug,
+    projectId: providedProjectId,
     actorAuthMethod,
     actorOrgId,
-    folders
-  }: TUpdateManyFoldersDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) {
-      throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+    folders,
+    tx: providedTx,
+    commitChanges
+  }: TUpdateManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[]; projectId?: string }) => {
+    let projectId = providedProjectId;
+    if (!projectId && projectSlug) {
+      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      if (!project) {
+        throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+      }
+      projectId = project.id;
+    }
+    if (!projectId) {
+      throw new BadRequestError({ message: "Must provide either project slug or projectId" });
     }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: project.id,
+      projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     folders.forEach(({ environment, path: secretPath }) => {
@@ -260,12 +281,12 @@ export const secretFolderServiceFactory = ({
       );
     });
 
-    const result = await folderDAL.transaction(async (tx) =>
-      Promise.all(
+    const executeBulkUpdate = async (tx: Knex) => {
+      return Promise.all(
         folders.map(async (newFolder) => {
           const { environment, path: secretPath, id, name, description } = newFolder;
 
-          const parentFolder = await folderDAL.findBySecretPath(project.id, environment, secretPath);
+          const parentFolder = await folderDAL.findBySecretPath(projectId as string, environment, secretPath, tx);
           if (!parentFolder) {
             throw new NotFoundError({
               message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
@@ -273,10 +294,10 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          const env = await projectEnvDAL.findOne({ projectId: project.id, slug: environment });
+          const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
           if (!env) {
             throw new NotFoundError({
-              message: `Environment with slug '${environment}' in project with ID '${project.id}' not found`,
+              message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`,
               name: "UpdateManyFolders"
             });
           }
@@ -323,26 +344,34 @@ export const secretFolderServiceFactory = ({
             },
             tx
           );
-          await folderCommitService.createCommit(
-            {
-              actor: {
-                type: actor,
-                metadata: {
-                  id: actorId
-                }
+          if (commitChanges) {
+            commitChanges.push({
+              type: CommitType.ADD,
+              isUpdate: true,
+              folderVersionId: folderVersion.id
+            });
+          } else {
+            await folderCommitService.createCommit(
+              {
+                actor: {
+                  type: actor,
+                  metadata: {
+                    id: actorId
+                  }
+                },
+                message: "Folder updated",
+                folderId: parentFolder.id,
+                changes: [
+                  {
+                    type: CommitType.ADD,
+                    isUpdate: true,
+                    folderVersionId: folderVersion.id
+                  }
+                ]
               },
-              message: "Folder updated",
-              folderId: parentFolder.id,
-              changes: [
-                {
-                  type: CommitType.ADD,
-                  isUpdate: true,
-                  folderVersionId: folderVersion.id
-                }
-              ]
-            },
-            tx
-          );
+              tx
+            );
+          }
           if (!doc) {
             throw new NotFoundError({
               message: `Failed to update folder with id '${id}', not found`,
@@ -352,13 +381,16 @@ export const secretFolderServiceFactory = ({
 
           return { oldFolder: folder, newFolder: doc };
         })
-      )
-    );
+      );
+    };
+
+    // Execute with provided transaction or create new one
+    const result = providedTx ? await executeBulkUpdate(providedTx) : await folderDAL.transaction(executeBulkUpdate);
 
     await Promise.all(result.map(async (res) => snapshotService.performSnapshot(res.newFolder.parentId as string)));
 
     return {
-      projectId: project.id,
+      projectId,
       newFolders: result.map((res) => res.newFolder),
       oldFolders: result.map((res) => res.oldFolder)
     };
@@ -381,7 +413,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -582,7 +615,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -688,7 +722,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
@@ -756,7 +791,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
@@ -797,7 +833,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
@@ -832,7 +869,8 @@ export const secretFolderServiceFactory = ({
       actorId,
       projectId: folder.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
@@ -860,7 +898,8 @@ export const secretFolderServiceFactory = ({
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
@@ -887,7 +926,8 @@ export const secretFolderServiceFactory = ({
       actorId: actor.id,
       projectId,
       actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
     });
 
     const environments = await projectEnvDAL.find({ projectId });
@@ -974,6 +1014,363 @@ export const secretFolderServiceFactory = ({
     }));
   };
 
+  const createManyFolders = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    folders,
+    tx: providedTx,
+    commitChanges
+  }: TCreateManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    folders.forEach(({ environment, path: secretPath }) => {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+      );
+    });
+
+    const foldersByEnv = folders.reduce(
+      (acc, folder) => {
+        if (!acc[folder.environment]) {
+          acc[folder.environment] = [];
+        }
+        acc[folder.environment].push(folder);
+        return acc;
+      },
+      {} as Record<string, typeof folders>
+    );
+
+    const executeBulkCreate = async (tx: Knex) => {
+      const createdFolders = [];
+
+      for (const [environment, envFolders] of Object.entries(foldersByEnv)) {
+        const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+        if (!env) {
+          throw new NotFoundError({
+            message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
+          });
+        }
+
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateFolder(env.id, env.projectId)]);
+
+        for (const folderSpec of envFolders) {
+          const { name, path: secretPath, description } = folderSpec;
+
+          const pathWithFolder = path.join(secretPath, name);
+          const parentFolder = await folderDAL.findClosestFolder(projectId, environment, pathWithFolder, tx);
+
+          if (!parentFolder) {
+            throw new NotFoundError({
+              message: `Parent folder for path '${pathWithFolder}' not found`
+            });
+          }
+
+          // Check if the exact folder already exists
+          const existingFolder = await folderDAL.findOne(
+            {
+              envId: env.id,
+              parentId: parentFolder.id,
+              name,
+              isReserved: false
+            },
+            tx
+          );
+
+          if (existingFolder) {
+            createdFolders.push(existingFolder);
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
+          // Handle exact folder case
+          if (parentFolder.path === pathWithFolder) {
+            createdFolders.push(parentFolder);
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
+          let currentParentId = parentFolder.id;
+
+          // Build the full path we need by processing each segment
+          if (parentFolder.path !== secretPath) {
+            const missingSegments = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
+            const newFolders: TSecretFoldersInsert[] = [];
+
+            for (const segment of missingSegments) {
+              const existingSegment = await folderDAL.findOne(
+                {
+                  name: segment,
+                  parentId: currentParentId,
+                  envId: env.id,
+                  isReserved: false
+                },
+                tx
+              );
+
+              if (existingSegment) {
+                currentParentId = existingSegment.id;
+              } else {
+                const newFolder = {
+                  name: segment,
+                  parentId: currentParentId,
+                  id: uuidv4(),
+                  envId: env.id,
+                  version: 1
+                };
+
+                currentParentId = newFolder.id;
+                newFolders.push(newFolder);
+              }
+            }
+
+            if (newFolders.length) {
+              const docs = await folderDAL.insertMany(newFolders, tx);
+              const folderVersions = await folderVersionDAL.insertMany(
+                docs.map((doc) => ({
+                  name: doc.name,
+                  envId: doc.envId,
+                  version: doc.version,
+                  folderId: doc.id,
+                  description: doc.description
+                })),
+                tx
+              );
+              await folderCommitService.createCommit(
+                {
+                  actor: {
+                    type: actor,
+                    metadata: {
+                      id: actorId
+                    }
+                  },
+                  message: "Folders created (batch)",
+                  folderId: currentParentId,
+                  changes: folderVersions.map((fv) => ({
+                    type: CommitType.ADD,
+                    folderVersionId: fv.id
+                  }))
+                },
+                tx
+              );
+            }
+          }
+
+          // Create the target folder
+          const doc = await folderDAL.create(
+            { name, envId: env.id, version: 1, parentId: currentParentId, description },
+            tx
+          );
+
+          const folderVersion = await folderVersionDAL.create(
+            {
+              name: doc.name,
+              envId: doc.envId,
+              version: doc.version,
+              folderId: doc.id,
+              description: doc.description
+            },
+            tx
+          );
+
+          if (commitChanges) {
+            commitChanges.push({
+              type: CommitType.ADD,
+              folderVersionId: folderVersion.id
+            });
+          } else {
+            await folderCommitService.createCommit(
+              {
+                actor: {
+                  type: actor,
+                  metadata: {
+                    id: actorId
+                  }
+                },
+                message: "Folder created (batch)",
+                folderId: doc.id,
+                changes: [
+                  {
+                    type: CommitType.ADD,
+                    folderVersionId: folderVersion.id
+                  }
+                ]
+              },
+              tx
+            );
+          }
+
+          createdFolders.push(doc);
+        }
+      }
+
+      return createdFolders;
+    };
+    const result = providedTx ? await executeBulkCreate(providedTx) : await folderDAL.transaction(executeBulkCreate);
+    const uniqueParentIds = [...new Set(result.map((folder) => folder.parentId).filter(Boolean))];
+    await Promise.all(uniqueParentIds.map((parentId) => snapshotService.performSnapshot(parentId as string)));
+
+    return {
+      folders: result,
+      count: result.length
+    };
+  };
+
+  const deleteManyFolders = async ({
+    projectId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    folders,
+    tx: providedTx,
+    commitChanges
+  }: TDeleteManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    folders.forEach(({ environment, path: secretPath }) => {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
+      );
+    });
+
+    const foldersByEnv = folders.reduce(
+      (acc, folder) => {
+        if (!acc[folder.environment]) {
+          acc[folder.environment] = [];
+        }
+        acc[folder.environment].push(folder);
+        return acc;
+      },
+      {} as Record<string, typeof folders>
+    );
+
+    const executeBulkDelete = async (tx: Knex) => {
+      const deletedFolders = [];
+
+      for (const [environment, envFolders] of Object.entries(foldersByEnv)) {
+        const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+        if (!env) {
+          throw new NotFoundError({
+            message: `Environment with slug '${environment}' not found`
+          });
+        }
+
+        for (const folderSpec of envFolders) {
+          const { path: secretPath, idOrName } = folderSpec;
+
+          const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
+          if (!parentFolder) {
+            throw new NotFoundError({
+              message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
+            });
+          }
+
+          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName });
+
+          let folderToDelete = await folderDAL
+            .findOne({
+              envId: env.id,
+              name: idOrName,
+              parentId: parentFolder.id,
+              isReserved: false
+            })
+            .catch(() => null);
+
+          if (!folderToDelete && uuidValidate(idOrName)) {
+            folderToDelete = await folderDAL
+              .findOne({
+                envId: env.id,
+                id: idOrName,
+                parentId: parentFolder.id,
+                isReserved: false
+              })
+              .catch(() => null);
+          }
+
+          if (!folderToDelete) {
+            throw new NotFoundError({
+              message: `Folder with ID/name '${idOrName}' not found`
+            });
+          }
+
+          const [doc] = await folderDAL.delete(
+            {
+              envId: env.id,
+              id: folderToDelete.id,
+              parentId: parentFolder.id,
+              isReserved: false
+            },
+            tx
+          );
+
+          const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id], tx);
+
+          if (commitChanges) {
+            commitChanges.push({
+              type: CommitType.DELETE,
+              folderVersionId: folderVersions[doc.id].id,
+              folderId: doc.id
+            });
+          } else {
+            await folderCommitService.createCommit(
+              {
+                actor: {
+                  type: actor,
+                  metadata: {
+                    id: actorId
+                  }
+                },
+                message: "Folder deleted (batch)",
+                folderId: parentFolder.id,
+                changes: [
+                  {
+                    type: CommitType.DELETE,
+                    folderVersionId: folderVersions[doc.id].id,
+                    folderId: doc.id
+                  }
+                ]
+              },
+              tx
+            );
+          }
+
+          deletedFolders.push(doc);
+        }
+      }
+
+      return deletedFolders;
+    };
+
+    const result = providedTx ? await executeBulkDelete(providedTx) : await folderDAL.transaction(executeBulkDelete);
+
+    const uniqueParentIds = [...new Set(result.map((folder) => folder.parentId).filter(Boolean))];
+    await Promise.all(uniqueParentIds.map((parentId) => snapshotService.performSnapshot(parentId as string)));
+
+    return {
+      folders: result,
+      count: result.length
+    };
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -986,6 +1383,8 @@ export const secretFolderServiceFactory = ({
     getFoldersDeepByEnvs,
     getProjectEnvironmentsFolders,
     getFolderVersionsByIds,
-    getFolderVersions
+    getFolderVersions,
+    createManyFolders,
+    deleteManyFolders
   };
 };

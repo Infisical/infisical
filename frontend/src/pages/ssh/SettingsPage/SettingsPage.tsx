@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { ProjectSshTab } from "./components/ProjectSshTab";
 
@@ -20,8 +21,12 @@ export const SettingsPage = () => {
         <Tabs defaultValue="tab-project-general">
           <TabList>
             <Tab value="tab-project-general">General</Tab>
+            <Tab value="tab-ssh-settings">SSH Settings</Tab>
           </TabList>
           <TabPanel value="tab-project-general">
+            <ProjectGeneralTab />
+          </TabPanel>
+          <TabPanel value="tab-ssh-settings">
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
               a={ProjectPermissionSub.Project}

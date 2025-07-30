@@ -158,7 +158,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         includeRoles: z
           .enum(["true", "false"])
           .default("false")
-          .transform((value) => value === "true")
+          .transform((value) => value === "true"),
+        type: z.nativeEnum(ProjectType).optional()
       }),
       response: {
         200: z.object({
@@ -177,7 +178,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        type: req.query.type
       });
       return { workspaces };
     }
@@ -367,7 +369,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECTS.UPDATE.slug),
         secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing),
         showSnapshotsLegacy: z.boolean().optional().describe(PROJECTS.UPDATE.showSnapshotsLegacy),
-        defaultProduct: z.nativeEnum(ProjectType).optional().describe(PROJECTS.UPDATE.defaultProduct)
+        defaultProduct: z.nativeEnum(ProjectType).optional().describe(PROJECTS.UPDATE.defaultProduct),
+        secretDetectionIgnoreValues: z
+          .array(z.string())
+          .optional()
+          .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues)
       }),
       response: {
         200: z.object({
@@ -390,7 +396,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           hasDeleteProtection: req.body.hasDeleteProtection,
           slug: req.body.slug,
           secretSharing: req.body.secretSharing,
-          showSnapshotsLegacy: req.body.showSnapshotsLegacy
+          showSnapshotsLegacy: req.body.showSnapshotsLegacy,
+          secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -1050,6 +1057,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         limit: z.number().default(100),
         offset: z.number().default(0),
+        type: z.nativeEnum(ProjectType).optional(),
         orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
         orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
         name: z

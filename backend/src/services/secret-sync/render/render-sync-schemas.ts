@@ -20,23 +20,33 @@ const RenderSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
   })
 ]);
 
+const RenderSyncOptionsSchema = z.object({
+  autoRedeployServices: z.boolean().optional().describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.RENDER.autoRedeployServices)
+});
+
 const RenderSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const RenderSyncSchema = BaseSecretSyncSchema(SecretSync.Render, RenderSyncOptionsConfig).extend({
+export const RenderSyncSchema = BaseSecretSyncSchema(
+  SecretSync.Render,
+  RenderSyncOptionsConfig,
+  RenderSyncOptionsSchema
+).extend({
   destination: z.literal(SecretSync.Render),
   destinationConfig: RenderSyncDestinationConfigSchema
 });
 
 export const CreateRenderSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.Render,
-  RenderSyncOptionsConfig
+  RenderSyncOptionsConfig,
+  RenderSyncOptionsSchema
 ).extend({
   destinationConfig: RenderSyncDestinationConfigSchema
 });
 
 export const UpdateRenderSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.Render,
-  RenderSyncOptionsConfig
+  RenderSyncOptionsConfig,
+  RenderSyncOptionsSchema
 ).extend({
   destinationConfig: RenderSyncDestinationConfigSchema.optional()
 });

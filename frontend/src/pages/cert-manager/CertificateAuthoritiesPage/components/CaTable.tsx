@@ -30,7 +30,6 @@ import {
   getCaStatusBadgeVariant
 } from "@app/hooks/api/ca/constants";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -79,7 +78,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({
-                        to: `/projects/$projectId/${ProjectType.CertificateManager}/ca/$caName` as const,
+                        to: "/projects/cert-management/$projectId/ca/$caName",
                         params: {
                           projectId: currentWorkspace.id,
                           caName: ca.name

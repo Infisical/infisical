@@ -38,7 +38,7 @@ import { WsTag } from "@app/hooks/api/types";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import { memo, useEffect } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 import {
@@ -50,6 +50,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEyeSlash, faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -57,6 +58,7 @@ import {
   TFormSchema
 } from "./SecretListView.utils";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
+import { useBatchModeActions } from "../../SecretMainPage.store";
 
 export const HIDDEN_SECRET_VALUE = "******";
 export const HIDDEN_SECRET_VALUE_API_MASK = "<hidden-by-infisical>";
@@ -86,6 +88,9 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
+  isPending?: boolean;
+  pendingAction?: PendingAction;
+  colWidth: number;
 };
 
 export const SecretItem = memo(
@@ -102,7 +107,10 @@ export const SecretItem = memo(
     environment,
     secretPath,
     handleSecretShare,
-    importedBy
+    importedBy,
+    isPending,
+    pendingAction,
+    colWidth
   }: Props) => {
     const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
       "editSecret"
@@ -110,6 +118,18 @@ export const SecretItem = memo(
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
     const { isRotatedSecret } = secret;
+    const { removePendingChange } = useBatchModeActions();
+
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+    const isAutoSavingRef = useRef(false);
+
+    const handleDeletePending = (pendingSecret: SecretV3RawSanitized) => {
+      removePendingChange(pendingSecret.id, "secret", {
+        workspaceId: currentWorkspace.id,
+        environment,
+        secretPath
+      });
+    };
 
     const canEditSecretValue = permission.can(
       ProjectPermissionSecretActions.Edit,
@@ -151,7 +171,6 @@ export const SecretItem = memo(
     });
 
     const secretName = watch("key");
-
     const overrideAction = watch("overrideAction");
     const hasComment = Boolean(watch("comment"));
 
@@ -166,6 +185,56 @@ export const SecretItem = memo(
       control,
       name: "tags"
     });
+
+    const isOverriden =
+      overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
+    const hasTagsApplied = Boolean(fields.length);
+
+    const autoSaveChanges = useCallback(
+      async (data: TFormSchema) => {
+        if (isAutoSavingRef.current) return;
+        if (
+          data.overrideAction === SecretActionType.Created ||
+          data.overrideAction === SecretActionType.Modified
+        ) {
+          return;
+        }
+
+        isAutoSavingRef.current = true;
+        try {
+          await onSaveSecret(secret, { ...secret, ...data }, () => {
+            reset();
+          });
+        } catch (error) {
+          console.error("Auto-save failed:", error);
+        } finally {
+          isAutoSavingRef.current = false;
+        }
+      },
+      [secret, onSaveSecret, importedBy, reset]
+    );
+
+    const formValues = watch();
+
+    useEffect(() => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+
+      if (isDirty && !isSubmitting && !isAutoSavingRef.current) {
+        const debounceTime = 600;
+
+        autoSaveTimeoutRef.current = setTimeout(() => {
+          autoSaveChanges(formValues);
+        }, debounceTime);
+      }
+
+      return () => {
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+        }
+      };
+    }, [formValues, isDirty, isSubmitting, autoSaveChanges, isPending]);
 
     const isReadOnly =
       hasSecretReadValueOrDescribePermission(
@@ -188,6 +257,9 @@ export const SecretItem = memo(
         })
       );
 
+    const isReadOnlySecret =
+      isReadOnly || isRotatedSecret || (isPending && pendingAction === PendingAction.Delete);
+
     const { secretValueHidden } = secret;
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
@@ -198,10 +270,6 @@ export const SecretItem = memo(
       }
       return () => clearTimeout(timer);
     }, [isSecValueCopied]);
-
-    const isOverriden =
-      overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
-    const hasTagsApplied = Boolean(fields.length);
 
     const handleOverrideClick = () => {
       if (isOverriden) {
@@ -267,20 +335,27 @@ export const SecretItem = memo(
       setIsSecValueCopied.on();
     };
 
+    const isInAutoSaveMode = isDirty && !isSubmitting && !isOverriden;
+
     return (
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div
           className={twMerge(
             "border-b border-mineshaft-600 bg-mineshaft-800 shadow-none hover:bg-mineshaft-700",
             isDirty && "border-primary-400/50",
-            isRotatedSecret && "bg-mineshaft-700/60"
+            isRotatedSecret && "bg-mineshaft-700/60",
+            isPending && "bg-mineshaft-700/60",
+            pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
+            pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
+            pendingAction === PendingAction.Create && "border-l-2 border-l-green-600/75"
           )}
         >
           <div className="group flex">
             <div
               className={twMerge(
                 "flex h-11 w-11 items-center justify-center px-4 py-3 text-mineshaft-300",
-                isDirty && "text-primary"
+                isDirty && "text-primary",
+                isPending && "ml-[-2px]"
               )}
             >
               {secret.isRotatedSecret ? (
@@ -310,7 +385,10 @@ export const SecretItem = memo(
                 </>
               )}
             </div>
-            <div className="flex h-11 w-80 flex-shrink-0 items-center px-4 py-2">
+            <div
+              className="flex h-11 flex-shrink-0 items-center px-4 py-2"
+              style={{ width: colWidth }}
+            >
               <Controller
                 name="key"
                 control={control}
@@ -364,7 +442,7 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <InfisicalSecretInput
-                      isReadOnly={isReadOnly || isRotatedSecret}
+                      isReadOnly={isReadOnlySecret}
                       key="secret-value"
                       isVisible={isVisible && !secretValueHidden}
                       canEditButNotView={secretValueHidden && !isOverriden}
@@ -377,275 +455,160 @@ export const SecretItem = memo(
                   )}
                 />
               )}
-              <div
-                key="actions"
-                className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
-              >
-                <Tooltip content="Copy secret">
-                  <IconButton
-                    isDisabled={secret.secretValueHidden}
-                    ariaLabel="copy-value"
-                    variant="plain"
-                    size="sm"
-                    className="w-0 overflow-hidden p-0 group-hover:w-5"
-                    onClick={copyTokenToClipboard}
-                  >
-                    <FontAwesomeSymbol
-                      className="h-3.5 w-3"
-                      symbolName={
-                        isSecValueCopied
-                          ? FontAwesomeSpriteName.Check
-                          : FontAwesomeSpriteName.ClipboardCopy
-                      }
-                    />
-                  </IconButton>
-                </Tooltip>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Edit}
-                  a={subject(ProjectPermissionSub.Secrets, {
-                    environment,
-                    secretPath,
-                    secretName,
-                    secretTags: selectedTagSlugs
-                  })}
+              {pendingAction !== PendingAction.Create && pendingAction !== PendingAction.Delete && (
+                <div
+                  key="actions"
+                  className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
                 >
-                  {(isAllowed) => (
-                    <Modal>
-                      <ModalTrigger asChild>
-                        <IconButton
-                          className="w-0 overflow-hidden p-0 group-hover:w-5"
-                          variant="plain"
-                          size="md"
-                          ariaLabel="reference-tree"
-                          isDisabled={!isAllowed || !hasSecretReference(secret?.value)}
-                        >
-                          <Tooltip
-                            content={
-                              hasSecretReference(secret?.value)
-                                ? "Secret Reference Tree"
-                                : "Secret does not contain references"
-                            }
-                          >
-                            <FontAwesomeSymbol
-                              className="h-3.5 w-3.5"
-                              symbolName={FontAwesomeSpriteName.SecretReferenceTree}
-                            />
-                          </Tooltip>
-                        </IconButton>
-                      </ModalTrigger>
-                      <ModalContent
-                        title="Secret Reference Details"
-                        subTitle="Visual breakdown of secrets referenced by this secret."
-                        onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
-                      >
-                        <SecretReferenceTree
-                          secretPath={secretPath}
-                          environment={environment}
-                          secretKey={secret?.key}
-                        />
-                      </ModalContent>
-                    </Modal>
-                  )}
-                </ProjectPermissionCan>
-                <DropdownMenu>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName,
-                      secretTags: selectedTagSlugs
-                    })}
-                  >
-                    {(isAllowed) => (
-                      <DropdownMenuTrigger asChild disabled={!isAllowed}>
-                        <IconButton
-                          ariaLabel="tags"
-                          variant="plain"
-                          size="sm"
-                          className={twMerge(
-                            "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
-                            hasTagsApplied && "w-5 text-primary"
-                          )}
-                          isDisabled={!isAllowed}
-                        >
-                          <Tooltip content="Tags">
-                            <FontAwesomeSymbol
-                              className="h-3.5 w-3.5"
-                              symbolName={FontAwesomeSpriteName.Tags}
-                            />
-                          </Tooltip>
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                    )}
-                  </ProjectPermissionCan>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
-                    {tags.map((tag) => {
-                      const { id: tagId, slug, color } = tag;
-
-                      const isTagSelected = selectedTagsGroupById?.[tagId];
-                      return (
-                        <DropdownMenuItem
-                          onClick={() => handleTagSelect(tag)}
-                          key={`${secret.id}-${tagId}`}
-                          icon={
-                            isTagSelected && (
-                              <FontAwesomeSymbol
-                                symbolName={FontAwesomeSpriteName.CheckedCircle}
-                                className="h-3 w-3"
-                              />
-                            )
-                          }
-                          iconPos="right"
-                        >
-                          <div className="flex items-center">
-                            <div
-                              className="mr-2 h-2 w-2 rounded-full"
-                              style={{ background: color || "#bec2c8" }}
-                            />
-                            {slug}
-                          </div>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                    <DropdownMenuItem className="px-1.5" asChild>
-                      <Button
-                        size="xs"
-                        className="w-full"
-                        colorSchema="primary"
-                        variant="outline_bg"
-                        leftIcon={
-                          <FontAwesomeSymbol
-                            symbolName={FontAwesomeSpriteName.Tags}
-                            className="h-3 w-3"
-                          />
-                        }
-                        onClick={onCreateTag}
-                      >
-                        Create a tag
-                      </Button>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Edit}
-                  a={subject(ProjectPermissionSub.Secrets, {
-                    environment,
-                    secretPath,
-                    secretName,
-                    secretTags: selectedTagSlugs
-                  })}
-                  renderTooltip
-                  allowedLabel="Override"
-                >
-                  {(isAllowed) => (
+                  <Tooltip content="Copy secret">
                     <IconButton
-                      ariaLabel="override-value"
-                      isDisabled={!isAllowed}
+                      isDisabled={secret.secretValueHidden}
+                      ariaLabel="copy-value"
                       variant="plain"
                       size="sm"
-                      onClick={handleOverrideClick}
-                      className={twMerge(
-                        "w-0 overflow-hidden p-0 group-hover:w-5",
-                        isOverriden && "w-5 text-primary"
-                      )}
+                      className="w-0 overflow-hidden p-0 group-hover:w-5"
+                      onClick={copyTokenToClipboard}
                     >
                       <FontAwesomeSymbol
-                        symbolName={FontAwesomeSpriteName.Override}
-                        className="h-3.5 w-3.5"
-                      />
-                    </IconButton>
-                  )}
-                </ProjectPermissionCan>
-                <Popover>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName,
-                      secretTags: selectedTagSlugs
-                    })}
-                  >
-                    {(isAllowed) => (
-                      <PopoverTrigger asChild disabled={!isAllowed}>
-                        <IconButton
-                          className={twMerge(
-                            "w-0 overflow-hidden p-0 group-hover:w-5",
-                            hasComment && "w-5 text-primary"
-                          )}
-                          variant="plain"
-                          size="md"
-                          ariaLabel="add-comment"
-                          isDisabled={!isAllowed}
-                        >
-                          <Tooltip content="Comment">
-                            <FontAwesomeSymbol
-                              className="h-3.5 w-3.5"
-                              symbolName={FontAwesomeSpriteName.Comment}
-                            />
-                          </Tooltip>
-                        </IconButton>
-                      </PopoverTrigger>
-                    )}
-                  </ProjectPermissionCan>
-                  <IconButton
-                    isDisabled={secret.secretValueHidden || !currentWorkspace.secretSharing}
-                    className="w-0 overflow-hidden p-0 group-hover:w-5"
-                    variant="plain"
-                    size="md"
-                    ariaLabel="share-secret"
-                    onClick={handleSecretShare}
-                  >
-                    <Tooltip content="Share Secret">
-                      <FontAwesomeSymbol
-                        className="h-3.5 w-3.5"
-                        symbolName={FontAwesomeSpriteName.ShareSecret}
-                      />
-                    </Tooltip>
-                  </IconButton>
-                  <PopoverContent
-                    className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
-                    sticky="always"
-                  >
-                    <FormControl label="Comment" className="mb-0">
-                      <TextArea
-                        className="border border-mineshaft-600 text-sm"
-                        rows={8}
-                        cols={30}
-                        {...register("comment")}
-                      />
-                    </FormControl>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-            <AnimatePresence mode="wait">
-              {!isDirty ? (
-                <motion.div
-                  key="options"
-                  className="flex h-10 flex-shrink-0 items-center space-x-4 px-[0.64rem]"
-                  initial={{ x: 0, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: 10, opacity: 0 }}
-                >
-                  <Tooltip content="More">
-                    <IconButton
-                      ariaLabel="more"
-                      variant="plain"
-                      size="md"
-                      className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
-                      onClick={() => onDetailViewSecret(secret)}
-                    >
-                      <FontAwesomeSymbol
-                        symbolName={FontAwesomeSpriteName.More}
-                        className="h-5 w-4"
+                        className="h-3.5 w-3"
+                        symbolName={
+                          isSecValueCopied
+                            ? FontAwesomeSpriteName.Check
+                            : FontAwesomeSpriteName.ClipboardCopy
+                        }
                       />
                     </IconButton>
                   </Tooltip>
                   <ProjectPermissionCan
-                    I={ProjectPermissionActions.Delete}
+                    I={ProjectPermissionActions.Edit}
+                    a={subject(ProjectPermissionSub.Secrets, {
+                      environment,
+                      secretPath,
+                      secretName,
+                      secretTags: selectedTagSlugs
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <Modal>
+                        <ModalTrigger asChild>
+                          <IconButton
+                            className="w-0 overflow-hidden p-0 group-hover:w-5"
+                            variant="plain"
+                            size="md"
+                            ariaLabel="reference-tree"
+                            isDisabled={!isAllowed || !hasSecretReference(secret?.value)}
+                          >
+                            <Tooltip
+                              content={
+                                hasSecretReference(secret?.value)
+                                  ? "Secret Reference Tree"
+                                  : "Secret does not contain references"
+                              }
+                            >
+                              <FontAwesomeSymbol
+                                className="h-3.5 w-3.5"
+                                symbolName={FontAwesomeSpriteName.SecretReferenceTree}
+                              />
+                            </Tooltip>
+                          </IconButton>
+                        </ModalTrigger>
+                        <ModalContent
+                          title="Secret Reference Details"
+                          subTitle="Visual breakdown of secrets referenced by this secret."
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                        >
+                          <SecretReferenceTree
+                            secretPath={secretPath}
+                            environment={environment}
+                            secretKey={secret?.key}
+                          />
+                        </ModalContent>
+                      </Modal>
+                    )}
+                  </ProjectPermissionCan>
+                  <DropdownMenu>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Edit}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                          <IconButton
+                            ariaLabel="tags"
+                            variant="plain"
+                            size="sm"
+                            className={twMerge(
+                              "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
+                              hasTagsApplied && "w-5 text-primary"
+                            )}
+                            isDisabled={!isAllowed}
+                          >
+                            <Tooltip content="Tags">
+                              <FontAwesomeSymbol
+                                className="h-3.5 w-3.5"
+                                symbolName={FontAwesomeSpriteName.Tags}
+                              />
+                            </Tooltip>
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                      )}
+                    </ProjectPermissionCan>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
+                      {tags.map((tag) => {
+                        const { id: tagId, slug, color } = tag;
+
+                        const isTagSelected = selectedTagsGroupById?.[tagId];
+                        return (
+                          <DropdownMenuItem
+                            onClick={() => handleTagSelect(tag)}
+                            key={`${secret.id}-${tagId}`}
+                            icon={
+                              isTagSelected && (
+                                <FontAwesomeSymbol
+                                  symbolName={FontAwesomeSpriteName.CheckedCircle}
+                                  className="h-3 w-3"
+                                />
+                              )
+                            }
+                            iconPos="right"
+                          >
+                            <div className="flex items-center">
+                              <div
+                                className="mr-2 h-2 w-2 rounded-full"
+                                style={{ background: color || "#bec2c8" }}
+                              />
+                              {slug}
+                            </div>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                      <DropdownMenuItem className="px-1.5" asChild>
+                        <Button
+                          size="xs"
+                          className="w-full"
+                          colorSchema="primary"
+                          variant="outline_bg"
+                          leftIcon={
+                            <FontAwesomeSymbol
+                              symbolName={FontAwesomeSpriteName.Tags}
+                              className="h-3 w-3"
+                            />
+                          }
+                          onClick={onCreateTag}
+                        >
+                          Create a tag
+                        </Button>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Edit}
                     a={subject(ProjectPermissionSub.Secrets, {
                       environment,
                       secretPath,
@@ -653,30 +616,287 @@ export const SecretItem = memo(
                       secretTags: selectedTagSlugs
                     })}
                     renderTooltip
-                    allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"} // just using label for isRotatedSecret, disabled below
+                    allowedLabel="Override"
                   >
                     {(isAllowed) => (
+                      <IconButton
+                        ariaLabel="override-value"
+                        isDisabled={!isAllowed}
+                        variant="plain"
+                        size="sm"
+                        onClick={handleOverrideClick}
+                        className={twMerge(
+                          "w-0 overflow-hidden p-0 group-hover:w-5",
+                          isOverriden && "w-5 text-primary"
+                        )}
+                      >
+                        <FontAwesomeSymbol
+                          symbolName={FontAwesomeSpriteName.Override}
+                          className="h-3.5 w-3.5"
+                        />
+                      </IconButton>
+                    )}
+                  </ProjectPermissionCan>
+                  <Popover>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Edit}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <PopoverTrigger asChild disabled={!isAllowed}>
+                          <IconButton
+                            className={twMerge(
+                              "w-0 overflow-hidden p-0 group-hover:w-5",
+                              hasComment && "w-5 text-primary"
+                            )}
+                            variant="plain"
+                            size="md"
+                            ariaLabel="add-comment"
+                            isDisabled={!isAllowed}
+                          >
+                            <Tooltip content="Comment">
+                              <FontAwesomeSymbol
+                                className="h-3.5 w-3.5"
+                                symbolName={FontAwesomeSpriteName.Comment}
+                              />
+                            </Tooltip>
+                          </IconButton>
+                        </PopoverTrigger>
+                      )}
+                    </ProjectPermissionCan>
+                    <IconButton
+                      isDisabled={secret.secretValueHidden || !currentWorkspace.secretSharing}
+                      className="w-0 overflow-hidden p-0 group-hover:w-5"
+                      variant="plain"
+                      size="md"
+                      ariaLabel="share-secret"
+                      onClick={handleSecretShare}
+                    >
+                      <Tooltip content="Share Secret">
+                        <FontAwesomeSymbol
+                          className="h-3.5 w-3.5"
+                          symbolName={FontAwesomeSpriteName.ShareSecret}
+                        />
+                      </Tooltip>
+                    </IconButton>
+                    <PopoverContent
+                      className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
+                      sticky="always"
+                    >
+                      <FormControl label="Comment" className="mb-0">
+                        <TextArea
+                          className="border border-mineshaft-600 text-sm"
+                          rows={8}
+                          cols={30}
+                          {...register("comment")}
+                        />
+                      </FormControl>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+              {pendingAction === PendingAction.Create && (
+                <div
+                  key="actions"
+                  className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
+                >
+                  <DropdownMenu>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Edit}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                          <IconButton
+                            ariaLabel="tags"
+                            variant="plain"
+                            size="sm"
+                            className={twMerge(
+                              "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
+                              hasTagsApplied && "w-5 text-primary"
+                            )}
+                            isDisabled={!isAllowed}
+                          >
+                            <Tooltip content="Tags">
+                              <FontAwesomeSymbol
+                                className="h-3.5 w-3.5"
+                                symbolName={FontAwesomeSpriteName.Tags}
+                              />
+                            </Tooltip>
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                      )}
+                    </ProjectPermissionCan>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Add tags to this secret</DropdownMenuLabel>
+                      {tags.map((tag) => {
+                        const { id: tagId, slug, color } = tag;
+
+                        const isTagSelected = selectedTagsGroupById?.[tagId];
+                        return (
+                          <DropdownMenuItem
+                            onClick={() => handleTagSelect(tag)}
+                            key={`${secret.id}-${tagId}`}
+                            icon={
+                              isTagSelected && (
+                                <FontAwesomeSymbol
+                                  symbolName={FontAwesomeSpriteName.CheckedCircle}
+                                  className="h-3 w-3"
+                                />
+                              )
+                            }
+                            iconPos="right"
+                          >
+                            <div className="flex items-center">
+                              <div
+                                className="mr-2 h-2 w-2 rounded-full"
+                                style={{ background: color || "#bec2c8" }}
+                              />
+                              {slug}
+                            </div>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                      <DropdownMenuItem className="px-1.5" asChild>
+                        <Button
+                          size="xs"
+                          className="w-full"
+                          colorSchema="primary"
+                          variant="outline_bg"
+                          leftIcon={
+                            <FontAwesomeSymbol
+                              symbolName={FontAwesomeSpriteName.Tags}
+                              className="h-3 w-3"
+                            />
+                          }
+                          onClick={onCreateTag}
+                        >
+                          Create a tag
+                        </Button>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </div>
+            <AnimatePresence mode="wait">
+              {isInAutoSaveMode ? (
+                <motion.div
+                  key="auto-save-mode"
+                  className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
+                  initial={{ x: -10, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -10, opacity: 0 }}
+                >
+                  <div className="h-10 w-12" />
+                </motion.div>
+              ) : !isDirty ? (
+                isPending ? (
+                  <motion.div
+                    key="options"
+                    className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
+                    initial={{ x: 0, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 10, opacity: 0 }}
+                  >
+                    <Tooltip content="More">
+                      <IconButton
+                        ariaLabel="more"
+                        variant="plain"
+                        size="md"
+                        className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
+                        onClick={() => onDetailViewSecret(secret)}
+                        isDisabled={pendingAction !== "update"}
+                      >
+                        <FontAwesomeSymbol
+                          symbolName={FontAwesomeSpriteName.More}
+                          className="h-5 w-4"
+                        />
+                      </IconButton>
+                    </Tooltip>
+
+                    <Tooltip content="Discard">
                       <IconButton
                         ariaLabel="delete-value"
                         variant="plain"
                         colorSchema="danger"
                         size="md"
                         className="p-0 opacity-0 group-hover:opacity-100"
-                        onClick={() => onDeleteSecret(secret)}
-                        isDisabled={!isAllowed || isRotatedSecret}
+                        onClick={() => handleDeletePending(secret)}
                       >
                         <FontAwesomeSymbol
                           symbolName={FontAwesomeSpriteName.Close}
                           className="h-5 w-4"
                         />
                       </IconButton>
-                    )}
-                  </ProjectPermissionCan>
-                </motion.div>
+                    </Tooltip>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="options"
+                    className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
+                    initial={{ x: 0, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 10, opacity: 0 }}
+                  >
+                    <Tooltip content="More">
+                      <IconButton
+                        ariaLabel="more"
+                        variant="plain"
+                        size="md"
+                        className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
+                        onClick={() => onDetailViewSecret(secret)}
+                      >
+                        <FontAwesomeSymbol
+                          symbolName={FontAwesomeSpriteName.More}
+                          className="h-5 w-4"
+                        />
+                      </IconButton>
+                    </Tooltip>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Delete}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
+                      renderTooltip
+                      allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}
+                    >
+                      {(isAllowed) => (
+                        <IconButton
+                          ariaLabel="delete-value"
+                          variant="plain"
+                          colorSchema="danger"
+                          size="md"
+                          className="p-0 opacity-0 group-hover:opacity-100"
+                          onClick={() => onDeleteSecret(secret)}
+                          isDisabled={!isAllowed || isRotatedSecret}
+                        >
+                          <FontAwesomeSymbol
+                            symbolName={FontAwesomeSpriteName.Trash}
+                            className="h-4 w-3"
+                          />
+                        </IconButton>
+                      )}
+                    </ProjectPermissionCan>
+                  </motion.div>
+                )
               ) : (
                 <motion.div
                   key="options-save"
-                  className="flex h-10 flex-shrink-0 items-center space-x-4 px-3"
+                  className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
                   initial={{ x: -10, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -10, opacity: 0 }}

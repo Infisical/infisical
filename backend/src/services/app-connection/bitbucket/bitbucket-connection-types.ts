@@ -38,3 +38,20 @@ export type TBitbucketRepo = {
   full_name: string; // workspace-slug/repo-slug
   slug: string;
 };
+
+export type TGetBitbucketEnvironmentsDTO = {
+  connectionId: string;
+  workspaceSlug: string;
+  repositorySlug: string;
+};
+
+export type TBitbucketEnvironment = {
+  uuid: string;
+  slug: string;
+  name: string;
+};
+
+export type TBitbucketEnvironmentsResponse = {
+  values: TBitbucketEnvironment[];
+  next?: string;
+};

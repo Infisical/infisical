@@ -9,14 +9,16 @@ import {
   IconButton
 } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import { PolicyTemplateModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicyTemplateModal";
 
 type Props = {
   isDisabled?: boolean;
+  projectType: ProjectType;
 };
 
-export const AddPoliciesButton = ({ isDisabled }: Props) => {
+export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addPolicy",
     "addPolicyOptions",
@@ -66,10 +68,12 @@ export const AddPoliciesButton = ({ isDisabled }: Props) => {
         </DropdownMenuContent>
       </DropdownMenu>
       <PolicySelectionModal
+        type={projectType}
         isOpen={popUp.addPolicy.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}
       />
       <PolicyTemplateModal
+        type={projectType}
         isOpen={popUp.applyTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("applyTemplate", isOpen)}
       />

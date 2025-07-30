@@ -704,7 +704,8 @@ export const PROJECTS = {
     hasDeleteProtection: "Enable or disable delete protection for the project.",
     secretSharing: "Enable or disable secret sharing for the project.",
     showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
-    defaultProduct: "The default product in which the project will open"
+    defaultProduct: "The default product in which the project will open",
+    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -2245,7 +2246,9 @@ export const AppConnections = {
     },
     AZURE_CLIENT_SECRETS: {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
-      tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
@@ -2289,6 +2292,13 @@ export const AppConnections = {
     SUPABASE: {
       accessKey: "The Key used to access Supabase.",
       instanceUrl: "The URL used to access Supabase."
+    },
+    DIGITAL_OCEAN_APP_PLATFORM: {
+      apiToken: "The API token used to authenticate with Digital Ocean App Platform."
+    },
+    OKTA: {
+      instanceUrl: "The URL used to access your Okta organization.",
+      apiToken: "The API token used to authenticate with Okta."
     }
   }
 };
@@ -2366,6 +2376,10 @@ export const SecretSyncs = {
       keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
       tags: "Optional tags to add to secrets synced by Infisical.",
       syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`
+    },
+    RENDER: {
+      autoRedeployServices:
+        "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
     }
   },
   DESTINATION_CONFIG: {
@@ -2502,6 +2516,11 @@ export const SecretSyncs = {
     SUPABASE: {
       projectId: "The ID of the Supabase project to sync secrets to.",
       projectName: "The name of the Supabase project to sync secrets to."
+    },
+    BITBUCKET: {
+      workspaceSlug: "The Bitbucket Workspace slug to sync secrets to.",
+      repositorySlug: "The Bitbucket Repository slug to sync secrets to.",
+      environmentId: "The Bitbucket Deployment Environment uuid to sync secrets to."
     }
   }
 };
@@ -2594,6 +2613,9 @@ export const SecretRotations = {
     AWS_IAM_USER_SECRET: {
       userName: "The name of the client to rotate credentials for.",
       region: "The AWS region the client is present in."
+    },
+    OKTA_CLIENT_SECRET: {
+      clientId: "The ID of the Okta Application to rotate the client secret for."
     }
   },
   SECRETS_MAPPING: {
@@ -2616,6 +2638,10 @@ export const SecretRotations = {
     AWS_IAM_USER_SECRET: {
       accessKeyId: "The name of the secret that the access key ID will be mapped to.",
       secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
+    },
+    OKTA_CLIENT_SECRET: {
+      clientId: "The name of the secret that the client ID will be mapped to.",
+      clientSecret: "The name of the secret that the rotated client secret will be mapped to."
     }
   }
 };

@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
@@ -72,7 +73,8 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorId,
       projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -107,7 +109,8 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -175,7 +178,8 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -213,7 +217,8 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -254,7 +259,8 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: sshCertificateTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -375,7 +381,8 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: sshCertificateTemplate.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -472,7 +479,8 @@ export const sshCertificateAuthorityServiceFactory = ({
       actorId,
       projectId: ca.projectId,
       actorAuthMethod,
-      actorOrgId
+      actorOrgId,
+      actionProjectType: ActionProjectType.SSH
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

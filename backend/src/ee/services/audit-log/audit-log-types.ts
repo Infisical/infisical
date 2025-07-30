@@ -449,6 +449,7 @@ export enum EventType {
   PIT_REVERT_COMMIT = "pit-revert-commit",
   PIT_GET_FOLDER_STATE = "pit-get-folder-state",
   PIT_COMPARE_FOLDER_STATES = "pit-compare-folder-states",
+  PIT_PROCESS_NEW_COMMIT_RAW = "pit-process-new-commit-raw",
   SECRET_SCANNING_DATA_SOURCE_LIST = "secret-scanning-data-source-list",
   SECRET_SCANNING_DATA_SOURCE_CREATE = "secret-scanning-data-source-create",
   SECRET_SCANNING_DATA_SOURCE_UPDATE = "secret-scanning-data-source-update",
@@ -467,7 +468,11 @@ export enum EventType {
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
-  DELETE_PROJECT = "delete-project"
+  DELETE_PROJECT = "delete-project",
+
+  CREATE_SECRET_REMINDER = "create-secret-reminder",
+  GET_SECRET_REMINDER = "get-secret-reminder",
+  DELETE_SECRET_REMINDER = "delete-secret-reminder"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -1546,8 +1551,9 @@ interface UpdateFolderEvent {
   metadata: {
     environment: string;
     folderId: string;
-    oldFolderName: string;
+    oldFolderName?: string;
     newFolderName: string;
+    newFolderDescription?: string;
     folderPath: string;
   };
 }
@@ -3222,6 +3228,18 @@ interface PitCompareFolderStatesEvent {
   };
 }
 
+interface PitProcessNewCommitRawEvent {
+  type: EventType.PIT_PROCESS_NEW_COMMIT_RAW;
+  metadata: {
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    message: string;
+    approvalId?: string;
+    commitId?: string;
+  };
+}
+
 interface SecretScanningDataSourceListEvent {
   type: EventType.SECRET_SCANNING_DATA_SOURCE_LIST;
   metadata: {
@@ -3309,6 +3327,31 @@ interface SecretScanningConfigUpdateEvent {
   type: EventType.SECRET_SCANNING_CONFIG_UPDATE;
   metadata: {
     content: string | null;
+  };
+}
+
+interface SecretReminderCreateEvent {
+  type: EventType.CREATE_SECRET_REMINDER;
+  metadata: {
+    secretId: string;
+    message?: string | null;
+    repeatDays?: number | null;
+    nextReminderDate?: string | null;
+    recipients?: string[] | null;
+  };
+}
+
+interface SecretReminderGetEvent {
+  type: EventType.GET_SECRET_REMINDER;
+  metadata: {
+    secretId: string;
+  };
+}
+
+interface SecretReminderDeleteEvent {
+  type: EventType.DELETE_SECRET_REMINDER;
+  metadata: {
+    secretId: string;
   };
 }
 
@@ -3658,6 +3701,7 @@ export type Event =
   | PitRevertCommitEvent
   | PitCompareFolderStatesEvent
   | PitGetFolderStateEvent
+  | PitProcessNewCommitRawEvent
   | SecretScanningDataSourceListEvent
   | SecretScanningDataSourceGetEvent
   | SecretScanningDataSourceCreateEvent
@@ -3674,4 +3718,7 @@ export type Event =
   | OrgUpdateEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
-  | ProjectDeleteEvent;
+  | ProjectDeleteEvent
+  | SecretReminderCreateEvent
+  | SecretReminderGetEvent
+  | SecretReminderDeleteEvent;

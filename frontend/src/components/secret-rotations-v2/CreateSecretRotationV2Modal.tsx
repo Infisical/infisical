@@ -76,7 +76,6 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
             </div>
           )
         }
-        onPointerDownOutside={(e) => e.preventDefault()}
         className={selectedRotation ? "max-w-2xl" : "max-w-3xl"}
         subTitle={
           selectedRotation ? undefined : "Select a provider to create a secret rotation for."

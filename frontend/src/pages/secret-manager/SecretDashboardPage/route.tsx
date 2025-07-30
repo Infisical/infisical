@@ -13,7 +13,7 @@ const SecretDashboardPageQueryParamsSchema = z.object({
   tags: z.string().catch("")
 });
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/$projectId/_project-layout/secret-manager/_secret-manager-layout/secrets/$envSlug"
+  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug"
 )({
   component: SecretDashboardPage,
   validateSearch: zodValidator(SecretDashboardPageQueryParamsSchema),
@@ -28,7 +28,7 @@ export const Route = createFileRoute(
         {
           label: "Secrets",
           link: linkOptions({
-            to: "/projects/$projectId/secret-manager/overview",
+            to: "/projects/secret-management/$projectId/overview",
             params
           })
         },
@@ -39,7 +39,7 @@ export const Route = createFileRoute(
           links: context.project.environments.map((el) => ({
             label: el.name,
             link: linkOptions({
-              to: "/projects/$projectId/secret-manager/secrets/$envSlug",
+              to: "/projects/secret-management/$projectId/secrets/$envSlug",
               params: {
                 projectId: params.projectId,
                 envSlug: el.slug

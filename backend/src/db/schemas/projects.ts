@@ -25,12 +25,13 @@ export const ProjectsSchema = z.object({
   kmsSecretManagerKeyId: z.string().uuid().nullable().optional(),
   kmsSecretManagerEncryptedDataKey: zodBuffer.nullable().optional(),
   description: z.string().nullable().optional(),
-  type: z.string().nullable().optional(),
+  type: z.string(),
   enforceCapitalization: z.boolean().default(false),
   hasDeleteProtection: z.boolean().default(false).nullable().optional(),
   secretSharing: z.boolean().default(true),
   showSnapshotsLegacy: z.boolean().default(false),
-  defaultProduct: z.string().default("secret-manager")
+  defaultProduct: z.string().nullable().optional(),
+  secretDetectionIgnoreValues: z.string().array().nullable().optional()
 });
 
 export type TProjects = z.infer<typeof ProjectsSchema>;

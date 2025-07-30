@@ -93,6 +93,7 @@ import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TProjectRoleServiceFactory } from "@app/services/project-role/project-role-service";
+import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
@@ -124,6 +125,15 @@ declare module "@fastify/request-context" {
       kubernetes?: {
         namespace: string;
         name: string;
+      };
+      aws?: {
+        accountId: string;
+        arn: string;
+        userId: string;
+        partition: string;
+        service: string;
+        resourceType: string;
+        resourceName: string;
       };
     };
     identityPermissionMetadata?: Record<string, unknown>; // filled by permission service
@@ -285,6 +295,7 @@ declare module "fastify" {
       secretScanningV2: TSecretScanningV2ServiceFactory;
       internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
       pkiTemplate: TPkiTemplatesServiceFactory;
+      reminder: TReminderServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

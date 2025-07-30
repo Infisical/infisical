@@ -47,7 +47,10 @@ export const ValidateMySqlConnectionCredentialsSchema = z.discriminatedUnion("me
 ]);
 
 export const CreateMySqlConnectionSchema = ValidateMySqlConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.MySql, { supportsPlatformManagedCredentials: true })
+  GenericCreateAppConnectionFieldsSchema(AppConnection.MySql, {
+    supportsPlatformManagedCredentials: true,
+    supportsGateways: true
+  })
 );
 
 export const UpdateMySqlConnectionSchema = z
@@ -56,7 +59,12 @@ export const UpdateMySqlConnectionSchema = z
       AppConnections.UPDATE(AppConnection.MySql).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.MySql, { supportsPlatformManagedCredentials: true }));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.MySql, {
+      supportsPlatformManagedCredentials: true,
+      supportsGateways: true
+    })
+  );
 
 export const MySqlConnectionListItemSchema = z.object({
   name: z.literal("MySQL"),

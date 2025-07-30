@@ -1,4 +1,5 @@
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -46,6 +47,13 @@ import {
   TMySqlCredentialsRotationWithConnection
 } from "./mysql-credentials";
 import {
+  TOktaClientSecretRotation,
+  TOktaClientSecretRotationGeneratedCredentials,
+  TOktaClientSecretRotationInput,
+  TOktaClientSecretRotationListItem,
+  TOktaClientSecretRotationWithConnection
+} from "./okta-client-secret";
+import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationInput,
   TOracleDBCredentialsRotationListItem,
@@ -68,7 +76,8 @@ export type TSecretRotationV2 =
   | TAuth0ClientSecretRotation
   | TAzureClientSecretRotation
   | TLdapPasswordRotation
-  | TAwsIamUserSecretRotation;
+  | TAwsIamUserSecretRotation
+  | TOktaClientSecretRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -78,14 +87,16 @@ export type TSecretRotationV2WithConnection =
   | TAuth0ClientSecretRotationWithConnection
   | TAzureClientSecretRotationWithConnection
   | TLdapPasswordRotationWithConnection
-  | TAwsIamUserSecretRotationWithConnection;
+  | TAwsIamUserSecretRotationWithConnection
+  | TOktaClientSecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
   | TAuth0ClientSecretRotationGeneratedCredentials
   | TAzureClientSecretRotationGeneratedCredentials
   | TLdapPasswordRotationGeneratedCredentials
-  | TAwsIamUserSecretRotationGeneratedCredentials;
+  | TAwsIamUserSecretRotationGeneratedCredentials
+  | TOktaClientSecretRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -95,7 +106,8 @@ export type TSecretRotationV2Input =
   | TAuth0ClientSecretRotationInput
   | TAzureClientSecretRotationInput
   | TLdapPasswordRotationInput
-  | TAwsIamUserSecretRotationInput;
+  | TAwsIamUserSecretRotationInput
+  | TOktaClientSecretRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -105,7 +117,8 @@ export type TSecretRotationV2ListItem =
   | TAuth0ClientSecretRotationListItem
   | TAzureClientSecretRotationListItem
   | TLdapPasswordRotationListItem
-  | TAwsIamUserSecretRotationListItem;
+  | TAwsIamUserSecretRotationListItem
+  | TOktaClientSecretRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters = TLdapPasswordRotationInput["temporaryParameters"] | undefined;
 
@@ -239,7 +252,8 @@ export type TRotationFactory<
 > = (
   secretRotation: T,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;

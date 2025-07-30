@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   useCreateProjectRole,
   useGetProjectRoleBySlug,
@@ -100,7 +101,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         navigate({
-          to: "/projects/$projectId/roles/$roleSlug",
+          to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug` as const,
           params: {
             roleSlug: newRole.slug,
             projectId
