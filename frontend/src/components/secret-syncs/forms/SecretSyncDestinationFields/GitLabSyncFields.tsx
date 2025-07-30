@@ -16,8 +16,8 @@ import {
 import {
   TGitLabGroup,
   TGitLabProject,
-  useGitlabConnectionListGroups,
-  useGitlabConnectionListProjects
+  useGitLabConnectionListGroups,
+  useGitLabConnectionListProjects
 } from "@app/hooks/api/appConnections/gitlab";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
@@ -70,11 +70,11 @@ export const GitLabSyncFields = () => {
   const scope = useWatch({ name: "destinationConfig.scope", control });
   const shouldMaskSecrets = useWatch({ name: "destinationConfig.shouldMaskSecrets", control });
 
-  const { data: groups, isLoading: isGroupsLoading } = useGitlabConnectionListGroups(connectionId, {
+  const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(connectionId, {
     enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
   });
 
-  const { data: projects, isLoading: isProjectsLoading } = useGitlabConnectionListProjects(
+  const { data: projects, isLoading: isProjectsLoading } = useGitLabConnectionListProjects(
     connectionId,
     {
       enabled: Boolean(connectionId)

@@ -173,7 +173,7 @@ export type TAppConnectionMap = {
   [AppConnection.Heroku]: THerokuConnection;
   [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
-  [AppConnection.Gitlab]: TGitLabConnection;
+  [AppConnection.GitLab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
   [AppConnection.Bitbucket]: TBitbucketConnection;
   [AppConnection.Zabbix]: TZabbixConnection;

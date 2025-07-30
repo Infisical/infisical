@@ -11,3 +11,5 @@ export const UserPrincipalNameRegex = new RE2(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9._-]
 export const LdapUrlRegex = new RE2(/^ldaps?:\/\//);
 
 export const BasicRepositoryRegex = new RE2(/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/);
+
+export const GitLabProjectRegex = new RE2(/^[a-zA-Z0-9._-]+(?:\/[a-zA-Z0-9._-]+)+$/);
