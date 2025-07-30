@@ -1,23 +1,17 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import crypto from "crypto";
 
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import jsrp from "jsrp";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import InputField from "@app/components/basic/InputField";
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
-import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey, generateKeyPair } from "@app/components/utilities/cryptography/crypto";
-import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v2";
-import { useServerConfig } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
   completeAccountSignupInvite,
@@ -27,9 +21,6 @@ import {
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { isLoggedIn } from "@app/hooks/api/reactQuery";
-
-// eslint-disable-next-line new-cap
-const client = new jsrp.client();
 
 type Errors = {
   tooShort?: string;
@@ -67,7 +58,6 @@ export const SignupInvitePage = () => {
   const metadata = queryParams.get("metadata") || undefined;
 
   const { mutateAsync: selectOrganization } = useSelectOrganization();
-  const { config } = useServerConfig();
 
   const loggedIn = isLoggedIn();
 
@@ -94,123 +84,56 @@ export const SignupInvitePage = () => {
     }
 
     if (!errorCheck) {
-      // Generate a random pair of a public and a private key
-      const { publicKey, privateKey } = await generateKeyPair(config.fipsEnabled);
+      try {
+        const { token: jwtToken } = await completeAccountSignupInvite({
+          email,
+          password,
+          firstName,
+          lastName,
+          tokenMetadata: metadata
+        });
 
-      localStorage.setItem("PRIVATE_KEY", privateKey);
+        // unset temporary signup JWT token and set JWT token
+        SecurityClient.setSignupToken("");
+        SecurityClient.setToken(jwtToken);
 
-      client.init(
-        {
-          username: email,
-          password
-        },
-        async () => {
-          client.createVerifier(async (_err, result) => {
-            try {
-              const derivedKey = await deriveArgonKey({
-                password,
-                salt: result.salt,
-                mem: 65536,
-                time: 3,
-                parallelism: 1,
-                hashLen: 32
-              });
+        const userOrgs = await fetchOrganizations();
 
-              if (!derivedKey) throw new Error("Failed to derive key from password");
+        const orgId = userOrgs[0].id;
 
-              const key = crypto.randomBytes(32);
+        if (!orgId) throw new Error("You are not part of any organization");
 
-              // create encrypted private key by encrypting the private
-              // key with the symmetric key [key]
-              const {
-                ciphertext: encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag
-              } = Aes256Gcm.encrypt({
-                text: privateKey,
-                secret: key
-              });
-
-              // create the protected key by encrypting the symmetric key
-              // [key] with the derived key
-              const {
-                ciphertext: protectedKey,
-                iv: protectedKeyIV,
-                tag: protectedKeyTag
-              } = Aes256Gcm.encrypt({
-                text: key.toString("hex"),
-                secret: Buffer.from(derivedKey.hash)
-              });
-
-              const { token: jwtToken } = await completeAccountSignupInvite({
-                email,
-                password,
-                firstName,
-                lastName,
-                protectedKey,
-                protectedKeyIV,
-                protectedKeyTag,
-                publicKey,
-                encryptedPrivateKey,
-                encryptedPrivateKeyIV,
-                encryptedPrivateKeyTag,
-                salt: result.salt,
-                verifier: result.verifier,
-                tokenMetadata: metadata
-              });
-
-              // unset temporary signup JWT token and set JWT token
-              SecurityClient.setSignupToken("");
-              SecurityClient.setToken(jwtToken);
-
-              saveTokenToLocalStorage({
-                publicKey,
-                encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag,
-                privateKey
-              });
-
-              const userOrgs = await fetchOrganizations();
-
-              const orgId = userOrgs[0].id;
-
-              if (!orgId) throw new Error("You are not part of any organization");
-
-              const completeSignupFlow = async () => {
-                const {
-                  token: mfaToken,
-                  isMfaEnabled,
-                  mfaMethod
-                } = await selectOrganization({
-                  organizationId: orgId
-                });
-
-                if (isMfaEnabled) {
-                  SecurityClient.setMfaToken(mfaToken);
-                  if (mfaMethod) {
-                    setRequiredMfaMethod(mfaMethod);
-                  }
-                  toggleShowMfa.on();
-                  setMfaSuccessCallback(() => completeSignupFlow);
-                  return;
-                }
-
-                localStorage.setItem("orgData.id", orgId);
-
-                navigate({
-                  to: "/organization/projects"
-                });
-              };
-
-              await completeSignupFlow();
-            } catch (error) {
-              setIsLoading(false);
-              console.error(error);
-            }
+        const completeSignupFlow = async () => {
+          const {
+            token: mfaToken,
+            isMfaEnabled,
+            mfaMethod
+          } = await selectOrganization({
+            organizationId: orgId
           });
-        }
-      );
+
+          if (isMfaEnabled) {
+            SecurityClient.setMfaToken(mfaToken);
+            if (mfaMethod) {
+              setRequiredMfaMethod(mfaMethod);
+            }
+            toggleShowMfa.on();
+            setMfaSuccessCallback(() => completeSignupFlow);
+            return;
+          }
+
+          localStorage.setItem("orgData.id", orgId);
+
+          navigate({
+            to: "/organization/projects"
+          });
+        };
+
+        await completeSignupFlow();
+      } catch (error) {
+        setIsLoading(false);
+        console.error(error);
+      }
     } else {
       setIsLoading(false);
     }

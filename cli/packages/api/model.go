@@ -245,6 +245,15 @@ type GetLoginOneV2Request struct {
 	ClientPublicKey string `json:"clientPublicKey"`
 }
 
+type GetLoginV3Request struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type GetLoginV3Response struct {
+	AccessToken string `json:"accessToken"`
+}
+
 type GetLoginOneV2Response struct {
 	ServerPublicKey string `json:"serverPublicKey"`
 	Salt            string `json:"salt"`

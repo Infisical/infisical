@@ -115,6 +115,10 @@ export const generateUserSrpKeys = async (password: string) => {
 };
 
 export const getUserPrivateKey = async (password: string, user: TUserEncryptionKeys) => {
+  if (!user.encryptedPrivateKey || !user.iv || !user.tag || !user.salt) {
+    throw new Error("User encrypted private key not found");
+  }
+
   const derivedKey = await argon2.hash(password, {
     salt: Buffer.from(user.salt),
     memoryCost: 65536,

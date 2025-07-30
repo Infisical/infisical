@@ -132,11 +132,8 @@ export const SelectOrganizationSection = () => {
       }
 
       if (callbackPort) {
-        const privateKey = localStorage.getItem("PRIVATE_KEY");
-
         let error: string | null = null;
 
-        if (!privateKey) error = "Private key not found";
         if (!user?.email) error = "User email not found";
         if (!token) error = "No token found";
 
@@ -151,7 +148,7 @@ export const SelectOrganizationSection = () => {
         const payload = {
           JTWToken: token,
           email: user?.email,
-          privateKey
+          privateKey: ""
         } as IsCliLoginSuccessful["loginResponse"];
 
         // send request to server endpoint

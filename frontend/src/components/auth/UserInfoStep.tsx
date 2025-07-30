@@ -1,12 +1,8 @@
-import crypto from "crypto";
-
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import jsrp from "jsrp";
 
-import { useServerConfig } from "@app/context";
 import { initProjectHelper } from "@app/helpers/project";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -14,14 +10,8 @@ import { onRequestError } from "@app/hooks/api/reactQuery";
 
 import InputField from "../basic/InputField";
 import checkPassword from "../utilities/checks/password/checkPassword";
-import Aes256Gcm from "../utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey, generateKeyPair } from "../utilities/cryptography/crypto";
-import { saveTokenToLocalStorage } from "../utilities/saveTokenToLocalStorage";
 import SecurityClient from "../utilities/SecurityClient";
 import { Button, Input } from "../v2";
-
-// eslint-disable-next-line new-cap
-const client = new jsrp.client();
 
 interface UserInfoStepProps {
   incrementStep: () => void;
@@ -76,7 +66,6 @@ export default function UserInfoStep({
 }: UserInfoStepProps): JSX.Element {
   const [nameError, setNameError] = useState(false);
   const [organizationNameError, setOrganizationNameError] = useState(false);
-  const { config } = useServerConfig();
 
   const [errors, setErrors] = useState<Errors>({});
 
@@ -108,109 +97,45 @@ export default function UserInfoStep({
     });
 
     if (!errorCheck) {
-      // Generate a random pair of a public and a private key
-      const pair = await generateKeyPair(config.fipsEnabled);
+      console.log("signupErrorCheck passed");
 
-      localStorage.setItem("PRIVATE_KEY", pair.privateKey);
+      try {
+        const response = await completeAccountSignup({
+          email,
+          password,
+          firstName: name.split(" ")[0],
+          lastName: name.split(" ").slice(1).join(" "),
+          providerAuthToken,
+          organizationName,
+          attributionSource
+        });
 
-      client.init(
-        {
-          username: email,
-          password
-        },
-        async () => {
-          client.createVerifier(async (_err: any, result: { salt: string; verifier: string }) => {
-            try {
-              // TODO: moduralize into KeyService
-              const derivedKey = await deriveArgonKey({
-                password,
-                salt: result.salt,
-                mem: 65536,
-                time: 3,
-                parallelism: 1,
-                hashLen: 32
-              });
+        console.log("Signed up", JSON.stringify(response, null, 2));
 
-              if (!derivedKey) throw new Error("Failed to derive key from password");
+        // unset signup JWT token and set JWT token
+        SecurityClient.setSignupToken("");
+        SecurityClient.setToken(response.token);
+        SecurityClient.setProviderAuthToken("");
 
-              const key = crypto.randomBytes(32);
-
-              // create encrypted private key by encrypting the private
-              // key with the symmetric key [key]
-              const {
-                ciphertext: encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag
-              } = Aes256Gcm.encrypt({
-                text: pair.privateKey,
-                secret: key
-              });
-
-              // create the protected key by encrypting the symmetric key
-              // [key] with the derived key
-              const {
-                ciphertext: protectedKey,
-                iv: protectedKeyIV,
-                tag: protectedKeyTag
-              } = Aes256Gcm.encrypt({
-                text: key.toString("hex"),
-                secret: Buffer.from(derivedKey.hash)
-              });
-
-              const response = await completeAccountSignup({
-                email,
-                password,
-                firstName: name.split(" ")[0],
-                lastName: name.split(" ").slice(1).join(" "),
-                protectedKey,
-                protectedKeyIV,
-                protectedKeyTag,
-                publicKey: pair.publicKey,
-                encryptedPrivateKey,
-                encryptedPrivateKeyIV,
-                encryptedPrivateKeyTag,
-                providerAuthToken,
-                salt: result.salt,
-                verifier: result.verifier,
-                organizationName,
-                attributionSource
-              });
-
-              // unset signup JWT token and set JWT token
-              SecurityClient.setSignupToken("");
-              SecurityClient.setToken(response.token);
-              SecurityClient.setProviderAuthToken("");
-
-              if (response.organizationId) {
-                await selectOrganization({ organizationId: response.organizationId });
-              }
-
-              saveTokenToLocalStorage({
-                publicKey: pair.publicKey,
-                encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag,
-                privateKey: pair.privateKey
-              });
-
-              const userOrgs = await fetchOrganizations();
-
-              const orgId = userOrgs[0]?.id;
-              await initProjectHelper({
-                projectName: "Example Project"
-              });
-
-              localStorage.setItem("orgData.id", orgId);
-
-              incrementStep();
-            } catch (error) {
-              onRequestError(error);
-              setIsLoading(false);
-              console.error(error);
-            }
-          });
+        if (response.organizationId) {
+          await selectOrganization({ organizationId: response.organizationId });
         }
-      );
+
+        const userOrgs = await fetchOrganizations();
+
+        const orgId = userOrgs[0]?.id;
+        await initProjectHelper({
+          projectName: "Example Project"
+        });
+
+        localStorage.setItem("orgData.id", orgId);
+
+        incrementStep();
+      } catch (error) {
+        onRequestError(error);
+        setIsLoading(false);
+        console.error(error);
+      }
     } else {
       setIsLoading(false);
     }

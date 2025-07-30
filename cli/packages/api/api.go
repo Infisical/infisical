@@ -17,6 +17,7 @@ const (
 	operationCallGetEncryptedWorkspaceKey          = "CallGetEncryptedWorkspaceKey"
 	operationCallGetServiceTokenDetails            = "CallGetServiceTokenDetails"
 	operationCallLogin1V3                          = "CallLogin1V3"
+	operationCallLoginV3                           = "CallLoginV3"
 	operationCallVerifyMfaToken                    = "CallVerifyMfaToken"
 	operationCallLogin2V3                          = "CallLogin2V3"
 	operationCallGetAllOrganizations               = "CallGetAllOrganizations"
@@ -98,6 +99,26 @@ func CallLogin1V2(httpClient *resty.Client, request GetLoginOneV2Request) (GetLo
 	}
 
 	return loginOneV2Response, nil
+}
+
+func CallLoginV3(httpClient *resty.Client, request GetLoginV3Request) (GetLoginV3Response, error) {
+	var loginV3Response GetLoginV3Response
+	response, err := httpClient.
+		R().
+		SetResult(&loginV3Response).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v3/auth/login", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetLoginV3Response{}, NewGenericRequestError(operationCallLoginV3, err)
+	}
+
+	if response.IsError() {
+		return GetLoginV3Response{}, NewAPIErrorWithResponse(operationCallLoginV3, response, nil)
+	}
+
+	return loginV3Response, nil
 }
 
 func CallVerifyMfaToken(httpClient *resty.Client, request VerifyMfaTokenRequest) (*VerifyMfaTokenResponse, *VerifyMfaTokenErrorResponse, error) {

@@ -4,7 +4,6 @@ import { OrgMembershipRole, OrgMembershipStatus, TableName, TUsers, UserDeviceSc
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -22,7 +21,8 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { enforceUserLockStatus, validateProviderAuthToken } from "./auth-fns";
+import { UserEncryption } from "../user/user-types";
+import { enforceUserLockStatus, getAuthMethodAndOrgId, validateProviderAuthToken, verifyCaptcha } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
@@ -208,6 +208,10 @@ export const authLoginServiceFactory = ({
       throw new Error("Failed to find user");
     }
 
+    if (!userEnc.salt || !userEnc.verifier) {
+      throw new BadRequestError({ message: "Salt or verifier not found" });
+    }
+
     if (
       serverCfg.enabledLoginMethods &&
       !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
@@ -247,8 +251,6 @@ export const authLoginServiceFactory = ({
     captchaToken,
     password
   }: TLoginClientProofDTO) => {
-    const appCfg = getConfig();
-
     // akhilmhdh: case sensitive email resolution
     const usersByUsername = await userDAL.findUserEncKeyByUsername({
       username: email
@@ -259,44 +261,11 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findById(userEnc.userId);
     const cfg = getConfig();
 
-    let authMethod = AuthMethod.EMAIL;
-    let organizationId: string | undefined;
+    const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
+    await verifyCaptcha(user, captchaToken);
 
-    if (providerAuthToken) {
-      const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
-
-      authMethod = decodedProviderToken.authMethod;
-      if (
-        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
-        decodedProviderToken.orgId
-      ) {
-        organizationId = decodedProviderToken.orgId;
-      }
-    }
-
-    if (
-      user.consecutiveFailedPasswordAttempts &&
-      user.consecutiveFailedPasswordAttempts >= 10 &&
-      Boolean(appCfg.CAPTCHA_SECRET)
-    ) {
-      if (!captchaToken) {
-        throw new BadRequestError({
-          name: "Captcha Required",
-          message: "Accomplish the required captcha by logging in via Web"
-        });
-      }
-
-      // validate captcha token
-      const response = await request.postForm<{ success: boolean }>("https://api.hcaptcha.com/siteverify", {
-        response: captchaToken,
-        secret: appCfg.CAPTCHA_SECRET
-      });
-
-      if (!response.data.success) {
-        throw new BadRequestError({
-          name: "Invalid Captcha"
-        });
-      }
+    if (!userEnc.salt || !userEnc.verifier) {
+      throw new BadRequestError({ message: "Salt or verifier not found" });
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
@@ -369,6 +338,72 @@ export const authLoginServiceFactory = ({
     });
 
     return { token, user: userEnc } as const;
+  };
+
+  const login = async ({
+    email,
+    password,
+    ip,
+    userAgent,
+    providerAuthToken,
+    captchaToken
+  }: {
+    email: string;
+    password: string;
+    ip: string;
+    userAgent: string;
+    providerAuthToken?: string;
+    captchaToken?: string;
+  }) => {
+    const usersByUsername = await userDAL.findUserEncKeyByUsername({
+      username: email
+    });
+    const userEnc =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+
+    if (!userEnc) throw new BadRequestError({ message: "User not found" });
+
+    if (userEnc.encryptionVersion !== UserEncryption.V2) {
+      throw new BadRequestError({ message: "Legacy encryption scheme not supported", name: "LegacyEncryptionScheme" });
+    }
+
+    if (!userEnc.hashedPassword) {
+      if (userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
+        throw new BadRequestError({
+          message: "Legacy encryption scheme not supported",
+          name: "LegacyEncryptionScheme"
+        });
+      }
+
+      throw new BadRequestError({ message: "No password found" });
+    }
+
+    const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
+    await verifyCaptcha(userEnc, captchaToken);
+
+    if (!(await crypto.hashing().compareHash(password, userEnc.hashedPassword))) {
+      throw new BadRequestError({ message: "Invalid username or email" });
+    }
+
+    const token = await generateUserTokens({
+      user: {
+        ...userEnc,
+        id: userEnc.userId
+      },
+      ip,
+      userAgent,
+      authMethod,
+      organizationId
+    });
+
+    return {
+      mfaEnabled: userEnc.isMfaEnabled,
+      tokens: {
+        accessToken: token.access,
+        refreshToken: token.refresh
+      },
+      user: userEnc
+    } as const;
   };
 
   const selectOrganization = async ({
@@ -862,6 +897,7 @@ export const authLoginServiceFactory = ({
     resendMfaToken,
     verifyMfaToken,
     selectOrganization,
-    generateUserTokens
+    generateUserTokens,
+    login
   };
 };

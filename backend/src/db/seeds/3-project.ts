@@ -1,6 +1,9 @@
 import { Knex } from "knex";
 
+import { initEnvConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
+import { initLogger, logger } from "@app/lib/logger";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { ProjectMembershipRole, ProjectType, SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
 import { buildUserProjectKey, getUserPrivateKey, seedData1 } from "../seed-data";
@@ -16,6 +19,11 @@ export async function seed(knex: Knex): Promise<void> {
   await knex(TableName.Project).del();
   await knex(TableName.Environment).del();
   await knex(TableName.SecretFolder).del();
+
+  initLogger();
+
+  const superAdminDAL = superAdminDALFactory(knex);
+  await initEnvConfig(superAdminDAL, logger);
 
   const [project] = await knex(TableName.Project)
     .insert({
@@ -42,6 +50,10 @@ export async function seed(knex: Knex): Promise<void> {
 
   const user = await knex(TableName.UserEncryptionKey).where({ userId: seedData1.id }).first();
   if (!user) throw new Error("User not found");
+
+  if (!user.publicKey) {
+    throw new Error("User public key not found");
+  }
 
   const userPrivateKey = await getUserPrivateKey(seedData1.password, user);
   const projectKey = buildUserProjectKey(userPrivateKey, user.publicKey);

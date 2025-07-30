@@ -116,7 +116,7 @@ export type TUpgradeProjectDTO = {
 } & TProjectPermission;
 
 export type AddUserToWsDTO = {
-  decryptKey: TProjectKeys & { sender: { publicKey: string } };
+  decryptKey: TProjectKeys & { sender: { publicKey?: string } };
   userPrivateKey: string;
   members: {
     orgMembershipId: string;

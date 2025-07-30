@@ -25,7 +25,6 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
-	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
 	"github.com/Infisical/infisical-merge/packages/util"
@@ -280,7 +279,21 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 		util.HandleError(err, "Unable to parse email and password for authentication")
 	}
 
-	loginOneResponse, loginTwoResponse, err := getFreshUserCredentials(email, password)
+	loginV3Response, err := getFreshUserCredentials(email, password)
+	if err == nil {
+		userCredentialsToBeStored.Email = email
+		userCredentialsToBeStored.PrivateKey = ""
+		userCredentialsToBeStored.JTWToken = loginV3Response.AccessToken
+		return
+	}
+
+	if !strings.Contains(err.Error(), "LegacyEncryptionScheme") {
+		util.HandleError(err)
+	}
+
+	log.Info().Msg("Unable to authenticate with the provided credentials, falling back to SRP authentication")
+
+	_, loginTwoResponse, err := getFreshUserCredentialsWithSrp(email, password)
 	if err != nil {
 		fmt.Println("Unable to authenticate with the provided credentials, please try again")
 		log.Debug().Err(err)
@@ -338,105 +351,12 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 		}
 	}
 
-	var decryptedPrivateKey []byte
-
-	if loginTwoResponse.EncryptionVersion == 1 {
-		log.Debug().Msg("Login version 1")
-		encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
-		tag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		IV, err := base64.StdEncoding.DecodeString(loginTwoResponse.Iv)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		paddedPassword := fmt.Sprintf("%032s", password)
-		key := []byte(paddedPassword)
-
-		computedDecryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
-		if err != nil || len(computedDecryptedPrivateKey) == 0 {
-			util.HandleError(err)
-		}
-
-		decryptedPrivateKey = computedDecryptedPrivateKey
-
-	} else if loginTwoResponse.EncryptionVersion == 2 {
-		log.Debug().Msg("Login version 2")
-		protectedKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKey)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		protectedKeyTag, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKeyTag)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		protectedKeyIV, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKeyIV)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		nonProtectedTag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		nonProtectedIv, err := base64.StdEncoding.DecodeString(loginTwoResponse.Iv)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		parameters := &params{
-			memory:      64 * 1024,
-			iterations:  3,
-			parallelism: 1,
-			keyLength:   32,
-		}
-
-		derivedKey, err := generateFromPassword(password, []byte(loginOneResponse.Salt), parameters)
-		if err != nil {
-			util.HandleError(fmt.Errorf("unable to generate argon hash from password [err=%s]", err))
-		}
-
-		decryptedProtectedKey, err := crypto.DecryptSymmetric(derivedKey, protectedKey, protectedKeyTag, protectedKeyIV)
-		if err != nil {
-			util.HandleError(fmt.Errorf("unable to get decrypted protected key [err=%s]", err))
-		}
-
-		encryptedPrivateKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		decryptedProtectedKeyInHex, err := hex.DecodeString(string(decryptedProtectedKey))
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		computedDecryptedPrivateKey, err := crypto.DecryptSymmetric(decryptedProtectedKeyInHex, encryptedPrivateKey, nonProtectedTag, nonProtectedIv)
-		if err != nil {
-			util.HandleError(err)
-		}
-
-		decryptedPrivateKey = computedDecryptedPrivateKey
-	} else {
-		util.PrintErrorMessageAndExit("Insufficient details to decrypt private key")
-	}
-
-	if string(decryptedPrivateKey) == "" || email == "" || loginTwoResponse.Token == "" {
-		log.Debug().Msgf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
-		util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
-	}
 	// Login is successful so ask user to choose organization
 	newJwtToken := GetJwtTokenWithOrganizationId(loginTwoResponse.Token, email)
 
 	//updating usercredentials
 	userCredentialsToBeStored.Email = email
-	userCredentialsToBeStored.PrivateKey = string(decryptedPrivateKey)
+	userCredentialsToBeStored.PrivateKey = ""
 	userCredentialsToBeStored.JTWToken = newJwtToken
 }
 
@@ -665,7 +585,27 @@ func askForLoginCredentials() (email string, password string, err error) {
 	return userEmail, userPassword, nil
 }
 
-func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2Response, *api.GetLoginTwoV2Response, error) {
+func getFreshUserCredentials(email string, password string) (*api.GetLoginV3Response, error) {
+	log.Debug().Msg(fmt.Sprint("getFreshUserCredentials: ", "email", email, "password: ", password))
+	httpClient, err := util.GetRestyClientWithCustomHeaders()
+	if err != nil {
+		return nil, err
+	}
+	httpClient.SetRetryCount(5)
+
+	loginV3Response, err := api.CallLoginV3(httpClient, api.GetLoginV3Request{
+		Email:    email,
+		Password: password,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &loginV3Response, nil
+}
+
+func getFreshUserCredentialsWithSrp(email string, password string) (*api.GetLoginOneV2Response, *api.GetLoginTwoV2Response, error) {
 	log.Debug().Msg(fmt.Sprint("getFreshUserCredentials: ", "email", email, "password: ", password))
 	httpClient, err := util.GetRestyClientWithCustomHeaders()
 	if err != nil {

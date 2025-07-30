@@ -121,6 +121,10 @@ export const projectQueueFactory = ({
         tag: data.encryptedPrivateKey.encryptedKeyTag
       });
 
+      if (!oldProjectKey.sender.publicKey) {
+        throw new Error("Old project key sender public key not found");
+      }
+
       const decryptedPlainProjectKey = crypto.encryption().asymmetric().decrypt({
         ciphertext: oldProjectKey.encryptedKey,
         nonce: oldProjectKey.nonce,
@@ -185,6 +189,10 @@ export const projectQueueFactory = ({
         secrets.push(...folderSecrets);
         secretVersions.push(...folderSecretVersions);
         approvalSecrets.push(...secretApprovals);
+      }
+
+      if (!oldProjectKey.sender.publicKey) {
+        throw new Error("Old project key is not valid");
       }
 
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
@@ -288,6 +296,10 @@ export const projectQueueFactory = ({
             );
             // eslint-disable-next-line no-continue
             continue;
+          }
+
+          if (!user.publicKey) {
+            throw new Error(`User with ID ${key.receiverId} has no public key during upgrade.`);
           }
 
           const [newMember] = assignWorkspaceKeysToMembers({
