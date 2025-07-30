@@ -85,8 +85,12 @@ export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
     };
 
     const item = event.data.payload;
+
     if (Array.isArray(item)) {
       const filtered = item.filter((ev) => matches(ev));
+
+      if (!filtered.length) return; // No events to send
+
       return client.send({
         ...event,
         data: {
