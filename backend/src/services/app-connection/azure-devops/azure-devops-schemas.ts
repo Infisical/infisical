@@ -38,6 +38,42 @@ export const AzureDevOpsConnectionAccessTokenOutputCredentialsSchema = z.object(
   orgName: z.string()
 });
 
+export const AzureDevOpsConnectionClientSecretInputCredentialsSchema = z.object({
+  clientId: z
+    .string()
+    .uuid()
+    .trim()
+    .min(1, "Client ID required")
+    .max(50, "Client ID must be at most 50 characters long")
+    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.clientId),
+  clientSecret: z
+    .string()
+    .trim()
+    .min(1, "Client Secret required")
+    .max(50, "Client Secret must be at most 50 characters long")
+    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.clientSecret),
+  tenantId: z
+    .string()
+    .uuid()
+    .trim()
+    .min(1, "Tenant ID required")
+    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.tenantId),
+  orgName: z
+    .string()
+    .trim()
+    .min(1, "Organization name required")
+    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.orgName)
+});
+
+export const AzureDevOpsConnectionClientSecretOutputCredentialsSchema = z.object({
+  clientId: z.string(),
+  clientSecret: z.string(),
+  tenantId: z.string(),
+  orgName: z.string(),
+  accessToken: z.string(),
+  expiresAt: z.number()
+});
+
 export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
@@ -54,6 +90,14 @@ export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUni
     credentials: AzureDevOpsConnectionAccessTokenInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureDevOps).credentials
     )
+  }),
+  z.object({
+    method: z
+      .literal(AzureDevOpsConnectionMethod.ClientSecret)
+      .describe(AppConnections.CREATE(AppConnection.AzureDevOps).method),
+    credentials: AzureDevOpsConnectionClientSecretInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AzureDevOps).credentials
+    )
   })
 ]);
 
@@ -64,7 +108,11 @@ export const CreateAzureDevOpsConnectionSchema = ValidateAzureDevOpsConnectionCr
 export const UpdateAzureDevOpsConnectionSchema = z
   .object({
     credentials: z
-      .union([AzureDevOpsConnectionOAuthInputCredentialsSchema, AzureDevOpsConnectionAccessTokenInputCredentialsSchema])
+      .union([
+        AzureDevOpsConnectionOAuthInputCredentialsSchema,
+        AzureDevOpsConnectionAccessTokenInputCredentialsSchema,
+        AzureDevOpsConnectionClientSecretInputCredentialsSchema
+      ])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureDevOps).credentials)
   })
@@ -84,6 +132,10 @@ export const AzureDevOpsConnectionSchema = z.intersection(
     z.object({
       method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
       credentials: AzureDevOpsConnectionAccessTokenOutputCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(AzureDevOpsConnectionMethod.ClientSecret),
+      credentials: AzureDevOpsConnectionClientSecretOutputCredentialsSchema
     })
   ])
 );
@@ -99,6 +151,14 @@ export const SanitizedAzureDevOpsConnectionSchema = z.discriminatedUnion("method
   BaseAzureDevOpsConnectionSchema.extend({
     method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
     credentials: AzureDevOpsConnectionAccessTokenOutputCredentialsSchema.pick({
+      orgName: true
+    })
+  }),
+  BaseAzureDevOpsConnectionSchema.extend({
+    method: z.literal(AzureDevOpsConnectionMethod.ClientSecret),
+    credentials: AzureDevOpsConnectionClientSecretOutputCredentialsSchema.pick({
+      clientId: true,
+      tenantId: true,
       orgName: true
     })
   })

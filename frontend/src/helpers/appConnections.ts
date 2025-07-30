@@ -172,6 +172,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ChecklyConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case AzureClientSecretsConnectionMethod.ClientSecret:
+    case AzureAppConfigurationConnectionMethod.ClientSecret:
+    case AzureKeyVaultConnectionMethod.ClientSecret:
+    case AzureDevOpsConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);

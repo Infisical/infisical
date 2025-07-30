@@ -3,7 +3,7 @@ title: "Azure Key Vault Connection"
 description: "Learn how to configure a Azure Key Vault Connection for Infisical."
 ---
 
-Infisical currently only supports one method for connecting to Azure, which is OAuth.
+Infisical currently only supports two methods for connecting to Azure, which are OAuth and Client Secrets.
 
 <Accordion title="Self-Hosted Instance">
   Using the Azure Key Vault connection on a self-hosted instance of Infisical requires configuring an application in Azure
@@ -58,6 +58,27 @@ Infisical currently only supports one method for connecting to Azure, which is O
 
 </Accordion>
 
+<Accordion title="Client Secret Authentication">
+  To use client secret authentication, ensure your Azure Service Principal has the required permissions and is connected to the Azure Key Vault instances you want to use.
+
+  **Prerequisites:**
+  - Set up Azure and have an existing Key Vault instance.
+  - The service principal must be connected to your target Azure Key Vault instance(s)
+
+  <Steps>
+    <Step title="Assign API permissions to the service principal">
+
+      Configure the required API permissions for your App Registration to interact with Azure Key Vault:
+
+      #### Azure Key Vault permissions
+
+      Set the API permissions of your Azure service principal to include `user_impersonation` for the Key Vault API.
+      ![Azure key vault](/images/app-connections/azure/keyvault-azure-permissions.png)
+
+    </Step>
+  </Steps>
+</Accordion>
+
 ## Setup Azure Connection in Infisical
 
 <Steps>
@@ -68,21 +89,37 @@ Infisical currently only supports one method for connecting to Azure, which is O
 	<Step title="Add Connection">
 		Select the **Azure Connection** option from the connection options modal. ![Select Azure Connection](/images/app-connections/azure/key-vault/select-connection.png)
 	</Step>
-	<Step title="Authorize Connection">
-    You can optionally authenticate against a specific tenant by providing the Azure Tenant or Directory ID.
+  <Step title="Create Connection">
+    <Tabs>
+      <Tab title="OAuth">
+        <Steps>
+          <Step title="Authorize Connection">
+            You can optionally authenticate against a specific tenant by providing the Azure Tenant or Directory ID.
 
-    Now select the **OAuth** method and click **Connect to Azure**. 
+            Now select the **OAuth** method and click **Connect to Azure**. 
 
-    ![Connect via Azure OAUth](/images/app-connections/azure/key-vault/create-oauth-method.png)
+            ![Connect via Azure OAUth](/images/app-connections/azure/key-vault/create-oauth-method.png)
 
-    
+            
 
-	</Step>
-	<Step title="Grant Access">
-		You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,
-		you will redirect you back to Infisical's App Connections page. ![Azure Key Vault
-		Authorization](/images/app-connections/azure/grant-access.png)
-	</Step>
+          </Step>
+          <Step title="Grant Access">
+            You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,
+            you will redirect you back to Infisical's App Connections page. ![Azure Key Vault
+            Authorization](/images/app-connections/azure/grant-access.png)
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="Client Secret">
+        <Steps>
+          <Step title="Create Connection">
+            Fill in the **Tenant ID**, **Client ID**, **Client Secret** fields with the Directory (Tenant) ID, Application (Client) ID, Client Secret you obtained in the previous step.
+            ![Connect via Azure OAUth](/images/app-connections/azure/key-vault/create-client-secrets-method.png)
+          </Step>
+        </Steps>
+      </Tab>
+    </Tabs>
+  </Step>
 	<Step title="Connection Created">
 		Your **Azure Key Vault Connection** is now available for use. ![Assume Role AWS Connection](/images/app-connections/azure/key-vault/oauth-connection.png)
 	</Step>

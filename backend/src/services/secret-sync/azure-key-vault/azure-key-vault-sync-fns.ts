@@ -12,7 +12,7 @@ import { SecretSyncError } from "../secret-sync-errors";
 import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azure-key-vault-sync-types";
 
 type TAzureKeyVaultSyncFactoryDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 

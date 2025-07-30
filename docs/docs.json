@@ -719,6 +719,10 @@
             "group": "Endpoints",
             "pages": [
               {
+                "group": "Admin",
+                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+              },
+              {
                 "group": "Identities",
                 "pages": [
                   "api-reference/endpoints/identities/create",
@@ -1409,7 +1413,7 @@
                       "api-reference/endpoints/app-connections/databricks/delete"
                     ]
                   },
-                   {
+                  {
                     "group": "Digital Ocean",
                     "pages": [
                       "api-reference/endpoints/app-connections/digital-ocean/list",
