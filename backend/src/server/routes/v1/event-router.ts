@@ -4,13 +4,13 @@ import { pipeline } from "stream/promises";
 import { z } from "zod";
 
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
+import { getServerSentEventsHeaders } from "@app/ee/services/event/event-sse-stream";
+import { EventRegisterSchema } from "@app/ee/services/event/types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ForbiddenRequestError, RateLimitError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { getServerSentEventsHeaders } from "@app/services/event/event-sse-stream";
-import { EventRegisterSchema } from "@app/services/event/types";
 
 export const registerEventRouter = async (server: FastifyZodProvider) => {
   server.route({

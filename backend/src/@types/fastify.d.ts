@@ -12,6 +12,8 @@ import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certifi
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
+import { TEventBusService } from "@app/ee/services/event/event-bus-service";
+import { TServerSentEventsService } from "@app/ee/services/event/event-sse-service";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
@@ -56,8 +58,6 @@ import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-a
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
-import { TEventBusService } from "@app/services/event/event-bus-service";
-import { TServerSentEventsService } from "@app/services/event/event-sse-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";

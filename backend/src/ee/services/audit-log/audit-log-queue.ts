@@ -1,12 +1,12 @@
 import { AxiosError, RawAxiosRequestHeaders } from "axios";
 
 import { ProjectType, SecretKeyEncoding } from "@app/db/schemas";
+import { TEventBusService } from "@app/ee/services/event/event-bus-service";
+import { TopicName, toPublishableEvent } from "@app/ee/services/event/types";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TEventBusService } from "@app/services/event/event-bus-service";
-import { TopicName, toPublishableEvent } from "@app/services/event/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
