@@ -2253,7 +2253,9 @@ export const AppConnections = {
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
       tenantId: "The Tenant ID to use to connect with Azure DevOps.",
-      orgName: "The Organization name to use to connect with Azure DevOps."
+      orgName: "The Organization name to use to connect with Azure DevOps.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     OCI: {
       userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
@@ -2400,12 +2402,18 @@ export const SecretSyncs = {
       env: "The name of the GitHub environment."
     },
     AZURE_KEY_VAULT: {
-      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
+      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_APP_CONFIGURATION: {
       configurationUrl:
         "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
-      label: "An optional label to assign to secrets created in Azure App Configuration."
+      label: "An optional label to assign to secrets created in Azure App Configuration.",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_DEVOPS: {
       devopsProjectId: "The ID of the Azure DevOps project to sync secrets to.",
