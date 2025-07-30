@@ -172,10 +172,10 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
         );
         break;
       case AzureDevOpsConnectionMethod.AccessToken:
-        onSubmit(formData);
+        await onSubmit(formData);
         break;
       case AzureDevOpsConnectionMethod.ClientSecret:
-        onSubmit(formData);
+        await onSubmit(formData);
         break;
       default:
         throw new Error(`Unhandled Azure Connection method: ${(formData as FormData).method}`);
@@ -303,7 +303,11 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
                   label="Client Secret"
                   errorText={error?.message}
                 >
-                  <Input {...field} type="password" placeholder="Enter your Client Secret" />
+                  <Input
+                    {...field}
+                    type="password"
+                    placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY"
+                  />
                 </FormControl>
               )}
             />
