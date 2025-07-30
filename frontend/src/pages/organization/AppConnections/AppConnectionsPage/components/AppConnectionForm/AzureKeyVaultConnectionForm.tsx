@@ -211,7 +211,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit }: Props) 
               tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
               isError={Boolean(error?.message)}
               label="Tenant ID"
-              isOptional
+              isOptional={selectedMethod === AzureKeyVaultConnectionMethod.OAuth}
               errorText={error?.message}
             >
               <Input

@@ -209,7 +209,7 @@ export const AzureAppConfigurationConnectionForm = ({ appConnection, onSubmit }:
               tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
               isError={Boolean(error?.message)}
               label="Tenant ID"
-              isOptional
+              isOptional={selectedMethod === AzureAppConfigurationConnectionMethod.OAuth}
               errorText={error?.message}
             >
               <Input

@@ -60,7 +60,7 @@ const formSchema = z.discriminatedUnion("method", [
 ]);
 
 type FormData = z.infer<typeof formSchema>;
-type OnSubmitForm = z.infer<typeof accessTokenSchema | typeof clientSecretSchema>;
+type OnSubmitForm = z.infer<typeof accessTokenSchema> | z.infer<typeof clientSecretSchema>;
 
 type Props = {
   appConnection?: TAzureDevOpsConnection;
