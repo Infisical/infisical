@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
-import { Knex } from "knex";
 
 import {
   ProjectMembershipRole,
@@ -22,7 +21,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
@@ -67,13 +66,11 @@ import { interpolateSecrets } from "./secret-fns";
 import {
   TCreateSecretReminderDTO,
   TFailedIntegrationSyncEmailsPayload,
-  THandleReminderDTO,
   TIntegrationSyncPayload,
-  TRemoveSecretReminderDTO,
+  TSecretQueueFactory,
   TSyncSecretsDTO
 } from "./secret-types";
 
-export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   integrationDAL: Pick<TIntegrationDALFactory, "findByProjectIdV2" | "updateById">;
@@ -180,7 +177,10 @@ export const secretQueueFactory = ({
     unit: "1"
   });
 
-  const removeSecretReminder = async ({ deleteRecipients = true, ...dto }: TRemoveSecretReminderDTO, tx?: Knex) => {
+  const removeSecretReminder: TSecretQueueFactory["removeSecretReminder"] = async (
+    { deleteRecipients = true, ...dto },
+    tx
+  ) => {
     if (deleteRecipients) {
       await reminderService.deleteReminderBySecretId(dto.secretId, dto.projectId, tx);
     }
@@ -219,7 +219,7 @@ export const secretQueueFactory = ({
       .replace(":", "-");
   };
 
-  const addSecretReminder = async ({
+  const addSecretReminder: TSecretQueueFactory["addSecretReminder"] = async ({
     oldSecret,
     newSecret,
     projectId,
@@ -256,7 +256,11 @@ export const secretQueueFactory = ({
     }
   };
 
-  const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
+  const handleSecretReminder: TSecretQueueFactory["handleSecretReminder"] = async ({
+    newSecret,
+    oldSecret,
+    projectId
+  }) => {
     const { secretReminderRepeatDays, secretReminderNote, secretReminderRecipients } = newSecret;
 
     if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
@@ -507,9 +511,7 @@ export const secretQueueFactory = ({
     return content;
   };
 
-  const syncIntegrations = async (
-    dto: TGetSecrets & { isManual?: boolean; actorId?: string; deDupeQueue?: Record<string, boolean> }
-  ) => {
+  const syncIntegrations: TSecretQueueFactory["syncIntegrations"] = async (dto) => {
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
       attempts: 5,
       delay: 1000,
@@ -522,25 +524,21 @@ export const secretQueueFactory = ({
     });
   };
 
-  const replicateSecrets = async (dto: Omit<TSyncSecretsDTO, "deDupeQueue">) => {
-    await queueService.queue(QueueName.SecretReplication, QueueJobs.SecretReplication, dto, {
-      attempts: 5,
-      backoff: {
-        type: "exponential",
-        delay: 3000
-      },
-      removeOnComplete: true,
-      removeOnFail: true
+  const replicateSecrets: TSecretQueueFactory["replicateSecrets"] = async (dto) => {
+    await queueService.queuePg<QueueName.SecretReplication>(QueueJobs.SecretReplication, dto, {
+      retryLimit: 5,
+      retryBackoff: true,
+      retentionHours: 1
     });
   };
 
-  const syncSecrets = async <T extends boolean = false>({
+  const syncSecrets: TSecretQueueFactory["syncSecrets"] = async ({
     // seperate de-dupe queue for integration sync and replication sync
     _deDupeQueue: deDupeQueue = {},
     _depth: depth = 0,
     _deDupeReplicationQueue: deDupeReplicationQueue = {},
     ...dto
-  }: TSyncSecretsDTO<T>) => {
+  }) => {
     logger.info(
       `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
     );
@@ -605,8 +603,7 @@ export const secretQueueFactory = ({
       actor
     } = job.data;
 
-    await queueService.queue(
-      QueueName.SecretWebhook,
+    await queueService.queuePg<QueueName.SecretWebhook>(
       QueueJobs.SecWebhook,
       {
         type: WebhookEvents.SecretModified,
@@ -617,15 +614,10 @@ export const secretQueueFactory = ({
         }
       },
       {
-        jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
-        removeOnFail: { count: 5 },
-        removeOnComplete: true,
-        delay: 1000,
-        attempts: 5,
-        backoff: {
-          type: "exponential",
-          delay: 3000
-        }
+        singletonKey: `secret-webhook-${environment}-${projectId}-${secretPath}`,
+        retryLimit: 5,
+        retryBackoff: true,
+        retentionHours: 1
       }
     );
 
@@ -1474,24 +1466,38 @@ export const secretQueueFactory = ({
     logger.error(err, "Failed to sync integration %s", job?.id);
   });
 
-  queueService.start(QueueName.SecretWebhook, async (job) => {
+  const $secretWebhookQueueJob = async (jobData: TQueueJobTypes[QueueName.SecretWebhook]["payload"]) => {
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
-      projectId: job.data.payload.projectId
+      projectId: jobData.payload.projectId
     });
 
     await fnTriggerWebhook({
-      projectId: job.data.payload.projectId,
-      environment: job.data.payload.environment,
-      secretPath: job.data.payload.secretPath || "/",
+      projectId: jobData.payload.projectId,
+      environment: jobData.payload.environment,
+      secretPath: jobData.payload.secretPath || "/",
       projectEnvDAL,
       projectDAL,
       webhookDAL,
-      event: job.data,
+      event: jobData,
       auditLogService,
       secretManagerDecryptor: (value) => secretManagerDecryptor({ cipherTextBlob: value }).toString()
     });
+  };
+
+  queueService.start(QueueName.SecretWebhook, async (job) => {
+    await $secretWebhookQueueJob(job.data);
   });
+
+  const init = async () => {
+    await queueService.startPg<QueueName.SecretWebhook>(
+      QueueJobs.SecWebhook,
+      async (jobs) => {
+        await Promise.allSettled(jobs.map((job) => $secretWebhookQueueJob(job.data)));
+      },
+      { workerCount: 1, batchSize: 5 }
+    );
+  };
 
   return {
     // depth is internal only field thus no need to make it available outside
@@ -1501,6 +1507,7 @@ export const secretQueueFactory = ({
     addSecretReminder,
     removeSecretReminder,
     handleSecretReminder,
-    replicateSecrets
+    replicateSecrets,
+    init
   };
 };

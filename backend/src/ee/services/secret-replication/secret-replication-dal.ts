@@ -1,10 +1,10 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { ormify } from "@app/lib/knex";
+import { ormify, TOrmify } from "@app/lib/knex";
 
-export type TSecretReplicationDALFactory = ReturnType<typeof secretReplicationDALFactory>;
+export type TSecretReplicationDALFactory = TOrmify<TableName.SecretVersion>;
 
-export const secretReplicationDALFactory = (db: TDbClient) => {
+export const secretReplicationDALFactory = (db: TDbClient): TSecretReplicationDALFactory => {
   const orm = ormify(db, TableName.SecretVersion);
   return orm;
 };
