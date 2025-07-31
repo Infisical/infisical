@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { isValidIp } from "@app/lib/ip";
-import { isFQDN, isURL } from "@app/lib/validator/validate-url";
+import { isFQDN } from "@app/lib/validator/validate-url";
 
 const isValidDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -15,10 +15,15 @@ export const validateAltNameField = z
   .trim()
   .refine(
     (name) => {
-      return isFQDN(name, { allow_wildcard: true }) || isURL(name) || z.string().email().safeParse(name).success || isValidIp(name);
+      return (
+        isFQDN(name, { allow_wildcard: true }) ||
+        z.string().url().safeParse(name).success ||
+        z.string().email().safeParse(name).success ||
+        isValidIp(name)
+      );
     },
     {
-      message: "SAN must be a valid hostname, email address, or IP address"
+      message: "SAN must be a valid hostname, email address, IP address or URL"
     }
   );
 
@@ -39,10 +44,15 @@ export const validateAltNamesField = z
       if (data === "") return true;
       // Split and validate each alt name
       return data.split(", ").every((name) => {
-        return isFQDN(name, { allow_wildcard: true }) || z.string().email().safeParse(name).success || isValidIp(name);
+        return (
+          isFQDN(name, { allow_wildcard: true }) ||
+          z.string().url().safeParse(name).success ||
+          z.string().email().safeParse(name).success ||
+          isValidIp(name)
+        );
       });
     },
     {
-      message: "Each alt name must be a valid hostname or email address"
+      message: "Each alt name must be a valid hostname, email address, IP address or URL"
     }
   );
