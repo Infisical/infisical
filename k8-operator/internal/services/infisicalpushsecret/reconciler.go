@@ -185,21 +185,11 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 
 	projectID := destination.ProjectID
 	if projectID == "" && destination.ProjectSlug != "" {
-		tempSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
-			ProjectSlug:    destination.ProjectSlug,
-			Environment:    destination.EnvironmentSlug,
-			SecretPath:     destination.SecretsPath,
-			IncludeImports: false,
-		})
+		resolvedProjectID, err := r.resolveProjectIDFromSlug(infisicalClient, destination.ProjectSlug)
 		if err != nil {
-			return fmt.Errorf("failed to resolve project from slug '%s': %v", destination.ProjectSlug, err)
+			return fmt.Errorf("failed to resolve project ID from slug '%s': %v", destination.ProjectSlug, err)
 		}
-		// The SDK internally resolves the project ID, so we can extract it from any secret
-		if len(tempSecrets) > 0 {
-			projectID = tempSecrets[0].Workspace
-		} else {
-			projectID = ""
-		}
+		projectID = resolvedProjectID
 	}
 
 	processedSecrets := make(map[string]string)
@@ -564,20 +554,11 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 	// Resolve project ID if only project slug is provided
 	projectID := destination.ProjectID
 	if projectID == "" && destination.ProjectSlug != "" {
-		// Use List operation to resolve project ID from slug
-		tempSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
-			ProjectSlug:    destination.ProjectSlug,
-			Environment:    destination.EnvironmentSlug,
-			SecretPath:     destination.SecretsPath,
-			IncludeImports: false,
-		})
+		resolvedProjectID, err := r.resolveProjectIDFromSlug(infisicalClient, destination.ProjectSlug)
 		if err != nil {
-			return fmt.Errorf("failed to resolve project from slug '%s': %v", destination.ProjectSlug, err)
+			return fmt.Errorf("failed to resolve project ID from slug '%s': %v", destination.ProjectSlug, err)
 		}
-		// Extract project ID from any secret
-		if len(tempSecrets) > 0 {
-			projectID = tempSecrets[0].Workspace
-		}
+		projectID = resolvedProjectID
 	}
 
 	existingSecrets, err := resourceVariables.InfisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
@@ -618,4 +599,22 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 	}
 
 	return nil
+}
+
+func (r *InfisicalPushSecretReconciler) resolveProjectIDFromSlug(infisicalClient infisicalSdk.InfisicalClientInterface, projectSlug string) (string, error) {
+	tempSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
+		ProjectSlug:    projectSlug,
+		Environment:    "dev",
+		SecretPath:     "/",
+		IncludeImports: false,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to access project with slug '%s': %v", projectSlug, err)
+	}
+
+	if len(tempSecrets) > 0 {
+		return tempSecrets[0].Workspace, nil
+	}
+
+	return "", fmt.Errorf("cannot resolve project ID from slug '%s': no secrets found in 'dev' environment at root path. Please ensure the project exists and has at least one secret, or use projectId instead", projectSlug)
 }
