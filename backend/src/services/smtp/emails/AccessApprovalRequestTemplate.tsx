@@ -1,7 +1,9 @@
-import { Button, Heading, Link, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface AccessApprovalRequestTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   projectName: string;
@@ -38,18 +40,15 @@ export const AccessApprovalRequestTemplate = ({
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
         You have a new access approval request pending review for the project <strong>{projectName}</strong>
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
-          <strong>{requesterFullName}</strong> (
-          <Link href={`mailto:${requesterEmail}`} className="text-slate-700 no-underline">
-            {requesterEmail}
-          </Link>
-          ) has requested {isTemporary ? "temporary" : "permanent"} access to <strong>{secretPath}</strong> in the{" "}
+          <strong>{requesterFullName}</strong> (<BaseLink href={`mailto:${requesterEmail}`}>{requesterEmail}</BaseLink>)
+          has requested {isTemporary ? "temporary" : "permanent"} access to <strong>{secretPath}</strong> in the{" "}
           <strong>{environment}</strong> environment.
         </Text>
 
         {isTemporary && (
-          <Text className="text-[14px] text-red-500 leading-[24px]">
+          <Text className="text-[14px] text-red-600 leading-[24px]">
             <strong>This access will expire {expiresIn} after approval.</strong>
           </Text>
         )}
@@ -67,13 +66,8 @@ export const AccessApprovalRequestTemplate = ({
           </Text>
         )}
       </Section>
-      <Section className="text-center mt-[28px]">
-        <Button
-          href={approvalUrl}
-          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
-        >
-          Review Request
-        </Button>
+      <Section className="text-center">
+        <BaseButton href={approvalUrl}>Review Request</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
