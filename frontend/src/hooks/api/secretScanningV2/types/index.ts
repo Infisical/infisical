@@ -1,3 +1,7 @@
+import {
+  TGitLabDataSource,
+  TGitLabDataSourceOption
+} from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 import { DiscriminativePick } from "@app/types";
 
 import {
@@ -11,7 +15,10 @@ import {
 import { TBitbucketDataSource, TBitbucketDataSourceOption } from "./bitbucket-data-source";
 import { TGitHubDataSource, TGitHubDataSourceOption } from "./github-data-source";
 
-export type TSecretScanningDataSource = TGitHubDataSource | TBitbucketDataSource;
+export type TSecretScanningDataSource =
+  | TGitHubDataSource
+  | TBitbucketDataSource
+  | TGitLabDataSource;
 
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScannedAt: string | null;
@@ -24,7 +31,10 @@ export type TListSecretScanningDataSources = {
   dataSources: TSecretScanningDataSourceWithDetails[];
 };
 
-export type TSecretScanningDataSourceOption = TGitHubDataSourceOption | TBitbucketDataSourceOption;
+export type TSecretScanningDataSourceOption =
+  | TGitHubDataSourceOption
+  | TBitbucketDataSourceOption
+  | TGitLabDataSourceOption;
 
 export type TListSecretScanningDataSourceOptions = {
   dataSourceOptions: TSecretScanningDataSourceOption[];

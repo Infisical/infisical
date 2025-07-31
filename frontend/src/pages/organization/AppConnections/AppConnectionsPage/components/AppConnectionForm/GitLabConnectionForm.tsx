@@ -38,7 +38,7 @@ type Props = {
 
 const formSchema = z.discriminatedUnion("method", [
   genericAppConnectionFieldsSchema.extend({
-    app: z.literal(AppConnection.Gitlab),
+    app: z.literal(AppConnection.GitLab),
     method: z.literal(GitLabConnectionMethod.AccessToken),
     credentials: z.object({
       accessToken: z.string().min(1, "Access token is required"),
@@ -54,7 +54,7 @@ const formSchema = z.discriminatedUnion("method", [
     })
   }),
   genericAppConnectionFieldsSchema.extend({
-    app: z.literal(AppConnection.Gitlab),
+    app: z.literal(AppConnection.GitLab),
     method: z.literal(GitLabConnectionMethod.OAuth),
     credentials: z.object({
       code: z.string().min(1, "Code is required"),
@@ -79,7 +79,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
   const {
     option: { oauthClientId },
     isLoading
-  } = useGetAppConnectionOption(AppConnection.Gitlab);
+  } = useGetAppConnectionOption(AppConnection.GitLab);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -88,7 +88,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
         ? { ...appConnection, credentials: { code: "custom" } }
         : (appConnection ??
           ({
-            app: AppConnection.Gitlab,
+            app: AppConnection.GitLab,
             method: GitLabConnectionMethod.AccessToken,
             credentials: {
               accessToken: "",
@@ -207,7 +207,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
               tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.Gitlab].name
+                APP_CONNECTION_MAP[AppConnection.GitLab].name
               }. This field cannot be changed after creation.`}
               errorText={
                 !isLoading && isMissingConfig && selectedMethod === GitLabConnectionMethod.OAuth

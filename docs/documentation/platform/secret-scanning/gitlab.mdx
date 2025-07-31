@@ -1,0 +1,103 @@
+---
+title: "GitLab Secret Scanning"
+sidebarTitle: "GitLab"
+description: "Learn how to configure secret scanning for GitLab."
+---
+
+## Prerequisites
+
+- Create a [GitLab Connection](/integrations/app-connections/gitlab) with Secret Scanning permissions
+
+## Create a GitLab Data Source in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secret Scanning Project's Dashboard and click the **Add Data Source** button.
+        ![Secret Scanning Dashboard](/images/platform/secret-scanning/github/github-data-source-step-1.png)
+
+        2. Select the **GitLab** option.
+        ![Select GitLab](/images/platform/secret-scanning/gitlab/step-2.png)
+
+        3. Configure which workspace and repositories you would like to scan. Then click **Next**.
+        ![Data Source Configuration](/images/platform/secret-scanning/gitlab/step-3.png)
+
+            - **GitLab Connection** - the connection that has access to the repositories you want to scan.
+            - **Scope** - the GitLab scope to scan secrets in.
+                - **Project** - scan an individual GitLab project.
+                - **Group** - scan one or more projects belonging to a GitLab group.
+            - **Scan Repositories** - when using **Group Scope**, select which repositories you would like to scan.
+                - **All Repositories** - Infisical will scan all repositories associated with your connection.
+                - **Select Repositories** - Infisical will scan the selected repositories.
+            - **Auto-Scan Enabled** - whether Infisical should automatically perform a scan when a push is made to configured repositories.
+
+        4. Give your data source a name and description (optional). Then click **Next**.
+        ![Data Source Details](/images/platform/secret-scanning/gitlab/step-4.png)
+
+            - **Name** - the name of the data source. Must be slug-friendly.
+            - **Description** (optional) - a description of this data source.
+
+        5. Review your data source, then click **Create Data Source**.
+        ![Data Source Review](/images/platform/secret-scanning/gitlab/step-5.png)
+
+        6. Your **GitLab Data Source** is now available and will begin a full scan if **Auto-Scan** is enabled.
+        ![Data Source Created](/images/platform/secret-scanning/gitlab/step-6.png)
+
+        7. You can view repositories and scan results by clicking on your data source.
+        ![Data Source Page](/images/platform/secret-scanning/gitlab/step-7.png)
+
+        8. In addition, you can review any findings from the **Findings Page**.
+        ![Findings Page](/images/platform/secret-scanning/gitlab/step-8.png)
+    </Tab>
+    <Tab title="API">
+        To create a GitLab Data Source, make an API request to the [Create GitLab Data Source](/api-reference/endpoints/secret-scanning/data-sources/gitlab/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://us.infisical.com/api/v2/secret-scanning/data-sources/gitlab \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-gitlab-source",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "my gitlab data source",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "isAutoScanEnabled": true,
+            "config": {
+                "scope": "project",
+                "projectId": 123456789,
+                "projectName": "my-group/my-project"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "dataSource": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "externalId": "1234567890",
+                "name": "my-gitlab-source",
+                "description": "my gitlab data source",
+                "isAutoScanEnabled": true,
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "type": "gitlab",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "gitlab",
+                    "name": "my-gitlab-app",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "config": {
+                    "scope": "project",
+                    "projectId": 123456789,
+                    "projectName": "my-group/my-project"
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>

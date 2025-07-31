@@ -133,7 +133,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
   [SecretSync.Flyio]: AppConnection.Flyio,
-  [SecretSync.GitLab]: AppConnection.Gitlab,
+  [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,

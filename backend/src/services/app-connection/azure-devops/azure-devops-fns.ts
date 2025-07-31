@@ -18,6 +18,7 @@ import { AppConnection } from "../app-connection-enums";
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
 import {
   ExchangeCodeAzureResponse,
+  TAzureDevOpsConnectionClientSecretCredentials,
   TAzureDevOpsConnectionConfig,
   TAzureDevOpsConnectionCredentials
 } from "./azure-devops-types";
@@ -30,7 +31,8 @@ export const getAzureDevopsConnectionListItem = () => {
     app: AppConnection.AzureDevOps as const,
     methods: Object.values(AzureDevOpsConnectionMethod) as [
       AzureDevOpsConnectionMethod.OAuth,
-      AzureDevOpsConnectionMethod.AccessToken
+      AzureDevOpsConnectionMethod.AccessToken,
+      AzureDevOpsConnectionMethod.ClientSecret
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID
   };
@@ -53,11 +55,7 @@ export const getAzureDevopsConnection = async (
     });
   }
 
-  const credentials = (await decryptAppConnectionCredentials({
-    orgId: appConnection.orgId,
-    kmsService,
-    encryptedCredentials: appConnection.encryptedCredentials
-  })) as TAzureDevOpsConnectionCredentials;
+  const currentTime = Date.now();
 
   // Handle different connection methods
   switch (appConnection.method) {
@@ -69,12 +67,17 @@ export const getAzureDevopsConnection = async (
         });
       }
 
-      if (!("refreshToken" in credentials)) {
+      const oauthCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        kmsService,
+        encryptedCredentials: appConnection.encryptedCredentials
+      })) as TAzureDevOpsConnectionCredentials;
+
+      if (!("refreshToken" in oauthCredentials)) {
         throw new BadRequestError({ message: "Invalid OAuth credentials" });
       }
 
-      const { refreshToken, tenantId } = credentials;
-      const currentTime = Date.now();
+      const { refreshToken, tenantId } = oauthCredentials;
 
       const { data } = await request.post<ExchangeCodeAzureResponse>(
         IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId || "common"),
@@ -87,29 +90,75 @@ export const getAzureDevopsConnection = async (
         })
       );
 
-      const updatedCredentials = {
-        ...credentials,
+      const updatedOAuthCredentials = {
+        ...oauthCredentials,
         accessToken: data.access_token,
         expiresAt: currentTime + data.expires_in * 1000,
         refreshToken: data.refresh_token
       };
 
-      const encryptedCredentials = await encryptAppConnectionCredentials({
-        credentials: updatedCredentials,
+      const encryptedOAuthCredentials = await encryptAppConnectionCredentials({
+        credentials: updatedOAuthCredentials,
         orgId: appConnection.orgId,
         kmsService
       });
 
-      await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials });
+      await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedOAuthCredentials });
 
       return data.access_token;
 
     case AzureDevOpsConnectionMethod.AccessToken:
-      if (!("accessToken" in credentials)) {
+      const accessTokenCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        kmsService,
+        encryptedCredentials: appConnection.encryptedCredentials
+      })) as { accessToken: string };
+
+      if (!("accessToken" in accessTokenCredentials)) {
         throw new BadRequestError({ message: "Invalid API token credentials" });
       }
       // For access token, return the basic auth token directly
-      return credentials.accessToken;
+      return accessTokenCredentials.accessToken;
+
+    case AzureDevOpsConnectionMethod.ClientSecret:
+      const clientSecretCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        kmsService,
+        encryptedCredentials: appConnection.encryptedCredentials
+      })) as TAzureDevOpsConnectionClientSecretCredentials;
+
+      const { accessToken, expiresAt, clientId, clientSecret, tenantId: clientTenantId } = clientSecretCredentials;
+
+      // Check if token is still valid (with 5 minute buffer)
+      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+        return accessToken;
+      }
+
+      const { data: clientData } = await request.post<ExchangeCodeAzureResponse>(
+        IntegrationUrls.AZURE_TOKEN_URL.replace("common", clientTenantId || "common"),
+        new URLSearchParams({
+          grant_type: "client_credentials",
+          scope: `https://app.vssps.visualstudio.com/.default`,
+          client_id: clientId,
+          client_secret: clientSecret
+        })
+      );
+
+      const updatedClientCredentials = {
+        ...clientSecretCredentials,
+        accessToken: clientData.access_token,
+        expiresAt: currentTime + clientData.expires_in * 1000
+      };
+
+      const encryptedClientCredentials = await encryptAppConnectionCredentials({
+        credentials: updatedClientCredentials,
+        orgId: appConnection.orgId,
+        kmsService
+      });
+
+      await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });
+
+      return clientData.access_token;
 
     default:
       throw new BadRequestError({ message: `Unsupported connection method` });
@@ -138,7 +187,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
       let tokenError: AxiosError | null = null;
 
       try {
-        const oauthCredentials = inputCredentials as { code: string; tenantId: string };
+        const oauthCredentials = inputCredentials as { code: string; tenantId: string; orgName: string };
         tokenResp = await request.post<ExchangeCodeAzureResponse>(
           IntegrationUrls.AZURE_TOKEN_URL.replace("common", oauthCredentials.tenantId || "common"),
           new URLSearchParams({
@@ -262,9 +311,67 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
         });
       }
 
+    case AzureDevOpsConnectionMethod.ClientSecret:
+      const { tenantId, clientId, clientSecret, orgName } = inputCredentials as {
+        tenantId: string;
+        clientId: string;
+        clientSecret: string;
+        orgName: string;
+      };
+
+      try {
+        // First, get the access token using client credentials flow
+        const { data: clientData } = await request.post<ExchangeCodeAzureResponse>(
+          IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId || "common"),
+          new URLSearchParams({
+            grant_type: "client_credentials",
+            scope: `https://app.vssps.visualstudio.com/.default`,
+            client_id: clientId,
+            client_secret: clientSecret
+          })
+        );
+
+        // Validate access to the specific organization
+        const response = await request.get(
+          `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(orgName)}/_apis/projects?api-version=7.2-preview.2&$top=1`,
+          {
+            headers: {
+              Authorization: `Bearer ${clientData.access_token}`
+            }
+          }
+        );
+
+        if (response.status !== 200) {
+          throw new BadRequestError({
+            message: `Failed to validate connection to organization '${orgName}': ${response.status}`
+          });
+        }
+
+        return {
+          tenantId,
+          clientId,
+          clientSecret,
+          orgName,
+          accessToken: clientData.access_token,
+          expiresAt: Date.now() + clientData.expires_in * 1000
+        };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to authenticate with Azure DevOps using client credentials: ${
+              (e?.response?.data as { error_description?: string })?.error_description || e.message
+            }`
+          });
+        } else {
+          throw new InternalServerError({
+            message: "Failed to validate Azure DevOps client credentials"
+          });
+        }
+      }
+
     default:
       throw new InternalServerError({
-        message: `Unhandled Azure connection method: ${method as AzureDevOpsConnectionMethod}`
+        message: `Unhandled Azure DevOps connection method: ${method as AzureDevOpsConnectionMethod}`
       });
   }
 };

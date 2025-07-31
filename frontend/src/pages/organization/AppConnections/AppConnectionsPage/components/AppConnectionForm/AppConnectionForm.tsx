@@ -92,9 +92,9 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
     case AppConnection.GCP:
       return <GcpConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureKeyVault:
-      return <AzureKeyVaultConnectionForm />;
+      return <AzureKeyVaultConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureAppConfiguration:
-      return <AzureAppConfigurationConnectionForm />;
+      return <AzureAppConfigurationConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Databricks:
       return <DatabricksConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Humanitec:
@@ -137,7 +137,7 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <RenderConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} />;
-    case AppConnection.Gitlab:
+    case AppConnection.GitLab:
       return <GitLabConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
@@ -200,9 +200,11 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
     case AppConnection.GCP:
       return <GcpConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.AzureKeyVault:
-      return <AzureKeyVaultConnectionForm appConnection={appConnection} />;
+      return <AzureKeyVaultConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.AzureAppConfiguration:
-      return <AzureAppConfigurationConnectionForm appConnection={appConnection} />;
+      return (
+        <AzureAppConfigurationConnectionForm appConnection={appConnection} onSubmit={onSubmit} />
+      );
     case AppConnection.Databricks:
       return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Humanitec:
@@ -245,7 +247,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <RenderConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-    case AppConnection.Gitlab:
+    case AppConnection.GitLab:
       return <GitLabConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;

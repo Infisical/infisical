@@ -3,7 +3,7 @@ title: "Azure App Configuration Connection"
 description: "Learn how to configure a Azure App Configuration Connection for Infisical."
 ---
 
-Infisical currently only supports one method for connecting to Azure, which is OAuth.
+Infisical currently only supports two methods for connecting to Azure, which are OAuth and Client Secrets.
 
 <Accordion title="Self-Hosted Instance">
   Using the Azure App Configuration connection on a self-hosted instance of Infisical requires configuring an application in Azure
@@ -58,6 +58,26 @@ Infisical currently only supports one method for connecting to Azure, which is O
     </Steps>    
 
 </Accordion>
+<Accordion title="Client Secret Authentication">
+  To use client secret authentication, ensure your Azure Service Principal has the required permissions and is connected to the Azure App Configuration resources you want to use.
+
+  **Prerequisites:**
+  - Set up Azure and have an existing App Configuration instance.
+  - The service principal must be connected to your target Azure App Configuration resource(s)
+
+  <Steps>
+    <Step title="Assign API permissions to the service principal">
+
+      Configure the required API permissions for your App Registration to interact with Azure App Configuration:
+
+      #### Azure App Configuration permissions
+    
+      Set the API permissions of your Azure service principal to include the following Azure App Configuration permissions: `KeyValue.Delete`, `KeyValue.Read`, and `KeyValue.Write`.
+      
+      ![Azure app config](../../images/integrations/azure-app-configuration/app-api-permissions.png)
+    </Step>
+  </Steps>
+</Accordion>
 
 ## Setup Azure Connection in Infisical
 
@@ -66,25 +86,35 @@ Infisical currently only supports one method for connecting to Azure, which is O
 		Navigate to the **App Connections** tab on the **Organization Settings** page. ![App Connections
 		Tab](/images/app-connections/general/add-connection.png)
 	</Step>
-	<Step title="Add Connection">
-		Select the **Azure Connection** option from the connection options modal. ![Select Azure Connection](/images/app-connections/azure/app-configuration/select-connection.png)
-	</Step>
-	<Step title="Authorize Connection">
-    You can optionally authenticate against a specific tenant by providing the Azure Tenant or Directory ID.
+  <Step title="Add Connection">
+    Select the **Azure Connection** option from the connection options modal. ![Select Azure Connection](/images/app-connections/azure/app-configuration/select-connection.png)
+  </Step>
+  <Step title="Create Connection">
+    <Tabs>
+      <Tab title="OAuth">
+        <Step title="Authorize Connection">
+          You can optionally authenticate against a specific tenant by providing the Azure Tenant or Directory ID.
 
-    Now select the **OAuth** method and click **Connect to Azure**. 
+          Now select the **OAuth** method and click **Connect to Azure**. 
 
-    ![Connect via Azure OAUth](/images/app-connections/azure/app-configuration/create-oauth-method.png)
+          ![Connect via Azure OAUth](/images/app-connections/azure/app-configuration/create-oauth-method.png)
+	      </Step>
+	      <Step title="Grant Access">
+	        You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,
+	        you will redirect you back to Infisical's App Connections page. ![Azure App Configuration
+	        Authorization](/images/app-connections/azure/grant-access.png)
+	      </Step>
+      </Tab>
+      <Tab title="Client Secret">
+        <Step title="Create Connection">
+          Fill in the **Tenant ID**, **Client ID** and **Client Secret** fields with the Directory (Tenant) ID, Application (Client) ID and Client Secret you obtained in the previous step.
 
-    
-
-	</Step>
-	<Step title="Grant Access">
-		You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,
-		you will redirect you back to Infisical's App Connections page. ![Azure App Configuration
-		Authorization](/images/app-connections/azure/grant-access.png)
-	</Step>
-	<Step title="Connection Created">
+          ![Connect via Azure OAUth](/images/app-connections/azure/app-configuration/create-client-secrets-method.png)
+        </Step>
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Connection Created">
 		Your **Azure App Configuration Connection** is now available for use. ![Assume Role AWS Connection](/images/app-connections/azure/app-configuration/oauth-connection.png)
 	</Step>
 </Steps>

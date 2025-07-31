@@ -7,10 +7,12 @@ import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 import { TSecretScanningDataSourceForm } from "../schemas";
 import { BitbucketDataSourceConfigFields } from "./BitbucketDataSourceConfigFields";
 import { GitHubDataSourceConfigFields } from "./GitHubDataSourceConfigFields";
+import { GitLabDataSourceConfigFields } from "./GitLabDataSourceConfigFields";
 
 const COMPONENT_MAP: Record<SecretScanningDataSource, React.FC> = {
   [SecretScanningDataSource.GitHub]: GitHubDataSourceConfigFields,
-  [SecretScanningDataSource.Bitbucket]: BitbucketDataSourceConfigFields
+  [SecretScanningDataSource.Bitbucket]: BitbucketDataSourceConfigFields,
+  [SecretScanningDataSource.GitLab]: GitLabDataSourceConfigFields
 };
 
 export const SecretScanningDataSourceConfigFields = () => {

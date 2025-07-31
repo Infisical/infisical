@@ -10,7 +10,7 @@
   "styling": {
     "codeblocks": "dark"
   },
-  "favicon": "/favicon.png",
+  "favicon": "/favicon.ico",
   "navigation": {
     "tabs": [
       {
@@ -220,7 +220,8 @@
                 "pages": [
                   "documentation/platform/secret-scanning/overview",
                   "documentation/platform/secret-scanning/bitbucket",
-                  "documentation/platform/secret-scanning/github"
+                  "documentation/platform/secret-scanning/github",
+                  "documentation/platform/secret-scanning/gitlab"
                 ]
               }
             ]
@@ -904,6 +905,7 @@
                   "api-reference/endpoints/organizations/memberships",
                   "api-reference/endpoints/organizations/update-membership",
                   "api-reference/endpoints/organizations/delete-membership",
+                  "api-reference/endpoints/organizations/bulk-delete-memberships",
                   "api-reference/endpoints/organizations/list-identity-memberships",
                   "api-reference/endpoints/organizations/workspaces"
                 ]
@@ -1202,6 +1204,21 @@
                           "api-reference/endpoints/secret-scanning/data-sources/github/delete",
                           "api-reference/endpoints/secret-scanning/data-sources/github/scan",
                           "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
+                        ]
+                      },
+                      {
+                        "group": "GitLab",
+                        "pages": [
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-id",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-name",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-resources",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-scans",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/create",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/update",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/delete",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan-resource"
                         ]
                       }
                     ]

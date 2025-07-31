@@ -143,8 +143,13 @@ export type UpdateOrgMembershipDTO = {
   metadata?: { key: string; value: string }[];
 };
 
-export type DeletOrgMembershipDTO = {
+export type DeleteOrgMembershipDTO = {
   membershipId: string;
+  orgId: string;
+};
+
+export type DeleteOrgMembershipBatchDTO = {
+  membershipIds: string[];
   orgId: string;
 };
 

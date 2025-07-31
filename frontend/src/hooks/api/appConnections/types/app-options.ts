@@ -124,7 +124,7 @@ export type TFlyioConnectionOption = TAppConnectionOptionBase & {
 };
 
 export type TGitlabConnectionOption = TAppConnectionOptionBase & {
-  app: AppConnection.Gitlab;
+  app: AppConnection.GitLab;
   oauthClientId?: string;
 };
 
@@ -223,7 +223,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Heroku]: THerokuConnectionOption;
   [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
-  [AppConnection.Gitlab]: TGitlabConnectionOption;
+  [AppConnection.GitLab]: TGitlabConnectionOption;
   [AppConnection.Cloudflare]: TCloudflareConnectionOption;
   [AppConnection.Bitbucket]: TBitbucketConnectionOption;
   [AppConnection.Zabbix]: TZabbixConnectionOption;

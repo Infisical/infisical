@@ -75,10 +75,11 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgBotDALFactory } from "./org-bot-dal";
 import { TOrgDALFactory } from "./org-dal";
-import { deleteOrgMembershipFn } from "./org-fns";
+import { deleteOrgMembershipFn, deleteOrgMembershipsFn } from "./org-fns";
 import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
+  TDeleteOrgMembershipsDTO,
   TFindAllWorkspacesDTO,
   TFindOrgMembersByEmailDTO,
   TGetOrgGroupsDTO,
@@ -106,7 +107,13 @@ type TOrgServiceFactoryDep = {
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
-    "findProjectMembershipsByUserId" | "delete" | "create" | "find" | "insertMany" | "transaction"
+    | "findProjectMembershipsByUserId"
+    | "delete"
+    | "create"
+    | "find"
+    | "insertMany"
+    | "transaction"
+    | "findProjectMembershipsByUserIds"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey" | "create">;
   orgMembershipDAL: Pick<
@@ -1369,10 +1376,40 @@ export const orgServiceFactory = ({
       projectUserAdditionalPrivilegeDAL,
       projectKeyDAL,
       userAliasDAL,
-      licenseService
+      licenseService,
+      userId
     });
 
     return deletedMembership;
+  };
+
+  const bulkDeleteOrgMemberships = async ({
+    orgId,
+    userId,
+    membershipIds,
+    actorAuthMethod,
+    actorOrgId
+  }: TDeleteOrgMembershipsDTO) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+
+    if (membershipIds.includes(userId)) {
+      throw new BadRequestError({ message: "You cannot delete your own organization membership" });
+    }
+
+    const deletedMemberships = await deleteOrgMembershipsFn({
+      orgMembershipIds: membershipIds,
+      orgId,
+      orgDAL,
+      projectMembershipDAL,
+      projectUserAdditionalPrivilegeDAL,
+      projectKeyDAL,
+      userAliasDAL,
+      licenseService,
+      userId
+    });
+
+    return deletedMemberships;
   };
 
   const listProjectMembershipsByOrgMembershipId = async ({
@@ -1528,6 +1565,7 @@ export const orgServiceFactory = ({
     findOrgBySlug,
     resendOrgMemberInvitation,
     upgradePrivilegeSystem,
-    notifyInvitedUsers
+    notifyInvitedUsers,
+    bulkDeleteOrgMemberships
   };
 };

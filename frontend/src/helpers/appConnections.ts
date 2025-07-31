@@ -94,7 +94,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" },
   [AppConnection.Render]: { name: "Render", image: "Render.png" },
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
-  [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
+  [AppConnection.GitLab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
   [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
   [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
@@ -172,6 +172,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ChecklyConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case AzureClientSecretsConnectionMethod.ClientSecret:
+    case AzureAppConfigurationConnectionMethod.ClientSecret:
+    case AzureKeyVaultConnectionMethod.ClientSecret:
+    case AzureDevOpsConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);

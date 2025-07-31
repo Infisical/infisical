@@ -1933,7 +1933,8 @@ export const registerRoutes = async (
     projectMembershipDAL,
     smtpService,
     kmsService,
-    keyStore
+    keyStore,
+    appConnectionDAL
   });
 
   const secretScanningV2Service = secretScanningV2ServiceFactory({
@@ -1942,7 +1943,8 @@ export const registerRoutes = async (
     licenseService,
     secretScanningV2DAL,
     secretScanningV2Queue,
-    kmsService
+    kmsService,
+    appConnectionDAL
   });
 
   // setup the communication with license key server

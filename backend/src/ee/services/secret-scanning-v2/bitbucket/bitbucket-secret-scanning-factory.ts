@@ -18,7 +18,8 @@ import {
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryPostInitialization,
-  TSecretScanningFactoryTeardown
+  TSecretScanningFactoryTeardown,
+  TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -302,6 +303,13 @@ export const BitbucketSecretScanningFactory = () => {
     );
   };
 
+  const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<
+    TBitbucketDataSourceInput["config"],
+    TBitbucketDataSourceWithConnection
+  > = async () => {
+    // no validation required
+  };
+
   return {
     initialize,
     postInitialization,
@@ -309,6 +317,7 @@ export const BitbucketSecretScanningFactory = () => {
     getFullScanPath,
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
-    teardown
+    teardown,
+    validateConfigUpdate
   };
 };

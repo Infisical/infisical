@@ -20,7 +20,8 @@ import {
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryPostInitialization,
-  TSecretScanningFactoryTeardown
+  TSecretScanningFactoryTeardown,
+  TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
@@ -64,7 +65,14 @@ export const GitHubSecretScanningFactory = () => {
   };
 
   const teardown: TSecretScanningFactoryTeardown<TGitHubDataSourceWithConnection> = async () => {
-    // no termination required
+    // no teardown required
+  };
+
+  const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<
+    TGitHubDataSourceInput["config"],
+    TGitHubDataSourceWithConnection
+  > = async () => {
+    // no validation required
   };
 
   const listRawResources: TSecretScanningFactoryListRawResources<TGitHubDataSourceWithConnection> = async (
@@ -238,6 +246,7 @@ export const GitHubSecretScanningFactory = () => {
     getFullScanPath,
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
-    teardown
+    teardown,
+    validateConfigUpdate
   };
 };

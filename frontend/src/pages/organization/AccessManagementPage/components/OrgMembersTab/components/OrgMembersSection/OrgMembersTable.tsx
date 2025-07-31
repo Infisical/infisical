@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -10,6 +10,7 @@ import {
   faMagnifyingGlass,
   faSearch,
   faUsers,
+  faUserShield,
   faUserSlash,
   faUserXmark
 } from "@fortawesome/free-solid-svg-icons";
@@ -22,6 +23,7 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -43,6 +45,7 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import {
@@ -66,18 +69,24 @@ import {
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useResendOrgMemberInvitation } from "@app/hooks/api/users/mutation";
+import { OrgUser } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeMember", "deactivateMember", "upgradePlan"]>,
+    popUpName: keyof UsePopUpState<
+      ["removeMember", "deactivateMember", "upgradePlan", "removeMembers"]
+    >,
     data?: {
       orgMembershipId?: string;
       username?: string;
       description?: string;
+      selectedOrgMemberships?: OrgUser[];
     }
   ) => void;
   setCompleteInviteLinks: (links: Array<{ email: string; link: string }> | null) => void;
+  selectedMemberIds: string[];
+  setSelectedMemberIds: Dispatch<SetStateAction<string[]>>;
 };
 
 enum OrgMembersOrderBy {
@@ -90,7 +99,12 @@ type Filter = {
   roles: string[];
 };
 
-export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Props) => {
+export const OrgMembersTable = ({
+  handlePopUpOpen,
+  setCompleteInviteLinks,
+  selectedMemberIds,
+  setSelectedMemberIds
+}: Props) => {
   const navigate = useNavigate();
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
@@ -208,7 +222,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
     roles: []
   });
 
-  const filteredUsers = useMemo(
+  const filteredMembers = useMemo(
     () =>
       members
         ?.filter(({ user: u, inviteEmail, role, roleId }) => {
@@ -273,7 +287,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   };
 
   useResetPageHelper({
-    totalCount: filteredUsers.length,
+    totalCount: filteredMembers.length,
     offset,
     setPage
   });
@@ -292,6 +306,16 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
   );
 
   const isTableFiltered = Boolean(filter.roles.length);
+
+  const filteredMembersPage = filteredMembers.slice(offset, perPage * page);
+
+  const isPageSelected = filteredMembersPage.every((member) =>
+    selectedMemberIds.includes(member.id)
+  );
+
+  const isPageIndeterminate = isPageSelected
+    ? false
+    : filteredMembersPage.some((member) => selectedMemberIds.includes(member.id));
 
   return (
     <div>
@@ -357,6 +381,26 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
         <Table>
           <THead>
             <Tr>
+              <Th className="w-5">
+                <Checkbox
+                  id="member-page-select"
+                  isChecked={isPageSelected || isPageIndeterminate}
+                  isIndeterminate={isPageIndeterminate}
+                  onCheckedChange={() => {
+                    if (isPageSelected) {
+                      setSelectedMemberIds((prev) =>
+                        prev.filter(
+                          (memberId) => !filteredMembersPage.find((m) => m.id === memberId)
+                        )
+                      );
+                    } else {
+                      setSelectedMemberIds((prev) => [
+                        ...new Set([...prev, ...filteredMembersPage.map((member) => member.id)])
+                      ]);
+                    }
+                  }}
+                />
+              </Th>
               <Th className="w-1/3">
                 <div className="flex items-center">
                   Name
@@ -423,227 +467,241 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLinks }: Pro
           <TBody>
             {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
             {!isLoading &&
-              filteredUsers
-                .slice(offset, perPage * page)
-                .map(
-                  ({
-                    user: u,
-                    inviteEmail,
-                    role,
-                    roleId,
-                    id: orgMembershipId,
-                    status,
-                    isActive
-                  }) => {
-                    const name =
-                      u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : null;
-                    const email = u?.email || inviteEmail;
-                    const username = u?.username ?? inviteEmail ?? "-";
-                    return (
-                      <Tr
-                        key={`org-membership-${orgMembershipId}`}
-                        className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                        onClick={() =>
-                          navigate({
-                            to: "/organization/members/$membershipId" as const,
-                            params: {
-                              membershipId: orgMembershipId
-                            }
-                          })
-                        }
-                      >
-                        <Td className={isActive ? "" : "text-mineshaft-400"}>
-                          {name ?? <span className="text-mineshaft-400">Not Set</span>}
+              filteredMembersPage.map(
+                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status, isActive }) => {
+                  const name =
+                    u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : null;
+                  const email = u?.email || inviteEmail;
+                  const username = u?.username ?? inviteEmail ?? "-";
+                  const isSelected = selectedMemberIds.includes(orgMembershipId);
+                  return (
+                    <Tr
+                      key={`org-membership-${orgMembershipId}`}
+                      className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                      onClick={() =>
+                        navigate({
+                          to: "/organization/members/$membershipId" as const,
+                          params: {
+                            membershipId: orgMembershipId
+                          }
+                        })
+                      }
+                    >
+                      <Td>
+                        <Checkbox
+                          id={`select-member-${orgMembershipId}`}
+                          isChecked={isSelected}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMemberIds((prev) =>
+                              isSelected
+                                ? prev.filter((id) => id !== orgMembershipId)
+                                : [...prev, orgMembershipId]
+                            );
+                          }}
+                        />
+                      </Td>
+                      <Td className={twMerge("max-w-0", isActive ? "" : "text-mineshaft-400")}>
+                        <div className="flex items-center">
+                          <p className="truncate">
+                            {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                          </p>
                           {u.superAdmin && (
-                            <Badge variant="primary" className="ml-2">
-                              Server Admin
+                            <Badge variant="primary" className="ml-2 w-min whitespace-nowrap">
+                              <span className="hidden xl:inline">Server Admin</span>
+                              <Tooltip content="Server Admin">
+                                <FontAwesomeIcon className="xl:hidden" icon={faUserShield} />
+                              </Tooltip>
                             </Badge>
                           )}
-                        </Td>
-                        <Td className={isActive ? "" : "text-mineshaft-400"}>{username}</Td>
-                        <Td>
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            a={OrgPermissionSubjects.Member}
-                          >
-                            {(isAllowed) => (
-                              <Select
-                                value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
-                                isDisabled={userId === u?.id || !isAllowed}
-                                className="h-8 w-48 bg-mineshaft-700"
-                                position="popper"
-                                dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
-                                onValueChange={(selectedRole) =>
-                                  onRoleChange(orgMembershipId, selectedRole)
-                                }
+                        </div>
+                      </Td>
+                      <Td className={twMerge("max-w-0", isActive ? "" : "text-mineshaft-400")}>
+                        <p className="truncate">{username}</p>
+                      </Td>
+                      <Td>
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Edit}
+                          a={OrgPermissionSubjects.Member}
+                        >
+                          {(isAllowed) => (
+                            <Select
+                              value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
+                              isDisabled={userId === u?.id || !isAllowed}
+                              className="h-8 w-48 bg-mineshaft-700"
+                              position="popper"
+                              dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                              onValueChange={(selectedRole) =>
+                                onRoleChange(orgMembershipId, selectedRole)
+                              }
+                            >
+                              {(roles || [])
+                                .filter(({ slug }) =>
+                                  slug === "owner" ? isIamOwner || role === "owner" : true
+                                )
+                                .map(({ slug, name: roleName }) => (
+                                  <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                    {roleName}
+                                  </SelectItem>
+                                ))}
+                            </Select>
+                          )}
+                        </OrgPermissionCan>
+                      </Td>
+                      <Td>
+                        <div className="flex items-center justify-end gap-6">
+                          {isActive &&
+                            (status === "invited" || status === "verified") &&
+                            email &&
+                            serverDetails?.emailConfigured && (
+                              <OrgPermissionCan
+                                I={OrgPermissionActions.Edit}
+                                a={OrgPermissionSubjects.Member}
                               >
-                                {(roles || [])
-                                  .filter(({ slug }) =>
-                                    slug === "owner" ? isIamOwner || role === "owner" : true
-                                  )
-                                  .map(({ slug, name: roleName }) => (
-                                    <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                      {roleName}
-                                    </SelectItem>
-                                  ))}
-                              </Select>
+                                {(isAllowed) => (
+                                  <Button
+                                    isDisabled={!isAllowed || isResendInvitePending}
+                                    className="h-8 border-mineshaft-600 bg-mineshaft-700 font-normal"
+                                    colorSchema="primary"
+                                    variant="outline_bg"
+                                    isLoading={
+                                      isResendInvitePending && resendInviteId === orgMembershipId
+                                    }
+                                    onClick={(e) => {
+                                      onResendInvite(orgMembershipId);
+                                      e.stopPropagation();
+                                    }}
+                                  >
+                                    Resend Invite
+                                  </Button>
+                                )}
+                              </OrgPermissionCan>
                             )}
-                          </OrgPermissionCan>
-                        </Td>
-                        <Td>
-                          <div className="flex items-center justify-end gap-6">
-                            {isActive &&
-                              (status === "invited" || status === "verified") &&
-                              email &&
-                              serverDetails?.emailConfigured && (
-                                <OrgPermissionCan
-                                  I={OrgPermissionActions.Edit}
-                                  a={OrgPermissionSubjects.Member}
-                                >
-                                  {(isAllowed) => (
-                                    <Button
-                                      isDisabled={!isAllowed || isResendInvitePending}
-                                      className="h-8 border-mineshaft-600 bg-mineshaft-700 font-normal"
-                                      colorSchema="primary"
-                                      variant="outline_bg"
-                                      isLoading={
-                                        isResendInvitePending && resendInviteId === orgMembershipId
+                          <DropdownMenu>
+                            <DropdownMenuTrigger disabled={userId === u?.id} asChild>
+                              <IconButton
+                                ariaLabel="Options"
+                                colorSchema="secondary"
+                                className={twMerge("w-6", userId === u?.id && "opacity-50")}
+                                variant="plain"
+                                isDisabled={userId === u?.id}
+                              >
+                                <FontAwesomeIcon icon={faEllipsisV} />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              <OrgPermissionCan
+                                I={OrgPermissionActions.Edit}
+                                a={OrgPermissionSubjects.Member}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate({
+                                        to: "/organization/members/$membershipId" as const,
+                                        params: {
+                                          membershipId: orgMembershipId
+                                        }
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                    icon={<FontAwesomeIcon icon={faEdit} />}
+                                  >
+                                    Edit User
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                              <OrgPermissionCan
+                                I={OrgPermissionActions.Delete}
+                                a={OrgPermissionSubjects.Member}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    icon={<FontAwesomeIcon icon={faUserSlash} />}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+
+                                      if (currentOrg?.scimEnabled) {
+                                        createNotification({
+                                          text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                                          type: "error"
+                                        });
+                                        return;
                                       }
-                                      onClick={(e) => {
-                                        onResendInvite(orgMembershipId);
-                                        e.stopPropagation();
-                                      }}
-                                    >
-                                      Resend Invite
-                                    </Button>
-                                  )}
-                                </OrgPermissionCan>
-                              )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <IconButton
-                                  ariaLabel="Options"
-                                  colorSchema="secondary"
-                                  className={twMerge("w-6", userId === u?.id && "opacity-50")}
-                                  variant="plain"
-                                  isDisabled={userId === u?.id}
-                                >
-                                  <FontAwesomeIcon icon={faEllipsisV} />
-                                </IconButton>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent sideOffset={2} align="end">
-                                <OrgPermissionCan
-                                  I={OrgPermissionActions.Edit}
-                                  a={OrgPermissionSubjects.Member}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate({
-                                          to: "/organization/members/$membershipId" as const,
-                                          params: {
-                                            membershipId: orgMembershipId
-                                          }
+
+                                      if (!isActive) {
+                                        // activate user
+                                        await updateOrgMembership({
+                                          organizationId: orgId,
+                                          membershipId: orgMembershipId,
+                                          isActive: true
                                         });
-                                      }}
-                                      isDisabled={!isAllowed}
-                                      icon={<FontAwesomeIcon icon={faEdit} />}
-                                    >
-                                      Edit User
-                                    </DropdownMenuItem>
-                                  )}
-                                </OrgPermissionCan>
-                                <OrgPermissionCan
-                                  I={OrgPermissionActions.Delete}
-                                  a={OrgPermissionSubjects.Member}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      icon={<FontAwesomeIcon icon={faUserSlash} />}
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
 
-                                        if (currentOrg?.scimEnabled) {
-                                          createNotification({
-                                            text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
-                                            type: "error"
-                                          });
-                                          return;
-                                        }
+                                        return;
+                                      }
 
-                                        if (!isActive) {
-                                          // activate user
-                                          await updateOrgMembership({
-                                            organizationId: orgId,
-                                            membershipId: orgMembershipId,
-                                            isActive: true
-                                          });
+                                      // deactivate user
+                                      handlePopUpOpen("deactivateMember", {
+                                        orgMembershipId,
+                                        username
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    {`${isActive ? "Deactivate" : "Activate"} User`}
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                              <OrgPermissionCan
+                                I={OrgPermissionActions.Delete}
+                                a={OrgPermissionSubjects.Member}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
 
-                                          return;
-                                        }
-
-                                        // deactivate user
-                                        handlePopUpOpen("deactivateMember", {
-                                          orgMembershipId,
-                                          username
+                                      if (currentOrg?.scimEnabled && isActive) {
+                                        createNotification({
+                                          text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
+                                          type: "error"
                                         });
-                                      }}
-                                      isDisabled={!isAllowed}
-                                    >
-                                      {`${isActive ? "Deactivate" : "Activate"} User`}
-                                    </DropdownMenuItem>
-                                  )}
-                                </OrgPermissionCan>
-                                <OrgPermissionCan
-                                  I={OrgPermissionActions.Delete}
-                                  a={OrgPermissionSubjects.Member}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
+                                        return;
+                                      }
 
-                                        if (currentOrg?.scimEnabled && isActive) {
-                                          createNotification({
-                                            text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
-                                            type: "error"
-                                          });
-                                          return;
-                                        }
-
-                                        handlePopUpOpen("removeMember", {
-                                          orgMembershipId,
-                                          username
-                                        });
-                                      }}
-                                      isDisabled={!isAllowed}
-                                      icon={<FontAwesomeIcon icon={faUserXmark} />}
-                                    >
-                                      Remove User
-                                    </DropdownMenuItem>
-                                  )}
-                                </OrgPermissionCan>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </Td>
-                      </Tr>
-                    );
-                  }
-                )}
+                                      handlePopUpOpen("removeMember", {
+                                        orgMembershipId,
+                                        username
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                    icon={<FontAwesomeIcon icon={faUserXmark} />}
+                                  >
+                                    Remove User
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </Td>
+                    </Tr>
+                  );
+                }
+              )}
           </TBody>
         </Table>
-        {Boolean(filteredUsers.length) && (
+        {Boolean(filteredMembers.length) && (
           <Pagination
-            count={filteredUsers.length}
+            count={filteredMembers.length}
             page={page}
             perPage={perPage}
             onChangePage={setPage}
             onChangePerPage={handlePerPageChange}
           />
         )}
-        {!isMembersLoading && !filteredUsers?.length && (
+        {!isMembersLoading && !filteredMembers?.length && (
           <EmptyState
             title={
               members.length
