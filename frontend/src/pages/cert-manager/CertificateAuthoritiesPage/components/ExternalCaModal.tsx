@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -16,10 +17,15 @@ import {
   Switch
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   TAvailableAppConnection,
   useListAvailableAppConnections
 } from "@app/hooks/api/appConnections";
+import {
+  TCloudflareZone,
+  useCloudflareConnectionListZones
+} from "@app/hooks/api/appConnections/cloudflare";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AcmeDnsProvider,
@@ -29,18 +35,12 @@ import {
   useGetCa,
   useUpdateCa
 } from "@app/hooks/api/ca";
-import { UsePopUpState } from "@app/hooks/usePopUp";
-import { slugSchema } from "@app/lib/schemas";
 import {
   ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
   ACME_DNS_PROVIDER_NAME_MAP
 } from "@app/hooks/api/ca/constants";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
-import {
-  TCloudflareZone,
-  useCloudflareConnectionListZones
-} from "@app/hooks/api/appConnections/cloudflare";
-import { SingleValue } from "react-select";
+import { UsePopUpState } from "@app/hooks/usePopUp";
+import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
   .object({
@@ -120,12 +120,12 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =
     useListAvailableAppConnections(AppConnection.AWS, {
-      enabled: dnsProvider === AcmeDnsProvider.ROUTE53
+      enabled: caType === CaType.ACME
     });
 
   const { data: availableCloudflareConnections, isPending: isCloudflarePending } =
     useListAvailableAppConnections(AppConnection.Cloudflare, {
-      enabled: dnsProvider === AcmeDnsProvider.Cloudflare
+      enabled: caType === CaType.ACME
     });
 
   const availableConnections: TAvailableAppConnection[] = [
@@ -135,11 +135,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const isPending = isRoute53Pending || isCloudflarePending;
 
-  const connection = watch("configuration.dnsAppConnection");
+  const dnsAppConnection = watch("configuration.dnsAppConnection");
 
   const { data: cloudflareZones = [], isPending: isZonesPending } =
-    useCloudflareConnectionListZones(connection.id, {
-      enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!connection.id
+    useCloudflareConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!dnsAppConnection.id
     });
 
   useEffect(() => {
@@ -328,7 +328,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 control={control}
                 name="configuration.dnsAppConnection"
               />
-              {dnsProvider === AcmeDnsProvider.ROUTE53 ? (
+              {dnsProvider === AcmeDnsProvider.ROUTE53 && (
                 <Controller
                   control={control}
                   defaultValue=""
@@ -344,7 +344,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </FormControl>
                   )}
                 />
-              ) : dnsProvider === AcmeDnsProvider.Cloudflare ? (
+              )}
+              {dnsProvider === AcmeDnsProvider.Cloudflare && (
                 <Controller
                   name="configuration.dnsProviderConfig.hostedZoneId"
                   control={control}
@@ -355,8 +356,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       label="Zone"
                     >
                       <FilterableSelect
-                        isLoading={isZonesPending && !!connection.id}
-                        isDisabled={!connection.id}
+                        isLoading={isZonesPending && !!dnsAppConnection.id}
+                        isDisabled={!dnsAppConnection.id}
                         value={cloudflareZones.find((zone) => zone.id === value)}
                         onChange={(option) => {
                           onChange((option as SingleValue<TCloudflareZone>)?.id ?? null);
@@ -369,8 +370,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </FormControl>
                   )}
                 />
-              ) : (
-                <></>
               )}
               <Controller
                 control={control}

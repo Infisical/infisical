@@ -143,7 +143,7 @@ In the following steps, we explore how to set up ACME Certificate Authority inte
                     - **Type**: Select "ACME" as the External CA type.
                     - **Name**: Enter a name for the ACME CA (e.g., "lets-encrypt-production").
                     - **DNS App Connection**: Select from available DNS app connections or configure a new one. This connection provides Infisical with the credentials needed to create and remove DNS records for ACME validation.
-                    - **Zone ID**: Enter your Route53 hosted zone ID (e.g., Z04044I124N1GOOMCOYX1) or select your Cloudflare Zone for the domain(s) you'll be requesting certificates for.
+                    - **Zone ID**: Enter the Zone ID for the domain(s) you'll be requesting certificates for.
                     - **Directory URL**: Enter the ACME v2 directory URL for your chosen CA provider (e.g., `https://acme-v02.api.letsencrypt.org/directory` for Let's Encrypt).
                     - **Account Email**: Email address to associate with your ACME account. This email will receive important notifications about your certificates.
                     - **Enable Direct Issuance**: Toggle on to allow direct certificate issuance without requiring subscribers.
