@@ -22,6 +22,7 @@ export type TAuthMode =
       orgId: string;
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
+      token: AuthModeJwtTokenPayload;
     }
   | {
       authMode: AuthMode.API_KEY;
@@ -30,6 +31,7 @@ export type TAuthMode =
       userId: string;
       user: TUsers;
       orgId: string;
+      token: string;
     }
   | {
       authMode: AuthMode.SERVICE_TOKEN;
@@ -38,6 +40,7 @@ export type TAuthMode =
       serviceTokenId: string;
       orgId: string;
       authMethod: null;
+      token: string;
     }
   | {
       authMode: AuthMode.IDENTITY_ACCESS_TOKEN;
@@ -47,6 +50,7 @@ export type TAuthMode =
       orgId: string;
       authMethod: null;
       isInstanceAdmin?: boolean;
+      token: TIdentityAccessTokenJwtPayload;
     }
   | {
       authMode: AuthMode.SCIM_TOKEN;
@@ -56,7 +60,7 @@ export type TAuthMode =
       authMethod: null;
     };
 
-const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
+export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const apiKey = req.headers?.["x-api-key"];
   if (apiKey) {
     return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;
@@ -133,7 +137,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           actor,
           orgId: orgId as string,
           authMethod: token.authMethod,
-          isMfaVerified: token.isMfaVerified
+          isMfaVerified: token.isMfaVerified,
+          token
         };
         break;
       }
@@ -148,7 +153,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           identityId: identity.identityId,
           identityName: identity.name,
           authMethod: null,
-          isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId)
+          isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId),
+          token
         };
         if (token?.identityAuth?.oidc) {
           requestContext.set("identityAuthInfo", {
@@ -179,7 +185,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           serviceToken,
           serviceTokenId: serviceToken.id,
           actor,
-          authMethod: null
+          authMethod: null,
+          token
         };
         break;
       }
@@ -191,7 +198,8 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           actor,
           user,
           orgId: "API_KEY", // We set the orgId to an arbitrary value, since we can't link an API key to a specific org. We have to deprecate API keys soon!
-          authMethod: null
+          authMethod: null,
+          token: token as string
         };
         break;
       }

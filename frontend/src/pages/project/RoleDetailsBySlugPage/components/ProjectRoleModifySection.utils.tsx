@@ -54,7 +54,8 @@ const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.ReadValue]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.Create]: z.boolean().optional()
+  [ProjectPermissionSecretActions.Create]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional()
 });
 
 const ApprovalPolicyActionSchema = z.object({
@@ -588,6 +589,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canEdit = action.includes(ProjectPermissionSecretActions.Edit);
           const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
           const canCreate = action.includes(ProjectPermissionSecretActions.Create);
+          const canSubscribe = action.includes(ProjectPermissionSecretActions.Subscribe);
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -597,6 +599,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             create: canCreate,
             edit: canEdit,
             delete: canDelete,
+            subscribe: canSubscribe,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1111,7 +1114,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Read Value", value: ProjectPermissionSecretActions.ReadValue },
       { label: "Modify", value: ProjectPermissionSecretActions.Edit },
       { label: "Remove", value: ProjectPermissionSecretActions.Delete },
-      { label: "Create", value: ProjectPermissionSecretActions.Create }
+      { label: "Create", value: ProjectPermissionSecretActions.Create },
+      { label: "Subscribe", value: ProjectPermissionSecretActions.Subscribe }
     ]
   },
   [ProjectPermissionSub.SecretFolders]: {

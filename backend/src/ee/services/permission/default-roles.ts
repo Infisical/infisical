@@ -161,7 +161,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Create,
       ProjectPermissionSecretActions.Edit,
-      ProjectPermissionSecretActions.Delete
+      ProjectPermissionSecretActions.Delete,
+      ProjectPermissionSecretActions.Subscribe
     ],
     ProjectPermissionSub.Secrets
   );
@@ -265,7 +266,8 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionSecretActions.ReadValue,
       ProjectPermissionSecretActions.Edit,
       ProjectPermissionSecretActions.Create,
-      ProjectPermissionSecretActions.Delete
+      ProjectPermissionSecretActions.Delete,
+      ProjectPermissionSecretActions.Subscribe
     ],
     ProjectPermissionSub.Secrets
   );

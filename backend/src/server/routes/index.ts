@@ -31,6 +31,8 @@ import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/pro
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
+import { eventBusFactory } from "@app/ee/services/event/event-bus-service";
+import { sseServiceFactory } from "@app/ee/services/event/event-sse-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -495,6 +497,9 @@ export const registerRoutes = async (
   const projectMicrosoftTeamsConfigDAL = projectMicrosoftTeamsConfigDALFactory(db);
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
 
+  const eventBusService = eventBusFactory(server.redis);
+  const sseService = sseServiceFactory(eventBusService, server.redis);
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     orgRoleDAL,
@@ -552,7 +557,8 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL
+    auditLogStreamDAL,
+    eventBusService
   });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
@@ -1968,6 +1974,7 @@ export const registerRoutes = async (
   await kmsService.startService();
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();
+  await eventBusService.init();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -2074,7 +2081,9 @@ export const registerRoutes = async (
     githubOrgSync: githubOrgSyncConfigService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
-    reminder: reminderService
+    reminder: reminderService,
+    bus: eventBusService,
+    sse: sseService
   });
 
   const cronJobs: CronJob[] = [];
@@ -2190,5 +2199,7 @@ export const registerRoutes = async (
   server.addHook("onClose", async () => {
     cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
+    await eventBusService.close();
+    sseService.close();
   });
 };
