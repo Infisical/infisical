@@ -57,8 +57,7 @@ export const NetlifySyncFns = {
 
         await NetlifyPublicAPI.upsertVariable(secretSync.connection, params, {
           key,
-          is_secret: true,
-          scopes: ["builds", "functions", "runtime"],
+          is_secret: false,
           values: [
             {
               value: entry.value,
