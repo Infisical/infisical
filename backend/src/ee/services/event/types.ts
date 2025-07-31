@@ -8,9 +8,9 @@ export enum TopicName {
 }
 
 export enum BusEventName {
-  CreateSecret = "infisical:secret:create",
-  UpdateSecret = "infisical:secret:update",
-  DeleteSecret = "infisical:secret:delete"
+  CreateSecret = "secret:create",
+  UpdateSecret = "secret:update",
+  DeleteSecret = "secret:delete"
 }
 
 type PublisableEventTypes =
