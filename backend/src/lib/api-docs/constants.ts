@@ -2302,6 +2302,9 @@ export const AppConnections = {
     DIGITAL_OCEAN_APP_PLATFORM: {
       apiToken: "The API token used to authenticate with Digital Ocean App Platform."
     },
+    NETLIFY: {
+      accessToken: "The Access token used to authenticate with Netlify."
+    },
     OKTA: {
       instanceUrl: "The URL used to access your Okta organization.",
       apiToken: "The API token used to authenticate with Okta."
@@ -2533,6 +2536,13 @@ export const SecretSyncs = {
       workspaceSlug: "The Bitbucket Workspace slug to sync secrets to.",
       repositorySlug: "The Bitbucket Repository slug to sync secrets to.",
       environmentId: "The Bitbucket Deployment Environment uuid to sync secrets to."
+    },
+    NETLIFY: {
+      accountId: "The ID of the Netlify account to sync secrets to.",
+      accountName: "The name of the Netlify account to sync secrets to.",
+      siteName: "The name of the Netlify site to sync secrets to.",
+      siteId: "The ID of the Netlify site to sync secrets to.",
+      context: "The Netlify context to sync secrets to."
     }
   }
 };

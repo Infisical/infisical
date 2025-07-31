@@ -97,6 +97,7 @@ import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnection
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
+import { getNetlifyConnectionListItem, validateNetlifyConnectionCredentials } from "./netlify";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
@@ -163,6 +164,7 @@ export const listAppConnectionOptions = () => {
     getChecklyConnectionListItem(),
     getSupabaseConnectionListItem(),
     getDigitalOceanConnectionListItem(),
+    getNetlifyConnectionListItem(),
     getOktaConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -251,7 +253,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService);
@@ -381,6 +384,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Checkly]: platformManagedCredentialsNotSupported,
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
   [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
+  [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported
 };
 

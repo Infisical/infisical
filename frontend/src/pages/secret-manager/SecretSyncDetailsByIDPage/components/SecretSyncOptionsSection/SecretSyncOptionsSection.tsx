@@ -69,6 +69,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Supabase:
     case SecretSync.Checkly:
     case SecretSync.DigitalOceanAppPlatform:
+    case SecretSync.Netlify:
     case SecretSync.Bitbucket:
       AdditionalSyncOptionsComponent = null;
       break;

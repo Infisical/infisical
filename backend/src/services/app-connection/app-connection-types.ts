@@ -150,6 +150,12 @@ import {
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
+  TNetlifyConnection,
+  TNetlifyConnectionConfig,
+  TNetlifyConnectionInput,
+  TValidateNetlifyConnectionCredentialsSchema
+} from "./netlify";
+import {
   TOktaConnection,
   TOktaConnectionConfig,
   TOktaConnectionInput,
@@ -245,6 +251,7 @@ export type TAppConnection = { id: string } & (
   | TChecklyConnection
   | TSupabaseConnection
   | TDigitalOceanConnection
+  | TNetlifyConnection
   | TOktaConnection
 );
 
@@ -288,6 +295,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChecklyConnectionInput
   | TSupabaseConnectionInput
   | TDigitalOceanConnectionInput
+  | TNetlifyConnectionInput
   | TOktaConnectionInput
 );
 
@@ -339,6 +347,7 @@ export type TAppConnectionConfig =
   | TChecklyConnectionConfig
   | TSupabaseConnectionConfig
   | TDigitalOceanConnectionConfig
+  | TNetlifyConnectionConfig
   | TOktaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -377,6 +386,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateChecklyConnectionCredentialsSchema
   | TValidateSupabaseConnectionCredentialsSchema
   | TValidateDigitalOceanCredentialsSchema
+  | TValidateNetlifyConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

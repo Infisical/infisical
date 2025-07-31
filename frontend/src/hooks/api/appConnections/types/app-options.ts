@@ -156,6 +156,10 @@ export type TDigitalOceanConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DigitalOcean;
 };
 
+export type TNetlifyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Netlify;
+};
+
 export type TOktaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Okta;
 };
@@ -193,6 +197,7 @@ export type TAppConnectionOption =
   | TRailwayConnectionOption
   | TChecklyConnectionOption
   | TDigitalOceanConnectionOption
+  | TNetlifyConnectionOption
   | TOktaConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -231,5 +236,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Checkly]: TChecklyConnectionOption;
   [AppConnection.Supabase]: TSupabaseConnectionOption;
   [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
+  [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
 };

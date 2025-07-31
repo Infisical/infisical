@@ -45,6 +45,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
@@ -105,6 +106,10 @@ export const APP_CONNECTION_MAP: Record<
     name: "Digital Ocean",
     image: "Digital Ocean.png"
   },
+  [AppConnection.Netlify]: {
+    name: "Netlify",
+    image: "Netlify.png"
+  },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
 };
 
@@ -152,6 +157,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureDevOpsConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
     case FlyioConnectionMethod.AccessToken:
+    case NetlifyConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
