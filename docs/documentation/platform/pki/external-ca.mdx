@@ -13,11 +13,11 @@ In addition to creating a Private CA hierarchy, Infisical allows you to integrat
 ```mermaid
 graph TD
     B[Infisical] -->|Manages Certificates| D[Subscribers]
-    
+
     A1[Public CAs<br>Let's Encrypt, ZeroSSL] -->|ACME Protocol| B
     A2[Enterprise CAs<br>Vault PKI, Step CA] -->|ACME Protocol| B
     A3[Cloud CAs<br>ACME-compatible services] -->|ACME Protocol| B
-    
+
     A4[Future: Enterprise CAs] -.->|EST/SCEP Protocols| B
     A5[Future: Cloud CAs] -.->|REST APIs| B
 ```
@@ -54,7 +54,7 @@ ACME (Automatic Certificate Management Environment) is a widely adopted protocol
 
 **Public Certificate Authorities:**
 - Let's Encrypt - Free, automated SSL/TLS certificates
-- ZeroSSL - Free and premium SSL certificates  
+- ZeroSSL - Free and premium SSL certificates
 - Buypass - Norwegian CA with free ACME certificates
 
 **Enterprise Certificate Authorities:**
@@ -73,7 +73,7 @@ External CA integration is ideal for various scenarios:
 ### Public-Facing Services
 Use publicly trusted CAs for websites and services that need browser compatibility:
 - Web applications and APIs
-- Load balancers and CDNs  
+- Load balancers and CDNs
 - Public-facing microservices
 
 ### Compliance Requirements
@@ -137,18 +137,18 @@ Get started with External CA integration:
 <AccordionGroup>
   <Accordion title="Which External CAs does Infisical currently support?">
     Currently, Infisical supports any Certificate Authority that implements the ACME protocol, including:
-    
+
     - **Public CAs**: Let's Encrypt, ZeroSSL, Buypass
-    - **Enterprise CAs**: HashiCorp Vault PKI, Step CA  
+    - **Enterprise CAs**: HashiCorp Vault PKI, Step CA
     - **Cloud CAs**: ACME-compatible managed services
-    
-    Integration uses DNS-01 validation through Route53. Learn more about [supported DNS validation methods](/documentation/platform/pki/acme-ca#what-dns-validation-methods-are-supported).
-    
+
+    Integration uses DNS-01 validation through Route53 or Cloudflare. Learn more about [supported DNS validation methods](/documentation/platform/pki/acme-ca#what-dns-validation-methods-are-supported).
+
     Support for additional integration protocols (EST, SCEP, direct APIs) is planned for future releases.
   </Accordion>
   <Accordion title="Can I use both Private CAs and External CAs in the same project?">
     Yes. You can have both Private CAs (root and intermediate) and External CAs in the same project, allowing you flexibility in how you issue certificates for different use cases. This hybrid approach enables you to:
-    
+
     - Use Private CAs for internal services and applications
     - Use External CAs for public-facing services
     - Apply consistent management practices across all certificate types
@@ -156,37 +156,37 @@ Get started with External CA integration:
   </Accordion>
   <Accordion title="What types of certificates can I issue through External CAs?">
     The types of certificates you can issue depend on the External CA provider and type:
-    
+
     - **Public CAs**: Typically support Domain Validation (DV) certificates, with some offering Organization Validation (OV)
     - **Enterprise CAs**: Support internal certificates, device certificates, and custom certificate types
     - **Cloud CAs**: Support various certificate types depending on the service
-    
+
     Certificate capabilities vary by provider and integration method.
   </Accordion>
   <Accordion title="How does certificate renewal work with External CAs?">
     Certificate reissuance is handled automatically by Infisical based on the CA type:
-    
+
     - **Public CAs**: Automatic reissuance using ACME protocol with the same certificate extensions before expiration
     - **Other CA types**: Certificate management methods depend on the specific integration (when available)
-    
+
     All certificate lifecycle events are tracked and managed through Infisical's unified interface, ensuring continuous certificate validity.
   </Accordion>
   <Accordion title="What authentication methods are supported for External CAs?">
     Authentication methods vary by CA type:
-    
+
     - **Public CAs**: ACME account registration with email and account keys
     - **Enterprise CAs**: Client certificates, username/password, or domain authentication (when available)
     - **Cloud CAs**: API keys, OAuth tokens, or service account authentication (when available)
-    
+
     Infisical securely stores and manages all authentication credentials.
   </Accordion>
   <Accordion title="Can I enforce policies on certificates from External CAs?">
     Yes, Infisical provides policy enforcement capabilities:
-    
+
     - Certificate template constraints
     - Monitoring and alerting policies
     - Access controls for certificate operations
-    
+
     These policies ensure consistent governance across both internal and external certificate sources.
   </Accordion>
 </AccordionGroup>
