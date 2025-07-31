@@ -171,7 +171,11 @@ export const OrgMembersSection = () => {
             I={OrgPermissionActions.Delete}
             a={OrgPermissionSubjects.Member}
             renderTooltip
-            allowedLabel="Delete"
+            allowedLabel={
+              currentOrg?.scimEnabled
+                ? "You cannot manage users from Infisical when org-level auth is enforced for your organization"
+                : undefined
+            }
           >
             {(isAllowed) => (
               <Button
@@ -188,7 +192,7 @@ export const OrgMembersSection = () => {
 
                   handlePopUpOpen("removeMembers", { selectedOrgMemberships });
                 }}
-                isDisabled={!isAllowed}
+                isDisabled={!isAllowed || currentOrg?.scimEnabled}
                 size="xs"
               >
                 Delete
