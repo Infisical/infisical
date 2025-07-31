@@ -56,6 +56,7 @@ export const toPublishableEvent = (event: Event) => {
         eventType: e.type,
         payload: e.metadata.secrets.map((s) => ({
           environment: e.metadata.environment,
+          secretPath: e.metadata.secretPath,
           ...s
         }))
       }
