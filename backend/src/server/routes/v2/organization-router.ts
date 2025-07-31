@@ -265,6 +265,48 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "DELETE",
+    url: "/:organizationId/memberships",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Organizations],
+      description: "Bulk delete organization user memberships",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        organizationId: z.string().trim().describe(ORGANIZATIONS.BULK_DELETE_USER_MEMBERSHIPS.organizationId)
+      }),
+      body: z.object({
+        membershipIds: z.string().trim().array().describe(ORGANIZATIONS.BULK_DELETE_USER_MEMBERSHIPS.membershipIds)
+      }),
+      response: {
+        200: z.object({
+          memberships: OrgMembershipsSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      if (req.auth.actor !== ActorType.USER) return;
+
+      const memberships = await server.services.org.bulkDeleteOrgMemberships({
+        userId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        orgId: req.params.organizationId,
+        membershipIds: req.body.membershipIds,
+        actorOrgId: req.permission.orgId
+      });
+      return { memberships };
+    }
+  });
+
+  server.route({
     // TODO: re-think endpoint structure in future so users only need to pass in membershipId bc organizationId is redundant
     method: "GET",
     url: "/:organizationId/memberships/:membershipId/project-memberships",
