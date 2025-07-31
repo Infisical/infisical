@@ -7,7 +7,7 @@ import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { getServerSentEventsHeaders } from "@app/ee/services/event/event-sse-stream";
 import { EventRegisterSchema } from "@app/ee/services/event/types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { ForbiddenRequestError, RateLimitError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, RateLimitError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -28,7 +28,16 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       try {
-        const { sse, permission, identityAccessToken, authToken } = req.server.services;
+        const { sse, permission, identityAccessToken, authToken, license } = req.server.services;
+
+        const plan = await license.getPlan(req.auth.orgId);
+
+        if (!plan.eventSubscriptions) {
+          throw new BadRequestError({
+            message:
+              "Failed to use event subscriptions due to plan restriction. Upgrade plan to access enterprise event subscriptions."
+          });
+        }
 
         const count = await sse.getActiveConnectionsCount(req.body.projectId, req.permission.id);
 
