@@ -99,7 +99,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      s;
+
       const zones = await server.services.appConnection.cloudflare.listZones(connectionId, req.permission);
       return zones;
     }
