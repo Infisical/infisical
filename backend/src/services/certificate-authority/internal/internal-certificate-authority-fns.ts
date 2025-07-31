@@ -160,16 +160,16 @@ export const InternalCertificateAuthorityFns = ({
           return { type: "email", value: altName };
         }
 
+        if (isFQDN(altName, { allow_wildcard: true, require_tld: false })) {
+          return { type: "dns", value: altName };
+        }
+
         if (z.string().url().safeParse(altName).success) {
           return { type: "url", value: altName };
         }
 
         if (z.string().ip().safeParse(altName).success) {
           return { type: "ip", value: altName };
-        }
-
-        if (isFQDN(altName, { allow_wildcard: true })) {
-          return { type: "dns", value: altName };
         }
 
         throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });
@@ -434,16 +434,16 @@ export const InternalCertificateAuthorityFns = ({
           return { type: "email", value: altName };
         }
 
+        if (isFQDN(altName, { allow_wildcard: true, require_tld: false })) {
+          return { type: "dns", value: altName };
+        }
+
         if (z.string().url().safeParse(altName).success) {
           return { type: "url", value: altName };
         }
 
         if (z.string().ip().safeParse(altName).success) {
           return { type: "ip", value: altName };
-        }
-
-        if (isFQDN(altName, { allow_wildcard: true })) {
-          return { type: "dns", value: altName };
         }
 
         throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });

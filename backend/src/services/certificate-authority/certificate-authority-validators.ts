@@ -16,7 +16,7 @@ export const validateAltNameField = z
   .refine(
     (name) => {
       return (
-        isFQDN(name, { allow_wildcard: true }) ||
+        isFQDN(name, { allow_wildcard: true, require_tld: false }) ||
         z.string().url().safeParse(name).success ||
         z.string().email().safeParse(name).success ||
         isValidIp(name)
@@ -45,7 +45,7 @@ export const validateAltNamesField = z
       // Split and validate each alt name
       return data.split(", ").every((name) => {
         return (
-          isFQDN(name, { allow_wildcard: true }) ||
+          isFQDN(name, { allow_wildcard: true, require_tld: false }) ||
           z.string().url().safeParse(name).success ||
           z.string().email().safeParse(name).success ||
           isValidIp(name)
