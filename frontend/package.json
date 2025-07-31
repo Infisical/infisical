@@ -59,7 +59,7 @@
     "@ucast/mongo2js": "^1.3.4",
     "@xyflow/react": "^12.4.4",
     "argon2-browser": "^1.18.0",
-    "axios": "^1.7.9",
+    "axios": "^1.11.0",
     "classnames": "^2.5.1",
     "cva": "npm:class-variance-authority@^0.7.1",
     "date-fns": "^4.1.0",

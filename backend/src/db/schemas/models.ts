@@ -100,6 +100,7 @@ export enum TableName {
   AccessApprovalPolicyBypasser = "access_approval_policies_bypassers",
   AccessApprovalRequest = "access_approval_requests",
   AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
+  AccessApprovalPolicyEnvironment = "access_approval_policies_environments",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",
   SecretApprovalPolicyBypasser = "secret_approval_policies_bypassers",
@@ -107,6 +108,7 @@ export enum TableName {
   SecretApprovalRequestReviewer = "secret_approval_requests_reviewers",
   SecretApprovalRequestSecret = "secret_approval_requests_secrets",
   SecretApprovalRequestSecretTag = "secret_approval_request_secret_tags",
+  SecretApprovalPolicyEnvironment = "secret_approval_policies_environments",
   SecretRotation = "secret_rotations",
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
@@ -160,7 +162,7 @@ export enum TableName {
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
-  SecretReminderRecipients = "secret_reminder_recipients",
+  SecretReminderRecipients = "secret_reminder_recipients", // TODO(Carlos): Remove this in the future after migrating to the new reminder recipients table
   GithubOrgSyncConfig = "github_org_sync_configs",
   FolderCommit = "folder_commits",
   FolderCommitChanges = "folder_commit_changes",
@@ -172,7 +174,10 @@ export enum TableName {
   SecretScanningResource = "secret_scanning_resources",
   SecretScanningScan = "secret_scanning_scans",
   SecretScanningFinding = "secret_scanning_findings",
-  SecretScanningConfig = "secret_scanning_configs"
+  SecretScanningConfig = "secret_scanning_configs",
+  // reminders
+  Reminder = "reminders",
+  ReminderRecipient = "reminders_recipients"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

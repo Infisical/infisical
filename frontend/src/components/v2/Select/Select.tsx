@@ -20,6 +20,7 @@ type Props = {
   isMulti?: boolean;
   iconClassName?: string;
   dropdownContainerStyle?: React.CSSProperties;
+  side?: SelectPrimitive.SelectContentProps["side"];
 };
 
 export type SelectProps = Omit<SelectPrimitive.SelectProps, "disabled"> & Props;
@@ -37,6 +38,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       containerClassName,
       iconClassName,
       dropdownContainerStyle,
+      side,
       ...props
     },
     ref
@@ -78,6 +80,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           </SelectPrimitive.Trigger>
           <SelectPrimitive.Portal>
             <SelectPrimitive.Content
+              side={side}
               className={twMerge(
                 "relative top-1 z-[100] max-w-sm overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
                 position === "popper" && "max-h-72",

@@ -164,7 +164,7 @@ export const validateSqlConnectionCredentials = async (
 ) => {
   try {
     await executeWithPotentialGateway(config, gatewayService, async (client) => {
-      await client.raw(`Select 1`);
+      await client.raw(config.app === AppConnection.OracleDB ? `SELECT 1 FROM DUAL` : `Select 1`);
     });
     return config.credentials;
   } catch (error) {

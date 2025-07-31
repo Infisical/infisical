@@ -4,6 +4,7 @@ import { SecretScanningConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BitbucketDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import { GitHubDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";
+import { GitLabDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/gitlab";
 import {
   SecretScanningFindingStatus,
   SecretScanningScanStatus
@@ -24,7 +25,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
   GitHubDataSourceListItemSchema,
-  BitbucketDataSourceListItemSchema
+  BitbucketDataSourceListItemSchema,
+  GitLabDataSourceListItemSchema
 ]);
 
 export const registerSecretScanningV2Router = async (server: FastifyZodProvider) => {

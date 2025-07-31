@@ -10,7 +10,7 @@
   "styling": {
     "codeblocks": "dark"
   },
-  "favicon": "/favicon.png",
+  "favicon": "/favicon.ico",
   "navigation": {
     "tabs": [
       {
@@ -199,6 +199,14 @@
                 ]
               },
               {
+                "group": "External Migrations",
+                "pages": [
+                  "documentation/platform/external-migrations/overview",
+                  "documentation/platform/external-migrations/envkey",
+                  "documentation/platform/external-migrations/vault"
+                ]
+              },
+              {
                 "group": "Admin Consoles",
                 "pages": [
                   "documentation/platform/admin-panel/overview",
@@ -212,7 +220,8 @@
                 "pages": [
                   "documentation/platform/secret-scanning/overview",
                   "documentation/platform/secret-scanning/bitbucket",
-                  "documentation/platform/secret-scanning/github"
+                  "documentation/platform/secret-scanning/github",
+                  "documentation/platform/secret-scanning/gitlab"
                 ]
               }
             ]
@@ -712,6 +721,10 @@
             "group": "Endpoints",
             "pages": [
               {
+                "group": "Admin",
+                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+              },
+              {
                 "group": "Identities",
                 "pages": [
                   "api-reference/endpoints/identities/create",
@@ -894,6 +907,7 @@
                   "api-reference/endpoints/organizations/memberships",
                   "api-reference/endpoints/organizations/update-membership",
                   "api-reference/endpoints/organizations/delete-membership",
+                  "api-reference/endpoints/organizations/bulk-delete-memberships",
                   "api-reference/endpoints/organizations/list-identity-memberships",
                   "api-reference/endpoints/organizations/workspaces"
                 ]
@@ -1193,6 +1207,21 @@
                           "api-reference/endpoints/secret-scanning/data-sources/github/scan",
                           "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
                         ]
+                      },
+                      {
+                        "group": "GitLab",
+                        "pages": [
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-id",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-name",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-resources",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-scans",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/create",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/update",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/delete",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan",
+                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan-resource"
+                        ]
                       }
                     ]
                   },
@@ -1387,7 +1416,7 @@
                       "api-reference/endpoints/app-connections/databricks/delete"
                     ]
                   },
-                   {
+                  {
                     "group": "Digital Ocean",
                     "pages": [
                       "api-reference/endpoints/app-connections/digital-ocean/list",

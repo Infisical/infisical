@@ -490,6 +490,11 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
+  TAccessApprovalPoliciesEnvironments,
+  TAccessApprovalPoliciesEnvironmentsInsert,
+  TAccessApprovalPoliciesEnvironmentsUpdate
+} from "@app/db/schemas/access-approval-policies-environments";
+import {
   TIdentityLdapAuths,
   TIdentityLdapAuthsInsert,
   TIdentityLdapAuthsUpdate
@@ -504,6 +509,17 @@ import {
   TProjectMicrosoftTeamsConfigsInsert,
   TProjectMicrosoftTeamsConfigsUpdate
 } from "@app/db/schemas/project-microsoft-teams-configs";
+import { TReminders, TRemindersInsert, TRemindersUpdate } from "@app/db/schemas/reminders";
+import {
+  TRemindersRecipients,
+  TRemindersRecipientsInsert,
+  TRemindersRecipientsUpdate
+} from "@app/db/schemas/reminders-recipients";
+import {
+  TSecretApprovalPoliciesEnvironments,
+  TSecretApprovalPoliciesEnvironmentsInsert,
+  TSecretApprovalPoliciesEnvironmentsUpdate
+} from "@app/db/schemas/secret-approval-policies-environments";
 import {
   TSecretReminderRecipients,
   TSecretReminderRecipientsInsert,
@@ -881,6 +897,12 @@ declare module "knex/types/tables" {
       TAccessApprovalPoliciesBypassersUpdate
     >;
 
+    [TableName.AccessApprovalPolicyEnvironment]: KnexOriginal.CompositeTableType<
+      TAccessApprovalPoliciesEnvironments,
+      TAccessApprovalPoliciesEnvironmentsInsert,
+      TAccessApprovalPoliciesEnvironmentsUpdate
+    >;
+
     [TableName.AccessApprovalRequest]: KnexOriginal.CompositeTableType<
       TAccessApprovalRequests,
       TAccessApprovalRequestsInsert,
@@ -928,6 +950,11 @@ declare module "knex/types/tables" {
       TSecretApprovalRequestSecretTags,
       TSecretApprovalRequestSecretTagsInsert,
       TSecretApprovalRequestSecretTagsUpdate
+    >;
+    [TableName.SecretApprovalPolicyEnvironment]: KnexOriginal.CompositeTableType<
+      TSecretApprovalPoliciesEnvironments,
+      TSecretApprovalPoliciesEnvironmentsInsert,
+      TSecretApprovalPoliciesEnvironmentsUpdate
     >;
     [TableName.SecretRotation]: KnexOriginal.CompositeTableType<
       TSecretRotations,
@@ -1210,6 +1237,12 @@ declare module "knex/types/tables" {
       TSecretScanningConfigs,
       TSecretScanningConfigsInsert,
       TSecretScanningConfigsUpdate
+    >;
+    [TableName.Reminder]: KnexOriginal.CompositeTableType<TReminders, TRemindersInsert, TRemindersUpdate>;
+    [TableName.ReminderRecipient]: KnexOriginal.CompositeTableType<
+      TRemindersRecipients,
+      TRemindersRecipientsInsert,
+      TRemindersRecipientsUpdate
     >;
   }
 }

@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { faAnglesRight, faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faAnglesRight, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal, IconButton, Tooltip } from "@app/components/v2";
+import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -221,12 +221,14 @@ export const SelectionPanel = ({
         )}
       >
         <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <Tooltip content="Clear">
-            <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedEntries}>
-              <FontAwesomeIcon icon={faMinusSquare} size="lg" />
-            </IconButton>
-          </Tooltip>
-          <div className="ml-1 flex-grow px-2 text-sm">{selectedCount} Selected</div>
+          <div className="mr-2 text-sm">{selectedCount} Selected</div>
+          <button
+            type="button"
+            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            onClick={resetSelectedEntries}
+          >
+            Unselect All
+          </button>
           {isRotatedSecretSelected && (
             <span className="text-sm text-mineshaft-400">
               Rotated Secrets will not be affected by action.

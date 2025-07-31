@@ -20,6 +20,7 @@ export type DatePickerProps = Omit<DayPickerProps, "selected"> & {
   popUpProps: PopoverProps;
   popUpContentProps: PopoverContentProps;
   dateFormat?: "PPP" | "PP" | "P"; // extend as needed
+  hideTime?: boolean;
   buttonClassName?: string;
   timezone?: Timezone;
 };
@@ -55,6 +56,7 @@ export const DatePicker = ({
   popUpProps,
   popUpContentProps,
   dateFormat = "PPP",
+  hideTime = false,
   buttonClassName,
   timezone,
   ...props
@@ -124,14 +126,16 @@ export const DatePicker = ({
             }}
           />
         </div>
-        <div className="mx-4 my-4">
-          <Input
-            type="time"
-            value={displayUtc ? localTimeToUTC(timeValue) : timeValue}
-            onChange={handleTimeChange}
-            className="bg-mineshaft-700 text-white [color-scheme:dark]"
-          />
-        </div>
+        {!hideTime && (
+          <div className="mx-4 my-4">
+            <Input
+              type="time"
+              value={displayUtc ? localTimeToUTC(timeValue) : timeValue}
+              onChange={handleTimeChange}
+              className="bg-mineshaft-700 text-white [color-scheme:dark]"
+            />
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

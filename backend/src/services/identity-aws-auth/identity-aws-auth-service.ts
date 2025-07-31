@@ -22,7 +22,7 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
-import { extractPrincipalArn } from "./identity-aws-auth-fns";
+import { extractPrincipalArn, extractPrincipalArnEntity } from "./identity-aws-auth-fns";
 import {
   TAttachAwsAuthDTO,
   TAwsGetCallerIdentityHeaders,
@@ -107,7 +107,7 @@ export const identityAwsAuthServiceFactory = ({
     const {
       data: {
         GetCallerIdentityResponse: {
-          GetCallerIdentityResult: { Account, Arn }
+          GetCallerIdentityResult: { Account, Arn, UserId }
         }
       }
     }: { data: TGetCallerIdentityResponse } = await axios({
@@ -168,11 +168,25 @@ export const identityAwsAuthServiceFactory = ({
     });
 
     const appCfg = getConfig();
+    const splitArn = extractPrincipalArnEntity(Arn);
     const accessToken = crypto.jwt().sign(
       {
         identityId: identityAwsAuth.identityId,
         identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+        identityAuth: {
+          aws: {
+            accountId: Account,
+            arn: Arn,
+            userId: UserId,
+
+            // Derived from ARN
+            partition: splitArn.Partition,
+            service: splitArn.Service,
+            resourceType: splitArn.Type,
+            resourceName: splitArn.FriendlyName
+          }
+        }
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error

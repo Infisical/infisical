@@ -664,6 +664,10 @@ export const ORGANIZATIONS = {
     organizationId: "The ID of the organization to delete the membership from.",
     membershipId: "The ID of the membership to delete."
   },
+  BULK_DELETE_USER_MEMBERSHIPS: {
+    organizationId: "The ID of the organization to delete the memberships from.",
+    membershipIds: "The IDs of the memberships to delete."
+  },
   LIST_IDENTITY_MEMBERSHIPS: {
     orgId: "The ID of the organization to get identity memberships from.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
@@ -704,7 +708,8 @@ export const PROJECTS = {
     hasDeleteProtection: "Enable or disable delete protection for the project.",
     secretSharing: "Enable or disable secret sharing for the project.",
     showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
-    defaultProduct: "The default product in which the project will open"
+    defaultProduct: "The default product in which the project will open",
+    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection."
   },
   GET_KEY: {
     workspaceId: "The ID of the project to get the key from."
@@ -2245,12 +2250,16 @@ export const AppConnections = {
     },
     AZURE_CLIENT_SECRETS: {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
-      tenantId: "The Tenant ID to use to connect with Azure Client Secrets."
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
       tenantId: "The Tenant ID to use to connect with Azure DevOps.",
-      orgName: "The Organization name to use to connect with Azure DevOps."
+      orgName: "The Organization name to use to connect with Azure DevOps.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     OCI: {
       userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
@@ -2376,6 +2385,10 @@ export const SecretSyncs = {
       keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
       tags: "Optional tags to add to secrets synced by Infisical.",
       syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`
+    },
+    RENDER: {
+      autoRedeployServices:
+        "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
     }
   },
   DESTINATION_CONFIG: {
@@ -2396,12 +2409,18 @@ export const SecretSyncs = {
       env: "The name of the GitHub environment."
     },
     AZURE_KEY_VAULT: {
-      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
+      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_APP_CONFIGURATION: {
       configurationUrl:
         "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
-      label: "An optional label to assign to secrets created in Azure App Configuration."
+      label: "An optional label to assign to secrets created in Azure App Configuration.",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_DEVOPS: {
       devopsProjectId: "The ID of the Azure DevOps project to sync secrets to.",
@@ -2704,6 +2723,14 @@ export const SecretScanningDataSources = {
   CONFIG: {
     GITHUB: {
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+    },
+    GITLAB: {
+      includeProjects: 'The projects to include when scanning. Defaults to all projects (["*"]).',
+      scope: "The GitLab scope scanning should occur at (project or group level).",
+      projectId: "The ID of the project to scan.",
+      projectName: "The name of the project to scan.",
+      groupId: "The ID of the group to scan projects from.",
+      groupName: "The name of the group to scan projects from."
     },
     BITBUCKET: {
       workspaceSlug: "The workspace to scan.",

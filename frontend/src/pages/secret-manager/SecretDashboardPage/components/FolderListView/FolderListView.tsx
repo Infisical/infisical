@@ -235,7 +235,7 @@ export const FolderListView = ({
             )}
           </div>
           {isPending ? (
-            <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
+            <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-3 py-3">
               <IconButton
                 ariaLabel="edit-folder"
                 variant="plain"

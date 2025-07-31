@@ -1,6 +1,6 @@
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { useRenderConnectionListServices } from "@app/hooks/api/appConnections/render";
-import { TRenderSync } from "@app/hooks/api/secretSyncs/render-sync";
+import { TRenderSync } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 type Props = {
   secretSync: TRenderSync;

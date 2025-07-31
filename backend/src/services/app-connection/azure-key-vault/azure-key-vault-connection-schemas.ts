@@ -22,12 +22,43 @@ export const AzureKeyVaultConnectionOAuthOutputCredentialsSchema = z.object({
   expiresAt: z.number()
 });
 
+export const AzureKeyVaultConnectionClientSecretInputCredentialsSchema = z.object({
+  clientId: z
+    .string()
+    .uuid()
+    .trim()
+    .min(1, "Client ID required")
+    .max(50, "Client ID must be at most 50 characters long"),
+  clientSecret: z
+    .string()
+    .trim()
+    .min(1, "Client Secret required")
+    .max(50, "Client Secret must be at most 50 characters long"),
+  tenantId: z.string().uuid().trim().min(1, "Tenant ID required")
+});
+
+export const AzureKeyVaultConnectionClientSecretOutputCredentialsSchema = z.object({
+  clientId: z.string(),
+  clientSecret: z.string(),
+  tenantId: z.string(),
+  accessToken: z.string(),
+  expiresAt: z.number()
+});
+
 export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
       .literal(AzureKeyVaultConnectionMethod.OAuth)
       .describe(AppConnections.CREATE(AppConnection.AzureKeyVault).method),
     credentials: AzureKeyVaultConnectionOAuthInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AzureKeyVault).credentials
+    )
+  }),
+  z.object({
+    method: z
+      .literal(AzureKeyVaultConnectionMethod.ClientSecret)
+      .describe(AppConnections.CREATE(AppConnection.AzureKeyVault).method),
+    credentials: AzureKeyVaultConnectionClientSecretInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureKeyVault).credentials
     )
   })
@@ -39,9 +70,13 @@ export const CreateAzureKeyVaultConnectionSchema = ValidateAzureKeyVaultConnecti
 
 export const UpdateAzureKeyVaultConnectionSchema = z
   .object({
-    credentials: AzureKeyVaultConnectionOAuthInputCredentialsSchema.optional().describe(
-      AppConnections.UPDATE(AppConnection.AzureKeyVault).credentials
-    )
+    credentials: z
+      .union([
+        AzureKeyVaultConnectionOAuthInputCredentialsSchema,
+        AzureKeyVaultConnectionClientSecretInputCredentialsSchema
+      ])
+      .optional()
+      .describe(AppConnections.UPDATE(AppConnection.AzureKeyVault).credentials)
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureKeyVault));
 
@@ -55,6 +90,10 @@ export const AzureKeyVaultConnectionSchema = z.intersection(
     z.object({
       method: z.literal(AzureKeyVaultConnectionMethod.OAuth),
       credentials: AzureKeyVaultConnectionOAuthOutputCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(AzureKeyVaultConnectionMethod.ClientSecret),
+      credentials: AzureKeyVaultConnectionClientSecretOutputCredentialsSchema
     })
   ])
 );
@@ -63,6 +102,13 @@ export const SanitizedAzureKeyVaultConnectionSchema = z.discriminatedUnion("meth
   BaseAzureKeyVaultConnectionSchema.extend({
     method: z.literal(AzureKeyVaultConnectionMethod.OAuth),
     credentials: AzureKeyVaultConnectionOAuthOutputCredentialsSchema.pick({
+      tenantId: true
+    })
+  }),
+  BaseAzureKeyVaultConnectionSchema.extend({
+    method: z.literal(AzureKeyVaultConnectionMethod.ClientSecret),
+    credentials: AzureKeyVaultConnectionClientSecretOutputCredentialsSchema.pick({
+      clientId: true,
       tenantId: true
     })
   })

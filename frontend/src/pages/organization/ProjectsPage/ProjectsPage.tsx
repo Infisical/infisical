@@ -2,14 +2,11 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
 import { useSubscription } from "@app/context";
-import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
@@ -38,8 +35,6 @@ export const ProjectsPage = () => {
     "upgradePlan"
   ] as const);
 
-  const { data: serverDetails, isLoading } = useFetchServerStatus();
-
   const { subscription } = useSubscription();
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
@@ -52,30 +47,6 @@ export const ProjectsPage = () => {
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-
-      {!isLoading && !serverDetails?.redisConfigured && (
-        <div className="mb-4 flex flex-col items-start justify-start text-3xl">
-          <p className="mb-4 mr-4 font-semibold text-white">Announcements</p>
-          <div className="flex w-full items-center rounded-md border border-blue-400/70 bg-blue-900/70 p-2 text-base text-mineshaft-100">
-            <FontAwesomeIcon
-              icon={faExclamationCircle}
-              className="mr-4 p-4 text-2xl text-mineshaft-50"
-            />
-            Attention: Updated versions of Infisical now require Redis for full functionality. Learn
-            how to configure it
-            <a
-              href="https://infisical.com/docs/self-hosting/configuration/redis"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <span className="cursor-pointer pl-1 text-white underline underline-offset-2 duration-100 hover:text-blue-200 hover:decoration-blue-400">
-                here
-              </span>
-            </a>
-            .
-          </div>
-        </div>
-      )}
       <div className="mb-4 flex flex-col items-start justify-start">
         <PageHeader
           title={

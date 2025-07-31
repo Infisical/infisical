@@ -270,11 +270,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               }
             }
           });
-
-          remainingLimit -= imports.length;
-          adjustedOffset = 0;
-        } else {
-          adjustedOffset = Math.max(0, adjustedOffset - totalImportCount);
         }
       }
 
@@ -317,7 +312,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (!includeDynamicSecrets && !includeSecrets)
+      if (!includeDynamicSecrets && !includeSecrets && !includeSecretRotations)
         return {
           folders,
           totalFolderCount,
@@ -547,7 +542,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           (totalFolderCount ?? 0) +
           (totalDynamicSecretCount ?? 0) +
           (totalSecretCount ?? 0) +
-          (totalImportCount ?? 0) +
           (totalSecretRotationCount ?? 0)
       };
     }
@@ -904,7 +898,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             projectId,
             path: secretPath,
             search,
-            tagSlugs: tags
+            tagSlugs: tags,
+            includeTagsInSearch: true,
+            includeMetadataInSearch: true
           });
 
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
@@ -924,7 +920,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 search,
                 limit: remainingLimit,
                 offset: adjustedOffset,
-                tagSlugs: tags
+                tagSlugs: tags,
+                includeTagsInSearch: true,
+                includeMetadataInSearch: true
               })
             ).secrets;
           }
@@ -1097,7 +1095,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           filters: {
             ...sharedFilters,
             tagSlugs: tags,
-            includeTagsInSearch: true
+            includeTagsInSearch: true,
+            includeMetadataInSearch: true
           }
         },
         req.permission

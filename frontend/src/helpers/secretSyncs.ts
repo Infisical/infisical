@@ -4,9 +4,9 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
-import { RenderSyncScope } from "@app/hooks/api/secretSyncs/render-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
   [SecretSync.AWSParameterStore]: { name: "AWS Parameter Store", image: "Amazon Web Services.png" },
@@ -137,7 +137,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
   [SecretSync.Flyio]: AppConnection.Flyio,
-  [SecretSync.GitLab]: AppConnection.Gitlab,
+  [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,

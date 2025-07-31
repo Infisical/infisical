@@ -25,7 +25,9 @@ import {
 
 export const identitiesKeys = {
   getIdentityById: (identityId: string) => [{ identityId }, "identity"] as const,
-  searchIdentities: (dto: TSearchIdentitiesDTO) => ["identity", "search", dto] as const,
+  searchIdentitiesRoot: ["identity", "search"] as const,
+  searchIdentities: (dto: TSearchIdentitiesDTO) =>
+    [...identitiesKeys.searchIdentitiesRoot, dto] as const,
   getIdentityUniversalAuth: (identityId: string) =>
     [{ identityId }, "identity-universal-auth"] as const,
   getIdentityUniversalAuthClientSecrets: (identityId: string) =>

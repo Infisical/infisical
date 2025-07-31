@@ -39,7 +39,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
-import { TQueueServiceFactory } from "@app/queue";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -67,6 +66,7 @@ import { TProjectMembershipDALFactory } from "../project-membership/project-memb
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
+import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -169,7 +169,6 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
-  queueService: Pick<TQueueServiceFactory, "stopRepeatableJob">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
@@ -186,6 +185,7 @@ type TProjectServiceFactoryDep = {
     | "createCipherPairWithDataKey"
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
+  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -198,7 +198,6 @@ export const projectServiceFactory = ({
   projectQueue,
   projectKeyDAL,
   permissionService,
-  queueService,
   projectBotService,
   orgDAL,
   userDAL,
@@ -233,7 +232,8 @@ export const projectServiceFactory = ({
   microsoftTeamsIntegrationDAL,
   projectTemplateService,
   groupProjectDAL,
-  smtpService
+  smtpService,
+  reminderService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -574,7 +574,7 @@ export const projectServiceFactory = ({
       await fnDeleteProjectSecretReminders(project.id, {
         secretDAL,
         secretV2BridgeDAL,
-        queueService,
+        reminderService,
         projectBotService,
         folderDAL
       });
@@ -645,7 +645,7 @@ export const projectServiceFactory = ({
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -667,6 +667,12 @@ export const projectServiceFactory = ({
       }
     }
 
+    if (update.secretDetectionIgnoreValues && !hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only admins can update secret detection ignore values"
+      });
+    }
+
     const updatedProject = await projectDAL.updateById(project.id, {
       name: update.name,
       description: update.description,
@@ -676,7 +682,8 @@ export const projectServiceFactory = ({
       slug: update.slug,
       secretSharing: update.secretSharing,
       defaultProduct: update.defaultProduct,
-      showSnapshotsLegacy: update.showSnapshotsLegacy
+      showSnapshotsLegacy: update.showSnapshotsLegacy,
+      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues
     });
 
     return updatedProject;
@@ -1948,6 +1955,13 @@ export const projectServiceFactory = ({
     const userDetails = await userDAL.findById(permission.id);
     const appCfg = getConfig();
 
+    let projectTypeUrl = project.type;
+    if (project.type === ProjectType.SecretManager) {
+      projectTypeUrl = "secret-management";
+    } else if (project.type === ProjectType.CertificateManager) {
+      projectTypeUrl = "cert-management";
+    }
+
     await smtpService.sendMail({
       template: SmtpTemplates.ProjectAccessRequest,
       recipients: filteredProjectMembers,
@@ -1958,7 +1972,7 @@ export const projectServiceFactory = ({
         projectName: project?.name,
         orgName: org?.name,
         note: comment,
-        callback_url: `${appCfg.SITE_URL}/${project.type}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`
+        callback_url: `${appCfg.SITE_URL}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`
       }
     });
   };
