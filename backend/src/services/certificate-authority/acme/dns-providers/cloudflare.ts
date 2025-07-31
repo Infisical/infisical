@@ -16,7 +16,7 @@ export const cloudflareInsertTxtRecord = async (
 
   try {
     await request.post(
-      `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${hostedZoneId}/dns_records`,
+      `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${encodeURIComponent(hostedZoneId)}/dns_records`,
       {
         type: "TXT",
         name: domain,
@@ -60,7 +60,7 @@ export const cloudflareDeleteTxtRecord = async (
   try {
     const listRecordsResponse = await request.get<{
       result: { id: string; type: string; name: string; content: string }[];
-    }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${hostedZoneId}/dns_records`, {
+    }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${encodeURIComponent(hostedZoneId)}/dns_records`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         "Content-Type": "application/json",
@@ -82,7 +82,7 @@ export const cloudflareDeleteTxtRecord = async (
 
       if (recordToDelete) {
         await request.delete(
-          `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${hostedZoneId}/dns_records/${recordToDelete.id}`,
+          `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${encodeURIComponent(hostedZoneId)}/dns_records/${recordToDelete.id}`,
           {
             headers: {
               Authorization: `Bearer ${apiToken}`,

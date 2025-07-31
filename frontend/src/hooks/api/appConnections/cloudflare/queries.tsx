@@ -11,7 +11,7 @@ const cloudflareConnectionKeys = {
     [...cloudflareConnectionKeys.all, "pages-projects", connectionId] as const,
   listWorkersScripts: (connectionId: string) =>
     [...cloudflareConnectionKeys.all, "workers-scripts", connectionId] as const,
-  listWorkersZones: (connectionId: string) =>
+  listZones: (connectionId: string) =>
     [...cloudflareConnectionKeys.all, "zones", connectionId] as const
 };
 
@@ -72,13 +72,13 @@ export const useCloudflareConnectionListZones = (
       TCloudflareZone[],
       unknown,
       TCloudflareZone[],
-      ReturnType<typeof cloudflareConnectionKeys.listWorkersZones>
+      ReturnType<typeof cloudflareConnectionKeys.listZones>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: cloudflareConnectionKeys.listWorkersZones(connectionId),
+    queryKey: cloudflareConnectionKeys.listZones(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCloudflareZone[]>(
         `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-zones`
