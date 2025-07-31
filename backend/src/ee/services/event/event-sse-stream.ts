@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { Readable } from "node:stream";
 
-import { MongoAbility } from "@casl/ability";
+import { MongoAbility, PureAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import Redis from "ioredis";
 import { nanoid } from "nanoid";
@@ -9,6 +9,7 @@ import { nanoid } from "nanoid";
 import { ProjectType } from "@app/db/schemas";
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { conditionsMatcher } from "@app/lib/casl";
 import { logger } from "@app/lib/logger";
 
 import { EventData, RegisteredEvent } from "./types";
@@ -61,11 +62,24 @@ export type EventStreamClient = {
   get auth(): TAuthInfo;
   signal: AbortSignal;
   abort: () => void;
+  matcher: PureAbility;
 };
 
 export function createEventStreamClient(redis: Redis, options: IEventStreamClientOpts): EventStreamClient {
+  const rules = options.registered.map((r) => ({
+    subject: options.type,
+    action: "subscribe",
+    conditions: {
+      eventType: r.event,
+      secretPath: r.conditions?.secretPath ?? "/",
+      environment: r.conditions?.environmentSlug
+    }
+  }));
+
   const id = `sse-${nanoid()}`;
   const control = new AbortController();
+  const matcher = new PureAbility(rules, { conditionsMatcher });
+
   let auth: TAuthInfo | undefined;
 
   const stream = new Readable({
@@ -112,6 +126,10 @@ export function createEventStreamClient(redis: Redis, options: IEventStreamClien
     stream.destroy();
   };
 
+  /**
+   * Refreshes the connection's auth permissions
+   * Must be called atleast once when connection is opened
+   */
   const refresh = async () => {
     try {
       auth = await options.getAuthInfo();
@@ -148,6 +166,7 @@ export function createEventStreamClient(redis: Redis, options: IEventStreamClien
     close,
     signal: control.signal,
     abort,
+    matcher,
     get auth() {
       if (!auth) {
         throw new Error("Auth info not set");

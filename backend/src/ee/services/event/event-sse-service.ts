@@ -1,4 +1,5 @@
 /* eslint-disable no-continue */
+import { subject } from "@casl/ability";
 import Redis from "ioredis";
 
 import { KeyStorePrefixes } from "@app/keystore/keystore";
@@ -6,7 +7,7 @@ import { logger } from "@app/lib/logger";
 
 import { TEventBusService } from "./event-bus-service";
 import { createEventStreamClient, EventStreamClient, IEventStreamClientOpts } from "./event-sse-stream";
-import { EventData, EventSecret, RegisteredEvent, toBusEventName } from "./types";
+import { EventData, RegisteredEvent, toBusEventName } from "./types";
 
 const AUTH_REFRESH_INTERVAL = 60 * 1000;
 const HEART_BEAT_INTERVAL = 15 * 1000;
@@ -71,25 +72,29 @@ export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
   };
 
   function filterEventsForClient(client: EventStreamClient, event: EventData, registered: RegisteredEvent[]) {
-    const eventName = toBusEventName(event.data.eventType);
-    const match = registered.find((r) => r.event === eventName);
-
+    const eventType = toBusEventName(event.data.eventType);
+    const match = registered.find((r) => r.event === eventType);
     if (!match) return;
-
-    const { secretPath, environmentSlug } = match.conditions ?? {};
-
-    const matches = (item: EventSecret) => {
-      const isPathMatch = !secretPath || secretPath === "/" || secretPath === item.secretPath;
-      const isEnvMatch = !environmentSlug || environmentSlug === item.environment;
-      return isPathMatch && isEnvMatch;
-    };
 
     const item = event.data.payload;
 
     if (Array.isArray(item)) {
-      const filtered = item.filter((ev) => matches(ev));
+      if (item.length === 0) return;
 
-      if (!filtered.length) return; // No events to send
+      const baseSubject = {
+        eventType,
+        environment: undefined as string | undefined,
+        secretPath: undefined as string | undefined
+      };
+
+      const filtered = item.filter((ev) => {
+        baseSubject.secretPath = ev.secretPath ?? "/";
+        baseSubject.environment = ev.environment;
+
+        return client.matcher.can("subscribe", subject(event.type, baseSubject));
+      });
+
+      if (filtered.length === 0) return;
 
       return client.send({
         ...event,
@@ -100,10 +105,18 @@ export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
       });
     }
 
-    if (matches(item)) {
+    // For single item
+    const baseSubject = {
+      eventType,
+      secretPath: item.secretPath ?? "/",
+      environment: item.environment
+    };
+
+    if (client.matcher.can("subscribe", subject(event.type, baseSubject))) {
       client.send(event);
     }
   }
+
   const subscribe = async (
     opts: IEventStreamClientOpts & {
       onClose?: () => void;

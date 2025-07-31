@@ -115,7 +115,7 @@ export const EventRegisterSchema = z.object({
   event: EventName,
   conditions: z
     .object({
-      secretPath: z.string().optional(),
+      secretPath: z.string().optional().default("/"),
       environmentSlug: z.string()
     })
     .optional()
