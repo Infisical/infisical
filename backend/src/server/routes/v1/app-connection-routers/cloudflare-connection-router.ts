@@ -72,8 +72,8 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.cloudflare.listWorkersScripts(connectionId, req.permission);
-      return projects;
+      const scripts = await server.services.appConnection.cloudflare.listWorkersScripts(connectionId, req.permission);
+      return scripts;
     }
   });
 
@@ -99,9 +99,9 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
-
-      const projects = await server.services.appConnection.cloudflare.listZones(connectionId, req.permission);
-      return projects;
+      s;
+      const zones = await server.services.appConnection.cloudflare.listZones(connectionId, req.permission);
+      return zones;
     }
   });
 };

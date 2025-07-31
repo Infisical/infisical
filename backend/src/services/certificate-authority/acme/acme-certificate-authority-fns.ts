@@ -410,7 +410,7 @@ export const AcmeCertificateAuthorityFns = ({
             break;
           }
           default: {
-            throw new Error("Unsupported DNS provider");
+            throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
           }
         }
       },
@@ -438,7 +438,7 @@ export const AcmeCertificateAuthorityFns = ({
             break;
           }
           default: {
-            throw new Error("Unsupported DNS provider");
+            throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
           }
         }
       }
