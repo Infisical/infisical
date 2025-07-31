@@ -46,7 +46,6 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
       const { connectionId } = req.params;
 
       const projects = await server.services.appConnection.cloudflare.listPagesProjects(connectionId, req.permission);
-
       return projects;
     }
   });
@@ -74,7 +73,34 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
       const { connectionId } = req.params;
 
       const projects = await server.services.appConnection.cloudflare.listWorkersScripts(connectionId, req.permission);
+      return projects;
+    }
+  });
 
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloudflare-zones`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const projects = await server.services.appConnection.cloudflare.listZones(connectionId, req.permission);
       return projects;
     }
   });

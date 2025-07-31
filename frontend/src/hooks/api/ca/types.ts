@@ -11,7 +11,7 @@ export type TAcmeCertificateAuthority = {
   configuration: {
     dnsAppConnectionId: string;
     dnsProviderConfig: {
-      provider: AcmeDnsProvider.ROUTE53;
+      provider: AcmeDnsProvider;
       hostedZoneId: string;
     };
     directoryUrl: string;

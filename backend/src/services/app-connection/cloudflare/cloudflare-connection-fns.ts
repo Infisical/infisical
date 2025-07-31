@@ -10,7 +10,8 @@ import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflarePagesProject,
-  TCloudflareWorkersScript
+  TCloudflareWorkersScript,
+  TCloudflareZone
 } from "./cloudflare-connection-types";
 
 export const getCloudflareConnectionListItem = () => {
@@ -62,6 +63,27 @@ export const listCloudflareWorkersScripts = async (
   );
 
   return data.result.map((a) => ({
+    id: a.id
+  }));
+};
+
+export const listCloudflareZones = async (appConnection: TCloudflareConnection): Promise<TCloudflareZone[]> => {
+  const {
+    credentials: { apiToken }
+  } = appConnection;
+
+  const { data } = await request.get<{ result: { name: string; id: string }[] }>(
+    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  return data.result.map((a) => ({
+    name: a.name,
     id: a.id
   }));
 };
