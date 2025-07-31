@@ -19,7 +19,7 @@ import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-d
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { importDataIntoInfisicalFn } from "./external-migration-fns";
-import { ExternalPlatforms, ImportType, TImportInfisicalDataCreate } from "./external-migration-types";
+import { ExternalPlatforms, TImportInfisicalDataCreate } from "./external-migration-types";
 
 export type TExternalMigrationQueueFactoryDep = {
   smtpService: TSmtpService;
@@ -66,8 +66,8 @@ export const externalMigrationQueueFactory = ({
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
     actorEmail: string;
+    importType: ExternalPlatforms;
     data: {
-      importType: ImportType;
       iv: string;
       tag: string;
       ciphertext: string;
@@ -87,14 +87,14 @@ export const externalMigrationQueueFactory = ({
   };
 
   queueService.start(QueueName.ImportSecretsFromExternalSource, async (job) => {
-    try {
-      const { data, actorEmail } = job.data;
+    const { data, actorEmail, importType } = job.data;
 
+    try {
       await smtpService.sendMail({
         recipients: [actorEmail],
         subjectLine: "Infisical import started",
         substitutions: {
-          provider: ExternalPlatforms.EnvKey
+          provider: importType
         },
         template: SmtpTemplates.ExternalImportStarted
       });
@@ -141,7 +141,7 @@ export const externalMigrationQueueFactory = ({
         recipients: [actorEmail],
         subjectLine: "Infisical import successful",
         substitutions: {
-          provider: ExternalPlatforms.EnvKey
+          provider: importType
         },
         template: SmtpTemplates.ExternalImportSuccessful
       });
@@ -150,7 +150,7 @@ export const externalMigrationQueueFactory = ({
         recipients: [job.data.actorEmail],
         subjectLine: "Infisical import failed",
         substitutions: {
-          provider: ExternalPlatforms.EnvKey,
+          provider: importType,
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
           error: (err as any)?.message || "Unknown error"
         },

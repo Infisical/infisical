@@ -2,11 +2,6 @@ import { TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
-export enum ImportType {
-  EnvKey = "envkey",
-  Vault = "vault"
-}
-
 export enum VaultMappingType {
   Namespace = "namespace",
   KeyVault = "key-vault"
@@ -112,5 +107,6 @@ export type TEnvKeyExportJSON = {
 };
 
 export enum ExternalPlatforms {
-  EnvKey = "EnvKey"
+  EnvKey = "EnvKey",
+  Vault = "Vault"
 }

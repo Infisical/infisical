@@ -22,6 +22,7 @@ import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
 import { QueueWorkerProfile } from "@app/lib/types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { ExternalPlatforms } from "@app/services/external-migration/external-migration-types";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
@@ -228,6 +229,7 @@ export type TQueueJobTypes = {
     name: QueueJobs.ImportSecretsFromExternalSource;
     payload: {
       actorEmail: string;
+      importType: ExternalPlatforms;
       data: {
         iv: string;
         tag: string;
