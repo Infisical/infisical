@@ -187,6 +187,11 @@ class NetlifyPublicClient {
       return this.createVariable(connection, params, variable);
     }
 
+    if (res.is_secret) {
+      await this.deleteVariable(connection, params, variable);
+      return this.createVariable(connection, params, variable);
+    }
+
     return this.updateVariable(connection, params, variable);
   }
 
