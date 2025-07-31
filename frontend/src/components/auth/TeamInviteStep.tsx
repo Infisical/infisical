@@ -51,7 +51,7 @@ export default function TeamInviteStep(): JSX.Element {
       <div className="mx-auto mb-6 w-max rounded-xl border border-mineshaft-500 bg-mineshaft-800 px-8 pb-4 pt-6 drop-shadow-xl">
         <div>
           <div className="pb-1 pl-1 text-sm font-medium text-bunker-300">
-            <span>Emails</span>
+            <span>{t("sigunp.step5-emails")??"Emails"}</span>
           </div>
           <textarea
             className="h-20 w-full min-w-[30rem] rounded-md border border-mineshaft-500 bg-mineshaft-900/70 px-2 py-1 text-sm text-bunker-300 outline-none ring-primary-800 ring-opacity-70 placeholder:text-bunker-400 focus:ring-2"
