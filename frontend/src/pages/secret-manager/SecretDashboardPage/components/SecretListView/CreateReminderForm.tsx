@@ -377,7 +377,6 @@ export const CreateReminderForm = ({
                 name="fromDate"
                 render={({ field, fieldState }) => (
                   <FormControl
-                    isRequired
                     className="mb-0"
                     label="Start Date"
                     isError={Boolean(fieldState.error)}

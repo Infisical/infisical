@@ -100,8 +100,12 @@ export const reminderServiceFactory = ({
     }
 
     if (repeatDays) {
-      fromDate = fromDateInput ? new Date(fromDateInput) : undefined;
-      nextReminderDate = $addDays(repeatDays, fromDate);
+      if (fromDateInput) {
+        fromDate = new Date(fromDateInput);
+        nextReminderDate = fromDate;
+      } else {
+        nextReminderDate = $addDays(repeatDays);
+      }
     }
 
     if (!nextReminderDate) {
@@ -302,8 +306,12 @@ export const reminderServiceFactory = ({
         }
 
         if (repeatDays && !nextReminderDate) {
-          fromDate = fromDateInput ? new Date(fromDateInput) : undefined;
-          nextReminderDate = $addDays(repeatDays, fromDate);
+          if (fromDateInput) {
+            fromDate = new Date(fromDateInput);
+            nextReminderDate = fromDate;
+          } else {
+            nextReminderDate = $addDays(repeatDays);
+          }
         }
 
         if (!nextReminderDate) {
