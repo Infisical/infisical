@@ -88,6 +88,7 @@ var AuthStrategy = struct {
 	AZURE_MACHINE_IDENTITY        AuthStrategyType
 	GCP_ID_TOKEN_MACHINE_IDENTITY AuthStrategyType
 	GCP_IAM_MACHINE_IDENTITY      AuthStrategyType
+	LDAP_MACHINE_IDENTITY         AuthStrategyType
 }{
 	SERVICE_TOKEN:                 "SERVICE_TOKEN",
 	SERVICE_ACCOUNT:               "SERVICE_ACCOUNT",
@@ -97,6 +98,7 @@ var AuthStrategy = struct {
 	AZURE_MACHINE_IDENTITY:        "AZURE_MACHINE_IDENTITY",
 	GCP_ID_TOKEN_MACHINE_IDENTITY: "GCP_ID_TOKEN_MACHINE_IDENTITY",
 	GCP_IAM_MACHINE_IDENTITY:      "GCP_IAM_MACHINE_IDENTITY",
+	LDAP_MACHINE_IDENTITY:         "LDAP_MACHINE_IDENTITY",
 }
 
 type SecretCrdType string
@@ -183,6 +185,71 @@ func HandleUniversalAuth(ctx context.Context, reconcilerClient client.Client, se
 	return AuthenticationDetails{
 		AuthStrategy:          AuthStrategy.UNIVERSAL_MACHINE_IDENTITY,
 		MachineIdentityScope:  universalAuthSpec.SecretsScope,
+		IsMachineIdentityAuth: true,
+		SecretType:            secretCrd.Type,
+	}, nil
+}
+
+func HandleLdapAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+
+	var ldapAuthSpec v1alpha1.LdapAuthDetails
+
+	switch secretCrd.Type {
+	case SecretCrd.INFISICAL_SECRET:
+		infisicalSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalSecret")
+		}
+		ldapAuthSpec = infisicalSecret.Spec.Authentication.LdapAuth
+	case SecretCrd.INFISICAL_PUSH_SECRET:
+		infisicalPushSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalPushSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalPushSecret")
+		}
+
+		ldapAuthSpec = v1alpha1.LdapAuthDetails{
+			CredentialsRef: infisicalPushSecret.Spec.Authentication.LdapAuth.CredentialsRef,
+			SecretsScope:   v1alpha1.MachineIdentityScopeInWorkspace{},
+			IdentityID:     infisicalPushSecret.Spec.Authentication.LdapAuth.IdentityID,
+		}
+
+	case SecretCrd.INFISICAL_DYNAMIC_SECRET:
+		infisicalDynamicSecret, ok := secretCrd.Secret.(v1alpha1.InfisicalDynamicSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalDynamicSecret")
+		}
+
+		ldapAuthSpec = v1alpha1.LdapAuthDetails{
+			CredentialsRef: infisicalDynamicSecret.Spec.Authentication.UniversalAuth.CredentialsRef,
+			SecretsScope:   v1alpha1.MachineIdentityScopeInWorkspace{},
+			IdentityID:     infisicalDynamicSecret.Spec.Authentication.LdapAuth.IdentityID,
+		}
+	}
+
+	ldapAuthKubeSecret, err := GetInfisicalLdapAuthFromKubeSecret(ctx, reconcilerClient, v1alpha1.KubeSecretReference{
+		SecretNamespace: ldapAuthSpec.CredentialsRef.SecretNamespace,
+		SecretName:      ldapAuthSpec.CredentialsRef.SecretName,
+	})
+
+	if err != nil {
+		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get machine identity creds from kube secret [err=%s]", err)
+	}
+
+	if ldapAuthKubeSecret.Username == "" && ldapAuthKubeSecret.Password == "" {
+		return AuthenticationDetails{}, ErrAuthNotApplicable
+	}
+
+	_, err = infisicalClient.Auth().LdapAuthLogin(ldapAuthSpec.IdentityID, ldapAuthKubeSecret.Username, ldapAuthKubeSecret.Password)
+	if err != nil {
+		return AuthenticationDetails{}, fmt.Errorf("unable to login with machine identity credentials [err=%s]", err)
+	}
+
+	return AuthenticationDetails{
+		AuthStrategy:          AuthStrategy.LDAP_MACHINE_IDENTITY,
+		MachineIdentityScope:  ldapAuthSpec.SecretsScope,
 		IsMachineIdentityAuth: true,
 		SecretType:            secretCrd.Type,
 	}, nil

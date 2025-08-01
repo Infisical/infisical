@@ -18,6 +18,9 @@ import (
 const INFISICAL_MACHINE_IDENTITY_CLIENT_ID = "clientId"
 const INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET = "clientSecret"
 
+const INFISICAL_MACHINE_IDENTITY_LDAP_USERNAME = "username"
+const INFISICAL_MACHINE_IDENTITY_LDAP_PASSSWORD = "password"
+
 func GetKubeSecretByNamespacedName(ctx context.Context, reconcilerClient client.Client, namespacedName types.NamespacedName) (*corev1.Secret, error) {
 	kubeSecret := &corev1.Secret{}
 	err := reconcilerClient.Get(ctx, namespacedName, kubeSecret)
@@ -59,6 +62,30 @@ func GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, reconcilerClie
 	clientSecretFromSecret := universalAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET]
 
 	return model.MachineIdentityDetails{ClientId: string(clientIdFromSecret), ClientSecret: string(clientSecretFromSecret)}, nil
+
+}
+
+func GetInfisicalLdapAuthFromKubeSecret(ctx context.Context, reconcilerClient client.Client, ldapAuthRef v1alpha1.KubeSecretReference) (machineIdentityDetails model.LdapIdentityDetails, err error) {
+
+	ldapAuthCredsFromKubeSecret, err := GetKubeSecretByNamespacedName(ctx, reconcilerClient, types.NamespacedName{
+		Namespace: ldapAuthRef.SecretNamespace,
+		Name:      ldapAuthRef.SecretName,
+		// Namespace: infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretNamespace,
+		// Name:      infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretName,
+	})
+
+	if k8Errors.IsNotFound(err) {
+		return model.LdapIdentityDetails{}, nil
+	}
+
+	if err != nil {
+		return model.LdapIdentityDetails{}, fmt.Errorf("something went wrong when fetching your machine identity credentials [err=%s]", err)
+	}
+
+	usernameFromSecret := ldapAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_LDAP_USERNAME]
+	passwordFromSecret := ldapAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_LDAP_PASSSWORD]
+
+	return model.LdapIdentityDetails{Username: string(usernameFromSecret), Password: string(passwordFromSecret)}, nil
 
 }
 
