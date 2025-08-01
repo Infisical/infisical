@@ -256,7 +256,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                             <div>
                               <Select
                                 isDisabled={!isAllowed}
-                                value={value as string}
+                                value={value || (null as unknown as string)}
                                 onValueChange={onChange}
                                 className="w-full border border-mineshaft-500"
                                 dropdownContainerClassName="max-w-none"
@@ -266,7 +266,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                               >
                                 <SelectItem
                                   value={null as unknown as string}
-                                  onClick={() => onChange(undefined)}
+                                  onClick={() => onChange(null)}
                                 >
                                   Internet Gateway
                                 </SelectItem>
