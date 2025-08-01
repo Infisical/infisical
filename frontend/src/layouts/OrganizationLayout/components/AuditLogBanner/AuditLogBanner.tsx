@@ -10,7 +10,7 @@ export const AuditLogBanner = () => {
 
   if (isLoadingStreams || isLoadingStatus || !streams) return null;
 
-  if (status?.auditLogStorageDisabled && streams.length) {
+  if (status?.auditLogStorageDisabled && !streams.length) {
     return (
       <OrgAlertBanner
         text="Attention: Audit logs storage is disabled but no audit log streams have been configured."
