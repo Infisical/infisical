@@ -59,7 +59,7 @@ type TScimServiceFactoryDep = {
     TOrgMembershipDALFactory,
     "find" | "findOne" | "create" | "updateById" | "findById" | "update"
   >;
-  projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser" | "findById">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete" | "findProjectMembershipsByUserId">;
   groupDAL: Pick<
     TGroupDALFactory,

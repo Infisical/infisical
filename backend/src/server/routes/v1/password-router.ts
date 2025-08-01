@@ -11,73 +11,6 @@ import { UserEncryption } from "@app/services/user/user-types";
 export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/srp1",
-    config: {
-      rateLimit: authRateLimit
-    },
-    schema: {
-      body: z.object({
-        clientPublicKey: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          serverPublicKey: z.string(),
-          salt: z.string()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { salt, serverPublicKey } = await server.services.password.generateServerPubKey(
-        req.permission.id,
-        req.body.clientPublicKey
-      );
-      return { salt, serverPublicKey };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/change-password",
-    config: {
-      rateLimit: authRateLimit
-    },
-    schema: {
-      body: z.object({
-        clientProof: z.string().trim(),
-        protectedKey: z.string().trim(),
-        protectedKeyIV: z.string().trim(),
-        protectedKeyTag: z.string().trim(),
-        encryptedPrivateKey: z.string().trim(),
-        encryptedPrivateKeyIV: z.string().trim(),
-        encryptedPrivateKeyTag: z.string().trim(),
-        salt: z.string().trim(),
-        verifier: z.string().trim(),
-        password: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          message: z.string()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req, res) => {
-      const appCfg = getConfig();
-      await server.services.password.changePassword({ ...req.body, userId: req.permission.id });
-
-      void res.cookie("jid", "", {
-        httpOnly: true,
-        path: "/",
-        sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
-      });
-      return { message: "Successfully changed password" };
-    }
-  });
-
-  server.route({
-    method: "POST",
     url: "/email/password-reset",
     config: {
       rateLimit: smtpRateLimit({
@@ -128,41 +61,6 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       const passwordReset = await server.services.password.verifyPasswordResetEmail(req.body.email, req.body.code);
 
       return passwordReset;
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/backup-private-key",
-    config: {
-      rateLimit: authRateLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    schema: {
-      body: z.object({
-        clientProof: z.string().trim(),
-        encryptedPrivateKey: z.string().trim(),
-        iv: z.string().trim(),
-        tag: z.string().trim(),
-        salt: z.string().trim(),
-        verifier: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          backupPrivateKey: BackupPrivateKeySchema.omit({ verifier: true })
-        })
-      }
-    },
-    handler: async (req) => {
-      const token = validateSignUpAuthorization(req.headers.authorization as string, "", false)!;
-      const backupPrivateKey = await server.services.password.createBackupPrivateKey({
-        ...req.body,
-        userId: token.userId
-      });
-      if (!backupPrivateKey) throw new Error("Failed to create backup key");
-
-      return { message: "Successfully updated backup private key", backupPrivateKey };
     }
   });
 
@@ -257,14 +155,6 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        protectedKey: z.string().trim(),
-        protectedKeyIV: z.string().trim(),
-        protectedKeyTag: z.string().trim(),
-        encryptedPrivateKey: z.string().trim(),
-        encryptedPrivateKeyIV: z.string().trim(),
-        encryptedPrivateKeyTag: z.string().trim(),
-        salt: z.string().trim(),
-        verifier: z.string().trim(),
         password: z.string().trim(),
         token: z.string().trim()
       }),

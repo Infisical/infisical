@@ -20,8 +20,8 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          serverPublicKey: z.string(),
-          salt: z.string()
+          serverPublicKey: z.string().nullish(),
+          salt: z.string().nullish()
         })
       }
     },
@@ -124,14 +124,14 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          encryptionVersion: z.number().default(1).nullable().optional(),
-          protectedKey: z.string().nullable(),
-          protectedKeyIV: z.string().nullable(),
-          protectedKeyTag: z.string().nullable(),
-          publicKey: z.string(),
-          encryptedPrivateKey: z.string(),
-          iv: z.string(),
-          tag: z.string(),
+          encryptionVersion: z.number().default(1).nullish(),
+          protectedKey: z.string().nullish(),
+          protectedKeyIV: z.string().nullish(),
+          protectedKeyTag: z.string().nullish(),
+          publicKey: z.string().nullish(),
+          encryptedPrivateKey: z.string().nullish(),
+          iv: z.string().nullish(),
+          tag: z.string().nullish(),
           token: z.string()
         })
       }
@@ -179,6 +179,61 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         protectedKeyIV: data.user.protectedKeyIV || null,
         protectedKeyTag: data.user.protectedKeyTag || null
       } as const;
+    }
+  });
+
+  // New login route that doesn't use SRP
+  server.route({
+    method: "POST",
+    url: "/login",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      body: z.object({
+        email: z.string().trim(),
+        password: z.string().trim(),
+        providerAuthToken: z.string().trim().optional(),
+        captchaToken: z.string().trim().optional()
+      }),
+      response: {
+        200: z.object({
+          accessToken: z.string()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      const userAgent = req.headers["user-agent"];
+      if (!userAgent) throw new Error("user agent header is required");
+
+      const { tokens } = await server.services.login.login({
+        email: req.body.email,
+        password: req.body.password,
+        ip: req.realIp,
+        userAgent,
+        providerAuthToken: req.body.providerAuthToken,
+        captchaToken: req.body.captchaToken
+      });
+      const appCfg = getConfig();
+
+      void res.setCookie("jid", tokens.refreshToken, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+
+      addAuthOriginDomainCookie(res);
+
+      void res.cookie("infisical-project-assume-privileges", "", {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED,
+        maxAge: 0
+      });
+
+      return { accessToken: tokens.accessToken };
     }
   });
 };

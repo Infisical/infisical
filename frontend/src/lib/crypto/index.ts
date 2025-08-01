@@ -4,53 +4,6 @@ import jsrp from "jsrp";
 
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey, generateKeyPair } from "@app/components/utilities/cryptography/crypto";
-import { issueBackupPrivateKey, srp1 } from "@app/hooks/api/auth/queries";
-
-export const generateUserBackupKey = async (email: string, password: string) => {
-  // eslint-disable-next-line new-cap
-  const clientKey = new jsrp.client();
-  // eslint-disable-next-line new-cap
-  const clientPassword = new jsrp.client();
-
-  await new Promise((resolve) => {
-    clientPassword.init({ username: email, password }, () => resolve(null));
-  });
-  const clientPublicKey = clientPassword.getPublicKey();
-  const srpKeys = await srp1({ clientPublicKey });
-  clientPassword.setSalt(srpKeys.salt);
-  clientPassword.setServerPublicKey(srpKeys.serverPublicKey);
-
-  const clientProof = clientPassword.getProof(); // called M1
-  const generatedKey = crypto.randomBytes(16).toString("hex");
-
-  await new Promise((resolve) => {
-    clientKey.init({ username: email, password: generatedKey }, () => resolve(null));
-  });
-
-  const { salt, verifier } = await new Promise<{ salt: string; verifier: string }>(
-    (resolve, reject) => {
-      clientKey.createVerifier((err, res) => {
-        if (err) return reject(err);
-        return resolve(res);
-      });
-    }
-  );
-  const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-    text: String(localStorage.getItem("PRIVATE_KEY")),
-    secret: generatedKey
-  });
-
-  await issueBackupPrivateKey({
-    encryptedPrivateKey: ciphertext,
-    iv,
-    tag,
-    salt,
-    verifier,
-    clientProof
-  });
-
-  return generatedKey;
-};
 
 export const generateUserPassKey = async (
   email: string,

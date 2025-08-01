@@ -10,6 +10,10 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { AddUserToWsDTO, TBootstrapSshProjectDTO } from "./project-types";
 
 export const assignWorkspaceKeysToMembers = ({ members, decryptKey, userPrivateKey }: AddUserToWsDTO) => {
+  if (!decryptKey.sender.publicKey) {
+    throw new Error("Decrypt key sender public key not found");
+  }
+
   const plaintextProjectKey = crypto.encryption().asymmetric().decrypt({
     ciphertext: decryptKey.encryptedKey,
     nonce: decryptKey.nonce,

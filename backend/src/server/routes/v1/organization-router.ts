@@ -247,7 +247,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                 lastName: true,
                 id: true,
                 superAdmin: true
-              }).merge(z.object({ publicKey: z.string().nullable() }))
+              }).merge(z.object({ publicKey: z.string().nullable().optional() }))
             })
           )
             .omit({ createdAt: true, updatedAt: true })

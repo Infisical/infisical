@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 
@@ -65,6 +65,18 @@ const addAcceptedUsersToGroup = async ({
   const userKeysSet = new Set(keys.map((k) => `${k.projectId}-${k.receiverId}`));
 
   for await (const projectId of projectIds) {
+    const project = await projectDAL.findById(projectId, tx);
+    if (!project) {
+      throw new NotFoundError({
+        message: `Failed to find project with ID '${projectId}'`
+      });
+    }
+
+    if (project.version !== ProjectVersion.V1 && project.version !== ProjectVersion.V2) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
     const usersToAddProjectKeyFor = users.filter((u) => !userKeysSet.has(`${projectId}-${u.userId}`));
 
     if (usersToAddProjectKeyFor.length) {
@@ -83,6 +95,12 @@ const addAcceptedUsersToGroup = async ({
       if (!ghostUserLatestKey) {
         throw new NotFoundError({
           message: `Failed to find project owner's latest key in project with ID '${projectId}'`
+        });
+      }
+
+      if (!ghostUserLatestKey.sender.publicKey) {
+        throw new NotFoundError({
+          message: `Failed to find project owner's public key in project with ID '${projectId}'`
         });
       }
 
@@ -112,6 +130,12 @@ const addAcceptedUsersToGroup = async ({
       });
 
       const projectKeysToAdd = usersToAddProjectKeyFor.map((user) => {
+        if (!user.publicKey) {
+          throw new NotFoundError({
+            message: `Failed to find user's public key in project with ID '${projectId}'`
+          });
+        }
+
         const { ciphertext: encryptedKey, nonce } = crypto
           .encryption()
           .asymmetric()

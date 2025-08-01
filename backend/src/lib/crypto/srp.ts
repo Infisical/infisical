@@ -4,6 +4,7 @@ import jsrp from "jsrp";
 import { TUserEncryptionKeys } from "@app/db/schemas";
 import { UserEncryption } from "@app/services/user/user-types";
 
+import { BadRequestError } from "../errors";
 import { crypto, SymmetricKeySize } from "./cryptography";
 
 export const generateSrpServerKey = async (salt: string, verifier: string) => {
@@ -127,6 +128,10 @@ export const getUserPrivateKey = async (
   >
 ) => {
   if (user.encryptionVersion === UserEncryption.V1) {
+    if (!user.encryptedPrivateKey || !user.iv || !user.tag || !user.salt) {
+      throw new BadRequestError({ message: "User encrypted private key not found" });
+    }
+
     return crypto
       .encryption()
       .symmetric()
@@ -138,12 +143,25 @@ export const getUserPrivateKey = async (
         keySize: SymmetricKeySize.Bits128
       });
   }
+  // still used for legacy things
   if (
     user.encryptionVersion === UserEncryption.V2 &&
     user.protectedKey &&
     user.protectedKeyIV &&
     user.protectedKeyTag
   ) {
+    if (
+      !user.salt ||
+      !user.protectedKey ||
+      !user.protectedKeyIV ||
+      !user.protectedKeyTag ||
+      !user.encryptedPrivateKey ||
+      !user.iv ||
+      !user.tag
+    ) {
+      throw new BadRequestError({ message: "User encrypted private key not found" });
+    }
+
     const derivedKey = await argon2.hash(password, {
       salt: Buffer.from(user.salt),
       memoryCost: 65536,

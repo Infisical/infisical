@@ -8,7 +8,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import attemptChangePassword from "@app/components/utilities/attemptChangePassword";
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
@@ -68,10 +67,9 @@ export const ChangePasswordSection = () => {
           newPassword
         });
       } else {
-        await attemptChangePassword({
-          email: user.username,
-          currentPassword: oldPassword,
-          newPassword
+        createNotification({
+          text: "Legacy encryption scheme not supported for changing password. Please log out and log back in before changing your password.",
+          type: "error"
         });
       }
 

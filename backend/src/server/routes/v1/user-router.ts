@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -19,23 +19,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          user: UsersSchema.merge(
-            UserEncryptionKeysSchema.pick({
-              clientPublicKey: true,
-              serverPrivateKey: true,
-              encryptionVersion: true,
-              protectedKey: true,
-              protectedKeyIV: true,
-              protectedKeyTag: true,
-              publicKey: true,
-              encryptedPrivateKey: true,
-              iv: true,
-              tag: true,
-              salt: true,
-              verifier: true,
-              userId: true
-            })
-          )
+          user: UsersSchema
         })
       }
     },
@@ -91,26 +75,6 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         await server.services.user.removeMyDuplicateAccounts(req.auth.user.email, req.permission.id);
       }
       return { message: "Removed all duplicate accounts" };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/private-key",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      response: {
-        200: z.object({
-          privateKey: z.string()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
-    handler: async (req) => {
-      const privateKey = await server.services.user.getUserPrivateKey(req.permission.id);
-      return { privateKey };
     }
   });
 

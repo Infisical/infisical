@@ -8,26 +8,24 @@ import { organizationKeys } from "../organization/queries";
 import { setAuthToken } from "../reactQuery";
 import { workspaceKeys } from "../workspace";
 import {
-  ChangePasswordDTO,
   CompleteAccountDTO,
   CompleteAccountSignupDTO,
   GetAuthTokenAPI,
   GetBackupEncryptedPrivateKeyDTO,
-  IssueBackupPrivateKeyDTO,
   Login1DTO,
   Login1Res,
   Login2DTO,
   Login2Res,
   LoginLDAPDTO,
   LoginLDAPRes,
+  LoginV3DTO,
+  LoginV3Res,
   MfaMethod,
   ResetPasswordDTO,
   ResetPasswordV2DTO,
   ResetUserPasswordV2DTO,
   SendMfaTokenDTO,
   SetupPasswordDTO,
-  SRP1DTO,
-  SRPR1Res,
   TOauthTokenExchangeDTO,
   UserAgentType,
   UserEncryptionVersion,
@@ -50,21 +48,14 @@ export const login2 = async (loginDetails: Login2DTO) => {
   return data;
 };
 
-export const loginLDAPRedirect = async (loginLDAPDetails: LoginLDAPDTO) => {
-  const { data } = await apiRequest.post<LoginLDAPRes>("/api/v1/ldap/login", loginLDAPDetails); // return if account is complete or not + provider auth token
+export const loginV3 = async (loginDetails: LoginV3DTO) => {
+  const { data } = await apiRequest.post<LoginV3Res>("/api/v3/auth/login", loginDetails);
   return data;
 };
 
-export const useLogin1 = () => {
-  return useMutation({
-    mutationFn: async (details: {
-      email: string;
-      clientPublicKey: string;
-      providerAuthToken?: string;
-    }) => {
-      return login1(details);
-    }
-  });
+export const loginLDAPRedirect = async (loginLDAPDetails: LoginLDAPDTO) => {
+  const { data } = await apiRequest.post<LoginLDAPRes>("/api/v1/ldap/login", loginLDAPDetails); // return if account is complete or not + provider auth token
+  return data;
 };
 
 export const selectOrganization = async (data: {
@@ -143,11 +134,6 @@ export const useOauthTokenExchange = () => {
   });
 };
 
-export const srp1 = async (details: SRP1DTO) => {
-  const { data } = await apiRequest.post<SRPR1Res>("/api/v1/password/srp1", details);
-  return data;
-};
-
 export const completeAccountSignup = async (details: CompleteAccountSignupDTO) => {
   const { data } = await apiRequest.post("/api/v3/signup/complete-account/signup", details);
   return data;
@@ -156,14 +142,6 @@ export const completeAccountSignup = async (details: CompleteAccountSignupDTO) =
 export const completeAccountSignupInvite = async (details: CompleteAccountDTO) => {
   const { data } = await apiRequest.post("/api/v3/signup/complete-account/invite", details);
   return data;
-};
-
-export const useCompleteAccountSignup = () => {
-  return useMutation({
-    mutationFn: async (details: CompleteAccountSignupDTO) => {
-      return completeAccountSignup(details);
-    }
-  });
 };
 
 export const useSendMfaToken = () => {
@@ -263,11 +241,6 @@ export const useVerifyPasswordResetCode = () => {
   });
 };
 
-export const issueBackupPrivateKey = async (details: IssueBackupPrivateKeyDTO) => {
-  const { data } = await apiRequest.post("/api/v1/password/backup-private-key", details);
-  return data;
-};
-
 export const getBackupEncryptedPrivateKey = async ({
   verificationToken
 }: GetBackupEncryptedPrivateKeyDTO) => {
@@ -324,20 +297,6 @@ export const useResetUserPasswordV2 = () => {
   return useMutation({
     mutationFn: async (details: ResetUserPasswordV2DTO) => {
       await apiRequest.post("/api/v2/password/user/password-reset", details);
-    }
-  });
-};
-
-export const changePassword = async (details: ChangePasswordDTO) => {
-  const { data } = await apiRequest.post("/api/v1/password/change-password", details);
-  return data;
-};
-
-export const useChangePassword = () => {
-  // note: use after srp1
-  return useMutation({
-    mutationFn: async (details: ChangePasswordDTO) => {
-      return changePassword(details);
     }
   });
 };
