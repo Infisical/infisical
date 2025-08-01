@@ -27,12 +27,14 @@ import { useCreateReminder, useDeleteReminder } from "@app/hooks/api/reminders";
 import { reminderKeys } from "@app/hooks/api/reminders/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
+import { format } from "date-fns";
 
 // Constants
 const MIN_REPEAT_DAYS = 1;
 const MAX_REPEAT_DAYS = 365;
 const DEFAULT_REPEAT_DAYS = 30;
 const DEFAULT_TEXTAREA_ROWS = 8;
+const ONE_DAY_IN_MILLIS = 86400000;
 
 // Enums
 enum ReminderType {
@@ -177,6 +179,7 @@ export const CreateReminderForm = ({
 
   // Watch form values
   const reminderType = watch("reminderType");
+  const fromDate = watch("fromDate");
 
   // Invalidate queries helper
   const invalidateQueries = () => {
@@ -368,6 +371,7 @@ export const CreateReminderForm = ({
                     >
                       A reminder will be sent every{" "}
                       {field.value && field.value > 1 ? `${field.value} days` : "day"}
+                      {fromDate ? ` starting from ${format(fromDate, "MM/dd/yy")}` : ""}
                     </div>
                   </div>
                 )}
@@ -379,6 +383,7 @@ export const CreateReminderForm = ({
                   <FormControl
                     className="mb-0"
                     label="Start Date"
+                    tooltipText={`if set, this will be the start date of the first reminder`}
                     isError={Boolean(fieldState.error)}
                     errorText={fieldState.error?.message || ""}
                   >
@@ -393,7 +398,7 @@ export const CreateReminderForm = ({
                       }}
                       popUpContentProps={{}}
                       hideTime
-                      hidden={{ before: new Date(Date.now() + 86400000) }}
+                      hidden={{ before: new Date(Date.now() + ONE_DAY_IN_MILLIS) }}
                     />
                   </FormControl>
                 )}
@@ -423,7 +428,7 @@ export const CreateReminderForm = ({
                       }}
                       popUpContentProps={{}}
                       hideTime
-                      hidden={{ before: new Date(Date.now() + 86400000) }}
+                      hidden={{ before: new Date(Date.now() + ONE_DAY_IN_MILLIS) }}
                     />
                   </FormControl>
                 </div>
