@@ -1,6 +1,6 @@
 import { createAppAuth } from "@octokit/auth-app";
 import { request } from "@octokit/request";
-import { AxiosError, AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
 
