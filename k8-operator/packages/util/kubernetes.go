@@ -70,8 +70,6 @@ func GetInfisicalLdapAuthFromKubeSecret(ctx context.Context, reconcilerClient cl
 	ldapAuthCredsFromKubeSecret, err := GetKubeSecretByNamespacedName(ctx, reconcilerClient, types.NamespacedName{
 		Namespace: ldapAuthRef.SecretNamespace,
 		Name:      ldapAuthRef.SecretName,
-		// Namespace: infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretNamespace,
-		// Name:      infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretName,
 	})
 
 	if k8Errors.IsNotFound(err) {
