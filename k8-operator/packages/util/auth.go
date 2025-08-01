@@ -223,7 +223,7 @@ func HandleLdapAuth(ctx context.Context, reconcilerClient client.Client, secretC
 		}
 
 		ldapAuthSpec = v1alpha1.LdapAuthDetails{
-			CredentialsRef: infisicalDynamicSecret.Spec.Authentication.UniversalAuth.CredentialsRef,
+			CredentialsRef: infisicalDynamicSecret.Spec.Authentication.LdapAuth.CredentialsRef,
 			SecretsScope:   v1alpha1.MachineIdentityScopeInWorkspace{},
 			IdentityID:     infisicalDynamicSecret.Spec.Authentication.LdapAuth.IdentityID,
 		}

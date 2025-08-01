@@ -81,7 +81,7 @@ func GetInfisicalLdapAuthFromKubeSecret(ctx context.Context, reconcilerClient cl
 	}
 
 	usernameFromSecret := ldapAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_LDAP_USERNAME]
-	passwordFromSecret := ldapAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_LDAP_PASSSWORD]
+	passwordFromSecret := ldapAuthCredsFromKubeSecret.Data[INFISICAL_MACHINE_IDENTITY_LDAP_PASSWORD]
 
 	return model.LdapIdentityDetails{Username: string(usernameFromSecret), Password: string(passwordFromSecret)}, nil
 
