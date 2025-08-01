@@ -69,7 +69,8 @@ export enum ApiDocsTags {
   SecretScanning = "Secret Scanning",
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
-  LdapSso = "LDAP SSO"
+  LdapSso = "LDAP SSO",
+  Events = "Event Subscriptions"
 }
 
 export const GROUPS = {
@@ -2867,5 +2868,12 @@ export const LdapSso = {
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
     caCert: "The CA certificate to use when verifying the LDAP server certificate."
+  }
+};
+
+export const EventSubscriptions = {
+  SUBSCRIBE_PROJECT_EVENTS: {
+    projectId: "The ID of the project the group belongs to.",
+    register: "List of events you want to subscribe to"
   }
 };

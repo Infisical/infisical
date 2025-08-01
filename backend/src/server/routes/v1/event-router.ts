@@ -7,6 +7,7 @@ import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { getServerSentEventsHeaders } from "@app/ee/services/event/event-sse-stream";
 import { EventRegisterSchema } from "@app/ee/services/event/types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ApiDocsTags, EventSubscriptions } from "@app/lib/api-docs";
 import { BadRequestError, ForbiddenRequestError, RateLimitError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -20,10 +21,14 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Events],
+      description: "Subscribe to project events",
       body: z.object({
-        projectId: z.string().trim(),
+        projectId: z.string().trim().describe(EventSubscriptions.SUBSCRIBE_PROJECT_EVENTS.projectId),
         register: z.array(EventRegisterSchema).max(10)
-      })
+      }),
+      produces: ["text/event-stream"]
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
