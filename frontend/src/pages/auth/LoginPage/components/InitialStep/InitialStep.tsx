@@ -189,7 +189,7 @@ export const InitialStep = ({
               leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
               className="mx-0 h-10 w-full"
             >
-              Continue with SAML
+              {t("login.continue-with-saml")?? "Continue with SAML"}
             </Button>
           </div>
         )}
@@ -202,7 +202,7 @@ export const InitialStep = ({
               leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
               className="mx-0 h-10 w-full"
             >
-              Continue with OIDC
+              {t("login.continue-with-oidc")??"Continue with OIDC"}
             </Button>
           </div>
         )}
@@ -216,7 +216,7 @@ export const InitialStep = ({
       className="mx-auto flex w-full flex-col items-center justify-center"
     >
       <h1 className="mb-8 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-        Login to Infisical
+        {t("login.og-title")?? "Login to Infisical"}
       </h1>
       <RegionSelect />
       {shouldDisplayLoginMethod(LoginMethod.SAML) && (
@@ -228,7 +228,7 @@ export const InitialStep = ({
             leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
             className="mx-0 h-10 w-full"
           >
-            Continue with SAML
+            {t("login.continue-with-saml")??"Continue with SAML"}
           </Button>
         </div>
       )}
@@ -241,7 +241,7 @@ export const InitialStep = ({
             leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
             className="mx-0 h-10 w-full"
           >
-            Continue with OIDC
+            {t("login.continue-with-oidc")??"Continue with OIDC"}
           </Button>
         </div>
       )}
@@ -256,7 +256,7 @@ export const InitialStep = ({
             leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
             className="mx-0 h-10 w-full"
           >
-            Continue with LDAP
+            {t("login.continue-with-ldap")??"Continue with LDAP"}
           </Button>
         </div>
       )}
@@ -291,7 +291,7 @@ export const InitialStep = ({
           </Tooltip>
         )}
         {shouldDisplayLoginMethod(LoginMethod.GITHUB) && (
-          <Tooltip position="bottom" content="Continue with GitHub">
+          <Tooltip position="bottom" content={t("login.continue-with-github")??"Continue with GitHub"}>
             <IconButton
               ariaLabel="Login continue with GitHub"
               colorSchema="primary"
@@ -364,7 +364,7 @@ export const InitialStep = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
-              placeholder="Enter your email..."
+              placeholder={t("login.enter-you-email")??"Enter your email..."}
               isRequired
               autoComplete="username"
               className="h-10"
@@ -375,7 +375,7 @@ export const InitialStep = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
-              placeholder="Enter your password..."
+              placeholder={t("login.enter-you-password")??"Enter your password..."}
               isRequired
               autoComplete="current-password"
               id="current-password"
@@ -404,7 +404,7 @@ export const InitialStep = ({
               isLoading={isLoading}
             >
               {" "}
-              Continue with Email{" "}
+              {t("login.continue-with-email") ?? "Continue with Email"}{" "}
             </Button>
           </div>
         </>
@@ -418,7 +418,7 @@ export const InitialStep = ({
         <div className="mt-6 flex flex-row text-sm text-bunker-400">
           <Link to="/signup">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              Don&apos;t have an account yet? {t("login.create-account")}
+              {t("login.need-account")} {t("login.create-account")} {/* Don't have an account? Create one */}
             </span>
           </Link>
         </div>
@@ -429,7 +429,7 @@ export const InitialStep = ({
         <div className="mt-2 flex flex-row text-sm text-bunker-400">
           <Link to="/verify-email">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              Forgot password? Recover your account
+              {t("login.forgot-password")?? "Forgot password? Recover your account"}
             </span>
           </Link>
         </div>
