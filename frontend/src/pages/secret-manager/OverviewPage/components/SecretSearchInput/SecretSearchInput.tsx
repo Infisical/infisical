@@ -52,8 +52,15 @@ export const SecretSearchInput = ({
                     if (activeIndex === 0 && e.key === "Enter") setIsOpen(true);
                   }}
                   autoComplete="off"
-                  className="input text-md h-[2.3rem] w-full rounded-md rounded-l-none bg-mineshaft-800 py-[0.375rem] pl-2.5 pr-8 text-gray-400 placeholder-mineshaft-50 placeholder-opacity-50 outline-none duration-200 placeholder:text-sm hover:ring-bunker-400/60 focus:bg-mineshaft-700/80 focus:ring-1 focus:ring-primary-400/50"
-                  placeholder="Search by secret, folder, tag or metadata..."
+                  className={twMerge(
+                    "input text-md h-[2.3rem] w-full rounded-md rounded-l-none bg-mineshaft-800 py-[0.375rem] pl-2.5 text-gray-400 placeholder-mineshaft-50 placeholder-opacity-50 outline-none duration-200 placeholder:text-sm hover:ring-bunker-400/60 focus:bg-mineshaft-700/80 focus:ring-1 focus:ring-primary-400/50",
+                    hasSearch ? "pr-8" : "pr-2.5"
+                  )}
+                  placeholder={
+                    isSingleEnv
+                      ? "Search by secret, folder, tag or metadata..."
+                      : "Search by secret or folder name..."
+                  }
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
                 />
