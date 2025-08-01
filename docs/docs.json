@@ -2397,7 +2397,7 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://09eb298540fe.ngrok-free.app/api/docs/json",
+    "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
       "server": ["https://app.infisical.com"]
     }
