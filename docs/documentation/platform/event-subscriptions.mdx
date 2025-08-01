@@ -1,0 +1,74 @@
+---
+title: "Event Subscriptions"
+sidebarTitle: "Events"
+description: "Subscribe to events in Infisical in real-time"
+---
+
+<Info>
+<strong>Note:</strong> Event Subscriptions is a paid feature.<br /><br />
+On Infisical Cloud, this feature is available on the <strong>Pro</strong> and <strong>Enterprise</strong> tiers, each providing different event retention periods.<br />
+For self-hosted deployments, please contact <a href="mailto:sales@infisical.com">sales@infisical.com</a> to purchase an enterprise license.
+</Info>
+
+## Introduction
+
+Event Subscriptions in Infisical let you receive real-time notifications when specific actions take place within your account or organization. These can include changes to secrets, users, teams, and other important resources.
+
+Currently, you can subscribe to notifications for the following event types:
+
+### Supported Event Types
+
+- `secret:created`: Triggered when a secret is created.
+- `secret:updated`: Triggered when a secret is updated.
+- `secret:deleted`: Triggered when a secret is deleted.
+
+## Permissions Setup
+
+Proper permissions are required for configuring event subscriptions. To set up the necessary permissions, follow these steps:
+
+<Steps>
+  <Step title="Select a project and copy the 'Project ID'">
+    ![Select Project](/images/platform/events/select-project.png)
+    On your project page, open <strong>Project Settings</strong> from the sidebar.<br />
+    In the Project name section, click <strong>Copy Project ID</strong> to copy your Project ID, or extract it from the URL:<br />
+    `https://app.infisical.com/project/<your_project_id>/settings`
+  </Step>
+
+  <Step title="Navigate to 'Access Management' and open 'Project Roles'">
+    ![Project Detail](/images/platform/events/project-detail.png)
+    ![Project Access](/images/platform/events/project-access.png)
+    Go to <strong>Access Management</strong>, then select <strong>Project Roles</strong>.
+  </Step>
+
+  <Step title="Select an existing role or create a new one">
+    ![Project Role](/images/platform/events/project-role.png)
+    You can either edit an existing role or create a new role for event subscriptions.
+  </Step>
+
+  <Step title="Assign policies to the role">
+    ![Role Detail](/images/platform/events/role-detail.png)
+    Choose the specific resources that the role should have access to.<br />
+    ![Add policy](/images/platform/events/add-policy.png)
+  </Step>
+
+  <Step title="Enable the 'Subscribe' action in permissions">
+    ![Policy setting](/images/platform/events/policy-setting.png)
+    Make sure the <strong>Subscribe</strong> action is selected for the relevant resources and events.<br />
+    <AccordionGroup>
+      <Accordion title="Add conditions to your permission">
+        By default, the role will have access to all events for the selected resources in this project.
+        If needed, you can add filters to limit the scope of accessible events.<br />
+        ![Policy setting](/images/platform/events/add-conditions.png)
+      </Accordion>
+    </AccordionGroup>
+  </Step>
+</Steps>
+
+## Usage
+
+For integration and implementation details, please refer to our [API Reference](/api-reference/endpoints/events).
+
+---
+
+**Note:** Only users or roles with the appropriate permissions can manage or subscribe to events.<br />
+<strong>Availability:</strong> Event Subscriptions are not included in the Free plan.
