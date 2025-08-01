@@ -11,6 +11,11 @@ type MachineIdentityDetails struct {
 	ClientSecret string
 }
 
+type LdapIdentityDetails struct {
+	Username string
+	Password string
+}
+
 type SingleEnvironmentVariable struct {
 	Key        string `json:"key"`
 	Value      string `json:"value"`
