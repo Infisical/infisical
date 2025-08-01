@@ -118,14 +118,14 @@ export const SanitizedGitHubConnectionSchema = z.discriminatedUnion("method", [
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.App),
     credentials: z.object({
-      instanceType: z.string().optional(),
+      instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
       host: z.string().optional()
     })
   }),
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.OAuth),
     credentials: z.object({
-      instanceType: z.string().optional(),
+      instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
       host: z.string().optional()
     })
   })
