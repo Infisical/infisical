@@ -1,5 +1,6 @@
 import { createAppAuth } from "@octokit/auth-app";
-import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import { request } from "@octokit/request";
+import { AxiosError, AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
 import https from "https";
 import RE2 from "re2";
 
@@ -89,7 +90,10 @@ export const requestWithGitHubGateway = async <T>(
         return await httpRequest.request(finalRequestConfig);
       } catch (error) {
         const axiosError = error as AxiosError;
-        logger.error("Error during GitHub gateway request:", axiosError.message, axiosError.response?.data);
+        logger.error(
+          { message: axiosError.message, data: axiosError.response?.data },
+          "Error during GitHub gateway request:"
+        );
         throw error;
       }
     },
@@ -128,7 +132,10 @@ export const getGitHubAppAuthToken = async (appConnection: TGitHubConnection) =>
   const appAuth = createAppAuth({
     appId,
     privateKey: appPrivateKey,
-    installationId: appConnection.credentials.installationId
+    installationId: appConnection.credentials.installationId,
+    request: request.defaults({
+      baseUrl: `https://${await getGitHubInstanceApiUrl(appConnection)}`
+    })
   });
 
   const { token } = await appAuth({ type: "installation" });
@@ -393,11 +400,15 @@ export const validateGitHubConnectionCredentials = async (
   switch (method) {
     case GitHubConnectionMethod.App:
       return {
-        installationId: credentials.installationId
+        installationId: credentials.installationId,
+        instanceType: credentials.instanceType,
+        host: credentials.host
       };
     case GitHubConnectionMethod.OAuth:
       return {
-        accessToken: tokenResp.data.access_token
+        accessToken: tokenResp.data.access_token,
+        instanceType: credentials.instanceType,
+        host: credentials.host
       };
     default:
       throw new InternalServerError({
