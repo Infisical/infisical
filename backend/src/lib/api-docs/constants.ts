@@ -2873,7 +2873,7 @@ export const LdapSso = {
 
 export const EventSubscriptions = {
   SUBSCRIBE_PROJECT_EVENTS: {
-    projectId: "The ID of the project the subscription belongs to.",
+    projectId: "The ID of the project to subscribe to events for.",
     register: "List of events you want to subscribe to"
   }
 };
