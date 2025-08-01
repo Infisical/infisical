@@ -35,6 +35,7 @@ export type TServerConfig = {
   initialized: boolean;
   allowSignUp: boolean;
   allowedSignUpDomain?: string | null;
+  disableAuditLogStorage: boolean;
   isMigrationModeOn?: boolean;
   trustSamlEmails: boolean;
   trustLdapEmails: boolean;
