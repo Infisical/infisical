@@ -1,14 +1,10 @@
 import { Helmet } from "react-helmet";
 
 import { PageHeader } from "@app/components/v2";
-import { useFetchServerStatus } from "@app/hooks/api";
-import { OrgAlertBanner } from "@app/layouts/OrganizationLayout/components/OrgAlertBanner";
 
 import { LogsSection } from "./components";
 
 export const AuditLogsPage = () => {
-  const { data: status } = useFetchServerStatus();
-
   return (
     <div className="h-full bg-bunker-800">
       <Helmet>
@@ -23,9 +19,6 @@ export const AuditLogsPage = () => {
             title="Audit logs"
             description="Audit logs for security and compliance teams to monitor information access."
           />
-          {status?.auditLogStorageDisabled && (
-            <OrgAlertBanner text="Audit logs storage is disabled" />
-          )}
           <LogsSection pageView />
         </div>
       </div>

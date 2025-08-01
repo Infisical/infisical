@@ -65,7 +65,14 @@ Example values:
   default="false"
   optional
 >
-  Determines whether your Infisical instance can automatically read the service account token of the pod it's running on. Used for features such as the IRSA auth method.
+  Determines whether your Infisical instance can automatically read the service
+  account token of the pod it's running on. Used for features such as the IRSA
+  auth method.
+</ParamField>
+
+<ParamField query="DISABLE_AUDIT_LOG_STORAGE" type="string" default="false">
+  Disable storing audit logs in the database. This is useful if you're using
+  audit log streams and don't want to store them in the database.
 </ParamField>
 
 ## CORS

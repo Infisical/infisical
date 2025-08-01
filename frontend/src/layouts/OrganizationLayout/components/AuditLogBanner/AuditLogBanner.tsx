@@ -8,9 +8,9 @@ export const AuditLogBanner = () => {
   const { data: status, isLoading: isLoadingStatus } = useFetchServerStatus();
   const { data: streams, isLoading: isLoadingStreams } = useGetAuditLogStreams(org.currentOrg.id);
 
-  if (isLoadingStreams || isLoadingStatus) return null;
+  if (isLoadingStreams || isLoadingStatus || !streams) return null;
 
-  if (status?.auditLogStorageDisabled && !streams?.length) {
+  if (status?.auditLogStorageDisabled && streams.length) {
     return (
       <OrgAlertBanner
         text="Attention: Audit logs storage is disabled but no audit log streams have been configured."
