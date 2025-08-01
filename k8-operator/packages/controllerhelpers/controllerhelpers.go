@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
-	"github.com/Infisical/infisical/k8-operator/packages/constants"
+	"github.com/Infisical/infisical/infisical-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/infisical-operator/packages/constants"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
