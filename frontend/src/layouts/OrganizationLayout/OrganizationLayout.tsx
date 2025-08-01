@@ -6,10 +6,11 @@ import { twMerge } from "tailwind-merge";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
-import { useServerConfig } from "@app/context";
+import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
 
+import { AuditLogBanner } from "./components/AuditLogBanner";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
 import { Navbar } from "./components/NavBar";
 import { OrgSidebar } from "./components/OrgSidebar";
@@ -31,6 +32,7 @@ export const OrganizationLayout = () => {
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
 
   const { data: serverDetails, isLoading } = useFetchServerStatus();
+  const { subscription } = useSubscription();
 
   return (
     <>
@@ -41,6 +43,7 @@ export const OrganizationLayout = () => {
         <Navbar />
         {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}
         {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
+        {!isLoading && subscription.auditLogs && <AuditLogBanner />}
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <OrgSidebar isHidden={isInsideProject} />

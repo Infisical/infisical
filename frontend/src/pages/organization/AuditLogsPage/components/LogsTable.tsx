@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { faFile } from "@fortawesome/free-solid-svg-icons";
+import { faCancel, faFile } from "@fortawesome/free-solid-svg-icons";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -16,7 +16,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Timezone } from "@app/helpers/datetime";
-import { useGetAuditLogs } from "@app/hooks/api";
+import { useFetchServerStatus, useGetAuditLogs } from "@app/hooks/api";
 import { TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 
 import { LogsTableRow } from "./LogsTableRow";
@@ -30,6 +30,8 @@ type Props = {
 const AUDIT_LOG_LIMIT = 30;
 
 export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
+  const { data: status } = useFetchServerStatus();
+
   // Determine the project ID for filtering
   const filterProjectId =
     // Use the projectId from the filter if it exists
@@ -79,7 +81,11 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
             {isEmpty && (
               <Tr>
                 <Td colSpan={3}>
-                  <EmptyState title="No audit logs on file" icon={faFile} />
+                  {status?.auditLogStorageDisabled ? (
+                    <EmptyState title="Audit log storage is disabled" icon={faCancel} />
+                  ) : (
+                    <EmptyState title="No audit logs on file" icon={faFile} />
+                  )}
                 </Td>
               </Tr>
             )}

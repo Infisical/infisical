@@ -1,8 +1,10 @@
 // weird commonjs-related error in the CI requires us to do the import like this
 import knex from "knex";
+import { v4 as uuidv4 } from "uuid";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -188,5 +190,20 @@ export const auditLogDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
   };
 
-  return { ...auditLogOrm, pruneAuditLog, find };
+  const create: TAuditLogDALFactory["create"] = async (tx) => {
+    const config = getConfig();
+
+    if (config.DISABLE_AUDIT_LOG_STORAGE) {
+      return {
+        ...tx,
+        id: uuidv4(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    }
+
+    return auditLogOrm.create(tx);
+  };
+
+  return { ...auditLogOrm, create, pruneAuditLog, find };
 };

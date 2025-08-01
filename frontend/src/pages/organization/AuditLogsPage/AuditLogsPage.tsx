@@ -12,6 +12,7 @@ export const AuditLogsPage = () => {
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
+
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-7xl">
           <PageHeader
