@@ -19,7 +19,7 @@ const INFISICAL_MACHINE_IDENTITY_CLIENT_ID = "clientId"
 const INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET = "clientSecret"
 
 const INFISICAL_MACHINE_IDENTITY_LDAP_USERNAME = "username"
-const INFISICAL_MACHINE_IDENTITY_LDAP_PASSSWORD = "password"
+const INFISICAL_MACHINE_IDENTITY_LDAP_PASSWORD = "password"
 
 func GetKubeSecretByNamespacedName(ctx context.Context, reconcilerClient client.Client, namespacedName types.NamespacedName) (*corev1.Secret, error) {
 	kubeSecret := &corev1.Secret{}
