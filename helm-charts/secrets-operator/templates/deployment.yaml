@@ -86,6 +86,10 @@ spec:
       securityContext:
         runAsNonRoot: true
       serviceAccountName: {{ include "secrets-operator.fullname" . }}-controller-manager
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       terminationGracePeriodSeconds: 10
       nodeSelector: {{ toYaml .Values.controllerManager.nodeSelector | nindent 8 }}
       tolerations: {{ toYaml .Values.controllerManager.tolerations | nindent 8 }}
