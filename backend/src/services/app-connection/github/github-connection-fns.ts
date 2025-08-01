@@ -12,7 +12,6 @@ import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
-import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
@@ -28,6 +27,23 @@ export const getGitHubConnectionListItem = () => {
     oauthClientId: INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
     appClientSlug: INF_APP_CONNECTION_GITHUB_APP_SLUG
   };
+};
+
+export const getGitHubInstanceApiUrl = async (config: {
+  credentials: Pick<TGitHubConnectionConfig["credentials"], "host" | "instanceType">;
+}) => {
+  const host = config.credentials.host || "github.com";
+
+  await blockLocalAndPrivateIpAddresses(host);
+
+  let apiBase: string;
+  if (config.credentials.instanceType === "server") {
+    apiBase = `${host}/api/v3`;
+  } else {
+    apiBase = `api.${host}`;
+  }
+
+  return apiBase;
 };
 
 export const requestWithGitHubGateway = async <T>(
@@ -141,7 +157,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
 
   const token =
     method === GitHubConnectionMethod.OAuth ? credentials.accessToken : await getGitHubAppAuthToken(appConnection);
-  let url: string | null = `https://api.${credentials.host || "github.com"}${path}`;
+  let url: string | null = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
   let results: T[] = [];
   let i = 0;
 
@@ -355,7 +371,7 @@ export const validateGitHubConnectionCredentials = async (
         };
       }[];
     }>(config, gatewayService, {
-      url: IntegrationUrls.GITHUB_USER_INSTALLATIONS.replace("api.github.com", `api.${host}`),
+      url: `https://${await getGitHubInstanceApiUrl(config)}/user/installations`,
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${tokenResp.data.access_token}`,
