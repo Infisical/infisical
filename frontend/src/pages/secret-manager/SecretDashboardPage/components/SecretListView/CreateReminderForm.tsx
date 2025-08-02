@@ -4,6 +4,7 @@ import { faClock, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -27,7 +28,6 @@ import { useCreateReminder, useDeleteReminder } from "@app/hooks/api/reminders";
 import { reminderKeys } from "@app/hooks/api/reminders/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { format } from "date-fns";
 
 // Constants
 const MIN_REPEAT_DAYS = 1;
@@ -383,7 +383,7 @@ export const CreateReminderForm = ({
                   <FormControl
                     className="mb-0"
                     label="Start Date"
-                    tooltipText={`if set, this will be the start date of the first reminder`}
+                    tooltipText="When enabled, this date will be used as the start date for the first reminder"
                     isError={Boolean(fieldState.error)}
                     errorText={fieldState.error?.message || ""}
                   >
