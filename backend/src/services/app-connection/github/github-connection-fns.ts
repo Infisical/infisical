@@ -1,5 +1,4 @@
 import { createAppAuth } from "@octokit/auth-app";
-import { request } from "@octokit/request";
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
@@ -17,6 +16,7 @@ import { getAppConnectionMethodName } from "@app/services/app-connection/app-con
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
 import { TGitHubConnection, TGitHubConnectionConfig } from "./github-connection-types";
+import { request } from "./octokit-request";
 
 export const getGitHubConnectionListItem = () => {
   const { INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG } = getConfig();
