@@ -68,7 +68,7 @@ export const SecretScanningSecretsDetectedTemplate = ({
         </Text>
         <Text className="text-[14px]">
           Once you have taken action, be sure to update the finding status in the{" "}
-          <BaseButton href={url}>Infisical Dashboard</BaseButton>.
+          <BaseLink href={url}>Infisical Dashboard</BaseLink>.
         </Text>
       </Section>
       <Section className="text-center">
