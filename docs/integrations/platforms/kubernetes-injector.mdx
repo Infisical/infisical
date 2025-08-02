@@ -105,44 +105,93 @@ The templates hold an array of templates that will be rendered and injected into
 
 
 ### Authentication
-The Infisical Agent Injector only supports Machine Identity [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) authentication at the moment.
+The Infisical Agent Injector supports Machine Identity [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) and [LDAP Auth](/documentation/platform/identities/ldap-auth) authentication.
 
-To configure Kubernetes Auth, you need to set the `auth.type` field to `kubernetes` and set the `auth.config.identity-id` to the ID of the machine identity you wish to use for authentication.
 
-```yaml
-auth:
-  type: "kubernetes"
-  config:
-    identity-id: "<your-infisical-machine-identity-id>"
-```
+<AccordionGroup>
+  <Accordion title="Kubernetes Auth">
 
-### Example ConfigMap
-```yaml config-map.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: demo-config-map
-data:
-  config.yaml: |
-    infisical:
-      address: "https://app.infisical.com"
-      auth:
-        type: "kubernetes"
-        config:
-          identity-id: "<your-infisical-machine-identity-id>"
-    templates:
-      - destination-path: "/path/to/save/secrets/file.txt"
-        template-content: |
-          {{- with secret "<your-project-id>" "dev" "/" }}
-          {{- range . }}
-          {{ .Key }}={{ .Value }}
-          {{- end }}
-          {{- end }}
-```
+    To configure Kubernetes Auth, you need to set the `auth.type` field to `kubernetes` and set the `auth.config.identity-id` to the ID of the machine identity you wish to use for authentication.
+    ```yaml
+    auth:
+      type: "kubernetes"
+      config:
+        identity-id: "<your-infisical-machine-identity-id>"
+    ```
 
-```bash
-kubectl apply -f config-map.yaml
-```
+    ### Example ConfigMap
+    ```yaml config-map.yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: demo-config-map
+    data:
+      config.yaml: |
+        infisical:
+          address: "https://app.infisical.com"
+          auth:
+            type: "kubernetes"
+            config:
+              identity-id: "<your-infisical-machine-identity-id>"
+        templates:
+          - destination-path: "/path/to/save/secrets/file.txt"
+            template-content: |
+              {{- with secret "<your-project-id>" "dev" "/" }}
+              {{- range . }}
+              {{ .Key }}={{ .Value }}
+              {{- end }}
+              {{- end }}
+    ```
+
+    ```bash
+    kubectl apply -f config-map.yaml
+    ```
+
+  </Accordion>
+  <Accordion title="LDAP Auth">
+    To configure LDAP Auth, you need to set the `auth.type` field to `ldap-auth` and set the `auth.config.identity-id` to the ID of the machine identity you wish to use for authentication. Configure the `auth.config.username` and `auth.config.password` to the username and password of the LDAP user to authenticate with.
+
+    ```yaml
+    auth:
+      type: "ldap-auth"
+      config:
+        identity-id: "<your-infisical-machine-identity-id>"
+        username: "<your-ldap-username>"
+        password: "<your-ldap-password>"
+    ```
+
+    ### Example ConfigMap
+    ```yaml config-map.yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: demo-config-map
+    data:
+      config.yaml: |
+        infisical:
+          address: "https://app.infisical.com"
+          auth:
+            type: "ldap-auth"
+            config:
+              identity-id: "<your-infisical-machine-identity-id>"
+              username: "<your-ldap-username>"
+              password: "<your-ldap-password>"
+        templates:
+          - destination-path: "/path/to/save/secrets/file.txt"
+            template-content: |
+              {{- with secret "<your-project-id>" "dev" "/" }}
+              {{- range . }}
+              {{ .Key }}={{ .Value }}
+              {{- end }}
+              {{- end }}
+    ```
+
+    ```bash
+    kubectl apply -f config-map.yaml
+    ```
+
+  </Accordion>
+</AccordionGroup>
 
 To use the config map in your pod, you will need to add the `org.infisical.com/agent-config-map` annotation to your pod's deployment. The value of the annotation is the name of the config map you created above.
 ```yaml
