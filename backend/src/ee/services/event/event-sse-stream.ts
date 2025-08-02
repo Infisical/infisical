@@ -71,8 +71,12 @@ export function createEventStreamClient(redis: Redis, options: IEventStreamClien
     action: "subscribe",
     conditions: {
       eventType: r.event,
-      secretPath: r.conditions?.secretPath ?? "/",
-      environment: r.conditions?.environmentSlug
+      ...(r.conditions
+        ? {
+            secretPath: r.conditions?.secretPath,
+            environment: r.conditions?.environmentSlug
+          }
+        : {})
     }
   }));
 
