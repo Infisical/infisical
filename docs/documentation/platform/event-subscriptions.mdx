@@ -1,20 +1,28 @@
 ---
 title: "Event Subscriptions"
 sidebarTitle: "Events"
-description: "Subscribe to events in Infisical in real-time"
+description: "Subscribe to events in Infisical for real-time updates"
 ---
 
 <Info>
-<strong>Note:</strong> Event Subscriptions is a paid feature.<br /><br />
-On Infisical Cloud, this feature is available on the <strong>Pro</strong> and <strong>Enterprise</strong> tiers, each providing different event retention periods.<br />
-For self-hosted deployments, please contact <a href="mailto:sales@infisical.com">sales@infisical.com</a> to purchase an enterprise license.
+  <strong>Note:</strong> Event Subscriptions is a paid feature.
+  <br />
+  <br />
+  On Infisical Cloud, this feature is available on the <strong>
+    Pro
+  </strong> and <strong>Enterprise</strong> tiers, with each tier providing
+  different event retention periods.
+  <br />
+  For self-hosted deployments, please contact{" "}
+  <a href="mailto:sales@infisical.com">sales@infisical.com</a> to purchase an
+  enterprise license.
 </Info>
 
 ## Introduction
 
-Event Subscriptions in Infisical let you receive real-time notifications when specific actions take place within your account or organization. These can include changes to secrets, users, teams, and other important resources.
+Event Subscriptions in Infisical allow you to receive real-time notifications when specific actions occur within your account or organization. These notifications can include changes to secrets, users, teams, and other important resources.
 
-Currently, you can subscribe to notifications for the following event types:
+You can currently subscribe to notifications for the following event types:
 
 ### Supported Event Types
 
@@ -24,7 +32,7 @@ Currently, you can subscribe to notifications for the following event types:
 
 ## Permissions Setup
 
-Proper permissions are required for configuring event subscriptions. To set up the necessary permissions, follow these steps:
+Proper permissions are required to configure event subscriptions. Follow these steps to set up the necessary permissions:
 
 <Steps>
   <Step title="Select a project and copy the 'Project ID'">
@@ -34,28 +42,30 @@ Proper permissions are required for configuring event subscriptions. To set up t
     `https://app.infisical.com/project/<your_project_id>/settings`
   </Step>
 
-  <Step title="Navigate to 'Access Management' and open 'Project Roles'">
-    ![Project Detail](/images/platform/events/project-detail.png)
-    ![Project Access](/images/platform/events/project-access.png)
-    Go to <strong>Access Management</strong>, then select <strong>Project Roles</strong>.
-  </Step>
+<Step title="Navigate to 'Access Management' and open 'Project Roles'">
+  ![Project Detail](/images/platform/events/project-detail.png) ![Project
+  Access](/images/platform/events/project-access.png) Navigate to{" "}
+  <strong>Access Management</strong>, then select <strong>Project Roles</strong>
+  .
+</Step>
 
-  <Step title="Select an existing role or create a new one">
-    ![Project Role](/images/platform/events/project-role.png)
-    You can either edit an existing role or create a new role for event subscriptions.
-  </Step>
+<Step title="Select an existing role or create a new one">
+  ![Project Role](/images/platform/events/project-role.png) You can either edit
+  an existing role or create a new role for event subscriptions.
+</Step>
 
-  <Step title="Assign policies to the role">
-    ![Role Detail](/images/platform/events/role-detail.png)
-    Choose the specific resources that the role should have access to.<br />
-    ![Add policy](/images/platform/events/add-policy.png)
-  </Step>
+<Step title="Assign policies to the role">
+  ![Role Detail](/images/platform/events/role-detail.png) Select the specific
+  resources that the role should have access to.
+  <br />
+  ![Add policy](/images/platform/events/add-policy.png)
+</Step>
 
   <Step title="Enable the 'Subscribe' action in permissions">
     ![Policy setting](/images/platform/events/policy-setting.png)
-    Make sure the <strong>Subscribe</strong> action is selected for the relevant resources and events.<br />
+    Ensure the <strong>Subscribe</strong> action is selected for the relevant resources and events.<br />
     <AccordionGroup>
-      <Accordion title="Add conditions to your permission">
+      <Accordion title="Add conditions to your permissions">
         By default, the role will have access to all events for the selected resources in this project.
         If needed, you can add filters to limit the scope of accessible events.<br />
         ![Policy setting](/images/platform/events/add-conditions.png)
@@ -70,5 +80,7 @@ For integration and implementation details, please refer to our [API Reference](
 
 ---
 
-**Note:** Only users or roles with the appropriate permissions can manage or subscribe to events.<br />
-<strong>Availability:</strong> Event Subscriptions are not included in the Free plan.
+**Note:** Only users or roles with appropriate permissions can manage or subscribe to events.<br />
+
+<strong>Availability:</strong> Event Subscriptions are not available on the Free
+plan.
