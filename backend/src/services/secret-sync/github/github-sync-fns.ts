@@ -3,6 +3,7 @@ import sodium from "libsodium-wrappers";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import {
   getGitHubAppAuthToken,
+  getGitHubInstanceApiUrl,
   GitHubConnectionMethod,
   makePaginatedGitHubRequest,
   requestWithGitHubGateway
@@ -73,7 +74,7 @@ const getPublicKey = async (
   }
 
   const response = await requestWithGitHubGateway<TGitHubPublicKey>(connection, gatewayService, {
-    url: `https://api.${connection.credentials.host || "github.com"}${path}`,
+    url: `https://${await getGitHubInstanceApiUrl(connection)}${path}`,
     method: "GET",
     headers: {
       Accept: "application/vnd.github+json",
@@ -111,7 +112,7 @@ const deleteSecret = async (
   }
 
   await requestWithGitHubGateway(connection, gatewayService, {
-    url: `https://api.${connection.credentials.host || "github.com"}${path}`,
+    url: `https://${await getGitHubInstanceApiUrl(connection)}${path}`,
     method: "DELETE",
     headers: {
       Accept: "application/vnd.github+json",
@@ -157,7 +158,7 @@ const putSecret = async (
   }
 
   await requestWithGitHubGateway(connection, gatewayService, {
-    url: `https://api.${connection.credentials.host || "github.com"}${path}`,
+    url: `https://${await getGitHubInstanceApiUrl(connection)}${path}`,
     method: "PUT",
     headers: {
       Accept: "application/vnd.github+json",
