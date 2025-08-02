@@ -5,20 +5,12 @@ description: "Subscribe to events in Infisical for real-time updates"
 ---
 
 <Info>
-  <strong>Note:</strong> Event Subscriptions is a paid feature.
-  <br />
-  <br />
-  On Infisical Cloud, this feature is available on the <strong>
-    Pro
-  </strong> and <strong>Enterprise</strong> tiers, with each tier providing
-  different event retention periods.
-  <br />
-  For self-hosted deployments, please contact{" "}
-  <a href="mailto:sales@infisical.com">sales@infisical.com</a> to purchase an
+  **Note:** Event Subscriptions is a paid feature. - **Infisical Cloud users:** Event Subscriptions is
+  available under the **Enterprise Tier**. - **Self-Hosted Infisical:** Please
+  contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an
   enterprise license.
 </Info>
 
-## Introduction
 
 Event Subscriptions in Infisical allow you to receive real-time notifications when specific actions occur within your account or organization. These notifications can include changes to secrets, users, teams, and other important resources.
 
@@ -30,9 +22,10 @@ You can currently subscribe to notifications for the following event types:
 - `secret:updated`: Triggered when a secret is updated.
 - `secret:deleted`: Triggered when a secret is deleted.
 
+
 ## Permissions Setup
 
-Proper permissions are required to configure event subscriptions. Follow these steps to set up the necessary permissions:
+In order to receive events on a supported resource, the identity is required to have a Subscribe permission on that resource. Follow these steps to set up the necessary permissions:
 
 <Steps>
   <Step title="Select a project and copy the 'Project ID'">

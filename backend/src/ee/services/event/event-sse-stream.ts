@@ -66,19 +66,24 @@ export type EventStreamClient = {
 };
 
 export function createEventStreamClient(redis: Redis, options: IEventStreamClientOpts): EventStreamClient {
-  const rules = options.registered.map((r) => ({
-    subject: options.type,
-    action: "subscribe",
-    conditions: {
-      eventType: r.event,
-      ...(r.conditions
-        ? {
-            secretPath: r.conditions?.secretPath,
-            environment: r.conditions?.environmentSlug
-          }
-        : {})
-    }
-  }));
+  const rules = options.registered.map((r) => {
+    const secretPath = r.conditions?.secretPath;
+    const hasConditions = r.conditions?.environmentSlug || r.conditions?.secretPath;
+
+    return {
+      subject: options.type,
+      action: "subscribe",
+      conditions: {
+        eventType: r.event,
+        ...(hasConditions
+          ? {
+              environment: r.conditions?.environmentSlug ?? "",
+              secretPath: r.conditions?.recursive ? { $glob: `${secretPath}/**` } : secretPath
+            }
+          : {})
+      }
+    };
+  });
 
   const id = `sse-${nanoid()}`;
   const control = new AbortController();

@@ -80,13 +80,15 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
             }
 
             req.body.register.forEach((r) => {
+              const fields = {
+                environment: r.conditions?.environmentSlug ?? "",
+                secretPath: r.conditions?.secretPath ?? "/",
+                eventType: r.event
+              };
+
               const allowed = info.permission.can(
                 ProjectPermissionSecretActions.Subscribe,
-                subject(ProjectPermissionSub.Secrets, {
-                  environment: r.conditions?.environmentSlug ?? "",
-                  secretPath: r.conditions?.secretPath ?? "/",
-                  eventType: r.event
-                })
+                subject(ProjectPermissionSub.Secrets, fields)
               );
 
               if (!allowed) {
@@ -94,9 +96,9 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
                   name: "PermissionDenied",
                   message: `You are not allowed to subscribe on secrets`,
                   details: {
-                    event: r.event,
-                    environmentSlug: r.conditions?.environmentSlug,
-                    secretPath: r.conditions?.secretPath ?? "/"
+                    event: fields.eventType,
+                    environmentSlug: fields.environment,
+                    secretPath: fields.secretPath
                   }
                 });
               }
