@@ -219,6 +219,20 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		})
 	}
 
+	destination := infisicalPushSecret.Spec.Destination
+	if err := destination.ValidateDestination(); err != nil {
+		return fmt.Errorf("destination validation failed: %v", err)
+	}
+
+	projectID := destination.ProjectID
+	if projectID == "" && destination.ProjectSlug != "" {
+		resolvedProjectID, err := r.resolveProjectIDFromSlug(infisicalClient, destination.ProjectSlug)
+		if err != nil {
+			return fmt.Errorf("failed to resolve project ID from slug '%s': %v", destination.ProjectSlug, err)
+		}
+		projectID = resolvedProjectID
+	}
+
 	processedSecrets := make(map[string]string)
 
 	if infisicalPushSecret.Spec.Push.Secret != nil {
@@ -231,7 +245,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 			return fmt.Errorf("unable to fetch kube secret [err=%s]", err)
 		}
 
-		processedSecrets, err = r.processTemplatedSecrets(infisicalPushSecret, kubePushSecret, infisicalPushSecret.Spec.Destination)
+		processedSecrets, err = r.processTemplatedSecrets(infisicalPushSecret, kubePushSecret, destination)
 		if err != nil {
 			return fmt.Errorf("unable to process templated secrets [err=%s]", err)
 		}
@@ -246,9 +260,9 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		processedSecrets[key] = value
 	}
 
-	destination := infisicalPushSecret.Spec.Destination
 	existingSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
-		ProjectID:      destination.ProjectID,
+		ProjectID:      projectID,
+		ProjectSlug:    destination.ProjectSlug,
 		Environment:    destination.EnvironmentSlug,
 		SecretPath:     destination.SecretsPath,
 		IncludeImports: false,
@@ -303,7 +317,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 				if updatePolicy == string(constants.PUSH_SECRET_REPLACE_POLICY_ENABLED) {
 					updatedSecret, err := infisicalClient.Secrets().Update(infisicalSdk.UpdateSecretOptions{
 						SecretKey:      secretKey,
-						ProjectID:      destination.ProjectID,
+						ProjectID:      projectID,
 						Environment:    destination.EnvironmentSlug,
 						SecretPath:     destination.SecretsPath,
 						NewSecretValue: secretValue,
@@ -321,7 +335,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 				createdSecret, err := infisicalClient.Secrets().Create(infisicalSdk.CreateSecretOptions{
 					SecretKey:   secretKey,
 					SecretValue: secretValue,
-					ProjectID:   destination.ProjectID,
+					ProjectID:   projectID,
 					Environment: destination.EnvironmentSlug,
 					SecretPath:  destination.SecretsPath,
 				})
@@ -351,7 +365,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 
 					deletedSecret, err := infisicalClient.Secrets().Delete(infisicalSdk.DeleteSecretOptions{
 						SecretKey:   existingSecret.SecretKey,
-						ProjectID:   destination.ProjectID,
+						ProjectID:   projectID,
 						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
 					})
@@ -365,7 +379,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 					createdSecret, err := infisicalClient.Secrets().Create(infisicalSdk.CreateSecretOptions{
 						SecretKey:   managedSecretKey,
 						SecretValue: existingSecret.SecretValue,
-						ProjectID:   destination.ProjectID,
+						ProjectID:   projectID,
 						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
 					})
@@ -394,7 +408,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 
 					deletedSecret, err := infisicalClient.Secrets().Delete(infisicalSdk.DeleteSecretOptions{
 						SecretKey:   managedSecretKey,
-						ProjectID:   destination.ProjectID,
+						ProjectID:   projectID,
 						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
 					})
@@ -424,7 +438,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 					createdSecret, err := infisicalClient.Secrets().Create(infisicalSdk.CreateSecretOptions{
 						SecretKey:   currentSecretKey,
 						SecretValue: processedSecrets[currentSecretKey],
-						ProjectID:   destination.ProjectID,
+						ProjectID:   projectID,
 						Environment: destination.EnvironmentSlug,
 						SecretPath:  destination.SecretsPath,
 					})
@@ -448,7 +462,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 						updatedSecret, err := infisicalClient.Secrets().Update(infisicalSdk.UpdateSecretOptions{
 							SecretKey:      currentSecretKey,
 							NewSecretValue: processedSecrets[currentSecretKey],
-							ProjectID:      destination.ProjectID,
+							ProjectID:      projectID,
 							Environment:    destination.EnvironmentSlug,
 							SecretPath:     destination.SecretsPath,
 						})
@@ -483,7 +497,7 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 						updatedSecret, err := infisicalClient.Secrets().Update(infisicalSdk.UpdateSecretOptions{
 							SecretKey:      secretKey,
 							NewSecretValue: secretValue,
-							ProjectID:      destination.ProjectID,
+							ProjectID:      projectID,
 							Environment:    destination.EnvironmentSlug,
 							SecretPath:     destination.SecretsPath,
 						})
@@ -567,8 +581,23 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 	}
 
 	destination := infisicalPushSecret.Spec.Destination
+	if err := destination.ValidateDestination(); err != nil {
+		return fmt.Errorf("destination validation failed: %v", err)
+	}
+
+	// Resolve project ID if only project slug is provided
+	projectID := destination.ProjectID
+	if projectID == "" && destination.ProjectSlug != "" {
+		resolvedProjectID, err := r.resolveProjectIDFromSlug(infisicalClient, destination.ProjectSlug)
+		if err != nil {
+			return fmt.Errorf("failed to resolve project ID from slug '%s': %v", destination.ProjectSlug, err)
+		}
+		projectID = resolvedProjectID
+	}
+
 	existingSecrets, err := resourceVariables.InfisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
-		ProjectID:      destination.ProjectID,
+		ProjectID:      projectID,
+		ProjectSlug:    destination.ProjectSlug,
 		Environment:    destination.EnvironmentSlug,
 		SecretPath:     destination.SecretsPath,
 		IncludeImports: false,
@@ -590,7 +619,7 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 
 			_, err := infisicalClient.Secrets().Delete(infisicalSdk.DeleteSecretOptions{
 				SecretKey:   managedSecretKey,
-				ProjectID:   destination.ProjectID,
+				ProjectID:   projectID,
 				Environment: destination.EnvironmentSlug,
 				SecretPath:  destination.SecretsPath,
 			})
@@ -604,4 +633,22 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 	}
 
 	return nil
+}
+
+func (r *InfisicalPushSecretReconciler) resolveProjectIDFromSlug(infisicalClient infisicalSdk.InfisicalClientInterface, projectSlug string) (string, error) {
+	tempSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
+		ProjectSlug:    projectSlug,
+		Environment:    "dev",
+		SecretPath:     "/",
+		IncludeImports: false,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to access project with slug '%s': %v", projectSlug, err)
+	}
+
+	if len(tempSecrets) > 0 {
+		return tempSecrets[0].Workspace, nil
+	}
+
+	return "", fmt.Errorf("cannot resolve project ID from slug '%s': no secrets found in 'dev' environment at root path. Please ensure the project exists and has at least one secret, or use projectId instead", projectSlug)
 }
