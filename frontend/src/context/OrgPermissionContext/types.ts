@@ -21,6 +21,14 @@ export enum OrgGatewayPermissionActions {
   AttachGateways = "attach-gateways"
 }
 
+export enum OrgPermissionMachineIdentityAuthTemplateActions {
+  ListTemplates = "list-templates",
+  CreateTemplates = "create-templates",
+  EditTemplates = "edit-templates",
+  DeleteTemplates = "delete-templates",
+  UnlinkTemplates = "unlink-templates"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Role = "role",
@@ -42,7 +50,8 @@ export enum OrgPermissionSubjects {
   Kmip = "kmip",
   Gateway = "gateway",
   SecretShare = "secret-share",
-  GithubOrgSync = "github-org-sync"
+  GithubOrgSync = "github-org-sync",
+  MachineIdentityAuthTemplate = "machine-identity-auth-template"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -113,6 +122,10 @@ export type OrgPermissionSet =
   | [OrgPermissionAppConnectionActions, OrgPermissionSubjects.AppConnections]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
+  | [
+      OrgPermissionMachineIdentityAuthTemplateActions,
+      OrgPermissionSubjects.MachineIdentityAuthTemplate
+    ]
   | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
 // TODO(scott): add back once org UI refactored

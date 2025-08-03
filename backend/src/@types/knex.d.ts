@@ -495,6 +495,11 @@ import {
   TAccessApprovalPoliciesEnvironmentsUpdate
 } from "@app/db/schemas/access-approval-policies-environments";
 import {
+  TIdentityAuthTemplates,
+  TIdentityAuthTemplatesInsert,
+  TIdentityAuthTemplatesUpdate
+} from "@app/db/schemas/identity-auth-templates";
+import {
   TIdentityLdapAuths,
   TIdentityLdapAuthsInsert,
   TIdentityLdapAuthsUpdate
@@ -877,6 +882,11 @@ declare module "knex/types/tables" {
       TIdentityProjectAdditionalPrivilege,
       TIdentityProjectAdditionalPrivilegeInsert,
       TIdentityProjectAdditionalPrivilegeUpdate
+    >;
+    [TableName.IdentityAuthTemplate]: KnexOriginal.CompositeTableType<
+      TIdentityAuthTemplates,
+      TIdentityAuthTemplatesInsert,
+      TIdentityAuthTemplatesUpdate
     >;
 
     [TableName.AccessApprovalPolicy]: KnexOriginal.CompositeTableType<

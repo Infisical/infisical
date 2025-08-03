@@ -202,10 +202,11 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       }),
       body: z
         .object({
-          url: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.url),
-          bindDN: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.bindDN),
-          bindPass: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.bindPass),
-          searchBase: z.string().trim().min(1).describe(LDAP_AUTH.ATTACH.searchBase),
+          templateId: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.templateId),
+          url: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.url),
+          bindDN: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.bindDN),
+          bindPass: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.bindPass),
+          searchBase: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.searchBase),
           searchFilter: z
             .string()
             .trim()
@@ -242,7 +243,12 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         .refine(
           (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
           "Access Token TTL cannot be greater than Access Token Max TTL."
-        ),
+        )
+        .refine((val) => {
+          const hasTemplateId = !!val.templateId;
+          const hasManualConfig = !!(val.url && val.bindDN && val.bindPass && val.searchBase);
+          return hasTemplateId || hasManualConfig;
+        }, "Either templateId must be provided, or all of url, bindDN, bindPass, and searchBase must be provided."),
       response: {
         200: z.object({
           identityLdapAuth: IdentityLdapAuthsSchema.omit({
@@ -309,6 +315,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           bindDN: z.string().trim().min(1).optional().describe(LDAP_AUTH.UPDATE.bindDN),
           bindPass: z.string().trim().min(1).optional().describe(LDAP_AUTH.UPDATE.bindPass),
           searchBase: z.string().trim().min(1).optional().describe(LDAP_AUTH.UPDATE.searchBase),
+          templateId: z.string().trim().optional().describe(LDAP_AUTH.UPDATE.templateId),
           searchFilter: z
             .string()
             .trim()
@@ -411,9 +418,10 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             encryptedBindPass: true,
             encryptedLdapCaCertificate: true
           }).extend({
-            bindDN: z.string(),
-            bindPass: z.string(),
-            ldapCaCertificate: z.string().optional()
+            bindDN: z.string().optional(),
+            bindPass: z.string().optional(),
+            ldapCaCertificate: z.string().optional(),
+            templateId: z.string().optional().nullable()
           })
         })
       }

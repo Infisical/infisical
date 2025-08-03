@@ -18,6 +18,7 @@ import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/
 
 export enum ApiDocsTags {
   Identities = "Identities",
+  IdentityTemplates = "Identity Templates",
   TokenAuth = "Token Auth",
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
@@ -147,6 +148,42 @@ export const IDENTITIES = {
   }
 } as const;
 
+export const IDENTITY_TEMPLATES = {
+  CREATE: {
+    name: "The name of the identity template to create.",
+    organizationId: "The organization ID to which the identity template belongs.",
+    authMethod: "The auth method of the template.",
+    credentials: "Set of credentials to reuse by this template"
+  },
+  UPDATE: {
+    identityTemplateId: "The ID of the identity to update.",
+    name: "The new name of the identity template.",
+    authMethod: "The auth method of the template."
+  },
+  DELETE: {
+    identityTemplateId: "The ID of the identity template to delete."
+  },
+  GET_BY_ID: {
+    identityTemplateId: "The ID of the identity template to get details.",
+    organizationId: "The organization ID to which the identity template belongs.",
+    authMethod: "The auth method of the template.",
+    credentials: "Set of credentials used by this template"
+  },
+  LIST: {
+    orgId: "The ID of the organization to list identity templates."
+  },
+  SEARCH: {
+    search: {
+      desc: "The filters to apply to the search.",
+      name: "The name of the identity template to filter by."
+    },
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identity templates to return.",
+    orderBy: "The column to order identity templates by.",
+    orderDirection: "The direction to order identity templates in."
+  }
+};
+
 export const UNIVERSAL_AUTH = {
   LOGIN: {
     clientId: "Your Machine Identity Client ID.",
@@ -214,6 +251,7 @@ export const LDAP_AUTH = {
     password: "The password of the LDAP user to login."
   },
   ATTACH: {
+    templateId: "The ID of the template to attach the configuration onto.",
     identityId: "The ID of the identity to attach the configuration onto.",
     url: "The URL of the LDAP server.",
     allowedFields:
@@ -240,7 +278,8 @@ export const LDAP_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
-    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    templateId: "The ID of the template to update the configuration for."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the configuration for."

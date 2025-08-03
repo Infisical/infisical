@@ -11,15 +11,18 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
+import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
 import { useDeleteIdentity } from "@app/hooks/api";
+import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-// import { IdentityAuthMethodModal } from "./IdentityAuthMethodModal";
+import { IdentityAuthTemplateModal } from "./IdentityAuthTemplateModal";
+import { IdentityAuthTemplatesTable } from "./IdentityAuthTemplatesTable";
 import { IdentityModal } from "./IdentityModal";
 import { IdentityTable } from "./IdentityTable";
 import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
-// import { IdentityUniversalAuthClientSecretModal } from "./IdentityUniversalAuthClientSecretModal";
+import { MachineAuthTemplateUsagesModal } from "./MachineAuthTemplateUsagesModal";
 
 export const IdentitySection = withPermission(
   () => {
@@ -28,6 +31,7 @@ export const IdentitySection = withPermission(
     const orgId = currentOrg?.id || "";
 
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
+    const { mutateAsync: deleteTemplateMutateAsync } = useDeleteIdentityAuthTemplate();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
       "identityAuthMethod",
@@ -35,7 +39,11 @@ export const IdentitySection = withPermission(
       "universalAuthClientSecret",
       "deleteUniversalAuthClientSecret",
       "upgradePlan",
-      "tokenAuthToken"
+      "tokenAuthToken",
+      "createTemplate",
+      "editTemplate",
+      "deleteTemplate",
+      "viewUsages"
     ] as const);
 
     const isMoreIdentitiesAllowed = subscription?.identityLimit
@@ -61,6 +69,31 @@ export const IdentitySection = withPermission(
         console.error(err);
         const error = err as any;
         const text = error?.response?.data?.message ?? "Failed to delete identity";
+
+        createNotification({
+          text,
+          type: "error"
+        });
+      }
+    };
+
+    const onDeleteTemplateSubmit = async (templateId: string) => {
+      try {
+        await deleteTemplateMutateAsync({
+          templateId,
+          organizationId: orgId
+        });
+
+        createNotification({
+          text: "Successfully deleted template",
+          type: "success"
+        });
+
+        handlePopUpClose("deleteTemplate");
+      } catch (err) {
+        console.error(err);
+        const error = err as any;
+        const text = error?.response?.data?.message ?? "Failed to delete template";
 
         createNotification({
           text,
@@ -115,7 +148,62 @@ export const IdentitySection = withPermission(
           </OrgPermissionCan>
         </div>
         <IdentityTable handlePopUpOpen={handlePopUpOpen} />
+
+        {/* Identity Auth Templates Section */}
+        {subscription.machineIdentityAuthTemplates && (
+          <div className="mt-8">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <p className="text-xl font-semibold text-mineshaft-100">Identity Auth Templates</p>
+                <a
+                  href="https://infisical.com/docs/documentation/platform/identities/overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                    <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                    <span>Docs</span>
+                    <FontAwesomeIcon
+                      icon={faArrowUpRightFromSquare}
+                      className="mb-[0.07rem] ml-1.5 text-[10px]"
+                    />
+                  </div>
+                </a>
+              </div>
+              <OrgPermissionCan
+                I={OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates}
+                a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
+              >
+                {(isAllowed) => (
+                  <Button
+                    colorSchema="secondary"
+                    type="submit"
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                    onClick={() => handlePopUpOpen("createTemplate")}
+                    isDisabled={!isAllowed}
+                  >
+                    Create Template
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            </div>
+            <IdentityAuthTemplatesTable handlePopUpOpen={handlePopUpOpen} />
+          </div>
+        )}
         <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <IdentityAuthTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <MachineAuthTemplateUsagesModal
+          isOpen={popUp.viewUsages.isOpen}
+          onClose={() => handlePopUpClose("viewUsages")}
+          templateId={
+            (popUp?.viewUsages?.data as { template: { id: string; name: string } })?.template?.id ||
+            ""
+          }
+          templateName={
+            (popUp?.viewUsages?.data as { template: { id: string; name: string } })?.template
+              ?.name || ""
+          }
+        />
         {/* <IdentityAuthMethodModal
           popUp={popUp}
           handlePopUpOpen={handlePopUpOpen}
@@ -137,6 +225,19 @@ export const IdentitySection = withPermission(
           onDeleteApproved={() =>
             onDeleteIdentitySubmit(
               (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
+            )
+          }
+        />
+        <DeleteActionModal
+          isOpen={popUp.deleteTemplate.isOpen}
+          title={`Are you sure you want to delete ${
+            (popUp?.deleteTemplate?.data as { name: string })?.name || ""
+          }?`}
+          onChange={(isOpen) => handlePopUpToggle("deleteTemplate", isOpen)}
+          deleteKey="confirm"
+          onDeleteApproved={() =>
+            onDeleteTemplateSubmit(
+              (popUp?.deleteTemplate?.data as { templateId: string })?.templateId
             )
           }
         />

@@ -66,6 +66,7 @@ import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
+import { TIdentityAuthTemplateServiceFactory } from "@app/services/identity-auth-template";
 import { TIdentityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-auth/identity-azure-auth-service";
 import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";
@@ -300,6 +301,7 @@ declare module "fastify" {
       reminder: TReminderServiceFactory;
       bus: TEventBusService;
       sse: TServerSentEventsService;
+      identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

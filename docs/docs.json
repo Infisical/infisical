@@ -291,6 +291,7 @@
               {
                 "group": "Machine Identities",
                 "pages": [
+                  "documentation/platform/identities/auth-templates",
                   "documentation/platform/identities/alicloud-auth",
                   "documentation/platform/identities/aws-auth",
                   "documentation/platform/identities/azure-auth",

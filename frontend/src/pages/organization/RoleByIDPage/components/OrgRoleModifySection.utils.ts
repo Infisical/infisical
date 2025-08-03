@@ -9,6 +9,7 @@ import {
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
+  OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSecretShareAction
 } from "@app/context/OrgPermissionContext/types";
 import { TPermission } from "@app/hooks/api/roles/types";
@@ -82,6 +83,16 @@ const orgGatewayPermissionSchema = z
   })
   .optional();
 
+const machineIdentityAuthTemplatePermissionSchema = z
+  .object({
+    [OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: z.boolean().optional()
+  })
+  .optional();
+
 const adminConsolePermissionSchmea = z
   .object({
     "access-all-projects": z.boolean().optional()
@@ -129,6 +140,7 @@ export const formSchema = z.object({
       "app-connections": appConnectionsPermissionSchema,
       kmip: kmipPermissionSchema,
       gateway: orgGatewayPermissionSchema,
+      "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema
     })
     .optional()

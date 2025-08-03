@@ -20,6 +20,7 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityAuthTemplateDALFactory } from "../identity-auth-template";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -44,6 +45,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: TKmsServiceFactory;
   identityDAL: TIdentityDALFactory;
+  identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -55,7 +57,8 @@ export const identityLdapAuthServiceFactory = ({
   identityOrgMembershipDAL,
   licenseService,
   permissionService,
-  kmsService
+  kmsService,
+  identityAuthTemplateDAL
 }: TIdentityLdapAuthServiceFactoryDep) => {
   const getLdapConfig = async (identityId: string) => {
     const identity = await identityDAL.findOne({ id: identityId });
@@ -173,6 +176,7 @@ export const identityLdapAuthServiceFactory = ({
 
   const attachLdapAuth = async ({
     identityId,
+    templateId,
     url,
     searchBase,
     searchFilter,
@@ -241,13 +245,36 @@ export const identityLdapAuthServiceFactory = ({
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
     const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
-      const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: identityMembershipOrg.orgId
       });
 
+      const template = templateId ? await identityAuthTemplateDAL.findById(templateId) : undefined;
+
+      let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string };
+      if (template) {
+        ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
+      } else {
+        if (!bindDN || !bindPass || !searchBase || !url) {
+          throw new BadRequestError({
+            message: "Invalid request. Missing bind DN, bind pass, search base, or URL."
+          });
+        }
+        ldapConfig = {
+          bindDN,
+          bindPass,
+          searchBase,
+          url
+        };
+      }
+
       const { cipherTextBlob: encryptedBindPass } = encryptor({
-        plainText: Buffer.from(bindPass)
+        plainText: Buffer.from(ldapConfig.bindPass)
+      });
+
+      const { cipherTextBlob: encryptedBindDN } = encryptor({
+        plainText: Buffer.from(ldapConfig.bindDN)
       });
 
       let encryptedLdapCaCertificate: Buffer | undefined;
@@ -259,15 +286,11 @@ export const identityLdapAuthServiceFactory = ({
         encryptedLdapCaCertificate = encryptedCertificate;
       }
 
-      const { cipherTextBlob: encryptedBindDN } = encryptor({
-        plainText: Buffer.from(bindDN)
-      });
-
       const isConnected = await testLDAPConfig({
-        bindDN,
-        bindPass,
+        bindDN: ldapConfig.bindDN,
+        bindPass: ldapConfig.bindPass,
         caCert: ldapCaCertificate || "",
-        url
+        url: ldapConfig.url
       });
 
       if (!isConnected) {
@@ -282,15 +305,16 @@ export const identityLdapAuthServiceFactory = ({
           identityId: identityMembershipOrg.identityId,
           encryptedBindDN,
           encryptedBindPass,
-          searchBase,
+          searchBase: ldapConfig.searchBase,
           searchFilter,
-          url,
+          url: ldapConfig.url,
           encryptedLdapCaCertificate,
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
-          allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined
+          allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
+          templateId
         },
         tx
       );
@@ -301,6 +325,7 @@ export const identityLdapAuthServiceFactory = ({
 
   const updateLdapAuth = async ({
     identityId,
+    templateId,
     url,
     searchBase,
     searchFilter,
@@ -371,15 +396,34 @@ export const identityLdapAuthServiceFactory = ({
 
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.orgId
     });
 
+    const template = templateId ? await identityAuthTemplateDAL.findById(templateId) : undefined;
+    let config: {
+      bindDN?: string;
+      bindPass?: string;
+      searchBase?: string;
+      url?: string;
+    };
+
+    if (template) {
+      config = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
+    } else {
+      config = {
+        bindDN,
+        bindPass,
+        searchBase,
+        url
+      };
+    }
+
     let encryptedBindPass: Buffer | undefined;
-    if (bindPass) {
+    if (config.bindPass) {
       const { cipherTextBlob: bindPassCiphertext } = encryptor({
-        plainText: Buffer.from(bindPass)
+        plainText: Buffer.from(config.bindPass)
       });
 
       encryptedBindPass = bindPassCiphertext;
@@ -395,9 +439,9 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     let encryptedBindDN: Buffer | undefined;
-    if (bindDN) {
+    if (config.bindDN) {
       const { cipherTextBlob: bindDNCiphertext } = encryptor({
-        plainText: Buffer.from(bindDN)
+        plainText: Buffer.from(config.bindDN)
       });
 
       encryptedBindDN = bindDNCiphertext;
@@ -406,10 +450,10 @@ export const identityLdapAuthServiceFactory = ({
     const { ldapConfig } = await getLdapConfig(identityId);
 
     const isConnected = await testLDAPConfig({
-      bindDN: bindDN || ldapConfig.bindDN,
-      bindPass: bindPass || ldapConfig.bindPass,
+      bindDN: config.bindDN || ldapConfig.bindDN,
+      bindPass: config.bindPass || ldapConfig.bindPass,
       caCert: ldapCaCertificate || ldapConfig.caCert,
-      url: url || ldapConfig.url
+      url: config.url || ldapConfig.url
     });
 
     if (!isConnected) {
@@ -420,14 +464,15 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const updatedLdapAuth = await identityLdapAuthDAL.updateById(identityLdapAuth.id, {
-      url,
-      searchBase,
+      url: config.url,
+      searchBase: config.searchBase,
       searchFilter,
       encryptedBindDN,
       encryptedBindPass,
       encryptedLdapCaCertificate,
       allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
       accessTokenMaxTTL,
+      templateId: template?.id || null,
       accessTokenTTL,
       accessTokenNumUsesLimit,
       accessTokenTrustedIps: reformattedAccessTokenTrustedIps
