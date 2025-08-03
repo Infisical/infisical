@@ -249,19 +249,20 @@ export const identityAuthTemplateServiceFactory = ({
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: actorOrgId
+      orgId: template.orgId
     });
     const decryptedTemplateFields = decryptor({ cipherTextBlob: template.templateFields }).toString();
     return {
       ...template,
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      templateFields: JSON.parse(decryptedTemplateFields.toString())
+      templateFields: JSON.parse(decryptedTemplateFields)
     };
   };
 
   const listTemplates = async ({
     limit,
     offset,
+    search,
     actorId,
     actorAuthMethod,
     actor,
@@ -280,7 +281,7 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const { docs, totalCount } = await identityAuthTemplateDAL.findByOrgId(actorOrgId, { limit, offset });
+    const { docs, totalCount } = await identityAuthTemplateDAL.findByOrgId(actorOrgId, { limit, offset, search });
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,

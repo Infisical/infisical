@@ -4,6 +4,7 @@ export enum IdentityAuthTemplateMethod {
 
 export const TEMPLATE_VALIDATION_MESSAGES = {
   TEMPLATE_NAME_REQUIRED: "Template name is required",
+  TEMPLATE_NAME_MAX_LENGTH: "Template name must be at most 64 characters long",
   AUTH_METHOD_REQUIRED: "Auth method is required",
   TEMPLATE_ID_REQUIRED: "Template ID is required",
   LDAP_URL_REQUIRED: "LDAP URL is required",

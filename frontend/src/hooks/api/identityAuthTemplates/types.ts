@@ -42,6 +42,7 @@ export interface GetIdentityAuthTemplatesDTO {
   organizationId: string;
   limit?: number;
   offset?: number;
+  search?: string;
 }
 
 export interface MachineAuthTemplateUsage {

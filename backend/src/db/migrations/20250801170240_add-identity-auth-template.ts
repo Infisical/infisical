@@ -25,9 +25,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.IdentityLdapAuth, "template")) {
+  if (await knex.schema.hasColumn(TableName.IdentityLdapAuth, "templateId")) {
     await knex.schema.alterTable(TableName.IdentityLdapAuth, (t) => {
-      t.dropForeign("templateId");
+      t.dropForeign(["templateId"]);
       t.dropColumn("templateId");
     });
   }

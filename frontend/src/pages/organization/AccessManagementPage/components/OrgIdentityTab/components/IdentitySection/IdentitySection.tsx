@@ -156,7 +156,7 @@ export const IdentitySection = withPermission(
               <div className="flex items-center gap-1">
                 <p className="text-xl font-semibold text-mineshaft-100">Identity Auth Templates</p>
                 <a
-                  href="https://infisical.com/docs/documentation/platform/identities/overview"
+                  href="https://infisical.com/docs/documentation/platform/identities/auth-templates"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

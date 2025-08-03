@@ -171,7 +171,7 @@ export const MachineAuthTemplateUsagesModal = ({
                   </Tr>
                 </THead>
                 <TBody>
-                  {isPending && <TableSkeleton columns={4} innerKey="template-usages" />}
+                  {isPending && <TableSkeleton columns={3} innerKey="template-usages" />}
                   {!isPending &&
                     usages.map((usage) => (
                       <Tr
@@ -180,7 +180,7 @@ export const MachineAuthTemplateUsagesModal = ({
                       >
                         <Td>
                           <Checkbox
-                            id="select-usage"
+                            id={`select-usage-${usage.identityId}`}
                             isChecked={selectedUsageIds.includes(usage.identityId)}
                             onCheckedChange={() => handleUsageToggle(usage.identityId)}
                           />

@@ -90,7 +90,8 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
   const { data, isPending, isFetching } = useGetIdentityAuthTemplates({
     organizationId,
     limit,
-    offset
+    offset,
+    search: debouncedSearch
   });
 
   const { templates = [], totalCount = 0 } = data ?? {};
@@ -99,10 +100,6 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
     offset,
     setPage
   });
-
-  const filteredTemplates = templates.filter((template) =>
-    template.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
 
   const handleSort = (column: TemplatesOrderBy) => {
     if (column === orderBy) {
@@ -177,7 +174,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
           <TBody>
             {isPending && <TableSkeleton columns={4} innerKey="identity-auth-templates" />}
             {!isPending &&
-              filteredTemplates?.map((template) => (
+              templates?.map((template) => (
                 <Tr
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   key={`template-${template.id}`}
@@ -268,7 +265,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
             onChangePerPage={handlePerPageChange}
           />
         )}
-        {!isPending && data && filteredTemplates.length === 0 && (
+        {!isPending && data && templates.length === 0 && (
           <EmptyState
             title={
               debouncedSearch.trim().length > 0

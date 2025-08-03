@@ -250,7 +250,9 @@ export const identityLdapAuthServiceFactory = ({
         orgId: identityMembershipOrg.orgId
       });
 
-      const template = templateId ? await identityAuthTemplateDAL.findById(templateId) : undefined;
+      const template = templateId
+        ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.orgId)
+        : undefined;
 
       let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string };
       if (template) {
@@ -401,7 +403,9 @@ export const identityLdapAuthServiceFactory = ({
       orgId: identityMembershipOrg.orgId
     });
 
-    const template = templateId ? await identityAuthTemplateDAL.findById(templateId) : undefined;
+    const template = templateId
+      ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.orgId)
+      : undefined;
     let config: {
       bindDN?: string;
       bindPass?: string;

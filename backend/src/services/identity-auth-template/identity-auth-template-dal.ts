@@ -14,9 +14,18 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
 
   const findByOrgId = async (
     orgId: string,
-    { limit, offset, tx }: { limit?: number; offset?: number; tx?: Knex } = {}
+    { limit, offset, search, tx }: { limit?: number; offset?: number; search?: string; tx?: Knex } = {}
   ) => {
-    let query = (tx || db.replicaNode())(TableName.IdentityAuthTemplate).where({ orgId }).orderBy("createdAt", "desc");
+    let query = (tx || db.replicaNode())(TableName.IdentityAuthTemplate).where({ orgId });
+    let countQuery = (tx || db.replicaNode())(TableName.IdentityAuthTemplate).where({ orgId });
+
+    if (search) {
+      const searchFilter = `%${search.toLowerCase()}%`;
+      query = query.whereRaw("LOWER(name) LIKE ?", [searchFilter]);
+      countQuery = countQuery.whereRaw("LOWER(name) LIKE ?", [searchFilter]);
+    }
+
+    query = query.orderBy("createdAt", "desc");
 
     if (limit !== undefined) {
       query = query.limit(limit);
@@ -27,9 +36,7 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
 
     const docs = await query;
 
-    const [{ count }] = (await (tx || db.replicaNode())(TableName.IdentityAuthTemplate)
-      .where({ orgId })
-      .count("* as count")) as [{ count: string | number }];
+    const [{ count }] = (await countQuery.count("* as count")) as [{ count: string | number }];
 
     return { docs, totalCount: Number(count) };
   };
@@ -60,10 +67,17 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdAndOrgId = async (id: string, orgId: string, tx?: Knex) => {
+    const query = (tx || db.replicaNode())(TableName.IdentityAuthTemplate).where({ id, orgId });
+    const doc = await query;
+    return doc?.[0];
+  };
+
   return {
     ...identityAuthTemplateOrm,
     findByOrgId,
     findByAuthMethod,
-    findTemplateUsages
+    findTemplateUsages,
+    findByIdAndOrgId
   };
 };

@@ -419,15 +419,6 @@ const buildMemberPermission = () => {
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
 
   can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
-  can(OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
-  can(
-    OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates,
-    OrgPermissionSubjects.MachineIdentityAuthTemplate
-  );
-  can(
-    OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates,
-    OrgPermissionSubjects.MachineIdentityAuthTemplate
-  );
   can(
     OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
     OrgPermissionSubjects.MachineIdentityAuthTemplate

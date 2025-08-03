@@ -22,12 +22,13 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import {
+  MachineIdentityAuthMethod,
   useAddIdentityLdapAuth,
   useGetIdentityLdapAuth,
   useUpdateIdentityLdapAuth
 } from "@app/hooks/api";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
-import { useGetIdentityAuthTemplatesByOrgId } from "@app/hooks/api/identityAuthTemplates/queries";
+import { useGetAvailableTemplates } from "@app/hooks/api/identityAuthTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -141,7 +142,7 @@ export const IdentityLdapAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityLdapAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityLdapAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
-  const { data: templates } = useGetIdentityAuthTemplatesByOrgId("ldap");
+  const { data: templates } = useGetAvailableTemplates(MachineIdentityAuthMethod.LDAP);
 
   const { data } = useGetIdentityLdapAuth(identityId ?? "", {
     enabled: isUpdate

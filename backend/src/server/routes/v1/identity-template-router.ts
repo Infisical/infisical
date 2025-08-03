@@ -35,7 +35,11 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         }
       ],
       body: z.object({
-        name: z.string().trim().min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED),
+        name: z
+          .string()
+          .trim()
+          .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
+          .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH),
         authMethod: z.nativeEnum(IdentityAuthTemplateMethod),
         templateFields: ldapTemplateFieldsSchema
       }),
@@ -91,7 +95,12 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateId: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_ID_REQUIRED)
       }),
       body: z.object({
-        name: z.string().trim().optional(),
+        name: z
+          .string()
+          .trim()
+          .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
+          .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH)
+          .optional(),
         templateFields: ldapTemplateFieldsSchema.partial().optional()
       }),
       response: {
@@ -232,7 +241,8 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       ],
       querystring: z.object({
         limit: z.coerce.number().positive().max(100).default(5).optional(),
-        offset: z.coerce.number().min(0).default(0).optional()
+        offset: z.coerce.number().min(0).default(0).optional(),
+        search: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -247,6 +257,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       const { templates, totalCount } = await server.services.identityAuthTemplate.listTemplates({
         limit: req.query.limit,
         offset: req.query.offset,
+        search: req.query.search,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -303,7 +314,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      description: "Get identity auth templates by authentication method",
+      description: "Get template usage by template ID",
       security: [
         {
           bearerAuth: []
@@ -338,7 +349,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     method: "POST",
     url: "/:templateId/usage",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {

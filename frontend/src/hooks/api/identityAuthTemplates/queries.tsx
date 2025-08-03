@@ -6,7 +6,8 @@ import {
   GetIdentityAuthTemplatesDTO,
   GetTemplateUsagesDTO,
   IdentityAuthTemplate,
-  MachineAuthTemplateUsage
+  MachineAuthTemplateUsage,
+  MachineIdentityAuthMethod
 } from "./types";
 
 export const identityAuthTemplatesKeys = {
@@ -15,8 +16,8 @@ export const identityAuthTemplatesKeys = {
     [...identityAuthTemplatesKeys.all, "list", dto] as const,
   getTemplate: (templateId: string) =>
     [...identityAuthTemplatesKeys.all, "single", templateId] as const,
-  getTemplatesByOrgId: (authMethod: string) =>
-    [...identityAuthTemplatesKeys.all, "list", authMethod] as const,
+  getAvailableTemplates: (authMethod: MachineIdentityAuthMethod) =>
+    [...identityAuthTemplatesKeys.all, "available", authMethod] as const,
   getTemplateUsages: (templateId: string) =>
     [...identityAuthTemplatesKeys.all, "usages", templateId] as const
 };
@@ -32,7 +33,8 @@ export const useGetIdentityAuthTemplates = (dto: GetIdentityAuthTemplatesDTO) =>
         params: {
           organizationId: dto.organizationId,
           limit: dto.limit || 50,
-          offset: dto.offset || 0
+          offset: dto.offset || 0,
+          ...(dto.search && { search: dto.search })
         }
       });
       return data;
@@ -57,9 +59,9 @@ export const useGetIdentityAuthTemplate = (templateId: string, organizationId: s
   });
 };
 
-export const useGetIdentityAuthTemplatesByOrgId = (authMethod: string) => {
+export const useGetAvailableTemplates = (authMethod: MachineIdentityAuthMethod) => {
   return useQuery({
-    queryKey: identityAuthTemplatesKeys.getTemplatesByOrgId(authMethod),
+    queryKey: identityAuthTemplatesKeys.getAvailableTemplates(authMethod),
     queryFn: async () => {
       const { data } = await apiRequest.get<IdentityAuthTemplate[]>(
         "/api/v1/identities/templates",

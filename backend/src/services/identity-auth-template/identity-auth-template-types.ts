@@ -16,16 +16,16 @@ export type TTemplateFieldsByMethod = {
 };
 
 // Generic base types that use conditional types for type safety
-export type TCreateIdentityAuthTemplateDTO<T extends IdentityAuthTemplateMethod = IdentityAuthTemplateMethod> = {
+export type TCreateIdentityAuthTemplateDTO = {
   name: string;
-  authMethod: T;
-  templateFields: TTemplateFieldsByMethod[T];
+  authMethod: IdentityAuthTemplateMethod;
+  templateFields: TTemplateFieldsByMethod[IdentityAuthTemplateMethod];
 } & Omit<TProjectPermission, "projectId">;
 
-export type TUpdateIdentityAuthTemplateDTO<T extends IdentityAuthTemplateMethod = IdentityAuthTemplateMethod> = {
+export type TUpdateIdentityAuthTemplateDTO = {
   templateId: string;
   name?: string;
-  templateFields?: Partial<TTemplateFieldsByMethod[T]>;
+  templateFields?: Partial<TTemplateFieldsByMethod[IdentityAuthTemplateMethod]>;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteIdentityAuthTemplateDTO = {
@@ -39,6 +39,7 @@ export type TGetIdentityAuthTemplateDTO = {
 export type TListIdentityAuthTemplatesDTO = {
   limit?: number;
   offset?: number;
+  search?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetTemplatesByAuthMethodDTO = {
@@ -55,5 +56,5 @@ export type TUnlinkTemplateUsageDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 // Specific LDAP types for convenience
-export type TCreateLdapTemplateDTO = TCreateIdentityAuthTemplateDTO<IdentityAuthTemplateMethod.LDAP>;
-export type TUpdateLdapTemplateDTO = TUpdateIdentityAuthTemplateDTO<IdentityAuthTemplateMethod.LDAP>;
+export type TCreateLdapTemplateDTO = TCreateIdentityAuthTemplateDTO;
+export type TUpdateLdapTemplateDTO = TUpdateIdentityAuthTemplateDTO;
