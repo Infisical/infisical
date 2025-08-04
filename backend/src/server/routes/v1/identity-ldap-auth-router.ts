@@ -469,8 +469,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             encryptedBindPass: true,
             encryptedLdapCaCertificate: true
           }).extend({
-            bindDN: z.string().optional(),
-            bindPass: z.string().optional(),
+            bindDN: z.string(),
+            bindPass: z.string(),
             ldapCaCertificate: z.string().optional(),
             templateId: z.string().optional().nullable()
           })
