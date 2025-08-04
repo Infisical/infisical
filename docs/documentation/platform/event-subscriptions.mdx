@@ -13,8 +13,8 @@ description: "Subscribe to events in Infisical for real-time updates"
 Event Subscriptions in Infisical allow you to receive real-time notifications when specific actions occur within your account or organization. These notifications include changes to secrets, users, teams, and many more **coming soon**.
 
 ## How It Works
-The system uses Redis to send messages between servers. 
-When something changes on one server, it sends a message to Redis, which broadcasts that message to all other connected servers and keeps them in sync.
+The system uses a pubsub broker to send messages between servers. 
+When something changes on one server, a message is sent to all other connected servers and to keep them in sync.
 
 The system uses [Server-Sent Events (SSE)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) to push updates directly to clients. This is a simple, lightweight way to send real-time notifications without needing special libraries or complex setup.
 
