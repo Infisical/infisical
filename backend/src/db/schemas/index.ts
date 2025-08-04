@@ -99,6 +99,7 @@ export * from "./rate-limit";
 export * from "./resource-metadata";
 export * from "./saml-configs";
 export * from "./scim-tokens";
+export * from "./saml-group-mappings";
 export * from "./secret-approval-policies";
 export * from "./secret-approval-policies-approvers";
 export * from "./secret-approval-policies-bypassers";
