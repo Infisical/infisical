@@ -322,6 +322,7 @@
                   }
                 ]
               },
+              "documentation/platform/identities/auth-templates",
               "documentation/platform/token",
               "documentation/platform/mfa",
               "documentation/platform/github-org-sync"
