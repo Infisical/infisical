@@ -194,7 +194,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
     if (tx) {
       await runPrune(tx);
     } else {
-      const QUERY_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+      const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
       await db.transaction(async (trx) => {
         await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
         await runPrune(trx);
