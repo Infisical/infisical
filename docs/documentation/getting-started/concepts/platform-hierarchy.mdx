@@ -1,0 +1,41 @@
+---
+title: "Platform Hierarchy"
+sidebarTitle: "Platform Hierarchy"
+description: "Understand how organizations and projects are structured in Infisical."
+---
+
+Infisical is structured around organizations and projects, allowing teams to manage multiple products, access scopes, and use cases within a single account while keeping boundaries and responsibilities clearly defined.
+
+## Organizations
+
+An [organization](/documentation/platform/organization) typically represents a company or high-level entity (e.g. Acme Corp). It acts as the umbrella for all projects, members, and billing settings.
+
+[Users](/documentation/platform/identities/user-identities) are invited to an organization and assigned [organization-level roles](/documentation/platform/access-controls/role-based-access-controls#organization-level-access-controls) that determine what they can manage—such as members, machine identities, and billing details.
+
+![organization](/images/platform/organization/organization.png)
+
+## Projects
+
+A [project](/documentation/platform/project) belongs to an organization and defines a specific scope of work. Each project has a product type such as Secrets Management, SSH, or PKI that determines what features are available in that project.
+
+For example:
+
+- A Secrets Management project manages application secrets across environments.
+
+- An SSH project enables certificate-based access to infrastructure.
+
+- A PKI project manages certificate authorities and X.509 certificate workflows.
+
+Users are added to a project and assigned [project-level roles](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls) that determine what they can manage—such as secrets, access policies, or certificate authorities. A user can have different roles across projects, allowing for flexible and fine-grained access control that reflects how teams operate in practice.
+
+![organization projects](/images/platform/organization/organization-projects.png)
+
+## Key Characteristics
+
+- Projects are isolated in terms of configuration, permissions, and product workflows.
+
+- Access is managed independently at both the organization and project level.
+
+- All projects within an organization share the same billing and user directory.
+
+Teams can adopt Infisical incrementally—starting with one product and expanding as needed.
