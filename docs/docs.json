@@ -449,20 +449,21 @@
                   "integrations/platforms/ansible",
                   "integrations/platforms/apache-airflow",
                   {
-                    "group": "Container orchestrators",
+                    "group": "Kubernetes Operator",
                     "pages": [
-                      {
-                        "group": "Kubernetes",
-                        "pages": [
-                          "integrations/platforms/kubernetes/overview",
-                          "integrations/platforms/kubernetes/infisical-secret-crd",
-                          "integrations/platforms/kubernetes/infisical-push-secret-crd",
-                          "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
-                        ]
-                      },
-                      "integrations/platforms/kubernetes-injector",
-                      "integrations/platforms/kubernetes-csi",
-                      "integrations/platforms/docker-swarm-with-agent",
+                      "integrations/platforms/kubernetes/overview",
+                      "integrations/platforms/kubernetes/infisical-secret-crd",
+                      "integrations/platforms/kubernetes/infisical-push-secret-crd",
+                      "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+                    ]
+                  },
+                  "integrations/platforms/kubernetes-injector",
+                  "integrations/platforms/kubernetes-csi",
+                  {
+                    "group": "Agent",
+                    "pages": [
+                      "integrations/platforms/infisical-agent",
+                       "integrations/platforms/docker-swarm-with-agent",
                       "integrations/platforms/ecs-with-agent"
                     ]
                   },
@@ -475,7 +476,6 @@
                       "integrations/platforms/docker-compose"
                     ]
                   },
-                  "integrations/platforms/infisical-agent",
                   "integrations/frameworks/packer",
                   "integrations/frameworks/pulumi",
                   "integrations/frameworks/terraform"
@@ -634,7 +634,12 @@
               {
                 "group": "Secret Scanning",
                 "pages": [
-                  "documentation/platform/secret-scanning/overview",
+                  "documentation/platform/secret-scanning/overview"
+                ]
+              },
+              {
+                "group": "Datasources",
+                "pages": [
                   "documentation/platform/secret-scanning/bitbucket",
                   "documentation/platform/secret-scanning/github",
                   "documentation/platform/secret-scanning/gitlab"
