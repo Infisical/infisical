@@ -6,9 +6,14 @@ type ServiceAccountDetails struct {
 	PrivateKey string
 }
 
-type MachineIdentityDetails struct {
+type UniversalAuthIdentityDetails struct {
 	ClientId     string
 	ClientSecret string
+}
+
+type LdapIdentityDetails struct {
+	Username string
+	Password string
 }
 
 type SingleEnvironmentVariable struct {
