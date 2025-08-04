@@ -1,8 +1,11 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	"github.com/Infisical/infisical/k8-operator/packages/util/sse"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -145,4 +148,23 @@ func CallGetProjectByID(httpClient *resty.Client, request GetProjectByIDRequest)
 
 	return projectResponse, nil
 
+}
+
+func CallSubscribeProjectEvents(projectID string, body SubProjectEventsRequest) (<-chan sse.SSEEvent, <-chan error, error) {
+	client := sse.NewClient(fmt.Sprintf("%s/api/v1/events/subscribe/project-events", API_HOST_URL), USER_AGENT_NAME)
+
+	b, err := json.Marshal(body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("CallSubscribeProjectEvents: Unable to marshal body [err=%s]", err)
+	}
+
+	events, errors, err := client.Connect("POST", map[string]string{
+		"User-Agent": USER_AGENT_NAME,
+	}, strings.NewReader(string(b)))
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("CallSubscribeProjectEvents: Unable to connect to SSE server [err=%s]", err)
+	}
+
+	return events, errors, err
 }

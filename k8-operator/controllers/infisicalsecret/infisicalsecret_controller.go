@@ -11,7 +11,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	defaultErrors "errors"
 
@@ -27,6 +29,8 @@ type InfisicalSecretReconciler struct {
 	client.Client
 	BaseLogger logr.Logger
 	Scheme     *runtime.Scheme
+
+	SourceCh chan event.GenericEvent
 }
 
 const FINALIZER_NAME = "secrets.finalizers.infisical.com"
@@ -175,6 +179,20 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
+	if infisicalSecretCRD.Spec.InstantUpdates {
+		logger.Info("Event watcher enabled")
+		// ensure event watcher is open
+		if err := r.EnsureEventStream(ctx, logger, &infisicalSecretCRD); err != nil {
+			logger.Error(err, fmt.Sprintf("unable to ensure event stream. Will requeue after [requeueTime=%v]", requeueTime))
+			return ctrl.Result{
+				RequeueAfter: requeueTime,
+			}, nil
+		}
+	} else {
+		// ensure event stream is closed
+		r.CloseEventStream(ctx, logger, &infisicalSecretCRD)
+	}
+
 	// Sync again after the specified time
 	logger.Info(fmt.Sprintf("Successfully synced %d secrets. Operator will requeue after [%v]", secretsCount, requeueTime))
 	return ctrl.Result{
@@ -208,5 +226,9 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return true
 			},
 		})).
+		Watches(
+			&source.Channel{Source: r.SourceCh},
+			&handler.EnqueueRequestForObject{},
+		).
 		Complete(r)
 }

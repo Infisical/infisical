@@ -3,11 +3,13 @@ package util
 import (
 	"context"
 
+	"github.com/Infisical/infisical/k8-operator/packages/util/sse"
 	infisicalSdk "github.com/infisical/go-sdk"
 )
 
 type ResourceVariables struct {
-	InfisicalClient infisicalSdk.InfisicalClientInterface
-	CancelCtx       context.CancelFunc
-	AuthDetails     AuthenticationDetails
+	InfisicalClient   infisicalSdk.InfisicalClientInterface
+	CancelCtx         context.CancelFunc
+	AuthDetails       AuthenticationDetails
+	EventStreamClient *sse.SSEClient
 }

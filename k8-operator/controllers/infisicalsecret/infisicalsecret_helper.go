@@ -9,12 +9,14 @@ import (
 	tpl "text/template"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/constants"
 	"github.com/Infisical/infisical/k8-operator/packages/crypto"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/Infisical/infisical/k8-operator/packages/template"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
+	"github.com/Infisical/infisical/k8-operator/packages/util/sse"
 	"github.com/go-logr/logr"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -461,9 +463,10 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 		})
 
 		infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)] = util.ResourceVariables{
-			InfisicalClient: client,
-			CancelCtx:       cancel,
-			AuthDetails:     util.AuthenticationDetails{},
+			InfisicalClient:   client,
+			CancelCtx:         cancel,
+			AuthDetails:       util.AuthenticationDetails{},
+			EventStreamClient: sse.NewClient(api.API_HOST_URL, api.USER_AGENT_NAME),
 		}
 
 		resourceVariables = infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)]
@@ -566,4 +569,36 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	}
 
 	return secretsCount, nil
+}
+
+func (r *InfisicalSecretReconciler) EnsureEventStream(ctx context.Context, logger logr.Logger, secret *v1alpha1.InfisicalSecret) error {
+	if secret == nil {
+		return fmt.Errorf("infisicalSecret is nil")
+	}
+
+	resourceVariables := r.getResourceVariables(*secret)
+	infiscalClient := resourceVariables.InfisicalClient
+	// sseClient := resourceVariables.EventStreamClient
+
+	projectSlug := resourceVariables.AuthDetails.MachineIdentityScope.ProjectSlug
+
+	proj, err := util.GetProjectByID(infiscalClient.Auth().GetAccessToken(), projectSlug)
+
+	logger.Info("Project", proj)
+	if err != nil {
+		return fmt.Errorf("failed to get project [err=%s]", err)
+	}
+
+	api.CallSubscribeProjectEvents(secret.Spec.Authentication.ServiceAccount.ProjectId, api.SubProjectEventsRequest{
+		ProjectID: proj.ID,
+	})
+
+	return nil
+}
+
+func (r *InfisicalSecretReconciler) CloseEventStream(ctx context.Context, logger logr.Logger, infisicalSecretCRD *secretsv1alpha1.InfisicalSecret) error {
+	logger.Info("Event watcher enabled")
+	// ensure event watcher is running
+
+	return nil
 }
