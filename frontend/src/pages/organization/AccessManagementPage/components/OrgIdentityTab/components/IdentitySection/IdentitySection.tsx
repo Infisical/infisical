@@ -152,7 +152,7 @@ export const IdentitySection = withPermission(
           <IdentityTable handlePopUpOpen={handlePopUpOpen} />
         </div>
         {/* Identity Auth Templates Section */}
-        <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-1">
               <p className="text-xl font-semibold text-mineshaft-100">Identity Auth Templates</p>
