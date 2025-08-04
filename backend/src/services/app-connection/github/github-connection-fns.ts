@@ -348,6 +348,8 @@ export const validateGitHubConnectionCredentials = async (
       });
     }
   } catch (e: unknown) {
+    logger.error(e, "Unable to verify GitHub connection");
+
     if (e instanceof BadRequestError) {
       throw e;
     }
