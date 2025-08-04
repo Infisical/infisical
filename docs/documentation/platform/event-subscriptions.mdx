@@ -5,21 +5,22 @@ description: "Subscribe to events in Infisical for real-time updates"
 ---
 
 <Info>
- **Note:** Event Subscriptions is a paid feature.
- - **Infisical Cloud users:** Event Subscriptions is available under the **Enterprise Tier**.
- - **Self-Hosted Infisical:** Please contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an enterprise license.
+  **Note:** Event Subscriptions is a paid feature. - **Infisical Cloud users:** Event Subscriptions is available under
+  the **Enterprise Tier**. - **Self-Hosted Infisical:** Please contact [sales@infisical.com](mailto:sales@infisical.com)
+  to purchase an enterprise license.
 </Info>
 
-Event Subscriptions in Infisical allow you to receive real-time notifications when specific actions occur within your account or organization. These notifications include changes to secrets, users, teams, and other important resources.
+Event Subscriptions in Infisical allow you to receive real-time notifications when specific actions occur within your account or organization. These notifications include changes to secrets, users, teams, and many more **coming soon**.
 
 ## How It Works
+The system uses Redis to send messages between servers. 
+When something changes on one server, it sends a message to Redis, which broadcasts that message to all other connected servers and keeps them in sync.
 
-Event Subscriptions enable real-time communication and state synchronization across multiple Infisical server instances through a distributed messaging architecture. The system leverages Redis as the central messaging backbone, utilizing Redis Pub/Sub to orchestrate event distribution in a fan-out pattern across all connected services. All server instances subscribe to a shared Redis topic named `infisical::core-servers`, ensuring consistent event delivery throughout the system.
-
-Event messages are structured according to the [CloudEvents specification](https://github.com/cloudevents/spec), providing a standardized format for cross-service communication. For client-side delivery, the system employs Server-Sent Events (SSE) streams, which offer efficient unidirectional communication without requiring specialized client libraries. This lightweight approach ensures seamless real-time updates while maintaining broad compatibility across different client environments.
+The system uses [Server-Sent Events (SSE)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) to push updates directly to clients. This is a simple, lightweight way to send real-time notifications without needing special libraries or complex setup.
 
 <Note>
- Event Subscriptions are designed for real-time communication and do not include persistence or replay capabilities—events are delivered once and are not stored for future retrieval.
+  Event Subscriptions are designed for real-time communication and do not include persistence or replay
+  capabilities—events are delivered once and are not stored for future retrieval.
 </Note>
 
 ## Supported Resources
@@ -27,9 +28,9 @@ Event messages are structured according to the [CloudEvents specification](https
 You can currently subscribe to notifications for the following resources and event types:
 
 - **Secrets**
- - `secret:created`: Triggered when a secret is created
- - `secret:updated`: Triggered when a secret is updated
- - `secret:deleted`: Triggered when a secret is deleted
+  - `secret:created`: Triggered when a secret is created
+  - `secret:updated`: Triggered when a secret is updated
+  - `secret:deleted`: Triggered when a secret is deleted
 
 ## Permissions Setup
 
@@ -47,26 +48,20 @@ Follow these steps to set up the necessary permissions:
    `https://app.infisical.com/project/<your_project_id>/settings`
  </Step>
 
- <Step title="Navigate to Access Management and open Project Roles">
-   ![Project Detail](/images/platform/events/project-detail.png)
-   ![Project Access](/images/platform/events/project-access.png)
-   
-   Navigate to **Access Management**, then select **Project Roles**.
- </Step>
+<Step title="Navigate to Access Management and open Project Roles">
+  ![Project Detail](/images/platform/events/project-detail.png) ![Project
+  Access](/images/platform/events/project-access.png) Navigate to **Access Management**, then select **Project Roles**.
+</Step>
 
- <Step title="Select an existing role or create a new one">
-   ![Project Role](/images/platform/events/project-role.png)
-   
-   You can either edit an existing role or create a new role for event subscriptions.
- </Step>
+<Step title="Select an existing role or create a new one">
+  ![Project Role](/images/platform/events/project-role.png) You can either edit an existing role or create a new role
+  for event subscriptions.
+</Step>
 
- <Step title="Assign policies to the role">
-   ![Role Detail](/images/platform/events/role-detail.png)
-   
-   Select the specific resources that the role should have access to.
-   
-   ![Add policy](/images/platform/events/add-policy.png)
- </Step>
+<Step title="Assign policies to the role">
+  ![Role Detail](/images/platform/events/role-detail.png) Select the specific resources that the role should have access
+  to. ![Add policy](/images/platform/events/add-policy.png)
+</Step>
 
  <Step title="Enable the Subscribe action in permissions">
    ![Policy setting](/images/platform/events/policy-setting.png)
@@ -103,15 +98,16 @@ Currently, events are only available via [API](/api-reference/endpoints/events) 
  <Step title="Assign a project and role to the Identity">
    ![Add identity role](/images/platform/events/identity-add-role.png)
 
-   Select a project and the role you previously configured in the [permissions setup](#permissions-setup) section.
-   
-   ![Add identity role](/images/platform/events/identity-add-project.png)
+Select a project and the role you previously configured in the [permissions setup](#permissions-setup) section.
+
+![Add identity role](/images/platform/events/identity-add-project.png)
+
  </Step>
 
- <Step title="Add authentication method Token Auth">
-   ![Add Auth Method](/images/platform/events/add-auth-method.png)
-   ![Add Auth Method Form](/images/platform/events/add-auth-method-form.png)
- </Step>
+<Step title="Add authentication method Token Auth">
+  ![Add Auth Method](/images/platform/events/add-auth-method.png) ![Add Auth Method
+  Form](/images/platform/events/add-auth-method-form.png)
+</Step>
 
  <Step title="Generate an authentication token">
    ![Generate auth token](/images/platform/events/generate-auth-token.png)
@@ -120,9 +116,10 @@ Currently, events are only available via [API](/api-reference/endpoints/events) 
    
    Enter a descriptive name and click **Create**.
 
-   ![Copy token](/images/platform/events/copy-generated-token.png)
-   
-   Click to copy the generated token and save it for later use.
+![Copy token](/images/platform/events/copy-generated-token.png)
+
+Click to copy the generated token and save it for later use.
+
  </Step>
 </Steps>
 
@@ -133,12 +130,12 @@ Currently, events are only available via [API](/api-reference/endpoints/events) 
 ![Postman Subscription](/images/platform/events/postman-subscribe.png)
 
 **Request Parameters:**
+
 - `projectId`: Project whose events you want to subscribe to
 - `register`: List of event filters
- - `conditions`: Conditions to filter events on
-   - `environmentSlug`: Project environment
-   - `secretPath`: Path of the secrets
-   - `recursive`: If `true`, gets events from all nested paths under `secretPath`
+- `conditions`: Conditions to filter events on
+  - `environmentSlug`: Project environment
+  - `secretPath`: Path of the secrets
 
 ![Postman Subscription Response](/images/platform/events/postman-sse-response.png)
 
