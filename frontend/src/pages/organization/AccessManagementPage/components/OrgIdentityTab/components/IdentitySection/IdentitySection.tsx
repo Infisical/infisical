@@ -180,7 +180,13 @@ export const IdentitySection = withPermission(
                   colorSchema="secondary"
                   type="submit"
                   leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => handlePopUpOpen("createTemplate")}
+                  onClick={() => {
+                    if (subscription && !subscription.kmip) {
+                      handlePopUpOpen("upgradePlan");
+                      return;
+                    }
+                    handlePopUpOpen("createTemplate");
+                  }}
                   isDisabled={!isAllowed}
                 >
                   Create Template
@@ -244,7 +250,7 @@ export const IdentitySection = withPermission(
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={(popUp.upgradePlan?.data as { description: string })?.description}
+          text="You can use Identity Auth Templates if you switch to Infisical's Enterprise plan."
         />
       </div>
     );

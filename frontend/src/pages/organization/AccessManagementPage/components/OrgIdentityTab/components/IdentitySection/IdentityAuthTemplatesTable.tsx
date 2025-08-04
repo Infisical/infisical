@@ -265,7 +265,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
             onChangePerPage={handlePerPageChange}
           />
         )}
-        {!isPending && data && templates.length === 0 && (
+        {!isPending && templates.length === 0 && (
           <EmptyState
             title={
               debouncedSearch.trim().length > 0
