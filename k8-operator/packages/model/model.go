@@ -6,7 +6,7 @@ type ServiceAccountDetails struct {
 	PrivateKey string
 }
 
-type MachineIdentityDetails struct {
+type UniversalAuthIdentityDetails struct {
 	ClientId     string
 	ClientSecret string
 }
