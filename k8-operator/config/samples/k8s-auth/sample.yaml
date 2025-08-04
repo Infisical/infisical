@@ -7,19 +7,19 @@ metadata:
     annotations:
         example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
 spec:
-    hostAPI: https://app.infisical.com/api
+    hostAPI: http://localhost:8085/api
     resyncInterval: 10
     authentication:
         # Native Kubernetes Auth
         kubernetesAuth:
-            identityId: <>
+            identityId: 25d05878-0a2f-47c5-b889-46b70fb2dbfc
             serviceAccountRef:
               name: infisical-auth
               namespace: default
 
             # secretsScope is identical to the secrets scope in the universalAuth field in this sample.
             secretsScope:
-                projectSlug: dsf-gpb-t
+                projectSlug: test-j7-kx
                 envSlug: dev
                 secretsPath: "/"
                 recursive: true

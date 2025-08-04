@@ -9,7 +9,6 @@ import (
 )
 
 func GetProjectByID(accessToken string, projectId string) (model.Project, error) {
-
 	httpClient := resty.New()
 	httpClient.
 		SetAuthScheme("Bearer").
@@ -24,4 +23,22 @@ func GetProjectByID(accessToken string, projectId string) (model.Project, error)
 	}
 
 	return projectDetails.Project, nil
+}
+
+func GetProjectBySlug(accessToken string, projectSlug string) (model.Project, error) {
+	httpClient := resty.New()
+	httpClient.
+		SetAuthScheme("Bearer").
+		SetAuthToken(accessToken).
+		SetHeader("Accept", "application/json")
+
+	project, err := api.CallGetProjectByIDv2(httpClient, api.GetProjectByIDRequest{
+		ProjectID: projectSlug,
+	})
+
+	if err != nil {
+		return model.Project{}, fmt.Errorf("unable to get project by slug. [err=%v]", err)
+	}
+
+	return project, nil
 }

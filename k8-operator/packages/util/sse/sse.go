@@ -16,16 +16,14 @@ type SSEEvent struct {
 
 // SSEClient handles SSE connections
 type SSEClient struct {
-	URL       string
-	UserAgent string
-	Client    *http.Client
+	URL    string
+	Client *http.Client
 }
 
 // NewSSEClient creates a new SSE client
-func NewClient(url, ua string) *SSEClient {
+func NewClient(url string) *SSEClient {
 	return &SSEClient{
-		URL:       url,
-		UserAgent: ua,
+		URL: url,
 		Client: &http.Client{
 			Timeout: 0, // No timeout for streaming
 		},
@@ -42,6 +40,7 @@ func (c *SSEClient) Connect(method string, headers map[string]string, body io.Re
 	// Set required headers for SSE
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Content-Type", "application/json")
 
 	for key, value := range headers {
 		req.Header.Set(key, value)

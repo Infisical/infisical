@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/Infisical/infisical/k8-operator/packages/util/sse"
 	"github.com/go-resty/resty/v2"
 )
@@ -150,17 +151,40 @@ func CallGetProjectByID(httpClient *resty.Client, request GetProjectByIDRequest)
 
 }
 
-func CallSubscribeProjectEvents(projectID string, body SubProjectEventsRequest) (<-chan sse.SSEEvent, <-chan error, error) {
-	client := sse.NewClient(fmt.Sprintf("%s/api/v1/events/subscribe/project-events", API_HOST_URL), USER_AGENT_NAME)
+func CallGetProjectByIDv2(httpClient *resty.Client, request GetProjectByIDRequest) (model.Project, error) {
+	var projectResponse model.Project
+
+	response, err := httpClient.
+		R().SetResult(&projectResponse).
+		SetHeader("User-Agent", USER_AGENT_NAME).
+		Get(fmt.Sprintf("%s/v2/workspace/%s", API_HOST_URL, request.ProjectID))
+
+	if err != nil {
+		return model.Project{}, fmt.Errorf("CallGetProject: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return model.Project{}, fmt.Errorf("CallGetProject: Unsuccessful response: [response=%s]", response)
+	}
+
+	return projectResponse, nil
+
+}
+
+func CallSubscribeProjectEvents(projectID, token string, body SubProjectEventsRequest) (<-chan sse.SSEEvent, <-chan error, error) {
+	client := sse.NewClient(fmt.Sprintf("%s/v1/events/subscribe/project-events", API_HOST_URL))
 
 	b, err := json.Marshal(body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("CallSubscribeProjectEvents: Unable to marshal body [err=%s]", err)
 	}
 
-	events, errors, err := client.Connect("POST", map[string]string{
-		"User-Agent": USER_AGENT_NAME,
-	}, strings.NewReader(string(b)))
+	headers := map[string]string{
+		"User-Agent":    USER_AGENT_NAME,
+		"Authorization": fmt.Sprint("Bearer ", token),
+	}
+
+	events, errors, err := client.Connect("POST", headers, strings.NewReader(string(b)))
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("CallSubscribeProjectEvents: Unable to connect to SSE server [err=%s]", err)

@@ -208,11 +208,13 @@ type GetProjectByIDResponse struct {
 }
 
 type SubProjectEventsRequestRegister struct {
-	EventType  string `json:"eventType"`
-	Conditions *struct {
-		EnvironmentSlug string `json:"environmentSlug"`
-		SecretPath      string `json:"secretPath"`
-	} `json:"conditions"`
+	Event      string                            `json:"event"`
+	Conditions *SubProjectEventsRequestCondition `json:"conditions"`
+}
+
+type SubProjectEventsRequestCondition struct {
+	EnvironmentSlug string `json:"environmentSlug"`
+	SecretPath      string `json:"secretPath"`
 }
 
 type SubProjectEventsRequest struct {

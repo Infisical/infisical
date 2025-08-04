@@ -201,6 +201,8 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 }
 
 func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.SourceCh = make(chan event.GenericEvent)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {

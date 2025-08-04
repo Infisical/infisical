@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -466,7 +467,7 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 			InfisicalClient:   client,
 			CancelCtx:         cancel,
 			AuthDetails:       util.AuthenticationDetails{},
-			EventStreamClient: sse.NewClient(api.API_HOST_URL, api.USER_AGENT_NAME),
+			EventStreamClient: sse.NewClient(api.API_HOST_URL),
 		}
 
 		resourceVariables = infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)]
@@ -578,26 +579,68 @@ func (r *InfisicalSecretReconciler) EnsureEventStream(ctx context.Context, logge
 
 	resourceVariables := r.getResourceVariables(*secret)
 	infiscalClient := resourceVariables.InfisicalClient
-	// sseClient := resourceVariables.EventStreamClient
-
 	projectSlug := resourceVariables.AuthDetails.MachineIdentityScope.ProjectSlug
 
-	proj, err := util.GetProjectByID(infiscalClient.Auth().GetAccessToken(), projectSlug)
+	token := infiscalClient.Auth().GetAccessToken()
 
-	logger.Info("Project", proj)
+	proj, err := util.GetProjectBySlug(token, projectSlug)
+
+	logger.Info("Project", "project", proj, "slug", projectSlug)
 	if err != nil {
 		return fmt.Errorf("failed to get project [err=%s]", err)
 	}
 
-	api.CallSubscribeProjectEvents(secret.Spec.Authentication.ServiceAccount.ProjectId, api.SubProjectEventsRequest{
+	client := sse.NewClient(fmt.Sprintf("%s/v1/events/subscribe/project-events", api.API_HOST_URL))
+
+	registers := []api.SubProjectEventsRequestRegister{
+		api.SubProjectEventsRequestRegister{
+			Event: "secret:delete",
+			Conditions: &api.SubProjectEventsRequestCondition{
+				SecretPath:      "/**",
+				EnvironmentSlug: secret.Spec.Authentication.UniversalAuth.SecretsScope.EnvSlug,
+			},
+		},
+	}
+
+	b, err := json.Marshal(api.SubProjectEventsRequest{
 		ProjectID: proj.ID,
+		Register:  registers,
 	})
 
-	return nil
+	if err != nil {
+		return fmt.Errorf("CallSubscribeProjectEvents: Unable to marshal body [err=%s]", err)
+	}
+
+	headers := map[string]string{
+		"User-Agent":    api.USER_AGENT_NAME,
+		"Authorization": fmt.Sprint("Bearer ", token),
+	}
+
+	events, errors, err := client.Connect("POST", headers, strings.NewReader(string(b)))
+
+	if err != nil {
+		return fmt.Errorf("Unable to connect to SSE server [err=%s]", err)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to project events [err=%s]", err)
+	}
+
+	for {
+		select {
+		case event := <-events:
+			logger.Info("Received event", "event", event)
+		case err := <-errors:
+			logger.Error(err, "Error occurred")
+		case <-ctx.Done():
+			logger.Info("Context done")
+			return nil
+		}
+	}
 }
 
 func (r *InfisicalSecretReconciler) CloseEventStream(ctx context.Context, logger logr.Logger, infisicalSecretCRD *secretsv1alpha1.InfisicalSecret) error {
-	logger.Info("Event watcher enabled")
+	logger.Info("Event watcher disabled")
 	// ensure event watcher is running
 
 	return nil

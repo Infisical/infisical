@@ -168,7 +168,6 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 }
 
 func (r *InfisicalDynamicSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	// Custom predicate that allows both spec changes and deletions
 	specChangeOrDelete := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
