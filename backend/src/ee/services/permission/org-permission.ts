@@ -34,7 +34,7 @@ export enum OrgPermissionMachineIdentityAuthTemplateActions {
   CreateTemplates = "create-templates",
   DeleteTemplates = "delete-templates",
   UnlinkTemplates = "unlink-templates",
-  UseTemplates = "use-templates"
+  AttachTemplates = "attach-templates"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -383,7 +383,10 @@ const buildAdminPermission = () => {
     OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
     OrgPermissionSubjects.MachineIdentityAuthTemplate
   );
-  can(OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
 
   can(OrgPermissionSecretShareAction.ManageSettings, OrgPermissionSubjects.SecretShare);
 
@@ -425,7 +428,10 @@ const buildMemberPermission = () => {
     OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
     OrgPermissionSubjects.MachineIdentityAuthTemplate
   );
-  can(OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
 
   return rules;
 };

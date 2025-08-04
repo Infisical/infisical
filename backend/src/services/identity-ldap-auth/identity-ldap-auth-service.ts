@@ -224,7 +224,7 @@ export const identityLdapAuthServiceFactory = ({
 
     if (templateId) {
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+        OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
         OrgPermissionSubjects.MachineIdentityAuthTemplate
       );
     }
@@ -386,7 +386,7 @@ export const identityLdapAuthServiceFactory = ({
 
     if (templateId) {
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+        OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
         OrgPermissionSubjects.MachineIdentityAuthTemplate
       );
     }

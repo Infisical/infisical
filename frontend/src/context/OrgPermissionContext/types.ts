@@ -27,7 +27,7 @@ export enum OrgPermissionMachineIdentityAuthTemplateActions {
   EditTemplates = "edit-templates",
   DeleteTemplates = "delete-templates",
   UnlinkTemplates = "unlink-templates",
-  UseTemplates = "use-templates"
+  AttachTemplates = "attach-templates"
 }
 
 export enum OrgPermissionSubjects {

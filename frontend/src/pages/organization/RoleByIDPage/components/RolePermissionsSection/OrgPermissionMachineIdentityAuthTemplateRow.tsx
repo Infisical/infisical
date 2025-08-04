@@ -45,7 +45,7 @@ const PERMISSION_ACTIONS = [
     label: "Unlink Templates"
   },
   {
-    action: OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+    action: OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
     label: "Attach Templates"
   }
 ] as const;
@@ -108,7 +108,7 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
             [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: true,
             [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: true,
             [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: true,
-            [OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates]: true
+            [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: true
           },
           { shouldDirty: true }
         );
@@ -122,7 +122,7 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
             [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false,
-            [OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates]: true
+            [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: true
           },
           { shouldDirty: true }
         );
@@ -138,7 +138,7 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
             [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false,
-            [OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates]: false
+            [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: false
           },
           { shouldDirty: true }
         );

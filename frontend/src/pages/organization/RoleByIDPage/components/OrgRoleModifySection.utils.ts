@@ -90,7 +90,7 @@ const machineIdentityAuthTemplatePermissionSchema = z
     [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: z.boolean().optional(),
     [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: z.boolean().optional(),
     [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: z.boolean().optional(),
-    [OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates]: z.boolean().optional()
+    [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: z.boolean().optional()
   })
   .optional();
 

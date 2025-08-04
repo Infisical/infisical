@@ -149,8 +149,8 @@ export const IdentityLdapAuthForm = ({
   const { data: templates } = useGetAvailableTemplates(MachineIdentityAuthMethod.LDAP);
   const { permission } = useOrgPermission();
 
-  const canUseTemplates = permission.can(
-    OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+  const canAttachTemplates = permission.can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
     OrgPermissionSubjects.MachineIdentityAuthTemplate
   );
 
@@ -352,7 +352,7 @@ export const IdentityLdapAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          {canUseTemplates && (
+          {canAttachTemplates && (
             <Controller
               control={control}
               name="scope"

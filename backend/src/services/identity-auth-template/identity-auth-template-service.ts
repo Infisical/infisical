@@ -360,7 +360,7 @@ export const identityAuthTemplateServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+      OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
