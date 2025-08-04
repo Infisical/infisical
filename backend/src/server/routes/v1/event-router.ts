@@ -26,7 +26,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
       description: "Subscribe to project events",
       body: z.object({
         projectId: z.string().trim().describe(EventSubscriptions.SUBSCRIBE_PROJECT_EVENTS.projectId),
-        register: z.array(EventRegisterSchema).max(10)
+        register: z.array(EventRegisterSchema).min(1).max(10)
       }),
       produces: ["text/event-stream"]
     },

@@ -78,7 +78,7 @@ export function createEventStreamClient(redis: Redis, options: IEventStreamClien
         ...(hasConditions
           ? {
               environment: r.conditions?.environmentSlug ?? "",
-              secretPath: r.conditions?.recursive ? { $glob: `${secretPath}/**` } : secretPath
+              secretPath: { $glob: secretPath }
             }
           : {})
       }
