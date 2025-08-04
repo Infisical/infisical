@@ -152,42 +152,54 @@ export const auditLogDALFactory = (db: TDbClient) => {
 
   // delete all audit log that have expired
   const pruneAuditLog: TAuditLogDALFactory["pruneAuditLog"] = async (tx) => {
-    const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
-    const MAX_RETRY_ON_FAILURE = 3;
+    const runPrune = async (dbClient: knex.Knex) => {
+      const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
+      const MAX_RETRY_ON_FAILURE = 3;
 
-    const today = new Date();
-    let deletedAuditLogIds: { id: string }[] = [];
-    let numberOfRetryOnFailure = 0;
-    let isRetrying = false;
+      const today = new Date();
+      let deletedAuditLogIds: { id: string }[] = [];
+      let numberOfRetryOnFailure = 0;
+      let isRetrying = false;
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
-    do {
-      try {
-        const findExpiredLogSubQuery = (tx || db)(TableName.AuditLog)
-          .where("expiresAt", "<", today)
-          .where("createdAt", "<", today) // to use audit log partition
-          .orderBy(`${TableName.AuditLog}.createdAt`, "desc")
-          .select("id")
-          .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
+      logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
+      do {
+        try {
+          const findExpiredLogSubQuery = dbClient(TableName.AuditLog)
+            .where("expiresAt", "<", today)
+            .where("createdAt", "<", today) // to use audit log partition
+            .orderBy(`${TableName.AuditLog}.createdAt`, "desc")
+            .select("id")
+            .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
 
-        // eslint-disable-next-line no-await-in-loop
-        deletedAuditLogIds = await (tx || db)(TableName.AuditLog)
-          .whereIn("id", findExpiredLogSubQuery)
-          .del()
-          .returning("id");
-        numberOfRetryOnFailure = 0; // reset
-      } catch (error) {
-        numberOfRetryOnFailure += 1;
-        logger.error(error, "Failed to delete audit log on pruning");
-      } finally {
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => {
-          setTimeout(resolve, 10); // time to breathe for db
-        });
-      }
-      isRetrying = numberOfRetryOnFailure > 0;
-    } while (deletedAuditLogIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
-    logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
+          // eslint-disable-next-line no-await-in-loop
+          deletedAuditLogIds = await dbClient(TableName.AuditLog)
+            .whereIn("id", findExpiredLogSubQuery)
+            .del()
+            .returning("id");
+          numberOfRetryOnFailure = 0; // reset
+        } catch (error) {
+          numberOfRetryOnFailure += 1;
+          logger.error(error, "Failed to delete audit log on pruning");
+        } finally {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => {
+            setTimeout(resolve, 10); // time to breathe for db
+          });
+        }
+        isRetrying = numberOfRetryOnFailure > 0;
+      } while (deletedAuditLogIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
+      logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
+    };
+
+    if (tx) {
+      await runPrune(tx);
+    } else {
+      const QUERY_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+      await db.transaction(async (trx) => {
+        await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+        await runPrune(trx);
+      });
+    }
   };
 
   const create: TAuditLogDALFactory["create"] = async (tx) => {
