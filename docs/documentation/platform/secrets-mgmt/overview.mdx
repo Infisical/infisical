@@ -1,0 +1,17 @@
+---
+title: "Secrets Management"
+sidebarTitle: "Overview"
+description: "Learn how to securely store, access, and manage sensitive application secrets."
+---
+
+Infisical provides a flexible platform for managing application secrets — such as API keys, database credentials, application configuration, and more — across every stage of the development lifecycle from local development to production.
+
+It helps teams eliminate hardcoded secrets, enforce access controls, and adopt secure workflows like secret rotation, dynamic secrets, and secrets syncs to external platforms.
+
+Core capabilities include:
+
+- Secret Stores: Secure, versioned storage scoped by [project](/documentation/platform/secrets-mgmt/project), [environment](/documentation/platform/secrets-mgmt/project#project-environments), and [path](/documentation/platform/folder).
+- [Access Control](/documentation/platform/access-controls/overview): Fine-grained, identity-aware permissions for users and machines
+- Secret Delivery: Access secrets via [CLI](/cli/overview), [SDKs](/sdks/overview) (Go, Node.js, Python, etc.), [HTTP API](/api-reference/overview/introduction), [agents](/integrations/platforms/infisical-agent), [Kubernetes Operator](/integrations/platforms/kubernetes/overview), [External Secrets Operator (ESO)](https://external-secrets.io/latest/provider/infisical), and more.
+- Lifecycle Automation: Automate [secret rotation](/documentation/platform/secret-rotation/overview), generate [dynamic secrets](/documentation/platform/dynamic-secrets/overview), and enforce [approval-based workflows](/documentation/platform/pr-workflows).
+- [Secrets Syncs](/integrations/secret-syncs/overview): Push secrets to external services like [GitHub](/integrations/secret-syncs/github), [GitLab](/integrations/secret-syncs/gitlab), [AWS Secrets Manager](/integrations/secret-syncs/aws-secrets-manager), [Vercel](/integrations/secret-syncs/vercel), and more

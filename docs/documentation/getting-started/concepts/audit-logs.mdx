@@ -1,0 +1,40 @@
+---
+title: "Audit Logs"
+sidebarTitle: "Audit Logs"
+description: "Understand how Infisical logs activity and supports external audit streaming."
+---
+
+Infisical records a detailed audit trail of actions across the platform — providing deep visibility into access, changes, and usage for security and compliance purposes.
+
+Every interaction with Infisical resources generates an audit event. These events are immutable and include metadata such as the actor, event type, affected resources, timestamp, IP address, and client source.
+
+Audit logs enable teams to:
+
+- Monitor access and changes to secrets, certificates, and infrastructure.
+- Investigate incidents with full context around who did what, when, and how.
+- Meet compliance and governance requirements with structured activity records.
+
+To learn more, refer to the [audit logs documentation](/documentation/platform/audit-logs).
+
+## Log Coverage
+
+Infisical tracks dozens of event types across the platform — including secret access, permission changes, certificate issuance, SSH session activity, and identity management.
+
+Each audit entry includes structured fields that make it easy to search, filter, and correlate across systems. For example:
+
+- Event Type: Action that occurred (e.g., `create-secret`, `issue-ssh-cert`).
+- Actor: Who performed the action (user or machine identity).
+- Resource: What was affected (e.g., project, secret, certificate).
+- Context: IP address, user agent, permissions, and more.
+
+## External Log Streaming
+
+For centralized monitoring and long-term retention, Infisical supports [audit log streaming](/documentation/platform/audit-log-streams/audit-log-streams) to external systems.
+
+You can forward logs to SIEM platforms, storage buckets, or observability stacks using JSON-based collectors. Infisical integrates well with tools like [Fluent Bit](https://localhost:3000/documentation/platform/audit-log-streams/audit-log-streams-with-fluentbit#deploy-fluent-bit), enabling teams to route logs to destinations such as:
+
+- AWS S3
+- Elasticsearch
+- Splunk
+- Datadog
+- Cloud-native log pipelines
