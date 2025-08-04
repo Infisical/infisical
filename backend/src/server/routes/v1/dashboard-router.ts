@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { SecretFoldersSchema, SecretImportsSchema, UsersSchema } from "@app/db/schemas";
+import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
@@ -628,7 +629,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
-              tags: SanitizedTagSchema.array().optional()
+              tags: SanitizedTagSchema.array().optional(),
+              reminder: RemindersSchema.extend({
+                recipients: z.string().array().optional()
+              }).nullish()
             })
             .array()
             .optional(),
@@ -706,7 +710,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       let imports: Awaited<ReturnType<typeof server.services.secretImport.getImports>> | undefined;
       let folders: Awaited<ReturnType<typeof server.services.folder.getFolders>> | undefined;
-      let secrets: Awaited<ReturnType<typeof server.services.secret.getSecretsRaw>>["secrets"] | undefined;
+      let secrets:
+        | (Awaited<ReturnType<typeof server.services.secret.getSecretsRaw>>["secrets"][number] & {
+            reminder: Awaited<ReturnType<typeof server.services.reminder.getRemindersForDashboard>>[string] | null;
+          })[]
+        | undefined;
       let dynamicSecrets: Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnv>> | undefined;
       let secretRotations:
         | Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>
@@ -904,7 +912,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           });
 
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-            secrets = (
+            const rawSecrets = (
               await server.services.secret.getSecretsRaw({
                 actorId: req.permission.id,
                 actor: req.permission.type,
@@ -925,6 +933,15 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 includeMetadataInSearch: true
               })
             ).secrets;
+
+            const reminders = await server.services.reminder.getRemindersForDashboard(
+              rawSecrets.map((secret) => secret.id)
+            );
+
+            secrets = rawSecrets.map((secret) => ({
+              ...secret,
+              reminder: reminders[secret.id] ?? null
+            }));
           }
         }
       } catch (error) {
