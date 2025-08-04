@@ -5,75 +5,143 @@ description: "Subscribe to events in Infisical for real-time updates"
 ---
 
 <Info>
-  **Note:** Event Subscriptions is a paid feature. - **Infisical Cloud users:** Event Subscriptions is
-  available under the **Enterprise Tier**. - **Self-Hosted Infisical:** Please
-  contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an
-  enterprise license.
+ **Note:** Event Subscriptions is a paid feature.
+ - **Infisical Cloud users:** Event Subscriptions is available under the **Enterprise Tier**.
+ - **Self-Hosted Infisical:** Please contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an enterprise license.
 </Info>
 
+Event Subscriptions in Infisical allow you to receive real-time notifications when specific actions occur within your account or organization. These notifications include changes to secrets, users, teams, and other important resources.
 
-Event Subscriptions in Infisical allow you to receive real-time notifications when specific actions occur within your account or organization. These notifications can include changes to secrets, users, teams, and other important resources.
+## How It Works
 
-You can currently subscribe to notifications for the following event types:
+Event Subscriptions enable real-time communication and state synchronization across multiple Infisical server instances through a distributed messaging architecture. The system leverages Redis as the central messaging backbone, utilizing Redis Pub/Sub to orchestrate event distribution in a fan-out pattern across all connected services. All server instances subscribe to a shared Redis topic named `infisical::core-servers`, ensuring consistent event delivery throughout the system.
 
-### Supported Event Types
+Event messages are structured according to the [CloudEvents specification](https://github.com/cloudevents/spec), providing a standardized format for cross-service communication. For client-side delivery, the system employs Server-Sent Events (SSE) streams, which offer efficient unidirectional communication without requiring specialized client libraries. This lightweight approach ensures seamless real-time updates while maintaining broad compatibility across different client environments.
 
-- `secret:created`: Triggered when a secret is created.
-- `secret:updated`: Triggered when a secret is updated.
-- `secret:deleted`: Triggered when a secret is deleted.
+<Note>
+ Event Subscriptions are designed for real-time communication and do not include persistence or replay capabilities—events are delivered once and are not stored for future retrieval.
+</Note>
 
+## Supported Resources
+
+You can currently subscribe to notifications for the following resources and event types:
+
+- **Secrets**
+ - `secret:created`: Triggered when a secret is created
+ - `secret:updated`: Triggered when a secret is updated
+ - `secret:deleted`: Triggered when a secret is deleted
 
 ## Permissions Setup
 
-In order to receive events on a supported resource, the identity is required to have a Subscribe permission on that resource. Follow these steps to set up the necessary permissions:
+To receive events on a supported resource, the identity must have `Subscribe` action permission on that resource.
+
+Follow these steps to set up the necessary permissions:
 
 <Steps>
-  <Step title="Select a project and copy the 'Project ID'">
-    ![Select Project](/images/platform/events/select-project.png)
-    On your project page, open <strong>Project Settings</strong> from the sidebar.<br />
-    In the Project name section, click <strong>Copy Project ID</strong> to copy your Project ID, or extract it from the URL:<br />
-    `https://app.infisical.com/project/<your_project_id>/settings`
-  </Step>
+ <Step title="Select a project and copy the Project ID">
+   ![Select Project](/images/platform/events/select-project.png)
+   
+   On your project page, open **Project Settings** from the sidebar.
+   
+   In the Project name section, click **Copy Project ID** to copy your Project ID, or extract it from the URL:
+   `https://app.infisical.com/project/<your_project_id>/settings`
+ </Step>
 
-<Step title="Navigate to 'Access Management' and open 'Project Roles'">
-  ![Project Detail](/images/platform/events/project-detail.png) ![Project
-  Access](/images/platform/events/project-access.png) Navigate to{" "}
-  <strong>Access Management</strong>, then select <strong>Project Roles</strong>
-  .
-</Step>
+ <Step title="Navigate to Access Management and open Project Roles">
+   ![Project Detail](/images/platform/events/project-detail.png)
+   ![Project Access](/images/platform/events/project-access.png)
+   
+   Navigate to **Access Management**, then select **Project Roles**.
+ </Step>
 
-<Step title="Select an existing role or create a new one">
-  ![Project Role](/images/platform/events/project-role.png) You can either edit
-  an existing role or create a new role for event subscriptions.
-</Step>
+ <Step title="Select an existing role or create a new one">
+   ![Project Role](/images/platform/events/project-role.png)
+   
+   You can either edit an existing role or create a new role for event subscriptions.
+ </Step>
 
-<Step title="Assign policies to the role">
-  ![Role Detail](/images/platform/events/role-detail.png) Select the specific
-  resources that the role should have access to.
-  <br />
-  ![Add policy](/images/platform/events/add-policy.png)
-</Step>
+ <Step title="Assign policies to the role">
+   ![Role Detail](/images/platform/events/role-detail.png)
+   
+   Select the specific resources that the role should have access to.
+   
+   ![Add policy](/images/platform/events/add-policy.png)
+ </Step>
 
-  <Step title="Enable the 'Subscribe' action in permissions">
-    ![Policy setting](/images/platform/events/policy-setting.png)
-    Ensure the <strong>Subscribe</strong> action is selected for the relevant resources and events.<br />
-    <AccordionGroup>
-      <Accordion title="Add conditions to your permissions">
-        By default, the role will have access to all events for the selected resources in this project.
-        If needed, you can add filters to limit the scope of accessible events.<br />
-        ![Policy setting](/images/platform/events/add-conditions.png)
-      </Accordion>
-    </AccordionGroup>
-  </Step>
+ <Step title="Enable the Subscribe action in permissions">
+   ![Policy setting](/images/platform/events/policy-setting.png)
+   
+   Ensure the **Subscribe** action is selected for the relevant resources and events.
+   
+   <AccordionGroup>
+     <Accordion title="Add conditions to your permissions">
+       By default, the role will have access to all events for the selected resources in this project. If needed, you can add filters to limit the scope of accessible events.
+       
+       ![Policy setting](/images/platform/events/add-conditions.png)
+     </Accordion>
+   </AccordionGroup>
+ </Step>
 </Steps>
 
-## Usage
+## Getting Started
 
-For integration and implementation details, please refer to our [API Reference](/api-reference/endpoints/events).
+Currently, events are only available via [API](/api-reference/endpoints/events) but will soon be available in our SDKs, Kubernetes Operator, and more.
 
----
+### API Authentication
 
-**Note:** Only users or roles with appropriate permissions can manage or subscribe to events.<br />
+<Steps>
+ <Step title="Navigate to Organization Access Control and select an Identity">
+   ![Org ACL page](/images/platform/events/org-access-control.png)
+   
+   Navigate to the **Organization Access Management** tab under Project access control settings.
+   
+   ![Select Identity](/images/platform/events/identity-selector.png)
+   
+   Select or create an identity you want to create the token for.
+ </Step>
 
-<strong>Availability:</strong> Event Subscriptions are not available on the Free
-plan.
+ <Step title="Assign a project and role to the Identity">
+   ![Add identity role](/images/platform/events/identity-add-role.png)
+
+   Select a project and the role you previously configured in the [permissions setup](#permissions-setup) section.
+   
+   ![Add identity role](/images/platform/events/identity-add-project.png)
+ </Step>
+
+ <Step title="Add authentication method Token Auth">
+   ![Add Auth Method](/images/platform/events/add-auth-method.png)
+   ![Add Auth Method Form](/images/platform/events/add-auth-method-form.png)
+ </Step>
+
+ <Step title="Generate an authentication token">
+   ![Generate auth token](/images/platform/events/generate-auth-token.png)
+   ![Generate auth token add](/images/platform/events/generate-auth-token-add.png)
+   ![Generate auth token add](/images/platform/events/generate-auth-token-create.png)
+   
+   Enter a descriptive name and click **Create**.
+
+   ![Copy token](/images/platform/events/copy-generated-token.png)
+   
+   Click to copy the generated token and save it for later use.
+ </Step>
+</Steps>
+
+### API Usage
+
+#### Creating a Subscription
+
+![Postman Subscription](/images/platform/events/postman-subscribe.png)
+
+**Request Parameters:**
+- `projectId`: Project whose events you want to subscribe to
+- `register`: List of event filters
+ - `conditions`: Conditions to filter events on
+   - `environmentSlug`: Project environment
+   - `secretPath`: Path of the secrets
+   - `recursive`: If `true`, gets events from all nested paths under `secretPath`
+
+![Postman Subscription Response](/images/platform/events/postman-sse-response.png)
+
+The subscribe endpoint responds with a `text/event-stream` content type to initiate SSE streaming.
+
+For more specific details, please refer to our [API Reference](/api-reference/endpoints/events).
