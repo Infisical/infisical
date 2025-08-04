@@ -1,4 +1,5 @@
 import { faCertificate } from "@fortawesome/free-solid-svg-icons";
+import { useNavigate } from "@tanstack/react-router";
 
 import {
   EmptyState,
@@ -30,6 +31,7 @@ export const MachineAuthTemplateUsagesModal = ({
   templateName
 }: Props) => {
   const { currentOrg } = useOrganization();
+  const navigate = useNavigate();
 
   const organizationId = currentOrg?.id || "";
 
@@ -57,6 +59,14 @@ export const MachineAuthTemplateUsagesModal = ({
                     <Tr
                       className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       key={`usage-${usage.identityId}`}
+                      onClick={() =>
+                        navigate({
+                          to: "/organization/identities/$identityId",
+                          params: {
+                            identityId: usage.identityId
+                          }
+                        })
+                      }
                     >
                       <Td>{usage.identityName}</Td>
                       <Td>

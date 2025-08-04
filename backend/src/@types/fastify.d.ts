@@ -18,6 +18,7 @@ import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/extern
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
+import { TIdentityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TIdentityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
 import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
@@ -66,7 +67,6 @@ import { THsmServiceFactory } from "@app/services/hsm/hsm-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
-import { TIdentityAuthTemplateServiceFactory } from "@app/services/identity-auth-template";
 import { TIdentityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { TIdentityAzureAuthServiceFactory } from "@app/services/identity-azure-auth/identity-azure-auth-service";
 import { TIdentityGcpAuthServiceFactory } from "@app/services/identity-gcp-auth/identity-gcp-auth-service";

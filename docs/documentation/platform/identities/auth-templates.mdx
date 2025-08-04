@@ -51,8 +51,6 @@ Auth templates are managed in **Organization Settings > Access Control > Identit
         - **Bind DN**: The DN to bind to the LDAP server with.
         - **Bind Pass**: The password to bind to the LDAP server with.
         - **Search Base / DN**: Base DN under which to perform user search such as `ou=Users,dc=acme,dc=com`.
-        - **User Search Filter**: Template used to construct the LDAP user search filter such as `(uid={{username}})`; use literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
-        - **Required Attributes**: A key/value pair of attributes that must be present in the LDAP user entry for them to be authenticated. As an example, if you set key `uid` to value `user1,user2,user3`, then only users with `uid` of `user1`, `user2`, or `user3` will be able to login with this identity. Each value is a comma separated list of attributes.
         - **CA Certificate**: The CA certificate to use when verifying the LDAP server certificate. This field is optional but recommended.
         
         <Note>

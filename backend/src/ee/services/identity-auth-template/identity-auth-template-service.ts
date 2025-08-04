@@ -9,11 +9,11 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TOrgPermission } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { ActorType } from "../auth/auth-type";
-import { TIdentityLdapAuthDALFactory } from "../identity-ldap-auth/identity-ldap-auth-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TIdentityAuthTemplateDALFactory } from "./identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
 import {

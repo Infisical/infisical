@@ -26,7 +26,6 @@ import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityRouter } from "./identity-router";
-import { registerIdentityTemplateRouter } from "./identity-template-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
 import { registerIdentityUaRouter } from "./identity-universal-auth-router";
@@ -136,7 +135,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
   await server.register(registerIdentityRouter, { prefix: "/identities" });
-  await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(
     async (secretSharingRouter) => {
