@@ -7,6 +7,7 @@ export interface LdapTemplateFields {
   bindDN: string;
   bindPass: string;
   searchBase: string;
+  ldapCaCertificate?: string;
 }
 
 export interface IdentityAuthTemplate {

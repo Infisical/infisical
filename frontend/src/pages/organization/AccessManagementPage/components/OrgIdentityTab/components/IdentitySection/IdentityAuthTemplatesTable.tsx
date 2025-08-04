@@ -182,7 +182,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
                   <Td>{template.name}</Td>
                   <Td>
                     <div className="flex items-center">
-                      <span className="capitalize">{template.authMethod}</span>
+                      <span className="uppercase">{template.authMethod}</span>
                     </div>
                   </Td>
                   <Td>

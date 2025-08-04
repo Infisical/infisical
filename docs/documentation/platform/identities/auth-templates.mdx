@@ -67,15 +67,15 @@ Auth templates are managed in **Organization Settings > Access Control > Identit
 
 Once created, templates can be applied when configuring authentication methods for machine identities. When adding an auth method to an identity, you'll have the option to select from available templates or configure manually.
 
+![Attach Template](/images/platform/identities/auth-templates/machine-identity-page.png)
+![Attach Template Form](/images/platform/identities/auth-templates/attach-template-form.png)
+
 ### Managing Template Usage
 
-You can view which identities are using a specific template by clicking **View Usages** in the template's dropdown menu. This allows you to:
+You can view which identities are using a specific template by clicking **View Usages** in the template's dropdown menu.
 
 ![Template Usages](/images/platform/identities/auth-templates/template-usages.png)
 ![Template Usages Modal](/images/platform/identities/auth-templates/template-usages-modal.png)
-
-- See all identities currently using the template
-- Unlink identities from the template
 
 ## FAQ
 
@@ -85,11 +85,11 @@ You can view which identities are using a specific template by clicking **View U
 </Accordion>
 
 <Accordion title="What happens if I delete a template that's in use?">
-  If you delete a template that's currently being used by identities, those identities will continue to function with their existing configuration.
+  If you delete a template that's currently being used by identities, those identities will continue to function with their existing configuration. However, the link to the template will be broken, and you won't be able to use the template for new identities.
 </Accordion>
 
 <Accordion title="Can I see which identities are using a specific template?">
-  Yes, click **View Usages** in the template's dropdown menu to see all identities currently using that template. You can also unlink identities from templates from this view.
+  Yes, click **View Usages** in the template's dropdown menu to see all identities currently using that template.
 </Accordion>
 
 <Accordion title="Do templates support all authentication methods?">

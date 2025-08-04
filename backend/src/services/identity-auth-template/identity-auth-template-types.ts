@@ -8,6 +8,7 @@ export type TLdapTemplateFields = {
   bindDN: string;
   bindPass: string;
   searchBase: string;
+  ldapCaCertificate?: string;
 };
 
 // Union type for all template field types

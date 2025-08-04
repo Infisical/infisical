@@ -12,10 +12,11 @@ import {
 } from "@app/services/identity-auth-template/identity-auth-template-enums";
 
 const ldapTemplateFieldsSchema = z.object({
-  url: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP_URL_REQUIRED),
-  bindDN: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.BIND_DN_REQUIRED),
-  bindPass: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.BIND_PASSWORD_REQUIRED),
-  searchBase: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.SEARCH_BASE_REQUIRED)
+  url: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.URL_REQUIRED),
+  bindDN: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_DN_REQUIRED),
+  bindPass: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_PASSWORD_REQUIRED),
+  searchBase: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.SEARCH_BASE_REQUIRED),
+  ldapCaCertificate: z.string().trim().optional()
 });
 
 export const registerIdentityTemplateRouter = async (server: FastifyZodProvider) => {
@@ -44,8 +45,8 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateFields: ldapTemplateFieldsSchema
       }),
       response: {
-        200: z.object({
-          message: z.string()
+        200: IdentityAuthTemplatesSchema.extend({
+          templateFields: z.record(z.string(), z.unknown())
         })
       }
     },
@@ -72,7 +73,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         }
       });
 
-      return { message: TEMPLATE_SUCCESS_MESSAGES.CREATED };
+      return template;
     }
   });
 
@@ -104,8 +105,8 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateFields: ldapTemplateFieldsSchema.partial().optional()
       }),
       response: {
-        200: z.object({
-          message: z.string()
+        200: IdentityAuthTemplatesSchema.extend({
+          templateFields: z.record(z.string(), z.unknown())
         })
       }
     },
@@ -132,7 +133,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         }
       });
 
-      return { message: TEMPLATE_SUCCESS_MESSAGES.UPDATED };
+      return template;
     }
   });
 
@@ -204,10 +205,8 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateId: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_ID_REQUIRED)
       }),
       response: {
-        200: z.object({
-          template: IdentityAuthTemplatesSchema.extend({
-            templateFields: ldapTemplateFieldsSchema
-          })
+        200: IdentityAuthTemplatesSchema.extend({
+          templateFields: ldapTemplateFieldsSchema
         })
       }
     },
@@ -220,7 +219,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         actorOrgId: req.permission.orgId
       });
 
-      return { template };
+      return template;
     }
   });
 
@@ -347,7 +346,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
 
   server.route({
     method: "POST",
-    url: "/:templateId/usage",
+    url: "/:templateId/delete-usage",
     config: {
       rateLimit: writeLimit
     },

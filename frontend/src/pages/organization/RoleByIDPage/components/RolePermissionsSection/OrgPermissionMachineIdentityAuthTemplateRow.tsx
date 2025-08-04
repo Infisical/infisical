@@ -43,6 +43,10 @@ const PERMISSION_ACTIONS = [
   {
     action: OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
     label: "Unlink Templates"
+  },
+  {
+    action: OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+    label: "Attach Templates"
   }
 ] as const;
 
@@ -103,7 +107,8 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
             [OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates]: true,
             [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: true,
             [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: true,
-            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: true
+            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: true,
+            [OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates]: true
           },
           { shouldDirty: true }
         );
@@ -116,7 +121,8 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
             [OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: false,
-            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false
+            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates]: true
           },
           { shouldDirty: true }
         );
@@ -131,7 +137,8 @@ export const OrgPermissionMachineIdentityAuthTemplateRow = ({
             [OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: false,
             [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: false,
-            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false
+            [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: false,
+            [OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates]: false
           },
           { shouldDirty: true }
         );

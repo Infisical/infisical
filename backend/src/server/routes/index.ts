@@ -1469,7 +1469,8 @@ export const registerRoutes = async (
     identityLdapAuthDAL,
     permissionService,
     kmsService,
-    licenseService
+    licenseService,
+    auditLogService
   });
 
   const identityAccessTokenService = identityAccessTokenServiceFactory({

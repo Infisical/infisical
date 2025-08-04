@@ -29,7 +29,7 @@ export const useGetIdentityAuthTemplates = (dto: GetIdentityAuthTemplatesDTO) =>
       const { data } = await apiRequest.get<{
         templates: IdentityAuthTemplate[];
         totalCount: number;
-      }>("/api/v1/identities/templates/search", {
+      }>("/api/v1/identity-templates/search", {
         params: {
           organizationId: dto.organizationId,
           limit: dto.limit || 50,
@@ -47,13 +47,13 @@ export const useGetIdentityAuthTemplate = (templateId: string, organizationId: s
   return useQuery({
     queryKey: identityAuthTemplatesKeys.getTemplate(templateId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ template: IdentityAuthTemplate }>(
-        `/api/v1/identities/templates/${templateId}`,
+      const { data } = await apiRequest.get<IdentityAuthTemplate>(
+        `/api/v1/identity-templates/${templateId}`,
         {
           params: { organizationId }
         }
       );
-      return data.template;
+      return data;
     },
     enabled: Boolean(templateId) && Boolean(organizationId)
   });
@@ -63,12 +63,9 @@ export const useGetAvailableTemplates = (authMethod: MachineIdentityAuthMethod) 
   return useQuery({
     queryKey: identityAuthTemplatesKeys.getAvailableTemplates(authMethod),
     queryFn: async () => {
-      const { data } = await apiRequest.get<IdentityAuthTemplate[]>(
-        "/api/v1/identities/templates",
-        {
-          params: { authMethod }
-        }
-      );
+      const { data } = await apiRequest.get<IdentityAuthTemplate[]>("/api/v1/identity-templates", {
+        params: { authMethod }
+      });
       return data;
     },
     enabled: Boolean(authMethod)
@@ -80,7 +77,7 @@ export const useGetTemplateUsages = (dto: GetTemplateUsagesDTO) => {
     queryKey: identityAuthTemplatesKeys.getTemplateUsages(dto.templateId),
     queryFn: async () => {
       const { data } = await apiRequest.get<MachineAuthTemplateUsage[]>(
-        `/api/v1/identities/templates/${dto.templateId}/usage`,
+        `/api/v1/identity-templates/${dto.templateId}/usage`,
         {
           params: { organizationId: dto.organizationId }
         }

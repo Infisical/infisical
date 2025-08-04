@@ -135,13 +135,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIntegrationRouter, { prefix: "/integration" });
   await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
-  await server.register(
-    async (identitiesRouter) => {
-      await identitiesRouter.register(registerIdentityRouter);
-      await identitiesRouter.register(registerIdentityTemplateRouter, { prefix: "/templates" });
-    },
-    { prefix: "/identities" }
-  );
+  await server.register(registerIdentityRouter, { prefix: "/identities" });
+  await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(
     async (secretSharingRouter) => {

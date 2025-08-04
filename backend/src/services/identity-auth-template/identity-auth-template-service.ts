@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionMachineIdentityAuthTemplateActions,
@@ -9,6 +10,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TOrgPermission } from "@app/lib/types";
 
+import { ActorType } from "../auth/auth-type";
 import { TIdentityLdapAuthDALFactory } from "../identity-ldap-auth/identity-ldap-auth-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
@@ -30,6 +32,7 @@ type TIdentityAuthTemplateServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TIdentityAuthTemplateServiceFactory = ReturnType<typeof identityAuthTemplateServiceFactory>;
@@ -39,7 +42,8 @@ export const identityAuthTemplateServiceFactory = ({
   identityLdapAuthDAL,
   permissionService,
   kmsService,
-  licenseService
+  licenseService,
+  auditLogService
 }: TIdentityAuthTemplateServiceFactoryDep) => {
   // Plan check
   const $checkPlan = async (orgId: string) => {
@@ -87,7 +91,7 @@ export const identityAuthTemplateServiceFactory = ({
       orgId: actorOrgId
     });
 
-    return template;
+    return { ...template, templateFields };
   };
 
   const updateTemplate = async ({
@@ -104,7 +108,7 @@ export const identityAuthTemplateServiceFactory = ({
     templateFields?: Record<string, unknown>;
   } & Omit<TOrgPermission, "orgId">) => {
     await $checkPlan(actorOrgId);
-    const template = await identityAuthTemplateDAL.findById(templateId);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }
@@ -125,6 +129,8 @@ export const identityAuthTemplateServiceFactory = ({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
+
+    let finalTemplateFields: Record<string, unknown> = {};
 
     const updatedTemplate = await identityAuthTemplateDAL.transaction(async (tx) => {
       const authTemplate = await identityAuthTemplateDAL.updateById(
@@ -149,12 +155,13 @@ export const identityAuthTemplateServiceFactory = ({
         ) as TLdapTemplateFields;
 
         const mergedTemplateFields: TLdapTemplateFields = { ...currentTemplateFields, ...templateFields };
-
+        finalTemplateFields = mergedTemplateFields;
         const ldapUpdateData: {
           url?: string;
           searchBase?: string;
           encryptedBindDN?: Buffer;
           encryptedBindPass?: Buffer;
+          encryptedLdapCaCertificate?: Buffer;
         } = {};
 
         if ("url" in templateFields) {
@@ -173,16 +180,38 @@ export const identityAuthTemplateServiceFactory = ({
             plainText: Buffer.from(mergedTemplateFields.bindPass)
           }).cipherTextBlob;
         }
+        if ("ldapCaCertificate" in templateFields) {
+          ldapUpdateData.encryptedLdapCaCertificate = encryptor({
+            plainText: Buffer.from(mergedTemplateFields.ldapCaCertificate || "")
+          }).cipherTextBlob;
+        }
 
         if (Object.keys(ldapUpdateData).length > 0) {
-          await identityLdapAuthDAL.update({ templateId }, ldapUpdateData, tx);
+          const updatedLdapAuths = await identityLdapAuthDAL.update({ templateId }, ldapUpdateData, tx);
+          await Promise.all(
+            updatedLdapAuths.map(async (updatedLdapAuth) => {
+              await auditLogService.createAuditLog({
+                actor: {
+                  type: ActorType.PLATFORM,
+                  metadata: {}
+                },
+                orgId: actorOrgId,
+                event: {
+                  type: EventType.UPDATE_IDENTITY_LDAP_AUTH,
+                  metadata: {
+                    identityId: updatedLdapAuth.identityId,
+                    templateId: template.id
+                  }
+                }
+              });
+            })
+          );
         }
       }
-
       return authTemplate;
     });
 
-    return updatedTemplate;
+    return { ...updatedTemplate, templateFields: finalTemplateFields };
   };
 
   const deleteTemplate = async ({
@@ -193,7 +222,7 @@ export const identityAuthTemplateServiceFactory = ({
     actorOrgId
   }: TDeleteIdentityAuthTemplateDTO) => {
     await $checkPlan(actorOrgId);
-    const template = await identityAuthTemplateDAL.findById(templateId);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }
@@ -212,7 +241,25 @@ export const identityAuthTemplateServiceFactory = ({
 
     const deletedTemplate = await identityAuthTemplateDAL.transaction(async (tx) => {
       // Remove template reference from identityLdapAuth records
-      await identityLdapAuthDAL.update({ templateId }, { templateId: null }, tx);
+      const updatedLdapAuths = await identityLdapAuthDAL.update({ templateId }, { templateId: null }, tx);
+      await Promise.all(
+        updatedLdapAuths.map(async (updatedLdapAuth) => {
+          await auditLogService.createAuditLog({
+            actor: {
+              type: ActorType.PLATFORM,
+              metadata: {}
+            },
+            orgId: actorOrgId,
+            event: {
+              type: EventType.UPDATE_IDENTITY_LDAP_AUTH,
+              metadata: {
+                identityId: updatedLdapAuth.identityId,
+                templateId: template.id
+              }
+            }
+          });
+        })
+      );
 
       // Delete the template
       const [deletedTpl] = await identityAuthTemplateDAL.delete({ id: templateId }, tx);
@@ -230,7 +277,7 @@ export const identityAuthTemplateServiceFactory = ({
     actorOrgId
   }: TGetIdentityAuthTemplateDTO) => {
     await $checkPlan(actorOrgId);
-    const template = await identityAuthTemplateDAL.findById(templateId);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }
@@ -313,7 +360,7 @@ export const identityAuthTemplateServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
+      OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
@@ -350,7 +397,7 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const template = await identityAuthTemplateDAL.findById(templateId);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }
@@ -376,11 +423,11 @@ export const identityAuthTemplateServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
+      OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const template = await identityAuthTemplateDAL.findById(templateId);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }

@@ -11,7 +11,8 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  TextArea
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {
@@ -29,7 +30,11 @@ const schema = z.object({
   url: z.string().min(1, "LDAP URL is required"),
   bindDN: z.string().min(1, "Bind DN is required"),
   bindPass: z.string().min(1, "Bind Pass is required"),
-  searchBase: z.string().min(1, "Search Base / DN is required")
+  searchBase: z.string().min(1, "Search Base / DN is required"),
+  ldapCaCertificate: z
+    .string()
+    .optional()
+    .transform((val) => val || undefined)
 });
 
 export type FormData = z.infer<typeof schema>;
@@ -66,7 +71,8 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
       url: "",
       bindDN: "",
       bindPass: "",
-      searchBase: ""
+      searchBase: "",
+      ldapCaCertificate: ""
     }
   });
 
@@ -78,7 +84,8 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
         url: template.templateFields?.url || "",
         bindDN: template.templateFields?.bindDN || "",
         bindPass: template.templateFields?.bindPass || "",
-        searchBase: template.templateFields?.searchBase || ""
+        searchBase: template.templateFields?.searchBase || "",
+        ldapCaCertificate: template.templateFields?.ldapCaCertificate || ""
       });
     } else {
       reset({
@@ -87,7 +94,8 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
         url: "",
         bindDN: "",
         bindPass: "",
-        searchBase: ""
+        searchBase: "",
+        ldapCaCertificate: ""
       });
     }
   }, [isEdit, template, reset]);
@@ -105,7 +113,8 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
             url: data.url,
             bindDN: data.bindDN,
             bindPass: data.bindPass,
-            searchBase: data.searchBase
+            searchBase: data.searchBase,
+            ldapCaCertificate: data.ldapCaCertificate
           }
         });
         createNotification({
@@ -121,7 +130,8 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
             url: data.url,
             bindDN: data.bindDN,
             bindPass: data.bindPass,
-            searchBase: data.searchBase
+            searchBase: data.searchBase,
+            ldapCaCertificate: data.ldapCaCertificate
           }
         });
         createNotification({
@@ -264,6 +274,22 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                     isRequired
                   >
                     <Input {...field} placeholder="ou=machines,dc=acme,dc=com" />
+                  </FormControl>
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="ldapCaCertificate"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="CA Certificate"
+                    isOptional
+                    errorText={error?.message}
+                    isError={Boolean(error)}
+                    tooltipText="An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."
+                  >
+                    <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
                   </FormControl>
                 )}
               />

@@ -20,7 +20,11 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useOrganization, useSubscription } from "@app/context";
+import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
+import {
+  OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import {
   MachineIdentityAuthMethod,
   useAddIdentityLdapAuth,
@@ -143,6 +147,12 @@ export const IdentityLdapAuthForm = ({
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityLdapAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
   const { data: templates } = useGetAvailableTemplates(MachineIdentityAuthMethod.LDAP);
+  const { permission } = useOrgPermission();
+
+  const canUseTemplates = permission.can(
+    OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
 
   const { data } = useGetIdentityLdapAuth(identityId ?? "", {
     enabled: isUpdate
@@ -153,11 +163,12 @@ export const IdentityLdapAuthForm = ({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      scope: "template",
+      scope: "custom",
       templateId: "",
       url: "",
       bindDN: "",
@@ -188,15 +199,11 @@ export const IdentityLdapAuthForm = ({
   // Helper function to determine scope based on existing data
   const determineScope = (authData: any) => {
     // If templateId exists in the data, it's template scope
-    // If url, bindDN, bindPass, searchBase exist, it's custom scope
     if (authData.templateId) {
       return "template";
     }
-    if (authData.url || authData.bindDN || authData.bindPass || authData.searchBase) {
-      return "custom";
-    }
-    // Default to template if we can't determine
-    return "template";
+    // Default to custom if we can't determine
+    return "custom";
   };
 
   useEffect(() => {
@@ -228,7 +235,7 @@ export const IdentityLdapAuthForm = ({
     }
 
     reset({
-      scope: "template",
+      scope: "custom",
       templateId: "",
       url: "",
       bindDN: "",
@@ -345,30 +352,38 @@ export const IdentityLdapAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
-          <Controller
-            control={control}
-            name="scope"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                label="Configuration Type"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Select
-                  value={value}
-                  onValueChange={(val) => {
-                    onChange(val);
-                  }}
-                  className="w-full"
-                  position="popper"
-                  dropdownContainerClassName="max-w-none"
+          {canUseTemplates && (
+            <Controller
+              control={control}
+              name="scope"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  label="Configuration Type"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
                 >
-                  <SelectItem value="template">Use Template</SelectItem>
-                  <SelectItem value="custom">Custom Configuration</SelectItem>
-                </Select>
-              </FormControl>
-            )}
-          />
+                  <Select
+                    value={value}
+                    onValueChange={(val) => {
+                      onChange(val);
+                      setValue("templateId", data?.templateId || "");
+                      setValue("url", data?.url || "");
+                      setValue("bindDN", data?.bindDN || "");
+                      setValue("bindPass", data?.bindPass || "");
+                      setValue("searchBase", data?.searchBase || "");
+                      setValue("ldapCaCertificate", data?.ldapCaCertificate || "");
+                    }}
+                    className="w-full"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
+                  >
+                    <SelectItem value="template">Use Template</SelectItem>
+                    <SelectItem value="custom">Custom Configuration</SelectItem>
+                  </Select>
+                </FormControl>
+              )}
+            />
+          )}
 
           {scope === "template" && (
             <Controller
@@ -385,6 +400,13 @@ export const IdentityLdapAuthForm = ({
                     value={value}
                     onValueChange={(val) => {
                       onChange(val);
+                      const tmp = templates?.find((t) => t.id === val);
+                      if (!tmp) return;
+                      setValue("url", tmp.templateFields.url);
+                      setValue("bindDN", tmp.templateFields.bindDN);
+                      setValue("bindPass", tmp.templateFields.bindPass);
+                      setValue("searchBase", tmp.templateFields.searchBase);
+                      setValue("ldapCaCertificate", tmp.templateFields.ldapCaCertificate);
                     }}
                     className="w-full"
                     position="popper"
@@ -404,66 +426,104 @@ export const IdentityLdapAuthForm = ({
             />
           )}
 
-          {scope === "custom" && (
-            <>
-              <Controller
-                control={control}
-                name="url"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="LDAP URL"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input {...field} placeholder="ldaps://domain-or-ip:636" type="text" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="bindDN"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isRequired
-                    label="Bind DN"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="cn=infisical,ou=Users,dc=example,dc=com" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="bindPass"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isRequired
-                    label="Bind Pass"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="********" type="password" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="searchBase"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isRequired
-                    label="Search Base / DN"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} placeholder="ou=machines,dc=acme,dc=com" />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
+          <Controller
+            control={control}
+            name="url"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="LDAP URL"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText={
+                  scope === "template"
+                    ? "This field cannot be modified when using a template"
+                    : undefined
+                }
+                isRequired
+              >
+                <Input
+                  {...field}
+                  placeholder="ldaps://domain-or-ip:636"
+                  type="text"
+                  isDisabled={scope === "template"}
+                  containerClassName={scope === "template" ? "opacity-55" : ""}
+                />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="bindDN"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                isRequired
+                label="Bind DN"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText={
+                  scope === "template"
+                    ? "This field cannot be modified when using a template"
+                    : undefined
+                }
+              >
+                <Input
+                  {...field}
+                  containerClassName={scope === "template" ? "opacity-55" : ""}
+                  placeholder="cn=infisical,ou=Users,dc=example,dc=com"
+                  isDisabled={scope === "template"}
+                />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="bindPass"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                isRequired
+                label="Bind Pass"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText={
+                  scope === "template"
+                    ? "This field cannot be modified when using a template"
+                    : undefined
+                }
+              >
+                <Input
+                  {...field}
+                  placeholder="********"
+                  type="password"
+                  containerClassName={scope === "template" ? "opacity-55" : ""}
+                  isDisabled={scope === "template"}
+                />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="searchBase"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                isRequired
+                label="Search Base / DN"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                tooltipText={
+                  scope === "template"
+                    ? "This field cannot be modified when using a template"
+                    : undefined
+                }
+              >
+                <Input
+                  {...field}
+                  placeholder="ou=machines,dc=acme,dc=com"
+                  containerClassName={scope === "template" ? "opacity-55" : ""}
+                  isDisabled={scope === "template"}
+                />
+              </FormControl>
+            )}
+          />
 
           <Controller
             control={control}
@@ -641,9 +701,18 @@ export const IdentityLdapAuthForm = ({
                 isOptional
                 errorText={error?.message}
                 isError={Boolean(error)}
-                tooltipText="An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."
+                tooltipText={
+                  scope === "template"
+                    ? "This field cannot be modified when using a template"
+                    : "An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."
+                }
               >
-                <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
+                <TextArea
+                  {...field}
+                  placeholder="-----BEGIN CERTIFICATE----- ..."
+                  className={scope === "template" ? "opacity-55" : ""}
+                  isDisabled={scope === "template"}
+                />
               </FormControl>
             )}
           />

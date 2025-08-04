@@ -1352,6 +1352,7 @@ interface AddIdentityLdapAuthEvent {
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
     allowedFields?: TAllowedFields[];
     url: string;
+    templateId?: string | null;
   };
 }
 
@@ -1365,6 +1366,7 @@ interface UpdateIdentityLdapAuthEvent {
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
     allowedFields?: TAllowedFields[];
     url?: string;
+    templateId?: string | null;
   };
 }
 

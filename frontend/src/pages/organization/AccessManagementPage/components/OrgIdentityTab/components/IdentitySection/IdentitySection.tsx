@@ -103,93 +103,93 @@ export const IdentitySection = withPermission(
     };
 
     return (
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
-            <a
-              href="https://infisical.com/docs/documentation/platform/identities/overview"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                <span>Docs</span>
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-[10px]"
-                />
-              </div>
-            </a>
-          </div>
-          <OrgPermissionCan
-            I={OrgPermissionIdentityActions.Create}
-            a={OrgPermissionSubjects.Identity}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="secondary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => {
-                  if (!isMoreIdentitiesAllowed && !isEnterprise) {
-                    handlePopUpOpen("upgradePlan", {
-                      description: "You can add more identities if you upgrade your Infisical plan."
-                    });
-                    return;
-                  }
-                  handlePopUpOpen("identity");
-                }}
-                isDisabled={!isAllowed}
+      <div>
+        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
+              <a
+                href="https://infisical.com/docs/documentation/platform/identities/overview"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                Create Identity
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </div>
-        <IdentityTable handlePopUpOpen={handlePopUpOpen} />
-
-        {/* Identity Auth Templates Section */}
-        {subscription.machineIdentityAuthTemplates && (
-          <div className="mt-8">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <p className="text-xl font-semibold text-mineshaft-100">Identity Auth Templates</p>
-                <a
-                  href="https://infisical.com/docs/documentation/platform/identities/auth-templates"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                    <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                    <span>Docs</span>
-                    <FontAwesomeIcon
-                      icon={faArrowUpRightFromSquare}
-                      className="mb-[0.07rem] ml-1.5 text-[10px]"
-                    />
-                  </div>
-                </a>
-              </div>
-              <OrgPermissionCan
-                I={OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates}
-                a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
-              >
-                {(isAllowed) => (
-                  <Button
-                    colorSchema="secondary"
-                    type="submit"
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() => handlePopUpOpen("createTemplate")}
-                    isDisabled={!isAllowed}
-                  >
-                    Create Template
-                  </Button>
-                )}
-              </OrgPermissionCan>
+                <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  <span>Docs</span>
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="mb-[0.07rem] ml-1.5 text-[10px]"
+                  />
+                </div>
+              </a>
             </div>
-            <IdentityAuthTemplatesTable handlePopUpOpen={handlePopUpOpen} />
+            <OrgPermissionCan
+              I={OrgPermissionIdentityActions.Create}
+              a={OrgPermissionSubjects.Identity}
+            >
+              {(isAllowed) => (
+                <Button
+                  colorSchema="secondary"
+                  type="submit"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => {
+                    if (!isMoreIdentitiesAllowed && !isEnterprise) {
+                      handlePopUpOpen("upgradePlan", {
+                        description:
+                          "You can add more identities if you upgrade your Infisical plan."
+                      });
+                      return;
+                    }
+                    handlePopUpOpen("identity");
+                  }}
+                  isDisabled={!isAllowed}
+                >
+                  Create Identity
+                </Button>
+              )}
+            </OrgPermissionCan>
           </div>
-        )}
+          <IdentityTable handlePopUpOpen={handlePopUpOpen} />
+        </div>
+        {/* Identity Auth Templates Section */}
+        <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <p className="text-xl font-semibold text-mineshaft-100">Identity Auth Templates</p>
+              <a
+                href="https://infisical.com/docs/documentation/platform/identities/auth-templates"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  <span>Docs</span>
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="mb-[0.07rem] ml-1.5 text-[10px]"
+                  />
+                </div>
+              </a>
+            </div>
+            <OrgPermissionCan
+              I={OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates}
+              a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
+            >
+              {(isAllowed) => (
+                <Button
+                  colorSchema="secondary"
+                  type="submit"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => handlePopUpOpen("createTemplate")}
+                  isDisabled={!isAllowed}
+                >
+                  Create Template
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </div>
+          <IdentityAuthTemplatesTable handlePopUpOpen={handlePopUpOpen} />
+        </div>
         <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <IdentityAuthTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <MachineAuthTemplateUsagesModal

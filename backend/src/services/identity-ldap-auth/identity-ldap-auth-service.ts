@@ -4,7 +4,11 @@ import { ForbiddenError } from "@casl/ability";
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -217,6 +221,14 @@ export const identityLdapAuthServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+
+    if (templateId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+        OrgPermissionSubjects.MachineIdentityAuthTemplate
+      );
+    }
+
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
 
     if (!plan.ldap) {
@@ -254,7 +266,7 @@ export const identityLdapAuthServiceFactory = ({
         ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.orgId)
         : undefined;
 
-      let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string };
+      let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
       if (template) {
         ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
       } else {
@@ -267,7 +279,8 @@ export const identityLdapAuthServiceFactory = ({
           bindDN,
           bindPass,
           searchBase,
-          url
+          url,
+          ldapCaCertificate
         };
       }
 
@@ -280,9 +293,9 @@ export const identityLdapAuthServiceFactory = ({
       });
 
       let encryptedLdapCaCertificate: Buffer | undefined;
-      if (ldapCaCertificate) {
+      if (ldapConfig.ldapCaCertificate) {
         const { cipherTextBlob: encryptedCertificate } = encryptor({
-          plainText: Buffer.from(ldapCaCertificate)
+          plainText: Buffer.from(ldapConfig.ldapCaCertificate)
         });
 
         encryptedLdapCaCertificate = encryptedCertificate;
@@ -291,7 +304,7 @@ export const identityLdapAuthServiceFactory = ({
       const isConnected = await testLDAPConfig({
         bindDN: ldapConfig.bindDN,
         bindPass: ldapConfig.bindPass,
-        caCert: ldapCaCertificate || "",
+        caCert: ldapConfig.ldapCaCertificate || "",
         url: ldapConfig.url
       });
 
@@ -371,6 +384,13 @@ export const identityLdapAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
+    if (templateId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionMachineIdentityAuthTemplateActions.UseTemplates,
+        OrgPermissionSubjects.MachineIdentityAuthTemplate
+      );
+    }
+
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
 
     if (!plan.ldap) {
@@ -411,6 +431,7 @@ export const identityLdapAuthServiceFactory = ({
       bindPass?: string;
       searchBase?: string;
       url?: string;
+      ldapCaCertificate?: string;
     };
 
     if (template) {
@@ -420,7 +441,8 @@ export const identityLdapAuthServiceFactory = ({
         bindDN,
         bindPass,
         searchBase,
-        url
+        url,
+        ldapCaCertificate
       };
     }
 
@@ -434,9 +456,9 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     let encryptedLdapCaCertificate: Buffer | undefined;
-    if (ldapCaCertificate) {
+    if (config.ldapCaCertificate) {
       const { cipherTextBlob: ldapCaCertificateCiphertext } = encryptor({
-        plainText: Buffer.from(ldapCaCertificate)
+        plainText: Buffer.from(config.ldapCaCertificate)
       });
 
       encryptedLdapCaCertificate = ldapCaCertificateCiphertext;
@@ -456,7 +478,7 @@ export const identityLdapAuthServiceFactory = ({
     const isConnected = await testLDAPConfig({
       bindDN: config.bindDN || ldapConfig.bindDN,
       bindPass: config.bindPass || ldapConfig.bindPass,
-      caCert: ldapCaCertificate || ldapConfig.caCert,
+      caCert: config.ldapCaCertificate || ldapConfig.caCert,
       url: config.url || ldapConfig.url
     });
 

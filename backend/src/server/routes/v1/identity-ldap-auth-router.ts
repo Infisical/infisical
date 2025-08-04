@@ -200,55 +200,104 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       params: z.object({
         identityId: z.string().trim().describe(LDAP_AUTH.ATTACH.identityId)
       }),
-      body: z
-        .object({
-          templateId: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.templateId),
-          url: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.url),
-          bindDN: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.bindDN),
-          bindPass: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.bindPass),
-          searchBase: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.searchBase),
-          searchFilter: z
-            .string()
-            .trim()
-            .min(1)
-            .default("(uid={{username}})")
-            .refine(isValidLdapFilter, "Invalid LDAP search filter")
-            .describe(LDAP_AUTH.ATTACH.searchFilter),
-          allowedFields: AllowedFieldsSchema.array().optional().describe(LDAP_AUTH.ATTACH.allowedFields),
-          ldapCaCertificate: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.ldapCaCertificate),
-          accessTokenTrustedIps: z
-            .object({
-              ipAddress: z.string().trim()
-            })
-            .array()
-            .min(1)
-            .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
-            .describe(LDAP_AUTH.ATTACH.accessTokenTrustedIps),
-          accessTokenTTL: z
-            .number()
-            .int()
-            .min(0)
-            .max(315360000)
-            .default(2592000)
-            .describe(LDAP_AUTH.ATTACH.accessTokenTTL),
-          accessTokenMaxTTL: z
-            .number()
-            .int()
-            .min(1)
-            .max(315360000)
-            .default(2592000)
-            .describe(LDAP_AUTH.ATTACH.accessTokenMaxTTL),
-          accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(LDAP_AUTH.ATTACH.accessTokenNumUsesLimit)
-        })
-        .refine(
-          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
-          "Access Token TTL cannot be greater than Access Token Max TTL."
-        )
-        .refine((val) => {
-          const hasTemplateId = !!val.templateId;
-          const hasManualConfig = !!(val.url && val.bindDN && val.bindPass && val.searchBase);
-          return hasTemplateId || hasManualConfig;
-        }, "Either templateId must be provided, or all of url, bindDN, bindPass, and searchBase must be provided."),
+      body: z.union([
+        // Template-based configuration
+        z
+          .object({
+            templateId: z.string().trim().describe(LDAP_AUTH.ATTACH.templateId),
+            searchFilter: z
+              .string()
+              .trim()
+              .min(1)
+              .default("(uid={{username}})")
+              .refine(isValidLdapFilter, "Invalid LDAP search filter")
+              .describe(LDAP_AUTH.ATTACH.searchFilter),
+            allowedFields: AllowedFieldsSchema.array().optional().describe(LDAP_AUTH.ATTACH.allowedFields),
+            ldapCaCertificate: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.ldapCaCertificate),
+            accessTokenTrustedIps: z
+              .object({
+                ipAddress: z.string().trim()
+              })
+              .array()
+              .min(1)
+              .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+              .describe(LDAP_AUTH.ATTACH.accessTokenTrustedIps),
+            accessTokenTTL: z
+              .number()
+              .int()
+              .min(0)
+              .max(315360000)
+              .default(2592000)
+              .describe(LDAP_AUTH.ATTACH.accessTokenTTL),
+            accessTokenMaxTTL: z
+              .number()
+              .int()
+              .min(1)
+              .max(315360000)
+              .default(2592000)
+              .describe(LDAP_AUTH.ATTACH.accessTokenMaxTTL),
+            accessTokenNumUsesLimit: z
+              .number()
+              .int()
+              .min(0)
+              .default(0)
+              .describe(LDAP_AUTH.ATTACH.accessTokenNumUsesLimit)
+          })
+          .refine(
+            (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
+            "Access Token TTL cannot be greater than Access Token Max TTL."
+          ),
+
+        // Manual configuration
+        z
+          .object({
+            url: z.string().trim().describe(LDAP_AUTH.ATTACH.url),
+            bindDN: z.string().trim().describe(LDAP_AUTH.ATTACH.bindDN),
+            bindPass: z.string().trim().describe(LDAP_AUTH.ATTACH.bindPass),
+            searchBase: z.string().trim().describe(LDAP_AUTH.ATTACH.searchBase),
+            searchFilter: z
+              .string()
+              .trim()
+              .min(1)
+              .default("(uid={{username}})")
+              .refine(isValidLdapFilter, "Invalid LDAP search filter")
+              .describe(LDAP_AUTH.ATTACH.searchFilter),
+            allowedFields: AllowedFieldsSchema.array().optional().describe(LDAP_AUTH.ATTACH.allowedFields),
+            ldapCaCertificate: z.string().trim().optional().describe(LDAP_AUTH.ATTACH.ldapCaCertificate),
+            accessTokenTrustedIps: z
+              .object({
+                ipAddress: z.string().trim()
+              })
+              .array()
+              .min(1)
+              .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }])
+              .describe(LDAP_AUTH.ATTACH.accessTokenTrustedIps),
+            accessTokenTTL: z
+              .number()
+              .int()
+              .min(0)
+              .max(315360000)
+              .default(2592000)
+              .describe(LDAP_AUTH.ATTACH.accessTokenTTL),
+            accessTokenMaxTTL: z
+              .number()
+              .int()
+              .min(1)
+              .max(315360000)
+              .default(2592000)
+              .describe(LDAP_AUTH.ATTACH.accessTokenMaxTTL),
+            accessTokenNumUsesLimit: z
+              .number()
+              .int()
+              .min(0)
+              .default(0)
+              .describe(LDAP_AUTH.ATTACH.accessTokenNumUsesLimit)
+          })
+          .refine(
+            (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
+            "Access Token TTL cannot be greater than Access Token Max TTL."
+          )
+      ]),
       response: {
         200: z.object({
           identityLdapAuth: IdentityLdapAuthsSchema.omit({
@@ -281,7 +330,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL,
             accessTokenTTL: identityLdapAuth.accessTokenTTL,
             accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
-            allowedFields: req.body.allowedFields
+            allowedFields: req.body.allowedFields,
+            templateId: identityLdapAuth.templateId
           }
         }
       });
@@ -383,7 +433,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             accessTokenTTL: identityLdapAuth.accessTokenTTL,
             accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
             accessTokenTrustedIps: identityLdapAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
-            allowedFields: req.body.allowedFields
+            allowedFields: req.body.allowedFields,
+            templateId: identityLdapAuth.templateId
           }
         }
       });

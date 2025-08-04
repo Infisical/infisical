@@ -18,7 +18,7 @@ export const useCreateIdentityAuthTemplate = () => {
   return useMutation({
     mutationFn: async (dto: CreateIdentityAuthTemplateDTO) => {
       const { data } = await apiRequest.post<{ template: IdentityAuthTemplate }>(
-        "/api/v1/identities/templates",
+        "/api/v1/identity-templates",
         dto
       );
       return data.template;
@@ -37,7 +37,7 @@ export const useUpdateIdentityAuthTemplate = () => {
   return useMutation({
     mutationFn: async (dto: UpdateIdentityAuthTemplateDTO) => {
       const { data } = await apiRequest.patch<{ template: IdentityAuthTemplate }>(
-        `/api/v1/identities/templates/${dto.templateId}`,
+        `/api/v1/identity-templates/${dto.templateId}`,
         dto
       );
       return data.template;
@@ -58,7 +58,7 @@ export const useDeleteIdentityAuthTemplate = () => {
 
   return useMutation({
     mutationFn: async (dto: DeleteIdentityAuthTemplateDTO) => {
-      await apiRequest.delete(`/api/v1/identities/templates/${dto.templateId}`, {
+      await apiRequest.delete(`/api/v1/identity-templates/${dto.templateId}`, {
         params: { organizationId: dto.organizationId }
       });
     },
@@ -79,7 +79,7 @@ export const useUnlinkTemplateUsage = () => {
   return useMutation({
     mutationFn: async (dto: UnlinkTemplateUsageDTO) => {
       const { data } = await apiRequest.post<MachineAuthTemplateUsage[]>(
-        `/api/v1/identities/templates/${dto.templateId}/usage`,
+        `/api/v1/identity-templates/${dto.templateId}/delete-usage`,
         { identityIds: dto.identityIds },
         { params: { organizationId: dto.organizationId } }
       );
