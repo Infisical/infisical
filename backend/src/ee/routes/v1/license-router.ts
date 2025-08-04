@@ -43,6 +43,12 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
+      querystring: z.object({
+        refreshCache: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
       response: {
         200: z.object({ plan: z.any() })
       }
@@ -54,7 +60,8 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        orgId: req.params.organizationId
+        orgId: req.params.organizationId,
+        refreshCache: req.query.refreshCache
       });
       return { plan };
     }
