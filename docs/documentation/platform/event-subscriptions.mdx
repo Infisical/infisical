@@ -71,11 +71,11 @@ In the Project name section, click **Copy Project ID** to copy your Project ID, 
  <Step title="Enable the Subscribe action in permissions">
    ![Policy setting](/images/platform/events/policy-setting.png)
 
-Ensure the **Subscribe** action is selected for the relevant resources and events.
+    Ensure the **Subscribe** action is selected for the relevant resources and events.
 
-## Conditions
+    ## Conditions
 
-By default, the role will have access to all events for the selected resources in this project.
+    By default, the role will have access to all events for the selected resources in this project.
 
    <AccordionGroup>
      <Accordion title="Full Access">
@@ -95,49 +95,9 @@ By default, the role will have access to all events for the selected resources i
 
 Currently, events are only available via [API](/api-reference/endpoints/events) but will soon be available in our SDKs, Kubernetes Operator, and more.
 
-### API Authentication
-
-<Steps>
- <Step title="Navigate to Organization Access Control and select an Identity">
-   ![Org ACL page](/images/platform/events/org-access-control.png)
-
-Navigate to the **Organization Access Management** tab under Project access control settings.
-
-![Select Identity](/images/platform/events/identity-selector.png)
-
-Select or create an identity you want to create the token for.
-
- </Step>
-
- <Step title="Assign a project and role to the Identity">
-   ![Add identity role](/images/platform/events/identity-add-role.png)
-
-Select a project and the role you previously configured in the [permissions setup](#permissions-setup) section.
-
-![Add identity role](/images/platform/events/identity-add-project.png)
-
- </Step>
-
-<Step title="Add authentication method Token Auth">
-  ![Add Auth Method](/images/platform/events/add-auth-method.png) ![Add Auth Method
-  Form](/images/platform/events/add-auth-method-form.png)
-</Step>
-
- <Step title="Generate an authentication token">
-   ![Generate auth token](/images/platform/events/generate-auth-token.png)
-   ![Generate auth token add](/images/platform/events/generate-auth-token-add.png)
-   ![Generate auth token add](/images/platform/events/generate-auth-token-create.png)
-
-Enter a descriptive name and click **Create**.
-
-![Copy token](/images/platform/events/copy-generated-token.png)
-
-Click to copy the generated token and save it for later use.
-
- </Step>
-</Steps>
-
 ### API Usage
+
+You need an auth token to use this API. To get an authentication token, follow the authentication guide for one of our supported auth methods from the [machine identities documentation](/documentation/platform/identities/machine-identities#authentication-methods).
 
 #### Creating a Subscription
 
