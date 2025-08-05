@@ -97,13 +97,13 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           encryptionVersion: z.number().default(1).nullable().optional(),
-          protectedKey: z.string().nullable(),
-          protectedKeyIV: z.string().nullable(),
-          protectedKeyTag: z.string().nullable(),
-          publicKey: z.string(),
-          encryptedPrivateKey: z.string(),
-          iv: z.string(),
-          tag: z.string(),
+          protectedKey: z.string().nullish(),
+          protectedKeyIV: z.string().nullish(),
+          protectedKeyTag: z.string().nullish(),
+          publicKey: z.string().nullish(),
+          encryptedPrivateKey: z.string().nullish(),
+          iv: z.string().nullish(),
+          tag: z.string().nullish(),
           token: z.string()
         })
       }

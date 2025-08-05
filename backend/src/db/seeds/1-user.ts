@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
-import { crypto } from "@app/lib/crypto";
-import { initLogger } from "@app/lib/logger";
+import { initEnvConfig } from "@app/lib/config/env";
+import { initLogger, logger } from "@app/lib/logger";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { AuthMethod } from "../../services/auth/auth-type";
@@ -17,7 +17,7 @@ export async function seed(knex: Knex): Promise<void> {
   initLogger();
 
   const superAdminDAL = superAdminDALFactory(knex);
-  await crypto.initialize(superAdminDAL);
+  await initEnvConfig(superAdminDAL, logger);
 
   await knex(TableName.SuperAdmin).insert([
     // eslint-disable-next-line
@@ -25,6 +25,7 @@ export async function seed(knex: Knex): Promise<void> {
     { id: "00000000-0000-0000-0000-000000000000", initialized: true, allowSignUp: true }
   ]);
   // Inserts seed entries
+
   const [user] = await knex(TableName.Users)
     .insert([
       {

@@ -153,7 +153,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
               firstName: true,
               lastName: true,
               id: true
-            }).extend({ publicKey: z.string().nullable() })
+            }).extend({ publicKey: z.string().nullish() })
           }).omit({ createdAt: true, updatedAt: true })
         })
       }
