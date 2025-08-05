@@ -1207,13 +1207,16 @@ export const OverviewPage = () => {
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
         />
-        <div ref={tableRef} className="thin-scrollbar mt-4">
+        <div ref={tableRef} className="mt-4">
           <TableContainer
             onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
-            className="thin-scrollbar rounded-b-none"
+            className="thin-scrollbar max-h-[66vh] overflow-y-auto rounded-b-none"
           >
             <Table>
-              <THead style={{ height: collapseEnvironments ? headerHeight : undefined }}>
+              <THead
+                className="sticky top-0 z-20"
+                style={{ height: collapseEnvironments ? headerHeight : undefined }}
+              >
                 <Tr
                   className="sticky top-0 z-20 border-0"
                   style={{ height: collapseEnvironments ? headerHeight : undefined }}
@@ -1370,7 +1373,7 @@ export const OverviewPage = () => {
                               })}
                               onClick={() => handleExploreEnvClick(slug)}
                             >
-                              <p className="truncate font-medium">{name}</p>
+                              <p className="truncate font-medium underline">{name}</p>
                             </button>
                             {!collapseEnvironments && missingKeyCount > 0 && (
                               <Tooltip
