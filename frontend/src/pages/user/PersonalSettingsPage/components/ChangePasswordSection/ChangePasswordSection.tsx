@@ -13,6 +13,7 @@ import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useResetUserPasswordV2, useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
+import { clearSession } from "@app/hooks/api/users/queries";
 
 type Errors = {
   tooShort?: string;
@@ -61,17 +62,21 @@ export const ChangePasswordSection = () => {
       if (errorCheck) return;
       setIsLoading(true);
 
-      if (user.encryptionVersion === UserEncryptionVersion.V2) {
-        await resetPasswordV2({
-          oldPassword,
-          newPassword
-        });
-      } else {
+      if (user.encryptionVersion !== UserEncryptionVersion.V2) {
         createNotification({
           text: "Legacy encryption scheme not supported for changing password. Please log out and log back in before changing your password.",
           type: "error"
         });
+
+        setIsLoading(false);
+        return;
       }
+
+      await resetPasswordV2({
+        oldPassword,
+        newPassword
+      });
+      clearSession();
 
       setIsLoading(false);
       createNotification({
