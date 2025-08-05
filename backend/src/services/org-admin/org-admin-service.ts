@@ -93,8 +93,10 @@ export const orgAdminServiceFactory = ({
     const project = await projectDAL.findOne({ id: projectId, orgId: actorOrgId });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    if (project.version === ProjectVersion.V1) {
-      throw new BadRequestError({ message: "Please upgrade your project on your dashboard" });
+    if (project.version === ProjectVersion.V1 || project.version === ProjectVersion.V2) {
+      throw new BadRequestError({
+        message: `Project '${project.name}' is a legacy project and must be upgraded before accessing it through the admin console.`
+      });
     }
 
     // check already there exist a membership if there return it

@@ -97,8 +97,6 @@ export default function UserInfoStep({
     });
 
     if (!errorCheck) {
-      console.log("signupErrorCheck passed");
-
       try {
         const response = await completeAccountSignup({
           email,
