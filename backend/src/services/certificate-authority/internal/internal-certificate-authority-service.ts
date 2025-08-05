@@ -1365,7 +1365,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     let altNamesArray: {
-      type: "email" | "dns";
+      type: "email" | "dns" | "url" | "ip";
       value: string;
     }[] = [];
 
@@ -1388,6 +1388,14 @@ export const internalCertificateAuthorityServiceFactory = ({
               type: "dns",
               value: altName
             };
+          }
+
+          if (z.string().url().safeParse(altName).success) {
+            return { type: "url", value: altName };
+          }
+
+          if (z.string().ip().safeParse(altName).success) {
+            return { type: "ip", value: altName };
           }
 
           // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
@@ -1767,7 +1775,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     let altNamesFromCsr: string = "";
     let altNamesArray: {
-      type: "email" | "dns";
+      type: "email" | "dns" | "url" | "ip";
       value: string;
     }[] = [];
     if (altNames) {
@@ -1789,6 +1797,14 @@ export const internalCertificateAuthorityServiceFactory = ({
               type: "dns",
               value: altName
             };
+          }
+
+          if (z.string().url().safeParse(altName).success) {
+            return { type: "url", value: altName };
+          }
+
+          if (z.string().ip().safeParse(altName).success) {
+            return { type: "ip", value: altName };
           }
 
           // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
