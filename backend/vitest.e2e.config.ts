@@ -8,18 +8,14 @@ export default defineConfig({
       NODE_ENV: "test"
     },
     environment: "./e2e-test/vitest-environment-knex.ts",
-    include: ["./e2e-test/**/secret-rotations.spec.ts"],
-
-    pool: "forks",
+    include: ["./e2e-test/**/*.spec.ts"],
     poolOptions: {
-      forks: {
-        singleFork: true,
+      threads: {
+        singleThread: true,
+        useAtomics: true,
         isolate: false
       }
     },
-    isolate: false,
-    fileParallelism: false,
-
     alias: {
       "./license-fns": path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
     }
