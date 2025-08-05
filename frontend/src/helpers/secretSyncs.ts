@@ -106,6 +106,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     name: "Digital Ocean App Platform",
     image: "Digital Ocean.png"
   },
+  [SecretSync.Netlify]: {
+    name: "Netlify",
+    image: "Netlify.png"
+  },
   [SecretSync.Bitbucket]: {
     name: "Bitbucket",
     image: "Bitbucket.png"
@@ -133,7 +137,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Heroku]: AppConnection.Heroku,
   [SecretSync.Render]: AppConnection.Render,
   [SecretSync.Flyio]: AppConnection.Flyio,
-  [SecretSync.GitLab]: AppConnection.Gitlab,
+  [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
@@ -141,6 +145,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
   [SecretSync.DigitalOceanAppPlatform]: AppConnection.DigitalOcean,
+  [SecretSync.Netlify]: AppConnection.Netlify,
   [SecretSync.Bitbucket]: AppConnection.Bitbucket
 };
 

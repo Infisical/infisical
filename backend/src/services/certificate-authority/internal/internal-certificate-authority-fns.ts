@@ -152,7 +152,7 @@ export const InternalCertificateAuthorityFns = ({
       extensions.push(extendedKeyUsagesExtension);
     }
 
-    let altNamesArray: { type: "email" | "dns"; value: string }[] = [];
+    let altNamesArray: { type: "email" | "dns" | "ip" | "url"; value: string }[] = [];
 
     if (subscriber.subjectAlternativeNames?.length) {
       altNamesArray = subscriber.subjectAlternativeNames.map((altName) => {
@@ -160,8 +160,16 @@ export const InternalCertificateAuthorityFns = ({
           return { type: "email", value: altName };
         }
 
-        if (isFQDN(altName, { allow_wildcard: true })) {
+        if (isFQDN(altName, { allow_wildcard: true, require_tld: false })) {
           return { type: "dns", value: altName };
+        }
+
+        if (z.string().url().safeParse(altName).success) {
+          return { type: "url", value: altName };
+        }
+
+        if (z.string().ip().safeParse(altName).success) {
+          return { type: "ip", value: altName };
         }
 
         throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });
@@ -418,7 +426,7 @@ export const InternalCertificateAuthorityFns = ({
       );
     }
 
-    let altNamesArray: { type: "email" | "dns"; value: string }[] = [];
+    let altNamesArray: { type: "email" | "dns" | "ip" | "url"; value: string }[] = [];
 
     if (altNames) {
       altNamesArray = altNames.split(",").map((altName) => {
@@ -426,8 +434,16 @@ export const InternalCertificateAuthorityFns = ({
           return { type: "email", value: altName };
         }
 
-        if (isFQDN(altName, { allow_wildcard: true })) {
+        if (isFQDN(altName, { allow_wildcard: true, require_tld: false })) {
           return { type: "dns", value: altName };
+        }
+
+        if (z.string().url().safeParse(altName).success) {
+          return { type: "url", value: altName };
+        }
+
+        if (z.string().ip().safeParse(altName).success) {
+          return { type: "ip", value: altName };
         }
 
         throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });

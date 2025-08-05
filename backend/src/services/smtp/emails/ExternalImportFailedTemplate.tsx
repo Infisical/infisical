@@ -1,7 +1,8 @@
-import { Heading, Link, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface ExternalImportFailedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   error: string;
@@ -21,12 +22,9 @@ export const ExternalImportFailedTemplate = ({ error, siteUrl, provider }: Exter
         </Text>
         <Text className="text-black text-[14px] leading-[24px]">
           If your issue persists, you can contact the Infisical team at{" "}
-          <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
-            support@infisical.com
-          </Link>
-          .
+          <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink>.
         </Text>
-        <Text className="text-[14px] text-red-500 leading-[24px]">
+        <Text className="text-[14px] text-red-600 leading-[24px]">
           <strong>Error:</strong> "{error}"
         </Text>
       </Section>

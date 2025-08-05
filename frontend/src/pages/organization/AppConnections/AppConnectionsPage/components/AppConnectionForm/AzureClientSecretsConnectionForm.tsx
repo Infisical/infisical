@@ -121,7 +121,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Pr
 
   const selectedMethod = watch("method");
 
-  const onSubmitHandler = (formData: FormData) => {
+  const onSubmitHandler = async (formData: FormData) => {
     const state = crypto.randomBytes(16).toString("hex");
     switch (formData.method) {
       case AzureClientSecretsConnectionMethod.OAuth:
@@ -137,7 +137,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Pr
         break;
 
       case AzureClientSecretsConnectionMethod.ClientSecret:
-        onSubmit(formData);
+        await onSubmit(formData);
         break;
       default:
         throw new Error(`Unhandled Azure Connection method: ${(formData as FormData).method}`);
@@ -240,7 +240,11 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Pr
                   label="Client Secret"
                   errorText={error?.message}
                 >
-                  <Input {...field} type="password" placeholder="Enter your Client Secret" />
+                  <Input
+                    {...field}
+                    type="password"
+                    placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY"
+                  />
                 </FormControl>
               )}
             />

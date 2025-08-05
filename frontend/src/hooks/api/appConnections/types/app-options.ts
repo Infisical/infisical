@@ -124,7 +124,7 @@ export type TFlyioConnectionOption = TAppConnectionOptionBase & {
 };
 
 export type TGitlabConnectionOption = TAppConnectionOptionBase & {
-  app: AppConnection.Gitlab;
+  app: AppConnection.GitLab;
   oauthClientId?: string;
 };
 
@@ -154,6 +154,10 @@ export type TSupabaseConnectionOption = TAppConnectionOptionBase & {
 
 export type TDigitalOceanConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DigitalOcean;
+};
+
+export type TNetlifyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Netlify;
 };
 
 export type TOktaConnectionOption = TAppConnectionOptionBase & {
@@ -193,6 +197,7 @@ export type TAppConnectionOption =
   | TRailwayConnectionOption
   | TChecklyConnectionOption
   | TDigitalOceanConnectionOption
+  | TNetlifyConnectionOption
   | TOktaConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -223,7 +228,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Heroku]: THerokuConnectionOption;
   [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
-  [AppConnection.Gitlab]: TGitlabConnectionOption;
+  [AppConnection.GitLab]: TGitlabConnectionOption;
   [AppConnection.Cloudflare]: TCloudflareConnectionOption;
   [AppConnection.Bitbucket]: TBitbucketConnectionOption;
   [AppConnection.Zabbix]: TZabbixConnectionOption;
@@ -231,5 +236,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Checkly]: TChecklyConnectionOption;
   [AppConnection.Supabase]: TSupabaseConnectionOption;
   [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
+  [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
 };

@@ -1,7 +1,8 @@
-import { Heading, Link, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface EmailVerificationTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   code: string;
@@ -29,10 +30,7 @@ export const EmailVerificationTemplate = ({ code, siteUrl, isCloud }: EmailVerif
           <strong>Questions about Infisical?</strong>{" "}
           {isCloud ? (
             <>
-              Email us at{" "}
-              <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
-                support@infisical.com
-              </Link>
+              Email us at <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink>
             </>
           ) : (
             "Contact your administrator"

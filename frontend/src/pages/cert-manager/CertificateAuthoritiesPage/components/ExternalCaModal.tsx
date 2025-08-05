@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -16,7 +17,15 @@ import {
   Switch
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import {
+  TAvailableAppConnection,
+  useListAvailableAppConnections
+} from "@app/hooks/api/appConnections";
+import {
+  TCloudflareZone,
+  useCloudflareConnectionListZones
+} from "@app/hooks/api/appConnections/cloudflare";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AcmeDnsProvider,
@@ -26,6 +35,10 @@ import {
   useGetCa,
   useUpdateCa
 } from "@app/hooks/api/ca";
+import {
+  ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
+  ACME_DNS_PROVIDER_NAME_MAP
+} from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -42,7 +55,7 @@ const schema = z
         id: z.string(),
         name: z.string()
       }),
-      // currently specific to Route53 but can be extended to others by differentiating via the provider property
+      // currently specific to Route53 & Cloudflare but can be extended to others by differentiating via the provider property
       dnsProviderConfig: z.object({
         provider: z.nativeEnum(AcmeDnsProvider),
         hostedZoneId: z.string()
@@ -105,12 +118,29 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const caType = watch("type");
   const dnsProvider = watch("configuration.dnsProviderConfig.provider");
 
-  const { data: availableConnections, isPending } = useListAvailableAppConnections(
-    AppConnection.AWS,
-    {
-      enabled: dnsProvider === AcmeDnsProvider.ROUTE53
-    }
-  );
+  const { data: availableRoute53Connections, isPending: isRoute53Pending } =
+    useListAvailableAppConnections(AppConnection.AWS, {
+      enabled: caType === CaType.ACME
+    });
+
+  const { data: availableCloudflareConnections, isPending: isCloudflarePending } =
+    useListAvailableAppConnections(AppConnection.Cloudflare, {
+      enabled: caType === CaType.ACME
+    });
+
+  const availableConnections: TAvailableAppConnection[] = [
+    ...(availableRoute53Connections || []),
+    ...(availableCloudflareConnections || [])
+  ];
+
+  const isPending = isRoute53Pending || isCloudflarePending;
+
+  const dnsAppConnection = watch("configuration.dnsAppConnection");
+
+  const { data: cloudflareZones = [], isPending: isZonesPending } =
+    useCloudflareConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!dnsAppConnection.id
+    });
 
   useEffect(() => {
     if (ca) {
@@ -138,25 +168,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           }
         });
       }
-    } else {
-      reset({
-        type: CaType.ACME,
-        name: "",
-        status: CaStatus.ACTIVE,
-        enableDirectIssuance: true,
-        configuration: {
-          dnsAppConnection: {
-            id: "",
-            name: ""
-          },
-          dnsProviderConfig: {
-            provider: AcmeDnsProvider.ROUTE53,
-            hostedZoneId: ""
-          },
-          directoryUrl: "",
-          accountEmail: ""
-        }
-      });
     }
   }, [ca, availableConnections]);
 
@@ -284,12 +295,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       className="w-full"
                       isDisabled={Boolean(ca)}
                     >
-                      <SelectItem
-                        value={String(AcmeDnsProvider.ROUTE53)}
-                        key={AcmeDnsProvider.ROUTE53}
-                      >
-                        Route53
-                      </SelectItem>
+                      {Object.values(AcmeDnsProvider).map((provider) => (
+                        <SelectItem value={String(provider)} key={provider}>
+                          {ACME_DNS_PROVIDER_NAME_MAP[provider]}
+                        </SelectItem>
+                      ))}
                     </Select>
                   </FormControl>
                 )}
@@ -297,7 +307,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Controller
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
-                    tooltipText={`${dnsProvider === AcmeDnsProvider.ROUTE53 ? "Route53" : ""} requires an AWS App Connection. This can be created from the Organization Settings page.`}
+                    tooltipText={`${ACME_DNS_PROVIDER_NAME_MAP[dnsProvider]} uses the ${APP_CONNECTION_MAP[ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProvider]].name} App Connection. You can create one in the Organization Settings page.`}
                     isError={Boolean(error)}
                     errorText={error?.message}
                     label="DNS App Connection"
@@ -318,21 +328,49 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 control={control}
                 name="configuration.dnsAppConnection"
               />
-              <Controller
-                control={control}
-                defaultValue=""
-                name="configuration.dnsProviderConfig.hostedZoneId"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Hosted Zone ID"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input {...field} placeholder="Z040441124N1GOOMCQYX1" />
-                  </FormControl>
-                )}
-              />
+              {dnsProvider === AcmeDnsProvider.ROUTE53 && (
+                <Controller
+                  control={control}
+                  defaultValue=""
+                  name="configuration.dnsProviderConfig.hostedZoneId"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Hosted Zone ID"
+                      isError={Boolean(error)}
+                      errorText={error?.message}
+                      isRequired
+                    >
+                      <Input {...field} placeholder="Z040441124N1GOOMCQYX1" />
+                    </FormControl>
+                  )}
+                />
+              )}
+              {dnsProvider === AcmeDnsProvider.Cloudflare && (
+                <Controller
+                  name="configuration.dnsProviderConfig.hostedZoneId"
+                  control={control}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      errorText={error?.message}
+                      isError={Boolean(error?.message)}
+                      label="Zone"
+                    >
+                      <FilterableSelect
+                        isLoading={isZonesPending && !!dnsAppConnection.id}
+                        isDisabled={!dnsAppConnection.id}
+                        value={cloudflareZones.find((zone) => zone.id === value)}
+                        onChange={(option) => {
+                          onChange((option as SingleValue<TCloudflareZone>)?.id ?? null);
+                        }}
+                        options={cloudflareZones}
+                        placeholder="Select a zone..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                      />
+                    </FormControl>
+                  )}
+                />
+              )}
               <Controller
                 control={control}
                 defaultValue=""

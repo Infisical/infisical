@@ -16,7 +16,6 @@ import {
   faFolderPlus,
   faKey,
   faLock,
-  faMinusSquare,
   faPaste,
   faPlus,
   faRotate,
@@ -1061,14 +1060,14 @@ export const ActionBar = ({
         )}
       >
         <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <Tooltip content="Clear">
-            <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedSecret}>
-              <FontAwesomeIcon icon={faMinusSquare} size="lg" />
-            </IconButton>
-          </Tooltip>
-          <div className="ml-2 flex-grow px-2 text-sm">
-            {Object.keys(selectedSecrets).length} Selected
-          </div>
+          <div className="mr-2 text-sm">{Object.keys(selectedSecrets).length} Selected</div>
+          <button
+            type="button"
+            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            onClick={resetSelectedSecret}
+          >
+            Unselect All
+          </button>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
             a={subject(ProjectPermissionSub.Secrets, {

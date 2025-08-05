@@ -65,7 +65,10 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
+import {
+  hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
@@ -277,13 +280,19 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
-
-    const hasSecretReadAccess = permission.can(
-      ProjectPermissionSecretActions.DescribeAndReadValue,
-      ProjectPermissionSub.Secrets
-    );
+    const getHasSecretReadAccess = (environment: string, tags: { slug: string }[], secretPath?: string) => {
+      const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath: secretPath || "/",
+        secretTags: tags.map((i) => i.slug)
+      });
+      return canRead;
+    };
 
     let secrets;
+    const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+      secretApprovalRequest.folderId
+    ]);
     if (shouldUseSecretV2Bridge) {
       const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
@@ -299,8 +308,8 @@ export const secretApprovalRequestServiceFactory = ({
         version: el.version,
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
-        secretValueHidden: !hasSecretReadAccess,
-        secretValue: !hasSecretReadAccess
+        secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
+        secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
           ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
           : el.secret && el.secret.isRotatedSecret
             ? undefined
@@ -315,8 +324,12 @@ export const secretApprovalRequestServiceFactory = ({
               secretKey: el.secret.key,
               id: el.secret.id,
               version: el.secret.version,
-              secretValueHidden: !hasSecretReadAccess,
-              secretValue: !hasSecretReadAccess
+              secretValueHidden: !getHasSecretReadAccess(
+                secretApprovalRequest.environment,
+                el.tags,
+                secretPath?.[0]?.path
+              ),
+              secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
                 ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secret.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
@@ -331,8 +344,12 @@ export const secretApprovalRequestServiceFactory = ({
               secretKey: el.secretVersion.key,
               id: el.secretVersion.id,
               version: el.secretVersion.version,
-              secretValueHidden: !hasSecretReadAccess,
-              secretValue: !hasSecretReadAccess
+              secretValueHidden: !getHasSecretReadAccess(
+                secretApprovalRequest.environment,
+                el.tags,
+                secretPath?.[0]?.path
+              ),
+              secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
                 ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secretVersion.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
@@ -350,7 +367,7 @@ export const secretApprovalRequestServiceFactory = ({
       const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
       secrets = encryptedSecrets.map((el) => ({
         ...el,
-        secretValueHidden: !hasSecretReadAccess,
+        secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
           ? {
@@ -370,9 +387,6 @@ export const secretApprovalRequestServiceFactory = ({
           : undefined
       }));
     }
-    const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
-      secretApprovalRequest.folderId
-    ]);
 
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };

@@ -14,7 +14,8 @@ export const RemindersSchema = z.object({
   repeatDays: z.number().nullable().optional(),
   nextReminderDate: z.date(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  fromDate: z.date().nullable().optional()
 });
 
 export type TReminders = z.infer<typeof RemindersSchema>;

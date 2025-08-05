@@ -17,7 +17,8 @@ import {
   APIKeyData,
   AuthMethod,
   CreateAPIKeyRes,
-  DeletOrgMembershipDTO,
+  DeleteOrgMembershipBatchDTO,
+  DeleteOrgMembershipDTO,
   OrgUser,
   RenameUserDTO,
   TokenVersion,
@@ -243,9 +244,26 @@ export const useGetOrgMembershipProjectMemberships = (
 export const useDeleteOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<object, object, DeletOrgMembershipDTO>({
+  return useMutation<object, object, DeleteOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`);
+    },
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
+    }
+  });
+};
+
+export const useDeleteOrgMembershipBatch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<object, object, DeleteOrgMembershipBatchDTO>({
+    mutationFn: ({ membershipIds, orgId }) => {
+      return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships`, {
+        data: {
+          membershipIds
+        }
+      });
     },
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
@@ -256,7 +274,7 @@ export const useDeleteOrgMembership = () => {
 export const useDeactivateOrgMembership = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<object, object, DeletOrgMembershipDTO>({
+  return useMutation<object, object, DeleteOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.post(
         `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`

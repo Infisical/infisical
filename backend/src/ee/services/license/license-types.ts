@@ -75,7 +75,9 @@ export type TFeatureSet = {
   secretScanning: false;
   enterpriseSecretSyncs: false;
   enterpriseAppConnections: false;
+  machineIdentityAuthTemplates: false;
   fips: false;
+  eventSubscriptions: false;
 };
 
 export type TOrgPlansTableDTO = {

@@ -29,7 +29,7 @@ export type TGitLabSync = TRootSecretSync & {
         shouldHideSecrets?: boolean;
       };
   connection: {
-    app: AppConnection.Gitlab;
+    app: AppConnection.GitLab;
     name: string;
     id: string;
   };

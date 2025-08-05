@@ -1,7 +1,8 @@
-import { Heading, Link, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface OrgAdminBreakglassAccessTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   email: string;
@@ -35,10 +36,7 @@ export const OrgAdminBreakglassAccessTemplate = ({
         <Text className="text-[14px] mt-[4px]">{userAgent}</Text>
         <Text className="text-[14px]">
           If you'd like to disable Admin SSO Bypass, please visit{" "}
-          <Link href={`${siteUrl}/organization/settings`} className="text-slate-700 no-underline">
-            Organization Security Settings
-          </Link>
-          .
+          <BaseLink href={`${siteUrl}/organization/settings`}>Organization Security Settings</BaseLink>.
         </Text>
       </Section>
     </BaseEmailWrapper>

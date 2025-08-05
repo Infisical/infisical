@@ -3,7 +3,7 @@ title: "Azure DevOps Connection"
 description: "Learn how to configure an Azure DevOps Connection for Infisical."
 ---
 
-Infisical currently supports two methods for connecting to Azure DevOps, which are OAuth and Azure DevOps Personal Access Token.
+Infisical currently supports three methods for connecting to Azure DevOps, which are OAuth, Azure DevOps Personal Access Token and Client Secrets.
 
 <Accordion title="Azure OAuth on a Self-Hosted Instance">
   Using the Azure DevOps <b>OAuth connection</b> on a self-hosted instance of Infisical requires configuring an application in Azure
@@ -87,6 +87,32 @@ Infisical currently supports two methods for connecting to Azure DevOps, which a
     </Steps>
 </Accordion>
 
+<Accordion title="Client Secret Authentication">
+  To use client secret authentication, ensure your Azure Service Principal has the required permissions and is connected to the Azure DevOps organization and projects you want to use.
+
+  **Prerequisites:**
+  - Set up Azure and have an existing Azure DevOps organization.
+  - The service principal must be connected to your target Azure DevOps organization and project(s)
+
+  <Steps>
+    <Step title="Assign API permissions to the service principal">
+
+      Configure the required API permissions for your App Registration to interact with Azure DevOps:
+
+      #### Azure DevOps permissions
+    
+      Set the API permissions of your Azure service principal to include the following Azure DevOps permissions: 
+        - Azure DevOps
+          - `user_impersonation`
+          - `vso.project_write`
+          - `vso.variablegroups_manage`
+          - `vso.variablegroups_write`
+
+      ![Azure devops](/images/integrations/azure-devops/app-api-permissions.png)
+    </Step>
+  </Steps>
+</Accordion>
+
 ## Setup Azure Connection in Infisical
 
 <Steps>
@@ -126,6 +152,17 @@ Infisical currently supports two methods for connecting to Azure DevOps, which a
                         <Tip>
                             You can find the **Organization Name** on https://dev.azure.com/
                         </Tip>
+                    </Step>
+                </Steps>
+            </Tab>
+            <Tab title="Client Secret">
+                <Steps>
+                    <Step title="Create Connection">
+                        Fill in the **Tenant ID**, **Client ID**, **Client Secret** and **Organization Name** fields with the Directory (Tenant) ID, Application (Client) ID, Client Secret and the organization name you obtained in the previous step.
+                        <Tip>
+                            You can find the **Organization Name** on https://dev.azure.com/
+                        </Tip>
+                        ![Connect via Azure OAUth](/images/app-connections/azure/devops/create-client-secrets-method.png)
                     </Step>
                 </Steps>
             </Tab>

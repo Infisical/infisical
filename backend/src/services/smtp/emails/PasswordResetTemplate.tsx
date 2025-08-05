@@ -1,7 +1,9 @@
-import { Button, Heading, Link, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface PasswordResetTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   email: string;
@@ -20,16 +22,13 @@ export const PasswordResetTemplate = ({ email, isCloud, siteUrl, callback_url, t
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
         <strong>Account Recovery</strong>
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">A password reset was requested for your Infisical account.</Text>
         <Text className="text-[14px]">
           If you did not initiate this request, please contact{" "}
           {isCloud ? (
             <>
-              us immediately at{" "}
-              <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
-                support@infisical.com
-              </Link>
+              us immediately at <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink>
             </>
           ) : (
             "your administrator immediately"
@@ -37,13 +36,8 @@ export const PasswordResetTemplate = ({ email, isCloud, siteUrl, callback_url, t
           .
         </Text>
       </Section>
-      <Section className="text-center mt-[28px]">
-        <Button
-          href={`${callback_url}?token=${token}&to=${encodeURIComponent(email)}`}
-          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
-        >
-          Reset Password
-        </Button>
+      <Section className="text-center">
+        <BaseButton href={`${callback_url}?token=${token}&to=${encodeURIComponent(email)}`}>Reset Password</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );

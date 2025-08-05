@@ -21,13 +21,6 @@ import {
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
 
-type AccessTokenForm = z.infer<typeof accessTokenSchema>;
-
-type Props = {
-  appConnection?: TAzureDevOpsConnection;
-  onSubmit: (formData: AccessTokenForm) => Promise<void>;
-};
-
 // Base schema with common fields
 const baseSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.AzureDevOps),
@@ -49,10 +42,30 @@ const accessTokenSchema = baseSchema.extend({
   })
 });
 
+const clientSecretSchema = baseSchema.extend({
+  method: z.literal(AzureDevOpsConnectionMethod.ClientSecret),
+  credentials: z.object({
+    clientSecret: z.string().trim().min(1, "Client Secret is required"),
+    tenantId: z.string().trim().min(1, "Tenant ID is required"),
+    clientId: z.string().trim().min(1, "Client ID is required"),
+    orgName: z.string().trim().min(1, "Organization name is required")
+  })
+});
+
 // Union schema
-const formSchema = z.discriminatedUnion("method", [oauthSchema, accessTokenSchema]);
+const formSchema = z.discriminatedUnion("method", [
+  oauthSchema,
+  accessTokenSchema,
+  clientSecretSchema
+]);
 
 type FormData = z.infer<typeof formSchema>;
+type OnSubmitForm = z.infer<typeof accessTokenSchema> | z.infer<typeof clientSecretSchema>;
+
+type Props = {
+  appConnection?: TAzureDevOpsConnection;
+  onSubmit: (formData: OnSubmitForm) => Promise<void>;
+};
 
 const getDefaultValues = (appConnection?: TAzureDevOpsConnection): Partial<FormData> => {
   if (!appConnection) {
@@ -93,6 +106,25 @@ const getDefaultValues = (appConnection?: TAzureDevOpsConnection): Partial<FormD
         };
       }
       break;
+    case AzureDevOpsConnectionMethod.ClientSecret:
+      if (
+        "clientSecret" in credentials &&
+        "tenantId" in credentials &&
+        "clientId" in credentials &&
+        "orgName" in credentials
+      ) {
+        return {
+          ...base,
+          method: AzureDevOpsConnectionMethod.ClientSecret,
+          credentials: {
+            clientSecret: credentials.clientSecret,
+            tenantId: credentials.tenantId,
+            clientId: credentials.clientId,
+            orgName: credentials.orgName
+          }
+        };
+      }
+      break;
     default:
       return base;
   }
@@ -118,7 +150,8 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
     handleSubmit,
     control,
     watch,
-    formState: { isSubmitting, isDirty }
+    formState: { isSubmitting, isDirty },
+    setValue
   } = form;
 
   const selectedMethod = watch("method");
@@ -138,11 +171,12 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
           `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure/oauth/callback&response_mode=query&scope=https://azconfig.io/.default%20openid%20offline_access&state=${state}<:>azure-devops`
         );
         break;
-
       case AzureDevOpsConnectionMethod.AccessToken:
-        onSubmit(formData);
+        await onSubmit(formData);
         break;
-
+      case AzureDevOpsConnectionMethod.ClientSecret:
+        await onSubmit(formData);
+        break;
       default:
         throw new Error(`Unhandled Azure Connection method: ${(formData as FormData).method}`);
     }
@@ -196,8 +230,8 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
           )}
         />
 
-        {/* OAuth-specific fields */}
-        {selectedMethod === AzureDevOpsConnectionMethod.OAuth && (
+        {(selectedMethod === AzureDevOpsConnectionMethod.OAuth ||
+          selectedMethod === AzureDevOpsConnectionMethod.ClientSecret) && (
           <>
             <Controller
               name="tenantId"
@@ -209,7 +243,14 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
                   label="Tenant ID"
                   errorText={error?.message}
                 >
-                  <Input {...field} placeholder="e4f34ea5-ad23-4291-8585-66d20d603cc8" />
+                  <Input
+                    {...field}
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    onChange={(e) => {
+                      field.onChange(e.target.value);
+                      setValue("credentials.tenantId", e.target.value);
+                    }}
+                  />
                 </FormControl>
               )}
             />
@@ -223,7 +264,50 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
                   label="Organization Name"
                   errorText={error?.message}
                 >
-                  <Input {...field} placeholder="myorganization" />
+                  <Input
+                    {...field}
+                    placeholder="myorganization"
+                    onChange={(e) => {
+                      field.onChange(e.target.value);
+                      setValue("credentials.orgName", e.target.value);
+                    }}
+                  />
+                </FormControl>
+              )}
+            />
+          </>
+        )}
+
+        {/* Client Secret-specific fields */}
+        {selectedMethod === AzureDevOpsConnectionMethod.ClientSecret && (
+          <>
+            <Controller
+              name="credentials.clientId"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error?.message)}
+                  label="Client ID"
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              name="credentials.clientSecret"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error?.message)}
+                  label="Client Secret"
+                  errorText={error?.message}
+                >
+                  <Input
+                    {...field}
+                    type="password"
+                    placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY"
+                  />
                 </FormControl>
               )}
             />

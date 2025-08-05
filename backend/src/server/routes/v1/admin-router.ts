@@ -465,6 +465,42 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "DELETE",
+    url: "/user-management/users",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        userIds: z.string().array()
+      }),
+      response: {
+        200: z.object({
+          users: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          }).array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const users = await server.services.superAdmin.deleteUsers(req.body.userIds);
+
+      return {
+        users
+      };
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/user-management/users/:userId/admin-access",
     config: {

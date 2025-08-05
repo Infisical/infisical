@@ -59,6 +59,7 @@ const envSchema = z
     AUDIT_LOGS_DB_ROOT_CERT: zpStr(
       z.string().describe("Postgres database base64-encoded CA cert for Audit logs").optional()
     ),
+    DISABLE_AUDIT_LOG_STORAGE: zodStrBool.default("false").optional().describe("Disable audit log storage"),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
@@ -482,6 +483,15 @@ export const overwriteSchema: {
     fields: { key: keyof TEnvConfig; description?: string }[];
   };
 } = {
+  auditLogs: {
+    name: "Audit Logs",
+    fields: [
+      {
+        key: "DISABLE_AUDIT_LOG_STORAGE",
+        description: "Disable audit log storage"
+      }
+    ]
+  },
   aws: {
     name: "AWS",
     fields: [
@@ -496,7 +506,7 @@ export const overwriteSchema: {
     ]
   },
   azureAppConfiguration: {
-    name: "Azure App Configuration",
+    name: "Azure App Connection: App Configuration",
     fields: [
       {
         key: "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID",
@@ -509,7 +519,7 @@ export const overwriteSchema: {
     ]
   },
   azureKeyVault: {
-    name: "Azure Key Vault",
+    name: "Azure App Connection: Key Vault",
     fields: [
       {
         key: "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID",
@@ -522,7 +532,7 @@ export const overwriteSchema: {
     ]
   },
   azureClientSecrets: {
-    name: "Azure Client Secrets",
+    name: "Azure App Connection: Client Secrets",
     fields: [
       {
         key: "INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID",
@@ -535,7 +545,7 @@ export const overwriteSchema: {
     ]
   },
   azureDevOps: {
-    name: "Azure DevOps",
+    name: "Azure App Connection: DevOps",
     fields: [
       {
         key: "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID",

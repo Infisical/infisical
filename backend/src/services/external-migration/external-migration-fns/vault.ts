@@ -17,25 +17,16 @@ type VaultData = {
 const vaultFactory = () => {
   const getMounts = async (request: AxiosInstance) => {
     const response = await request
-      .get<
-        Record<
-          string,
-          {
-            accessor: string;
-            options: {
-              version?: string;
-            } | null;
-            type: string;
-          }
-        >
-      >("/v1/sys/mounts")
+      .get<{
+        data: Record<string, { accessor: string; options: { version?: string } | null; type: string }>;
+      }>("/v1/sys/mounts")
       .catch((err) => {
         if (axios.isAxiosError(err)) {
           logger.error(err.response?.data, "External migration: Failed to get Vault mounts");
         }
         throw err;
       });
-    return response.data;
+    return response.data.data;
   };
 
   const getPaths = async (

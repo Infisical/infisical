@@ -22,6 +22,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
           message: z.string().trim().max(1024).optional(),
           repeatDays: z.number().min(1).nullable().optional(),
           nextReminderDate: z.string().datetime().nullable().optional(),
+          fromDate: z.string().datetime().nullable().optional(),
           recipients: z.string().array().optional()
         })
         .refine((data) => {
@@ -45,6 +46,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
           message: req.body.message,
           repeatDays: req.body.repeatDays,
           nextReminderDate: req.body.nextReminderDate,
+          fromDate: req.body.fromDate,
           recipients: req.body.recipients
         }
       });

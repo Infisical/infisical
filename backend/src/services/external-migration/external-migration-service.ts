@@ -6,7 +6,7 @@ import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { TUserDALFactory } from "../user/user-dal";
 import { decryptEnvKeyDataFn, importVaultDataFn, parseEnvKeyDataFn } from "./external-migration-fns";
 import { TExternalMigrationQueueFactory } from "./external-migration-queue";
-import { ImportType, TImportEnvKeyDataDTO, TImportVaultDataDTO } from "./external-migration-types";
+import { ExternalPlatforms, TImportEnvKeyDataDTO, TImportVaultDataDTO } from "./external-migration-types";
 
 type TExternalMigrationServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
@@ -60,8 +60,8 @@ export const externalMigrationServiceFactory = ({
 
     await externalMigrationQueue.startImport({
       actorEmail: user.email!,
+      importType: ExternalPlatforms.EnvKey,
       data: {
-        importType: ImportType.EnvKey,
         ...encrypted
       }
     });
@@ -110,8 +110,8 @@ export const externalMigrationServiceFactory = ({
 
     await externalMigrationQueue.startImport({
       actorEmail: user.email!,
+      importType: ExternalPlatforms.Vault,
       data: {
-        importType: ImportType.Vault,
         ...encrypted
       }
     });

@@ -39,6 +39,14 @@ export const renderOperatorSelectItems = (type: string) => {
           <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
         </>
       );
+    case "eventType":
+      return (
+        <>
+          <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$NEQ}>Not Equal</SelectItem>
+          <SelectItem value={PermissionConditionOperators.$IN}>In</SelectItem>
+        </>
+      );
     default:
       return (
         <>

@@ -24,6 +24,7 @@ import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
+import { TNetlifyConnection } from "./netlify-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOktaConnection } from "./okta-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
@@ -109,6 +110,7 @@ export type TAppConnection =
   | TChecklyConnection
   | TSupabaseConnection
   | TDigitalOceanConnection
+  | TNetlifyConnection
   | TOktaConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
@@ -173,7 +175,7 @@ export type TAppConnectionMap = {
   [AppConnection.Heroku]: THerokuConnection;
   [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
-  [AppConnection.Gitlab]: TGitLabConnection;
+  [AppConnection.GitLab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
   [AppConnection.Bitbucket]: TBitbucketConnection;
   [AppConnection.Zabbix]: TZabbixConnection;
@@ -181,5 +183,6 @@ export type TAppConnectionMap = {
   [AppConnection.Checkly]: TChecklyConnection;
   [AppConnection.Supabase]: TSupabaseConnection;
   [AppConnection.DigitalOcean]: TDigitalOceanConnection;
+  [AppConnection.Netlify]: TNetlifyConnection;
   [AppConnection.Okta]: TOktaConnection;
 };

@@ -1,6 +1,7 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface SecretRotationFailedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
@@ -28,7 +29,7 @@ export const SecretRotationFailedTemplate = ({
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
         Your <strong>{rotationType}</strong> rotation <strong>{rotationName}</strong> failed to rotate
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[26px] pb-[4px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[26px] pb-[4px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong>Name</strong>
         <Text className="text-[14px] mt-[4px]">{rotationName}</Text>
         <strong>Type</strong>
@@ -40,15 +41,12 @@ export const SecretRotationFailedTemplate = ({
         <strong>Secret Path</strong>
         <Text className="text-[14px] mt-[4px]">{secretPath}</Text>
         <strong>Reason:</strong>
-        <Text className="text-[14px] text-red-500 mt-[4px]">{content}</Text>
+        <Text className="text-[14px] text-red-600 mt-[4px]">{content}</Text>
       </Section>
-      <Section className="text-center mt-[28px]">
-        <Button
-          href={`${rotationUrl}?search=${rotationName}&secretPath=${secretPath}`}
-          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
-        >
+      <Section className="text-center">
+        <BaseButton href={`${rotationUrl}?search=${rotationName}&secretPath=${secretPath}`}>
           View in Infisical
-        </Button>
+        </BaseButton>
       </Section>
     </BaseEmailWrapper>
   );

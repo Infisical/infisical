@@ -18,6 +18,7 @@ import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/
 
 export enum ApiDocsTags {
   Identities = "Identities",
+  IdentityTemplates = "Identity Templates",
   TokenAuth = "Token Auth",
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
@@ -214,6 +215,7 @@ export const LDAP_AUTH = {
     password: "The password of the LDAP user to login."
   },
   ATTACH: {
+    templateId: "The ID of the identity auth template to attach the configuration onto.",
     identityId: "The ID of the identity to attach the configuration onto.",
     url: "The URL of the LDAP server.",
     allowedFields:
@@ -240,7 +242,8 @@ export const LDAP_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
-    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    templateId: "The ID of the identity auth template to update the configuration to."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the configuration for."
@@ -663,6 +666,10 @@ export const ORGANIZATIONS = {
   DELETE_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to delete the membership from.",
     membershipId: "The ID of the membership to delete."
+  },
+  BULK_DELETE_USER_MEMBERSHIPS: {
+    organizationId: "The ID of the organization to delete the memberships from.",
+    membershipIds: "The IDs of the memberships to delete."
   },
   LIST_IDENTITY_MEMBERSHIPS: {
     orgId: "The ID of the organization to get identity memberships from.",
@@ -2253,7 +2260,9 @@ export const AppConnections = {
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
       tenantId: "The Tenant ID to use to connect with Azure DevOps.",
-      orgName: "The Organization name to use to connect with Azure DevOps."
+      orgName: "The Organization name to use to connect with Azure DevOps.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     OCI: {
       userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
@@ -2295,6 +2304,9 @@ export const AppConnections = {
     },
     DIGITAL_OCEAN_APP_PLATFORM: {
       apiToken: "The API token used to authenticate with Digital Ocean App Platform."
+    },
+    NETLIFY: {
+      accessToken: "The Access token used to authenticate with Netlify."
     },
     OKTA: {
       instanceUrl: "The URL used to access your Okta organization.",
@@ -2400,12 +2412,18 @@ export const SecretSyncs = {
       env: "The name of the GitHub environment."
     },
     AZURE_KEY_VAULT: {
-      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
+      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_APP_CONFIGURATION: {
       configurationUrl:
         "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
-      label: "An optional label to assign to secrets created in Azure App Configuration."
+      label: "An optional label to assign to secrets created in Azure App Configuration.",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_DEVOPS: {
       devopsProjectId: "The ID of the Azure DevOps project to sync secrets to.",
@@ -2521,6 +2539,13 @@ export const SecretSyncs = {
       workspaceSlug: "The Bitbucket Workspace slug to sync secrets to.",
       repositorySlug: "The Bitbucket Repository slug to sync secrets to.",
       environmentId: "The Bitbucket Deployment Environment uuid to sync secrets to."
+    },
+    NETLIFY: {
+      accountId: "The ID of the Netlify account to sync secrets to.",
+      accountName: "The name of the Netlify account to sync secrets to.",
+      siteName: "The name of the Netlify site to sync secrets to.",
+      siteId: "The ID of the Netlify site to sync secrets to.",
+      context: "The Netlify context to sync secrets to."
     }
   }
 };
@@ -2701,6 +2726,14 @@ export const SecretScanningDataSources = {
   CONFIG: {
     GITHUB: {
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+    },
+    GITLAB: {
+      includeProjects: 'The projects to include when scanning. Defaults to all projects (["*"]).',
+      scope: "The GitLab scope scanning should occur at (project or group level).",
+      projectId: "The ID of the project to scan.",
+      projectName: "The name of the project to scan.",
+      groupId: "The ID of the group to scan projects from.",
+      groupName: "The name of the group to scan projects from."
     },
     BITBUCKET: {
       workspaceSlug: "The workspace to scan.",

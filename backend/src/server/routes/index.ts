@@ -31,6 +31,8 @@ import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/pro
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
+import { eventBusFactory } from "@app/ee/services/event/event-bus-service";
+import { sseServiceFactory } from "@app/ee/services/event/event-sse-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -177,6 +179,8 @@ import { identityAccessTokenDALFactory } from "@app/services/identity-access-tok
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityAliCloudAuthDALFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-dal";
 import { identityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
+import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
+import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
 import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/identity-aws-auth-dal";
 import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { identityAzureAuthDALFactory } from "@app/services/identity-azure-auth/identity-azure-auth-dal";
@@ -392,6 +396,7 @@ export const registerRoutes = async (
   const identityProjectDAL = identityProjectDALFactory(db);
   const identityProjectMembershipRoleDAL = identityProjectMembershipRoleDALFactory(db);
   const identityProjectAdditionalPrivilegeDAL = identityProjectAdditionalPrivilegeDALFactory(db);
+  const identityAuthTemplateDAL = identityAuthTemplateDALFactory(db);
 
   const identityTokenAuthDAL = identityTokenAuthDALFactory(db);
   const identityUaDAL = identityUaDALFactory(db);
@@ -495,6 +500,9 @@ export const registerRoutes = async (
   const projectMicrosoftTeamsConfigDAL = projectMicrosoftTeamsConfigDALFactory(db);
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
 
+  const eventBusService = eventBusFactory(server.redis);
+  const sseService = sseServiceFactory(eventBusService, server.redis);
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     orgRoleDAL,
@@ -552,7 +560,8 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL
+    auditLogStreamDAL,
+    eventBusService
   });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
@@ -1450,6 +1459,15 @@ export const registerRoutes = async (
     identityMetadataDAL
   });
 
+  const identityAuthTemplateService = identityAuthTemplateServiceFactory({
+    identityAuthTemplateDAL,
+    identityLdapAuthDAL,
+    permissionService,
+    kmsService,
+    licenseService,
+    auditLogService
+  });
+
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
     identityOrgMembershipDAL,
@@ -1593,7 +1611,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     identityOrgMembershipDAL,
     licenseService,
-    identityDAL
+    identityDAL,
+    identityAuthTemplateDAL
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -1928,7 +1947,8 @@ export const registerRoutes = async (
     projectMembershipDAL,
     smtpService,
     kmsService,
-    keyStore
+    keyStore,
+    appConnectionDAL
   });
 
   const secretScanningV2Service = secretScanningV2ServiceFactory({
@@ -1937,7 +1957,8 @@ export const registerRoutes = async (
     licenseService,
     secretScanningV2DAL,
     secretScanningV2Queue,
-    kmsService
+    kmsService,
+    appConnectionDAL
   });
 
   // setup the communication with license key server
@@ -1961,6 +1982,7 @@ export const registerRoutes = async (
   await kmsService.startService();
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();
+  await eventBusService.init();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -1994,6 +2016,7 @@ export const registerRoutes = async (
     webhook: webhookService,
     serviceToken: serviceTokenService,
     identity: identityService,
+    identityAuthTemplate: identityAuthTemplateService,
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityTokenAuth: identityTokenAuthService,
@@ -2067,7 +2090,9 @@ export const registerRoutes = async (
     githubOrgSync: githubOrgSyncConfigService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
-    reminder: reminderService
+    reminder: reminderService,
+    bus: eventBusService,
+    sse: sseService
   });
 
   const cronJobs: CronJob[] = [];
@@ -2128,7 +2153,8 @@ export const registerRoutes = async (
           inviteOnlySignup: z.boolean().optional(),
           redisConfigured: z.boolean().optional(),
           secretScanningConfigured: z.boolean().optional(),
-          samlDefaultOrgSlug: z.string().optional()
+          samlDefaultOrgSlug: z.string().optional(),
+          auditLogStorageDisabled: z.boolean().optional()
         })
       }
     },
@@ -2155,7 +2181,8 @@ export const registerRoutes = async (
         inviteOnlySignup: Boolean(serverCfg.allowSignUp),
         redisConfigured: cfg.isRedisConfigured,
         secretScanningConfigured: cfg.isSecretScanningConfigured,
-        samlDefaultOrgSlug: cfg.samlDefaultOrgSlug
+        samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
+        auditLogStorageDisabled: Boolean(cfg.DISABLE_AUDIT_LOG_STORAGE)
       };
     }
   });
@@ -2183,5 +2210,7 @@ export const registerRoutes = async (
   server.addHook("onClose", async () => {
     cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
+    await eventBusService.close();
+    sseService.close();
   });
 };

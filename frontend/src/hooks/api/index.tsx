@@ -15,6 +15,7 @@ export * from "./gateways";
 export * from "./githubOrgSyncConfig";
 export * from "./groups";
 export * from "./identities";
+export * from "./identityAuthTemplates";
 export * from "./identityProjectAdditionalPrivilege";
 export * from "./incidentContacts";
 export * from "./integrationAuth";

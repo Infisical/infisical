@@ -8,6 +8,7 @@ export type TReminder = {
   message?: string | null;
   repeatDays?: number | null;
   nextReminderDate: Date;
+  fromDate?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -21,6 +22,7 @@ export type TCreateReminderDTO = {
     secretId?: string;
     message?: string | null;
     repeatDays?: number | null;
+    fromDate?: string | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
   };
@@ -31,6 +33,7 @@ export type TBatchCreateReminderDTO = {
   message?: string | null;
   repeatDays?: number | null;
   nextReminderDate?: string | Date | null;
+  fromDate?: Date | null;
   recipients?: string[] | null;
   projectId?: string;
 }[];
@@ -95,6 +98,7 @@ export interface TReminderServiceFactory {
     nextReminderDate?: string | null;
     recipients?: string[] | null;
     projectId: string;
+    fromDate?: string | null;
   }) => Promise<{
     id: string;
     created: boolean;

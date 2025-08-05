@@ -11,7 +11,7 @@ import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Input, Spinner } from "@app/components/v2";
+import { Button, ContentLoader, Input } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
 import { SessionStorageKeys } from "@app/const";
 import { useToggle } from "@app/hooks";
@@ -326,9 +326,8 @@ export const PasswordStep = ({
 
   if (hasExchangedPrivateKey) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <Spinner />
-        <p className="text-white opacity-80">Loading, please wait</p>
+      <div className="fixed left-0 top-0 h-screen w-screen bg-bunker-800">
+        <ContentLoader />
       </div>
     );
   }
