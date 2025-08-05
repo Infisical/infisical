@@ -1,7 +1,8 @@
-import { Heading, Link, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface EmailMfaTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   code: string;
@@ -25,11 +26,7 @@ export const EmailMfaTemplate = ({ code, siteUrl, isCloud }: EmailMfaTemplatePro
           <strong>Not you?</strong>{" "}
           {isCloud ? (
             <>
-              Contact us at{" "}
-              <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
-                support@infisical.com
-              </Link>{" "}
-              immediately
+              Contact us at <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink> immediately
             </>
           ) : (
             "Contact your administrator immediately"

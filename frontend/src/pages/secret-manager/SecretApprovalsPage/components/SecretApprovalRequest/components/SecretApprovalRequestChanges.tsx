@@ -538,16 +538,20 @@ export const SecretApprovalRequestChanges = ({
                   className="flex flex-nowrap items-center justify-between space-x-2 rounded border border-mineshaft-600 bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
-                  <div className="flex text-sm">
-                    <Tooltip
-                      content={`${requiredApprover.firstName || ""} ${
-                        requiredApprover.lastName || ""
-                      }`}
-                    >
-                      <span>{requiredApprover?.email}</span>
-                    </Tooltip>
-                    <span className="text-red">*</span>
-                  </div>
+                  <Tooltip
+                    content={
+                      requiredApprover.firstName
+                        ? `${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""}`
+                        : undefined
+                    }
+                    position="left"
+                    sideOffset={10}
+                  >
+                    <div className="flex text-sm">
+                      <div>{requiredApprover?.email}</div>
+                      <span className="text-red">*</span>
+                    </div>
+                  </Tooltip>
                   <div>
                     {reviewer?.comment && (
                       <Tooltip className="max-w-lg break-words" content={reviewer.comment}>

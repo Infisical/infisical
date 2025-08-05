@@ -48,9 +48,16 @@ const formSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.GitHub),
   method: z.nativeEnum(GitHubConnectionMethod),
   credentials: z
-    .object({
-      host: z.string().optional()
-    })
+    .union([
+      z.object({
+        instanceType: z.literal("cloud").optional(),
+        host: z.string().optional()
+      }),
+      z.object({
+        instanceType: z.literal("server"),
+        host: z.string().min(1, "Required")
+      })
+    ])
     .optional()
 });
 
@@ -70,7 +77,10 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
     defaultValues: appConnection ?? {
       app: AppConnection.GitHub,
       method: GitHubConnectionMethod.App,
-      gatewayId: null
+      gatewayId: null,
+      credentials: {
+        instanceType: "cloud"
+      }
     }
   });
 
@@ -78,6 +88,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { isSubmitting, isDirty }
   } = form;
 
@@ -85,6 +96,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   const selectedMethod = watch("method");
+  const instanceType = watch("credentials.instanceType");
 
   const onSubmit = (formData: FormData) => {
     setIsRedirecting(true);
@@ -103,7 +115,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
     switch (formData.method) {
       case GitHubConnectionMethod.App:
         window.location.assign(
-          `${githubHost}/apps/${appClientSlug}/installations/new?state=${state}`
+          `${githubHost}/${formData.credentials?.instanceType === "server" ? "github-apps" : "apps"}/${appClientSlug}/installations/new?state=${state}`
         );
         break;
       case GitHubConnectionMethod.OAuth:
@@ -175,13 +187,54 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
             </FormControl>
           )}
         />
-        {subscription.gateway && (
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="enterprise-options" className="data-[state=open]:border-none">
-              <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                <div className="order-1 ml-3">GitHub Enterprise Options</div>
-              </AccordionTrigger>
-              <AccordionContent childrenClassName="px-0">
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="enterprise-options" className="data-[state=open]:border-none">
+            <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+              <div className="order-1 ml-3">GitHub Enterprise Options</div>
+            </AccordionTrigger>
+            <AccordionContent childrenClassName="px-0">
+              <Controller
+                name="credentials.instanceType"
+                control={control}
+                render={({ field }) => (
+                  <FormControl label="Instance Type">
+                    <Select
+                      value={field.value}
+                      onValueChange={(e) => {
+                        field.onChange(e);
+                        if (e === "cloud") {
+                          setValue("gatewayId", null);
+                        }
+                      }}
+                      className="w-full border border-mineshaft-500"
+                      dropdownContainerClassName="max-w-none"
+                      placeholder="Enterprise Cloud"
+                      position="popper"
+                    >
+                      <SelectItem value="cloud">Enterprise Cloud</SelectItem>
+                      <SelectItem value="server">Enterprise Server</SelectItem>
+                    </Select>
+                  </FormControl>
+                )}
+              />
+
+              <Controller
+                name="credentials.host"
+                control={control}
+                shouldUnregister
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    errorText={error?.message}
+                    isError={Boolean(error?.message)}
+                    label="Instance Hostname"
+                    isOptional={instanceType === "cloud"}
+                    isRequired={instanceType === "server"}
+                  >
+                    <Input {...field} placeholder="github.com" />
+                  </FormControl>
+                )}
+              />
+              {subscription.gateway && instanceType === "server" && (
                 <OrgPermissionCan
                   I={OrgGatewayPermissionActions.AttachGateways}
                   a={OrgPermissionSubjects.Gateway}
@@ -190,7 +243,6 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                     <Controller
                       control={control}
                       name="gatewayId"
-                      defaultValue=""
                       render={({ field: { value, onChange }, fieldState: { error } }) => (
                         <FormControl
                           isError={Boolean(error?.message)}
@@ -204,7 +256,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                             <div>
                               <Select
                                 isDisabled={!isAllowed}
-                                value={value as string}
+                                value={value || (null as unknown as string)}
                                 onValueChange={onChange}
                                 className="w-full border border-mineshaft-500"
                                 dropdownContainerClassName="max-w-none"
@@ -214,7 +266,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                               >
                                 <SelectItem
                                   value={null as unknown as string}
-                                  onClick={() => onChange(undefined)}
+                                  onClick={() => onChange(null)}
                                 >
                                   Internet Gateway
                                 </SelectItem>
@@ -231,25 +283,10 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                     />
                   )}
                 </OrgPermissionCan>
-                <Controller
-                  name="credentials.host"
-                  control={control}
-                  shouldUnregister
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error?.message)}
-                      label="Hostname"
-                      isOptional
-                    >
-                      <Input {...field} placeholder="github.com" />
-                    </FormControl>
-                  )}
-                />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        )}
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"

@@ -12,14 +12,15 @@ export const useCreateReminder = (secretId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation<Reminder, object, CreateReminderDTO>({
-    mutationFn: async ({ message, repeatDays, nextReminderDate, recipients }) => {
+    mutationFn: async ({ message, repeatDays, nextReminderDate, recipients, fromDate }) => {
       const { data } = await apiRequest.post<{ reminder: Reminder }>(
         `/api/v1/reminders/secrets/${secretId}`,
         {
           message,
           repeatDays,
           nextReminderDate,
-          recipients
+          recipients,
+          fromDate
         }
       );
       return data.reminder;

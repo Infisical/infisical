@@ -28,6 +28,15 @@ export enum OrgPermissionKmipActions {
   Setup = "setup"
 }
 
+export enum OrgPermissionMachineIdentityAuthTemplateActions {
+  ListTemplates = "list-templates",
+  EditTemplates = "edit-templates",
+  CreateTemplates = "create-templates",
+  DeleteTemplates = "delete-templates",
+  UnlinkTemplates = "unlink-templates",
+  AttachTemplates = "attach-templates"
+}
+
 export enum OrgPermissionAdminConsoleAction {
   AccessAllProjects = "access-all-projects"
 }
@@ -88,6 +97,7 @@ export enum OrgPermissionSubjects {
   Identity = "identity",
   Kms = "kms",
   AdminConsole = "organization-admin-console",
+  MachineIdentityAuthTemplate = "machine-identity-auth-template",
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
@@ -126,6 +136,7 @@ export type OrgPermissionSet =
       )
     ]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
+  | [OrgPermissionMachineIdentityAuthTemplateActions, OrgPermissionSubjects.MachineIdentityAuthTemplate]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
 
@@ -234,6 +245,14 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.Kmip).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z
+      .literal(OrgPermissionSubjects.MachineIdentityAuthTemplate)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionMachineIdentityAuthTemplateActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -350,6 +369,25 @@ const buildAdminPermission = () => {
   // the proxy assignment is temporary in order to prevent "more privilege" error during role assignment to MI
   can(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 
+  can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
+  can(OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+
   can(OrgPermissionSecretShareAction.ManageSettings, OrgPermissionSubjects.SecretShare);
 
   return rules;
@@ -384,6 +422,16 @@ const buildMemberPermission = () => {
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
+
+  can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
 
   return rules;
 };

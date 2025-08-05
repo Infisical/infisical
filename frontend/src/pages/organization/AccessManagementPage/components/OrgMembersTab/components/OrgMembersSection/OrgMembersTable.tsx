@@ -309,13 +309,16 @@ export const OrgMembersTable = ({
 
   const filteredMembersPage = filteredMembers.slice(offset, perPage * page);
 
-  const isPageSelected = filteredMembersPage.every((member) =>
-    selectedMemberIds.includes(member.id)
-  );
+  const isPageSelected = filteredMembersPage.length
+    ? filteredMembersPage.every((member) => selectedMemberIds.includes(member.id))
+    : false;
 
+  // eslint-disable-next-line no-nested-ternary
   const isPageIndeterminate = isPageSelected
     ? false
-    : filteredMembersPage.some((member) => selectedMemberIds.includes(member.id));
+    : filteredMembersPage.length
+      ? filteredMembersPage.some((member) => selectedMemberIds.includes(member.id))
+      : false;
 
   return (
     <div>

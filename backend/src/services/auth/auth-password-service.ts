@@ -193,6 +193,10 @@ export const authPaswordServiceFactory = ({
     }
 
     if (!user.authMethods?.includes(AuthMethod.EMAIL)) {
+      logger.error(
+        { authMethods: user.authMethods },
+        "Unable to reset password, no email authentication method is configured"
+      );
       throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
     }
 

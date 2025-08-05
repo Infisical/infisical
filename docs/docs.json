@@ -14,92 +14,49 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
+        "tab": "Platform",
         "groups": [
           {
             "group": "Getting Started",
             "pages": [
+              "documentation/getting-started/overview",
               "documentation/getting-started/introduction",
               {
-                "group": "Quickstart",
-                "pages": ["documentation/guides/local-development"]
-              },
-              {
-                "group": "Guides",
+                "group": "Concepts",
                 "pages": [
-                  "documentation/guides/introduction",
-                  "documentation/guides/node",
-                  "documentation/guides/python",
-                  "documentation/guides/nextjs-vercel",
-                  "documentation/guides/microsoft-power-apps",
-                  "documentation/guides/organization-structure"
+                  "documentation/getting-started/concepts/deployment-models",
+                  "documentation/getting-started/concepts/platform-hierarchy",
+                  "documentation/getting-started/concepts/platform-iam",
+                  "documentation/getting-started/concepts/client-integrations",
+                  "documentation/getting-started/concepts/audit-logs"
                 ]
               },
               {
-                "group": "Setup",
-                "pages": ["documentation/setup/networking"]
+                "group": "Guides",
+                "pages": ["documentation/guides/organization-structure"]
               }
             ]
           },
           {
-            "group": "Platform",
+            "group": "Platform Reference",
             "pages": [
               "documentation/platform/organization",
-              "documentation/platform/project",
               "documentation/platform/event-subscriptions",
               "documentation/platform/folder",
               {
-                "group": "Secrets",
+                "group": "Projects",
                 "pages": [
-                  "documentation/platform/secret-versioning",
-                  "documentation/platform/pit-recovery",
-                  "documentation/platform/secret-reference",
-                  "documentation/platform/webhooks"
-                ]
-              },
-              {
-                "group": "Internal PKI",
-                "pages": [
-                  "documentation/platform/pki/overview",
-                  "documentation/platform/pki/private-ca",
-                  "documentation/platform/pki/external-ca",
-                  "documentation/platform/pki/subscribers",
-                  "documentation/platform/pki/certificates",
-                  "documentation/platform/pki/acme-ca",
-                  "documentation/platform/pki/est",
-                  "documentation/platform/pki/alerting",
+                  "documentation/platform/project",
+                  "documentation/platform/project-templates",
                   {
-                    "group": "Integrations",
+                    "group": "KMS Configuration",
                     "pages": [
-                      "documentation/platform/pki/pki-issuer",
-                      "documentation/platform/pki/integration-guides/gloo-mesh"
+                      "documentation/platform/kms-configuration/overview",
+                      "documentation/platform/kms-configuration/aws-kms",
+                      "documentation/platform/kms-configuration/aws-hsm",
+                      "documentation/platform/kms-configuration/gcp-kms"
                     ]
                   }
-                ]
-              },
-              {
-                "group": "Infisical SSH",
-                "pages": [
-                  "documentation/platform/ssh/overview",
-                  "documentation/platform/ssh/host-groups"
-                ]
-              },
-              {
-                "group": "Key Management (KMS)",
-                "pages": [
-                  "documentation/platform/kms/overview",
-                  "documentation/platform/kms/hsm-integration",
-                  "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/kmip"
-                ]
-              },
-              {
-                "group": "KMS Configuration",
-                "pages": [
-                  "documentation/platform/kms-configuration/overview",
-                  "documentation/platform/kms-configuration/aws-kms",
-                  "documentation/platform/kms-configuration/aws-hsm",
-                  "documentation/platform/kms-configuration/gcp-kms"
                 ]
               },
               {
@@ -141,57 +98,53 @@
                 ]
               },
               {
-                "group": "Secret Rotation",
+                "group": "App Connections",
                 "pages": [
-                  "documentation/platform/secret-rotation/overview",
-                  "documentation/platform/secret-rotation/auth0-client-secret",
-                  "documentation/platform/secret-rotation/aws-iam-user-secret",
-                  "documentation/platform/secret-rotation/azure-client-secret",
-                  "documentation/platform/secret-rotation/ldap-password",
-                  "documentation/platform/secret-rotation/mssql-credentials",
-                  "documentation/platform/secret-rotation/mysql-credentials",
-                  "documentation/platform/secret-rotation/okta-client-secret",
-                  "documentation/platform/secret-rotation/oracledb-credentials",
-                  "documentation/platform/secret-rotation/postgres-credentials"
+                  "integrations/app-connections/overview",
+                  {
+                    "group": "Connections",
+                    "pages": [
+                      "integrations/app-connections/1password",
+                      "integrations/app-connections/auth0",
+                      "integrations/app-connections/aws",
+                      "integrations/app-connections/azure-app-configuration",
+                      "integrations/app-connections/azure-client-secrets",
+                      "integrations/app-connections/azure-devops",
+                      "integrations/app-connections/azure-key-vault",
+                      "integrations/app-connections/bitbucket",
+                      "integrations/app-connections/camunda",
+                      "integrations/app-connections/checkly",
+                      "integrations/app-connections/cloudflare",
+                      "integrations/app-connections/databricks",
+                      "integrations/app-connections/digital-ocean",
+                      "integrations/app-connections/flyio",
+                      "integrations/app-connections/gcp",
+                      "integrations/app-connections/github",
+                      "integrations/app-connections/github-radar",
+                      "integrations/app-connections/gitlab",
+                      "integrations/app-connections/hashicorp-vault",
+                      "integrations/app-connections/heroku",
+                      "integrations/app-connections/humanitec",
+                      "integrations/app-connections/ldap",
+                      "integrations/app-connections/mssql",
+                      "integrations/app-connections/mysql",
+                      "integrations/app-connections/netlify",
+                      "integrations/app-connections/oci",
+                      "integrations/app-connections/okta",
+                      "integrations/app-connections/oracledb",
+                      "integrations/app-connections/postgres",
+                      "integrations/app-connections/railway",
+                      "integrations/app-connections/render",
+                      "integrations/app-connections/supabase",
+                      "integrations/app-connections/teamcity",
+                      "integrations/app-connections/terraform-cloud",
+                      "integrations/app-connections/vercel",
+                      "integrations/app-connections/windmill",
+                      "integrations/app-connections/zabbix"
+                    ]
+                  }
                 ]
               },
-              {
-                "group": "Dynamic Secrets",
-                "pages": [
-                  "documentation/platform/dynamic-secrets/overview",
-                  "documentation/platform/dynamic-secrets/aws-elasticache",
-                  "documentation/platform/dynamic-secrets/aws-iam",
-                  "documentation/platform/dynamic-secrets/azure-entra-id",
-                  "documentation/platform/dynamic-secrets/cassandra",
-                  "documentation/platform/dynamic-secrets/elastic-search",
-                  "documentation/platform/dynamic-secrets/gcp-iam",
-                  "documentation/platform/dynamic-secrets/github",
-                  "documentation/platform/dynamic-secrets/ldap",
-                  "documentation/platform/dynamic-secrets/mongo-atlas",
-                  "documentation/platform/dynamic-secrets/mongo-db",
-                  "documentation/platform/dynamic-secrets/mssql",
-                  "documentation/platform/dynamic-secrets/mysql",
-                  "documentation/platform/dynamic-secrets/oracle",
-                  "documentation/platform/dynamic-secrets/postgresql",
-                  "documentation/platform/dynamic-secrets/rabbit-mq",
-                  "documentation/platform/dynamic-secrets/redis",
-                  "documentation/platform/dynamic-secrets/sap-ase",
-                  "documentation/platform/dynamic-secrets/sap-hana",
-                  "documentation/platform/dynamic-secrets/snowflake",
-                  "documentation/platform/dynamic-secrets/totp",
-                  "documentation/platform/dynamic-secrets/kubernetes",
-                  "documentation/platform/dynamic-secrets/vertica"
-                ]
-              },
-              {
-                "group": "Gateway",
-                "pages": [
-                  "documentation/platform/gateways/overview",
-                  "documentation/platform/gateways/gateway-security",
-                  "documentation/platform/gateways/networking"
-                ]
-              },
-              "documentation/platform/project-templates",
               {
                 "group": "Workflow Integrations",
                 "pages": [
@@ -207,22 +160,20 @@
                   "documentation/platform/external-migrations/vault"
                 ]
               },
+              "documentation/platform/admin-panel/server-admin",
+              "documentation/platform/secret-sharing"
+            ]
+          },
+          {
+            "group": "Connectivity",
+            "pages": [
+              "documentation/setup/networking",
               {
-                "group": "Admin Consoles",
+                "group": "Gateway",
                 "pages": [
-                  "documentation/platform/admin-panel/overview",
-                  "documentation/platform/admin-panel/server-admin",
-                  "documentation/platform/admin-panel/org-admin-console"
-                ]
-              },
-              "documentation/platform/secret-sharing",
-              {
-                "group": "Secret Scanning",
-                "pages": [
-                  "documentation/platform/secret-scanning/overview",
-                  "documentation/platform/secret-scanning/bitbucket",
-                  "documentation/platform/secret-scanning/github",
-                  "documentation/platform/secret-scanning/gitlab"
+                  "documentation/platform/gateways/overview",
+                  "documentation/platform/gateways/gateway-security",
+                  "documentation/platform/gateways/networking"
                 ]
               }
             ]
@@ -323,6 +274,7 @@
                   }
                 ]
               },
+              "documentation/platform/identities/auth-templates",
               "documentation/platform/token",
               "documentation/platform/mfa",
               "documentation/platform/github-org-sync"
@@ -427,18 +379,80 @@
         ]
       },
       {
-        "tab": "Integrations",
-        "groups": [
+        "tab": "Products",
+        "menu": [
           {
-            "group": "Infrastructure Integrations",
-            "pages": [
-              "integrations/platforms/ansible",
-              "integrations/platforms/apache-airflow",
+            "item": "Secrets Management",
+            "groups": [
               {
-                "group": "Container orchestrators",
+                "group": "Secrets Management",
                 "pages": [
+                  "documentation/platform/secrets-mgmt/overview",
+                  "documentation/platform/secrets-mgmt/project",
+                  "documentation/platform/folder",
                   {
-                    "group": "Kubernetes",
+                    "group": "Secret Rotation",
+                    "pages": [
+                      "documentation/platform/secret-rotation/overview",
+                      "documentation/platform/secret-rotation/auth0-client-secret",
+                      "documentation/platform/secret-rotation/aws-iam-user-secret",
+                      "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/ldap-password",
+                      "documentation/platform/secret-rotation/mssql-credentials",
+                      "documentation/platform/secret-rotation/mysql-credentials",
+                      "documentation/platform/secret-rotation/okta-client-secret",
+                      "documentation/platform/secret-rotation/oracledb-credentials",
+                      "documentation/platform/secret-rotation/postgres-credentials"
+                    ]
+                  },
+                  {
+                    "group": "Dynamic Secrets",
+                    "pages": [
+                      "documentation/platform/dynamic-secrets/overview",
+                      "documentation/platform/dynamic-secrets/aws-elasticache",
+                      "documentation/platform/dynamic-secrets/aws-iam",
+                      "documentation/platform/dynamic-secrets/azure-entra-id",
+                      "documentation/platform/dynamic-secrets/cassandra",
+                      "documentation/platform/dynamic-secrets/elastic-search",
+                      "documentation/platform/dynamic-secrets/gcp-iam",
+                      "documentation/platform/dynamic-secrets/github",
+                      "documentation/platform/dynamic-secrets/ldap",
+                      "documentation/platform/dynamic-secrets/mongo-atlas",
+                      "documentation/platform/dynamic-secrets/mongo-db",
+                      "documentation/platform/dynamic-secrets/mssql",
+                      "documentation/platform/dynamic-secrets/mysql",
+                      "documentation/platform/dynamic-secrets/oracle",
+                      "documentation/platform/dynamic-secrets/postgresql",
+                      "documentation/platform/dynamic-secrets/rabbit-mq",
+                      "documentation/platform/dynamic-secrets/redis",
+                      "documentation/platform/dynamic-secrets/sap-ase",
+                      "documentation/platform/dynamic-secrets/sap-hana",
+                      "documentation/platform/dynamic-secrets/snowflake",
+                      "documentation/platform/dynamic-secrets/totp",
+                      "documentation/platform/dynamic-secrets/kubernetes",
+                      "documentation/platform/dynamic-secrets/vertica"
+                    ]
+                  },
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/guides/introduction",
+                      "documentation/guides/local-development",
+                      "documentation/guides/node",
+                      "documentation/guides/python",
+                      "documentation/guides/nextjs-vercel",
+                      "documentation/guides/microsoft-power-apps"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Infrastructure Integrations",
+                "pages": [
+                  "integrations/platforms/ansible",
+                  "integrations/platforms/apache-airflow",
+                  {
+                    "group": "Kubernetes Operator",
                     "pages": [
                       "integrations/platforms/kubernetes/overview",
                       "integrations/platforms/kubernetes/infisical-secret-crd",
@@ -448,222 +462,249 @@
                   },
                   "integrations/platforms/kubernetes-injector",
                   "integrations/platforms/kubernetes-csi",
-                  "integrations/platforms/docker-swarm-with-agent",
-                  "integrations/platforms/ecs-with-agent"
+                  {
+                    "group": "Agent",
+                    "pages": [
+                      "integrations/platforms/infisical-agent",
+                       "integrations/platforms/docker-swarm-with-agent",
+                      "integrations/platforms/ecs-with-agent"
+                    ]
+                  },
+                  {
+                    "group": "Docker",
+                    "pages": [
+                      "integrations/platforms/docker-intro",
+                      "integrations/platforms/docker",
+                      "integrations/platforms/docker-pass-envs",
+                      "integrations/platforms/docker-compose"
+                    ]
+                  },
+                  "integrations/frameworks/packer",
+                  "integrations/frameworks/pulumi",
+                  "integrations/frameworks/terraform"
                 ]
               },
               {
-                "group": "Docker",
+                "group": "Secret Syncs",
                 "pages": [
-                  "integrations/platforms/docker-intro",
-                  "integrations/platforms/docker",
-                  "integrations/platforms/docker-pass-envs",
-                  "integrations/platforms/docker-compose"
+                  "integrations/secret-syncs/overview",
+                  {
+                    "group": "Syncs",
+                    "pages": [
+                      "integrations/secret-syncs/1password",
+                      "integrations/secret-syncs/aws-parameter-store",
+                      "integrations/secret-syncs/aws-secrets-manager",
+                      "integrations/secret-syncs/azure-app-configuration",
+                      "integrations/secret-syncs/azure-devops",
+                      "integrations/secret-syncs/azure-key-vault",
+                      "integrations/secret-syncs/bitbucket",
+                      "integrations/secret-syncs/camunda",
+                      "integrations/secret-syncs/checkly",
+                      "integrations/secret-syncs/cloudflare-pages",
+                      "integrations/secret-syncs/cloudflare-workers",
+                      "integrations/secret-syncs/databricks",
+                      "integrations/secret-syncs/digital-ocean-app-platform",
+                      "integrations/secret-syncs/flyio",
+                      "integrations/secret-syncs/gcp-secret-manager",
+                      "integrations/secret-syncs/github",
+                      "integrations/secret-syncs/gitlab",
+                      "integrations/secret-syncs/hashicorp-vault",
+                      "integrations/secret-syncs/heroku",
+                      "integrations/secret-syncs/humanitec",
+                      "integrations/secret-syncs/netlify",
+                      "integrations/secret-syncs/oci-vault",
+                      "integrations/secret-syncs/railway",
+                      "integrations/secret-syncs/render",
+                      "integrations/secret-syncs/supabase",
+                      "integrations/secret-syncs/teamcity",
+                      "integrations/secret-syncs/terraform-cloud",
+                      "integrations/secret-syncs/vercel",
+                      "integrations/secret-syncs/windmill",
+                      "integrations/secret-syncs/zabbix"
+                    ]
+                  }
                 ]
               },
-              "integrations/platforms/infisical-agent",
-              "integrations/frameworks/packer",
-              "integrations/frameworks/pulumi",
-              "integrations/frameworks/terraform"
-            ]
-          },
-          {
-            "group": "App Connections",
-            "pages": [
-              "integrations/app-connections/overview",
               {
-                "group": "Connections",
+                "group": "Native Integrations",
                 "pages": [
-                  "integrations/app-connections/1password",
-                  "integrations/app-connections/auth0",
-                  "integrations/app-connections/aws",
-                  "integrations/app-connections/azure-app-configuration",
-                  "integrations/app-connections/azure-client-secrets",
-                  "integrations/app-connections/azure-devops",
-                  "integrations/app-connections/azure-key-vault",
-                  "integrations/app-connections/bitbucket",
-                  "integrations/app-connections/camunda",
-                  "integrations/app-connections/checkly",
-                  "integrations/app-connections/cloudflare",
-                  "integrations/app-connections/databricks",
-                  "integrations/app-connections/digital-ocean",
-                  "integrations/app-connections/flyio",
-                  "integrations/app-connections/gcp",
-                  "integrations/app-connections/github",
-                  "integrations/app-connections/github-radar",
-                  "integrations/app-connections/gitlab",
-                  "integrations/app-connections/hashicorp-vault",
-                  "integrations/app-connections/heroku",
-                  "integrations/app-connections/humanitec",
-                  "integrations/app-connections/ldap",
-                  "integrations/app-connections/mssql",
-                  "integrations/app-connections/mysql",
-                  "integrations/app-connections/netlify",
-                  "integrations/app-connections/oci",
-                  "integrations/app-connections/okta",
-                  "integrations/app-connections/oracledb",
-                  "integrations/app-connections/postgres",
-                  "integrations/app-connections/railway",
-                  "integrations/app-connections/render",
-                  "integrations/app-connections/supabase",
-                  "integrations/app-connections/teamcity",
-                  "integrations/app-connections/terraform-cloud",
-                  "integrations/app-connections/vercel",
-                  "integrations/app-connections/windmill",
-                  "integrations/app-connections/zabbix"
-                ]
-              }
-            ]
-          },
-          {
-            "group": "Secret Syncs",
-            "pages": [
-              "integrations/secret-syncs/overview",
-              {
-                "group": "Syncs",
-                "pages": [
-                  "integrations/secret-syncs/1password",
-                  "integrations/secret-syncs/aws-parameter-store",
-                  "integrations/secret-syncs/aws-secrets-manager",
-                  "integrations/secret-syncs/azure-app-configuration",
-                  "integrations/secret-syncs/azure-devops",
-                  "integrations/secret-syncs/azure-key-vault",
-                  "integrations/secret-syncs/bitbucket",
-                  "integrations/secret-syncs/camunda",
-                  "integrations/secret-syncs/checkly",
-                  "integrations/secret-syncs/cloudflare-pages",
-                  "integrations/secret-syncs/cloudflare-workers",
-                  "integrations/secret-syncs/databricks",
-                  "integrations/secret-syncs/digital-ocean-app-platform",
-                  "integrations/secret-syncs/flyio",
-                  "integrations/secret-syncs/gcp-secret-manager",
-                  "integrations/secret-syncs/github",
-                  "integrations/secret-syncs/gitlab",
-                  "integrations/secret-syncs/hashicorp-vault",
-                  "integrations/secret-syncs/heroku",
-                  "integrations/secret-syncs/humanitec",
-                  "integrations/secret-syncs/netlify",
-                  "integrations/secret-syncs/oci-vault",
-                  "integrations/secret-syncs/railway",
-                  "integrations/secret-syncs/render",
-                  "integrations/secret-syncs/supabase",
-                  "integrations/secret-syncs/teamcity",
-                  "integrations/secret-syncs/terraform-cloud",
-                  "integrations/secret-syncs/vercel",
-                  "integrations/secret-syncs/windmill",
-                  "integrations/secret-syncs/zabbix"
-                ]
-              }
-            ]
-          },
-          {
-            "group": "Native Integrations",
-            "pages": [
-              {
-                "group": "AWS",
-                "pages": [
-                  "integrations/cloud/aws-parameter-store",
-                  "integrations/cloud/aws-secret-manager",
-                  "integrations/cloud/aws-amplify"
+                  {
+                    "group": "AWS",
+                    "pages": [
+                      "integrations/cloud/aws-parameter-store",
+                      "integrations/cloud/aws-secret-manager",
+                      "integrations/cloud/aws-amplify"
+                    ]
+                  },
+                  "integrations/cloud/vercel",
+                  "integrations/cloud/azure-key-vault",
+                  "integrations/cloud/azure-app-configuration",
+                  "integrations/cloud/azure-devops",
+                  "integrations/cloud/gcp-secret-manager",
+                  {
+                    "group": "Cloudflare",
+                    "pages": [
+                      "integrations/cloud/cloudflare-pages",
+                      "integrations/cloud/cloudflare-workers"
+                    ]
+                  },
+                  "integrations/cloud/terraform-cloud",
+                  "integrations/cloud/databricks",
+                  {
+                    "group": "View more",
+                    "pages": [
+                      "integrations/cloud/digital-ocean-app-platform",
+                      "integrations/cloud/heroku",
+                      "integrations/cloud/netlify",
+                      "integrations/cloud/flyio",
+                      "integrations/cloud/railway",
+                      "integrations/cloud/render",
+                      "integrations/cloud/laravel-forge",
+                      "integrations/cloud/supabase",
+                      "integrations/cloud/northflank",
+                      "integrations/cloud/hasura-cloud",
+                      "integrations/cloud/qovery",
+                      "integrations/cloud/hashicorp-vault",
+                      "integrations/cloud/cloud-66",
+                      "integrations/cloud/windmill"
+                    ]
+                  }
                 ]
               },
-              "integrations/cloud/vercel",
-              "integrations/cloud/azure-key-vault",
-              "integrations/cloud/azure-app-configuration",
-              "integrations/cloud/azure-devops",
-              "integrations/cloud/gcp-secret-manager",
               {
-                "group": "Cloudflare",
+                "group": "CI/CD Integrations",
                 "pages": [
-                  "integrations/cloud/cloudflare-pages",
-                  "integrations/cloud/cloudflare-workers"
+                  "integrations/cicd/jenkins",
+                  "integrations/cicd/githubactions",
+                  "integrations/cicd/gitlab",
+                  "integrations/cicd/bitbucket",
+                  "integrations/cloud/teamcity",
+                  {
+                    "group": "View more",
+                    "pages": [
+                      "integrations/cicd/circleci",
+                      "integrations/cicd/travisci",
+                      "integrations/cicd/rundeck",
+                      "integrations/cicd/codefresh",
+                      "integrations/cloud/checkly",
+                      "integrations/cicd/octopus-deploy"
+                    ]
+                  }
                 ]
               },
-              "integrations/cloud/terraform-cloud",
-              "integrations/cloud/databricks",
               {
-                "group": "View more",
+                "group": "Framework Integrations",
                 "pages": [
-                  "integrations/cloud/digital-ocean-app-platform",
-                  "integrations/cloud/heroku",
-                  "integrations/cloud/netlify",
-                  "integrations/cloud/flyio",
-                  "integrations/cloud/railway",
-                  "integrations/cloud/render",
-                  "integrations/cloud/laravel-forge",
-                  "integrations/cloud/supabase",
-                  "integrations/cloud/northflank",
-                  "integrations/cloud/hasura-cloud",
-                  "integrations/cloud/qovery",
-                  "integrations/cloud/hashicorp-vault",
-                  "integrations/cloud/cloud-66",
-                  "integrations/cloud/windmill"
+                  "integrations/frameworks/spring-boot-maven",
+                  "integrations/frameworks/react",
+                  "integrations/frameworks/vue",
+                  "integrations/frameworks/express",
+                  {
+                    "group": "View more",
+                    "pages": [
+                      "integrations/frameworks/nextjs",
+                      "integrations/frameworks/nestjs",
+                      "integrations/frameworks/sveltekit",
+                      "integrations/frameworks/nuxt",
+                      "integrations/frameworks/gatsby",
+                      "integrations/frameworks/remix",
+                      "integrations/frameworks/vite",
+                      "integrations/frameworks/fiber",
+                      "integrations/frameworks/django",
+                      "integrations/frameworks/flask",
+                      "integrations/frameworks/laravel",
+                      "integrations/frameworks/rails",
+                      "integrations/frameworks/dotnet",
+                      "integrations/platforms/pm2",
+                      "integrations/frameworks/ab-initio"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Build Tool Integrations",
+                "pages": ["integrations/build-tools/gradle"]
+              },
+              {
+                "group": "Others",
+                "pages": ["integrations/external/backstage"]
+              }
+            ]
+          },
+          {
+            "item": "Secrets Scanning",
+            "groups": [
+              {
+                "group": "Secret Scanning",
+                "pages": [
+                  "documentation/platform/secret-scanning/overview"
+                ]
+              },
+              {
+                "group": "Datasources",
+                "pages": [
+                  "documentation/platform/secret-scanning/bitbucket",
+                  "documentation/platform/secret-scanning/github",
+                  "documentation/platform/secret-scanning/gitlab"
                 ]
               }
             ]
           },
           {
-            "group": "CI/CD Integrations",
-            "pages": [
-              "integrations/cicd/jenkins",
-              "integrations/cicd/githubactions",
-              "integrations/cicd/gitlab",
-              "integrations/cicd/bitbucket",
-              "integrations/cloud/teamcity",
+            "item": "Infisical PKI",
+            "groups": [
               {
-                "group": "View more",
+                "group": "Infisical PKI",
                 "pages": [
-                  "integrations/cicd/circleci",
-                  "integrations/cicd/travisci",
-                  "integrations/cicd/rundeck",
-                  "integrations/cicd/codefresh",
-                  "integrations/cloud/checkly",
-                  "integrations/cicd/octopus-deploy"
+                  "documentation/platform/pki/overview",
+                  "documentation/platform/pki/private-ca",
+                  "documentation/platform/pki/external-ca",
+                  "documentation/platform/pki/subscribers",
+                  "documentation/platform/pki/certificates",
+                  "documentation/platform/pki/acme-ca",
+                  "documentation/platform/pki/est",
+                  "documentation/platform/pki/alerting",
+                  {
+                    "group": "Integrations",
+                    "pages": [
+                      "documentation/platform/pki/pki-issuer",
+                      "documentation/platform/pki/integration-guides/gloo-mesh"
+                    ]
+                  }
                 ]
               }
             ]
           },
           {
-            "group": "Framework Integrations",
-            "pages": [
-              "integrations/frameworks/spring-boot-maven",
-              "integrations/frameworks/react",
-              "integrations/frameworks/vue",
-              "integrations/frameworks/express",
+            "item": "Infisical SSH",
+            "groups": [
               {
-                "group": "View more",
+                "group": "Infisical SSH",
                 "pages": [
-                  "integrations/frameworks/nextjs",
-                  "integrations/frameworks/nestjs",
-                  "integrations/frameworks/sveltekit",
-                  "integrations/frameworks/nuxt",
-                  "integrations/frameworks/gatsby",
-                  "integrations/frameworks/remix",
-                  "integrations/frameworks/vite",
-                  "integrations/frameworks/fiber",
-                  "integrations/frameworks/django",
-                  "integrations/frameworks/flask",
-                  "integrations/frameworks/laravel",
-                  "integrations/frameworks/rails",
-                  "integrations/frameworks/dotnet",
-                  "integrations/platforms/pm2",
-                  "integrations/frameworks/ab-initio"
+                  "documentation/platform/ssh/overview",
+                  "documentation/platform/ssh/host-groups"
                 ]
               }
             ]
           },
           {
-            "group": "Build Tool Integrations",
-            "pages": ["integrations/build-tools/gradle"]
-          },
-          {
-            "group": "Others",
-            "pages": ["integrations/external/backstage"]
+            "item": "Infisical KMS",
+            "groups": [
+              {
+                "group": "Infisical KMS",
+                "pages": [
+                  "documentation/platform/kms/overview",
+                  "documentation/platform/kms/hsm-integration",
+                  "documentation/platform/kms/kubernetes-encryption",
+                  "documentation/platform/kms/kmip"
+                ]
+              }
+            ]
           }
         ]
       },
       {
-        "tab": "CLI",
+        "tab": "CLI Reference",
         "groups": [
           {
             "group": "Command line",

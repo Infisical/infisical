@@ -59,6 +59,7 @@ const envSchema = z
     AUDIT_LOGS_DB_ROOT_CERT: zpStr(
       z.string().describe("Postgres database base64-encoded CA cert for Audit logs").optional()
     ),
+    DISABLE_AUDIT_LOG_STORAGE: zodStrBool.default("false").optional().describe("Disable audit log storage"),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
@@ -482,6 +483,15 @@ export const overwriteSchema: {
     fields: { key: keyof TEnvConfig; description?: string }[];
   };
 } = {
+  auditLogs: {
+    name: "Audit Logs",
+    fields: [
+      {
+        key: "DISABLE_AUDIT_LOG_STORAGE",
+        description: "Disable audit log storage"
+      }
+    ]
+  },
   aws: {
     name: "AWS",
     fields: [

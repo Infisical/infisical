@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { faEllipsis, faMagnifyingGlass, faServer } from "@fortawesome/free-solid-svg-icons";
+import {
+  faEllipsisV,
+  faMagnifyingGlass,
+  faServer,
+  faShieldHalved,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -12,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyState,
+  IconButton,
   Input,
   Table,
   TableContainer,
@@ -88,18 +95,33 @@ const IdentityPanelTable = ({
                         {isInstanceAdmin && (
                           <div className="flex justify-end">
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild className="rounded-lg">
-                                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                                  <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                                </div>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  ariaLabel="Options"
+                                  colorSchema="secondary"
+                                  className="w-6"
+                                  variant="plain"
+                                >
+                                  <FontAwesomeIcon icon={faEllipsisV} />
+                                </IconButton>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="p-1">
+                              <DropdownMenuContent sideOffset={2} align="end">
                                 {isInstanceAdmin && (
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("removeServerAdmin", { name, id });
                                     }}
+                                    icon={
+                                      <div className="relative">
+                                        <FontAwesomeIcon icon={faShieldHalved} />
+                                        <FontAwesomeIcon
+                                          className="absolute -bottom-[0.01rem] -right-1"
+                                          size="2xs"
+                                          icon={faXmark}
+                                        />
+                                      </div>
+                                    }
                                   >
                                     Remove Server Admin
                                   </DropdownMenuItem>
@@ -125,7 +147,7 @@ const IdentityPanelTable = ({
             isDisabled={isFetchingNextPage || !hasNextPage}
             onClick={() => fetchNextPage()}
           >
-            {hasNextPage ? "Load More" : "End of list"}
+            {hasNextPage ? "Load More" : "End of List"}
           </Button>
         )}
       </div>

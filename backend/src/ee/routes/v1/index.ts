@@ -13,6 +13,7 @@ import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
+import { registerIdentityTemplateRouter } from "./identity-template-router";
 import { registerKmipRouter } from "./kmip-router";
 import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
@@ -125,6 +126,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerExternalKmsRouter, {
     prefix: "/external-kms"
   });
+  await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
 

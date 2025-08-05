@@ -408,6 +408,7 @@ export const OAuthCallbackPage = () => {
                 credentials: {
                   code: code as string,
                   installationId: installationId as string,
+                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   ...(credentials?.host && { host: credentials.host })
                 },
                 gatewayId
@@ -416,6 +417,7 @@ export const OAuthCallbackPage = () => {
                 connectionId,
                 credentials: {
                   code: code as string,
+                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   ...(credentials?.host && { host: credentials.host })
                 },
                 gatewayId
@@ -431,6 +433,7 @@ export const OAuthCallbackPage = () => {
                 method: GitHubConnectionMethod.App,
                 credentials: {
                   code: code as string,
+                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   installationId: installationId as string,
                   ...(credentials?.host && { host: credentials.host })
                 },
@@ -440,6 +443,7 @@ export const OAuthCallbackPage = () => {
                 method: GitHubConnectionMethod.OAuth,
                 credentials: {
                   code: code as string,
+                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   ...(credentials?.host && { host: credentials.host })
                 },
                 gatewayId

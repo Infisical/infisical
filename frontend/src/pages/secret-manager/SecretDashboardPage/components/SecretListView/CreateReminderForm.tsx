@@ -4,6 +4,7 @@ import { faClock, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -33,6 +34,7 @@ const MIN_REPEAT_DAYS = 1;
 const MAX_REPEAT_DAYS = 365;
 const DEFAULT_REPEAT_DAYS = 30;
 const DEFAULT_TEXTAREA_ROWS = 8;
+const ONE_DAY_IN_MILLIS = 86400000;
 
 // Enums
 enum ReminderType {
@@ -79,6 +81,11 @@ const ReminderFormSchema = z.object({
     .refine((data) => data > new Date(), { message: "Reminder date must be in the future" })
     .nullable()
     .optional(),
+  fromDate: z.coerce
+    .date()
+    .refine((data) => data > new Date(), { message: "From date must be in the future" })
+    .nullable()
+    .optional(),
   reminderType: z.enum(["Recurring", "One Time"])
 });
 
@@ -86,7 +93,7 @@ export type TReminderFormSchema = z.infer<typeof ReminderFormSchema>;
 
 // Custom hook for form state management
 const useReminderForm = (reminderData?: Reminder) => {
-  const { repeatDays, message, nextReminderDate } = reminderData || {};
+  const { repeatDays, message, nextReminderDate, fromDate } = reminderData || {};
 
   const isEditMode = Boolean(reminderData);
 
@@ -96,9 +103,10 @@ const useReminderForm = (reminderData?: Reminder) => {
       message: message || "",
       nextReminderDate: nextReminderDate || null,
       reminderType: repeatDays ? ReminderType.Recurring : ReminderType.OneTime,
-      recipients: []
+      recipients: [],
+      fromDate
     }),
-    [repeatDays, message, nextReminderDate]
+    [repeatDays, message, nextReminderDate, fromDate]
   );
 
   return {
@@ -153,7 +161,8 @@ export const CreateReminderForm = ({
       message: reminderData?.message || "",
       nextReminderDate: reminderData?.nextReminderDate || null,
       reminderType: reminderData?.repeatDays ? ReminderType.Recurring : ReminderType.OneTime,
-      recipients: []
+      recipients: [],
+      fromDate: reminderData?.fromDate
     },
     resolver: zodResolver(ReminderFormSchema)
   });
@@ -170,6 +179,7 @@ export const CreateReminderForm = ({
 
   // Watch form values
   const reminderType = watch("reminderType");
+  const fromDate = watch("fromDate");
 
   // Invalidate queries helper
   const invalidateQueries = () => {
@@ -195,7 +205,8 @@ export const CreateReminderForm = ({
         message: data.message,
         recipients: data.recipients?.map((r) => r.value) || [],
         secretId,
-        nextReminderDate: data.nextReminderDate
+        nextReminderDate: data.nextReminderDate,
+        fromDate: data.fromDate
       });
 
       invalidateQueries();
@@ -243,6 +254,7 @@ export const CreateReminderForm = ({
       if (newType === ReminderType.Recurring) {
         setValue("repeatDays", DEFAULT_REPEAT_DAYS);
         setValue("nextReminderDate", null);
+        setValue("fromDate", null);
       } else if (newType === ReminderType.OneTime) {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -259,6 +271,7 @@ export const CreateReminderForm = ({
 
     const {
       repeatDays: repeatDaysInitial,
+      fromDate: fromDateInitial,
       message,
       recipients,
       nextReminderDate: nextReminderDateInitial
@@ -266,6 +279,7 @@ export const CreateReminderForm = ({
 
     if (repeatDaysInitial) {
       setValue("repeatDays", repeatDaysInitial);
+      setValue("fromDate", fromDateInitial);
       setValue("reminderType", ReminderType.Recurring);
     } else {
       setValue("reminderType", ReminderType.OneTime);
@@ -323,44 +337,73 @@ export const CreateReminderForm = ({
 
           {/* Conditional Fields Based on Reminder Type */}
           {reminderType === ReminderType.Recurring ? (
-            <Controller
-              control={control}
-              name="repeatDays"
-              render={({ field, fieldState }) => (
-                <div>
+            <div className="grid grid-cols-[1fr,auto] gap-x-2">
+              <Controller
+                control={control}
+                name="repeatDays"
+                render={({ field, fieldState }) => (
+                  <div>
+                    <FormControl
+                      isRequired
+                      className="mb-0"
+                      label="Reminder Interval (in days)"
+                      isError={Boolean(fieldState.error)}
+                      errorText={fieldState.error?.message || ""}
+                    >
+                      <Input
+                        onChange={(el) => {
+                          const value = parseInt(el.target.value, 10);
+                          setValue("repeatDays", Number.isNaN(value) ? null : value);
+                        }}
+                        type="number"
+                        placeholder={DEFAULT_REPEAT_DAYS.toString()}
+                        value={field.value || ""}
+                        min={MIN_REPEAT_DAYS}
+                        max={MAX_REPEAT_DAYS}
+                      />
+                    </FormControl>
+                    {/* Interval description */}
+                    <div
+                      className={twMerge(
+                        "ml-1 mt-2 text-xs",
+                        field.value ? "opacity-60" : "opacity-0"
+                      )}
+                    >
+                      A reminder will be sent every{" "}
+                      {field.value && field.value > 1 ? `${field.value} days` : "day"}
+                      {fromDate ? ` starting from ${format(fromDate, "MM/dd/yy")}` : ""}
+                    </div>
+                  </div>
+                )}
+              />
+              <Controller
+                control={control}
+                name="fromDate"
+                render={({ field, fieldState }) => (
                   <FormControl
-                    isRequired
                     className="mb-0"
-                    label="Reminder Interval (in days)"
+                    label="Start Date"
+                    tooltipText="When enabled, this date will be used as the start date for the first reminder"
                     isError={Boolean(fieldState.error)}
                     errorText={fieldState.error?.message || ""}
                   >
-                    <Input
-                      onChange={(el) => {
-                        const value = parseInt(el.target.value, 10);
-                        setValue("repeatDays", Number.isNaN(value) ? null : value);
+                    <DatePicker
+                      value={field.value || undefined}
+                      className="w-full"
+                      onChange={field.onChange}
+                      dateFormat="P"
+                      popUpProps={{
+                        open: isDatePickerOpen,
+                        onOpenChange: setIsDatePickerOpen
                       }}
-                      type="number"
-                      placeholder={DEFAULT_REPEAT_DAYS.toString()}
-                      value={field.value || ""}
-                      min={MIN_REPEAT_DAYS}
-                      max={MAX_REPEAT_DAYS}
+                      popUpContentProps={{}}
+                      hideTime
+                      hidden={{ before: new Date(Date.now() + ONE_DAY_IN_MILLIS) }}
                     />
                   </FormControl>
-
-                  {/* Interval description */}
-                  <div
-                    className={twMerge(
-                      "ml-1 mt-2 text-xs",
-                      field.value ? "opacity-60" : "opacity-0"
-                    )}
-                  >
-                    A reminder will be sent every{" "}
-                    {field.value && field.value > 1 ? `${field.value} days` : "day"}
-                  </div>
-                </div>
-              )}
-            />
+                )}
+              />
+            </div>
           ) : (
             <Controller
               control={control}
@@ -385,7 +428,7 @@ export const CreateReminderForm = ({
                       }}
                       popUpContentProps={{}}
                       hideTime
-                      hidden={{ before: new Date(Date.now() + 86400000) }}
+                      hidden={{ before: new Date(Date.now() + ONE_DAY_IN_MILLIS) }}
                     />
                   </FormControl>
                 </div>

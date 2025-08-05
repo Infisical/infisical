@@ -179,6 +179,8 @@ import { identityAccessTokenDALFactory } from "@app/services/identity-access-tok
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { identityAliCloudAuthDALFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-dal";
 import { identityAliCloudAuthServiceFactory } from "@app/services/identity-alicloud-auth/identity-alicloud-auth-service";
+import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
+import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
 import { identityAwsAuthDALFactory } from "@app/services/identity-aws-auth/identity-aws-auth-dal";
 import { identityAwsAuthServiceFactory } from "@app/services/identity-aws-auth/identity-aws-auth-service";
 import { identityAzureAuthDALFactory } from "@app/services/identity-azure-auth/identity-azure-auth-dal";
@@ -394,6 +396,7 @@ export const registerRoutes = async (
   const identityProjectDAL = identityProjectDALFactory(db);
   const identityProjectMembershipRoleDAL = identityProjectMembershipRoleDALFactory(db);
   const identityProjectAdditionalPrivilegeDAL = identityProjectAdditionalPrivilegeDALFactory(db);
+  const identityAuthTemplateDAL = identityAuthTemplateDALFactory(db);
 
   const identityTokenAuthDAL = identityTokenAuthDALFactory(db);
   const identityUaDAL = identityUaDALFactory(db);
@@ -1461,6 +1464,15 @@ export const registerRoutes = async (
     identityMetadataDAL
   });
 
+  const identityAuthTemplateService = identityAuthTemplateServiceFactory({
+    identityAuthTemplateDAL,
+    identityLdapAuthDAL,
+    permissionService,
+    kmsService,
+    licenseService,
+    auditLogService
+  });
+
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
     identityOrgMembershipDAL,
@@ -1604,7 +1616,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     identityOrgMembershipDAL,
     licenseService,
-    identityDAL
+    identityDAL,
+    identityAuthTemplateDAL
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -2008,6 +2021,7 @@ export const registerRoutes = async (
     webhook: webhookService,
     serviceToken: serviceTokenService,
     identity: identityService,
+    identityAuthTemplate: identityAuthTemplateService,
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityTokenAuth: identityTokenAuthService,
@@ -2144,7 +2158,8 @@ export const registerRoutes = async (
           inviteOnlySignup: z.boolean().optional(),
           redisConfigured: z.boolean().optional(),
           secretScanningConfigured: z.boolean().optional(),
-          samlDefaultOrgSlug: z.string().optional()
+          samlDefaultOrgSlug: z.string().optional(),
+          auditLogStorageDisabled: z.boolean().optional()
         })
       }
     },
@@ -2171,7 +2186,8 @@ export const registerRoutes = async (
         inviteOnlySignup: Boolean(serverCfg.allowSignUp),
         redisConfigured: cfg.isRedisConfigured,
         secretScanningConfigured: cfg.isSecretScanningConfigured,
-        samlDefaultOrgSlug: cfg.samlDefaultOrgSlug
+        samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
+        auditLogStorageDisabled: Boolean(cfg.DISABLE_AUDIT_LOG_STORAGE)
       };
     }
   });

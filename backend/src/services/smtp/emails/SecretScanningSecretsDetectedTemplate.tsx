@@ -1,7 +1,9 @@
-import { Button, Heading, Link, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface SecretScanningSecretsDetectedTemplateProps
   extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
@@ -32,7 +34,7 @@ export const SecretScanningSecretsDetectedTemplate = ({
         Infisical has uncovered <strong>{numberOfSecrets}</strong> secret(s)
         {isDiffScan ? " from a recent commit to" : " in"} <strong>{resourceName}</strong>
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[8px] pb-[8px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[8px] pb-[8px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">
           You are receiving this notification because one or more leaked secrets have been detected
           {isDiffScan && " in a recent commit"}
@@ -43,11 +45,7 @@ export const SecretScanningSecretsDetectedTemplate = ({
                 pushed by <strong>{authorName ?? "Unknown Pusher"}</strong>{" "}
                 {authorEmail && (
                   <>
-                    (
-                    <Link href={`mailto:${authorEmail}`} className="text-slate-700 no-underline">
-                      {authorEmail}
-                    </Link>
-                    )
+                    (<BaseLink href={`mailto:${authorEmail}`}>{authorEmail}</BaseLink>)
                   </>
                 )}
               </>
@@ -65,24 +63,16 @@ export const SecretScanningSecretsDetectedTemplate = ({
           a comment in the given programming language. This will prevent future notifications from being sent out for
           these secrets.
         </Text>
-        <Text className="text-[14px] text-red-500">
+        <Text className="text-[14px] text-red-600">
           If these are production secrets, please rotate them immediately.
         </Text>
         <Text className="text-[14px]">
           Once you have taken action, be sure to update the finding status in the{" "}
-          <Link href={url} className="text-slate-700 no-underline">
-            Infisical Dashboard
-          </Link>
-          .
+          <BaseLink href={url}>Infisical Dashboard</BaseLink>.
         </Text>
       </Section>
-      <Section className="text-center mt-[28px]">
-        <Button
-          href={url}
-          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
-        >
-          View Leaked Secrets
-        </Button>
+      <Section className="text-center">
+        <BaseButton href={url}>View Leaked Secrets</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
