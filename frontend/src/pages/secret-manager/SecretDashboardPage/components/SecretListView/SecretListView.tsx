@@ -343,31 +343,18 @@ export const SecretListView = ({
                 id: orgSecret.id,
                 type: PendingAction.Update,
                 secretKey: trueOriginalSecret.key,
-                ...(key !== trueOriginalSecret.key && { newSecretName: key }),
-                ...(value !== trueOriginalSecret.value && {
-                  originalValue: trueOriginalSecret.value,
-                  secretValue: value
-                }),
-                ...(comment !== trueOriginalSecret.comment && {
-                  originalComment: trueOriginalSecret.comment,
-                  secretComment: comment
-                }),
-                ...(modSecret.skipMultilineEncoding !==
-                  trueOriginalSecret.skipMultilineEncoding && {
-                  originalSkipMultilineEncoding: trueOriginalSecret.skipMultilineEncoding,
-                  skipMultilineEncoding: modSecret.skipMultilineEncoding
-                }),
-                ...(!isSameTags && {
-                  originalTags:
-                    trueOriginalSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
-                  tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || []
-                }),
-                ...(JSON.stringify(secretMetadata) !==
-                  JSON.stringify(trueOriginalSecret.secretMetadata) && {
-                  originalSecretMetadata: trueOriginalSecret.secretMetadata || [],
-                  secretMetadata: secretMetadata || []
-                }),
-
+                newSecretName: key,
+                originalValue: trueOriginalSecret.value,
+                secretValue: value,
+                originalComment: trueOriginalSecret.comment,
+                secretComment: comment,
+                originalSkipMultilineEncoding: trueOriginalSecret.skipMultilineEncoding,
+                skipMultilineEncoding: modSecret.skipMultilineEncoding,
+                originalTags:
+                  trueOriginalSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
+                tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || [],
+                originalSecretMetadata: trueOriginalSecret.secretMetadata || [],
+                secretMetadata: secretMetadata || [],
                 timestamp: Date.now(),
                 resourceType: "secret",
                 existingSecret: orgSecret
