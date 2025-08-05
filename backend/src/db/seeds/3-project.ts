@@ -30,7 +30,7 @@ export const DEFAULT_PROJECT_ENVS = [
   { name: "Production", slug: "prod" }
 ];
 
-const createGhostUser = async (
+const createUserWithGhostUser = async (
   orgId: string,
   projectId: string,
   userId: string,
@@ -195,17 +195,16 @@ export async function seed(knex: Knex): Promise<void> {
     })
     .returning("*");
 
-  const [projectMembership] = await knex(TableName.ProjectMembership)
-    .insert({
-      projectId: project.id,
+  const userOrgMembership = await knex(TableName.OrgMembership)
+    .where({
+      orgId: seedData1.organization.id,
       userId: seedData1.id
     })
-    .returning("*");
-  await knex(TableName.ProjectUserMembershipRole).insert({
-    role: ProjectMembershipRole.Admin,
-    projectMembershipId: projectMembership.id
-  });
+    .first();
 
+  if (!userOrgMembership) {
+    throw new Error("User org membership not found");
+  }
   const user = await knex(TableName.UserEncryptionKey).where({ userId: seedData1.id }).first();
   if (!user) throw new Error("User not found");
 
@@ -213,7 +212,7 @@ export async function seed(knex: Knex): Promise<void> {
     throw new Error("User public key not found");
   }
 
-  await createGhostUser(seedData1.organization.id, project.id, seedData1.id, projectMembership.id, knex);
+  await createUserWithGhostUser(seedData1.organization.id, project.id, seedData1.id, userOrgMembership.id, knex);
 
   // create default environments and default folders
   const envs = await knex(TableName.Environment)
