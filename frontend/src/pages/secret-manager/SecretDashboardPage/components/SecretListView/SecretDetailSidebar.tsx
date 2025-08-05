@@ -50,6 +50,7 @@ import {
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission, useWorkspace } from "@app/context";
+
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -947,7 +948,6 @@ export const SecretDetailSidebar = ({
                 <div className="flex-1">
                   <Button
                     className="w-full"
-                    type="submit"
                     variant="outline_bg"
                     isDisabled={cannotReadSecretValue || !hasSecretReference(secret?.value)}
                     leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
