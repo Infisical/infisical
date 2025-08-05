@@ -50,7 +50,7 @@ const attemptLogin = async ({
         if (err.response?.data?.error === "LegacyEncryptionScheme") {
           createNotification({
             text: "Failed to login without SRP, attempting to authenticate with legacy SRP authentication.",
-            type: "error"
+            type: "info"
           });
 
           return null;

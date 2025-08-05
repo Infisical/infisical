@@ -64,7 +64,7 @@ export const ChangePasswordSection = () => {
 
       if (user.encryptionVersion !== UserEncryptionVersion.V2) {
         createNotification({
-          text: "Legacy encryption scheme not supported for changing password. Please log out and log back in before changing your password.",
+          text: "Legacy encryption scheme not supported for changing password. Please contact support.",
           type: "error"
         });
 
