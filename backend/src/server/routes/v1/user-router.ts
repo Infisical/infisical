@@ -19,7 +19,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          user: UsersSchema
+          user: UsersSchema.extend({
+            encryptionVersion: z.number()
+          })
         })
       }
     },
