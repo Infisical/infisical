@@ -41,6 +41,8 @@
             "group": "Platform Reference",
             "pages": [
               "documentation/platform/organization",
+              "documentation/platform/event-subscriptions",
+              "documentation/platform/folder",
               {
                 "group": "Projects",
                 "pages": [
@@ -763,6 +765,10 @@
               {
                 "group": "Admin",
                 "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+              },
+              {
+                "group": "Events",
+                "pages": ["api-reference/endpoints/events/project-events"]
               },
               {
                 "group": "Identities",
