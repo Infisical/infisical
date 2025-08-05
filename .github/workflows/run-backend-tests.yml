@@ -34,6 +34,8 @@ jobs:
         working-directory: backend
       - name: Start postgres and redis
         run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
+      - name: Start Secret Rotation testing databases
+        run: docker compose -f docker-compose.e2e-dbs.yml up -d
       - name: Run unit test
         run: npm run test:unit
         working-directory: backend

@@ -18,6 +18,7 @@ import { keyStoreFactory } from "@app/keystore/keystore";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+import { bootstrapCheck } from "@app/server/boot-strap-check";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 export default {
@@ -63,6 +64,8 @@ export default {
       const queue = queueServiceFactory(envCfg, { dbConnectionUrl: envCfg.DB_CONNECTION_URI });
       const keyStore = keyStoreFactory(envCfg);
 
+      await queue.initialize();
+
       const hsmModule = initializeHsmModule(envCfg);
       hsmModule.initialize();
 
@@ -78,8 +81,12 @@ export default {
         envConfig: envCfg
       });
 
+      await bootstrapCheck({ db });
+
       // @ts-expect-error type
       globalThis.testServer = server;
+      // @ts-expect-error type
+      globalThis.testQueue = queue;
       // @ts-expect-error type
       globalThis.testSuperAdminDAL = superAdminDAL;
       // @ts-expect-error type
@@ -106,6 +113,8 @@ export default {
     return {
       async teardown() {
         // @ts-expect-error type
+        await globalThis.testQueue.shutdown();
+        // @ts-expect-error type
         await globalThis.testServer.close();
         // @ts-expect-error type
         delete globalThis.testServer;
@@ -113,6 +122,8 @@ export default {
         delete globalThis.testSuperAdminDAL;
         // @ts-expect-error type
         delete globalThis.jwtToken;
+        // @ts-expect-error type
+        delete globalThis.testQueue;
         // called after all tests with this env have been run
         await db.migrate.rollback(
           {

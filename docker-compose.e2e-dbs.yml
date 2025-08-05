@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  oracle-db-23.8:
+    image: container-registry.oracle.com/database/free:23.8.0.0
+    container_name: oracle-db-23.8
+    ports:
+      - "1521:1521"
+    environment:
+      - ORACLE_PDB=pdb
+      - ORACLE_PWD=pdb-password
+    volumes:
+      - oracle-data-23.8:/opt/oracle/oradata
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sqlplus", "-L", "system/pdb-password@//localhost:1521/FREEPDB1", "<<<", "SELECT 1 FROM DUAL;"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  mysql-8.4.6:
+    image: mysql:8.4.6
+    container_name: mysql-8.4.6
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=mysql-test
+      - MYSQL_DATABASE=mysql-test
+      - MYSQL_ROOT_HOST=% 
+      - MYSQL_USER=mysql-test
+      - MYSQL_PASSWORD=mysql-test
+    volumes:
+      - mysql-data-8.4.6:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mysql-test", "-pmysql-test"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  oracle-data-23.8:
+  mysql-data-8.4.6:
