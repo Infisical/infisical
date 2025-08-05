@@ -14,7 +14,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
     userId: string,
     projectId: string,
     tx?: Knex
-  ): Promise<(TProjectKeys & { sender: { publicKey: string } }) | undefined> => {
+  ): Promise<(TProjectKeys & { sender: { publicKey?: string } }) | undefined> => {
     try {
       const projectKey = await (tx || db.replicaNode())(TableName.ProjectKeys)
         .join(TableName.Users, `${TableName.ProjectKeys}.senderId`, `${TableName.Users}.id`)
@@ -25,7 +25,7 @@ export const projectKeyDALFactory = (db: TDbClient) => {
         .select(db.ref("publicKey").withSchema(TableName.UserEncryptionKey))
         .first();
       if (projectKey) {
-        return { ...projectKey, sender: { publicKey: projectKey.publicKey } };
+        return { ...projectKey, sender: { publicKey: projectKey.publicKey || undefined } };
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Find latest project key" });

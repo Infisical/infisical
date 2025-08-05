@@ -60,7 +60,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   enterpriseSecretSyncs: false,
   enterpriseAppConnections: false,
   fips: false,
-  eventSubscriptions: false
+  eventSubscriptions: false,
+  machineIdentityAuthTemplates: false
 });
 
 export const setupLicenseRequestWithStore = (

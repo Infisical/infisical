@@ -79,7 +79,7 @@ type TOidcConfigServiceFactoryDep = {
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;

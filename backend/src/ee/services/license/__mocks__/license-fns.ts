@@ -32,6 +32,7 @@ export const getDefaultOnPremFeatures = () => {
     sshHostGroups: false,
     enterpriseSecretSyncs: false,
     enterpriseAppConnections: true
+    machineIdentityAuthTemplates: false
   };
 };
 

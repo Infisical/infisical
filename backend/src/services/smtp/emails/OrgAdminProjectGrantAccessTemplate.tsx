@@ -2,6 +2,7 @@ import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface OrgAdminProjectGrantAccessTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview"> {
   email: string;
@@ -24,8 +25,8 @@ export const OrgAdminProjectGrantAccessTemplate = ({
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[24px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px] mt-[4px]">
-          The organization admin <strong>{email}</strong> has self-issued direct access to the project{" "}
-          <strong>{projectName}</strong>.
+          The organization admin <BaseLink href={`mailto:${email}`}>{email}</BaseLink> has self-issued direct access to
+          the project <strong>{projectName}</strong>.
         </Text>
       </Section>
     </BaseEmailWrapper>

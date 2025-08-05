@@ -53,7 +53,7 @@ type DecryptedIntegrationAuths = z.infer<typeof DecryptedIntegrationAuthsSchema>
 
 type TLatestKey = TProjectKeys & {
   sender: {
-    publicKey: string;
+    publicKey?: string;
   };
 };
 
@@ -91,6 +91,10 @@ const getDecryptedValues = (data: Array<{ ciphertext: string; iv: string; tag: s
   return results;
 };
 export const decryptSecrets = (encryptedSecrets: TSecrets[], privateKey: string, latestKey: TLatestKey) => {
+  if (!latestKey.sender.publicKey) {
+    throw new Error("Latest key sender public key not found");
+  }
+
   const key = crypto.encryption().asymmetric().decrypt({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,
@@ -143,6 +147,10 @@ export const decryptSecretVersions = (
   privateKey: string,
   latestKey: TLatestKey
 ) => {
+  if (!latestKey.sender.publicKey) {
+    throw new Error("Latest key sender public key not found");
+  }
+
   const key = crypto.encryption().asymmetric().decrypt({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,
@@ -195,6 +203,10 @@ export const decryptSecretApprovals = (
   privateKey: string,
   latestKey: TLatestKey
 ) => {
+  if (!latestKey.sender.publicKey) {
+    throw new Error("Latest key sender public key not found");
+  }
+
   const key = crypto.encryption().asymmetric().decrypt({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,
@@ -247,6 +259,10 @@ export const decryptIntegrationAuths = (
   privateKey: string,
   latestKey: TLatestKey
 ) => {
+  if (!latestKey.sender.publicKey) {
+    throw new Error("Latest key sender public key not found");
+  }
+
   const key = crypto.encryption().asymmetric().decrypt({
     ciphertext: latestKey.encryptedKey,
     nonce: latestKey.nonce,

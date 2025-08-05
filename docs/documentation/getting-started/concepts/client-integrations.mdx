@@ -1,0 +1,31 @@
+---
+title: "Client Ecosystem"
+sidebarTitle: "Client Ecosystem"
+description: "Get an overview of the CLI, SDKs, agents, APIs, and integrations that interact with Infisical."
+---
+
+Infisical provides a flexible interface for integrating into development workflows and infrastructure. Around it is a rich ecosystem of clients and integrations that allow users and systems to interact with Infisical across any environment.
+
+These clients enable access to secrets, certificates, and other resources from wherever they’re needed—whether that’s a developer’s terminal, a CI/CD pipeline, or a running Kubernetes workload.
+
+## Available Clients and Interfaces
+
+Infisical offers a non-exhaustive set of clients and interfaces to support a wide range of use cases:
+
+- [CLI](/cli/overview): A powerful command-line interface for developers and operators to interact with Infisical from local or automated environments. Commonly used for secret access, SSH credential issuance, and more.
+
+- [SDKs](/sdks/overview): Official client libraries for languages like Go, Node.js, and Python make it easy to integrate Infisical directly into applications and internal tooling.
+
+- [HTTP API](/api-reference/overview/introduction): A fully documented RESTful API powers all core functionality and enables advanced or custom integrations.
+
+- [Agents](/integrations/platforms/infisical-agent): Lightweight background processes that can fetch and sync secrets or credentials into local environments, containers, or file systems.
+
+- [Kubernetes Operator](/integrations/platforms/kubernetes/overview): A native controller that syncs Infisical secrets into Kubernetes as native Secrets, and supports secure workload integration.
+
+- [External Secrets Operator (ESO)](https://external-secrets.io/latest/provider/infisical): Allows Infisical to act as a backend provider for syncing secrets into Kubernetes `Secret` objects using the widely adopted External Secrets Operator.
+
+- [Kubernetes PKI Issuer](/documentation/platform/pki/pki-issuer): A controller that issues X.509 certificates from Infisical PKI using the cert-manager Issuer and Certificate CRDs.
+
+- [Secret Syncs](/integrations/secret-syncs/overview): Native integrations to forward secrets to services like GitHub, GitLab, AWS Secrets Manager, Vercel, and more.
+
+This modular ecosystem lets teams use Infisical alongside their existing stack—without requiring opinionated workflows or lock-in.
