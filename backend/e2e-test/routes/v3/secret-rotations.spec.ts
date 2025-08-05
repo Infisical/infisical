@@ -434,6 +434,13 @@ describe("Secret Rotations", async () => {
         attempts += 1;
         await new Promise((resolve) => setTimeout(resolve, 2_500));
       }
+
+      if (attempts >= 60) {
+        throw new Error("Secret rotation failed to rotate after 60 attempts");
+      }
+
+      const finalSecretValue = await getSecretValue(secretMapping.password);
+      expect(finalSecretValue).not.toBe(startSecretValue);
     },
     {
       timeout: 300_000

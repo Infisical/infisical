@@ -121,7 +121,7 @@ export default {
         // @ts-expect-error type
         delete globalThis.testSuperAdminDAL;
         // @ts-expect-error type
-        delete globalThis.jwtToken;
+        delete globalThis.jwtAuthToken;
         // @ts-expect-error type
         delete globalThis.testQueue;
         // called after all tests with this env have been run
