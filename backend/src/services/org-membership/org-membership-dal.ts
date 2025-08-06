@@ -32,6 +32,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           db.ref("roleId").withSchema(TableName.OrgMembership),
           db.ref("status").withSchema(TableName.OrgMembership),
           db.ref("isActive").withSchema(TableName.OrgMembership),
+          db.ref("lastLoggedInAuthMethod").withSchema(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
@@ -64,7 +65,8 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           role,
           status,
           isActive,
-          inviteEmail
+          inviteEmail,
+          lastLoggedInAuthMethod
         }) => ({
           roleId,
           orgId,
@@ -73,6 +75,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           status,
           isActive,
           inviteEmail,
+          lastLoggedInAuthMethod,
           user: {
             id: userId,
             email,

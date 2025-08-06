@@ -36,7 +36,7 @@ import {
 type TIdentityOciAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityOciAuthDAL: Pick<TIdentityOciAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -91,6 +91,13 @@ export const identityOciAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityOciAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoggedInAuthMethod: IdentityAuthMethod.OCI_AUTH
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityOciAuth.identityId,

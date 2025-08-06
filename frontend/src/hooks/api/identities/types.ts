@@ -41,6 +41,7 @@ export type IdentityMembershipOrg = {
   id: string;
   identity: Identity;
   organization: string;
+  lastLoggedInAuthMethod?: IdentityAuthMethod;
   metadata: { key: string; value: string; id: string }[];
   role: "admin" | "member" | "viewer" | "no-access" | "custom";
   customRole?: TOrgRole;

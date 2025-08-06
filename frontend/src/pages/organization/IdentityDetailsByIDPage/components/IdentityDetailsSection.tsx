@@ -139,6 +139,10 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
         </div>
         <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
+          <p className="text-sm text-mineshaft-300">{data.lastLoggedInAuthMethod || "-"}</p>
+        </div>
+        <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Delete Protection</p>
           <p className="text-sm text-mineshaft-300">
             {data.identity.hasDeleteProtection ? "On" : "Off"}

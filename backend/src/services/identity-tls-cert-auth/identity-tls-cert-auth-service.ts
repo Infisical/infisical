@@ -30,7 +30,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
     TIdentityTlsCertAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -118,6 +118,13 @@ export const identityTlsCertAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityTlsCertAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoggedInAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityTlsCertAuth.identityId,

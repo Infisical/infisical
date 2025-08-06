@@ -43,7 +43,7 @@ import {
 
 type TIdentityJwtAuthServiceFactoryDep = {
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -209,6 +209,13 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoggedInAuthMethod: IdentityAuthMethod.JWT_AUTH
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityJwtAuth.identityId,

@@ -68,6 +68,7 @@ export type OrgUser = {
   deniedPermissions: any[];
   roleId: string;
   isActive: boolean;
+  lastLoggedInAuthMethod?: AuthMethod;
 };
 
 export type TProjectMembership = {

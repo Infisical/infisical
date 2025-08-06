@@ -38,7 +38,7 @@ type TIdentityAliCloudAuthServiceFactoryDep = {
     TIdentityAliCloudAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -87,6 +87,13 @@ export const identityAliCloudAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityAliCloudAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoggedInAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityAliCloudAuth.identityId,

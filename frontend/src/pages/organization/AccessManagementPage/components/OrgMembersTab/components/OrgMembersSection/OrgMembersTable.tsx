@@ -7,6 +7,7 @@ import {
   faEdit,
   faEllipsisV,
   faFilter,
+  faInfoCircle,
   faMagnifyingGlass,
   faSearch,
   faUsers,
@@ -19,6 +20,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { LastLoginSection } from "@app/components/organization/LastLoginSection";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -471,7 +473,16 @@ export const OrgMembersTable = ({
             {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
             {!isLoading &&
               filteredMembersPage.map(
-                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status, isActive }) => {
+                ({
+                  user: u,
+                  inviteEmail,
+                  role,
+                  roleId,
+                  id: orgMembershipId,
+                  status,
+                  isActive,
+                  lastLoggedInAuthMethod
+                }) => {
                   const name =
                     u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : null;
                   const email = u?.email || inviteEmail;
@@ -504,7 +515,9 @@ export const OrgMembersTable = ({
                           }}
                         />
                       </Td>
-                      <Td className={twMerge("max-w-0", isActive ? "" : "text-mineshaft-400")}>
+                      <Td
+                        className={twMerge("group max-w-0", isActive ? "" : "text-mineshaft-400")}
+                      >
                         <div className="flex items-center">
                           <p className="truncate">
                             {name ?? <span className="text-mineshaft-400">Not Set</span>}
@@ -516,6 +529,19 @@ export const OrgMembersTable = ({
                                 <FontAwesomeIcon className="xl:hidden" icon={faUserShield} />
                               </Tooltip>
                             </Badge>
+                          )}
+                          {lastLoggedInAuthMethod && (
+                            <Tooltip
+                              className="min-w-52 max-w-96"
+                              content={
+                                <LastLoginSection lastLoggedInAuthMethod={lastLoggedInAuthMethod} />
+                              }
+                            >
+                              <FontAwesomeIcon
+                                icon={faInfoCircle}
+                                className="ml-2 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100"
+                              />
+                            </Tooltip>
                           )}
                         </div>
                       </Td>

@@ -254,6 +254,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("role").withSchema("paginatedIdentity"),
           db.ref("roleId").withSchema("paginatedIdentity"),
           db.ref("orgId").withSchema("paginatedIdentity"),
+          db.ref("lastLoggedInAuthMethod").withSchema("paginatedIdentity"),
           db.ref("createdAt").withSchema("paginatedIdentity"),
           db.ref("updatedAt").withSchema("paginatedIdentity"),
           db.ref("identityId").withSchema("paginatedIdentity").as("identityId"),
@@ -319,7 +320,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           ldapId,
           tlsCertId,
           createdAt,
-          updatedAt
+          updatedAt,
+          lastLoggedInAuthMethod
         }) => ({
           role,
           roleId,
@@ -328,6 +330,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           orgId,
           createdAt,
           updatedAt,
+          lastLoggedInAuthMethod,
           customRole: roleId
             ? {
                 id: crId,
@@ -497,6 +500,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("orgId").withSchema(TableName.IdentityOrgMembership),
           db.ref("createdAt").withSchema(TableName.IdentityOrgMembership),
           db.ref("updatedAt").withSchema(TableName.IdentityOrgMembership),
+          db.ref("lastLoggedInAuthMethod").withSchema(TableName.IdentityOrgMembership),
           db.ref("identityId").withSchema(TableName.IdentityOrgMembership).as("identityId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
@@ -576,7 +580,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           tokenId,
           ldapId,
           createdAt,
-          updatedAt
+          updatedAt,
+          lastLoggedInAuthMethod
         }) => ({
           role,
           roleId,
@@ -586,6 +591,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           orgId,
           createdAt,
           updatedAt,
+          lastLoggedInAuthMethod,
           customRole: roleId
             ? {
                 id: crId,

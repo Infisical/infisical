@@ -59,6 +59,11 @@ export const identityUaServiceFactory = ({
     }
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityUa.identityId });
+    if (!identityMembershipOrg) {
+      throw new NotFoundError({
+        message: "No identity with the org membership was found"
+      });
+    }
 
     checkIPAgainstBlocklist({
       ipAddress: ip,
@@ -127,7 +132,13 @@ export const identityUaServiceFactory = ({
 
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
       const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
-
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoggedInAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityUa.identityId,

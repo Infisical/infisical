@@ -160,6 +160,14 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           </div>
         </div>
         <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
+          <div className="group flex align-top">
+            <p className="break-all text-sm text-mineshaft-300">
+              {membership.lastLoggedInAuthMethod || "-"}
+            </p>
+          </div>
+        </div>
+        <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
           <p className="text-sm text-mineshaft-300">{roleName ?? "-"}</p>
         </div>
