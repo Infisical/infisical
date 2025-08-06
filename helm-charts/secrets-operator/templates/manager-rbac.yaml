@@ -16,6 +16,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - secrets
   verbs:
   - create
   - delete
@@ -33,17 +34,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - secrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - serviceaccounts
   verbs:
   - get
@@ -55,17 +45,6 @@ rules:
   - serviceaccounts/token
   verbs:
   - create
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets
-  - deployments
-  - statefulsets
-  verbs:
-  - get
-  - list
-  - update
-  - watch
 - apiGroups:
   - apps
   resources:
@@ -85,69 +64,8 @@ rules:
   - secrets.infisical.com
   resources:
   - clustergenerators
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - secrets.infisical.com
-  resources:
   - infisicaldynamicsecrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - secrets.infisical.com
-  resources:
-  - infisicaldynamicsecrets/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - secrets.infisical.com
-  resources:
-  - infisicaldynamicsecrets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - secrets.infisical.com
-  resources:
   - infisicalpushsecrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - secrets.infisical.com
-  resources:
-  - infisicalpushsecrets/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - secrets.infisical.com
-  resources:
-  - infisicalpushsecrets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - secrets.infisical.com
-  resources:
   - infisicalsecrets
   verbs:
   - create
@@ -160,12 +78,16 @@ rules:
 - apiGroups:
   - secrets.infisical.com
   resources:
+  - infisicaldynamicsecrets/finalizers
+  - infisicalpushsecrets/finalizers
   - infisicalsecrets/finalizers
   verbs:
   - update
 - apiGroups:
   - secrets.infisical.com
   resources:
+  - infisicaldynamicsecrets/status
+  - infisicalpushsecrets/status
   - infisicalsecrets/status
   verbs:
   - get
@@ -184,9 +106,7 @@ metadata:
   namespace: {{ .Values.scopedNamespace | quote }}
   {{- end }}
   labels:
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: k8-operator
-    app.kubernetes.io/part-of: k8-operator
+
   {{- include "secrets-operator.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
