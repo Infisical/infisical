@@ -27,13 +27,13 @@ export async function down(knex: Knex): Promise<void> {
     TableName.IdentityOrgMembership,
     "lastLoggedInAuthMethod"
   );
-  if (!lastUserLoggedInAuthMethod) {
+  if (lastUserLoggedInAuthMethod) {
     await knex.schema.alterTable(TableName.OrgMembership, (t) => {
       t.dropColumn("lastLoggedInAuthMethod");
     });
   }
 
-  if (!lastIdentityLoggedInAuthMethod) {
+  if (lastIdentityLoggedInAuthMethod) {
     await knex.schema.alterTable(TableName.IdentityOrgMembership, (t) => {
       t.dropColumn("lastLoggedInAuthMethod");
     });
