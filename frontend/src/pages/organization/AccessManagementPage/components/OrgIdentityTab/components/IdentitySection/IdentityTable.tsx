@@ -52,7 +52,12 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetOrgRoles, useSearchIdentities, useUpdateIdentity } from "@app/hooks/api";
+import {
+  identityAuthToNameMap,
+  useGetOrgRoles,
+  useSearchIdentities,
+  useUpdateIdentity
+} from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -308,7 +313,11 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           <Tooltip
                             className="min-w-52 max-w-96"
                             content={
-                              <LastLoginSection lastLoggedInAuthMethod={lastLoggedInAuthMethod} />
+                              <LastLoginSection
+                                lastLoggedInAuthMethod={
+                                  identityAuthToNameMap[lastLoggedInAuthMethod]
+                                }
+                              />
                             }
                           >
                             <FontAwesomeIcon
