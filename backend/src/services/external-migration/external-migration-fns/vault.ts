@@ -254,29 +254,26 @@ export const transformToInfisicalFormatNamespaceToProjects = (
     let currentFolderId: string | undefined;
     let currentPath = "";
 
-    if (path.includes("/")) {
-      const pathParts = path.split("/").filter(Boolean);
+    const pathParts = path.split("/").filter(Boolean);
+    const folderParts = pathParts;
 
-      const folderParts = pathParts;
+    // create nested folder structure for the entire path
+    for (const folderName of folderParts) {
+      currentPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+      const folderKey = `${namespace}:${mount}:${currentPath}`;
 
-      // create nested folder structure for the entire path
-      for (const folderName of folderParts) {
-        currentPath = currentPath ? `${currentPath}/${folderName}` : folderName;
-        const folderKey = `${namespace}:${mount}:${currentPath}`;
-
-        if (!folderMap.has(folderKey)) {
-          const folderId = uuidv4();
-          folderMap.set(folderKey, folderId);
-          folders.push({
-            id: folderId,
-            name: folderName,
-            environmentId,
-            parentFolderId: currentFolderId || environmentId
-          });
-          currentFolderId = folderId;
-        } else {
-          currentFolderId = folderMap.get(folderKey)!;
-        }
+      if (!folderMap.has(folderKey)) {
+        const folderId = uuidv4();
+        folderMap.set(folderKey, folderId);
+        folders.push({
+          id: folderId,
+          name: folderName,
+          environmentId,
+          parentFolderId: currentFolderId || environmentId
+        });
+        currentFolderId = folderId;
+      } else {
+        currentFolderId = folderMap.get(folderKey)!;
       }
     }
 
