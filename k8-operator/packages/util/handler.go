@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -37,7 +36,6 @@ func (e *EnqueueDelayedEventHandler) Delete(_ event.DeleteEvent, _ workqueue.Rat
 }
 
 func (e *EnqueueDelayedEventHandler) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
-	fmt.Println(evt)
 	if evt.Object == nil {
 		return
 	}

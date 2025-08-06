@@ -7,14 +7,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	defaultErrors "errors"
@@ -61,6 +58,8 @@ func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.GetLogger(req)
+
+	logger.Info("Reconcile called")
 
 	var infisicalSecretCRD secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
@@ -181,8 +180,8 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	if infisicalSecretCRD.Spec.InstantUpdates {
-		logger.Info("Event watcher enabled")
-		// ensure event watcher is open
+		logger.Info("Instant updates are enabled")
+
 		if err := r.EnsureEventStream(ctx, logger, &infisicalSecretCRD); err != nil {
 			logger.Error(err, fmt.Sprintf("unable to ensure event stream. Will requeue after [requeueTime=%v]", requeueTime))
 			return ctrl.Result{
@@ -190,7 +189,6 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			}, nil
 		}
 	} else {
-		// ensure event stream is closed
 		r.CloseEventStream(ctx, logger, &infisicalSecretCRD)
 	}
 
@@ -207,15 +205,10 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Watches(
 			&source.Channel{Source: r.SourceCh},
-			handler.EnqueueRequestsFromMapFunc(r.findSecretsForCluster),
+			&util.EnqueueDelayedEventHandler{Delay: time.Second * 3},
 		).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
-			GenericFunc: func(ge event.GenericEvent) bool {
-				fmt.Println("Generic event recieved")
-				return true
-			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				println("UpdateFunc event recieved")
 				if e.ObjectOld.GetGeneration() == e.ObjectNew.GetGeneration() {
 					return false // Skip reconciliation for status-only changes
 				}
@@ -240,32 +233,4 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		})).
 		Complete(r)
 
-}
-
-func (r *InfisicalSecretReconciler) findSecretsForCluster(o client.Object) []reconcile.Request {
-	ctx := context.Background()
-	secrets := &secretsv1alpha1.InfisicalSecretList{}
-
-	requests := []reconcile.Request{}
-
-	if err := r.List(ctx, secrets); err != nil {
-		fmt.Println(err)
-		return requests
-	}
-
-	for _, sec := range secrets.Items {
-		if sec.GetName() == o.GetName() && sec.GetNamespace() == o.GetNamespace() {
-			requests = append(requests, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: o.GetNamespace(),
-					Name:      o.GetName(),
-				},
-			})
-			break
-		}
-	}
-
-	fmt.Println(requests)
-
-	return requests
 }

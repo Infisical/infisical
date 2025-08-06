@@ -469,7 +469,7 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 			InfisicalClient:  client,
 			CancelCtx:        cancel,
 			AuthDetails:      util.AuthenticationDetails{},
-			ServerSentEvents: sse.NewConnectionRegistry(),
+			ServerSentEvents: sse.NewConnectionRegistry(ctx),
 		}
 
 		resourceVariables = infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)]
@@ -509,7 +509,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			InfisicalClient:  infisicalClient,
 			CancelCtx:        cancelCtx,
 			AuthDetails:      authDetails,
-			ServerSentEvents: sse.NewConnectionRegistry(),
+			ServerSentEvents: sse.NewConnectionRegistry(ctx),
 		})
 	}
 
@@ -638,41 +638,43 @@ func (r *InfisicalSecretReconciler) EnsureEventStream(ctx context.Context, logge
 
 		req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/v1/events/subscribe/project-events", api.API_HOST_URL), strings.NewReader(string(body)))
 
+		if err != nil {
+			return nil, err
+		}
+
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}
 
-		return req, err
+		return req, nil
 	})
 
 	if err != nil {
 		return fmt.Errorf("unable to connect to SSE server [err=%s]", err)
 	}
 
-outer:
-	for {
-		select {
-		case ev := <-events:
-			logger.Info("Received event", "secret", secret, "event", ev)
-			r.SourceCh <- event.GenericEvent{
-				Object: secret,
+	go func() {
+	outer:
+		for {
+			select {
+			case ev := <-events:
+				logger.Info("Received SSE Event", "event", ev)
+				r.SourceCh <- event.GenericEvent{
+					Object: secret,
+				}
+			case err := <-errors:
+				logger.Error(err, "Error occurred")
+				break outer
+			case <-ctx.Done():
+				break outer
 			}
-			logger.Info("Send to channel")
-		case err := <-errors:
-			logger.Error(err, "Error occurred")
-			break outer
-		case <-ctx.Done():
-			logger.Info("Context done")
-			break outer
 		}
-	}
+	}()
 
 	return nil
 }
 
 func (r *InfisicalSecretReconciler) CloseEventStream(ctx context.Context, logger logr.Logger, secret *secretsv1alpha1.InfisicalSecret) error {
-	logger.Info("Event watcher disabled")
-
 	if secret == nil {
 		return fmt.Errorf("infisicalSecret is nil")
 	}
