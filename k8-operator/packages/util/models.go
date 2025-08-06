@@ -8,8 +8,8 @@ import (
 )
 
 type ResourceVariables struct {
-	InfisicalClient   infisicalSdk.InfisicalClientInterface
-	CancelCtx         context.CancelFunc
-	AuthDetails       AuthenticationDetails
-	EventStreamClient *sse.SSEClient
+	InfisicalClient  infisicalSdk.InfisicalClientInterface
+	CancelCtx        context.CancelFunc
+	AuthDetails      AuthenticationDetails
+	ServerSentEvents sse.ConnectionRegistry
 }

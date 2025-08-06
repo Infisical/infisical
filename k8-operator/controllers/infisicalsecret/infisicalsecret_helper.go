@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	tpl "text/template"
 
@@ -28,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
 func (r *InfisicalSecretReconciler) handleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error) {
@@ -464,10 +466,10 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 		})
 
 		infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)] = util.ResourceVariables{
-			InfisicalClient:   client,
-			CancelCtx:         cancel,
-			AuthDetails:       util.AuthenticationDetails{},
-			EventStreamClient: sse.NewClient(api.API_HOST_URL),
+			InfisicalClient:  client,
+			CancelCtx:        cancel,
+			AuthDetails:      util.AuthenticationDetails{},
+			ServerSentEvents: sse.NewConnectionRegistry(),
 		}
 
 		resourceVariables = infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)]
@@ -477,7 +479,6 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 	}
 
 	return resourceVariables
-
 }
 
 func (r *InfisicalSecretReconciler) updateResourceVariables(infisicalSecret v1alpha1.InfisicalSecret, resourceVariables util.ResourceVariables) {
@@ -485,7 +486,6 @@ func (r *InfisicalSecretReconciler) updateResourceVariables(infisicalSecret v1al
 }
 
 func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, managedKubeSecretReferences []v1alpha1.ManagedKubeSecretConfig, managedKubeConfigMapReferences []v1alpha1.ManagedKubeConfigMapConfig) (int, error) {
-
 	if infisicalSecret == nil {
 		return 0, fmt.Errorf("infisicalSecret is nil")
 	}
@@ -506,9 +506,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		}
 
 		r.updateResourceVariables(*infisicalSecret, util.ResourceVariables{
-			InfisicalClient: infisicalClient,
-			CancelCtx:       cancelCtx,
-			AuthDetails:     authDetails,
+			InfisicalClient:  infisicalClient,
+			CancelCtx:        cancelCtx,
+			AuthDetails:      authDetails,
+			ServerSentEvents: sse.NewConnectionRegistry(),
 		})
 	}
 
@@ -577,71 +578,116 @@ func (r *InfisicalSecretReconciler) EnsureEventStream(ctx context.Context, logge
 		return fmt.Errorf("infisicalSecret is nil")
 	}
 
-	resourceVariables := r.getResourceVariables(*secret)
-	infiscalClient := resourceVariables.InfisicalClient
-	projectSlug := resourceVariables.AuthDetails.MachineIdentityScope.ProjectSlug
+	variables := r.getResourceVariables(*secret)
+
+	if !variables.AuthDetails.IsMachineIdentityAuth {
+		return fmt.Errorf("only machine identity is supported for subscriptions")
+	}
+
+	projectSlug := variables.AuthDetails.MachineIdentityScope.ProjectSlug
+	secretsPath := variables.AuthDetails.MachineIdentityScope.SecretsPath
+	envSlug := variables.AuthDetails.MachineIdentityScope.EnvSlug
+
+	infiscalClient := variables.InfisicalClient
+	conn := variables.ServerSentEvents
 
 	token := infiscalClient.Auth().GetAccessToken()
 
-	proj, err := util.GetProjectBySlug(token, projectSlug)
+	project, err := util.GetProjectBySlug(token, projectSlug)
 
-	logger.Info("Project", "project", proj, "slug", projectSlug)
 	if err != nil {
 		return fmt.Errorf("failed to get project [err=%s]", err)
 	}
 
-	client := sse.NewClient(fmt.Sprintf("%s/v1/events/subscribe/project-events", api.API_HOST_URL))
-
-	registers := []api.SubProjectEventsRequestRegister{
-		api.SubProjectEventsRequestRegister{
-			Event: "secret:delete",
-			Conditions: &api.SubProjectEventsRequestCondition{
-				SecretPath:      "/**",
-				EnvironmentSlug: secret.Spec.Authentication.UniversalAuth.SecretsScope.EnvSlug,
-			},
-		},
+	if variables.AuthDetails.MachineIdentityScope.Recursive {
+		secretsPath = fmt.Sprint(secretsPath, "**")
 	}
 
-	b, err := json.Marshal(api.SubProjectEventsRequest{
-		ProjectID: proj.ID,
-		Register:  registers,
+	conditions := &api.SubProjectEventsRequestCondition{
+		SecretPath:      secretsPath,
+		EnvironmentSlug: envSlug,
+	}
+
+	body, err := json.Marshal(api.SubProjectEventsRequest{
+		ProjectID: project.ID,
+		Register: []api.SubProjectEventsRequestRegister{
+			{
+				Event:      "secret:create",
+				Conditions: conditions,
+			},
+			{
+				Event:      "secret:update",
+				Conditions: conditions,
+			},
+			{
+				Event:      "secret:delete",
+				Conditions: conditions,
+			},
+		},
 	})
 
 	if err != nil {
-		return fmt.Errorf("CallSubscribeProjectEvents: Unable to marshal body [err=%s]", err)
+		return fmt.Errorf("CallSubscribeProjectEvents: unable to marshal body [err=%s]", err)
 	}
 
-	headers := map[string]string{
-		"User-Agent":    api.USER_AGENT_NAME,
-		"Authorization": fmt.Sprint("Bearer ", token),
-	}
+	events, errors, err := conn.Subscribe(func() (*http.Request, error) {
+		headers := map[string]string{
+			"User-Agent":    api.USER_AGENT_NAME,
+			"Authorization": fmt.Sprint("Bearer ", token),
+		}
 
-	events, errors, err := client.Connect("POST", headers, strings.NewReader(string(b)))
+		req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/v1/events/subscribe/project-events", api.API_HOST_URL), strings.NewReader(string(body)))
+
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+
+		return req, err
+	})
 
 	if err != nil {
-		return fmt.Errorf("Unable to connect to SSE server [err=%s]", err)
+		return fmt.Errorf("unable to connect to SSE server [err=%s]", err)
 	}
 
-	if err != nil {
-		return fmt.Errorf("failed to subscribe to project events [err=%s]", err)
-	}
-
+outer:
 	for {
 		select {
-		case event := <-events:
-			logger.Info("Received event", "event", event)
+		case ev := <-events:
+			logger.Info("Received event", "secret", secret, "event", ev)
+			r.SourceCh <- event.GenericEvent{
+				Object: secret,
+			}
+			logger.Info("Send to channel")
 		case err := <-errors:
 			logger.Error(err, "Error occurred")
+			break outer
 		case <-ctx.Done():
 			logger.Info("Context done")
-			return nil
+			break outer
 		}
 	}
+
+	return nil
 }
 
-func (r *InfisicalSecretReconciler) CloseEventStream(ctx context.Context, logger logr.Logger, infisicalSecretCRD *secretsv1alpha1.InfisicalSecret) error {
+func (r *InfisicalSecretReconciler) CloseEventStream(ctx context.Context, logger logr.Logger, secret *secretsv1alpha1.InfisicalSecret) error {
 	logger.Info("Event watcher disabled")
-	// ensure event watcher is running
+
+	if secret == nil {
+		return fmt.Errorf("infisicalSecret is nil")
+	}
+
+	variables := r.getResourceVariables(*secret)
+
+	if !variables.AuthDetails.IsMachineIdentityAuth {
+		return fmt.Errorf("only machine identity is supported for subscriptions")
+	}
+
+	conn := variables.ServerSentEvents
+
+	if _, ok := conn.Get(); ok {
+		conn.Close()
+	}
 
 	return nil
 }

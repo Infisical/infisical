@@ -1,109 +1,137 @@
 package sse
 
 import (
-	"bufio"
+	"context"
 	"fmt"
-	"io"
 	"net/http"
-	"strings"
+	"time"
 )
 
-type SSEEvent struct {
-	ID    string
-	Event string
-	Data  string
+// ConnectionMeta holds metadata about an active SSE connection
+type ConnectionMeta struct {
+	EventChan  <-chan SSEEvent
+	ErrorChan  <-chan error
+	Cancel     context.CancelFunc
+	LastPingAt time.Time
 }
 
-// SSEClient handles SSE connections
-type SSEClient struct {
-	URL    string
-	Client *http.Client
+// ConnectionRegistry manages a single SSE connection with a shared client
+type ConnectionRegistry struct {
+	Ticker *time.Ticker
+	meta   *ConnectionMeta
+	client SSEClient
 }
 
-// NewSSEClient creates a new SSE client
-func NewClient(url string) *SSEClient {
-	return &SSEClient{
-		URL: url,
-		Client: &http.Client{
-			Timeout: 0, // No timeout for streaming
-		},
+// NewConnectionRegistry creates a new registry
+func NewConnectionRegistry() ConnectionRegistry {
+	return ConnectionRegistry{
+		Ticker: time.NewTicker(time.Second * 30),
+		client: NewClient(),
 	}
 }
 
-// Connect establishes SSE connection and returns a channel of events
-func (c *SSEClient) Connect(method string, headers map[string]string, body io.Reader) (<-chan SSEEvent, <-chan error, error) {
-	req, err := http.NewRequest(method, c.URL, body)
+// GetOrCreate returns existing connection or creates a new one
+func (r *ConnectionRegistry) GetOrCreate(
+	onBuild func() (*http.Request, error),
+) (*ConnectionMeta, error) {
+	// First try to get existing connection
+	if r.meta != nil {
+		return r.meta, nil
+	}
+
+	// Create new connection
+	req, err := onBuild()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request: %w", err)
+	}
+
+	// Add cancellation context
+	ctx, cancel := context.WithCancel(context.Background())
+
+	eventChan, errorChan, err := r.client.Connect(req)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	meta := &ConnectionMeta{
+		EventChan:  eventChan,
+		ErrorChan:  errorChan,
+		Cancel:     cancel,
+		LastPingAt: time.Now(),
+	}
+
+	r.meta = meta
+
+	// Start cleanup monitor for this connection
+	go r.monitor(ctx, meta)
+
+	return meta, nil
+}
+
+// Get retrieves the existing connection
+func (r *ConnectionRegistry) Get() (*ConnectionMeta, bool) {
+	return r.meta, r.meta != nil
+}
+
+// Close closes the connection
+func (r *ConnectionRegistry) Close() {
+	if r.meta != nil {
+		r.meta.Cancel()
+		r.meta = nil
+	}
+}
+
+// IsConnected returns whether there's an active connection
+func (r *ConnectionRegistry) IsConnected() bool {
+	return r.meta != nil
+}
+
+// monitorConnection watches for connection closure and cleans up
+func (r *ConnectionRegistry) monitor(ctx context.Context, meta *ConnectionMeta) {
+outer:
+	for range r.Ticker.C {
+		select {
+		case <-ctx.Done():
+			break outer
+		default:
+			if r.IsConnected() && time.Since(r.meta.LastPingAt) > 2*time.Minute {
+				fmt.Println("Last ping was more than 2 minutes ago")
+				r.Close()
+				break outer
+			} else {
+				fmt.Println("Last ping was within the last 2 minutes")
+			}
+		}
+	}
+
+	// Clean up from registry
+	if r.meta == meta {
+		r.meta = nil
+	}
+}
+
+// ConnectionInfo provides read-only info about a connection
+type ConnectionInfo struct {
+	LastPingAt time.Time
+}
+
+// Subscribe provides a convenient way to get events from the connection
+func (r *ConnectionRegistry) Subscribe(
+	onBuild func() (*http.Request, error),
+) (<-chan SSEEvent, <-chan error, error) {
+	meta, err := r.GetOrCreate(onBuild)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Set required headers for SSE
-	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("Connection", "keep-alive")
-	req.Header.Set("Content-Type", "application/json")
-
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
-
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	eventChan := make(chan SSEEvent)
-	errorChan := make(chan error)
-
-	go c.readEvents(resp.Body, eventChan, errorChan)
-
-	return eventChan, errorChan, nil
+	return meta.EventChan, meta.ErrorChan, nil
 }
 
-// readEvents reads and parses SSE events from the response body
-func (c *SSEClient) readEvents(body io.ReadCloser, eventChan chan<- SSEEvent, errorChan chan<- error) {
-	defer body.Close()
-	defer close(eventChan)
-	defer close(errorChan)
-
-	scanner := bufio.NewScanner(body)
-	var event SSEEvent
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		// Empty line indicates end of event
-		if line == "" {
-			if event.Data != "" || event.Event != "" {
-				eventChan <- event
-				event = SSEEvent{} // Reset for next event
-			}
-			continue
-		}
-
-		// Parse event fields
-		if strings.HasPrefix(line, "data: ") {
-			if event.Data != "" {
-				event.Data += "\n"
-			}
-			event.Data += strings.TrimPrefix(line, "data: ")
-		} else if strings.HasPrefix(line, "event: ") {
-			event.Event = strings.TrimPrefix(line, "event: ")
-		} else if strings.HasPrefix(line, "id: ") {
-			event.ID = strings.TrimPrefix(line, "id: ")
-		} else if strings.HasPrefix(line, "retry: ") {
-			// Parse retry value (implementation omitted for brevity)
-		} else if strings.HasPrefix(line, ": ") {
-			// Comment line, ignore
-			continue
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		errorChan <- err
-	}
+// Reconnect closes existing connection and creates a new one
+func (r *ConnectionRegistry) Reconnect(
+	onBuild func() (*http.Request, error),
+) (*ConnectionMeta, error) {
+	r.Close()
+	return r.GetOrCreate(onBuild)
 }

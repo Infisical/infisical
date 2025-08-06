@@ -7,12 +7,14 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	defaultErrors "errors"
@@ -58,7 +60,6 @@ func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
 
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	logger := r.GetLogger(req)
 
 	var infisicalSecretCRD secretsv1alpha1.InfisicalSecret
@@ -204,8 +205,17 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.SourceCh = make(chan event.GenericEvent)
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Watches(
+			&source.Channel{Source: r.SourceCh},
+			handler.EnqueueRequestsFromMapFunc(r.findSecretsForCluster),
+		).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
+			GenericFunc: func(ge event.GenericEvent) bool {
+				fmt.Println("Generic event recieved")
+				return true
+			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
+				println("UpdateFunc event recieved")
 				if e.ObjectOld.GetGeneration() == e.ObjectNew.GetGeneration() {
 					return false // Skip reconciliation for status-only changes
 				}
@@ -228,9 +238,34 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return true
 			},
 		})).
-		Watches(
-			&source.Channel{Source: r.SourceCh},
-			&handler.EnqueueRequestForObject{},
-		).
 		Complete(r)
+
+}
+
+func (r *InfisicalSecretReconciler) findSecretsForCluster(o client.Object) []reconcile.Request {
+	ctx := context.Background()
+	secrets := &secretsv1alpha1.InfisicalSecretList{}
+
+	requests := []reconcile.Request{}
+
+	if err := r.List(ctx, secrets); err != nil {
+		fmt.Println(err)
+		return requests
+	}
+
+	for _, sec := range secrets.Items {
+		if sec.GetName() == o.GetName() && sec.GetNamespace() == o.GetNamespace() {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: o.GetNamespace(),
+					Name:      o.GetName(),
+				},
+			})
+			break
+		}
+	}
+
+	fmt.Println(requests)
+
+	return requests
 }
