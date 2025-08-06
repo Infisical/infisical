@@ -1,21 +1,13 @@
-import crypto from "crypto";
-
 import { FormEvent, useState } from "react";
 import { faCheck, faEye, faEyeSlash, faKey, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import jsrp from "jsrp";
 
 import { createNotification } from "@app/components/notifications";
 import passwordCheck from "@app/components/utilities/checks/password/PasswordCheck";
-import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useSetupPassword } from "@app/hooks/api/auth/queries";
-
-// eslint-disable-next-line new-cap
-const client = new jsrp.client();
 
 export const PasswordSetupPage = () => {
   const [password, setPassword] = useState("");
@@ -65,83 +57,31 @@ export const PasswordSetupPage = () => {
     setPasswordsMatch(true);
 
     if (!errorCheck) {
-      client.init(
-        {
-          username: email,
+      try {
+        await setupPassword.mutateAsync({
+          email,
+          token,
           password
-        },
-        async () => {
-          client.createVerifier(async (_err: any, result: { salt: string; verifier: string }) => {
-            const derivedKey = await deriveArgonKey({
-              password,
-              salt: result.salt,
-              mem: 65536,
-              time: 3,
-              parallelism: 1,
-              hashLen: 32
-            });
+        });
 
-            if (!derivedKey) throw new Error("Failed to derive key from password");
+        setIsRedirecting(true);
 
-            const key = crypto.randomBytes(32);
+        createNotification({
+          type: "success",
+          title: "Password successfully set",
+          text: "Redirecting to login..."
+        });
 
-            // create encrypted private key by encrypting the private
-            // key with the symmetric key [key]
-            const {
-              ciphertext: encryptedPrivateKey,
-              iv: encryptedPrivateKeyIV,
-              tag: encryptedPrivateKeyTag
-            } = Aes256Gcm.encrypt({
-              text: localStorage.getItem("PRIVATE_KEY") as string,
-              secret: key
-            });
-
-            // create the protected key by encrypting the symmetric key
-            // [key] with the derived key
-            const {
-              ciphertext: protectedKey,
-              iv: protectedKeyIV,
-              tag: protectedKeyTag
-            } = Aes256Gcm.encrypt({
-              text: key.toString("hex"),
-              secret: Buffer.from(derivedKey.hash)
-            });
-
-            try {
-              await setupPassword.mutateAsync({
-                protectedKey,
-                protectedKeyIV,
-                protectedKeyTag,
-                encryptedPrivateKey,
-                encryptedPrivateKeyIV,
-                encryptedPrivateKeyTag,
-                salt: result.salt,
-                verifier: result.verifier,
-                token,
-                password
-              });
-
-              setIsRedirecting(true);
-
-              createNotification({
-                type: "success",
-                title: "Password successfully set",
-                text: "Redirecting to login..."
-              });
-
-              setTimeout(() => {
-                window.location.href = "/login";
-              }, 3000);
-            } catch (error) {
-              createNotification({
-                type: "error",
-                text: (error as Error).message ?? "Error setting password"
-              });
-              navigate({ to: "/personal-settings" });
-            }
-          });
-        }
-      );
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 3000);
+      } catch (error) {
+        createNotification({
+          type: "error",
+          text: (error as Error).message ?? "Error setting password"
+        });
+        navigate({ to: "/personal-settings" });
+      }
     }
   };
 

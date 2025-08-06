@@ -2,7 +2,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import slugify from "@sindresorhus/slugify";
-import { z } from "zod";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -18,7 +17,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { isFQDN } from "@app/lib/validator/validate-url";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -34,7 +32,8 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
-  CertStatus
+  CertStatus,
+  TAltNameMapping
 } from "../../certificate/certificate-types";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
@@ -69,6 +68,7 @@ import {
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./internal-certificate-authority-types";
+import { validateAndMapAltNameType } from "../certificate-authority-validators";
 
 type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityDAL: Pick<
@@ -1364,34 +1364,18 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     }
 
-    let altNamesArray: {
-      type: "email" | "dns";
-      value: string;
-    }[] = [];
+    let altNamesArray: TAltNameMapping[] = [];
 
     if (altNames) {
       altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
-        .map((altName) => {
-          // check if the altName is a valid email
-          if (z.string().email().safeParse(altName).success) {
-            return {
-              type: "email",
-              value: altName
-            };
+        .map((altName): TAltNameMapping => {
+          const altNameType = validateAndMapAltNameType(altName);
+          if (!altNameType) {
+            throw new Error(`Invalid altName: ${altName}`);
           }
-
-          // check if the altName is a valid hostname
-          if (isFQDN(altName, { allow_wildcard: true })) {
-            return {
-              type: "dns",
-              value: altName
-            };
-          }
-
-          // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
-          throw new Error(`Invalid altName: ${altName}`);
+          return altNameType;
         });
 
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
@@ -1766,34 +1750,22 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     let altNamesFromCsr: string = "";
-    let altNamesArray: {
-      type: "email" | "dns";
-      value: string;
-    }[] = [];
+    let altNamesArray: TAltNameMapping[] = [];
+
     if (altNames) {
       altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
-        .map((altName) => {
-          // check if the altName is a valid email
-          if (z.string().email().safeParse(altName).success) {
-            return {
-              type: "email",
-              value: altName
-            };
+        .map((altName): TAltNameMapping => {
+          const altNameType = validateAndMapAltNameType(altName);
+          if (!altNameType) {
+            throw new Error(`Invalid altName: ${altName}`);
           }
-
-          // check if the altName is a valid hostname
-          if (isFQDN(altName, { allow_wildcard: true })) {
-            return {
-              type: "dns",
-              value: altName
-            };
-          }
-
-          // If altName is neither a valid email nor a valid hostname, throw an error or handle it accordingly
-          throw new Error(`Invalid altName: ${altName}`);
+          return altNameType;
         });
+
+      const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
+      extensions.push(altNamesExtension);
     } else {
       // attempt to read from CSR if altNames is not explicitly provided
       const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
@@ -1801,11 +1773,16 @@ export const internalCertificateAuthorityServiceFactory = ({
         const sanNames = new x509.GeneralNames(sanExtension.value);
 
         altNamesArray = sanNames.items
-          .filter((value) => value.type === "email" || value.type === "dns")
-          .map((name) => ({
-            type: name.type as "email" | "dns",
-            value: name.value
-          }));
+          .filter(
+            (value) => value.type === "email" || value.type === "dns" || value.type === "url" || value.type === "ip"
+          )
+          .map((name): TAltNameMapping => {
+            const altNameType = validateAndMapAltNameType(name.value);
+            if (!altNameType) {
+              throw new Error(`Invalid altName from CSR: ${name.value}`);
+            }
+            return altNameType;
+          });
 
         altNamesFromCsr = sanNames.items.map((item) => item.value).join(",");
       }

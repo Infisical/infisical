@@ -1,11 +1,10 @@
-import { OrgMembershipStatus, SecretKeyEncoding, TableName } from "@app/db/schemas";
+import { OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getMinExpiresIn } from "@app/lib/fn";
 import { isDisposableEmail } from "@app/lib/validator";
@@ -41,7 +40,7 @@ type TAuthSignupDep = {
     | "findUserGroupMembershipsInProject"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findProjectById">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findProjectById" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgService: Pick<TOrgServiceFactory, "createOrganization" | "findOrganizationById">;
@@ -147,17 +146,8 @@ export const authSignupServiceFactory = ({
     firstName,
     lastName,
     providerAuthToken,
-    salt,
-    verifier,
-    publicKey,
-    protectedKey,
-    protectedKeyIV,
-    protectedKeyTag,
     organizationName,
     // attributionSource,
-    encryptedPrivateKey,
-    encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag,
     ip,
     userAgent,
     authorization,
@@ -191,98 +181,18 @@ export const authSignupServiceFactory = ({
     }
 
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
-    const privateKey = await getUserPrivateKey(password, {
-      salt,
-      protectedKey,
-      protectedKeyIV,
-      protectedKeyTag,
-      encryptedPrivateKey,
-      iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag,
-      encryptionVersion: UserEncryption.V2
-    });
-    const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
-      const systemGeneratedUserEncryptionKey = await userDAL.findUserEncKeyByUserId(us.id, tx);
-      let userEncKey;
 
-      // below condition is true means this is system generated credentials
-      // the private key is actually system generated password
-      // thus we will re-encrypt the system generated private key with the new password
-      // akhilmhdh: you may find this like why? The reason is simple we are moving away from e2ee and these are pieces of it
-      // without a dummy key in place some things will break and backward compatiability too. 2025 we will be removing all these things
-      if (
-        systemGeneratedUserEncryptionKey &&
-        !systemGeneratedUserEncryptionKey.hashedPassword &&
-        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey &&
-        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag &&
-        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV &&
-        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
-      ) {
-        // get server generated password
-        const serverGeneratedPassword = crypto
-          .encryption()
-          .symmetric()
-          .decryptWithRootEncryptionKey({
-            iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
-            tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
-            ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
-            keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-          });
-        const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
-          ...systemGeneratedUserEncryptionKey
-        });
-        const encKeys = await generateUserSrpKeys(email, password, {
-          publicKey: systemGeneratedUserEncryptionKey.publicKey,
-          privateKey: serverGeneratedPrivateKey
-        });
-        // now reencrypt server generated key with user provided password
-        userEncKey = await userDAL.upsertUserEncryptionKey(
-          us.id,
-          {
-            encryptionVersion: UserEncryption.V2,
-            protectedKey: encKeys.protectedKey,
-            protectedKeyIV: encKeys.protectedKeyIV,
-            protectedKeyTag: encKeys.protectedKeyTag,
-            publicKey: encKeys.publicKey,
-            encryptedPrivateKey: encKeys.encryptedPrivateKey,
-            iv: encKeys.encryptedPrivateKeyIV,
-            tag: encKeys.encryptedPrivateKeyTag,
-            salt: encKeys.salt,
-            verifier: encKeys.verifier,
-            hashedPassword,
-            serverEncryptedPrivateKeyEncoding: encoding,
-            serverEncryptedPrivateKeyTag: tag,
-            serverEncryptedPrivateKeyIV: iv,
-            serverEncryptedPrivateKey: ciphertext
-          },
-          tx
-        );
-      } else {
-        userEncKey = await userDAL.upsertUserEncryptionKey(
-          us.id,
-          {
-            encryptionVersion: UserEncryption.V2,
-            salt,
-            verifier,
-            publicKey,
-            protectedKey,
-            protectedKeyIV,
-            protectedKeyTag,
-            encryptedPrivateKey,
-            iv: encryptedPrivateKeyIV,
-            tag: encryptedPrivateKeyTag,
-            hashedPassword,
-            serverEncryptedPrivateKeyEncoding: encoding,
-            serverEncryptedPrivateKeyTag: tag,
-            serverEncryptedPrivateKeyIV: iv,
-            serverEncryptedPrivateKey: ciphertext
-          },
-          tx
-        );
-      }
+      const userEncKey = await userDAL.upsertUserEncryptionKey(
+        us.id,
+        {
+          encryptionVersion: UserEncryption.V2,
+          hashedPassword
+        },
+        tx
+      );
 
       // If it's SAML Auth and the organization ID is present, we should check if the user has a pending invite for this org, and accept it
       if (
@@ -400,19 +310,10 @@ export const authSignupServiceFactory = ({
   const completeAccountInvite = async ({
     email,
     ip,
-    salt,
     password,
-    verifier,
     firstName,
-    publicKey,
     userAgent,
     lastName,
-    protectedKey,
-    protectedKeyIV,
-    protectedKeyTag,
-    encryptedPrivateKey,
-    encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag,
     authorization
   }: TCompleteAccountInviteDTO) => {
     const sanitizedEmail = email.trim().toLowerCase();
@@ -437,94 +338,17 @@ export const authSignupServiceFactory = ({
 
     const appCfg = getConfig();
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
-    const privateKey = await getUserPrivateKey(password, {
-      salt,
-      protectedKey,
-      protectedKeyIV,
-      protectedKeyTag,
-      encryptedPrivateKey,
-      iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag,
-      encryptionVersion: 2
-    });
-    const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const updateduser = await authDAL.transaction(async (tx) => {
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
-      const systemGeneratedUserEncryptionKey = await userDAL.findUserEncKeyByUserId(us.id, tx);
-      let userEncKey;
-      // this means this is system generated credentials
-      // now replace the private key
-      if (
-        systemGeneratedUserEncryptionKey &&
-        !systemGeneratedUserEncryptionKey.hashedPassword &&
-        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey &&
-        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag &&
-        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV &&
-        systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding
-      ) {
-        // get server generated password
-        const serverGeneratedPassword = crypto
-          .encryption()
-          .symmetric()
-          .decryptWithRootEncryptionKey({
-            iv: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyIV,
-            tag: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyTag,
-            ciphertext: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKey,
-            keyEncoding: systemGeneratedUserEncryptionKey.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-          });
-        const serverGeneratedPrivateKey = await getUserPrivateKey(serverGeneratedPassword, {
-          ...systemGeneratedUserEncryptionKey
-        });
-        const encKeys = await generateUserSrpKeys(sanitizedEmail, password, {
-          publicKey: systemGeneratedUserEncryptionKey.publicKey,
-          privateKey: serverGeneratedPrivateKey
-        });
-        // now reencrypt server generated key with user provided password
-        userEncKey = await userDAL.upsertUserEncryptionKey(
-          us.id,
-          {
-            encryptionVersion: 2,
-            protectedKey: encKeys.protectedKey,
-            protectedKeyIV: encKeys.protectedKeyIV,
-            protectedKeyTag: encKeys.protectedKeyTag,
-            publicKey: encKeys.publicKey,
-            encryptedPrivateKey: encKeys.encryptedPrivateKey,
-            iv: encKeys.encryptedPrivateKeyIV,
-            tag: encKeys.encryptedPrivateKeyTag,
-            salt: encKeys.salt,
-            verifier: encKeys.verifier,
-            hashedPassword,
-            serverEncryptedPrivateKeyEncoding: encoding,
-            serverEncryptedPrivateKeyTag: tag,
-            serverEncryptedPrivateKeyIV: iv,
-            serverEncryptedPrivateKey: ciphertext
-          },
-          tx
-        );
-      } else {
-        userEncKey = await userDAL.upsertUserEncryptionKey(
-          us.id,
-          {
-            encryptionVersion: UserEncryption.V2,
-            salt,
-            verifier,
-            publicKey,
-            protectedKey,
-            protectedKeyIV,
-            protectedKeyTag,
-            encryptedPrivateKey,
-            iv: encryptedPrivateKeyIV,
-            tag: encryptedPrivateKeyTag,
-            hashedPassword,
-            serverEncryptedPrivateKeyEncoding: encoding,
-            serverEncryptedPrivateKeyTag: tag,
-            serverEncryptedPrivateKeyIV: iv,
-            serverEncryptedPrivateKey: ciphertext
-          },
-          tx
-        );
-      }
+      const userEncKey = await userDAL.upsertUserEncryptionKey(
+        us.id,
+        {
+          encryptionVersion: 2,
+          hashedPassword
+        },
+        tx
+      );
 
       const updatedMembersips = await orgDAL.updateMembership(
         { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited },

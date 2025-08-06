@@ -13,11 +13,9 @@ const AUTH_REFRESH_INTERVAL = 60 * 1000;
 const HEART_BEAT_INTERVAL = 15 * 1000;
 
 export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
-  let heartbeatInterval: NodeJS.Timeout | null = null;
-
   const clients = new Set<EventStreamClient>();
 
-  heartbeatInterval = setInterval(() => {
+  const heartbeatInterval = setInterval(() => {
     for (const client of clients) {
       if (client.stream.closed) continue;
       void client.ping();
