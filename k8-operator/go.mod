@@ -16,11 +16,13 @@ require (
 	golang.org/x/crypto v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.33.0
-	k8s.io/apimachinery v0.33.0
+	k8s.io/apimachinery v0.33.3
 	k8s.io/client-go v0.33.0
 	sigs.k8s.io/controller-runtime v0.21.0
 	software.sslmate.com/src/go-pkcs12 v0.6.0
 )
+
+replace github.com/google/go-cmp v0.7.0 => github.com/google/go-cmp v0.6.0
 
 require (
 	cel.dev/expr v0.19.1 // indirect
