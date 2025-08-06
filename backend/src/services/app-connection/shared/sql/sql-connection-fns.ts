@@ -44,7 +44,8 @@ const getConnectionConfig = ({
           ? {
               trustServerCertificate: !sslRejectUnauthorized,
               encrypt: true,
-              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
+              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {},
+              servername: host
             }
           : { encrypt: false }
       };
