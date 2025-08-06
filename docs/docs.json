@@ -386,6 +386,32 @@
                 "group": "Secrets Management",
                 "pages": [
                   "documentation/platform/secrets-mgmt/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/secrets-mgmt/concepts/secrets-mgmt",
+                      "documentation/platform/secrets-mgmt/concepts/access-control",
+                      "documentation/platform/secrets-mgmt/concepts/secrets-delivery",
+                      "documentation/platform/secrets-mgmt/concepts/secrets-rotation",
+                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/guides/introduction",
+                      "documentation/guides/local-development",
+                      "documentation/guides/node",
+                      "documentation/guides/python",
+                      "documentation/guides/nextjs-vercel",
+                      "documentation/guides/microsoft-power-apps"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Product Reference",
+                "pages": [
                   "documentation/platform/secrets-mgmt/project",
                   "documentation/platform/folder",
                   {
@@ -430,17 +456,6 @@
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
-                  },
-                  {
-                    "group": "Guides",
-                    "pages": [
-                      "documentation/guides/introduction",
-                      "documentation/guides/local-development",
-                      "documentation/guides/node",
-                      "documentation/guides/python",
-                      "documentation/guides/nextjs-vercel",
-                      "documentation/guides/microsoft-power-apps"
-                    ]
                   }
                 ]
               },
@@ -464,7 +479,7 @@
                     "group": "Agent",
                     "pages": [
                       "integrations/platforms/infisical-agent",
-                       "integrations/platforms/docker-swarm-with-agent",
+                      "integrations/platforms/docker-swarm-with-agent",
                       "integrations/platforms/ecs-with-agent"
                     ]
                   },
@@ -634,9 +649,7 @@
             "groups": [
               {
                 "group": "Secret Scanning",
-                "pages": [
-                  "documentation/platform/secret-scanning/overview"
-                ]
+                "pages": ["documentation/platform/secret-scanning/overview"]
               },
               {
                 "group": "Datasources",
