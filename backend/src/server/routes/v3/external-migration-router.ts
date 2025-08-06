@@ -19,7 +19,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const data = await req.file({
         limits: {
@@ -69,7 +69,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         mappingType: z.nativeEnum(VaultMappingType)
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.migration.importVaultData({
         actorId: req.permission.id,
