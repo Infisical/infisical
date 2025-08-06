@@ -1,6 +1,7 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface IntegrationSyncFailedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
@@ -30,7 +31,7 @@ export const IntegrationSyncFailedTemplate = ({
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
         <strong>{count}</strong> integration(s) failed to sync
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[26px] pb-[4px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[26px] pb-[4px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <strong>Project</strong>
         <Text className="text-[14px] mt-[4px]">{projectName}</Text>
         <strong>Environment</strong>
@@ -38,15 +39,10 @@ export const IntegrationSyncFailedTemplate = ({
         <strong>Secret Path</strong>
         <Text className="text-[14px] mt-[4px]">{secretPath}</Text>
         <strong className="text-black">Failure Reason:</strong>
-        <Text className="text-[14px] mt-[4px] text-red-500 leading-[24px]">"{syncMessage}"</Text>
+        <Text className="text-[14px] mt-[4px] text-red-600 leading-[24px]">"{syncMessage}"</Text>
       </Section>
-      <Section className="text-center mt-[28px]">
-        <Button
-          href={integrationUrl}
-          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
-        >
-          View Integrations
-        </Button>
+      <Section className="text-center">
+        <BaseButton href={integrationUrl}>View Integrations</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );

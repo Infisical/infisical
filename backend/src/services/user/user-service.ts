@@ -1,9 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -175,7 +173,11 @@ export const userServiceFactory = ({
   const getMe = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "GetMe" });
-    return user;
+
+    return {
+      ...user,
+      encryptionVersion: user.encryptionVersion!
+    };
   };
 
   const deleteUser = async (userId: string) => {
@@ -210,25 +212,6 @@ export const userServiceFactory = ({
       { id: userId },
       { consecutiveFailedMfaAttempts: 0, isLocked: false, temporaryLockDateEnd: null }
     );
-  };
-
-  const getUserPrivateKey = async (userId: string) => {
-    const user = await userDAL.findUserEncKeyByUserId(userId);
-    if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
-      throw new NotFoundError({ message: `Private key for user with ID '${userId}' not found` });
-    }
-
-    const privateKey = crypto
-      .encryption()
-      .symmetric()
-      .decryptWithRootEncryptionKey({
-        ciphertext: user.serverEncryptedPrivateKey,
-        tag: user.serverEncryptedPrivateKeyTag,
-        iv: user.serverEncryptedPrivateKeyIV,
-        keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-      });
-
-    return privateKey;
   };
 
   const getUserProjectFavorites = async (userId: string, orgId: string) => {
@@ -311,7 +294,6 @@ export const userServiceFactory = ({
     listUserGroups,
     getUserAction,
     unlockUser,
-    getUserPrivateKey,
     getAllMyAccounts,
     getUserProjectFavorites,
     removeMyDuplicateAccounts,

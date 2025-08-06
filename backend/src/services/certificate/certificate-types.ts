@@ -104,3 +104,14 @@ export type TGetCertificateCredentialsDTO = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
+
+export enum TAltNameType {
+  EMAIL = "email",
+  DNS = "dns",
+  IP = "ip",
+  URL = "url"
+}
+export type TAltNameMapping = {
+  type: TAltNameType;
+  value: string;
+};

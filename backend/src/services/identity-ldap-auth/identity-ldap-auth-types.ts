@@ -14,11 +14,12 @@ export type TAllowedFields = z.infer<typeof AllowedFieldsSchema>;
 
 export type TAttachLdapAuthDTO = {
   identityId: string;
-  url: string;
-  searchBase: string;
+  templateId?: string;
+  url?: string;
+  searchBase?: string;
   searchFilter: string;
-  bindDN: string;
-  bindPass: string;
+  bindDN?: string;
+  bindPass?: string;
   ldapCaCertificate?: string;
   allowedFields?: TAllowedFields[];
   accessTokenTTL: number;
@@ -30,6 +31,7 @@ export type TAttachLdapAuthDTO = {
 
 export type TUpdateLdapAuthDTO = {
   identityId: string;
+  templateId?: string;
   url?: string;
   searchBase?: string;
   searchFilter?: string;

@@ -704,8 +704,37 @@ export const superAdminServiceFactory = ({
   };
 
   const deleteUser = async (userId: string) => {
+    const superAdmins = await userDAL.find({
+      superAdmin: true
+    });
+
+    if (superAdmins.length === 1 && superAdmins[0].id === userId) {
+      throw new BadRequestError({
+        message: "Cannot delete the only server admin on this instance. Add another server admin to delete this user."
+      });
+    }
+
     const user = await userDAL.deleteById(userId);
     return user;
+  };
+
+  const deleteUsers = async (userIds: string[]) => {
+    const superAdmins = await userDAL.find({
+      superAdmin: true
+    });
+
+    if (superAdmins.every((superAdmin) => userIds.includes(superAdmin.id))) {
+      throw new BadRequestError({
+        message: "Instance must have at least one server admin. Add another server admin to delete these users."
+      });
+    }
+
+    const users = await userDAL.delete({
+      $in: {
+        id: userIds
+      }
+    });
+    return users;
   };
 
   const deleteIdentitySuperAdminAccess = async (identityId: string, actorId: string) => {
@@ -728,6 +757,17 @@ export const superAdminServiceFactory = ({
     const user = await userDAL.findById(userId);
     if (!user) {
       throw new NotFoundError({ name: "User", message: "User not found" });
+    }
+
+    const superAdmins = await userDAL.find({
+      superAdmin: true
+    });
+
+    if (superAdmins.length === 1 && superAdmins[0].id === userId) {
+      throw new BadRequestError({
+        message:
+          "Cannot remove the only server admin on this instance. Add another server admin to remove status for this user."
+      });
     }
 
     const updatedUser = userDAL.updateById(userId, { superAdmin: false });
@@ -913,6 +953,7 @@ export const superAdminServiceFactory = ({
     initializeAdminIntegrationConfigSync,
     initializeEnvConfigSync,
     getEnvOverrides,
-    getEnvOverridesOrganized
+    getEnvOverridesOrganized,
+    deleteUsers
   };
 };

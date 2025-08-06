@@ -1,15 +1,19 @@
 /* eslint-disable prefer-destructuring */
+import axios from "axios";
 import jsrp from "jsrp";
 
-import { decryptPrivateKeyHelper } from "@app/helpers/key";
-import { login1, login2 } from "@app/hooks/api/auth/queries";
+import { login1, login2, loginV3 } from "@app/hooks/api/auth/queries";
 
+import { createNotification } from "../notifications";
 import Telemetry from "./telemetry/Telemetry";
-import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
 import SecurityClient from "./SecurityClient";
 
+export enum LoginMode {
+  LegacySrp = "legacy-srp",
+  ServerSide = "server-side"
+}
+
 interface IsLoginSuccessful {
-  mfaEnabled: boolean;
   success: boolean;
 }
 
@@ -23,14 +27,62 @@ const attemptLogin = async ({
   email,
   password,
   providerAuthToken,
-  captchaToken
+  captchaToken,
+  loginMode = LoginMode.ServerSide
 }: {
   email: string;
   password: string;
   providerAuthToken?: string;
   captchaToken?: string;
+  loginMode?: LoginMode;
 }): Promise<IsLoginSuccessful> => {
   const telemetry = new Telemetry().getInstance();
+
+  if (loginMode === LoginMode.ServerSide) {
+    console.log("Attempting login with server side...");
+    const data = await loginV3({
+      email,
+      password,
+      providerAuthToken,
+      captchaToken
+    }).catch((err) => {
+      if (axios.isAxiosError(err) && err.response?.status === 400) {
+        if (err.response?.data?.error === "LegacyEncryptionScheme") {
+          createNotification({
+            text: "Failed to login without SRP, attempting to authenticate with legacy SRP authentication.",
+            type: "info"
+          });
+
+          return null;
+        }
+      }
+
+      throw err;
+    });
+
+    if (data === null) {
+      return attemptLogin({
+        email,
+        password,
+        providerAuthToken,
+        captchaToken,
+        loginMode: LoginMode.LegacySrp
+      });
+    }
+
+    SecurityClient.setProviderAuthToken("");
+    SecurityClient.setToken(data.accessToken);
+
+    if (email) {
+      telemetry.identify(email, email);
+      telemetry.capture("User Logged In");
+    }
+
+    return {
+      success: true
+    };
+  }
+
   // eslint-disable-next-line new-cap
   const client = new jsrp.client();
   await new Promise((resolve) => {
@@ -48,18 +100,7 @@ const attemptLogin = async ({
   client.setServerPublicKey(serverPublicKey);
   const clientProof = client.getProof(); // called M1
 
-  const {
-    mfaEnabled,
-    encryptionVersion,
-    protectedKey,
-    protectedKeyIV,
-    protectedKeyTag,
-    token,
-    publicKey,
-    encryptedPrivateKey,
-    iv,
-    tag
-  } = await login2({
+  const { encryptionVersion, token, encryptedPrivateKey, iv, tag } = await login2({
     captchaToken,
     email,
     password,
@@ -67,44 +108,11 @@ const attemptLogin = async ({
     providerAuthToken
   });
 
-  if (mfaEnabled) {
-    // case: MFA is enabled
-
-    // set temporary (MFA) JWT token
-    SecurityClient.setMfaToken(token);
-
-    return {
-      mfaEnabled,
-      success: true
-    };
-  }
-  if (!mfaEnabled && encryptionVersion && encryptedPrivateKey && iv && tag && token) {
-    // case: MFA is not enabled
-
+  if (encryptionVersion && encryptedPrivateKey && iv && tag && token) {
     // unset provider auth token in case it was used
     SecurityClient.setProviderAuthToken("");
     // set JWT token
     SecurityClient.setToken(token);
-
-    const privateKey = await decryptPrivateKeyHelper({
-      encryptionVersion,
-      encryptedPrivateKey,
-      iv,
-      tag,
-      password,
-      salt,
-      protectedKey,
-      protectedKeyIV,
-      protectedKeyTag
-    });
-
-    saveTokenToLocalStorage({
-      publicKey,
-      encryptedPrivateKey,
-      iv,
-      tag,
-      privateKey
-    });
 
     if (email) {
       telemetry.identify(email, email);
@@ -112,11 +120,10 @@ const attemptLogin = async ({
     }
 
     return {
-      mfaEnabled: false,
       success: true
     };
   }
-  return { success: false, mfaEnabled: false };
+  return { success: false };
 };
 
 export default attemptLogin;

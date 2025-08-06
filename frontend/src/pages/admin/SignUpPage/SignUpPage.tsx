@@ -8,7 +8,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 // TODO(akhilmhdh): rewrite this into module functions in lib
-import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
@@ -63,13 +62,6 @@ export const SignUpPage = () => {
       });
 
       SecurityClient.setToken(res.token);
-      saveTokenToLocalStorage({
-        publicKey: userPass.publicKey,
-        encryptedPrivateKey: userPass.encryptedPrivateKey,
-        iv: userPass.encryptedPrivateKeyIV,
-        tag: userPass.encryptedPrivateKeyTag,
-        privateKey
-      });
       await selectOrganization({ organizationId: res.organization.id });
 
       // TODO(akhilmhdh): This is such a confusing pattern and too unreliable

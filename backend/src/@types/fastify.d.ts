@@ -18,6 +18,7 @@ import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/extern
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
+import { TIdentityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TIdentityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
 import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
@@ -300,6 +301,7 @@ declare module "fastify" {
       reminder: TReminderServiceFactory;
       bus: TEventBusService;
       sse: TServerSentEventsService;
+      identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -161,6 +161,9 @@ export enum EventType {
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
+  MACHINE_IDENTITY_AUTH_TEMPLATE_CREATE = "machine-identity-auth-template-create",
+  MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE = "machine-identity-auth-template-update",
+  MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE = "machine-identity-auth-template-delete",
   LOGIN_IDENTITY_UNIVERSAL_AUTH = "login-identity-universal-auth",
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
@@ -830,6 +833,30 @@ interface LoginIdentityUniversalAuthEvent {
   };
 }
 
+interface MachineIdentityAuthTemplateCreateEvent {
+  type: EventType.MACHINE_IDENTITY_AUTH_TEMPLATE_CREATE;
+  metadata: {
+    templateId: string;
+    name: string;
+  };
+}
+
+interface MachineIdentityAuthTemplateUpdateEvent {
+  type: EventType.MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE;
+  metadata: {
+    templateId: string;
+    name: string;
+  };
+}
+
+interface MachineIdentityAuthTemplateDeleteEvent {
+  type: EventType.MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE;
+  metadata: {
+    templateId: string;
+    name: string;
+  };
+}
+
 interface AddIdentityUniversalAuthEvent {
   type: EventType.ADD_IDENTITY_UNIVERSAL_AUTH;
   metadata: {
@@ -1325,6 +1352,7 @@ interface AddIdentityLdapAuthEvent {
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
     allowedFields?: TAllowedFields[];
     url: string;
+    templateId?: string | null;
   };
 }
 
@@ -1338,6 +1366,7 @@ interface UpdateIdentityLdapAuthEvent {
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
     allowedFields?: TAllowedFields[];
     url?: string;
+    templateId?: string | null;
   };
 }
 
@@ -3439,6 +3468,9 @@ export type Event =
   | UpdateIdentityEvent
   | DeleteIdentityEvent
   | LoginIdentityUniversalAuthEvent
+  | MachineIdentityAuthTemplateCreateEvent
+  | MachineIdentityAuthTemplateUpdateEvent
+  | MachineIdentityAuthTemplateDeleteEvent
   | AddIdentityUniversalAuthEvent
   | UpdateIdentityUniversalAuthEvent
   | DeleteIdentityUniversalAuthEvent

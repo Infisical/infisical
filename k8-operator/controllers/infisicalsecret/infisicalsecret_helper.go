@@ -62,6 +62,7 @@ func (r *InfisicalSecretReconciler) handleAuthentication(ctx context.Context, in
 		util.AuthStrategy.AZURE_MACHINE_IDENTITY:        util.HandleAzureAuth,
 		util.AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY: util.HandleGcpIdTokenAuth,
 		util.AuthStrategy.GCP_IAM_MACHINE_IDENTITY:      util.HandleGcpIamAuth,
+		util.AuthStrategy.LDAP_MACHINE_IDENTITY:         util.HandleLdapAuth,
 	}
 
 	for authStrategy, authHandler := range authStrategies {
