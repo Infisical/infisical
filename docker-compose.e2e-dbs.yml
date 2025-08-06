@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Oracle Databases
   oracle-db-23.8:
     image: container-registry.oracle.com/database/free:23.8.0.0
     container_name: oracle-db-23.8
@@ -18,6 +19,26 @@ services:
       timeout: 10s
       retries: 5
 
+  oracle-db-19.19:
+    # Official Oracle 19.19.0.0 - requires docker login container-registry.oracle.com
+    image: container-registry.oracle.com/database/enterprise:19.19.0.0
+    container_name: oracle-db-19.19
+    ports:
+      - "1522:1521"
+    environment:
+      - ORACLE_SID=ORCLCDB
+      - ORACLE_PDB=ORCLPDB1
+      - ORACLE_PWD=OrCAKF112aaSfAdfdA2Ac3@@!
+      - ORACLE_EDITION=enterprise
+      - ORACLE_CHARACTERSET=AL32UTF8
+    volumes:
+      - oracle-data-19.19:/opt/oracle/oradata
+    shm_size: 2gb
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+
+  # MySQL Databases
   mysql-8.4.6:
     image: mysql:8.4.6
     container_name: mysql-8.4.6
@@ -38,6 +59,113 @@ services:
       timeout: 10s
       retries: 5
 
+  mysql-8.0.29:
+    image: mysql:8.0.29
+    container_name: mysql-8.0.28
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=mysql-test
+      - MYSQL_DATABASE=mysql-test
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_USER=mysql-test
+      - MYSQL_PASSWORD=mysql-test
+    volumes:
+      - mysql-data-8.0.29:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mysql-test", "-pmysql-test"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  mysql-5.7.31:
+    image: mysql:5.7.31
+    container_name: mysql-5.7.31
+    platform: linux/amd64
+    ports:
+      - "3308:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=mysql-test
+      - MYSQL_DATABASE=mysql-test
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_USER=mysql-test
+      - MYSQL_PASSWORD=mysql-test
+    volumes:
+      - mysql-data-5.7.31:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mysql-test", "-pmysql-test"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+
+
+  # PostgreSQL Databases
+  postgres-17:
+    image: postgres:17
+    platform: linux/amd64
+    container_name: postgres-17
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=postgres-test
+      - POSTGRES_USER=postgres-test
+      - POSTGRES_PASSWORD=postgres-test
+    volumes:
+      - postgres-data-17:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres-test -d postgres-test"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  postgres-16:
+    image: postgres:16
+    platform: linux/amd64
+    container_name: postgres-16
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_DB=postgres-test
+      - POSTGRES_USER=postgres-test
+      - POSTGRES_PASSWORD=postgres-test
+    volumes:
+      - postgres-data-16:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres-test -d postgres-test"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  postgres-10.12:
+    image: postgres:10.12
+    platform: linux/amd64
+    container_name: postgres-10.12
+    ports:
+      - "5435:5432"
+    environment:
+      - POSTGRES_DB=postgres-test
+      - POSTGRES_USER=postgres-test
+      - POSTGRES_PASSWORD=postgres-test
+    volumes:
+      - postgres-data-10.12:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres-test -d postgres-test"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   oracle-data-23.8:
+  oracle-data-19.19:
   mysql-data-8.4.6:
+  mysql-data-8.0.29:
+  mysql-data-5.7.31:
+  postgres-data-17:
+  postgres-data-16:
+  postgres-data-10.12:

@@ -34,6 +34,9 @@ jobs:
         working-directory: backend
       - name: Start postgres and redis
         run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
+      - name: Login to Oracle Container Registry
+        run: echo "${{ secrets.ORACLE_DOCKER_REGISTRY_PASSWORD }}" | docker login container-registry.oracle.com -u "${{ secrets.ORACLE_DOCKER_REGISTRY_USERNAME }}" --password-stdin
+
       - name: Start Secret Rotation testing databases
         run: docker compose -f docker-compose.e2e-dbs.yml up -d
       - name: Run unit test
