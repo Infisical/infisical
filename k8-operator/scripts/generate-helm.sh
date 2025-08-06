@@ -196,6 +196,8 @@ if [ -f "${HELM_DIR}/templates/deployment.yaml" ]; then
   first_securityContext_found=0
   containers_fixed=0
   next_line_needs_dash=0
+  imagePullSecrets_added=0
+  skip_imagePullSecrets_block=0
   
   # process the file line by line
   while IFS= read -r line; do
@@ -267,8 +269,37 @@ if [ -f "${HELM_DIR}/templates/deployment.yaml" ]; then
     if [[ "$line" =~ args:.*Values.controllerManager.manager.args ]]; then
       continue
     fi
+
+
+
+    # check if this is the serviceAccountName line - add imagePullSecrets after it
+    if [[ "$line" =~ serviceAccountName.*include.*fullname ]] && [ "$imagePullSecrets_added" -eq 0 ]; then
+      echo "$line" >> "${HELM_DIR}/templates/deployment.yaml.new"
+      # Add imagePullSecrets section
+      echo "      {{- with .Values.imagePullSecrets }}" >> "${HELM_DIR}/templates/deployment.yaml.new"
+      echo "      imagePullSecrets:" >> "${HELM_DIR}/templates/deployment.yaml.new"
+      echo "        {{- toYaml . | nindent 8 }}" >> "${HELM_DIR}/templates/deployment.yaml.new"
+      echo "      {{- end }}" >> "${HELM_DIR}/templates/deployment.yaml.new"
+      imagePullSecrets_added=1
+      continue
+    fi
     
-    echo "$line" >> "${HELM_DIR}/templates/deployment.yaml.new"
+    # skip existing imagePullSecrets sections to avoid duplicates
+    if [[ "$line" =~ imagePullSecrets ]] || [[ "$line" =~ "with .Values.imagePullSecrets" ]]; then
+      # Skip this line and the associated template block
+      skip_imagePullSecrets_block=1
+      continue
+    fi
+    
+    # skip lines that are part of an existing imagePullSecrets block
+    if [ "$skip_imagePullSecrets_block" -eq 1 ]; then
+      if [[ "$line" =~ "{{- end }}" ]]; then
+        skip_imagePullSecrets_block=0
+      fi
+      continue
+    fi
+    
+  echo "$line" >> "${HELM_DIR}/templates/deployment.yaml.new"
   done < "${HELM_DIR}/templates/deployment.yaml"
 
   echo "      nodeSelector: {{ toYaml .Values.controllerManager.nodeSelector | nindent 8 }}" >> "${HELM_DIR}/templates/deployment.yaml.new"
@@ -363,6 +394,7 @@ if [ -f "${HELM_DIR}/values.yaml" ]; then
   echo "scopedNamespace: \"\"" >> "${HELM_DIR}/values.yaml.new"
   echo "scopedRBAC: false" >> "${HELM_DIR}/values.yaml.new"
   echo "installCRDs: true" >> "${HELM_DIR}/values.yaml.new"
+  echo "imagePullSecrets: []" >> "${HELM_DIR}/values.yaml.new"
   
   # replace the original file with the new one
   mv "${HELM_DIR}/values.yaml.new" "${HELM_DIR}/values.yaml"
