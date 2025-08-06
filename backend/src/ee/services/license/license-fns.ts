@@ -27,9 +27,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   customRateLimits: false,
   customAlerts: false,
   secretAccessInsights: false,
-  auditLogs: true,
-  auditLogsRetentionDays: 1,
-  auditLogStreams: true,
+  auditLogs: false,
+  auditLogsRetentionDays: 0,
+  auditLogStreams: false,
   auditLogStreamLimit: 3,
   samlSSO: false,
   hsm: false,
@@ -60,7 +60,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   enterpriseSecretSyncs: false,
   enterpriseAppConnections: false,
   fips: false,
-  eventSubscriptions: true
+  eventSubscriptions: false
 });
 
 export const setupLicenseRequestWithStore = (
