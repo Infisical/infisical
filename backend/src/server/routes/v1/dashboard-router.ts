@@ -99,7 +99,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecretRotations),
-        includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets)
+        includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets),
+        includeEmptySecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeEmptySecrets).optional()
       }),
       response: {
         200: z.object({
@@ -200,7 +201,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeSecrets,
         includeImports,
         includeDynamicSecrets,
-        includeSecretRotations
+        includeSecretRotations,
+        includeEmptySecrets
       } = req.query;
 
       const environments = req.query.environments.split(",");
@@ -439,7 +441,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             search,
             limit: remainingLimit,
             offset: adjustedOffset,
-            isInternal: true
+            isInternal: true,
+            includeEmptySecrets
           });
         }
       }

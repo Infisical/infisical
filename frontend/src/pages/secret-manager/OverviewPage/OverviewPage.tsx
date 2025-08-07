@@ -139,7 +139,8 @@ enum RowType {
   Folder = "folder",
   DynamicSecret = "dynamic",
   Secret = "secret",
-  SecretRotation = "rotation"
+  SecretRotation = "rotation",
+  EmptySecret = "empty"
 }
 
 type Filter = {
@@ -150,7 +151,8 @@ const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: false,
   [RowType.DynamicSecret]: false,
   [RowType.Secret]: false,
-  [RowType.SecretRotation]: false
+  [RowType.SecretRotation]: false,
+  [RowType.EmptySecret]: false
 };
 
 const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
@@ -291,9 +293,10 @@ export const OverviewPage = () => {
       orderBy,
       includeFolders: isFilteredByResources ? filter.folder : true,
       includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
-      includeSecrets: isFilteredByResources ? filter.secret : true,
+      includeSecrets: isFilteredByResources ? filter.secret || filter[RowType.EmptySecret] : true,
       includeImports: true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
+      includeEmptySecrets: filter[RowType.EmptySecret],
       search: debouncedSearchFilter,
       limit,
       offset
@@ -308,6 +311,7 @@ export const OverviewPage = () => {
     secretRotations,
     totalFolderCount,
     totalSecretCount,
+    // totalEmptySecretCount,
     totalDynamicSecretCount,
     totalSecretRotationCount,
     totalImportCount,
@@ -356,8 +360,17 @@ export const OverviewPage = () => {
   } = useSecretRotationOverview(secretRotations);
 
   const { secKeys, getEnvSecretKeyCount } = useSecretOverview(
-    secrets?.concat(secretImportsShaped) || []
+    filter[RowType.EmptySecret] ? secrets || [] : secrets?.concat(secretImportsShaped) || []
   );
+
+  if (filter[RowType.EmptySecret]) {
+    console.log("🔍 EMPTY SECRETS FRONTEND DEBUG:");
+    console.log("Secrets from backend:", secrets?.length || 0);
+    console.log("Secret keys:", secrets?.map((s) => s.key) || []);
+    console.log("SecKeys for table:", secKeys);
+    console.log("Total count from API:", totalCount);
+    console.log("IsTableEmpty:", totalCount === 0);
+  }
 
   const getSecretByKey = useCallback(
     (env: string, key: string) => {
@@ -1072,6 +1085,19 @@ export const OverviewPage = () => {
                       <span>Secrets</span>
                     </div>
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggleRowType(RowType.EmptySecret);
+                    }}
+                    icon={filter[RowType.EmptySecret] && <FontAwesomeIcon icon={faCheckCircle} />}
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faKey} className="text-yellow-500" />
+                      <span>Empty Secrets</span>
+                    </div>
+                  </DropdownMenuItem>
                   <DropdownMenuLabel>Filter by Environment</DropdownMenuLabel>
                   {userAvailableEnvs.map((availableEnv) => {
                     const { id: envId, name } = availableEnv;
@@ -1530,15 +1556,19 @@ export const OverviewPage = () => {
                     ))}
                     <SecretNoAccessOverviewTableRow
                       environments={visibleEnvs}
-                      count={Math.max(
-                        (page * perPage > totalCount ? totalCount % perPage : perPage) -
-                          (totalUniqueFoldersInPage || 0) -
-                          (totalUniqueDynamicSecretsInPage || 0) -
-                          (totalUniqueSecretsInPage || 0) -
-                          (totalUniqueSecretImportsInPage || 0) -
-                          (totalUniqueSecretRotationsInPage || 0),
-                        0
-                      )}
+                      count={
+                        filter[RowType.EmptySecret]
+                          ? 0 // Don't show "no access" rows when empty filter is active
+                          : Math.max(
+                              (page * perPage > totalCount ? totalCount % perPage : perPage) -
+                                (totalUniqueFoldersInPage || 0) -
+                                (totalUniqueDynamicSecretsInPage || 0) -
+                                (totalUniqueSecretsInPage || 0) -
+                                (totalUniqueSecretImportsInPage || 0) -
+                                (totalUniqueSecretRotationsInPage || 0),
+                              0
+                            )
+                      }
                     />
                   </>
                 )}
@@ -1602,6 +1632,7 @@ export const OverviewPage = () => {
                   folderCount={totalFolderCount}
                   importCount={totalImportCount}
                   secretRotationCount={totalSecretRotationCount}
+                  // emptySecretCount={totalEmptySecretCount}
                 />
               }
               className="rounded-b-md border-t border-solid border-t-mineshaft-600"
