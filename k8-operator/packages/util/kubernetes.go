@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
-	"github.com/Infisical/infisical/k8-operator/packages/model"
+	"github.com/Infisical/infisical/infisical-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/infisical-operator/packages/model"
 	corev1 "k8s.io/api/core/v1"
 	k8Errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
