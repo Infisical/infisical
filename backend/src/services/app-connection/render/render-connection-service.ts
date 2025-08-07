@@ -31,7 +31,7 @@ export const renderConnectionService = (getAppConnection: TGetAppConnectionFunc)
 
       return groups;
     } catch (error) {
-      logger.error(error, "Failed to list services for Render connection");
+      logger.error(error, "Failed to list environment groups for Render connection");
       return [];
     }
   };
