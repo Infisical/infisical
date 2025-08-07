@@ -136,7 +136,7 @@ export const RenderSyncFields = () => {
               <FilterableSelect
                 isLoading={isGroupsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={groups ? (groups.find((service) => service.id === value) ?? []) : []}
+                value={groups ? (groups.find((g) => g.id === value) ?? []) : []}
                 onChange={(option) => {
                   onChange((option as SingleValue<TRenderEnvironmentGroup>)?.id ?? null);
                   setValue(
@@ -145,7 +145,7 @@ export const RenderSyncFields = () => {
                   );
                 }}
                 options={groups}
-                placeholder="Select a environment group..."
+                placeholder="Select an environment group..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
               />

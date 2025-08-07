@@ -96,7 +96,7 @@ export const listRenderEnvironmentGroups = async (
     credentials: { apiKey }
   } = appConnection;
 
-  const services: TRenderEnvironmentGroup[] = [];
+  const groups: TRenderEnvironmentGroup[] = [];
   let hasMorePages = true;
   const perPage = 100;
   let cursor;
@@ -117,7 +117,7 @@ export const listRenderEnvironmentGroups = async (
     ).data;
 
     res.forEach((item) => {
-      services.push({
+      groups.push({
         name: item.envGroup.name,
         id: item.envGroup.id
       });
@@ -130,5 +130,5 @@ export const listRenderEnvironmentGroups = async (
     }
   }
 
-  return services;
+  return groups;
 };
