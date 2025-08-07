@@ -6,11 +6,16 @@ export type TGroupOrgMembership = TGroup & {
   customRole?: TOrgRole;
 };
 
-export type TGroup = {
+export type TBaseGroup = {
   id: string;
   name: string;
   slug: string;
   orgId: string;
+};
+
+export type TGroupRole = "owner" | "admin" | "member" | "no-access" | "custom";
+
+export type TGroup = TBaseGroup & {
   createdAt: string;
   updatedAt: string;
   role: string;
@@ -19,9 +24,9 @@ export type TGroup = {
 export type TGroupMembership = {
   id: string;
   group: TGroup;
-  roles: {
+  roles: Array<{
     id: string;
-    role: "owner" | "admin" | "member" | "no-access" | "custom";
+    role: TGroupRole;
     customRoleId: string;
     customRoleName: string;
     customRoleSlug: string;
@@ -30,17 +35,12 @@ export type TGroupMembership = {
     temporaryRange: string | null;
     temporaryAccessStartTime: string | null;
     temporaryAccessEndTime: string | null;
-  }[];
+  }>;
   createdAt: string;
   updatedAt: string;
 };
 
-export type TGroupWithProjectMemberships = {
-  id: string;
-  name: string;
-  slug: string;
-  orgId: string;
-};
+export type TGroupWithProjectMemberships = TBaseGroup;
 
 export type TGroupUser = {
   id: string;
