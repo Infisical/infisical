@@ -317,7 +317,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         {name}
                         {lastLoginAuthMethod && lastLoginTime && (
                           <Tooltip
-                            className="min-w-52 max-w-96"
+                            className="min-w-52 max-w-96 px-3"
                             content={
                               <LastLoginSection
                                 lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
