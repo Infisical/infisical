@@ -881,17 +881,55 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
-    const decryptedSecrets = secrets
-      .filter((el) =>
-        hasSecretReadValueOrDescribePermission(projectPermission, filterByAction, {
-          environment: groupedFolderMappings[el.folderId][0].environment,
-          secretPath: groupedFolderMappings[el.folderId][0].path,
-          secretName: el.key,
-          secretTags: el.tags.map((i) => i.slug)
-        })
-      )
+    let filteredSecrets = secrets.filter((el) =>
+      hasSecretReadValueOrDescribePermission(projectPermission, filterByAction, {
+        environment: groupedFolderMappings[el.folderId][0].environment,
+        secretPath: groupedFolderMappings[el.folderId][0].path,
+        secretName: el.key,
+        secretTags: el.tags.map((i) => i.slug)
+      })
+    );
 
-      .map((secret) => {
+   
+    if (filters.includeEmptySecrets) {
+    
+      const secretsByKey = groupBy(filteredSecrets, (secret) => secret.key);
+      
+      const emptySecretKeys = new Set<string>();
+      
+      for (const [secretKey, secretsForKey] of Object.entries(secretsByKey)) {
+        const hasEmptyValue = secretsForKey.some((secret) => {
+          
+          const hasReadPermission = hasSecretReadValueOrDescribePermission(
+            projectPermission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: groupedFolderMappings[secret.folderId][0].environment,
+              secretPath: groupedFolderMappings[secret.folderId][0].path,
+              secretName: secret.key,
+              secretTags: secret.tags.map((i) => i.slug)
+            }
+          );
+          
+          if (!hasReadPermission) {
+            return false; // Don't count hidden secrets as empty
+          }
+          
+          const decryptedValue = secret.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+            : "";
+          return decryptedValue === "";
+        });
+        
+        if (hasEmptyValue) {
+          emptySecretKeys.add(secretKey);
+        }
+      }
+      
+      filteredSecrets = filteredSecrets.filter((secret) => emptySecretKeys.has(secret.key));
+    }
+
+    const decryptedSecrets = filteredSecrets.map((secret) => {
         // Note(Daniel): This is only relevant if the filterAction isn't set to ReadValue. This is needed for the frontend.
         const secretValueHidden = !hasSecretReadValueOrDescribePermission(
           projectPermission,

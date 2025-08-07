@@ -15,6 +15,7 @@ type Props = {
   secretCount?: number;
   dynamicSecretCount?: number;
   secretRotationCount?: number;
+  emptySecretCount?: number;
 };
 
 export const SecretTableResourceCount = ({
@@ -22,7 +23,8 @@ export const SecretTableResourceCount = ({
   dynamicSecretCount = 0,
   secretCount = 0,
   importCount = 0,
-  secretRotationCount = 0
+  secretRotationCount = 0,
+  emptySecretCount = 0
 }: Props) => {
   return (
     <div className="flex items-center gap-2 divide-x divide-mineshaft-500 text-sm text-mineshaft-400">
@@ -103,6 +105,22 @@ export const SecretTableResourceCount = ({
           <div className="flex items-center gap-2 pl-2">
             <FontAwesomeIcon icon={faKey} className="text-bunker-300" />
             <span>{secretCount}</span>
+          </div>
+        </Tooltip>
+      )}
+      {emptySecretCount > 0 && (
+        <Tooltip
+          className="max-w-sm"
+          content={
+            <p className="whitespace-nowrap text-center">
+              Empty secret count{" "}
+              <span className="text-center text-mineshaft-400">(matching filters)</span>
+            </p>
+          }
+        >
+          <div className="flex items-center gap-2 pl-2">
+            <FontAwesomeIcon icon={faKey} className="text-yellow-500" />
+            <span>{emptySecretCount}</span>
           </div>
         </Tooltip>
       )}
