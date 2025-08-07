@@ -141,7 +141,7 @@ export const ldapConfigServiceFactory = ({
 
     if (!isConnected) {
       throw new BadRequestError({
-        message: "Failed to create LDAP configuration due to invalid credentials."
+        message: "Failed to establish connection to LDAP directory. Please verify that your credentials are correct."
       });
     }
 
@@ -269,7 +269,8 @@ export const ldapConfigServiceFactory = ({
         const isConnected = await testLDAPConfig(decryptedLdapCfg);
         if (!isConnected) {
           throw new BadRequestError({
-            message: "Failed to update LDAP configuration due to invalid credentials."
+            message:
+              "Failed to establish connection to LDAP directory. Please verify that your credentials are correct."
           });
         }
       }
