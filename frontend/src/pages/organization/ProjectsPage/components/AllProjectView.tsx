@@ -35,6 +35,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
@@ -42,7 +43,11 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { useRequestProjectAccess, useSearchProjects } from "@app/hooks/api";
+import {
+  useOrgAdminAccessProject,
+  useRequestProjectAccess,
+  useSearchProjects
+} from "@app/hooks/api";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 
 type Props = {
@@ -120,6 +125,8 @@ export const AllProjectView = ({
     initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
   });
 
+  const orgAdminAccessProject = useOrgAdminAccessProject();
+
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
     setUserTablePreference("allProjectsTable", PreferenceKey.PerPage, newPerPage);
@@ -136,6 +143,25 @@ export const AllProjectView = ({
     orderDirection,
     type: projectTypeFilter
   });
+
+  const handleAccessProject = async (type: ProjectType, projectId: string) => {
+    try {
+      await orgAdminAccessProject.mutateAsync({
+        projectId
+      });
+      await navigate({
+        to: getProjectHomePage(type),
+        params: {
+          projectId
+        }
+      });
+    } catch {
+      createNotification({
+        text: "Failed to access project",
+        type: "error"
+      });
+    }
+  };
 
   useResetPageHelper({
     setPage,
@@ -325,7 +351,7 @@ export const AllProjectView = ({
                   <span>Joined</span>
                 </Badge>
               ) : (
-                <div className="opacity-0 transition-all group-hover:opacity-100">
+                <div className="flex gap-2 opacity-0 transition-all group-hover:opacity-100">
                   <Button
                     size="xs"
                     variant="outline_bg"
@@ -333,6 +359,32 @@ export const AllProjectView = ({
                   >
                     Request Access
                   </Button>
+
+                  <OrgPermissionCan
+                    I={OrgPermissionAdminConsoleAction.AccessAllProjects}
+                    an={OrgPermissionSubjects.AdminConsole}
+                  >
+                    {(isAllowed) =>
+                      isAllowed && (
+                        <Button
+                          size="xs"
+                          variant="star"
+                          colorSchema="primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleAccessProject(workspace.type, workspace.id);
+                          }}
+                          disabled={
+                            orgAdminAccessProject.variables?.projectId === workspace.id &&
+                            orgAdminAccessProject.isPending
+                          }
+                        >
+                          Admin Access
+                        </Button>
+                      )
+                    }
+                  </OrgPermissionCan>
                 </div>
               )}
             </div>
