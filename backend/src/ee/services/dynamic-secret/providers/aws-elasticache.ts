@@ -183,7 +183,12 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     } catch (err) {
       const sanitizedErrorMessage = sanitizeString({
         unsanitizedString: (err as Error)?.message,
-        tokens: [providerInputs.accessKeyId, providerInputs.secretAccessKey, providerInputs.clusterName]
+        tokens: [
+          providerInputs.accessKeyId,
+          providerInputs.secretAccessKey,
+          providerInputs.clusterName,
+          providerInputs.region
+        ]
       });
       throw new BadRequestError({
         message: `Failed to connect with provider: ${sanitizedErrorMessage}`

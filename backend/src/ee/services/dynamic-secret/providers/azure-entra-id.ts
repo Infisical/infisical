@@ -114,12 +114,12 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
+    const providerInputs = await validateProviderInputs(inputs);
     try {
       // Creates a new password
       await create({ inputs });
       return { entityId };
     } catch (err) {
-      const providerInputs = await validateProviderInputs(inputs);
       const sanitizedErrorMessage = sanitizeString({
         unsanitizedString: (err as Error)?.message,
         tokens: [providerInputs.clientSecret, providerInputs.applicationId, entityId]

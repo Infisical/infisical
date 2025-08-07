@@ -180,47 +180,49 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
       awsTags.push(...additionalTags);
     }
 
-    const createUserRes = await client.send(
-      new CreateUserCommand({
-        Path: awsPath,
-        PermissionsBoundary: permissionBoundaryPolicyArn || undefined,
-        Tags: awsTags,
-        UserName: username
-      })
-    );
-
-    if (!createUserRes.User) throw new BadRequestError({ message: "Failed to create AWS IAM User" });
-    if (userGroups) {
-      await Promise.all(
-        userGroups
-          .split(",")
-          .filter(Boolean)
-          .map((group) =>
-            client.send(new AddUserToGroupCommand({ UserName: createUserRes?.User?.UserName, GroupName: group }))
-          )
-      );
-    }
-    if (policyArns) {
-      await Promise.all(
-        policyArns
-          .split(",")
-          .filter(Boolean)
-          .map((policyArn) =>
-            client.send(new AttachUserPolicyCommand({ UserName: createUserRes?.User?.UserName, PolicyArn: policyArn }))
-          )
-      );
-    }
-    if (policyDocument) {
-      await client.send(
-        new PutUserPolicyCommand({
-          UserName: createUserRes.User.UserName,
-          PolicyName: `infisical-dynamic-policy-${alphaNumericNanoId(4)}`,
-          PolicyDocument: policyDocument
+    try {
+      const createUserRes = await client.send(
+        new CreateUserCommand({
+          Path: awsPath,
+          PermissionsBoundary: permissionBoundaryPolicyArn || undefined,
+          Tags: awsTags,
+          UserName: username
         })
       );
-    }
 
-    try {
+      if (!createUserRes.User) throw new BadRequestError({ message: "Failed to create AWS IAM User" });
+      if (userGroups) {
+        await Promise.all(
+          userGroups
+            .split(",")
+            .filter(Boolean)
+            .map((group) =>
+              client.send(new AddUserToGroupCommand({ UserName: createUserRes?.User?.UserName, GroupName: group }))
+            )
+        );
+      }
+      if (policyArns) {
+        await Promise.all(
+          policyArns
+            .split(",")
+            .filter(Boolean)
+            .map((policyArn) =>
+              client.send(
+                new AttachUserPolicyCommand({ UserName: createUserRes?.User?.UserName, PolicyArn: policyArn })
+              )
+            )
+        );
+      }
+      if (policyDocument) {
+        await client.send(
+          new PutUserPolicyCommand({
+            UserName: createUserRes.User.UserName,
+            PolicyName: `infisical-dynamic-policy-${alphaNumericNanoId(4)}`,
+            PolicyDocument: policyDocument
+          })
+        );
+      }
+
       const createAccessKeyRes = await client.send(
         new CreateAccessKeyCommand({
           UserName: createUserRes.User.UserName

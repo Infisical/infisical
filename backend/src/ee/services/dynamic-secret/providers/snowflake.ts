@@ -155,7 +155,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
           sqlText: revokeStatement,
           complete(err) {
             if (err) {
-              return reject();
+              return reject(err);
             }
 
             return resolve(true);

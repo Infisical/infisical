@@ -66,11 +66,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
     const connection = await $getClient(providerInputs);
 
     try {
-      const infoResponse = await connection
-        .info()
-        .then(() => true)
-        .catch(() => false);
-
+      const infoResponse = await connection.info().then(() => true);
       return infoResponse;
     } catch (err) {
       const tokens = [];

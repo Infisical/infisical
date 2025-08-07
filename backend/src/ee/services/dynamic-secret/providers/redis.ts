@@ -123,7 +123,12 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
       if (connection) await connection.quit();
       const sanitizedErrorMessage = sanitizeString({
         unsanitizedString: (err as Error)?.message,
-        tokens: [providerInputs.password || "", providerInputs.username, providerInputs.host]
+        tokens: [
+          providerInputs.password || "",
+          providerInputs.username,
+          providerInputs.host,
+          String(providerInputs.port)
+        ]
       });
       throw new BadRequestError({
         message: `Failed to connect with provider: ${sanitizedErrorMessage}`

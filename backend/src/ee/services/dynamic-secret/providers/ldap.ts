@@ -216,7 +216,8 @@ export const LdapProvider = (): TDynamicProviderFns => {
     if (providerInputs.credentialType === LdapCredentialType.Static) {
       const dnRegex = new RE2("^dn:\\s*(.+)", "m");
       const dnMatch = dnRegex.exec(providerInputs.rotationLdif);
-      const username = dnMatch?.[1] || "";
+      const username = dnMatch?.[1];
+      if (!username) throw new BadRequestError({ message: "Username not found from Ldif" });
       const password = generatePassword();
 
       if (dnMatch) {
