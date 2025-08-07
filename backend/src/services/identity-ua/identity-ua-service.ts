@@ -135,7 +135,8 @@ export const identityUaServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

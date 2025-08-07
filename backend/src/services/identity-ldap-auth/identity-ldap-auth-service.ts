@@ -147,7 +147,8 @@ export const identityLdapAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.LDAP_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

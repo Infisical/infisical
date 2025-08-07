@@ -383,7 +383,8 @@ export const identityKubernetesAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

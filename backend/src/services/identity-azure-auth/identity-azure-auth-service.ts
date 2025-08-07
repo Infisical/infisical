@@ -83,7 +83,8 @@ export const identityAzureAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.AZURE_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.AZURE_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

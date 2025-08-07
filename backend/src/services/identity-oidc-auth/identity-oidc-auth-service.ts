@@ -181,7 +181,8 @@ export const identityOidcAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.OIDC_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.OIDC_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

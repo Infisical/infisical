@@ -64,6 +64,8 @@ export const identityAliCloudAuthServiceFactory = ({
       identityId: identityAliCloudAuth.identityId
     });
 
+    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
+
     const requestUrl = new URL("https://sts.aliyuncs.com");
 
     for (const key of Object.keys(params)) {
@@ -90,7 +92,8 @@ export const identityAliCloudAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

@@ -348,7 +348,8 @@ export const identityTokenAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.TOKEN_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.TOKEN_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

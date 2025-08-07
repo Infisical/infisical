@@ -57,6 +57,7 @@ export const identityOciAuthServiceFactory = ({
     }
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityOciAuth.identityId });
+    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
 
     // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
     if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
@@ -94,7 +95,8 @@ export const identityOciAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.OCI_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

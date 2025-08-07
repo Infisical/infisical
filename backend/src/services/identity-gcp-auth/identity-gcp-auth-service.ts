@@ -122,7 +122,8 @@ export const identityGcpAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.GCP_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.GCP_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

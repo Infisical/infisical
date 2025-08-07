@@ -91,6 +91,7 @@ export const identityAwsAuthServiceFactory = ({
     }
 
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityAwsAuth.identityId });
+    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
 
     const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
     const body: string = Buffer.from(iamRequestBody, "base64").toString();
@@ -155,7 +156,8 @@ export const identityAwsAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.AWS_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.AWS_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

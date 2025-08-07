@@ -481,7 +481,8 @@ export const OrgMembersTable = ({
                   id: orgMembershipId,
                   status,
                   isActive,
-                  lastLoggedInAuthMethod
+                  lastLoginAuthMethod,
+                  lastLoginTime
                 }) => {
                   const name =
                     u && u.firstName ? `${u.firstName} ${u.lastName ?? ""}`.trim() : null;
@@ -530,11 +531,14 @@ export const OrgMembersTable = ({
                               </Tooltip>
                             </Badge>
                           )}
-                          {lastLoggedInAuthMethod && (
+                          {lastLoginAuthMethod && lastLoginTime && (
                             <Tooltip
                               className="min-w-52 max-w-96"
                               content={
-                                <LastLoginSection lastLoggedInAuthMethod={lastLoggedInAuthMethod} />
+                                <LastLoginSection
+                                  lastLoginAuthMethod={lastLoginAuthMethod}
+                                  lastLoginTime={lastLoginTime}
+                                />
                               }
                             >
                               <FontAwesomeIcon

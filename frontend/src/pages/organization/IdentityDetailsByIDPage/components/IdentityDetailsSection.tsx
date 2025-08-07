@@ -24,6 +24,7 @@ import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/contex
 import { useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { format } from "date-fns";
 
 type Props = {
   identityId: string;
@@ -141,7 +142,13 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
           <p className="text-sm text-mineshaft-300">
-            {data.lastLoggedInAuthMethod ? identityAuthToNameMap[data.lastLoggedInAuthMethod] : "-"}
+            {data.lastLoginAuthMethod ? identityAuthToNameMap[data.lastLoginAuthMethod] : "-"}
+          </p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Last Login Time</p>
+          <p className="text-sm text-mineshaft-300">
+            {data.lastLoginTime ? format(data.lastLoginTime, "PPpp") : "-"}
           </p>
         </div>
         <div className="mb-4">

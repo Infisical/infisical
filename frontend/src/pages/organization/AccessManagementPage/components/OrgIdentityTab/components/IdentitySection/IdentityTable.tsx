@@ -293,7 +293,13 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             {isPending && <TableSkeleton columns={3} innerKey="org-identities" />}
             {!isPending &&
               data?.identities?.map(
-                ({ identity: { id, name }, role, customRole, lastLoggedInAuthMethod }) => {
+                ({
+                  identity: { id, name },
+                  role,
+                  customRole,
+                  lastLoginAuthMethod,
+                  lastLoginTime
+                }) => {
                   return (
                     <Tr
                       className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
@@ -309,14 +315,13 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                     >
                       <Td className="group">
                         {name}
-                        {lastLoggedInAuthMethod && (
+                        {lastLoginAuthMethod && lastLoginTime && (
                           <Tooltip
                             className="min-w-52 max-w-96"
                             content={
                               <LastLoginSection
-                                lastLoggedInAuthMethod={
-                                  identityAuthToNameMap[lastLoggedInAuthMethod]
-                                }
+                                lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
+                                lastLoginTime={lastLoginTime}
                               />
                             }
                           >

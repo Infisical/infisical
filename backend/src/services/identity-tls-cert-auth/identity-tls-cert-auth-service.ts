@@ -121,7 +121,8 @@ export const identityTlsCertAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

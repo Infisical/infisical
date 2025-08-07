@@ -22,6 +22,7 @@ import { useFetchServerStatus, useGetOrgMembership, useGetOrgRoles } from "@app/
 import { OrgUser } from "@app/hooks/api/types";
 import { useResendOrgMemberInvitation } from "@app/hooks/api/users/mutation";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { format } from "date-fns";
 
 type Props = {
   membershipId: string;
@@ -163,7 +164,15 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
           <div className="group flex align-top">
             <p className="break-all text-sm text-mineshaft-300">
-              {membership.lastLoggedInAuthMethod || "-"}
+              {membership.lastLoginAuthMethod || "-"}
+            </p>
+          </div>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Last Login Time</p>
+          <div className="group flex align-top">
+            <p className="break-all text-sm text-mineshaft-300">
+              {membership.lastLoginTime ? format(membership.lastLoginTime, "PPpp") : "-"}
             </p>
           </div>
         </div>

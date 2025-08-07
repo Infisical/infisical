@@ -3,39 +3,63 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const lastUserLoggedInAuthMethod = await knex.schema.hasColumn(TableName.OrgMembership, "lastLoggedInAuthMethod");
+  const lastUserLoggedInAuthMethod = await knex.schema.hasColumn(TableName.OrgMembership, "lastLoginAuthMethod");
   const lastIdentityLoggedInAuthMethod = await knex.schema.hasColumn(
     TableName.IdentityOrgMembership,
-    "lastLoggedInAuthMethod"
+    "lastLoginAuthMethod"
   );
-  if (!lastUserLoggedInAuthMethod) {
+  const lastUserLoggedInTime = await knex.schema.hasColumn(TableName.OrgMembership, "lastLoginTime");
+  const lastIdentityLoggedInTime = await knex.schema.hasColumn(TableName.IdentityOrgMembership, "lastLoginTime");
+  if (!lastUserLoggedInAuthMethod || !lastUserLoggedInTime) {
     await knex.schema.alterTable(TableName.OrgMembership, (t) => {
-      t.string("lastLoggedInAuthMethod").nullable();
+      if (!lastUserLoggedInAuthMethod) {
+        t.string("lastLoginAuthMethod").nullable();
+      }
+      if (!lastUserLoggedInTime) {
+        t.datetime("lastLoginTime").nullable();
+      }
     });
   }
 
-  if (!lastIdentityLoggedInAuthMethod) {
+  if (!lastIdentityLoggedInAuthMethod || !lastIdentityLoggedInTime) {
     await knex.schema.alterTable(TableName.IdentityOrgMembership, (t) => {
-      t.string("lastLoggedInAuthMethod").nullable();
+      if (!lastIdentityLoggedInAuthMethod) {
+        t.string("lastLoginAuthMethod").nullable();
+      }
+      if (!lastIdentityLoggedInTime) {
+        t.datetime("lastLoginTime").nullable();
+      }
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const lastUserLoggedInAuthMethod = await knex.schema.hasColumn(TableName.OrgMembership, "lastLoggedInAuthMethod");
+  const lastUserLoggedInAuthMethod = await knex.schema.hasColumn(TableName.OrgMembership, "lastLoginAuthMethod");
   const lastIdentityLoggedInAuthMethod = await knex.schema.hasColumn(
     TableName.IdentityOrgMembership,
-    "lastLoggedInAuthMethod"
+    "lastLoginAuthMethod"
   );
-  if (lastUserLoggedInAuthMethod) {
+  const lastUserLoggedInTime = await knex.schema.hasColumn(TableName.OrgMembership, "lastLoginTime");
+  const lastIdentityLoggedInTime = await knex.schema.hasColumn(TableName.IdentityOrgMembership, "lastLoginTime");
+  if (lastUserLoggedInAuthMethod || lastUserLoggedInTime) {
     await knex.schema.alterTable(TableName.OrgMembership, (t) => {
-      t.dropColumn("lastLoggedInAuthMethod");
+      if (lastUserLoggedInAuthMethod) {
+        t.dropColumn("lastLoginAuthMethod");
+      }
+      if (lastUserLoggedInTime) {
+        t.dropColumn("lastLoginTime");
+      }
     });
   }
 
-  if (lastIdentityLoggedInAuthMethod) {
+  if (lastIdentityLoggedInAuthMethod || lastIdentityLoggedInTime) {
     await knex.schema.alterTable(TableName.IdentityOrgMembership, (t) => {
-      t.dropColumn("lastLoggedInAuthMethod");
+      if (lastIdentityLoggedInAuthMethod) {
+        t.dropColumn("lastLoginAuthMethod");
+      }
+      if (lastIdentityLoggedInTime) {
+        t.dropColumn("lastLoginTime");
+      }
     });
   }
 }

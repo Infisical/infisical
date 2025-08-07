@@ -20,7 +20,8 @@ export const OrgMembershipsSchema = z.object({
   projectFavorites: z.string().array().nullable().optional(),
   isActive: z.boolean().default(true),
   lastInvitedAt: z.date().nullable().optional(),
-  lastLoggedInAuthMethod: z.string().nullable().optional()
+  lastLoginAuthMethod: z.string().nullable().optional(),
+  lastLoginTime: z.date().nullable().optional()
 });
 
 export type TOrgMemberships = z.infer<typeof OrgMembershipsSchema>;

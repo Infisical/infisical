@@ -149,7 +149,10 @@ export const authLoginServiceFactory = ({
     if (organizationId) {
       const org = await orgDAL.findById(organizationId);
       if (org) {
-        await orgMembershipDAL.update({ userId: user.id, orgId: org.id }, { lastLoggedInAuthMethod: authMethod });
+        await orgMembershipDAL.update(
+          { userId: user.id, orgId: org.id },
+          { lastLoginAuthMethod: authMethod, lastLoginTime: new Date() }
+        );
         if (org.userTokenExpiration) {
           tokenSessionExpiresIn = getMinExpiresIn(cfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
           refreshTokenExpiresIn = org.userTokenExpiration;

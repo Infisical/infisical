@@ -15,7 +15,8 @@ export const IdentityOrgMembershipsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   identityId: z.string().uuid(),
-  lastLoggedInAuthMethod: z.string().nullable().optional()
+  lastLoginAuthMethod: z.string().nullable().optional(),
+  lastLoginTime: z.date().nullable().optional()
 });
 
 export type TIdentityOrgMemberships = z.infer<typeof IdentityOrgMembershipsSchema>;

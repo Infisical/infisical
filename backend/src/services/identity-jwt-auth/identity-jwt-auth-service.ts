@@ -212,7 +212,8 @@ export const identityJwtAuthServiceFactory = ({
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
-          lastLoggedInAuthMethod: IdentityAuthMethod.JWT_AUTH
+          lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH,
+          lastLoginTime: new Date()
         },
         tx
       );

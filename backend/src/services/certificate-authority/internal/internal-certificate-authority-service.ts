@@ -52,6 +52,7 @@ import {
 } from "../certificate-authority-fns";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority-queue";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
+import { validateAndMapAltNameType } from "../certificate-authority-validators";
 import { TInternalCertificateAuthorityDALFactory } from "./internal-certificate-authority-dal";
 import {
   TCreateCaDTO,
@@ -68,7 +69,6 @@ import {
   TSignIntermediateDTO,
   TUpdateCaDTO
 } from "./internal-certificate-authority-types";
-import { validateAndMapAltNameType } from "../certificate-authority-validators";
 
 type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateAuthorityDAL: Pick<
