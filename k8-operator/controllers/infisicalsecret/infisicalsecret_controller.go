@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	defaultErrors "errors"
 
@@ -27,6 +28,8 @@ type InfisicalSecretReconciler struct {
 	client.Client
 	BaseLogger logr.Logger
 	Scheme     *runtime.Scheme
+
+	SourceCh chan event.GenericEvent
 }
 
 const FINALIZER_NAME = "secrets.finalizers.infisical.com"
@@ -54,8 +57,9 @@ func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
 
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	logger := r.GetLogger(req)
+
+	logger.Info("Reconcile called")
 
 	var infisicalSecretCRD secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
@@ -175,6 +179,19 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
+	if infisicalSecretCRD.Spec.InstantUpdates {
+		logger.Info("Instant updates are enabled")
+
+		if err := r.EnsureEventStream(ctx, logger, &infisicalSecretCRD); err != nil {
+			logger.Error(err, fmt.Sprintf("unable to ensure event stream. Will requeue after [requeueTime=%v]", requeueTime))
+			return ctrl.Result{
+				RequeueAfter: requeueTime,
+			}, nil
+		}
+	} else {
+		r.CloseEventStream(ctx, logger, &infisicalSecretCRD)
+	}
+
 	// Sync again after the specified time
 	logger.Info(fmt.Sprintf("Successfully synced %d secrets. Operator will requeue after [%v]", secretsCount, requeueTime))
 	return ctrl.Result{
@@ -183,7 +200,13 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 }
 
 func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.SourceCh = make(chan event.GenericEvent)
+
 	return ctrl.NewControllerManagedBy(mgr).
+		Watches(
+			&source.Channel{Source: r.SourceCh},
+			&util.EnqueueDelayedEventHandler{Delay: time.Second * 3},
+		).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectOld.GetGeneration() == e.ObjectNew.GetGeneration() {
@@ -209,4 +232,5 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		})).
 		Complete(r)
+
 }

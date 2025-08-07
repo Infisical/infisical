@@ -3,18 +3,22 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	tpl "text/template"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/constants"
 	"github.com/Infisical/infisical/k8-operator/packages/crypto"
 	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/Infisical/infisical/k8-operator/packages/template"
 	"github.com/Infisical/infisical/k8-operator/packages/util"
+	"github.com/Infisical/infisical/k8-operator/packages/util/sse"
 	"github.com/go-logr/logr"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -25,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
 func (r *InfisicalSecretReconciler) handleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error) {
@@ -462,9 +467,10 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 		})
 
 		infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)] = util.ResourceVariables{
-			InfisicalClient: client,
-			CancelCtx:       cancel,
-			AuthDetails:     util.AuthenticationDetails{},
+			InfisicalClient:  client,
+			CancelCtx:        cancel,
+			AuthDetails:      util.AuthenticationDetails{},
+			ServerSentEvents: sse.NewConnectionRegistry(ctx),
 		}
 
 		resourceVariables = infisicalSecretResourceVariablesMap[string(infisicalSecret.UID)]
@@ -474,7 +480,6 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 	}
 
 	return resourceVariables
-
 }
 
 func (r *InfisicalSecretReconciler) updateResourceVariables(infisicalSecret v1alpha1.InfisicalSecret, resourceVariables util.ResourceVariables) {
@@ -482,7 +487,6 @@ func (r *InfisicalSecretReconciler) updateResourceVariables(infisicalSecret v1al
 }
 
 func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, managedKubeSecretReferences []v1alpha1.ManagedKubeSecretConfig, managedKubeConfigMapReferences []v1alpha1.ManagedKubeConfigMapConfig) (int, error) {
-
 	if infisicalSecret == nil {
 		return 0, fmt.Errorf("infisicalSecret is nil")
 	}
@@ -503,9 +507,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		}
 
 		r.updateResourceVariables(*infisicalSecret, util.ResourceVariables{
-			InfisicalClient: infisicalClient,
-			CancelCtx:       cancelCtx,
-			AuthDetails:     authDetails,
+			InfisicalClient:  infisicalClient,
+			CancelCtx:        cancelCtx,
+			AuthDetails:      authDetails,
+			ServerSentEvents: sse.NewConnectionRegistry(ctx),
 		})
 	}
 
@@ -567,4 +572,125 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	}
 
 	return secretsCount, nil
+}
+
+func (r *InfisicalSecretReconciler) EnsureEventStream(ctx context.Context, logger logr.Logger, secret *v1alpha1.InfisicalSecret) error {
+	if secret == nil {
+		return fmt.Errorf("infisicalSecret is nil")
+	}
+
+	variables := r.getResourceVariables(*secret)
+
+	if !variables.AuthDetails.IsMachineIdentityAuth {
+		return fmt.Errorf("only machine identity is supported for subscriptions")
+	}
+
+	projectSlug := variables.AuthDetails.MachineIdentityScope.ProjectSlug
+	secretsPath := variables.AuthDetails.MachineIdentityScope.SecretsPath
+	envSlug := variables.AuthDetails.MachineIdentityScope.EnvSlug
+
+	infiscalClient := variables.InfisicalClient
+	conn := variables.ServerSentEvents
+
+	token := infiscalClient.Auth().GetAccessToken()
+
+	project, err := util.GetProjectBySlug(token, projectSlug)
+
+	if err != nil {
+		return fmt.Errorf("failed to get project [err=%s]", err)
+	}
+
+	if variables.AuthDetails.MachineIdentityScope.Recursive {
+		secretsPath = fmt.Sprint(secretsPath, "**")
+	}
+
+	conditions := &api.SubProjectEventsRequestCondition{
+		SecretPath:      secretsPath,
+		EnvironmentSlug: envSlug,
+	}
+
+	body, err := json.Marshal(api.SubProjectEventsRequest{
+		ProjectID: project.ID,
+		Register: []api.SubProjectEventsRequestRegister{
+			{
+				Event:      "secret:create",
+				Conditions: conditions,
+			},
+			{
+				Event:      "secret:update",
+				Conditions: conditions,
+			},
+			{
+				Event:      "secret:delete",
+				Conditions: conditions,
+			},
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("CallSubscribeProjectEvents: unable to marshal body [err=%s]", err)
+	}
+
+	events, errors, err := conn.Subscribe(func() (*http.Request, error) {
+		headers := map[string]string{
+			"User-Agent":    api.USER_AGENT_NAME,
+			"Authorization": fmt.Sprint("Bearer ", token),
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/v1/events/subscribe/project-events", api.API_HOST_URL), strings.NewReader(string(body)))
+
+		if err != nil {
+			return nil, err
+		}
+
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+
+		return req, nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("unable to connect to SSE server [err=%s]", err)
+	}
+
+	go func() {
+	outer:
+		for {
+			select {
+			case ev := <-events:
+				logger.Info("Received SSE Event", "event", ev)
+				r.SourceCh <- event.GenericEvent{
+					Object: secret,
+				}
+			case err := <-errors:
+				logger.Error(err, "Error occurred")
+				break outer
+			case <-ctx.Done():
+				break outer
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (r *InfisicalSecretReconciler) CloseEventStream(ctx context.Context, logger logr.Logger, secret *secretsv1alpha1.InfisicalSecret) error {
+	if secret == nil {
+		return fmt.Errorf("infisicalSecret is nil")
+	}
+
+	variables := r.getResourceVariables(*secret)
+
+	if !variables.AuthDetails.IsMachineIdentityAuth {
+		return fmt.Errorf("only machine identity is supported for subscriptions")
+	}
+
+	conn := variables.ServerSentEvents
+
+	if _, ok := conn.Get(); ok {
+		conn.Close()
+	}
+
+	return nil
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 
+	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -141,6 +142,26 @@ func CallGetProjectByID(httpClient *resty.Client, request GetProjectByIDRequest)
 
 	if response.IsError() {
 		return GetProjectByIDResponse{}, fmt.Errorf("CallGetProject: Unsuccessful response: [response=%s]", response)
+	}
+
+	return projectResponse, nil
+
+}
+
+func CallGetProjectByIDv2(httpClient *resty.Client, request GetProjectByIDRequest) (model.Project, error) {
+	var projectResponse model.Project
+
+	response, err := httpClient.
+		R().SetResult(&projectResponse).
+		SetHeader("User-Agent", USER_AGENT_NAME).
+		Get(fmt.Sprintf("%s/v2/workspace/%s", API_HOST_URL, request.ProjectID))
+
+	if err != nil {
+		return model.Project{}, fmt.Errorf("CallGetProject: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return model.Project{}, fmt.Errorf("CallGetProject: Unsuccessful response: [response=%s]", response)
 	}
 
 	return projectResponse, nil
