@@ -1,0 +1,155 @@
+---
+title: "Release Channels"
+description: "Learn about Infisical's release channels and how to configure your deployment for different update schedules."
+---
+
+Infisical uses rolling release channels to deliver new features, security fixes, and improvements with different update frequencies. This system allows you to balance getting the latest features with maintaining stability in your deployment environment.
+
+## Why Release Channels?
+
+Release channels solve a critical challenge in software delivery: how to ship features fast while maintaining production stability. Our channel system provides:
+
+- **Risk management**: Test new features in less critical environments before production
+- **Flexibility**: Choose update frequency that matches your change management process  
+- **Predictability**: Know when to expect updates for maintenance planning
+
+<Note>
+Release channels reduce operational overhead while ensuring you receive security fixes and features according to your organization's risk tolerance and change management requirements.
+</Note>
+
+## What are release channels?
+
+Release channels are different distribution streams of Infisical that receive updates at different frequencies. Each channel represents a different balance between getting the latest features and maintaining stability in your production environment.
+
+Similar to how cloud providers manage deployments, our rolling release model ensures that fixes and changes "roll" through each release channel on a different cadence, allowing us to quickly respond to security vulnerabilities while maintaining deployment stability.
+
+## Available Channels
+
+Infisical provides two distinct release channels with different risk and feature delivery profiles:
+
+<Tabs>
+  <Tab title="Stable Channel">
+    - **Update Frequency**: Monthly releases (typically 1st Tuesday of each month)
+    - **Docker Tags**: `vX.Y.Z` (e.g., `v0.145.0`, `v0.146.0`)
+    - **Stability**: Fully tested, production-ready releases
+    - **Release Process**: Features have been validated through nightly channel for 30+ days
+    - **Intended Audience**: Production environments, enterprise users who prioritize stability
+    - **Features**: Thoroughly tested features with comprehensive documentation and migration guides
+
+    **Best for:**
+      - Enterprise environments requiring change approvals
+      - Organizations with strict change management processes
+      - Teams that prefer scheduled maintenance windows
+
+      **Characteristics:**
+      - Predictable monthly release schedule
+      - Extensive testing and validation (30+ days in nightly)
+      - Features proven stable through nightly channel adoption
+  </Tab>
+  <Tab title="Nightly Channel">
+    - **Update Frequency**: Daily builds during weekdays (Monday-Friday)
+    - **Docker Tags**: `vX.Y.Z-nightly-YYYYMMDD` (e.g., `v0.146.0-nightly-20250423`)
+    - **Multiple Daily Builds**: If multiple nightly builds are created on the same day, they are numbered incrementally: `vX.Y.Z-nightly-YYYYMMDD.1`, `vX.Y.Z-nightly-YYYYMMDD.2`, etc.
+    - **Stability**: Latest features with standard CI/CD testing
+    - **Release Process**: Built from main branch after all automated tests pass
+    - **Intended Audience**: Development environments, early adopters, feature testing
+    - **Features**: Cutting-edge functionality, experimental features, immediate bug fixes
+
+    **Best for:**
+      - Organizations with flexible change management
+      - Early feature validation and testing
+      - Teams wanting immediate access to bug fixes
+      - Contributors testing their code contributions
+
+      **Characteristics:**
+      - Access to latest features immediately
+      - Faster security patch delivery
+      - Higher update frequency (daily)
+  </Tab>
+</Tabs>
+
+<Note>
+**Schedule Flexibility**: Release schedules are target dates and may vary due to critical bug fixes, security patches, or infrastructure maintenance. We cannot guarantee releases will occur on the exact scheduled day (sometimes earlier, sometimes later).
+</Note>
+
+## Configuration
+
+### Docker Compose Configuration
+
+<Tabs>
+    <Tab title="Stable Channel">
+        Update your `docker-compose.yml` to use stable tags:
+
+        ```yaml docker-compose.yml
+        version: "3.8"
+        services:
+          infisical:
+            image: infisical/infisical:v0.145.0
+            restart: unless-stopped
+            healthcheck:
+              test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
+              interval: 30s
+              timeout: 10s
+              retries: 3
+            # ... other configuration
+        ```
+
+        <Note>
+            Stable releases follow semantic versioning. Always specify the exact version tag for predictable deployments and easy rollbacks.
+        </Note>
+    </Tab>
+    <Tab title="Nightly Channel">
+        Update your `docker-compose.yml` to use nightly tags:
+
+        ```yaml docker-compose.yml
+        version: "3.8"
+        services:
+          infisical:
+            image: infisical/infisical:v0.146.0-nightly-20250423
+            restart: unless-stopped
+            healthcheck:
+              test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
+              interval: 30s
+              timeout: 10s
+              retries: 3
+            # ... other configuration
+        ```
+        <Tip>
+            Check [Docker Hub](https://hub.docker.com/r/infisical/infisical/tags) for the latest nightly tags. Consider using `--monitor-only` with Watchtower initially to get notifications without automatic updates.
+        </Tip>
+    </Tab>
+</Tabs>
+
+## Docker Image Tagging Strategy
+
+Our Docker image tags follow a consistent pattern to ensure clarity and immutability:
+
+| Channel | Tag Format | Example | Description |
+|---------|------------|---------|-------------|
+| Stable | `vX.Y.Z` | `v0.145.0` | Semantic versioned stable releases |
+| Nightly | `vX.Y.Z-nightly-YYYYMMDD` | `v0.146.0-nightly-20250423` | Daily builds with date identifier |
+| Nightly (Multiple) | `vX.Y.Z-nightly-YYYYMMDD.N` | `v0.146.0-nightly-20250423.1` | Multiple builds on same day (incremental) |
+
+## Release Information and Notifications
+
+### Release Notes and Changelogs
+
+Stay informed about what's included in each release:
+
+- **Stable Releases**: [GitHub Releases](https://github.com/Infisical/infisical/releases) with comprehensive changelogs, breaking changes, and migration guides
+- **Nightly Builds**: [Daily commit log](https://github.com/Infisical/infisical/commits/main) showing merged features and fixes
+
+<Note>
+Always include your current image tag and channel information to help our support team provide accurate assistance. This context is crucial for reproducing and resolving issues quickly.
+</Note>
+
+## Frequently Asked Questions
+
+### Which channel should I use for production?
+
+For production environments, we recommend the **Stable channel** unless you have specific requirements for immediate feature access and robust change management processes to handle daily updates.
+
+### How do you decide what goes into each release?
+
+- **Nightly Channel**: All merged pull requests that have been reviewed and validated.
+- **Stable Channel**: All features and fixes from the past 30+ days that have remained stable in nightly.
