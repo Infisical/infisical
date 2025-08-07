@@ -7,6 +7,7 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -24,7 +25,6 @@ import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/contex
 import { useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { format } from "date-fns";
 
 type Props = {
   identityId: string;

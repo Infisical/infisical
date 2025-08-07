@@ -7,6 +7,7 @@ import {
   faPencil
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -22,7 +23,6 @@ import { useFetchServerStatus, useGetOrgMembership, useGetOrgRoles } from "@app/
 import { OrgUser } from "@app/hooks/api/types";
 import { useResendOrgMemberInvitation } from "@app/hooks/api/users/mutation";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { format } from "date-fns";
 
 type Props = {
   membershipId: string;
