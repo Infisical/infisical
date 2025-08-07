@@ -2,7 +2,7 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listRenderServices } from "./render-connection-fns";
+import { listRenderEnvironmentGroups, listRenderServices } from "./render-connection-fns";
 import { TRenderConnection } from "./render-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -24,7 +24,20 @@ export const renderConnectionService = (getAppConnection: TGetAppConnectionFunc)
     }
   };
 
+  const listEnvironmentGroups = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Render, connectionId, actor);
+    try {
+      const groups = await listRenderEnvironmentGroups(appConnection);
+
+      return groups;
+    } catch (error) {
+      logger.error(error, "Failed to list services for Render connection");
+      return [];
+    }
+  };
+
   return {
-    listServices
+    listServices,
+    listEnvironmentGroups
   };
 };

@@ -5,7 +5,9 @@ import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/Se
 import { FilterableSelect, FormControl, Select, SelectItem } from "@app/components/v2";
 import { RENDER_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
+  TRenderEnvironmentGroup,
   TRenderService,
+  useRenderConnectionListEnvironmentGroups,
   useRenderConnectionListServices
 } from "@app/hooks/api/appConnections/render";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -19,6 +21,7 @@ export const RenderSyncFields = () => {
   >();
 
   const connectionId = useWatch({ name: "connection.id", control });
+  const selectedScope = useWatch({ name: "destinationConfig.scope", control });
 
   const { data: services = [], isPending: isServicesPending } = useRenderConnectionListServices(
     connectionId,
@@ -27,11 +30,17 @@ export const RenderSyncFields = () => {
     }
   );
 
+  const { data: groups = [], isPending: isGroupsPending } =
+    useRenderConnectionListEnvironmentGroups(connectionId, {
+      enabled: Boolean(connectionId) && selectedScope === RenderSyncScope.EnvironmentGroup
+    });
+
   return (
     <>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.serviceId", "");
+          setValue("destinationConfig.environmentGroupId", "");
           setValue("destinationConfig.type", RenderSyncType.Env);
           setValue("destinationConfig.scope", RenderSyncScope.Service);
         }}
@@ -83,30 +92,67 @@ export const RenderSyncFields = () => {
           </FormControl>
         )}
       />
-      <Controller
-        name="destinationConfig.serviceId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl errorText={error?.message} isError={Boolean(error?.message)} label="Service">
-            <FilterableSelect
-              isLoading={isServicesPending && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={services ? (services.find((service) => service.id === value) ?? []) : []}
-              onChange={(option) => {
-                onChange((option as SingleValue<TRenderService>)?.id ?? null);
-                setValue(
-                  "destinationConfig.serviceName",
-                  (option as SingleValue<TRenderService>)?.name ?? ""
-                );
-              }}
-              options={services}
-              placeholder="Select a service..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id.toString()}
-            />
-          </FormControl>
-        )}
-      />
+      {selectedScope === RenderSyncScope.Service && (
+        <Controller
+          name="destinationConfig.serviceId"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Service"
+            >
+              <FilterableSelect
+                isLoading={isServicesPending && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={services ? (services.find((service) => service.id === value) ?? []) : []}
+                onChange={(option) => {
+                  onChange((option as SingleValue<TRenderService>)?.id ?? null);
+                  setValue(
+                    "destinationConfig.serviceName",
+                    (option as SingleValue<TRenderService>)?.name ?? ""
+                  );
+                }}
+                options={services}
+                placeholder="Select a service..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id.toString()}
+              />
+            </FormControl>
+          )}
+        />
+      )}
+
+      {selectedScope === RenderSyncScope.EnvironmentGroup && (
+        <Controller
+          name="destinationConfig.environmentGroupId"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Environment Group"
+            >
+              <FilterableSelect
+                isLoading={isGroupsPending && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={groups ? (groups.find((service) => service.id === value) ?? []) : []}
+                onChange={(option) => {
+                  onChange((option as SingleValue<TRenderEnvironmentGroup>)?.id ?? null);
+                  setValue(
+                    "destinationConfig.environmentGroupName",
+                    (option as SingleValue<TRenderEnvironmentGroup>)?.name ?? ""
+                  );
+                }}
+                options={groups}
+                placeholder="Select a environment group..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id.toString()}
+              />
+            </FormControl>
+          )}
+        />
+      )}
     </>
   );
 };
