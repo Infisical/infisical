@@ -540,7 +540,7 @@ export const SecretItem = memo(
                       })}
                     >
                       {(isAllowed) => (
-                        <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                        <DropdownMenuTrigger asChild disabled={!isAllowed || isOverridden}>
                           <IconButton
                             ariaLabel="tags"
                             variant="plain"
@@ -651,7 +651,7 @@ export const SecretItem = memo(
                       })}
                     >
                       {(isAllowed) => (
-                        <PopoverTrigger asChild disabled={!isAllowed}>
+                        <PopoverTrigger asChild disabled={!isAllowed || isOverridden}>
                           <IconButton
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5",
