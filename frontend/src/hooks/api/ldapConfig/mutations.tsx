@@ -151,10 +151,23 @@ export const useDeleteLDAPGroupMapping = () => {
 
 export const useTestLDAPConnection = () => {
   return useMutation({
-    mutationFn: async (ldapConfigId: string) => {
-      const { data } = await apiRequest.post<boolean>(
-        `/api/v1/ldap/config/${ldapConfigId}/test-connection`
-      );
+    mutationFn: async ({
+      url,
+      bindDN,
+      bindPass,
+      caCert
+    }: {
+      url: string;
+      bindDN: string;
+      bindPass: string;
+      caCert: string;
+    }) => {
+      const { data } = await apiRequest.post<boolean>("/api/v1/ldap/config/test-connection", {
+        url,
+        bindDN,
+        bindPass,
+        caCert
+      });
       return data;
     }
   });
