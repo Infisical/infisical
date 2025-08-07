@@ -38,7 +38,7 @@ type TIdentityAliCloudAuthServiceFactoryDep = {
     TIdentityAliCloudAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -64,6 +64,8 @@ export const identityAliCloudAuthServiceFactory = ({
       identityId: identityAliCloudAuth.identityId
     });
 
+    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
+
     const requestUrl = new URL("https://sts.aliyuncs.com");
 
     for (const key of Object.keys(params)) {
@@ -87,6 +89,14 @@ export const identityAliCloudAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityAliCloudAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoginAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH,
+          lastLoginTime: new Date()
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityAliCloudAuth.identityId,
