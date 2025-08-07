@@ -495,14 +495,6 @@ export const useGetMyOrganizationProjects = (orgId: string) => {
   });
 };
 
-export const fetchMyPrivateKey = async () => {
-  const {
-    data: { privateKey }
-  } = await apiRequest.get<{ privateKey: string }>("/api/v1/user/private-key");
-
-  return privateKey;
-};
-
 export const useListUserGroupMemberships = (username: string) => {
   return useQuery({
     queryKey: userKeys.listUserGroupMemberships(username),

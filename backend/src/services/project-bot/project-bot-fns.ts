@@ -42,6 +42,13 @@ export const getBotKeyFnFactory = (
           message: `Project bot not found for project with ID '${projectId}'. Please ask an administrator to log-in to the Infisical Console.`
         });
       }
+
+      if (!projectV1Keys.senderPublicKey) {
+        throw new NotFoundError({
+          message: `Project bot not found for project with ID '${projectId}'. Please ask an administrator to log-in to the Infisical Console and upgrade the project.`
+        });
+      }
+
       let userPrivateKey = "";
       if (
         projectV1Keys?.serverEncryptedPrivateKey &&

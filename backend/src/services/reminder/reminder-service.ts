@@ -42,7 +42,7 @@ export const reminderServiceFactory = ({
   const $manageReminderRecipients = async (reminderId: string, newRecipients?: string[] | null): Promise<void> => {
     if (!newRecipients || newRecipients.length === 0) {
       // If no recipients provided, remove all existing recipients
-      await reminderRecipientDAL.deleteById(reminderId);
+      await reminderRecipientDAL.delete({ reminderId });
       return;
     }
 

@@ -35,7 +35,7 @@ export const getGitHubInstanceApiUrl = async (config: {
 }) => {
   const host = config.credentials.host || "github.com";
 
-  await blockLocalAndPrivateIpAddresses(host);
+  await blockLocalAndPrivateIpAddresses(`https://${host}`);
 
   let apiBase: string;
   if (config.credentials.instanceType === "server") {

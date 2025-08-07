@@ -139,7 +139,7 @@ export const SecretItem = memo(
     );
 
     const getDefaultValue = () => {
-      if (secret.secretValueHidden) {
+      if (secret.secretValueHidden && !isPending) {
         return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
       }
       return secret.valueOverride || secret.value || "";
@@ -219,7 +219,7 @@ export const SecretItem = memo(
       }
 
       if (isDirty && !isSubmitting && !isAutoSavingRef.current) {
-        const debounceTime = 600;
+        const debounceTime = 200;
 
         autoSaveTimeoutRef.current = setTimeout(() => {
           autoSaveChanges(formValues);
@@ -410,7 +410,7 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
-              {secretValueHidden && !isOverridden && (
+              {secretValueHidden && !isOverridden && !isPending && (
                 <Tooltip
                   content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
                 >
@@ -441,12 +441,14 @@ export const SecretItem = memo(
                     <InfisicalSecretInput
                       isReadOnly={isReadOnlySecret}
                       key="secret-value"
-                      isVisible={isVisible && !secretValueHidden}
-                      canEditButNotView={secretValueHidden && !isOverridden}
+                      isVisible={isVisible && (!secretValueHidden || isPending)}
+                      canEditButNotView={secretValueHidden && !isOverridden && !isPending}
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
-                      defaultValue={secretValueHidden ? HIDDEN_SECRET_VALUE : undefined}
+                      defaultValue={
+                        secretValueHidden && !isPending ? HIDDEN_SECRET_VALUE : undefined
+                      }
                       containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}

@@ -53,4 +53,5 @@ export type SubscriptionPlan = {
   secretScanning: boolean;
   enterpriseSecretSyncs: boolean;
   enterpriseAppConnections: boolean;
+  machineIdentityAuthTemplates: boolean;
 };

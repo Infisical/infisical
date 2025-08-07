@@ -52,7 +52,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           publicKeys: z
             .object({
-              publicKey: z.string().optional(),
+              publicKey: z.string().nullable().optional(),
               userId: z.string()
             })
             .array()

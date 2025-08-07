@@ -1,116 +1,51 @@
 ---
-title: "Projects"
+title: "Overview"
 description: "Learn more and understand the concept of Infisical projects."
 ---
 
-A project in Infisical belongs to an [organization](./organization) and contains a number of environments, folders, and secrets.
-Only users and machine identities who belong to a project can access resources inside of it according to predefined permissions.
+## Projects
 
-Infisical also allows users to request project access. Refer to the [project access request section](./access-controls/project-access-requests)
+A project defines a specific scope of work for a given product line in Infisical.
 
-## Project environments
+Projects are created within an [organization](/documentation/platform/organization), and an organization can contain multiple projects across different product types.
 
-For both visual and organizational structure, Infisical allows splitting up secrets into environments (e.g., development, staging, production). In project settings, such environments can be
-customized depending on the intended use case.
+## Project Types
 
-![project secrets overview](../../images/platform/project/project-environments.png)
+Infisical supports project types, each representing a different security product with its own dashboard, workflows, and capabilities.
 
-## Secrets Overview
+![project types](/images/platform/project/project-types.png)
 
-The **Secrets Overview** page captures a birds-eye-view of secrets and [folders](./folder) across environments.
-This is useful for comparing secrets, identifying if anything is missing, and making quick changes.
+The supported project types are:
 
-![project secrets overview](../../images/platform/project/project-secrets-overview-open.png)
+- [Secrets Management](/documentation/platform/secrets-mgmt/overview): Securely store, access, and distribute secrets across environments with fine-grained controls, automatic rotation, and audit logging.
+- [Secrets Scanning](/documentation/platform/secret-scanning/overview): Detect hardcoded secrets in code, CI pipelines, and infrastructure—integrated with GitHub, GitLab, Bitbucket, and more.
+- [Infisical PKI](/documentation/platform/pki/overview): Issue and manage X.509 certificates using protocols like EST, with support for internal and external CAs.
+- [Infisical SSH](/documentation/platform/ssh/overview): Provide short-lived SSH access to servers using certificate-based authentication, replacing static keys with policy-driven, time-bound control.
+- [Infisical KMS](/documentation/platform/kms/overview): Encrypt and decrypt data using centrally managed keys with enforced access policies and full audit visibility.
 
-## Secrets Dashboard
+## Roles and Access Control
 
-The **Secrets Dashboard** page appears when you press to manage the secrets of a specific environment.
+[Users](/documentation/platform/identities/user-identities) and [machine identities](/documentation/platform/identities/machine-identities) must be added to a project to access its resources. Each identity is assigned a [project-level role](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls) that defines what they can manage—such as secrets, certificates, or SSH access. These roles apply to both individuals and [user groups](/documentation/platform/groups), enabling scalable access across teams and environments.
 
-![project dashboard](../../images/dashboard.png)
+Project access is strictly scoped: only members of a project can view or manage its resources. If someone needs access but isn’t part of the project, they can submit an access request.
 
-### Secrets
+Each project in Infisical has its own [access control model](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls), distinct from [organization-level access control](/documentation/platform/access-controls/role-based-access-controls#organization-level-access-controls). While organization roles govern broader administrative access, project-level roles control what users, groups, and machine identities can do within the boundaries of a specific project—such as managing secrets, issuing certificates, or configuring SSH access.
 
-To add a secret, press **Add Secret** button at the top of the dashboard.
+Depending on the project type (e.g. Secrets Management, PKI, SSH), project-level access control supports advanced features like [temporary access](/documentation/platform/access-controls/temporary-access), [access requests](/documentation/platform/access-controls/access-requests), and [additional privileges](/documentation/platform/access-controls/additional-privileges).
 
-![project add secret](../../images/platform/project/project-secrets-add.png)
+![project roles](/images/platform/project/project-roles.png)
 
-For a new project, it can be convenient to populate the dashboard by dropping a `.env` file into the provided pane as shown below:
+To learn more about how permissions work in detail, refer to the [access control documentation](/documentation/platform/access-controls/overview).
 
-![project drop env file](../../images/platform/project/project-secrets-drop-env.png)
+## Audit Logs
 
-To delete a secret, hover over it and press the **X** button that appears on the right side.
+Infisical provides [audit logging](/documentation/platform/audit-logs) at the project level to help teams monitor activity and maintain accountability within a specific project. These logs capture all relevant events—such as secret access, certificate issuance, and SSH activity—that occur within the boundaries of that project.
 
-![project delete secret](../../images/platform/project/project-secrets-delete.png)
+Unlike the organization-level audit view, which aggregates logs across all projects in one centralized interface, the project-level audit view is scoped to a single project. This enables relevant project admins and contributors to review activity relevant to their work without having broader access to audit logs in other projects that they are not part of.
 
-To delete multiple secrets at once, hover over and select the secrets you'd like to delete
-and press the **Delete** button that appears at the top.
+## Project Settings
 
-![project delete secret batch](../../images/platform/project/project-secrets-delete-batch.png)
+Each project has its own settings panel, with options that vary depending on the selected product type. These may include
+setup and configuration for environments, tags, behaviors, encryption strategies, and other options.
 
-### Search
-
-To search for specific secrets by their key name, you can use the search bar.
-
-![project search](../../images/platform/project/project-secrets-search.png)
-
-To assist you with finding secrets, you can also group them by similar prefixes and filter them by tags (if applicable).
-
-![project filter](../../images/platform/project/project-secrets-filter.png)
-
-### Hide/Un-hide
-
-To view/hide all secrets at once, toggle the hide or un-hide button.
-
-![project filter](../../images/platform/project/project-secrets-unhide.png)
-
-### Download as .env
-
-To download/export secrets back into a `.env` file, press the download button.
-
-![project download back env](../../images/platform/project/project-secrets-download-env.png)
-
-### Tags
-
-To better organize similar secrets, hover over them and label them with a tag.
-
-![project tag secret](../../images/platform/project/project-secrets-tag.png)
-
-### Comments
-
-To provide more context about a given secret, especially for your team, hover over it and press the comment button.
-
-![project comment secret](../../images/platform/project/project-secrets-comment.png)
-
-### Personal overrides
-
-Infisical employs the concept of **shared** and **personal** secrets to address the need
-for common and custom secret values, or branching, amongst members of a team during software development.
-To provide a helpful analogy: A shared value is to a `main` branch as a personal value is to a custom branch.
-
-Consider:
-
-- A team with users A, B, user C.
-- A project with an environment containing a shared secret called D with the value E.
-
-Suppose user A overrides the value of secret D with the value F.
-
-Then:
-
-- If user A fetches the secret D back, they get the value F.
-- If users B and C fetch the secret D back, they both get the value E.
-
-<Info>
-  Please keep in mind that secret reminders won't work with personal overrides.
-</Info>
-
-![project override secret](../../images/platform/project/project-secrets-override.png)
-
-### Drawer
-
-To view the full details of each secret, you can hover over it and press on the ellipses button.
-
-![project secrets ellipses](../../images/platform/project/project-secrets-ellipses.png)
-
-This opens up a side-drawer:
-
-![project secrets drawer](../../images/platform/project/project-secrets-drawer.png)
+Project settings are fully independent and reflect the capabilities of the associated product.

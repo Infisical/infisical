@@ -567,10 +567,11 @@ export type IdentityTokenAuth = {
 export type AddIdentityLdapAuthDTO = {
   organizationId: string;
   identityId: string;
-  url: string;
-  bindDN: string;
-  bindPass: string;
-  searchBase: string;
+  templateId?: string;
+  url?: string;
+  bindDN?: string;
+  bindPass?: string;
+  searchBase?: string;
   searchFilter: string;
   ldapCaCertificate?: string;
   allowedFields?: {
@@ -588,6 +589,7 @@ export type AddIdentityLdapAuthDTO = {
 export type UpdateIdentityLdapAuthDTO = {
   identityId: string;
   organizationId: string;
+  templateId?: string;
   url?: string;
   bindDN?: string;
   bindPass?: string;
@@ -612,10 +614,11 @@ export type DeleteIdentityLdapAuthDTO = {
 };
 
 export type IdentityLdapAuth = {
-  url: string;
-  bindDN: string;
-  bindPass: string;
-  searchBase: string;
+  url?: string;
+  bindDN?: string;
+  templateId?: string;
+  bindPass?: string;
+  searchBase?: string;
   searchFilter: string;
   ldapCaCertificate?: string;
   allowedFields?: {

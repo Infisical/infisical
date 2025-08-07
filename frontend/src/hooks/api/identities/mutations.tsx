@@ -1385,6 +1385,7 @@ export const useAddIdentityLdapAuth = () => {
   return useMutation<IdentityLdapAuth, object, AddIdentityLdapAuthDTO>({
     mutationFn: async ({
       identityId,
+      templateId,
       url,
       bindDN,
       bindPass,
@@ -1400,6 +1401,7 @@ export const useAddIdentityLdapAuth = () => {
       const { data } = await apiRequest.post<{ identityLdapAuth: IdentityLdapAuth }>(
         `/api/v1/auth/ldap-auth/identities/${identityId}`,
         {
+          templateId,
           url,
           bindDN,
           bindPass,
@@ -1432,6 +1434,7 @@ export const useUpdateIdentityLdapAuth = () => {
   return useMutation<IdentityLdapAuth, object, UpdateIdentityLdapAuthDTO>({
     mutationFn: async ({
       identityId,
+      templateId,
       url,
       bindDN,
       bindPass,
@@ -1447,6 +1450,7 @@ export const useUpdateIdentityLdapAuth = () => {
       const { data } = await apiRequest.patch<{ identityLdapAuth: IdentityLdapAuth }>(
         `/api/v1/auth/ldap-auth/identities/${identityId}`,
         {
+          templateId,
           url,
           bindDN,
           bindPass,

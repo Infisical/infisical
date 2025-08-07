@@ -18,6 +18,7 @@ import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/
 
 export enum ApiDocsTags {
   Identities = "Identities",
+  IdentityTemplates = "Identity Templates",
   TokenAuth = "Token Auth",
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
@@ -69,7 +70,8 @@ export enum ApiDocsTags {
   SecretScanning = "Secret Scanning",
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
-  LdapSso = "LDAP SSO"
+  LdapSso = "LDAP SSO",
+  Events = "Event Subscriptions"
 }
 
 export const GROUPS = {
@@ -214,6 +216,7 @@ export const LDAP_AUTH = {
     password: "The password of the LDAP user to login."
   },
   ATTACH: {
+    templateId: "The ID of the identity auth template to attach the configuration onto.",
     identityId: "The ID of the identity to attach the configuration onto.",
     url: "The URL of the LDAP server.",
     allowedFields:
@@ -240,7 +243,8 @@ export const LDAP_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
-    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    templateId: "The ID of the identity auth template to update the configuration to."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the configuration for."
@@ -2867,5 +2871,12 @@ export const LdapSso = {
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
     caCert: "The CA certificate to use when verifying the LDAP server certificate."
+  }
+};
+
+export const EventSubscriptions = {
+  SUBSCRIBE_PROJECT_EVENTS: {
+    projectId: "The ID of the project to subscribe to events for.",
+    register: "List of events you want to subscribe to"
   }
 };
