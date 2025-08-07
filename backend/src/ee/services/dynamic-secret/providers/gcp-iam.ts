@@ -3,6 +3,7 @@ import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretGcpIamSchema, TDynamicProviderFns } from "./models";
@@ -65,8 +66,18 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    await $getToken(providerInputs.serviceAccountEmail, 10);
-    return true;
+    try {
+      await $getToken(providerInputs.serviceAccountEmail, 10);
+      return true;
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.serviceAccountEmail]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: { inputs: unknown; expireAt: number }) => {
@@ -74,13 +85,23 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
 
     const providerInputs = await validateProviderInputs(inputs);
 
-    const now = Math.floor(Date.now() / 1000);
-    const ttl = Math.max(Math.floor(expireAt / 1000) - now, 0);
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const ttl = Math.max(Math.floor(expireAt / 1000) - now, 0);
 
-    const token = await $getToken(providerInputs.serviceAccountEmail, ttl);
-    const entityId = alphaNumericNanoId(32);
+      const token = await $getToken(providerInputs.serviceAccountEmail, ttl);
+      const entityId = alphaNumericNanoId(32);
 
-    return { entityId, data: { SERVICE_ACCOUNT_EMAIL: providerInputs.serviceAccountEmail, TOKEN: token } };
+      return { entityId, data: { SERVICE_ACCOUNT_EMAIL: providerInputs.serviceAccountEmail, TOKEN: token } };
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.serviceAccountEmail]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async (_inputs: unknown, entityId: string) => {
@@ -89,10 +110,21 @@ export const GcpIamProvider = (): TDynamicProviderFns => {
   };
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
-    // To renew a token it must be re-created
-    const data = await create({ inputs, expireAt });
+    try {
+      // To renew a token it must be re-created
+      const data = await create({ inputs, expireAt });
 
-    return { ...data, entityId };
+      return { ...data, entityId };
+    } catch (err) {
+      const providerInputs = await validateProviderInputs(inputs);
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.serviceAccountEmail]
+      });
+      throw new BadRequestError({
+        message: `Failed to renew lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   return {

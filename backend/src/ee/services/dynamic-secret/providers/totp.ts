@@ -1,6 +1,8 @@
 import { authenticator } from "otplib";
 import { HashAlgorithms } from "otplib/core";
 
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretTotpSchema, TDynamicProviderFns, TotpConfigType } from "./models";
@@ -12,62 +14,84 @@ export const TotpProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const validateConnection = async () => {
-    return true;
+  const validateConnection = async (inputs: unknown) => {
+    try {
+      await validateProviderInputs(inputs);
+      return true;
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: []
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
-  const create = async (inputs: unknown) => {
-    const providerInputs = await validateProviderInputs(inputs);
+  const create = async (data: { inputs: unknown }) => {
+    const { inputs } = data;
+    try {
+      const providerInputs = await validateProviderInputs(inputs);
 
-    const entityId = alphaNumericNanoId(32);
-    const authenticatorInstance = authenticator.clone();
+      const entityId = alphaNumericNanoId(32);
+      const authenticatorInstance = authenticator.clone();
 
-    let secret: string;
-    let period: number | null | undefined;
-    let digits: number | null | undefined;
-    let algorithm: HashAlgorithms | null | undefined;
+      let secret: string;
+      let period: number | null | undefined;
+      let digits: number | null | undefined;
+      let algorithm: HashAlgorithms | null | undefined;
 
-    if (providerInputs.configType === TotpConfigType.URL) {
-      const urlObj = new URL(providerInputs.url);
-      secret = urlObj.searchParams.get("secret") as string;
-      const periodFromUrl = urlObj.searchParams.get("period");
-      const digitsFromUrl = urlObj.searchParams.get("digits");
-      const algorithmFromUrl = urlObj.searchParams.get("algorithm");
+      if (providerInputs.configType === TotpConfigType.URL) {
+        const urlObj = new URL(providerInputs.url);
+        secret = urlObj.searchParams.get("secret") as string;
+        const periodFromUrl = urlObj.searchParams.get("period");
+        const digitsFromUrl = urlObj.searchParams.get("digits");
+        const algorithmFromUrl = urlObj.searchParams.get("algorithm");
 
-      if (periodFromUrl) {
-        period = +periodFromUrl;
+        if (periodFromUrl) {
+          period = +periodFromUrl;
+        }
+
+        if (digitsFromUrl) {
+          digits = +digitsFromUrl;
+        }
+
+        if (algorithmFromUrl) {
+          algorithm = algorithmFromUrl.toLowerCase() as HashAlgorithms;
+        }
+      } else {
+        secret = providerInputs.secret;
+        period = providerInputs.period;
+        digits = providerInputs.digits;
+        algorithm = providerInputs.algorithm as unknown as HashAlgorithms;
       }
 
-      if (digitsFromUrl) {
-        digits = +digitsFromUrl;
+      if (digits) {
+        authenticatorInstance.options = { digits };
       }
 
-      if (algorithmFromUrl) {
-        algorithm = algorithmFromUrl.toLowerCase() as HashAlgorithms;
+      if (algorithm) {
+        authenticatorInstance.options = { algorithm };
       }
-    } else {
-      secret = providerInputs.secret;
-      period = providerInputs.period;
-      digits = providerInputs.digits;
-      algorithm = providerInputs.algorithm as unknown as HashAlgorithms;
-    }
 
-    if (digits) {
-      authenticatorInstance.options = { digits };
-    }
+      if (period) {
+        authenticatorInstance.options = { step: period };
+      }
 
-    if (algorithm) {
-      authenticatorInstance.options = { algorithm };
+      return {
+        entityId,
+        data: { TOTP: authenticatorInstance.generate(secret), TIME_REMAINING: authenticatorInstance.timeRemaining() }
+      };
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: []
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
     }
-
-    if (period) {
-      authenticatorInstance.options = { step: period };
-    }
-
-    return {
-      entityId,
-      data: { TOTP: authenticatorInstance.generate(secret), TIME_REMAINING: authenticatorInstance.timeRemaining() }
-    };
   };
 
   const revoke = async (_inputs: unknown, entityId: string) => {

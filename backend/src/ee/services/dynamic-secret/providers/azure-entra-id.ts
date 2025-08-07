@@ -2,6 +2,7 @@ import axios from "axios";
 import { customAlphabet } from "nanoid";
 
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 
 import { AzureEntraIDSchema, TDynamicProviderFns } from "./models";
 
@@ -51,45 +52,82 @@ export const AzureEntraIDProvider = (): TDynamicProviderFns & {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const data = await $getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
-    return data.success;
+    try {
+      const data = await $getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
+      return data.success;
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.clientSecret, providerInputs.applicationId, providerInputs.tenantId]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async ({ inputs }: { inputs: unknown }) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const data = await $getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
-    if (!data.success) {
-      throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
-    }
 
     const password = generatePassword();
-
-    const response = await axios.patch(
-      `${MSFT_GRAPH_API_URL}/users/${providerInputs.userId}`,
-      {
-        passwordProfile: {
-          forceChangePasswordNextSignIn: false,
-          password
-        }
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${data.token}`
-        }
+    try {
+      const data = await $getToken(providerInputs.tenantId, providerInputs.applicationId, providerInputs.clientSecret);
+      if (!data.success) {
+        throw new BadRequestError({ message: "Failed to authorize to Microsoft Entra ID" });
       }
-    );
-    if (response.status !== 204) {
-      throw new BadRequestError({ message: "Failed to update password" });
-    }
 
-    return { entityId: providerInputs.userId, data: { email: providerInputs.email, password } };
+      const response = await axios.patch(
+        `${MSFT_GRAPH_API_URL}/users/${providerInputs.userId}`,
+        {
+          passwordProfile: {
+            forceChangePasswordNextSignIn: false,
+            password
+          }
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${data.token}`
+          }
+        }
+      );
+      if (response.status !== 204) {
+        throw new BadRequestError({ message: "Failed to update password" });
+      }
+
+      return { entityId: providerInputs.userId, data: { email: providerInputs.email, password } };
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [
+          providerInputs.clientSecret,
+          providerInputs.applicationId,
+          providerInputs.userId,
+          providerInputs.email,
+          password
+        ]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
-    // Creates a new password
-    await create({ inputs });
-    return { entityId };
+    try {
+      // Creates a new password
+      await create({ inputs });
+      return { entityId };
+    } catch (err) {
+      const providerInputs = await validateProviderInputs(inputs);
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.clientSecret, providerInputs.applicationId, entityId]
+      });
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const fetchAzureEntraIdUsers = async (tenantId: string, applicationId: string, clientSecret: string) => {

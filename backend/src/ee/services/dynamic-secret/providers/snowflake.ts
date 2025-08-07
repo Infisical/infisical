@@ -4,6 +4,7 @@ import snowflake from "snowflake-sdk";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
@@ -69,12 +70,10 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await $getClient(providerInputs);
-
-    let isValidConnection: boolean;
-
+    let client;
     try {
-      isValidConnection = await Promise.race([
+      client = await $getClient(providerInputs);
+      const isValidConnection = await Promise.race([
         client.isValidAsync(),
         new Promise((resolve) => {
           setTimeout(resolve, 10000);
@@ -82,11 +81,18 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
           throw new BadRequestError({ message: "Unable to establish connection - verify credentials" });
         })
       ]);
+      return isValidConnection;
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.password, providerInputs.username, providerInputs.accountId, providerInputs.orgId]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
     } finally {
-      client.destroy(noop);
+      if (client) client.destroy(noop);
     }
-
-    return isValidConnection;
   };
 
   const create = async (data: {
@@ -116,13 +122,19 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
           sqlText: creationStatement,
           complete(err) {
             if (err) {
-              return reject(new BadRequestError({ name: "CreateLease", message: err.message }));
+              return reject(err);
             }
 
             return resolve(true);
           }
         });
       });
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error).message,
+        tokens: [username, password, providerInputs.password, providerInputs.username]
+      });
+      throw new BadRequestError({ message: `Failed to create lease from provider: ${sanitizedErrorMessage}` });
     } finally {
       client.destroy(noop);
     }
@@ -143,13 +155,19 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
           sqlText: revokeStatement,
           complete(err) {
             if (err) {
-              return reject(new BadRequestError({ name: "RevokeLease", message: err.message }));
+              return reject();
             }
 
             return resolve(true);
           }
         });
       });
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error).message,
+        tokens: [username, providerInputs.password, providerInputs.username]
+      });
+      throw new BadRequestError({ message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}` });
     } finally {
       client.destroy(noop);
     }
@@ -175,13 +193,19 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
           sqlText: renewStatement,
           complete(err) {
             if (err) {
-              return reject(new BadRequestError({ name: "RenewLease", message: err.message }));
+              return reject(err);
             }
 
             return resolve(true);
           }
         });
       });
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error).message,
+        tokens: [entityId, providerInputs.password, providerInputs.username]
+      });
+      throw new BadRequestError({ message: `Failed to renew lease from provider: ${sanitizedErrorMessage}` });
     } finally {
       client.destroy(noop);
     }

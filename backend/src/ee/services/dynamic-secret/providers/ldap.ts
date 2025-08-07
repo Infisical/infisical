@@ -6,6 +6,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { LdapCredentialType, LdapSchema, TDynamicProviderFns } from "./models";
@@ -91,8 +92,18 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await $getClient(providerInputs);
-    return client.connected;
+    try {
+      const client = await $getClient(providerInputs);
+      return client.connected;
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.bindpass, providerInputs.binddn]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const executeLdif = async (client: ldapjs.Client, ldif_file: string) => {
@@ -205,11 +216,10 @@ export const LdapProvider = (): TDynamicProviderFns => {
     if (providerInputs.credentialType === LdapCredentialType.Static) {
       const dnRegex = new RE2("^dn:\\s*(.+)", "m");
       const dnMatch = dnRegex.exec(providerInputs.rotationLdif);
+      const username = dnMatch?.[1] || "";
+      const password = generatePassword();
 
       if (dnMatch) {
-        const username = dnMatch[1];
-        const password = generatePassword();
-
         const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.rotationLdif });
 
         try {
@@ -217,7 +227,11 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
           return { entityId: username, data: { DN_ARRAY: dnArray, USERNAME: username, PASSWORD: password } };
         } catch (err) {
-          throw new BadRequestError({ message: (err as Error).message });
+          const sanitizedErrorMessage = sanitizeString({
+            unsanitizedString: (err as Error)?.message,
+            tokens: [username, password, providerInputs.binddn, providerInputs.bindpass]
+          });
+          throw new BadRequestError({ message: sanitizedErrorMessage });
         }
       } else {
         throw new BadRequestError({
@@ -238,7 +252,11 @@ export const LdapProvider = (): TDynamicProviderFns => {
           const rollbackLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.rollbackLdif });
           await executeLdif(client, rollbackLdif);
         }
-        throw new BadRequestError({ message: (err as Error).message });
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: (err as Error)?.message,
+          tokens: [username, password, providerInputs.binddn, providerInputs.bindpass]
+        });
+        throw new BadRequestError({ message: sanitizedErrorMessage });
       }
     }
   };
@@ -262,7 +280,11 @@ export const LdapProvider = (): TDynamicProviderFns => {
 
           return { entityId: username, data: { DN_ARRAY: dnArray, USERNAME: username, PASSWORD: password } };
         } catch (err) {
-          throw new BadRequestError({ message: (err as Error).message });
+          const sanitizedErrorMessage = sanitizeString({
+            unsanitizedString: (err as Error)?.message,
+            tokens: [username, password, providerInputs.binddn, providerInputs.bindpass]
+          });
+          throw new BadRequestError({ message: sanitizedErrorMessage });
         }
       } else {
         throw new BadRequestError({
@@ -278,7 +300,7 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return { entityId };
   };
 
-  const renew = async (inputs: unknown, entityId: string) => {
+  const renew = async (_inputs: unknown, entityId: string) => {
     // No renewal necessary
     return { entityId };
   };

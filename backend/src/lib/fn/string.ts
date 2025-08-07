@@ -19,3 +19,11 @@ export const prefixWithSlash = (str: string) => {
 const vowelRegex = new RE2(/^[aeiou]/i);
 
 export const startsWithVowel = (str: string) => vowelRegex.test(str);
+
+export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[] }) => {
+  let sanitizedString = dto.unsanitizedString;
+  dto.tokens.filter(Boolean).forEach((el) => {
+    sanitizedString = sanitizedString.replaceAll(el, "[REDACTED]");
+  });
+  return sanitizedString;
+};
