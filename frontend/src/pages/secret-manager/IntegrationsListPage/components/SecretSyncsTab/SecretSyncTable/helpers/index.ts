@@ -8,6 +8,7 @@ import {
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 // This functional ensures parity across what is displayed in the destination column
 // and the values used when search filtering
@@ -125,8 +126,15 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = destinationConfig.app;
       break;
     case SecretSync.Render:
-      primaryText = destinationConfig.serviceName ?? destinationConfig.serviceId;
-      secondaryText = "Service";
+      if (destinationConfig.scope === RenderSyncScope.Service) {
+        primaryText = destinationConfig.serviceName ?? destinationConfig.serviceId;
+        secondaryText = "Service";
+      } else {
+        primaryText =
+          destinationConfig.environmentGroupName ?? destinationConfig.environmentGroupId;
+        secondaryText = "Environment Group";
+      }
+
       break;
     case SecretSync.Flyio:
       primaryText = destinationConfig.appId;

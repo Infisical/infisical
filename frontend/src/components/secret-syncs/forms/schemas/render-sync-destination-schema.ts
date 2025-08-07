@@ -17,6 +17,12 @@ export const RenderSyncDestinationSchema = BaseSecretSyncSchema(
         serviceId: z.string().trim().min(1, "Service is required"),
         serviceName: z.string().trim().optional(),
         type: z.nativeEnum(RenderSyncType)
+      }),
+      z.object({
+        scope: z.literal(RenderSyncScope.EnvironmentGroup),
+        environmentGroupId: z.string().trim().min(1, "Environment Group ID is required"),
+        environmentGroupName: z.string().trim().optional(),
+        type: z.nativeEnum(RenderSyncType)
       })
     ])
   })

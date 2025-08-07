@@ -32,8 +32,8 @@ import {
   keyAlgorithmToAlgCfg
 } from "../certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
-import { TIssueCertWithTemplateDTO } from "./internal-certificate-authority-types";
 import { validateAndMapAltNameType } from "../certificate-authority-validators";
+import { TIssueCertWithTemplateDTO } from "./internal-certificate-authority-types";
 
 type TInternalCertificateAuthorityFnsDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa" | "findById">;
