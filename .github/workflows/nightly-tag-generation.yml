@@ -26,20 +26,20 @@ jobs:
       - name: Generate nightly tag
         run: |
           # Get the latest infisical production tag
-          LATEST_TAG=$(git tag --list | grep "^infisical/v[0-9].*$" | sort -V | tail -n1)
+          LATEST_STABLE_TAG=$(git tag --list | grep "^v[0-9].*$" | sort -V | tail -n1)
           
-          if [ -z "$LATEST_TAG" ]; then
-            echo "No infisical production tags found, using infisical/v0.1.0"
-            LATEST_TAG="infisical/v0.1.0"
+          if [ -z "$LATEST_STABLE_TAG" ]; then
+            echo "No infisical production tags found, using v0.1.0"
+            LATEST_STABLE_TAG="v0.1.0"
           fi
           
-          echo "Latest production tag: $LATEST_TAG"
+          echo "Latest production tag: $LATEST_STABLE_TAG"
           
           # Get current date in YYYYMMDD format
           DATE=$(date +%Y%m%d)
           
           # Base nightly tag name
-          BASE_TAG="${LATEST_TAG}-nightly-${DATE}"
+          BASE_TAG="${LATEST_STABLE_TAG}-nightly-${DATE}"
           
           # Check if this exact tag already exists
           if git tag --list | grep -q "^${BASE_TAG}$"; then
@@ -64,14 +64,14 @@ jobs:
           
           echo "Generated nightly tag: $NIGHTLY_TAG"
           echo "NIGHTLY_TAG=$NIGHTLY_TAG" >> $GITHUB_ENV
-          echo "LATEST_PRODUCTION_TAG=$LATEST_TAG" >> $GITHUB_ENV
-          
+          echo "LATEST_PRODUCTION_TAG=$LATEST_STABLE_TAG" >> $GITHUB_ENV
+
           git tag "$NIGHTLY_TAG"
           git push origin "$NIGHTLY_TAG"
           echo "✅ Created and pushed nightly tag: $NIGHTLY_TAG"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
