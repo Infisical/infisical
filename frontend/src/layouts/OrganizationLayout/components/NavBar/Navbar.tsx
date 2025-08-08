@@ -320,7 +320,7 @@ export const Navbar = () => {
             );
           })}
           {envConfig.PLATFORM_VERSION && (
-            <div className="mb-2 mt-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
+            <div className="mb-2 mt-2 w-full cursor-default px-5 text-sm duration-200 hover:text-mineshaft-200">
               <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
               Version: {envConfig.PLATFORM_VERSION}
             </div>
