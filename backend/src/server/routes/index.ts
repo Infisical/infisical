@@ -727,7 +727,8 @@ export const registerRoutes = async (
     permissionService,
     groupProjectDAL,
     smtpService,
-    projectMembershipDAL
+    projectMembershipDAL,
+    userAliasDAL
   });
 
   const totpService = totpServiceFactory({
