@@ -219,7 +219,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       } catch (err) {
         const sanitizedErrorMessage = sanitizeString({
           unsanitizedString: (err as Error)?.message,
-          tokens: [providerInputs.password, providerInputs.username]
+          tokens: [providerInputs.username]
         });
         throw new BadRequestError({
           message: `Failed to connect with provider: ${sanitizedErrorMessage}`
