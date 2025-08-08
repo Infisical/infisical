@@ -15,8 +15,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
+        token: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
         with:
           fetch-depth: 0  # Fetch all history for tags
       
