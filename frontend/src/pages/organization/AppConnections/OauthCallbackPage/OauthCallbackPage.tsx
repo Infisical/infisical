@@ -7,12 +7,14 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   AzureAppConfigurationConnectionMethod,
+  AzureCertificateConnectionMethod,
   AzureClientSecretsConnectionMethod,
   AzureDevOpsConnectionMethod,
   AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
   GitLabConnectionMethod,
   TAzureAppConfigurationConnection,
+  TAzureCertificateConnection,
   TAzureClientSecretsConnection,
   TAzureDevOpsConnection,
   TAzureKeyVaultConnection,
@@ -50,6 +52,10 @@ type AzureClientSecretsFormData = BaseFormData &
   Pick<TAzureClientSecretsConnection, "name" | "method" | "description"> &
   Pick<TAzureClientSecretsConnection["credentials"], "tenantId">;
 
+type AzureCertificateFormData = BaseFormData &
+  Pick<TAzureCertificateConnection, "name" | "method" | "description"> &
+  Pick<TAzureCertificateConnection["credentials"], "tenantId">;
+
 type OAuthCredentials = Extract<
   TAzureDevOpsConnection,
   { method: AzureDevOpsConnectionMethod.OAuth }
@@ -77,6 +83,9 @@ type FormDataMap = {
   [AppConnection.AzureDevOps]: AzureDevOpsFormData & {
     app: AppConnection.AzureDevOps;
   };
+  [AppConnection.AzureCertificate]: AzureCertificateFormData & {
+    app: AppConnection.AzureCertificate;
+  };
 };
 
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
@@ -86,7 +95,8 @@ const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
   [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
   [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData",
-  [AppConnection.AzureDevOps]: "azureDevOpsConnectionFormData"
+  [AppConnection.AzureDevOps]: "azureDevOpsConnectionFormData",
+  [AppConnection.AzureCertificate]: "azureCertificateConnectionFormData"
 };
 
 export const OAuthCallbackPage = () => {
@@ -336,6 +346,54 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
+  const handleAzureCertificate = useCallback(async () => {
+    const formData = getFormData(AppConnection.AzureCertificate);
+    if (formData === null) return null;
+
+    clearState(AppConnection.AzureCertificate);
+
+    const { connectionId, name, description, returnUrl } = formData;
+
+    try {
+      if (connectionId) {
+        await updateAppConnection.mutateAsync({
+          app: AppConnection.AzureCertificate,
+          connectionId,
+          credentials: {
+            code: code as string,
+            tenantId: formData.tenantId
+          }
+        });
+      } else {
+        await createAppConnection.mutateAsync({
+          app: AppConnection.AzureCertificate,
+          name,
+          description,
+          method: AzureCertificateConnectionMethod.OAuth,
+          credentials: {
+            code: code as string,
+            tenantId: formData.tenantId
+          }
+        });
+      }
+    } catch (err: any) {
+      createNotification({
+        title: `Failed to ${connectionId ? "update" : "add"} Azure Client Secrets Connection`,
+        text: err?.message,
+        type: "error"
+      });
+      navigate({
+        to: returnUrl ?? "/organization/app-connections"
+      });
+    }
+
+    return {
+      connectionId,
+      returnUrl,
+      appConnectionName: formData.app
+    };
+  }, []);
+
   const handleAzureDevOps = useCallback(async () => {
     const formData = getFormData(AppConnection.AzureDevOps);
     if (formData === null) return null;
@@ -544,6 +602,8 @@ export const OAuthCallbackPage = () => {
         data = await handleAzureClientSecrets();
       } else if (appConnection === AppConnection.AzureDevOps) {
         data = await handleAzureDevOps();
+      } else if (appConnection === AppConnection.AzureCertificate) {
+        data = await handleAzureCertificate();
       }
 
       if (data) {

@@ -2642,6 +2642,10 @@ export const SecretRotations = {
     },
     OKTA_CLIENT_SECRET: {
       clientId: "The ID of the Okta Application to rotate the client secret for."
+    },
+    AZURE_CERTIFICATE: {
+      objectId: "The ID of the Azure Application to rotate the client secret for.",
+      appName: "The name of the Azure Application to rotate the client secret for."
     }
   },
   SECRETS_MAPPING: {
@@ -2668,6 +2672,10 @@ export const SecretRotations = {
     OKTA_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    AZURE_CERTIFICATE: {
+      certificate: "The name of the secret that the certificate will be mapped to.",
+      privateKey: "The name of the secret that the private key will be mapped to."
     }
   }
 };

@@ -31,6 +31,11 @@ export type TAzureKeyVaultConnectionOption = TAppConnectionOptionBase & {
   oauthClientId?: string;
 };
 
+export type TAzureCertificateConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureCertificate;
+  oauthClientId?: string;
+};
+
 export type TAzureAppConfigurationConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureKeyVault;
   oauthClientId?: string;
@@ -171,6 +176,7 @@ export type TAppConnectionOption =
   | TAzureAppConfigurationConnectionOption
   | TAzureKeyVaultConnectionOption
   | TAzureClientSecretsConnectionOption
+  | TAzureCertificateConnectionOption
   | TAzureDevOpsConnectionOption
   | TDatabricksConnectionOption
   | THumanitecConnectionOption
@@ -208,6 +214,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnectionOption;
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnectionOption;
   [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnectionOption;
+  [AppConnection.AzureCertificate]: TAzureCertificateConnectionOption;
   [AppConnection.AzureDevOps]: TAzureDevOpsConnectionOption;
   [AppConnection.Databricks]: TDatabricksConnectionOption;
   [AppConnection.Humanitec]: THumanitecConnectionOption;

@@ -37,7 +37,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Supabase]: "Supabase",
   [AppConnection.DigitalOcean]: "DigitalOcean App Platform",
   [AppConnection.Netlify]: "Netlify",
-  [AppConnection.Okta]: "Okta"
+  [AppConnection.Okta]: "Okta",
+  [AppConnection.AzureCertificate]: "Azure Certificate"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -77,5 +78,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Supabase]: AppConnectionPlanType.Regular,
   [AppConnection.DigitalOcean]: AppConnectionPlanType.Regular,
   [AppConnection.Netlify]: AppConnectionPlanType.Regular,
-  [AppConnection.Okta]: AppConnectionPlanType.Regular
+  [AppConnection.Okta]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureCertificate]: AppConnectionPlanType.Regular
 };

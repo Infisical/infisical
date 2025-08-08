@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { Auth0ClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/auth0-client-secret";
 import { AwsIamUserSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
+import { AzureCertificateRotationSchema } from "@app/ee/services/secret-rotation-v2/azure-certificate";
 import { AzureClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { LdapPasswordRotationSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MsSqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
@@ -19,5 +20,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   AzureClientSecretRotationSchema,
   LdapPasswordRotationSchema,
   AwsIamUserSecretRotationSchema,
-  OktaClientSecretRotationSchema
+  OktaClientSecretRotationSchema,
+  AzureCertificateRotationSchema
 ]);

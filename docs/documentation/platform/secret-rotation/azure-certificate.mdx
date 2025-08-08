@@ -1,0 +1,146 @@
+---
+title: "Azure Certificate"
+description: "Learn how to automatically rotate Azure Certificates."
+---
+
+## Prerequisites
+
+- Create an [Azure Certificate Connection](/integrations/app-connections/azure-certificate).
+- Ensure your network security policies allow incoming requests from Infisical to this rotation provider, if network restrictions apply.
+
+## Create an Azure Certificate Rotation in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+
+        2. Select the **Azure Certificate** option.
+        ![Select Azure Certificate](/images/secret-rotations-v2/azure-certificate/azure-certificate-option.png)
+
+        3. Select the **Azure Connection** to use and configure the rotation behavior. Then click **Next**.
+        ![Rotation Configuration](/images/secret-rotations-v2/azure-certificate/azure-certificate-configuration.png)
+
+            - **Azure Connection** - the connection that will perform the rotation of the specified application's Certificates.
+            - **Rotation Interval** - the interval, in days, that once elapsed will trigger a rotation.
+            - **Rotate At** - the local time of day when rotation should occur once the interval has elapsed.
+            - **Auto-Rotation Enabled** - whether secrets should automatically be rotated once the rotation interval has elapsed. Disable this option to manually rotate secrets or pause secret rotation.
+
+        4. Select the Azure application whose Certificate you want to rotate. Then click **Next**.
+        ![Rotation Parameters](/images/secret-rotations-v2/azure-certificate/azure-parameters.png)
+
+            Optional Parameters:
+            - **Private Key** - the Private Key to use when rotating the application's Certificate. If not provided, Infisical will generate a new Private Key on each rotation.
+            - **Distinguished Name** - the Distinguished Name to use when rotating the application's Certificate. If not provided, Infisical will use **CN=Infisical**.
+            - **Key Algorithm** - the Key Algorithm to use when rotating the application's Certificate. If not provided, Infisical will use **RSA_2048**.
+
+        5. Specify the secret names that the rotated application credentials should be mapped to. Then click **Next**.
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/azure-certificate/azure-mapping.png)
+
+            - **Public Key** - the name of the secret that the rotated Public Key will be mapped to.
+            - **Private Key** - the name of the secret that the rotated Private Key will be mapped to.
+
+        6. Give your rotation a name and description (optional). Then click **Next**.
+        ![Rotation Details](/images/secret-rotations-v2/azure-certificate/azure-details.png)
+
+            - **Name** - the name of the secret rotation configuration. Must be slug-friendly.
+            - **Description** (optional) - a description of this rotation configuration.
+
+        7. Review your configuration, then click **Create Secret Rotation**.
+        ![Rotation Review](/images/secret-rotations-v2/azure-certificate/azure-review.png)
+
+        8. Your **Azure Certificate** credentials are now available for use via the mapped secrets.
+        ![Rotation Created](/images/secret-rotations-v2/azure-certificate/azure-created.png)
+    </Tab>
+    <Tab title="API">
+        To create an Azure Certificate Rotation, make an API request to the [Create Azure
+        Certificate Rotation](/api-reference/endpoints/secret-rotations/azure-certificate/create) API endpoint.
+
+        You will first need the **Client ID** and **Object ID** of the Azure application you want to rotate the secret for. This can be obtained from the Applications dashboard.
+        ![Azure Client ID](/images/secret-rotations-v2/azure-client-secret/azure-app-client-id.png)
+
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://us.infisical.com/api/v2/secret-rotations/azure-certificate \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-azure-rotation",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "my certificate rotation",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "dev",
+            "secretPath": "/",
+            "isAutoRotationEnabled": true,
+            "rotationInterval": 30,
+            "rotateAtUtc": {
+                "hours": 0,
+                "minutes": 0
+            },
+            "parameters": {
+                "objectId": "...",
+                "appName": "..."
+            },
+            "secretsMapping": {
+                "publicKey": "AZURE_PUBLIC_KEY",
+                "privateKey": "AZURE_PRIVATE_KEY"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretRotation": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-azure-rotation",
+                "description": "my certificate rotation",
+                "secretsMapping": {
+                    "publicKey": "AZURE_PUBLIC_KEY",
+                    "privateKey": "AZURE_PRIVATE_KEY"
+                },
+                "isAutoRotationEnabled": true,
+                "activeIndex": 0,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "rotationInterval": 30,
+                "rotationStatus": "success",
+                "lastRotationAttemptedAt": "2023-11-07T05:31:56Z",
+                "lastRotatedAt": "2023-11-07T05:31:56Z",
+                "lastRotationJobId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "nextRotationAt": "2023-11-07T05:31:56Z",
+                "connection": {
+                    "app": "azure",
+                    "name": "my-azure-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/"
+                },
+                "rotateAtUtc": {
+                    "hours": 0,
+                    "minutes": 0
+                },
+                "lastRotationMessage": null,
+                "type": "azure-certificate",
+                "parameters": {
+                    "objectId": "...",
+                    "appName": "..."
+                }
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
