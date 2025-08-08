@@ -84,18 +84,16 @@ export const secretRotationV2QueueServiceFactory = async ({
               secretRotationV2DAL,
               secretRotationV2Service
             });
-
-            return;
+          } else {
+            await queueService.queuePg(
+              QueueJobs.SecretRotationV2RotateSecrets,
+              {
+                rotationId: rotation.id,
+                queuedAt: currentTime
+              },
+              getSecretRotationRotateSecretJobOptions(rotation)
+            );
           }
-
-          await queueService.queuePg(
-            QueueJobs.SecretRotationV2RotateSecrets,
-            {
-              rotationId: rotation.id,
-              queuedAt: currentTime
-            },
-            getSecretRotationRotateSecretJobOptions(rotation)
-          );
         }
       } catch (error) {
         logger.error(error, "secretRotationV2Queue: Queue Rotations Error:");
