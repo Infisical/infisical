@@ -3,8 +3,9 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
+import { OrgPermissionSubjects, useOrgPermission, useWorkspace } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
@@ -27,7 +28,12 @@ export const SecretScanningDataSourceConnectionField = ({
   const dataSourceType = watch("type");
   const app = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSourceType];
 
-  const { data: availableConnections, isPending } = useListAvailableAppConnections(app);
+  const { currentWorkspace } = useWorkspace();
+
+  const { data: availableConnections, isPending } = useListAvailableAppConnections(
+    app,
+    currentWorkspace.id
+  );
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
@@ -76,6 +82,7 @@ export const SecretScanningDataSourceConnectionField = ({
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              components={{ Option: AppConnectionOption }}
             />
           </FormControl>
         )}

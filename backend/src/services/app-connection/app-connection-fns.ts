@@ -1,3 +1,4 @@
+import { ProjectType } from "@app/db/schemas";
 import { TAppConnections } from "@app/db/schemas/app-connections";
 import {
   getOCIConnectionListItem,
@@ -7,6 +8,7 @@ import {
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -15,6 +17,7 @@ import {
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
 import {
   getOnePassConnectionListItem,
@@ -126,8 +129,23 @@ import {
   WindmillConnectionMethod
 } from "./windmill";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
+import {
+  SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 
-export const listAppConnectionOptions = () => {
+const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
+  Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
+);
+
+const SECRET_ROTATION_APP_CONNECTION_MAP = Object.fromEntries(
+  Object.entries(SECRET_ROTATION_CONNECTION_MAP).map(([key, value]) => [value, key])
+);
+
+const SECRET_SCANNING_APP_CONNECTION_MAP = Object.fromEntries(
+  Object.entries(SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP).map(([key, value]) => [value, key])
+);
+
+export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
@@ -166,22 +184,51 @@ export const listAppConnectionOptions = () => {
     getDigitalOceanConnectionListItem(),
     getNetlifyConnectionListItem(),
     getOktaConnectionListItem()
-  ].sort((a, b) => a.name.localeCompare(b.name));
+  ]
+    .filter((option) => {
+      switch (projectType) {
+        case ProjectType.SecretManager:
+          return (
+            Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
+            Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app])
+          );
+        case ProjectType.SecretScanning:
+          return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);
+        case ProjectType.CertificateManager:
+          return option.app === AppConnection.AWS || option.app === AppConnection.Cloudflare;
+        case ProjectType.KMS:
+          return false;
+        case ProjectType.SSH:
+          return false;
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 };
 
 export const encryptAppConnectionCredentials = async ({
   orgId,
   credentials,
-  kmsService
+  kmsService,
+  projectId
 }: {
   orgId: string;
   credentials: TAppConnection["credentials"];
   kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  projectId: string | null | undefined;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
+  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? {
+          type: KmsDataKey.SecretManager,
+          projectId
+        }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
 
   const { cipherTextBlob: encryptedCredentialsBlob } = encryptor({
     plainText: Buffer.from(JSON.stringify(credentials))
@@ -193,16 +240,22 @@ export const encryptAppConnectionCredentials = async ({
 export const decryptAppConnectionCredentials = async ({
   orgId,
   encryptedCredentials,
-  kmsService
+  kmsService,
+  projectId
 }: {
   orgId: string;
   encryptedCredentials: Buffer;
   kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  projectId: string | null | undefined;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
+  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+    projectId
+      ? { type: KmsDataKey.SecretManager, projectId }
+      : {
+          type: KmsDataKey.Organization,
+          orgId
+        }
+  );
 
   const decryptedPlainTextBlob = decryptor({
     cipherTextBlob: encryptedCredentials
@@ -333,6 +386,7 @@ export const decryptAppConnection = async (
     credentials: await decryptAppConnectionCredentials({
       encryptedCredentials: appConnection.encryptedCredentials,
       orgId: appConnection.orgId,
+      projectId: appConnection.projectId,
       kmsService
     }),
     credentialsHash: crypto.nativeCrypto.createHash("sha256").update(appConnection.encryptedCredentials).digest("hex")

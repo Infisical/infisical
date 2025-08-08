@@ -2170,6 +2170,9 @@ export const CertificateAuthorities = {
 };
 
 export const AppConnections = {
+  LIST: (app?: AppConnection) => ({
+    projectId: `The ID of the project to list  ${app ? APP_CONNECTION_NAME_MAP[app] : "App"} Connections from.`
+  }),
   GET_BY_ID: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
   }),
@@ -2183,7 +2186,8 @@ export const AppConnections = {
       description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
-      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`
+      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
+      projectId: `The ID of the project to create the ${appName} Connection in.`
     };
   },
   UPDATE: (app: AppConnection) => {

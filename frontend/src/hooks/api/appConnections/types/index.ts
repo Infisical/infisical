@@ -130,6 +130,7 @@ export type TCreateAppConnectionDTO = Pick<
   | "description"
   | "isPlatformManagedCredentials"
   | "gatewayId"
+  | "projectId"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<

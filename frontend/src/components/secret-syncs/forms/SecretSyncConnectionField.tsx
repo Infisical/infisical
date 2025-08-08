@@ -3,8 +3,9 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
+import { OrgPermissionSubjects, useOrgPermission, useWorkspace } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
@@ -23,7 +24,12 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
   const destination = watch("destination");
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
 
-  const { data: availableConnections, isPending } = useListAvailableAppConnections(app);
+  const { currentWorkspace } = useWorkspace();
+
+  const { data: availableConnections, isPending } = useListAvailableAppConnections(
+    app,
+    currentWorkspace.id
+  );
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
@@ -59,6 +65,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              components={{ Option: AppConnectionOption }}
             />
           </FormControl>
         )}

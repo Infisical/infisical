@@ -2758,12 +2758,15 @@ interface GetAppConnectionEvent {
 
 interface CreateAppConnectionEvent {
   type: EventType.CREATE_APP_CONNECTION;
-  metadata: Omit<TCreateAppConnectionDTO, "credentials"> & { connectionId: string };
+  metadata: Omit<TCreateAppConnectionDTO, "credentials" | "projectId"> & { connectionId: string };
 }
 
 interface UpdateAppConnectionEvent {
   type: EventType.UPDATE_APP_CONNECTION;
-  metadata: Omit<TUpdateAppConnectionDTO, "credentials"> & { connectionId: string; credentialsUpdated: boolean };
+  metadata: Omit<TUpdateAppConnectionDTO, "credentials" | "projectId"> & {
+    connectionId: string;
+    credentialsUpdated: boolean;
+  };
 }
 
 interface DeleteAppConnectionEvent {

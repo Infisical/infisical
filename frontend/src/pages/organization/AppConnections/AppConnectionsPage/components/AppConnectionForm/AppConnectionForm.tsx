@@ -51,12 +51,12 @@ type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
 } & ({ appConnection: TAppConnection } | { app: AppConnection });
 
-type CreateFormProps = FormProps & { app: AppConnection };
+type CreateFormProps = FormProps & { app: AppConnection; projectId?: string };
 type UpdateFormProps = FormProps & {
   appConnection: TAppConnection;
 };
 
-const CreateForm = ({ app, onComplete }: CreateFormProps) => {
+const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
   const createAppConnection = useCreateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[app];
 
@@ -67,7 +67,7 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
     >
   ) => {
     try {
-      const connection = await createAppConnection.mutateAsync(formData);
+      const connection = await createAppConnection.mutateAsync({ ...formData, projectId });
       createNotification({
         text: `Successfully added ${appName} Connection`,
         type: "success"
@@ -273,12 +273,12 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
   }
 };
 
-type Props = { onBack?: () => void } & Pick<FormProps, "onComplete"> &
+type Props = { onBack?: () => void; projectId?: string } & Pick<FormProps, "onComplete"> &
   (
     | { app: AppConnection; appConnection?: undefined }
     | { app?: undefined; appConnection: TAppConnection }
   );
-export const AppConnectionForm = ({ onBack, ...props }: Props) => {
+export const AppConnectionForm = ({ onBack, projectId, ...props }: Props) => {
   const { app, appConnection } = props;
 
   return (
@@ -291,7 +291,7 @@ export const AppConnectionForm = ({ onBack, ...props }: Props) => {
       {appConnection ? (
         <UpdateForm {...props} appConnection={appConnection} />
       ) : (
-        <CreateForm {...props} app={app} />
+        <CreateForm {...props} app={app} projectId={projectId} />
       )}
     </div>
   );

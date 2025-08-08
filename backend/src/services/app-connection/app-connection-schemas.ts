@@ -28,6 +28,7 @@ export const GenericCreateAppConnectionFieldsSchema = (
       .max(256, "Description cannot exceed 256 characters")
       .nullish()
       .describe(AppConnections.CREATE(app).description),
+    projectId: z.string().describe(AppConnections.CREATE(app).projectId),
     isPlatformManagedCredentials: supportsPlatformManagedCredentials
       ? z.boolean().optional().default(false).describe(AppConnections.CREATE(app).isPlatformManagedCredentials)
       : z
