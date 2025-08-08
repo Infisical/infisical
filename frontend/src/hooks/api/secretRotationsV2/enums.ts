@@ -7,7 +7,8 @@ export enum SecretRotation {
   AzureClientSecret = "azure-client-secret",
   LdapPassword = "ldap-password",
   AwsIamUserSecret = "aws-iam-user-secret",
-  OktaClientSecret = "okta-client-secret"
+  OktaClientSecret = "okta-client-secret",
+  AzureCertificate = "azure-certificate"
 }
 
 export enum SecretRotationStatus {

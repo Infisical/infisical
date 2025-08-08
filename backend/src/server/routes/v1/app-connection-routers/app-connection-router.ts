@@ -20,6 +20,10 @@ import {
   SanitizedAzureAppConfigurationConnectionSchema
 } from "@app/services/app-connection/azure-app-configuration";
 import {
+  AzureCertificateConnectionListItemSchema,
+  SanitizedAzureCertificateConnectionSchema
+} from "@app/services/app-connection/azure-certificate";
+import {
   AzureClientSecretsConnectionListItemSchema,
   SanitizedAzureClientSecretsConnectionSchema
 } from "@app/services/app-connection/azure-client-secrets";
@@ -150,7 +154,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
-  ...SanitizedOktaConnectionSchema.options
+  ...SanitizedOktaConnectionSchema.options,
+  ...SanitizedAzureCertificateConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -190,7 +195,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,
-  OktaConnectionListItemSchema
+  OktaConnectionListItemSchema,
+  AzureCertificateConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

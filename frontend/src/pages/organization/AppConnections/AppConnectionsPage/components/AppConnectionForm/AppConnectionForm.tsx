@@ -13,6 +13,7 @@ import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
+import { AzureCertificateConnectionForm } from "./AzureCertificateConnectionForm";
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
 import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
@@ -158,6 +159,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <NetlifyConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.AzureCertificate:
+      return <AzureCertificateConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -268,6 +271,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <DigitalOceanConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.AzureCertificate:
+      return <AzureCertificateConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

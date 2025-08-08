@@ -41,6 +41,7 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { AzureCertificateConnectionMethod } from "@app/hooks/api/appConnections/types/azure-certificate-connection";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
@@ -110,7 +111,8 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
-  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
+  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
+  [AppConnection.AzureCertificate]: { name: "Azure Certificates", image: "Microsoft Azure.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -125,6 +127,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GitHubConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
+    case AzureCertificateConnectionMethod.OAuth:
       return { name: "OAuth", icon: faPassport };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
@@ -181,6 +184,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureAppConfigurationConnectionMethod.ClientSecret:
     case AzureKeyVaultConnectionMethod.ClientSecret:
     case AzureDevOpsConnectionMethod.ClientSecret:
+    case AzureCertificateConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
