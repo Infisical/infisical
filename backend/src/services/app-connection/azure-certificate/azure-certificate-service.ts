@@ -17,6 +17,7 @@ type TGetAppConnectionFunc = (
   actor: OrgServiceActor
 ) => Promise<TAzureCertificateConnection>;
 
+const MAX_PAGES = 10;
 const listAzureRegisteredApps = async (
   appConnection: TAzureCertificateConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
@@ -29,6 +30,7 @@ const listAzureRegisteredApps = async (
   const apps: TAzureRegisteredApp[] = [];
   let nextLink = graphEndpoint;
 
+  let currentPage = 1;
   while (nextLink) {
     // eslint-disable-next-line no-await-in-loop
     const { data: appsPage } = await request.get<TAzureListRegisteredAppsResponse>(nextLink, {
@@ -40,6 +42,11 @@ const listAzureRegisteredApps = async (
 
     apps.push(...appsPage.value);
     nextLink = appsPage["@odata.nextLink"] || "";
+    currentPage += 1;
+
+    if (currentPage > MAX_PAGES) {
+      break;
+    }
   }
 
   return apps;

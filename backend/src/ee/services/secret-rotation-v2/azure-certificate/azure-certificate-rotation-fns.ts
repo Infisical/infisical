@@ -3,6 +3,7 @@
 import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import * as nodeCrypto from "crypto";
+import RE2 from "re2";
 
 import {
   AzureCertificateInfo,
@@ -81,7 +82,8 @@ export const azureCertificateRotationFactory: TRotationFactory<
   };
 
   const derToPem = (derBase64: string): string => {
-    const lines = derBase64.match(/.{1,64}/g) || [];
+    const regex = new RE2(".{1,64}", "g");
+    const lines = derBase64.match(regex) || [];
     return `-----BEGIN CERTIFICATE-----\n${lines.join("\n")}\n-----END CERTIFICATE-----`;
   };
 
@@ -376,6 +378,9 @@ export const azureCertificateRotationFactory: TRotationFactory<
             },
             "Failed to remove old certificate during rotation"
           );
+          throw new BadRequestError({
+            message: `Failed to remove old certificate ${oldCredentials.keyId}: ${error instanceof Error ? error.message : "Unknown error"}`
+          });
         }
       }
 

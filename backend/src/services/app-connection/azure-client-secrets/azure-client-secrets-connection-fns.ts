@@ -1,5 +1,6 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
+import RE2 from "re2";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -21,6 +22,8 @@ import {
   TAzureClientSecretsConnectionConfig,
   TAzureClientSecretsConnectionCredentials
 } from "./azure-client-secrets-connection-types";
+
+const uuidRegex = new RE2("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "i");
 
 export const getAzureClientSecretsConnectionListItem = () => {
   const { INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID } = getConfig();
@@ -72,6 +75,9 @@ export const getAzureConnectionAccessToken = async (
           message: `Azure OAuth environment variables have not been configured`
         });
       }
+      if (credentials.tenantId && !uuidRegex.test(credentials.tenantId)) {
+        throw new BadRequestError({ message: "Invalid tenant ID format" });
+      }
       const { data } = await request.post<ExchangeCodeAzureResponse>(
         IntegrationUrls.AZURE_TOKEN_URL.replace("common", credentials.tenantId || "common"),
         new URLSearchParams({
@@ -108,6 +114,9 @@ export const getAzureConnectionAccessToken = async (
       const { accessToken, expiresAt, clientId, clientSecret, tenantId } = accessTokenCredentials;
       if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
         return accessToken;
+      }
+      if (tenantId && !uuidRegex.test(tenantId)) {
+        throw new BadRequestError({ message: "Invalid tenant ID format" });
       }
 
       const { data: clientData } = await request.post<ExchangeCodeAzureResponse>(
@@ -169,6 +178,10 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
       let tokenResp: AxiosResponse<ExchangeCodeAzureResponse> | null = null;
       let tokenError: AxiosError | null = null;
 
+      if (inputCredentials.tenantId && !uuidRegex.test(inputCredentials.tenantId)) {
+        throw new BadRequestError({ message: "Invalid tenant ID format" });
+      }
+
       try {
         tokenResp = await request.post<ExchangeCodeAzureResponse>(
           IntegrationUrls.AZURE_TOKEN_URL.replace("common", inputCredentials.tenantId || "common"),
@@ -220,6 +233,9 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
 
     case AzureClientSecretsConnectionMethod.ClientSecret:
       const { tenantId, clientId, clientSecret } = inputCredentials;
+      if (tenantId && !uuidRegex.test(tenantId)) {
+        throw new BadRequestError({ message: "Invalid tenant ID format" });
+      }
       try {
         const { data: clientData } = await request.post<ExchangeCodeAzureResponse>(
           IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId || "common"),

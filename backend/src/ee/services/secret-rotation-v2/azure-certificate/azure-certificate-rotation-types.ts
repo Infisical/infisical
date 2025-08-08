@@ -23,15 +23,6 @@ export type TAzureCertificateRotationGeneratedCredentials = z.infer<
   typeof AzureCertificateRotationGeneratedCredentialsSchema
 >;
 
-export interface TAzureCertificateRotationParameters {
-  objectId: string;
-  appName?: string;
-  privateKey?: string;
-  distinguishedName?: string;
-  keyAlgorithm?: string;
-  keyUsages?: string[];
-}
-
 export interface TAzureCertificateRotationSecretsMapping {
   publicKey: string;
   privateKey: string;

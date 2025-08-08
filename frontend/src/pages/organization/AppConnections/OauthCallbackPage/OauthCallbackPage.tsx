@@ -378,7 +378,7 @@ export const OAuthCallbackPage = () => {
       }
     } catch (err: any) {
       createNotification({
-        title: `Failed to ${connectionId ? "update" : "add"} Azure Client Secrets Connection`,
+        title: `Failed to ${connectionId ? "update" : "add"} Azure Certificate Connection`,
         text: err?.message,
         type: "error"
       });

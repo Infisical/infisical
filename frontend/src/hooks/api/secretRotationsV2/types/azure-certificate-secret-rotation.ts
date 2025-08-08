@@ -31,7 +31,7 @@ export type TAzureCertificateRotationGeneratedCredentialsResponse =
 export type TAzureCertificateRotationOption = {
   name: string;
   type: SecretRotation.AzureCertificate;
-  connection: AppConnection.AzureClientSecrets;
+  connection: AppConnection.AzureCertificate;
   template: {
     secretsMapping: TAzureCertificateRotation["secretsMapping"];
   };

@@ -2644,8 +2644,8 @@ export const SecretRotations = {
       clientId: "The ID of the Okta Application to rotate the client secret for."
     },
     AZURE_CERTIFICATE: {
-      objectId: "The ID of the Azure Application to rotate the client secret for.",
-      appName: "The name of the Azure Application to rotate the client secret for."
+      objectId: "The ID of the Azure Application to rotate the certificate for.",
+      appName: "The name of the Azure Application to rotate the certificate for."
     }
   },
   SECRETS_MAPPING: {
