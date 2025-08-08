@@ -53,7 +53,7 @@ jobs:
                   push: true
                   context: .
                   tags: |
-                      infisical/infisical:latest-postgres
+                      infisical/infisical:latest
                       infisical/infisical:${{ steps.commit.outputs.short }}
                       infisical/infisical:${{ steps.extract_version.outputs.version }}
                   platforms: linux/amd64,linux/arm64
@@ -105,7 +105,7 @@ jobs:
                   push: true
                   context: .
                   tags: |
-                      infisical/infisical-fips:latest-postgres
+                      infisical/infisical-fips:latest
                       infisical/infisical-fips:${{ steps.commit.outputs.short }}
                       infisical/infisical-fips:${{ steps.extract_version.outputs.version }}
                   platforms: linux/amd64,linux/arm64
