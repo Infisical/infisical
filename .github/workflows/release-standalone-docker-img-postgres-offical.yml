@@ -3,6 +3,8 @@ on:
     push:
         tags:
             - "v*.*.*"
+            - "v*.*.*-nightly-*"
+            - "v*.*.*-nightly-*.*"
 
 jobs:
     infisical-tests:
