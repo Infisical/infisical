@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   name: clustergenerators.secrets.infisical.com
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   labels:
   {{- include "secrets-operator.labels" . | nindent 4 }}
 spec:
@@ -22,14 +22,19 @@ spec:
         description: ClusterGenerator represents a cluster-wide generator
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -47,27 +52,29 @@ spec:
                         description: set allowRepeat to true to allow repeating characters.
                         type: boolean
                       digits:
-                        description: digits specifies the number of digits in the generated
-                          password. If omitted it defaults to 25% of the length of the
-                          password
+                        description: |-
+                          digits specifies the number of digits in the generated
+                          password. If omitted it defaults to 25% of the length of the password
                         type: integer
                       length:
                         default: 24
-                        description: Length of the password to be generated. Defaults
-                          to 24
+                        description: |-
+                          Length of the password to be generated.
+                          Defaults to 24
                         type: integer
                       noUpper:
                         default: false
                         description: Set noUpper to disable uppercase characters
                         type: boolean
                       symbolCharacters:
-                        description: symbolCharacters specifies the special characters
-                          that should be used in the generated password.
+                        description: |-
+                          symbolCharacters specifies the special characters that should be used
+                          in the generated password.
                         type: string
                       symbols:
-                        description: symbols specifies the number of symbol characters
-                          in the generated password. If omitted it defaults to 25% of
-                          the length of the password
+                        description: |-
+                          symbols specifies the number of symbol characters in the generated
+                          password. If omitted it defaults to 25% of the length of the password
                         type: integer
                     type: object
                   uuidSpec:
