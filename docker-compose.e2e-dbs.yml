@@ -20,10 +20,10 @@ services:
       retries: 30
       start_period: 30s
 
-  oracle-db-19.19:
+  oracle-db-19.3:
     # Official Oracle 19.19.0.0 - requires docker login container-registry.oracle.com
-    image: container-registry.oracle.com/database/enterprise:19.19.0.0
-    container_name: oracle-db-19.19
+    image: container-registry.oracle.com/database/enterprise:19.3.0.0
+    container_name: oracle-db-19.3
     platform: linux/amd64
     ports:
       - "1522:1521"
@@ -34,7 +34,7 @@ services:
       - ORACLE_EDITION=enterprise
       - ORACLE_CHARACTERSET=AL32UTF8
     volumes:
-      - oracle-data-19.19:/opt/oracle/oradata
+      - oracle-data-19.3:/opt/oracle/oradata
     shm_size: 2gb
     restart: unless-stopped
     healthcheck:
@@ -173,7 +173,7 @@ services:
 
 volumes:
   oracle-data-23.8:
-  oracle-data-19.19:
+  oracle-data-19.3:
   mysql-data-8.4.6:
   mysql-data-8.0.29:
   mysql-data-5.7.31:
