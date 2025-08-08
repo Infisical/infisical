@@ -1,0 +1,83 @@
+name: Generate Nightly Tag
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  workflow_dispatch:  # Allow manual triggering for testing
+
+permissions:
+  contents: write
+
+jobs:
+  create-nightly-tag:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tags
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Generate nightly tag
+        run: |
+          # Get the latest infisical production tag
+          LATEST_STABLE_TAG=$(git tag --list | grep "^v[0-9].*$" | sort -V | tail -n1)
+          
+          if [ -z "$LATEST_STABLE_TAG" ]; then
+            echo "No infisical production tags found, using v0.1.0"
+            LATEST_STABLE_TAG="v0.1.0"
+          fi
+          
+          echo "Latest production tag: $LATEST_STABLE_TAG"
+          
+          # Get current date in YYYYMMDD format
+          DATE=$(date +%Y%m%d)
+          
+          # Base nightly tag name
+          BASE_TAG="${LATEST_STABLE_TAG}-nightly-${DATE}"
+          
+          # Check if this exact tag already exists
+          if git tag --list | grep -q "^${BASE_TAG}$"; then
+            echo "Base tag ${BASE_TAG} already exists, finding next increment"
+            
+            # Find existing tags for this date and get the highest increment
+            EXISTING_TAGS=$(git tag --list | grep "^${BASE_TAG}" | grep -E '\.[0-9]+$' || true)
+            
+            if [ -z "$EXISTING_TAGS" ]; then
+              # No incremental tags exist, create .1
+              NIGHTLY_TAG="${BASE_TAG}.1"
+            else
+              # Find the highest increment
+              HIGHEST_INCREMENT=$(echo "$EXISTING_TAGS" | sed "s|^${BASE_TAG}\.||" | sort -n | tail -n1)
+              NEXT_INCREMENT=$((HIGHEST_INCREMENT + 1))
+              NIGHTLY_TAG="${BASE_TAG}.${NEXT_INCREMENT}"
+            fi
+          else
+            # Base tag doesn't exist, use it
+            NIGHTLY_TAG="$BASE_TAG"
+          fi
+          
+          echo "Generated nightly tag: $NIGHTLY_TAG"
+          echo "NIGHTLY_TAG=$NIGHTLY_TAG" >> $GITHUB_ENV
+          echo "LATEST_PRODUCTION_TAG=$LATEST_STABLE_TAG" >> $GITHUB_ENV
+
+          git tag "$NIGHTLY_TAG"
+          git push origin "$NIGHTLY_TAG"
+          echo "✅ Created and pushed nightly tag: $NIGHTLY_TAG"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.NIGHTLY_TAG }}
+          name: ${{ env.NIGHTLY_TAG }}
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          make_latest: false
