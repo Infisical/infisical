@@ -94,7 +94,7 @@ export type TAccessApprovalRequest = {
     enforcementLevel: EnforcementLevel;
     deletedAt: Date | null;
     allowedSelfApprovals: boolean;
-    maxTimePeriod: string | null;
+    maxTimePeriod?: string | null;
   };
 
   reviewers: {

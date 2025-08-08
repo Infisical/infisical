@@ -10,6 +10,24 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const maxTimePeriodSchema = z
+  .string()
+  .trim()
+  .optional()
+  .transform((val, ctx) => {
+    if (val === undefined) return undefined;
+    const parsedMs = ms(val);
+
+    if (typeof parsedMs !== "number" || parsedMs <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid time period format or value. Must be a positive duration (e.g., '1h', '30m', '2d')."
+      });
+      return z.NEVER;
+    }
+    return val;
+  });
+
 export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -73,23 +91,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
-          maxTimePeriod: z
-            .string()
-            .trim()
-            .optional()
-            .transform((val, ctx) => {
-              if (val === undefined) return undefined;
-              const parsedMs = ms(val);
-
-              if (typeof parsedMs !== "number" || parsedMs <= 0) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: "Invalid time period format or value. Must be a positive duration (e.g., '1h', '30m', '2d')."
-                });
-                return z.NEVER;
-              }
-              return val;
-            })
+          maxTimePeriod: maxTimePeriodSchema
         })
         .refine(
           (val) => Boolean(val.environment) || Boolean(val.environments),
@@ -253,23 +255,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           })
           .array()
           .optional(),
-        maxTimePeriod: z
-          .string()
-          .trim()
-          .optional()
-          .transform((val, ctx) => {
-            if (val === undefined) return undefined;
-            const parsedMs = ms(val);
-
-            if (typeof parsedMs !== "number" || parsedMs <= 0) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Invalid time period format or value. Must be a positive duration (e.g., '1h', '30m', '2d')."
-              });
-              return z.NEVER;
-            }
-            return val;
-          })
+        maxTimePeriod: maxTimePeriodSchema
       }),
       response: {
         200: z.object({
