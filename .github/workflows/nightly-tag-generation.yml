@@ -75,8 +75,6 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.NIGHTLY_TAG }}
           name: ${{ env.NIGHTLY_TAG }}
