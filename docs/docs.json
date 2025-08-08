@@ -41,8 +41,6 @@
             "group": "Platform Reference",
             "pages": [
               "documentation/platform/organization",
-              "documentation/platform/event-subscriptions",
-              "documentation/platform/folder",
               {
                 "group": "Projects",
                 "pages": [
@@ -145,6 +143,7 @@
                   }
                 ]
               },
+              "documentation/platform/event-subscriptions",
               {
                 "group": "Workflow Integrations",
                 "pages": [
@@ -650,12 +649,21 @@
             "item": "Secrets Scanning",
             "groups": [
               {
-                "group": "Secret Scanning",
-                "pages": ["documentation/platform/secret-scanning/overview"]
+                "group": "Secrets Scanning",
+                "pages": [
+                  "documentation/platform/secret-scanning/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/secret-scanning/concepts/secret-scanning"
+                    ]
+                  }
+                ]
               },
               {
-                "group": "Datasources",
+                "group": "Product Reference",
                 "pages": [
+                  "documentation/platform/secret-scanning/usage",
                   "documentation/platform/secret-scanning/bitbucket",
                   "documentation/platform/secret-scanning/github",
                   "documentation/platform/secret-scanning/gitlab"
@@ -695,6 +703,18 @@
                 "group": "Infisical SSH",
                 "pages": [
                   "documentation/platform/ssh/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/ssh/concepts/ssh-certificates"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Platform Reference",
+                "pages": [
+                  "documentation/platform/ssh/usage",
                   "documentation/platform/ssh/host-groups"
                 ]
               }
