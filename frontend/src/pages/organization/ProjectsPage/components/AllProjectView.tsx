@@ -351,40 +351,38 @@ export const AllProjectView = ({
                   <span>Joined</span>
                 </Badge>
               ) : (
-                <div className="opacity-0 transition-all group-hover:opacity-100">
-                  <OrgPermissionCan
-                    I={OrgPermissionAdminConsoleAction.AccessAllProjects}
-                    an={OrgPermissionSubjects.AdminConsole}
-                  >
-                    {(isAllowed) =>
-                      isAllowed ? (
-                        <Button
-                          size="xs"
-                          variant="outline_bg"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            handleAccessProject(workspace.type, workspace.id);
-                          }}
-                          disabled={
-                            orgAdminAccessProject.variables?.projectId === workspace.id &&
-                            orgAdminAccessProject.isPending
-                          }
-                        >
-                          Admin Access
-                        </Button>
-                      ) : (
-                        <Button
-                          size="xs"
-                          variant="outline_bg"
-                          onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
-                        >
-                          Request Access
-                        </Button>
-                      )
-                    }
-                  </OrgPermissionCan>
-                </div>
+                <OrgPermissionCan
+                  I={OrgPermissionAdminConsoleAction.AccessAllProjects}
+                  an={OrgPermissionSubjects.AdminConsole}
+                >
+                  {(isAllowed) =>
+                    isAllowed ? (
+                      <Button
+                        size="xs"
+                        variant="outline_bg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleAccessProject(workspace.type, workspace.id);
+                        }}
+                        disabled={
+                          orgAdminAccessProject.variables?.projectId === workspace.id &&
+                          orgAdminAccessProject.isPending
+                        }
+                      >
+                        Join as Admin
+                      </Button>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="outline_bg"
+                        onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                      >
+                        Request Access
+                      </Button>
+                    )
+                  }
+                </OrgPermissionCan>
               )}
             </div>
           ))}
