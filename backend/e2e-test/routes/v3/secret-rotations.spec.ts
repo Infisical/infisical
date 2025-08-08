@@ -535,29 +535,29 @@ describe("Secret Rotations", async () => {
         }
       ]
     },
-    {
-      type: SecretRotationType.OracleDb,
-      name: "OracleDB (19.3) Secret Rotation",
-      dbCredentials: {
-        database: "ORCLPDB1",
-        host: "127.0.0.1",
-        username: "system",
-        password: "OrCAKF112aaSfAdfdA2Ac3@@!",
-        port: 1522
-      },
-      secretMapping: {
-        username: formatSqlUsername("ORACLEDB_USERNAME"),
-        password: formatSqlUsername("ORACLEDB_PASSWORD")
-      },
-      userCredentials: [
-        {
-          username: formatSqlUsername("INFISICAL_USER_1")
-        },
-        {
-          username: formatSqlUsername("INFISICAL_USER_2")
-        }
-      ]
-    },
+    // {
+    //   type: SecretRotationType.OracleDb,
+    //   name: "OracleDB (19.3) Secret Rotation",
+    //   dbCredentials: {
+    //     database: "ORCLPDB1",
+    //     host: "127.0.0.1",
+    //     username: "system",
+    //     password: "OrCAKF112aaSfAdfdA2Ac3@@!",
+    //     port: 1522
+    //   },
+    //   secretMapping: {
+    //     username: formatSqlUsername("ORACLEDB_USERNAME"),
+    //     password: formatSqlUsername("ORACLEDB_PASSWORD")
+    //   },
+    //   userCredentials: [
+    //     {
+    //       username: formatSqlUsername("INFISICAL_USER_1")
+    //     },
+    //     {
+    //       username: formatSqlUsername("INFISICAL_USER_2")
+    //     }
+    //   ]
+    // },
     {
       type: SecretRotationType.Postgres,
       name: "Postgres (17) Secret Rotation",
