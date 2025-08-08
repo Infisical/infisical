@@ -10,6 +10,7 @@ import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
@@ -83,19 +84,26 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await $getClient(providerInputs);
-
-    const testResult = await new Promise<boolean>((resolve, reject) => {
-      client.exec("SELECT 1 FROM DUMMY;", (err: any) => {
-        if (err) {
-          reject();
-        }
-
-        resolve(true);
+    try {
+      const client = await $getClient(providerInputs);
+      const testResult = await new Promise<boolean>((resolve, reject) => {
+        client.exec("SELECT 1 FROM DUMMY;", (err: any) => {
+          if (err) {
+            return reject(err);
+          }
+          resolve(true);
+        });
       });
-    });
-
-    return testResult;
+      return testResult;
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.password, providerInputs.username, providerInputs.host]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: {
@@ -119,18 +127,22 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     });
 
     const queries = creationStatement.toString().split(";").filter(Boolean);
-    for await (const query of queries) {
-      await new Promise((resolve, reject) => {
-        client.exec(query, (err: any) => {
-          if (err) {
-            reject(
-              new BadRequestError({
-                message: err.message
-              })
-            );
-          }
-          resolve(true);
+    try {
+      for await (const query of queries) {
+        await new Promise((resolve, reject) => {
+          client.exec(query, (err: any) => {
+            if (err) return reject(err);
+            resolve(true);
+          });
         });
+      }
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, password, providerInputs.password, providerInputs.username]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
       });
     }
 
@@ -142,18 +154,24 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
     const client = await $getClient(providerInputs);
     const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
     const queries = revokeStatement.toString().split(";").filter(Boolean);
-    for await (const query of queries) {
-      await new Promise((resolve, reject) => {
-        client.exec(query, (err: any) => {
-          if (err) {
-            reject(
-              new BadRequestError({
-                message: err.message
-              })
-            );
-          }
-          resolve(true);
+    try {
+      for await (const query of queries) {
+        await new Promise((resolve, reject) => {
+          client.exec(query, (err: any) => {
+            if (err) {
+              reject(err);
+            }
+            resolve(true);
+          });
         });
+      }
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, providerInputs.password, providerInputs.username]
+      });
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
       });
     }
 
@@ -174,16 +192,20 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
         await new Promise((resolve, reject) => {
           client.exec(query, (err: any) => {
             if (err) {
-              reject(
-                new BadRequestError({
-                  message: err.message
-                })
-              );
+              reject(err);
             }
             resolve(true);
           });
         });
       }
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [entityId, providerInputs.password, providerInputs.username]
+      });
+      throw new BadRequestError({
+        message: `Failed to renew lease from provider: ${sanitizedErrorMessage}`
+      });
     } finally {
       client.disconnect();
     }

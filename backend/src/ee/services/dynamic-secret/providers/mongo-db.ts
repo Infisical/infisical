@@ -2,6 +2,8 @@ import { MongoClient } from "mongodb";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -51,13 +53,24 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const isConnected = await client
-      .db(providerInputs.database)
-      .command({ ping: 1 })
-      .then(() => true);
+    try {
+      const isConnected = await client
+        .db(providerInputs.database)
+        .command({ ping: 1 })
+        .then(() => true);
 
-    await client.close();
-    return isConnected;
+      await client.close();
+      return isConnected;
+    } catch (err) {
+      await client.close();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.password, providerInputs.username, providerInputs.database, providerInputs.host]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
@@ -68,16 +81,27 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
     const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
 
-    const db = client.db(providerInputs.database);
+    try {
+      const db = client.db(providerInputs.database);
 
-    await db.command({
-      createUser: username,
-      pwd: password,
-      roles: providerInputs.roles
-    });
-    await client.close();
+      await db.command({
+        createUser: username,
+        pwd: password,
+        roles: providerInputs.roles
+      });
+      await client.close();
 
-    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+      return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+    } catch (err) {
+      await client.close();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, password, providerInputs.password, providerInputs.username, providerInputs.database]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
@@ -86,13 +110,24 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
 
     const username = entityId;
 
-    const db = client.db(providerInputs.database);
-    await db.command({
-      dropUser: username
-    });
-    await client.close();
+    try {
+      const db = client.db(providerInputs.database);
+      await db.command({
+        dropUser: username
+      });
+      await client.close();
 
-    return { entityId: username };
+      return { entityId: username };
+    } catch (err) {
+      await client.close();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, providerInputs.password, providerInputs.username, providerInputs.database]
+      });
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const renew = async (_inputs: unknown, entityId: string) => {

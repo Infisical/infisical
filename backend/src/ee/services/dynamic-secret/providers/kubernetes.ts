@@ -2,7 +2,8 @@ import axios, { AxiosError } from "axios";
 import handlebars from "handlebars";
 import https from "https";
 
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -356,8 +357,12 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
         errorMessage = (error.response?.data as { message: string }).message;
       }
 
-      throw new InternalServerError({
-        message: `Failed to validate connection: ${errorMessage}`
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: errorMessage,
+        tokens: [providerInputs.clusterToken || ""]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
       });
     }
   };
@@ -602,8 +607,12 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
         errorMessage = (error.response?.data as { message: string }).message;
       }
 
-      throw new InternalServerError({
-        message: `Failed to create dynamic secret: ${errorMessage}`
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: errorMessage,
+        tokens: [providerInputs.clusterToken || ""]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
       });
     }
   };
@@ -683,50 +692,65 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     };
 
     if (providerInputs.credentialType === KubernetesCredentialType.Dynamic) {
-      const rawUrl =
-        providerInputs.authMethod === KubernetesAuthMethod.Gateway
-          ? GATEWAY_AUTH_DEFAULT_URL
-          : providerInputs.url || "";
+      try {
+        const rawUrl =
+          providerInputs.authMethod === KubernetesAuthMethod.Gateway
+            ? GATEWAY_AUTH_DEFAULT_URL
+            : providerInputs.url || "";
 
-      const url = new URL(rawUrl);
-      const k8sGatewayHost = url.hostname;
-      const k8sPort = url.port ? Number(url.port) : 443;
-      const k8sHost = `${url.protocol}//${url.hostname}`;
+        const url = new URL(rawUrl);
+        const k8sGatewayHost = url.hostname;
+        const k8sPort = url.port ? Number(url.port) : 443;
+        const k8sHost = `${url.protocol}//${url.hostname}`;
 
-      const httpsAgent =
-        providerInputs.ca && providerInputs.sslEnabled
-          ? new https.Agent({
-              ca: providerInputs.ca,
-              rejectUnauthorized: true
-            })
-          : undefined;
+        const httpsAgent =
+          providerInputs.ca && providerInputs.sslEnabled
+            ? new https.Agent({
+                ca: providerInputs.ca,
+                rejectUnauthorized: true
+              })
+            : undefined;
 
-      if (providerInputs.gatewayId) {
-        if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
-          await $gatewayProxyWrapper(
-            {
-              gatewayId: providerInputs.gatewayId,
-              targetHost: k8sHost,
-              targetPort: k8sPort,
-              httpsAgent,
-              reviewTokenThroughGateway: true
-            },
-            serviceAccountDynamicCallback
-          );
+        if (providerInputs.gatewayId) {
+          if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
+            await $gatewayProxyWrapper(
+              {
+                gatewayId: providerInputs.gatewayId,
+                targetHost: k8sHost,
+                targetPort: k8sPort,
+                httpsAgent,
+                reviewTokenThroughGateway: true
+              },
+              serviceAccountDynamicCallback
+            );
+          } else {
+            await $gatewayProxyWrapper(
+              {
+                gatewayId: providerInputs.gatewayId,
+                targetHost: k8sGatewayHost,
+                targetPort: k8sPort,
+                httpsAgent,
+                reviewTokenThroughGateway: false
+              },
+              serviceAccountDynamicCallback
+            );
+          }
         } else {
-          await $gatewayProxyWrapper(
-            {
-              gatewayId: providerInputs.gatewayId,
-              targetHost: k8sGatewayHost,
-              targetPort: k8sPort,
-              httpsAgent,
-              reviewTokenThroughGateway: false
-            },
-            serviceAccountDynamicCallback
-          );
+          await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent);
         }
-      } else {
-        await serviceAccountDynamicCallback(k8sHost, k8sPort, httpsAgent);
+      } catch (error) {
+        let errorMessage = error instanceof Error ? error.message : "Unknown error";
+        if (axios.isAxiosError(error) && (error.response?.data as { message: string })?.message) {
+          errorMessage = (error.response?.data as { message: string }).message;
+        }
+
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: errorMessage,
+          tokens: [entityId, providerInputs.clusterToken || ""]
+        });
+        throw new BadRequestError({
+          message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+        });
       }
     }
 

@@ -4,6 +4,7 @@ import odbc from "odbc";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
@@ -67,25 +68,41 @@ export const SapAseProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const masterClient = await $getClient(providerInputs, true);
-    const client = await $getClient(providerInputs);
+    let masterClient;
+    let client;
+    try {
+      masterClient = await $getClient(providerInputs, true);
+      client = await $getClient(providerInputs);
 
-    const [resultFromMasterDatabase] = await masterClient.query<{ version: string }>("SELECT @@VERSION AS version");
-    const [resultFromSelectedDatabase] = await client.query<{ version: string }>("SELECT @@VERSION AS version");
+      const [resultFromMasterDatabase] = await masterClient.query<{ version: string }>("SELECT @@VERSION AS version");
+      const [resultFromSelectedDatabase] = await client.query<{ version: string }>("SELECT @@VERSION AS version");
 
-    if (!resultFromSelectedDatabase.version) {
+      if (!resultFromSelectedDatabase.version) {
+        throw new BadRequestError({
+          message: "Failed to validate SAP ASE connection, version query failed"
+        });
+      }
+
+      if (resultFromMasterDatabase.version !== resultFromSelectedDatabase.version) {
+        throw new BadRequestError({
+          message: "Failed to validate SAP ASE connection (master), version mismatch"
+        });
+      }
+
+      await masterClient.close();
+      await client.close();
+      return true;
+    } catch (err) {
+      if (masterClient) await masterClient.close();
+      if (client) await client.close();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.password, providerInputs.username, providerInputs.host, providerInputs.database]
+      });
       throw new BadRequestError({
-        message: "Failed to validate SAP ASE connection, version query failed"
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
       });
     }
-
-    if (resultFromMasterDatabase.version !== resultFromSelectedDatabase.version) {
-      throw new BadRequestError({
-        message: "Failed to validate SAP ASE connection (master), version mismatch"
-      });
-    }
-
-    return true;
   };
 
   const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
@@ -105,16 +122,26 @@ export const SapAseProvider = (): TDynamicProviderFns => {
 
     const queries = creationStatement.trim().replaceAll("\n", "").split(";").filter(Boolean);
 
-    for await (const query of queries) {
-      // If it's an adduser query, we need to first call sp_addlogin on the MASTER database.
-      // If not done, then the newly created user won't be able to authenticate.
-      await (query.startsWith(SapCommands.CreateLogin) ? masterClient : client).query(query);
+    try {
+      for await (const query of queries) {
+        // If it's an adduser query, we need to first call sp_addlogin on the MASTER database.
+        // If not done, then the newly created user won't be able to authenticate.
+        await (query.startsWith(SapCommands.CreateLogin) ? masterClient : client).query(query);
+      }
+      await masterClient.close();
+      await client.close();
+      return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+    } catch (err) {
+      await masterClient.close();
+      await client.close();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, password, providerInputs.password, providerInputs.username, providerInputs.database]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
     }
-
-    await masterClient.close();
-    await client.close();
-
-    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
   };
 
   const revoke = async (inputs: unknown, username: string) => {
@@ -140,14 +167,24 @@ export const SapAseProvider = (): TDynamicProviderFns => {
       }
     }
 
-    for await (const query of queries) {
-      await (query.startsWith(SapCommands.DropLogin) ? masterClient : client).query(query);
+    try {
+      for await (const query of queries) {
+        await (query.startsWith(SapCommands.DropLogin) ? masterClient : client).query(query);
+      }
+      await masterClient.close();
+      await client.close();
+      return { entityId: username };
+    } catch (err) {
+      await masterClient.close();
+      await client.close();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, providerInputs.password, providerInputs.username, providerInputs.database]
+      });
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+      });
     }
-
-    await masterClient.close();
-    await client.close();
-
-    return { entityId: username };
   };
 
   const renew = async (_: unknown, username: string) => {
