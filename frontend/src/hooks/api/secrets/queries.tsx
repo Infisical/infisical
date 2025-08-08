@@ -88,7 +88,8 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       path: el.secretPath,
       secretMetadata: el.secretMetadata,
       isRotatedSecret: el.isRotatedSecret,
-      rotationId: el.rotationId
+      rotationId: el.rotationId,
+      reminder: el.reminder
     };
 
     if (el.type === SecretType.Personal) {

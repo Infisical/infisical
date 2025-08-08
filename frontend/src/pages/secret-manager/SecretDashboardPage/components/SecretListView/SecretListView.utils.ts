@@ -1,6 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import {
+  faBell,
   faCheck,
   faClock,
   faClone,
@@ -11,7 +12,6 @@ import {
   faEllipsis,
   faKey,
   faLock,
-  faProjectDiagram,
   faShare,
   faTags,
   faTrash
@@ -83,7 +83,7 @@ export enum FontAwesomeSpriteName {
   ReplicatedSecretKey = "secret-replicated",
   ShareSecret = "share-secret",
   KeyLock = "key-lock",
-  SecretReferenceTree = "secret-reference-tree",
+  Reminder = "secret-reminder",
   Trash = "trash"
 }
 
@@ -103,6 +103,6 @@ export const FontAwesomeSpriteSymbols = [
   { icon: faClone, symbol: FontAwesomeSpriteName.ReplicatedSecretKey },
   { icon: faShare, symbol: FontAwesomeSpriteName.ShareSecret },
   { icon: faLock, symbol: FontAwesomeSpriteName.KeyLock },
-  { icon: faProjectDiagram, symbol: FontAwesomeSpriteName.SecretReferenceTree },
+  { icon: faBell, symbol: FontAwesomeSpriteName.Reminder },
   { icon: faTrash, symbol: FontAwesomeSpriteName.Trash }
 ];
