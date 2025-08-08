@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -12,6 +13,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { AuthMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TUserDALFactory } from "./user-dal";
 import { TListUserGroupsDTO, TUpdateUserMfaDTO } from "./user-types";
 
@@ -37,6 +39,7 @@ type TUserServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "update">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -48,17 +51,28 @@ export const userServiceFactory = ({
   groupProjectDAL,
   tokenService,
   smtpService,
-  permissionService
+  permissionService,
+  userAliasDAL
 }: TUserServiceFactoryDep) => {
-  const sendEmailVerificationCode = async (username: string) => {
+  const sendEmailVerificationCode = async (username: string, referer: string) => {
     // akhilmhdh: case sensitive email resolution
     const users = await userDAL.findUserByUsername(username);
     const user = users?.length > 1 ? users.find((el) => el.username === username) : users?.[0];
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
+    let { isEmailVerified } = user;
+    const url = new URL(referer);
+    const refererToken = url.searchParams.get("token");
+    if (!refererToken)
+      throw new BadRequestError({ name: "Failed to send email verification code due to no token on referer" });
+    const { authType } = crypto.jwt().decode(refererToken) as { authType: string };
+    const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType });
+    if (userAlias) {
+      isEmailVerified = userAlias.isEmailVerified;
+    }
 
     if (!user.email)
       throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
-    if (user.isEmailVerified)
+    if (isEmailVerified)
       throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
 
     const token = await tokenService.createTokenForUser({
@@ -95,7 +109,9 @@ export const userServiceFactory = ({
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
-    if (user.isEmailVerified)
+
+    const userAliases = await userAliasDAL.find({ userId: user.id });
+    if (user.isEmailVerified && userAliases?.every((alias) => alias.isEmailVerified))
       throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
 
     await tokenService.validateTokenForUser({
@@ -105,6 +121,8 @@ export const userServiceFactory = ({
     });
 
     const userEmails = user?.email ? await userDAL.find({ email: user.email }) : [];
+
+    await userAliasDAL.update({ userId: user.id }, { isEmailVerified: true });
 
     await userDAL.updateById(user.id, {
       isEmailVerified: true,
