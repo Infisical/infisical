@@ -38,7 +38,7 @@ jobs:
         run: echo "${{ secrets.ORACLE_DOCKER_REGISTRY_PASSWORD }}" | docker login container-registry.oracle.com -u "${{ secrets.ORACLE_DOCKER_REGISTRY_USERNAME }}" --password-stdin
 
       - name: Start Secret Rotation testing databases
-        run: docker compose -f docker-compose.e2e-dbs.yml up -d
+        run: docker compose -f docker-compose.e2e-dbs.yml up -d --wait --wait-timeout 300
       - name: Run unit test
         run: npm run test:unit
         working-directory: backend
