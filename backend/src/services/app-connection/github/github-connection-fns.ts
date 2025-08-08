@@ -200,7 +200,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   const linkHeader = parseGitHubLinkHeader(firstResponse.headers.link as string | undefined);
   const lastPageUrl = linkHeader.last;
 
-  // If there's a last page URL, get it's page number and concurrently fetch every page starting from 2 to last
+  // If there's a last page URL, get its page number and concurrently fetch every page starting from 2 to last
   if (lastPageUrl) {
     const lastPageParam = new URL(lastPageUrl).searchParams.get("page");
     const totalPages = lastPageParam ? parseInt(lastPageParam, 10) : 1;
