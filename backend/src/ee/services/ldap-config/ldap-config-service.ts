@@ -557,14 +557,13 @@ export const ldapConfigServiceFactory = ({
     });
 
     const isUserCompleted = Boolean(user.isAccepted);
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
 
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
-        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
+        hasExchangedPrivateKey: true,
         ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,
