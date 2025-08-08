@@ -2,7 +2,7 @@ name: Release production images (frontend, backend)
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "vv*.*.*"
 
 jobs:
   backend-image:
