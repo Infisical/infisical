@@ -2,7 +2,7 @@ name: Release standalone docker image
 on:
     push:
         tags:
-            - "infisical/v*.*.*-postgres"
+            - "v*.*.*"
 
 jobs:
     infisical-tests:
@@ -17,7 +17,7 @@ jobs:
         steps:
             - name: Extract version from tag
               id: extract_version
-              run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
+              run: echo "::set-output name=version::${GITHUB_REF_NAME}"
             - name: ☁️ Checkout source
               uses: actions/checkout@v3
               with:
