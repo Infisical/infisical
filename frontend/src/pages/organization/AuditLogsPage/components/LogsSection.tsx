@@ -35,7 +35,8 @@ export const LogsSection = withPermission(
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
     const [logFilter, setLogFilter] = useState<TAuditLogFilterFormData>({
       eventType: presets?.eventType || [],
-      actor: presets?.actorId
+      actor: presets?.actorId,
+      eventMetadata: presets?.eventMetadata
     });
     const [timezone, setTimezone] = useState<Timezone>(Timezone.Local);
 
