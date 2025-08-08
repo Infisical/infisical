@@ -54,3 +54,7 @@ func AppendAPIEndpoint(address string) string {
 	}
 	return address + "/api"
 }
+
+func IsNamespaceScopedError(err error, isNamespaceScoped bool) bool {
+	return isNamespaceScoped && err != nil && strings.Contains(err.Error(), "unknown namespace for the cache")
+}

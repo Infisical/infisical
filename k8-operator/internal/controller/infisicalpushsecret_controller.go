@@ -45,9 +45,10 @@ import (
 // InfisicalPushSecretReconciler reconciles a InfisicalPushSecretSecret object
 type InfisicalPushSecretReconciler struct {
 	client.Client
-	IsNamespaceScoped bool
 	BaseLogger        logr.Logger
 	Scheme            *runtime.Scheme
+	IsNamespaceScoped bool
+	Namespace         string
 }
 
 var infisicalPushSecretResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
@@ -158,7 +159,7 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Get modified/default config
-	infisicalConfig, err := controllerhelpers.GetInfisicalConfigMap(ctx, r.Client)
+	infisicalConfig, err := controllerhelpers.GetInfisicalConfigMap(ctx, r.Client, r.IsNamespaceScoped)
 	if err != nil {
 		if requeueTime != 0 {
 			logger.Error(err, fmt.Sprintf("unable to fetch infisical-config. Will requeue after [requeueTime=%v]", requeueTime))

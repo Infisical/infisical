@@ -19,15 +19,17 @@ import (
 
 type InfisicalDynamicSecretHandler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	Random *rand.Rand
+	Scheme            *runtime.Scheme
+	Random            *rand.Rand
+	IsNamespaceScoped bool
 }
 
-func NewInfisicalDynamicSecretHandler(client client.Client, scheme *runtime.Scheme) *InfisicalDynamicSecretHandler {
+func NewInfisicalDynamicSecretHandler(client client.Client, scheme *runtime.Scheme, isNamespaceScoped bool) *InfisicalDynamicSecretHandler {
 	return &InfisicalDynamicSecretHandler{
-		Client: client,
-		Scheme: scheme,
-		Random: rand.New(rand.NewSource(time.Now().UnixNano())),
+		Client:            client,
+		Scheme:            scheme,
+		Random:            rand.New(rand.NewSource(time.Now().UnixNano())),
+		IsNamespaceScoped: isNamespaceScoped,
 	}
 }
 
@@ -49,6 +51,10 @@ func (h *InfisicalDynamicSecretHandler) getInfisicalCaCertificateFromKubeSecret(
 
 	if k8Errors.IsNotFound(err) {
 		return "", fmt.Errorf("kubernetes secret containing custom CA certificate cannot be found. [err=%s]", err)
+	}
+
+	if util.IsNamespaceScopedError(err, h.IsNamespaceScoped) {
+		return "", fmt.Errorf("unable to fetch Kubernetes CA certificate secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the CA certificate secret is in the same namespace as the operator. [err=%v]", err)
 	}
 
 	if err != nil {
@@ -75,36 +81,40 @@ func (h *InfisicalDynamicSecretHandler) HandleCACertificate(ctx context.Context,
 
 func (h *InfisicalDynamicSecretHandler) ReconcileInfisicalDynamicSecret(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, resourceVariablesMap map[string]util.ResourceVariables) (time.Duration, error) {
 	reconciler := &InfisicalDynamicSecretReconciler{
-		Client: h.Client,
-		Scheme: h.Scheme,
-		Random: h.Random,
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		Random:            h.Random,
+		IsNamespaceScoped: h.IsNamespaceScoped,
 	}
 	return reconciler.ReconcileInfisicalDynamicSecret(ctx, logger, infisicalDynamicSecret, resourceVariablesMap)
 }
 
 func (h *InfisicalDynamicSecretHandler) HandleLeaseRevocation(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, resourceVariablesMap map[string]util.ResourceVariables) error {
 	reconciler := &InfisicalDynamicSecretReconciler{
-		Client: h.Client,
-		Scheme: h.Scheme,
-		Random: h.Random,
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		Random:            h.Random,
+		IsNamespaceScoped: h.IsNamespaceScoped,
 	}
 	return reconciler.HandleLeaseRevocation(ctx, logger, infisicalDynamicSecret, resourceVariablesMap)
 }
 
 func (h *InfisicalDynamicSecretHandler) SetReconcileConditionStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, errorToConditionOn error) {
 	reconciler := &InfisicalDynamicSecretReconciler{
-		Client: h.Client,
-		Scheme: h.Scheme,
-		Random: h.Random,
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		Random:            h.Random,
+		IsNamespaceScoped: h.IsNamespaceScoped,
 	}
 	reconciler.SetReconcileConditionStatus(ctx, logger, infisicalDynamicSecret, errorToConditionOn)
 }
 
 func (h *InfisicalDynamicSecretHandler) SetReconcileAutoRedeploymentConditionStatus(ctx context.Context, logger logr.Logger, infisicalDynamicSecret *v1alpha1.InfisicalDynamicSecret, numDeployments int, errorToConditionOn error) {
 	reconciler := &InfisicalDynamicSecretReconciler{
-		Client: h.Client,
-		Scheme: h.Scheme,
-		Random: h.Random,
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		Random:            h.Random,
+		IsNamespaceScoped: h.IsNamespaceScoped,
 	}
 	reconciler.SetReconcileAutoRedeploymentConditionStatus(ctx, logger, infisicalDynamicSecret, numDeployments, errorToConditionOn)
 }

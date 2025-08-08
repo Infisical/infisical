@@ -2,7 +2,6 @@ package infisicaldynamicsecret
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -27,8 +26,9 @@ import (
 
 type InfisicalDynamicSecretReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	Random *rand.Rand
+	Scheme            *runtime.Scheme
+	Random            *rand.Rand
+	IsNamespaceScoped bool
 }
 
 func (r *InfisicalDynamicSecretReconciler) createInfisicalManagedKubeSecret(ctx context.Context, logger logr.Logger, infisicalDynamicSecret v1alpha1.InfisicalDynamicSecret, versionAnnotationValue string) error {
@@ -83,36 +83,6 @@ func (r *InfisicalDynamicSecretReconciler) createInfisicalManagedKubeSecret(ctx 
 
 	logger.Info(fmt.Sprintf("Successfully created a managed Kubernetes secret. [type: %s]", secretType))
 	return nil
-}
-
-func (r *InfisicalDynamicSecretReconciler) handleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalDynamicSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error) {
-	authStrategies := map[util.AuthStrategyType]func(ctx context.Context, reconcilerClient client.Client, secretCrd util.SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error){
-		util.AuthStrategy.UNIVERSAL_MACHINE_IDENTITY:    util.HandleUniversalAuth,
-		util.AuthStrategy.KUBERNETES_MACHINE_IDENTITY:   util.HandleKubernetesAuth,
-		util.AuthStrategy.AWS_IAM_MACHINE_IDENTITY:      util.HandleAwsIamAuth,
-		util.AuthStrategy.AZURE_MACHINE_IDENTITY:        util.HandleAzureAuth,
-		util.AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY: util.HandleGcpIdTokenAuth,
-		util.AuthStrategy.GCP_IAM_MACHINE_IDENTITY:      util.HandleGcpIamAuth,
-		util.AuthStrategy.LDAP_MACHINE_IDENTITY:         util.HandleLdapAuth,
-	}
-
-	for authStrategy, authHandler := range authStrategies {
-		authDetails, err := authHandler(ctx, r.Client, util.SecretAuthInput{
-			Secret: infisicalSecret,
-			Type:   util.SecretCrd.INFISICAL_DYNAMIC_SECRET,
-		}, infisicalClient)
-
-		if err == nil {
-			return authDetails, nil
-		}
-
-		if !errors.Is(err, util.ErrAuthNotApplicable) {
-			return util.AuthenticationDetails{}, fmt.Errorf("authentication failed for strategy [%s] [err=%w]", authStrategy, err)
-		}
-	}
-
-	return util.AuthenticationDetails{}, fmt.Errorf("no authentication method provided")
-
 }
 
 func (r *InfisicalDynamicSecretReconciler) getResourceVariables(infisicalDynamicSecret v1alpha1.InfisicalDynamicSecret, resourceVariablesMap map[string]util.ResourceVariables) util.ResourceVariables {
@@ -254,7 +224,10 @@ func (r *InfisicalDynamicSecretReconciler) HandleLeaseRevocation(ctx context.Con
 	infisicalClient := resourceVariables.InfisicalClient
 
 	logger.Info("Authenticating for lease revocation")
-	authDetails, err := r.handleAuthentication(ctx, *infisicalDynamicSecret, infisicalClient)
+	authDetails, err := util.HandleAuthentication(ctx, util.SecretAuthInput{
+		Secret: *infisicalDynamicSecret,
+		Type:   util.SecretCrd.INFISICAL_DYNAMIC_SECRET,
+	}, r.Client, infisicalClient, r.IsNamespaceScoped)
 
 	if err != nil {
 		return fmt.Errorf("unable to authenticate for lease revocation [err=%s]", err)
@@ -290,6 +263,9 @@ func (r *InfisicalDynamicSecretReconciler) HandleLeaseRevocation(ctx context.Con
 	})
 
 	if err != nil {
+		if util.IsNamespaceScopedError(err, r.IsNamespaceScoped) {
+			return fmt.Errorf("unable to fetch Kubernetes destination secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the destination secret is in the same namespace as the operator. [err=%v]", err)
+		}
 		return fmt.Errorf("unable to fetch destination secret [err=%s]", err)
 	}
 
@@ -318,7 +294,10 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 
 	if authDetails.AuthStrategy == "" {
 		logger.Info("No authentication strategy found. Attempting to authenticate")
-		authDetails, err = r.handleAuthentication(ctx, *infisicalDynamicSecret, infisicalClient)
+		authDetails, err = util.HandleAuthentication(ctx, util.SecretAuthInput{
+			Secret: *infisicalDynamicSecret,
+			Type:   util.SecretCrd.INFISICAL_DYNAMIC_SECRET,
+		}, r.Client, infisicalClient, r.IsNamespaceScoped)
 
 		if err != nil {
 			return nextReconcile, fmt.Errorf("unable to authenticate [err=%s]", err)
@@ -337,6 +316,9 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 	})
 
 	if err != nil {
+		if util.IsNamespaceScopedError(err, r.IsNamespaceScoped) {
+			return nextReconcile, fmt.Errorf("unable to fetch Kubernetes destination secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the destination secret is in the same namespace as the operator. [err=%v]", err)
+		}
 		if k8Errors.IsNotFound(err) {
 
 			annotationValue := ""
@@ -352,6 +334,9 @@ func (r *InfisicalDynamicSecretReconciler) ReconcileInfisicalDynamicSecret(ctx c
 			})
 
 			if err != nil {
+				if util.IsNamespaceScopedError(err, r.IsNamespaceScoped) {
+					return nextReconcile, fmt.Errorf("unable to fetch Kubernetes destination secret after creation. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the destination secret is in the same namespace as the operator. [err=%v]", err)
+				}
 				return nextReconcile, fmt.Errorf("unable to fetch destination secret after creation [err=%s]", err)
 			}
 

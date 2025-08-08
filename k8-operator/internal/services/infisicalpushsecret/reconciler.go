@@ -3,7 +3,6 @@ package infisicalpushsecret
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	tpl "text/template"
@@ -28,36 +27,6 @@ type InfisicalPushSecretReconciler struct {
 	client.Client
 	Scheme            *runtime.Scheme
 	IsNamespaceScoped bool
-}
-
-func (r *InfisicalPushSecretReconciler) handleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalPushSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error) {
-	authStrategies := map[util.AuthStrategyType]func(ctx context.Context, reconcilerClient client.Client, secretCrd util.SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error){
-		util.AuthStrategy.UNIVERSAL_MACHINE_IDENTITY:    util.HandleUniversalAuth,
-		util.AuthStrategy.KUBERNETES_MACHINE_IDENTITY:   util.HandleKubernetesAuth,
-		util.AuthStrategy.AWS_IAM_MACHINE_IDENTITY:      util.HandleAwsIamAuth,
-		util.AuthStrategy.AZURE_MACHINE_IDENTITY:        util.HandleAzureAuth,
-		util.AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY: util.HandleGcpIdTokenAuth,
-		util.AuthStrategy.GCP_IAM_MACHINE_IDENTITY:      util.HandleGcpIamAuth,
-		util.AuthStrategy.LDAP_MACHINE_IDENTITY:         util.HandleLdapAuth,
-	}
-
-	for authStrategy, authHandler := range authStrategies {
-		authDetails, err := authHandler(ctx, r.Client, util.SecretAuthInput{
-			Secret: infisicalSecret,
-			Type:   util.SecretCrd.INFISICAL_PUSH_SECRET,
-		}, infisicalClient)
-
-		if err == nil {
-			return authDetails, nil
-		}
-
-		if !errors.Is(err, util.ErrAuthNotApplicable) {
-			return util.AuthenticationDetails{}, fmt.Errorf("authentication failed for strategy [%s] [err=%w]", authStrategy, err)
-		}
-	}
-
-	return util.AuthenticationDetails{}, fmt.Errorf("no authentication method provided")
-
 }
 
 func (r *InfisicalPushSecretReconciler) getResourceVariables(infisicalPushSecret v1alpha1.InfisicalPushSecret, resourceVariablesMap map[string]util.ResourceVariables) util.ResourceVariables {
@@ -192,7 +161,10 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 
 	if authDetails.AuthStrategy == "" {
 		logger.Info("No authentication strategy found. Attempting to authenticate")
-		authDetails, err = r.handleAuthentication(ctx, *infisicalPushSecret, infisicalClient)
+		authDetails, err = util.HandleAuthentication(ctx, util.SecretAuthInput{
+			Secret: *infisicalPushSecret,
+			Type:   util.SecretCrd.INFISICAL_PUSH_SECRET,
+		}, r.Client, infisicalClient, r.IsNamespaceScoped)
 		r.SetAuthenticatedStatusCondition(ctx, infisicalPushSecret, err)
 
 		if err != nil {
@@ -215,6 +187,10 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		})
 
 		if err != nil {
+			if util.IsNamespaceScopedError(err, r.IsNamespaceScoped) {
+				return fmt.Errorf("unable to fetch Kubernetes destination secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the destination secret is in the same namespace as the operator. [err=%v]", err)
+			}
+
 			return fmt.Errorf("unable to fetch kube secret [err=%s]", err)
 		}
 
@@ -539,7 +515,10 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 
 	if authDetails.AuthStrategy == "" {
 		logger.Info("No authentication strategy found. Attempting to authenticate")
-		authDetails, err = r.handleAuthentication(ctx, *infisicalPushSecret, infisicalClient)
+		authDetails, err = util.HandleAuthentication(ctx, util.SecretAuthInput{
+			Secret: *infisicalPushSecret,
+			Type:   util.SecretCrd.INFISICAL_PUSH_SECRET,
+		}, r.Client, infisicalClient, r.IsNamespaceScoped)
 		r.SetAuthenticatedStatusCondition(ctx, infisicalPushSecret, err)
 
 		if err != nil {

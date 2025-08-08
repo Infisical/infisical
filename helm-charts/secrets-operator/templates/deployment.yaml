@@ -22,7 +22,11 @@ spec:
         kubectl.kubernetes.io/default-container: manager
     spec:
       containers:
-      - args: {{- toYaml .Values.controllerManager.manager.args | nindent 8 }}
+      - args:
+        {{- toYaml .Values.controllerManager.manager.args | nindent 8 }}
+        {{- if and .Values.scopedNamespace .Values.scopedRBAC }}
+        - --namespace={{ .Values.scopedNamespace }}
+        {{- end }}
         command:
         - /manager
         env:

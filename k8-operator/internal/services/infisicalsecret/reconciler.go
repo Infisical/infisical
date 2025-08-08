@@ -32,59 +32,8 @@ const FINALIZER_NAME = "secrets.finalizers.infisical.com"
 
 type InfisicalSecretReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-}
-
-func (r *InfisicalSecretReconciler) handleAuthentication(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error) {
-
-	// ? Legacy support, service token auth
-	infisicalToken, err := r.getInfisicalTokenFromKubeSecret(ctx, infisicalSecret)
-	if err != nil {
-		return util.AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service token from kube secret [err=%s]", err)
-	}
-	if infisicalToken != "" {
-		infisicalClient.Auth().SetAccessToken(infisicalToken)
-		return util.AuthenticationDetails{AuthStrategy: util.AuthStrategy.SERVICE_TOKEN}, nil
-	}
-
-	// ? Legacy support, service account auth
-	serviceAccountCreds, err := r.getInfisicalServiceAccountCredentialsFromKubeSecret(ctx, infisicalSecret)
-	if err != nil {
-		return util.AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
-	}
-
-	if serviceAccountCreds.AccessKey != "" || serviceAccountCreds.PrivateKey != "" || serviceAccountCreds.PublicKey != "" {
-		infisicalClient.Auth().SetAccessToken(serviceAccountCreds.AccessKey)
-		return util.AuthenticationDetails{AuthStrategy: util.AuthStrategy.SERVICE_ACCOUNT}, nil
-	}
-
-	authStrategies := map[util.AuthStrategyType]func(ctx context.Context, reconcilerClient client.Client, secretCrd util.SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (util.AuthenticationDetails, error){
-		util.AuthStrategy.UNIVERSAL_MACHINE_IDENTITY:    util.HandleUniversalAuth,
-		util.AuthStrategy.KUBERNETES_MACHINE_IDENTITY:   util.HandleKubernetesAuth,
-		util.AuthStrategy.AWS_IAM_MACHINE_IDENTITY:      util.HandleAwsIamAuth,
-		util.AuthStrategy.AZURE_MACHINE_IDENTITY:        util.HandleAzureAuth,
-		util.AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY: util.HandleGcpIdTokenAuth,
-		util.AuthStrategy.GCP_IAM_MACHINE_IDENTITY:      util.HandleGcpIamAuth,
-		util.AuthStrategy.LDAP_MACHINE_IDENTITY:         util.HandleLdapAuth,
-	}
-
-	for authStrategy, authHandler := range authStrategies {
-		authDetails, err := authHandler(ctx, r.Client, util.SecretAuthInput{
-			Secret: infisicalSecret,
-			Type:   util.SecretCrd.INFISICAL_SECRET,
-		}, infisicalClient)
-
-		if err == nil {
-			return authDetails, nil
-		}
-
-		if !errors.Is(err, util.ErrAuthNotApplicable) {
-			return util.AuthenticationDetails{}, fmt.Errorf("authentication failed for strategy [%s] [err=%w]", authStrategy, err)
-		}
-	}
-
-	return util.AuthenticationDetails{}, fmt.Errorf("no authentication method provided")
-
+	Scheme            *runtime.Scheme
+	IsNamespaceScoped bool
 }
 
 func (r *InfisicalSecretReconciler) getInfisicalTokenFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (string, error) {
@@ -105,11 +54,14 @@ func (r *InfisicalSecretReconciler) getInfisicalTokenFromKubeSecret(ctx context.
 		Name:      secretName,
 	})
 
-	if k8Errors.IsNotFound(err) {
+	if k8Errors.IsNotFound(err) || (secretNamespace == "" && secretName == "") {
 		return "", nil
 	}
 
 	if err != nil {
+		if util.IsNamespaceScopedError(err, r.IsNamespaceScoped) {
+			return "", fmt.Errorf("unable to fetch Kubernetes CA certificate secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the CA certificate secret is in the same namespace as the operator. [err=%v]", err)
+		}
 		return "", fmt.Errorf("failed to read Infisical token secret from secret named [%s] in namespace [%s]: with error [%w]", infisicalSecret.Spec.TokenSecretReference.SecretName, infisicalSecret.Spec.TokenSecretReference.SecretNamespace, err)
 	}
 
@@ -118,39 +70,26 @@ func (r *InfisicalSecretReconciler) getInfisicalTokenFromKubeSecret(ctx context.
 	return strings.Replace(string(infisicalServiceToken), " ", "", -1), nil
 }
 
-func (r *InfisicalSecretReconciler) getInfisicalCaCertificateFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (caCertificate string, err error) {
-
-	caCertificateFromKubeSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
-		Namespace: infisicalSecret.Spec.TLS.CaRef.SecretNamespace,
-		Name:      infisicalSecret.Spec.TLS.CaRef.SecretName,
-	})
-
-	if k8Errors.IsNotFound(err) {
-		return "", fmt.Errorf("kubernetes secret containing custom CA certificate cannot be found. [err=%s]", err)
-	}
-
-	if err != nil {
-		return "", fmt.Errorf("something went wrong when fetching your CA certificate [err=%s]", err)
-	}
-
-	caCertificateFromSecret := string(caCertificateFromKubeSecret.Data[infisicalSecret.Spec.TLS.CaRef.SecretKey])
-
-	return caCertificateFromSecret, nil
-}
-
 // Fetches service account credentials from a Kubernetes secret specified in the infisicalSecret object, extracts the access key, public key, and private key from the secret, and returns them as a ServiceAccountCredentials object.
 // If any keys are missing or an error occurs, returns an empty object or an error object, respectively.
 func (r *InfisicalSecretReconciler) getInfisicalServiceAccountCredentialsFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (serviceAccountDetails model.ServiceAccountDetails, err error) {
+
+	secretNamespace := infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretNamespace
+	secretName := infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretName
+
 	serviceAccountCredsFromKubeSecret, err := util.GetKubeSecretByNamespacedName(ctx, r.Client, types.NamespacedName{
-		Namespace: infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretNamespace,
-		Name:      infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretName,
+		Namespace: secretNamespace,
+		Name:      secretName,
 	})
 
-	if k8Errors.IsNotFound(err) {
+	if k8Errors.IsNotFound(err) || (secretNamespace == "" && secretName == "") {
 		return model.ServiceAccountDetails{}, nil
 	}
 
 	if err != nil {
+		if util.IsNamespaceScopedError(err, r.IsNamespaceScoped) {
+			return model.ServiceAccountDetails{}, fmt.Errorf("unable to fetch Kubernetes service account credentials secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the service account credentials secret is in the same namespace as the operator. [err=%v]", err)
+		}
 		return model.ServiceAccountDetails{}, fmt.Errorf("something went wrong when fetching your service account credentials [err=%s]", err)
 	}
 
@@ -503,7 +442,11 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 
 	if authDetails.AuthStrategy == "" {
 		logger.Info("No authentication strategy found. Attempting to authenticate")
-		authDetails, err = r.handleAuthentication(ctx, *infisicalSecret, infisicalClient)
+		authDetails, err = util.HandleAuthentication(ctx, util.SecretAuthInput{
+			Secret: *infisicalSecret,
+			Type:   util.SecretCrd.INFISICAL_SECRET,
+		}, r.Client, infisicalClient, r.IsNamespaceScoped)
+
 		r.SetInfisicalTokenLoadCondition(ctx, logger, infisicalSecret, authDetails.AuthStrategy, err)
 
 		if err != nil {
@@ -533,6 +476,9 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			})
 
 			if err != nil && !k8Errors.IsNotFound(err) {
+				if util.IsNamespaceScopedError(err, r.IsNamespaceScoped) {
+					return 0, fmt.Errorf("unable to fetch Kubernetes secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the secret is in the same namespace as the operator. [err=%v]", err)
+				}
 				return 0, fmt.Errorf("something went wrong when fetching the managed Kubernetes secret [%w]", err)
 			}
 
@@ -557,6 +503,9 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 			})
 
 			if err != nil && !k8Errors.IsNotFound(err) {
+				if util.IsNamespaceScopedError(err, r.IsNamespaceScoped) {
+					return 0, fmt.Errorf("unable to fetch Kubernetes config map. Your Operator installation is namespace scoped, and cannot read config maps outside of the namespace it is installed in. Please ensure the config map is in the same namespace as the operator. [err=%v]", err)
+				}
 				return 0, fmt.Errorf("something went wrong when fetching the managed Kubernetes config map [%w]", err)
 			}
 

@@ -3,8 +3,10 @@ package util
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/k8-operator/internal/constants"
 	"github.com/Infisical/infisical/k8-operator/internal/model"
 	corev1 "k8s.io/api/core/v1"
 	k8Errors "k8s.io/apimachinery/pkg/api/errors"
@@ -41,13 +43,11 @@ func GetKubeConfigMapByNamespacedName(ctx context.Context, reconcilerClient clie
 	return kubeConfigMap, err
 }
 
-func GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, reconcilerClient client.Client, universalAuthRef v1alpha1.KubeSecretReference) (machineIdentityDetails model.UniversalAuthIdentityDetails, err error) {
+func GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, reconcilerClient client.Client, universalAuthRef v1alpha1.KubeSecretReference, isNamespaceScoped bool) (machineIdentityDetails model.UniversalAuthIdentityDetails, err error) {
 
 	universalAuthCredsFromKubeSecret, err := GetKubeSecretByNamespacedName(ctx, reconcilerClient, types.NamespacedName{
 		Namespace: universalAuthRef.SecretNamespace,
 		Name:      universalAuthRef.SecretName,
-		// Namespace: infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretNamespace,
-		// Name:      infisicalSecret.Spec.Authentication.UniversalAuth.CredentialsRef.SecretName,
 	})
 
 	if k8Errors.IsNotFound(err) {
@@ -55,6 +55,9 @@ func GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, reconcilerClie
 	}
 
 	if err != nil {
+		if IsNamespaceScopedError(err, isNamespaceScoped) {
+			return model.UniversalAuthIdentityDetails{}, fmt.Errorf("unable to fetch Kubernetes secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the secret is in the same namespace as the operator. [err=%v]", err)
+		}
 		return model.UniversalAuthIdentityDetails{}, fmt.Errorf("something went wrong when fetching your machine identity credentials [err=%s]", err)
 	}
 
@@ -65,7 +68,7 @@ func GetInfisicalUniversalAuthFromKubeSecret(ctx context.Context, reconcilerClie
 
 }
 
-func GetInfisicalLdapAuthFromKubeSecret(ctx context.Context, reconcilerClient client.Client, ldapAuthRef v1alpha1.KubeSecretReference) (machineIdentityDetails model.LdapIdentityDetails, err error) {
+func GetInfisicalLdapAuthFromKubeSecret(ctx context.Context, reconcilerClient client.Client, ldapAuthRef v1alpha1.KubeSecretReference, isNamespaceScoped bool) (machineIdentityDetails model.LdapIdentityDetails, err error) {
 
 	ldapAuthCredsFromKubeSecret, err := GetKubeSecretByNamespacedName(ctx, reconcilerClient, types.NamespacedName{
 		Namespace: ldapAuthRef.SecretNamespace,
@@ -77,6 +80,9 @@ func GetInfisicalLdapAuthFromKubeSecret(ctx context.Context, reconcilerClient cl
 	}
 
 	if err != nil {
+		if IsNamespaceScopedError(err, isNamespaceScoped) {
+			return model.LdapIdentityDetails{}, fmt.Errorf("unable to fetch Kubernetes secret. Your Operator is namespace scoped, and cannot read secrets outside of its namespace. Please ensure the secret is in the same namespace as the operator. [err=%v]", err)
+		}
 		return model.LdapIdentityDetails{}, fmt.Errorf("something went wrong when fetching your machine identity credentials [err=%s]", err)
 	}
 
@@ -114,4 +120,64 @@ func GetRestClientFromClient() (rest.Interface, error) {
 
 	return clientset.CoreV1().RESTClient(), nil
 
+}
+
+func GetInfisicalTokenFromKubeSecret(ctx context.Context, reconcilerClient client.Client, infisicalSecret v1alpha1.InfisicalSecret) (string, error) {
+	// default to new secret ref structure
+	secretName := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretName
+	secretNamespace := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretNamespace
+	// fall back to previous secret ref
+	if secretName == "" {
+		secretName = infisicalSecret.Spec.TokenSecretReference.SecretName
+	}
+
+	if secretNamespace == "" {
+		secretNamespace = infisicalSecret.Spec.TokenSecretReference.SecretNamespace
+	}
+
+	tokenSecret, err := GetKubeSecretByNamespacedName(ctx, reconcilerClient, types.NamespacedName{
+		Namespace: secretNamespace,
+		Name:      secretName,
+	})
+
+	if k8Errors.IsNotFound(err) || (secretNamespace == "" && secretName == "") {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("failed to read Infisical token secret from secret named [%s] in namespace [%s]: with error [%w]", infisicalSecret.Spec.TokenSecretReference.SecretName, infisicalSecret.Spec.TokenSecretReference.SecretNamespace, err)
+	}
+
+	infisicalServiceToken := tokenSecret.Data[constants.INFISICAL_TOKEN_SECRET_KEY_NAME]
+
+	return strings.Replace(string(infisicalServiceToken), " ", "", -1), nil
+}
+
+func GetInfisicalServiceAccountCredentialsFromKubeSecret(ctx context.Context, reconcilerClient client.Client, infisicalSecret v1alpha1.InfisicalSecret) (serviceAccountDetails model.ServiceAccountDetails, err error) {
+
+	secretNamespace := infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretNamespace
+	secretName := infisicalSecret.Spec.Authentication.ServiceAccount.ServiceAccountSecretReference.SecretName
+
+	serviceAccountCredsFromKubeSecret, err := GetKubeSecretByNamespacedName(ctx, reconcilerClient, types.NamespacedName{
+		Namespace: secretNamespace,
+		Name:      secretName,
+	})
+
+	if k8Errors.IsNotFound(err) || (secretNamespace == "" && secretName == "") {
+		return model.ServiceAccountDetails{}, nil
+	}
+
+	if err != nil {
+		return model.ServiceAccountDetails{}, fmt.Errorf("something went wrong when fetching your service account credentials [err=%s]", err)
+	}
+
+	accessKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[constants.SERVICE_ACCOUNT_ACCESS_KEY]
+	publicKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[constants.SERVICE_ACCOUNT_PUBLIC_KEY]
+	privateKeyFromSecret := serviceAccountCredsFromKubeSecret.Data[constants.SERVICE_ACCOUNT_PRIVATE_KEY]
+
+	if accessKeyFromSecret == nil || publicKeyFromSecret == nil || privateKeyFromSecret == nil {
+		return model.ServiceAccountDetails{}, nil
+	}
+
+	return model.ServiceAccountDetails{AccessKey: string(accessKeyFromSecret), PrivateKey: string(privateKeyFromSecret), PublicKey: string(publicKeyFromSecret)}, nil
 }

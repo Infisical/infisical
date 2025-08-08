@@ -42,9 +42,11 @@ import (
 // InfisicalDynamicSecretReconciler reconciles a InfisicalDynamicSecret object
 type InfisicalDynamicSecretReconciler struct {
 	client.Client
-	BaseLogger logr.Logger
-	Scheme     *runtime.Scheme
-	Random     *rand.Rand
+	BaseLogger        logr.Logger
+	Scheme            *runtime.Scheme
+	Random            *rand.Rand
+	Namespace         string
+	IsNamespaceScoped bool
 }
 
 var infisicalDynamicSecretsResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
@@ -106,7 +108,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 			}
 
 			// Initialize the business logic handler
-			handler := infisicaldynamicsecret.NewInfisicalDynamicSecretHandler(r.Client, r.Scheme)
+			handler := infisicaldynamicsecret.NewInfisicalDynamicSecretHandler(r.Client, r.Scheme, r.IsNamespaceScoped)
 
 			err := handler.HandleLeaseRevocation(ctx, logger, &infisicalDynamicSecretCRD, infisicalDynamicSecretsResourceVariablesMap)
 
@@ -126,7 +128,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	// Get modified/default config
-	infisicalConfig, err := controllerhelpers.GetInfisicalConfigMap(ctx, r.Client)
+	infisicalConfig, err := controllerhelpers.GetInfisicalConfigMap(ctx, r.Client, r.IsNamespaceScoped)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to fetch infisical-config. Will requeue after [requeueTime=%v]", requeueTime))
 		return ctrl.Result{
@@ -135,7 +137,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	// Initialize the business logic handler
-	handler := infisicaldynamicsecret.NewInfisicalDynamicSecretHandler(r.Client, r.Scheme)
+	handler := infisicaldynamicsecret.NewInfisicalDynamicSecretHandler(r.Client, r.Scheme, r.IsNamespaceScoped)
 
 	// Setup API configuration through business logic
 	err = handler.SetupAPIConfig(infisicalDynamicSecretCRD, infisicalConfig)
@@ -169,7 +171,7 @@ func (r *InfisicalDynamicSecretReconciler) Reconcile(ctx context.Context, req ct
 		}, nil
 	}
 
-	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithManagedSecrets(ctx, r.Client, logger, infisicalDynamicSecretCRD.Spec.ManagedSecretReference)
+	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithManagedSecrets(ctx, r.Client, logger, infisicalDynamicSecretCRD.Spec.ManagedSecretReference, r.IsNamespaceScoped)
 	handler.SetReconcileAutoRedeploymentConditionStatus(ctx, logger, &infisicalDynamicSecretCRD, numDeployments, err)
 
 	if err != nil {

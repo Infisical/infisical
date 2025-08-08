@@ -7,6 +7,7 @@ import (
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/internal/constants"
+	"github.com/Infisical/infisical/k8-operator/internal/util"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -19,7 +20,7 @@ import (
 const DEPLOYMENT_SECRET_NAME_ANNOTATION_PREFIX = "secrets.infisical.com/managed-secret"
 const AUTO_RELOAD_DEPLOYMENT_ANNOTATION = "secrets.infisical.com/auto-reload" // needs to be set to true for a deployment to start auto redeploying
 
-func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controllerClient.Client, logger logr.Logger, managedSecret v1alpha1.ManagedKubeSecretConfig) (int, error) {
+func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controllerClient.Client, logger logr.Logger, managedSecret v1alpha1.ManagedKubeSecretConfig, isNamespaceScoped bool) (int, error) {
 	listOfDeployments := &v1.DeploymentList{}
 
 	err := client.List(ctx, listOfDeployments, &controllerClient.ListOptions{Namespace: managedSecret.SecretNamespace})
@@ -47,6 +48,10 @@ func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controll
 	managedKubeSecret := &corev1.Secret{}
 	err = client.Get(ctx, managedKubeSecretNameAndNamespace, managedKubeSecret)
 	if err != nil {
+		if util.IsNamespaceScopedError(err, isNamespaceScoped) {
+			return 0, fmt.Errorf("unable to fetch Kubernetes secret to update deployment. Your Operator is namespace scoped, and cannot read secrets outside of its namespace. Please ensure the secret is in the same namespace as the operator. [err=%v]", err)
+		}
+
 		return 0, fmt.Errorf("unable to fetch Kubernetes secret to update deployment: %v", err)
 	}
 
@@ -100,9 +105,9 @@ func ReconcileDeploymentsWithManagedSecrets(ctx context.Context, client controll
 	return 0, nil
 }
 
-func ReconcileDeploymentsWithMultipleManagedSecrets(ctx context.Context, client controllerClient.Client, logger logr.Logger, managedSecrets []v1alpha1.ManagedKubeSecretConfig) (int, error) {
+func ReconcileDeploymentsWithMultipleManagedSecrets(ctx context.Context, client controllerClient.Client, logger logr.Logger, managedSecrets []v1alpha1.ManagedKubeSecretConfig, isNamespaceScoped bool) (int, error) {
 	for _, managedSecret := range managedSecrets {
-		_, err := ReconcileDeploymentsWithManagedSecrets(ctx, client, logger, managedSecret)
+		_, err := ReconcileDeploymentsWithManagedSecrets(ctx, client, logger, managedSecret, isNamespaceScoped)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("unable to reconcile deployments with managed secret [name=%v]", managedSecret.SecretName))
 			return 0, err
@@ -259,10 +264,16 @@ func ReconcileStatefulSet(ctx context.Context, client controllerClient.Client, l
 	return nil
 }
 
-func GetInfisicalConfigMap(ctx context.Context, client client.Client) (configMap map[string]string, errToReturn error) {
+func GetInfisicalConfigMap(ctx context.Context, client client.Client, isNamespaceScoped bool) (configMap map[string]string, errToReturn error) {
 	// default key values
 	defaultConfigMapData := make(map[string]string)
 	defaultConfigMapData["hostAPI"] = constants.INFISICAL_DOMAIN
+
+	// this will never work if we're namespace scoped, because the operator can't read outside of its namespace by our current RBAC rules.
+	// This is how it has always worked, but the error has been masked as 'not found' in V3 kubebuilder.
+	if isNamespaceScoped {
+		return defaultConfigMapData, nil
+	}
 
 	kubeConfigMap := &corev1.ConfigMap{}
 	err := client.Get(ctx, types.NamespacedName{

@@ -49,6 +49,10 @@ func (h *InfisicalPushSecretHandler) getInfisicalCaCertificateFromKubeSecret(ctx
 		return "", fmt.Errorf("kubernetes secret containing custom CA certificate cannot be found. [err=%s]", err)
 	}
 
+	if util.IsNamespaceScopedError(err, h.IsNamespaceScoped) {
+		return "", fmt.Errorf("unable to fetch Kubernetes CA certificate secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the CA certificate secret is in the same namespace as the operator. [err=%v]", err)
+	}
+
 	if err != nil {
 		return "", fmt.Errorf("something went wrong when fetching your CA certificate [err=%s]", err)
 	}

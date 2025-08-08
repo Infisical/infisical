@@ -17,13 +17,15 @@ import (
 
 type InfisicalSecretHandler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme            *runtime.Scheme
+	IsNamespaceScoped bool
 }
 
-func NewInfisicalSecretHandler(client client.Client, scheme *runtime.Scheme) *InfisicalSecretHandler {
+func NewInfisicalSecretHandler(client client.Client, scheme *runtime.Scheme, isNamespaceScoped bool) *InfisicalSecretHandler {
 	return &InfisicalSecretHandler{
-		Client: client,
-		Scheme: scheme,
+		Client:            client,
+		Scheme:            scheme,
+		IsNamespaceScoped: isNamespaceScoped,
 	}
 }
 
@@ -48,6 +50,9 @@ func (h *InfisicalSecretHandler) getInfisicalCaCertificateFromKubeSecret(ctx con
 	}
 
 	if err != nil {
+		if util.IsNamespaceScopedError(err, h.IsNamespaceScoped) {
+			return "", fmt.Errorf("unable to fetch Kubernetes CA certificate secret. Your Operator installation is namespace scoped, and cannot read secrets outside of the namespace it is installed in. Please ensure the CA certificate secret is in the same namespace as the operator. [err=%v]", err)
+		}
 		return "", fmt.Errorf("something went wrong when fetching your CA certificate [err=%s]", err)
 	}
 
@@ -71,24 +76,27 @@ func (h *InfisicalSecretHandler) HandleCACertificate(ctx context.Context, infisi
 
 func (h *InfisicalSecretHandler) ReconcileInfisicalSecret(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, managedKubeSecretReferences []v1alpha1.ManagedKubeSecretConfig, managedKubeConfigMapReferences []v1alpha1.ManagedKubeConfigMapConfig, resourceVariablesMap map[string]util.ResourceVariables) (int, error) {
 	reconciler := &InfisicalSecretReconciler{
-		Client: h.Client,
-		Scheme: h.Scheme,
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		IsNamespaceScoped: h.IsNamespaceScoped,
 	}
 	return reconciler.ReconcileInfisicalSecret(ctx, logger, infisicalSecret, managedKubeSecretReferences, managedKubeConfigMapReferences, resourceVariablesMap)
 }
 
 func (h *InfisicalSecretHandler) SetReadyToSyncSecretsConditions(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, secretsCount int, errorToConditionOn error) {
 	reconciler := &InfisicalSecretReconciler{
-		Client: h.Client,
-		Scheme: h.Scheme,
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		IsNamespaceScoped: h.IsNamespaceScoped,
 	}
 	reconciler.SetReadyToSyncSecretsConditions(ctx, logger, infisicalSecret, secretsCount, errorToConditionOn)
 }
 
 func (h *InfisicalSecretHandler) SetInfisicalAutoRedeploymentReady(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, numDeployments int, errorToConditionOn error) {
 	reconciler := &InfisicalSecretReconciler{
-		Client: h.Client,
-		Scheme: h.Scheme,
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		IsNamespaceScoped: h.IsNamespaceScoped,
 	}
 	reconciler.SetInfisicalAutoRedeploymentReady(ctx, logger, infisicalSecret, numDeployments, errorToConditionOn)
 }

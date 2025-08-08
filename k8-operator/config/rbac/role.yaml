@@ -40,7 +40,9 @@ rules:
 - apiGroups:
   - apps
   resources:
+  - daemonsets
   - deployments
+  - statefulsets
   verbs:
   - get
   - list

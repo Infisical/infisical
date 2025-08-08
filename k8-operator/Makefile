@@ -37,7 +37,7 @@ legacy-helm: manifests kustomize helmify
 
 helm: manifests kustomize helmify
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	./scripts/generate-helm.sh
+	./scripts/generate-helm.sh ${VERSION}
 	cd config/manager && $(KUSTOMIZE) edit set image controller=controller:latest  # reset back
 
 ## Yaml for Kubectl 
@@ -88,7 +88,7 @@ test: manifests generate fmt vet setup-envtest ## Run tests.
 # The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
 # CertManager is installed by default; skip with:
 # - CERT_MANAGER_INSTALL_SKIP=true
-KIND_CLUSTER ?= k8-operator-test-e2e
+KIND_CLUSTER ?= infisical-operator-test-e2e
 
 .PHONY: setup-test-e2e
 setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
@@ -157,10 +157,10 @@ PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
 docker-buildx: ## Build and push docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name k8-operator-builder
-	$(CONTAINER_TOOL) buildx use k8-operator-builder
+	- $(CONTAINER_TOOL) buildx create --name infisical-operator-builder
+	$(CONTAINER_TOOL) buildx use infisical-operator-builder
 	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm k8-operator-builder
+	- $(CONTAINER_TOOL) buildx rm infisical-operator-builder
 	rm Dockerfile.cross
 
 .PHONY: build-installer

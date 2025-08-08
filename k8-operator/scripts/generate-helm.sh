@@ -1,11 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+PATH_TO_HELM_CHART="${SCRIPT_DIR}/../../helm-charts/secrets-operator"
+
 PROJECT_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 HELM_DIR="${PROJECT_ROOT}/../helm-charts/secrets-operator"
 LOCALBIN="${PROJECT_ROOT}/bin"
 KUSTOMIZE="${LOCALBIN}/kustomize"
 HELMIFY="${LOCALBIN}/helmify"
+
+VERSION=$1
+VERSION_WITHOUT_V=$(echo "$VERSION" | sed 's/^v//') # needed to validate semver
+
+
+# Version validation
+if [ -z "$VERSION" ]; then
+  echo "Usage: $0 <version>"
+  exit 1
+fi
+
+
+if ! [[ "$VERSION_WITHOUT_V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Error: Version must follow semantic versioning (e.g. 0.0.1)"
+  exit 1
+fi
+
+if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Error: Version must start with 'v' (e.g. v0.0.1)"
+  exit 1
+fi
+
 
 
 cd "${PROJECT_ROOT}"
@@ -309,6 +333,48 @@ if [ -f "${HELM_DIR}/templates/deployment.yaml" ]; then
   echo "Completed processing for deployment.yaml"
 fi
 
+# ? NOTE(Daniel): Fix args structure in deployment.yaml
+if [ -f "${HELM_DIR}/templates/deployment.yaml" ]; then
+  echo "Fixing args structure in deployment.yaml"
+
+  touch "${HELM_DIR}/templates/deployment.yaml.tmp"
+  
+  # process the file line by line
+  while IFS= read -r line; do
+    # look for the specific line pattern: "- args: {{- toYaml .Values.controllerManager.manager.args | nindent 8 }}"
+    if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*args:[[:space:]]*\{\{-.*toYaml.*Values\.controllerManager\.manager\.args.*\}\}[[:space:]]*$ ]]; then
+      # extract the base indentation (everything before the "- args:")
+      base_indent=$(echo "$line" | sed 's/^\([[:space:]]*\)-.*/\1/')
+      
+      # replace with our multi-line structure
+      echo "${base_indent}- args:" >> "${HELM_DIR}/templates/deployment.yaml.tmp"
+      echo "${base_indent}  {{- toYaml .Values.controllerManager.manager.args | nindent 8 }}" >> "${HELM_DIR}/templates/deployment.yaml.tmp"
+      echo "${base_indent}  {{- if and .Values.scopedNamespace .Values.scopedRBAC }}" >> "${HELM_DIR}/templates/deployment.yaml.tmp"
+      echo "${base_indent}  - --namespace={{ .Values.scopedNamespace }}" >> "${HELM_DIR}/templates/deployment.yaml.tmp"
+      echo "${base_indent}  {{- end }}" >> "${HELM_DIR}/templates/deployment.yaml.tmp"
+    else
+      echo "$line" >> "${HELM_DIR}/templates/deployment.yaml.tmp"
+    fi
+  done < "${HELM_DIR}/templates/deployment.yaml"
+  
+  mv "${HELM_DIR}/templates/deployment.yaml.tmp" "${HELM_DIR}/templates/deployment.yaml"
+  echo "Completed args structure fix"
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ? NOTE(Daniel): Processes values.yaml
 if [ -f "${HELM_DIR}/values.yaml" ]; then
   echo "Processing values.yaml file"
@@ -403,3 +469,19 @@ if [ -f "${HELM_DIR}/values.yaml" ]; then
 fi
 
 echo "Helm chart generation complete with custom templating applied."
+
+
+
+
+# For Linux vs macOS sed compatibility
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS version
+  sed -i '' 's/appVersion: .*/appVersion: "'"$VERSION"'"/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+  sed -i '' 's/version: .*/version: '"$VERSION"'/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+else
+  # Linux version
+  sed -i 's/appVersion: .*/appVersion: "'"$VERSION"'"/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+  sed -i 's/version: .*/version: '"$VERSION"'/g' "${PATH_TO_HELM_CHART}/Chart.yaml"
+fi
+
+echo "Helm chart version updated to ${VERSION}"

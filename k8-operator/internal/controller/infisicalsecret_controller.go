@@ -41,8 +41,10 @@ import (
 // InfisicalSecretReconciler reconciles a InfisicalSecret object
 type InfisicalSecretReconciler struct {
 	client.Client
-	BaseLogger logr.Logger
-	Scheme     *runtime.Scheme
+	BaseLogger        logr.Logger
+	Scheme            *runtime.Scheme
+	Namespace         string
+	IsNamespaceScoped bool
 }
 
 var infisicalSecretResourceVariablesMap map[string]util.ResourceVariables = make(map[string]util.ResourceVariables)
@@ -51,9 +53,16 @@ func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 	return r.BaseLogger.WithValues("infisicalsecret", req.NamespacedName)
 }
 
-// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/finalizers,verbs=update
+//+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/finalizers,verbs=update
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups=apps,resources=deployments;daemonsets;statefulsets,verbs=list;watch;get;update
+//+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list
+//+kubebuilder:rbac:groups="authentication.k8s.io",resources=tokenreviews,verbs=create
+//+kubebuilder:rbac:groups="",resources=serviceaccounts/token,verbs=create
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -138,7 +147,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// Get modified/default config
-	infisicalConfig, err := controllerhelpers.GetInfisicalConfigMap(ctx, r.Client)
+	infisicalConfig, err := controllerhelpers.GetInfisicalConfigMap(ctx, r.Client, r.IsNamespaceScoped)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("unable to fetch infisical-config. Will requeue after [requeueTime=%v]", requeueTime))
 		return ctrl.Result{
@@ -147,7 +156,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// Initialize the business logic handler
-	handler := infisicalsecret.NewInfisicalSecretHandler(r.Client, r.Scheme)
+	handler := infisicalsecret.NewInfisicalSecretHandler(r.Client, r.Scheme, r.IsNamespaceScoped)
 
 	// Setup API configuration through business logic
 	err = handler.SetupAPIConfig(infisicalSecretCRD, infisicalConfig)
@@ -177,7 +186,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
-	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithMultipleManagedSecrets(ctx, r.Client, logger, managedKubeSecretReferences)
+	numDeployments, err := controllerhelpers.ReconcileDeploymentsWithMultipleManagedSecrets(ctx, r.Client, logger, managedKubeSecretReferences, r.IsNamespaceScoped)
 	handler.SetInfisicalAutoRedeploymentReady(ctx, logger, &infisicalSecretCRD, numDeployments, err)
 
 	if err != nil {

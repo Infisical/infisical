@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAccountName string, autoCreateServiceAccountToken bool, serviceAccountTokenAudiences []string) (string, error) {
+func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAccountName string, autoCreateServiceAccountToken bool, serviceAccountTokenAudiences []string, isNamespaceScoped bool) (string, error) {
 
 	if autoCreateServiceAccountToken {
 		restClient, err := GetRestClientFromClient()
@@ -57,6 +57,9 @@ func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAc
 	serviceAccount := &corev1.ServiceAccount{}
 	err := k8sClient.Get(context.TODO(), client.ObjectKey{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 	if err != nil {
+		if IsNamespaceScopedError(err, isNamespaceScoped) {
+			return "", fmt.Errorf("unable to fetch service account. Your Operator is namespace scoped, and cannot read secrets outside of its namespace. Please ensure the service account is in the same namespace as the operator. [err=%v]", err)
+		}
 		return "", err
 	}
 
@@ -69,6 +72,9 @@ func GetServiceAccountToken(k8sClient client.Client, namespace string, serviceAc
 	secret := &corev1.Secret{}
 	err = k8sClient.Get(context.TODO(), client.ObjectKey{Name: secretName, Namespace: namespace}, secret)
 	if err != nil {
+		if IsNamespaceScopedError(err, isNamespaceScoped) {
+			return "", fmt.Errorf("unable to fetch service account token secret. Your Operator is namespace scoped, and cannot read secrets outside of its namespace. Please ensure the service account token secret is in the same namespace as the operator. [err=%v]", err)
+		}
 		return "", err
 	}
 
@@ -127,7 +133,7 @@ type AuthenticationDetails struct {
 
 var ErrAuthNotApplicable = errors.New("authentication not applicable")
 
-func HandleUniversalAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+func HandleUniversalAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface, isNamespaceScoped bool) (AuthenticationDetails, error) {
 
 	var universalAuthSpec v1alpha1.UniversalAuthDetails
 
@@ -164,10 +170,14 @@ func HandleUniversalAuth(ctx context.Context, reconcilerClient client.Client, se
 		}
 	}
 
+	if universalAuthSpec.CredentialsRef.SecretName == "" || universalAuthSpec.CredentialsRef.SecretNamespace == "" {
+		return AuthenticationDetails{}, ErrAuthNotApplicable
+	}
+
 	universalAuthKubeSecret, err := GetInfisicalUniversalAuthFromKubeSecret(ctx, reconcilerClient, v1alpha1.KubeSecretReference{
 		SecretNamespace: universalAuthSpec.CredentialsRef.SecretNamespace,
 		SecretName:      universalAuthSpec.CredentialsRef.SecretName,
-	})
+	}, isNamespaceScoped)
 
 	if err != nil {
 		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get machine identity creds from kube secret [err=%s]", err)
@@ -190,7 +200,7 @@ func HandleUniversalAuth(ctx context.Context, reconcilerClient client.Client, se
 	}, nil
 }
 
-func HandleLdapAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+func HandleLdapAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface, isNamespaceScoped bool) (AuthenticationDetails, error) {
 
 	var ldapAuthSpec v1alpha1.LdapAuthDetails
 
@@ -229,10 +239,14 @@ func HandleLdapAuth(ctx context.Context, reconcilerClient client.Client, secretC
 		}
 	}
 
+	if ldapAuthSpec.CredentialsRef.SecretName == "" || ldapAuthSpec.CredentialsRef.SecretNamespace == "" {
+		return AuthenticationDetails{}, ErrAuthNotApplicable
+	}
+
 	ldapAuthKubeSecret, err := GetInfisicalLdapAuthFromKubeSecret(ctx, reconcilerClient, v1alpha1.KubeSecretReference{
 		SecretNamespace: ldapAuthSpec.CredentialsRef.SecretNamespace,
 		SecretName:      ldapAuthSpec.CredentialsRef.SecretName,
-	})
+	}, isNamespaceScoped)
 
 	if err != nil {
 		return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get machine identity creds from kube secret [err=%s]", err)
@@ -255,7 +269,7 @@ func HandleLdapAuth(ctx context.Context, reconcilerClient client.Client, secretC
 	}, nil
 }
 
-func HandleKubernetesAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+func HandleKubernetesAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface, isNamespaceScoped bool) (AuthenticationDetails, error) {
 	var kubernetesAuthSpec v1alpha1.KubernetesAuthDetails
 
 	switch secretCrd.Type {
@@ -312,6 +326,7 @@ func HandleKubernetesAuth(ctx context.Context, reconcilerClient client.Client, s
 		kubernetesAuthSpec.ServiceAccountRef.Name,
 		kubernetesAuthSpec.AutoCreateServiceAccountToken,
 		kubernetesAuthSpec.ServiceAccountTokenAudiences,
+		isNamespaceScoped,
 	)
 
 	if err != nil {
@@ -332,7 +347,7 @@ func HandleKubernetesAuth(ctx context.Context, reconcilerClient client.Client, s
 
 }
 
-func HandleAwsIamAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+func HandleAwsIamAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface, _ bool) (AuthenticationDetails, error) {
 	awsIamAuthSpec := v1alpha1.AWSIamAuthDetails{}
 
 	switch secretCrd.Type {
@@ -387,7 +402,7 @@ func HandleAwsIamAuth(ctx context.Context, reconcilerClient client.Client, secre
 
 }
 
-func HandleAzureAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+func HandleAzureAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface, _ bool) (AuthenticationDetails, error) {
 	azureAuthSpec := v1alpha1.AzureAuthDetails{}
 
 	switch secretCrd.Type {
@@ -445,7 +460,7 @@ func HandleAzureAuth(ctx context.Context, reconcilerClient client.Client, secret
 
 }
 
-func HandleGcpIdTokenAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+func HandleGcpIdTokenAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface, _ bool) (AuthenticationDetails, error) {
 	gcpIdTokenSpec := v1alpha1.GCPIdTokenAuthDetails{}
 
 	switch secretCrd.Type {
@@ -500,7 +515,7 @@ func HandleGcpIdTokenAuth(ctx context.Context, reconcilerClient client.Client, s
 
 }
 
-func HandleGcpIamAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface) (AuthenticationDetails, error) {
+func HandleGcpIamAuth(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface, _ bool) (AuthenticationDetails, error) {
 	gcpIamSpec := v1alpha1.GcpIamAuthDetails{}
 
 	switch secretCrd.Type {
@@ -554,4 +569,62 @@ func HandleGcpIamAuth(ctx context.Context, reconcilerClient client.Client, secre
 		IsMachineIdentityAuth: true,
 		SecretType:            secretCrd.Type,
 	}, nil
+}
+
+func HandleAuthentication(ctx context.Context, secretInput SecretAuthInput, reconcilerClient client.Client, infisicalClient infisicalSdk.InfisicalClientInterface, isNamespaceScoped bool) (AuthenticationDetails, error) {
+
+	// We only support legacy auth for InfisicalSecret CRD
+	if secretInput.Type == SecretCrd.INFISICAL_SECRET {
+		infisicalSecret, ok := secretInput.Secret.(v1alpha1.InfisicalSecret)
+
+		if !ok {
+			return AuthenticationDetails{}, errors.New("unable to cast secret to InfisicalSecret")
+		}
+
+		// ? Legacy support, service token auth
+		infisicalToken, err := GetInfisicalTokenFromKubeSecret(ctx, reconcilerClient, infisicalSecret)
+		if err != nil {
+			return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service token from kube secret [err=%s]", err)
+		}
+		if infisicalToken != "" {
+			infisicalClient.Auth().SetAccessToken(infisicalToken)
+			return AuthenticationDetails{AuthStrategy: AuthStrategy.SERVICE_TOKEN}, nil
+		}
+
+		// ? Legacy support, service account auth
+		serviceAccountCreds, err := GetInfisicalServiceAccountCredentialsFromKubeSecret(ctx, reconcilerClient, infisicalSecret)
+		if err != nil {
+			return AuthenticationDetails{}, fmt.Errorf("ReconcileInfisicalSecret: unable to get service account creds from kube secret [err=%s]", err)
+		}
+
+		if serviceAccountCreds.AccessKey != "" || serviceAccountCreds.PrivateKey != "" || serviceAccountCreds.PublicKey != "" {
+			infisicalClient.Auth().SetAccessToken(serviceAccountCreds.AccessKey)
+			return AuthenticationDetails{AuthStrategy: AuthStrategy.SERVICE_ACCOUNT}, nil
+		}
+	}
+
+	authStrategies := map[AuthStrategyType]func(ctx context.Context, reconcilerClient client.Client, secretCrd SecretAuthInput, infisicalClient infisicalSdk.InfisicalClientInterface, isNamespaceScoped bool) (AuthenticationDetails, error){
+		AuthStrategy.UNIVERSAL_MACHINE_IDENTITY:    HandleUniversalAuth,
+		AuthStrategy.KUBERNETES_MACHINE_IDENTITY:   HandleKubernetesAuth,
+		AuthStrategy.AWS_IAM_MACHINE_IDENTITY:      HandleAwsIamAuth,
+		AuthStrategy.AZURE_MACHINE_IDENTITY:        HandleAzureAuth,
+		AuthStrategy.GCP_ID_TOKEN_MACHINE_IDENTITY: HandleGcpIdTokenAuth,
+		AuthStrategy.GCP_IAM_MACHINE_IDENTITY:      HandleGcpIamAuth,
+		AuthStrategy.LDAP_MACHINE_IDENTITY:         HandleLdapAuth,
+	}
+
+	for authStrategy, authHandler := range authStrategies {
+		authDetails, err := authHandler(ctx, reconcilerClient, secretInput, infisicalClient, isNamespaceScoped)
+
+		if err == nil {
+			return authDetails, nil
+		}
+
+		if !errors.Is(err, ErrAuthNotApplicable) {
+			return AuthenticationDetails{}, fmt.Errorf("authentication failed for strategy [%s] [err=%w]", authStrategy, err)
+		}
+	}
+
+	return AuthenticationDetails{}, fmt.Errorf("no authentication method provided")
+
 }
