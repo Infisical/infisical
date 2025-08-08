@@ -15,9 +15,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "sqlplus", "-L", "system/pdb-password@//localhost:1521/FREEPDB1", "<<<", "SELECT 1 FROM DUAL;"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 30
+      start_period: 30s
 
   oracle-db-19.19:
     # Official Oracle 19.19.0.0 - requires docker login container-registry.oracle.com
@@ -36,7 +37,11 @@ services:
     shm_size: 2gb
     restart: unless-stopped
     healthcheck:
-      disable: true
+      test: ["CMD", "sqlplus", "-L", "system/OrCAKF112aaSfAdfdA2Ac3@@!@//localhost:1521/ORCLCDB", "<<<", "SELECT 1 FROM DUAL;"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
 
   # MySQL Databases
   mysql-8.4.6:
@@ -55,9 +60,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mysql-test", "-pmysql-test"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 30
+      start_period: 30s
 
   mysql-8.0.29:
     image: mysql:8.0.29
@@ -75,9 +81,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mysql-test", "-pmysql-test"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 30
+      start_period: 30s
 
   mysql-5.7.31:
     image: mysql:5.7.31
@@ -96,10 +103,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mysql-test", "-pmysql-test"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
-
+      retries: 30
+      start_period: 30s
 
 
   # PostgreSQL Databases
@@ -118,9 +125,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres-test -d postgres-test"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 30
+      start_period: 30s
 
   postgres-16:
     image: postgres:16
@@ -137,9 +145,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres-test -d postgres-test"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 30
+      start_period: 30s
 
   postgres-10.12:
     image: postgres:10.12
@@ -156,9 +165,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres-test -d postgres-test"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 30
+      start_period: 30s
 
 volumes:
   oracle-data-23.8:
