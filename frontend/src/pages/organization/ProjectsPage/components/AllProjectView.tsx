@@ -351,25 +351,16 @@ export const AllProjectView = ({
                   <span>Joined</span>
                 </Badge>
               ) : (
-                <div className="flex gap-2 opacity-0 transition-all group-hover:opacity-100">
-                  <Button
-                    size="xs"
-                    variant="outline_bg"
-                    onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
-                  >
-                    Request Access
-                  </Button>
-
+                <div className="opacity-0 transition-all group-hover:opacity-100">
                   <OrgPermissionCan
                     I={OrgPermissionAdminConsoleAction.AccessAllProjects}
                     an={OrgPermissionSubjects.AdminConsole}
                   >
                     {(isAllowed) =>
-                      isAllowed && (
+                      isAllowed ? (
                         <Button
                           size="xs"
-                          variant="star"
-                          colorSchema="primary"
+                          variant="outline_bg"
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
@@ -381,6 +372,14 @@ export const AllProjectView = ({
                           }
                         >
                           Admin Access
+                        </Button>
+                      ) : (
+                        <Button
+                          size="xs"
+                          variant="outline_bg"
+                          onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                        >
+                          Request Access
                         </Button>
                       )
                     }
