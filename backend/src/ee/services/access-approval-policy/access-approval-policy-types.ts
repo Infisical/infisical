@@ -41,6 +41,7 @@ export type TCreateAccessApprovalPolicy = {
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
+  maxTimePeriod?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -60,6 +61,7 @@ export type TUpdateAccessApprovalPolicy = {
   allowedSelfApprovals: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   environments?: string[];
+  maxTimePeriod?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
@@ -104,7 +106,8 @@ export interface TAccessApprovalPolicyServiceFactory {
     environment,
     enforcementLevel,
     allowedSelfApprovals,
-    approvalsRequired
+    approvalsRequired,
+    maxTimePeriod
   }: TCreateAccessApprovalPolicy) => Promise<{
     environment: {
       name: string;
@@ -135,6 +138,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     allowedSelfApprovals: boolean;
     secretPath: string;
     deletedAt?: Date | null | undefined;
+    maxTimePeriod?: string | null;
   }>;
   deleteAccessApprovalPolicy: ({
     policyId,
@@ -159,6 +163,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     allowedSelfApprovals: boolean;
     secretPath: string;
     deletedAt?: Date | null | undefined;
+    maxTimePeriod?: string | null;
     environment: {
       id: string;
       name: string;
@@ -185,7 +190,8 @@ export interface TAccessApprovalPolicyServiceFactory {
     enforcementLevel,
     allowedSelfApprovals,
     approvalsRequired,
-    environments
+    environments,
+    maxTimePeriod
   }: TUpdateAccessApprovalPolicy) => Promise<{
     environment: {
       id: string;
@@ -208,6 +214,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     allowedSelfApprovals: boolean;
     secretPath?: string | null | undefined;
     deletedAt?: Date | null | undefined;
+    maxTimePeriod?: string | null;
   }>;
   getAccessApprovalPolicyByProjectSlug: ({
     actorId,
@@ -242,6 +249,7 @@ export interface TAccessApprovalPolicyServiceFactory {
       allowedSelfApprovals: boolean;
       secretPath: string;
       deletedAt?: Date | null | undefined;
+      maxTimePeriod?: string | null;
       environment: {
         id: string;
         name: string;
@@ -298,6 +306,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     allowedSelfApprovals: boolean;
     secretPath: string;
     deletedAt?: Date | null | undefined;
+    maxTimePeriod?: string | null;
     environment: {
       id: string;
       name: string;

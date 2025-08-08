@@ -91,7 +91,8 @@ const formSchema = z
       })
       .array()
       .default([])
-      .optional()
+      .optional(),
+    maxTimePeriod: z.string().trim().optional()
   })
   .superRefine((data, ctx) => {
     if (data.policyType === PolicyType.ChangePolicy) {
@@ -440,6 +441,25 @@ const Form = ({
               </FormControl>
             )}
           />
+
+          {isAccessPolicyType && (
+            <Controller
+              control={control}
+              name="maxTimePeriod"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Max. Time Period"
+                  tooltipText="The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  className="flex-shrink"
+                >
+                  <Input {...field} value={field.value} placeholder="permanent" />
+                </FormControl>
+              )}
+            />
+          )}
+
           {!isAccessPolicyType && (
             <Controller
               control={control}

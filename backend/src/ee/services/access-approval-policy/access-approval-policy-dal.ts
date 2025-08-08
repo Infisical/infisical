@@ -56,6 +56,7 @@ export interface TAccessApprovalPolicyDALFactory
       allowedSelfApprovals: boolean;
       secretPath: string;
       deletedAt?: Date | null | undefined;
+      maxTimePeriod?: string | null;
       projectId: string;
       bypassers: (
         | {
@@ -96,6 +97,7 @@ export interface TAccessApprovalPolicyDALFactory
         allowedSelfApprovals: boolean;
         secretPath: string;
         deletedAt?: Date | null | undefined;
+        maxTimePeriod?: string | null;
         environments: {
           id: string;
           name: string;
@@ -141,6 +143,7 @@ export interface TAccessApprovalPolicyDALFactory
         allowedSelfApprovals: boolean;
         secretPath: string;
         deletedAt?: Date | null | undefined;
+        maxTimePeriod?: string | null;
       }
     | undefined
   >;

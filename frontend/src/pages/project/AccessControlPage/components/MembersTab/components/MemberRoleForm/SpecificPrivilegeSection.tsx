@@ -220,6 +220,24 @@ export const SpecificPrivilegeSecretForm = ({
       return;
     }
 
+    const policy = policies.find(
+      (p) =>
+        p.environments.find((e) => e.slug === selectedEnvironment) && p.secretPath === secretPath
+    );
+
+    if (
+      policy?.maxTimePeriod &&
+      (!data.temporaryAccess.isTemporary ||
+        ms(data.temporaryAccess.temporaryRange) > ms(policy.maxTimePeriod))
+    ) {
+      createNotification({
+        type: "error",
+        text: `Requested access time range is limited to ${policy.maxTimePeriod} by policy`,
+        title: "Error"
+      });
+      return;
+    }
+
     const actions = [
       { action: ProjectPermissionActions.Read, allowed: data.read },
       { action: ProjectPermissionActions.Create, allowed: data.create },
