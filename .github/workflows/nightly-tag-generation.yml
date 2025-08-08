@@ -8,9 +8,6 @@ on:
 permissions:
   contents: write
 
-env:
-  GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
-
 jobs:
   create-nightly-tag:
     runs-on: ubuntu-latest
@@ -75,6 +72,8 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.NIGHTLY_TAG }}
           name: ${{ env.NIGHTLY_TAG }}
