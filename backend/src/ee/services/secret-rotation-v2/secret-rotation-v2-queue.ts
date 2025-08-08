@@ -84,6 +84,8 @@ export const secretRotationV2QueueServiceFactory = async ({
               secretRotationV2DAL,
               secretRotationV2Service
             });
+
+            return;
           }
 
           await queueService.queuePg(
