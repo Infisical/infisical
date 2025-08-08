@@ -20,9 +20,6 @@ export const AzureCertificateRotationReviewFields = () => {
       <SecretRotationReviewSection label="Parameters">
         <GenericFieldLabel label="App Name">{parameters.appName}</GenericFieldLabel>
         <GenericFieldLabel label="App ID">{parameters.objectId}</GenericFieldLabel>
-      </SecretRotationReviewSection>
-      <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="Public Key">{secretsMapping.publicKey}</GenericFieldLabel>
         {parameters.privateKey && <GenericFieldLabel label="Private Key">Yes</GenericFieldLabel>}
         {parameters.distinguishedName && (
           <GenericFieldLabel label="Distinguished Name">
@@ -32,6 +29,10 @@ export const AzureCertificateRotationReviewFields = () => {
         {parameters.keyAlgorithm && (
           <GenericFieldLabel label="Key Algorithm">{parameters.keyAlgorithm}</GenericFieldLabel>
         )}
+      </SecretRotationReviewSection>
+      <SecretRotationReviewSection label="Secrets Mapping">
+        <GenericFieldLabel label="Public Key">{secretsMapping.publicKey}</GenericFieldLabel>
+        <GenericFieldLabel label="Private Key">{secretsMapping.privateKey}</GenericFieldLabel>
       </SecretRotationReviewSection>
     </>
   );
