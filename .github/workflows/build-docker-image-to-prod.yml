@@ -2,8 +2,7 @@ name: Release production images (frontend, backend)
 on:
   push:
     tags:
-      - "infisical/v*.*.*"
-      - "!infisical/v*.*.*-postgres"
+      - "v*.*.*"
 
 jobs:
   backend-image:
@@ -12,7 +11,7 @@ jobs:
     steps:
       - name: Extract version from tag
         id: extract_version
-        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
+        run: echo "::set-output name=version::${GITHUB_REF_NAME}"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - name: 📦 Install dependencies to test all dependencies
