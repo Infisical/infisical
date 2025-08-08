@@ -88,7 +88,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
         control={control}
         name="connection"
       />
-      {!isUpdate && availableConnections?.length === 0 && (
+      {!isUpdate && !isPending && !availableConnections?.length && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           {canCreateConnection ? (

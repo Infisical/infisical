@@ -72,7 +72,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
         control={control}
         name="connection"
       />
-      {availableConnections?.length === 0 && (
+      {!isPending && !availableConnections?.length && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           {canCreateConnection ? (
