@@ -824,7 +824,6 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const isUserCompleted = user.isAccepted;
     const providerAuthToken = crypto.jwt().sign(
       {
@@ -835,7 +834,7 @@ export const authLoginServiceFactory = ({
         isEmailVerified: user.isEmailVerified,
         firstName: user.firstName,
         lastName: user.lastName,
-        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
+        hasExchangedPrivateKey: true,
         authMethod,
         isUserCompleted,
         ...(callbackPort
@@ -880,8 +879,7 @@ export const authLoginServiceFactory = ({
     const userEnc =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
-    if (!userEnc?.serverEncryptedPrivateKey)
-      throw new BadRequestError({ message: "Key handoff incomplete. Please try logging in again." });
+    if (!userEnc) throw new BadRequestError({ message: "User encryption not found" });
 
     const token = await generateUserTokens({
       user: { ...userEnc, id: userEnc.userId },
