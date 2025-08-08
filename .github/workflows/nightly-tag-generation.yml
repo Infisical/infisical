@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
+
 jobs:
   create-nightly-tag:
     runs-on: ubuntu-latest
