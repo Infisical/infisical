@@ -105,6 +105,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   includeDynamicSecrets?: boolean;
   includeImports?: boolean;
   includeSecretRotations?: boolean;
+  includeEmptySecrets?: boolean;
   environments: string[];
 };
 
