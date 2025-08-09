@@ -9,7 +9,7 @@ import { getDbConnectionHost } from "@app/lib/knex";
 export const verifyHostInputValidity = async (host: string, isGateway = false) => {
   const appCfg = getConfig();
 
-  if (appCfg.isDevelopmentMode) return [host];
+  if (appCfg.isDevelopmentMode || appCfg.isTestMode) return [host];
 
   if (isGateway) return [host];
 

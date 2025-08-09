@@ -2,7 +2,7 @@
 import { Knex } from "knex";
 
 import { chunkArray } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
+import { initLogger, logger } from "@app/lib/logger";
 
 import { TableName } from "../schemas";
 import { TReminders, TRemindersInsert } from "../schemas/reminders";
@@ -107,5 +107,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(): Promise<void> {
+  initLogger();
   logger.info("Rollback not implemented for secret reminders fix migration");
 }
