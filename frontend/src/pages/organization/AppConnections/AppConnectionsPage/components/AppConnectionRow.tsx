@@ -8,7 +8,8 @@ import {
   faEllipsisV,
   faInfoCircle,
   faServer,
-  faTrash
+  faTrash,
+  faUpload
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -26,10 +27,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
+import { OrgPermissionSubjects, ProjectPermissionSub, useOrgPermission } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 
@@ -38,6 +40,7 @@ type Props = {
   onDelete: (appConnection: TAppConnection) => void;
   onEditCredentials: (appConnection: TAppConnection) => void;
   onEditDetails: (appConnection: TAppConnection) => void;
+  onMigrate: (appConnection: TAppConnection) => void;
   isProjectView: boolean;
 };
 
@@ -61,11 +64,16 @@ export const AppConnectionRow = ({
   onDelete,
   onEditCredentials,
   onEditDetails,
+  onMigrate,
   isProjectView
 }: Props) => {
   const { id, name, method, app, description, isPlatformManagedCredentials } = appConnection;
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const { membership } = useOrgPermission();
+
+  const isOrgAdmin = membership?.role === OrgMembershipRole.Admin;
 
   const handleCopyId = useCallback(() => {
     setIsIdCopied.on();
@@ -216,6 +224,26 @@ export const AppConnectionRow = ({
                     </DropdownMenuItem>
                   )}
                 </PermissionCan>
+                {!isProjectView && isOrgAdmin && (
+                  <OrgPermissionCan
+                    I={OrgPermissionAppConnectionActions.Delete}
+                    a={
+                      subject(OrgPermissionSubjects.AppConnections, {
+                        connectionId: id
+                      }) as unknown as OrgPermissionSubjects.AppConnections
+                    }
+                  >
+                    {(isAllowed) => (
+                      <DropdownMenuItem
+                        isDisabled={!isAllowed}
+                        icon={<FontAwesomeIcon icon={faUpload} />}
+                        onClick={() => onMigrate(appConnection)}
+                      >
+                        Migrate to Projects
+                      </DropdownMenuItem>
+                    )}
+                  </OrgPermissionCan>
+                )}
                 <PermissionCan
                   isProjectView={isProjectView}
                   I={

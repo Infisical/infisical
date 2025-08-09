@@ -26,19 +26,22 @@ export const AppConnectionsPage = withPermission(
               title="App Connections"
               description="Manage organization App Connections"
             />
-            <div className="mb-4 flex w-full flex-col rounded-md border border-blue-500/50 bg-blue-500/30 px-4 py-2 text-sm text-blue-200">
+            <div className="mb-4 flex w-full flex-col rounded-md border border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
               <div className="flex items-center">
-                <FontAwesomeIcon
-                  icon={faInfoCircle}
-                  className="mr-2 mt-[0.1rem] text-base text-blue-200"
-                />
-                <span className="text-base text-blue-100">
+                <FontAwesomeIcon icon={faInfoCircle} className="mr-2 mt-[0.1rem] text-base" />
+                <span className="text-base text-yellow-200">
                   App Connections have moved to projects
                 </span>
               </div>
               <div className="ml-[1.6rem]">
-                You can continue to use your existing App Connections but can no longer create them
-                at the organization-level.
+                <p>
+                  You can continue to use your existing App Connections but can no longer create
+                  them at the organization-level.
+                </p>
+                <p>
+                  Organization admins can migrate organization-level App Connections to projects via
+                  the dropdown on the connections table.
+                </p>
               </div>
             </div>
             <AppConnectionsTable />

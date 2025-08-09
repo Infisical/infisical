@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TAppConnections } from "@app/db/schemas";
+import { ActionProjectType, OrgMembershipRole, TAppConnections } from "@app/db/schemas";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
@@ -17,6 +17,8 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
+import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -32,8 +34,10 @@ import {
 } from "@app/services/app-connection/app-connection-fns";
 import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
 import { githubRadarConnectionService } from "@app/services/app-connection/github-radar/github-radar-connection-service";
+import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
 import { onePassConnectionService } from "./1password/1password-connection-service";
@@ -117,6 +121,10 @@ export type TAppConnectionServiceFactoryDep = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
+  secretSyncDAL: Pick<TSecretSyncDALFactory, "update">;
+  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "update">;
+  secretScanningV2DAL: Pick<TSecretScanningV2DALFactory, "dataSources">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -168,7 +176,11 @@ export const appConnectionServiceFactory = ({
   licenseService,
   gatewayService,
   gatewayDAL,
-  projectDAL
+  projectDAL,
+  secretSyncDAL,
+  secretRotationV2DAL,
+  secretScanningV2DAL,
+  externalCertificateAuthorityDAL
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -712,6 +724,191 @@ export const appConnectionServiceFactory = ({
     ) as Omit<TAppConnection, "credentials">[];
   };
 
+  const findAppConnectionUsageById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+
+    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      appConnection.orgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Read,
+      OrgPermissionSubjects.AppConnections
+    );
+
+    if (appConnection.app !== app)
+      throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
+
+    const projectUsage = await appConnectionDAL.findAppConnectionUsageById(connectionId);
+
+    return projectUsage;
+  };
+
+  const migrateAppConnection = async <T extends TAppConnection>(
+    app: AppConnection,
+    connectionId: string,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+
+    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+
+    const { permission, membership } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      appConnection.orgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAppConnectionActions.Read,
+      OrgPermissionSubjects.AppConnections
+    );
+
+    if (membership.role !== OrgMembershipRole.Admin) {
+      throw new BadRequestError({
+        message: "You must be an organization admin to migrate App Connections"
+      });
+    }
+
+    if (appConnection.app !== app)
+      throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
+
+    const decryptedConnection = await decryptAppConnection(appConnection, kmsService);
+
+    const {
+      createdAt,
+      id,
+      version,
+      updatedAt,
+      projectId,
+      encryptedCredentials: orgEncryptedCredentials,
+      ...createPayload
+    } = appConnection;
+
+    if (projectId) {
+      throw new BadRequestError({
+        message: "This App Connection already belongs to a project and cannot be migrated"
+      });
+    }
+
+    await appConnectionDAL.transaction(async (tx) => {
+      const projectUsage = await appConnectionDAL.findAppConnectionUsageById(connectionId, tx);
+
+      if (!projectUsage.length) {
+        throw new BadRequestError({
+          message: "This App Connection is not used in any projects."
+        });
+      }
+
+      for await (const project of projectUsage) {
+        const encryptedCredentials = await encryptAppConnectionCredentials({
+          credentials: decryptedConnection.credentials,
+          orgId: actor.orgId,
+          kmsService,
+          projectId: project.id
+        });
+
+        const projectAppConnection = await appConnectionDAL.create(
+          {
+            ...createPayload,
+            encryptedCredentials,
+            projectId: project.id
+          },
+          tx
+        );
+
+        if (project.resources.secretSyncs.length) {
+          await secretSyncDAL.update(
+            {
+              $in: {
+                id: project.resources.secretSyncs.map((r) => r.id)
+              }
+            },
+            {
+              connectionId: projectAppConnection.id
+            },
+            tx
+          );
+        }
+
+        if (project.resources.secretRotations.length) {
+          await secretRotationV2DAL.update(
+            {
+              $in: {
+                id: project.resources.secretRotations.map((r) => r.id)
+              }
+            },
+            {
+              connectionId: projectAppConnection.id
+            },
+            tx
+          );
+        }
+
+        if (project.resources.dataSources.length) {
+          await secretScanningV2DAL.dataSources.update(
+            {
+              $in: {
+                id: project.resources.dataSources.map((r) => r.id)
+              }
+            },
+            {
+              connectionId: projectAppConnection.id
+            },
+            tx
+          );
+        }
+
+        if (project.resources.externalCas.length) {
+          const appConnectionProperty = project.resources.externalCas.filter(
+            (ex) => ex.appConnectionId === connectionId
+          );
+          const dnsAppConnectionProperty = project.resources.externalCas.filter(
+            (ex) => ex.dnsAppConnectionId === connectionId
+          );
+
+          if (appConnectionProperty.length) {
+            await externalCertificateAuthorityDAL.update(
+              {
+                $in: {
+                  id: appConnectionProperty.map((r) => r.id)
+                }
+              },
+              {
+                appConnectionId: projectAppConnection.id
+              },
+              tx
+            );
+          }
+
+          if (dnsAppConnectionProperty.length) {
+            await externalCertificateAuthorityDAL.update(
+              {
+                $in: {
+                  id: dnsAppConnectionProperty.map((r) => r.id)
+                }
+              },
+              {
+                dnsAppConnectionId: projectAppConnection.id
+              },
+              tx
+            );
+          }
+        }
+      }
+    });
+
+    return decryptedConnection as T;
+  };
+
   return {
     listAppConnectionOptions,
     listAppConnections,
@@ -722,6 +919,8 @@ export const appConnectionServiceFactory = ({
     deleteAppConnection,
     connectAppConnectionById,
     listAvailableAppConnectionsForUser,
+    findAppConnectionUsageById,
+    migrateAppConnection,
     github: githubConnectionService(connectAppConnectionById, gatewayService),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),

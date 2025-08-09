@@ -6,6 +6,7 @@ import {
   TAppConnectionResponse,
   TCreateAppConnectionDTO,
   TDeleteAppConnectionDTO,
+  TMigrateAppConnectionDTO,
   TUpdateAppConnectionDTO
 } from "@app/hooks/api/appConnections/types";
 
@@ -51,6 +52,24 @@ export const useDeleteAppConnection = () => {
   return useMutation({
     mutationFn: async ({ connectionId, app }: TDeleteAppConnectionDTO) => {
       const { data } = await apiRequest.delete(`/api/v1/app-connections/${app}/${connectionId}`);
+
+      return data;
+    },
+    onSuccess: ({ projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
+    }
+  });
+};
+
+export const useMigrateAppConnection = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ connectionId, app }: TMigrateAppConnectionDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/app-connections/${app}/${connectionId}/migrate`
+      );
 
       return data;
     },

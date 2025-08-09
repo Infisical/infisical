@@ -1761,7 +1761,11 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayDAL,
-    projectDAL
+    projectDAL,
+    secretSyncDAL,
+    secretRotationV2DAL,
+    externalCertificateAuthorityDAL,
+    secretScanningV2DAL
   });
 
   const secretSyncService = secretSyncServiceFactory({

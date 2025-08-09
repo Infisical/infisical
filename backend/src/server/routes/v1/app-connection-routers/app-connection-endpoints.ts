@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ProjectType } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
@@ -352,6 +353,118 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.DELETE_APP_CONNECTION,
+          metadata: {
+            connectionId
+          }
+        }
+      });
+
+      return { appConnection };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/usage`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true, // scott: we could expose this in the future but just for UI right now
+      tags: [ApiDocsTags.AppConnections],
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          projects: z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              type: z.nativeEnum(ProjectType),
+              slug: z.string(),
+              resources: z.object({
+                secretSyncs: z
+                  .object({
+                    id: z.string(),
+                    name: z.string()
+                  })
+                  .array(),
+                secretRotations: z
+                  .object({
+                    id: z.string(),
+                    name: z.string()
+                  })
+                  .array(),
+                externalCas: z
+                  .object({
+                    id: z.string(),
+                    name: z.string()
+                  })
+                  .array(),
+                dataSources: z
+                  .object({
+                    id: z.string(),
+                    name: z.string()
+                  })
+                  .array()
+              })
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const projects = await server.services.appConnection.findAppConnectionUsageById(
+        app,
+        connectionId,
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GET_APP_CONNECTION_USAGE,
+          metadata: {
+            connectionId
+          }
+        }
+      });
+
+      return { projects };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:connectionId/migrate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      tags: [ApiDocsTags.AppConnections],
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({ appConnection: sanitizedResponseSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+      const appConnection = await server.services.appConnection.migrateAppConnection(app, connectionId, req.permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.MIGRATE_APP_CONNECTION,
           metadata: {
             connectionId
           }

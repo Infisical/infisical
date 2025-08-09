@@ -9,6 +9,7 @@ import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
+import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -129,9 +130,6 @@ import {
   WindmillConnectionMethod
 } from "./windmill";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
-import {
-  SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
@@ -455,4 +453,74 @@ export const enterpriseAppCheck = async (
         message: errorMessage
       });
   }
+};
+
+type Resource = {
+  name: string;
+  id: string;
+  projectId: string;
+  projectName: string;
+  projectSlug: string;
+  projectType: string;
+};
+
+type UsageData = {
+  secretSyncs: Resource[];
+  secretRotations: Resource[];
+  dataSources: Resource[];
+  externalCas: Resource[];
+};
+
+type ResourceSummary = {
+  name: string;
+  id: string;
+};
+
+type ProjectWithResources = {
+  id: string;
+  name: string;
+  slug: string;
+  type: ProjectType;
+  resources: {
+    secretSyncs: ResourceSummary[];
+    secretRotations: ResourceSummary[];
+    dataSources: ResourceSummary[];
+    externalCas: (ResourceSummary & { appConnectionId?: string; dnsAppConnectionId?: string })[];
+  };
+};
+
+export const transformUsageToProjects = (data: UsageData): ProjectWithResources[] => {
+  const projectMap = new Map<string, ProjectWithResources>();
+
+  Object.entries(data).forEach(([resourceType, resources]) => {
+    resources.forEach((resource) => {
+      const { projectId, projectName, projectSlug, projectType, name, id, ...rest } = resource;
+
+      const projectKey = projectId;
+
+      if (!projectMap.has(projectKey)) {
+        projectMap.set(projectKey, {
+          id: projectId,
+          name: projectName,
+          slug: projectSlug,
+          type: projectType as ProjectType,
+          resources: {
+            secretSyncs: [],
+            secretRotations: [],
+            dataSources: [],
+            externalCas: []
+          }
+        });
+      }
+
+      const project = projectMap.get(projectKey)!;
+      project.resources[resourceType as keyof ProjectWithResources["resources"]].push({
+        name,
+        id,
+        ...rest
+      });
+    });
+  });
+
+  return Array.from(projectMap.values());
 };

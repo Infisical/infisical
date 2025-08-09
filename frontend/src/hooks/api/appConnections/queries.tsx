@@ -4,6 +4,7 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
+  AppConnectionUsage,
   TAppConnection,
   TAppConnectionOptions,
   TAvailableAppConnection,
@@ -23,7 +24,9 @@ export const appConnectionKeys = {
   list: (projectId?: string | null) =>
     [...appConnectionKeys.all, "list", ...(projectId ? [projectId] : [])] as const,
   listAvailable: (app: AppConnection, projectId?: string | null) =>
-    [...appConnectionKeys.all, app, "list-available", ...(projectId ? [projectId] : [])] as const
+    [...appConnectionKeys.all, app, "list-available", ...(projectId ? [projectId] : [])] as const,
+  getUsage: (app: AppConnection, connectionId: string) =>
+    [...appConnectionKeys.all, "usage", app, connectionId] as const
   // listByApp: (app: AppConnection) => [...appConnectionKeys.list(), app],
   // byId: (app: AppConnection, connectionId: string) =>
   //   [...appConnectionKeys.all, app, "by-id", connectionId] as const
@@ -115,6 +118,32 @@ export const useListAvailableAppConnections = (
       );
 
       return data.appConnections;
+    },
+    ...options
+  });
+};
+
+export const useGetAppConnectionUsageById = (
+  app: AppConnection,
+  connectionId: string,
+  options?: Omit<
+    UseQueryOptions<
+      AppConnectionUsage,
+      unknown,
+      AppConnectionUsage,
+      ReturnType<typeof appConnectionKeys.getUsage>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: appConnectionKeys.getUsage(app, connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<AppConnectionUsage>(
+        `/api/v1/app-connections/${app}/${connectionId}/usage`
+      );
+
+      return data;
     },
     ...options
   });

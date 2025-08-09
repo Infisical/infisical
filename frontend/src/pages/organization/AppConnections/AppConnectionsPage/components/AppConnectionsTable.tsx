@@ -53,6 +53,7 @@ import { AppConnectionRow } from "./AppConnectionRow";
 import { DeleteAppConnectionModal } from "./DeleteAppConnectionModal";
 import { EditAppConnectionCredentialsModal } from "./EditAppConnectionCredentialsModal";
 import { EditAppConnectionDetailsModal } from "./EditAppConnectionDetailsModal";
+import { MigrateAppConnectionModal } from "./MigrateAppConnectionModal";
 
 enum AppConnectionsOrderBy {
   App = "app",
@@ -77,7 +78,8 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
     "addConnection",
     "deleteConnection",
     "editCredentials",
-    "editDetails"
+    "editDetails",
+    "migrateConnection"
   ] as const);
 
   const [filters, setFilters] = useState<AppConnectionFilters>({
@@ -180,6 +182,9 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
   const handleEditDetails = (appConnection: TAppConnection) =>
     handlePopUpOpen("editDetails", appConnection);
 
+  const handleMigrate = (appConnection: TAppConnection) =>
+    handlePopUpOpen("migrateConnection", appConnection);
+
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
@@ -202,7 +207,8 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
             </a>
           </div>
           <p className="text-sm text-bunker-300">
-            Create and configure connections with third-party apps for re-use across your project.
+            Create and configure connections with third-party apps for re-use across your project
+            {isProjectView ? "" : "s"}.
           </p>
         </div>
         {isProjectView && (
@@ -342,6 +348,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                 onDelete={handleDelete}
                 onEditCredentials={handleEditCredentials}
                 onEditDetails={handleEditDetails}
+                onMigrate={handleMigrate}
                 isProjectView={isProjectView}
               />
             ))}
@@ -387,6 +394,11 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("addConnection", isOpen)}
         projectId={projectId}
         projectType={projectType}
+      />
+      <MigrateAppConnectionModal
+        isOpen={popUp.migrateConnection.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("migrateConnection", isOpen)}
+        appConnection={popUp.migrateConnection.data}
       />
     </div>
   );
