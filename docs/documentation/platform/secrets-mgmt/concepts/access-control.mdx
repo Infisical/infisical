@@ -1,0 +1,33 @@
+---
+title: "Scoping Secrets"
+description: "Learn how access to secrets is controlled in Infisical."
+---
+
+## Secret Hierarchy
+
+Every secret in Infisical is scoped to an environment and a path.
+
+- An environment separates where secrets are used, such as `development`, `staging`, or `production`.
+- A path is an (optional) namespace within an environment that groups related secrets such as `/postgres`, `/redis`, or per-service paths like `/service-a`.
+
+This structure makes it easy to organize secrets by team, service, or environment, and sets the foundation for controlling who can access what.
+
+## Access Control
+
+Access control determines who (or what) can access a secret and under what conditions. Without clear policies, even securely stored secrets can be misused or exposed.
+
+To control access to secrets, you configure role-based permissions at the project level. These permissions determine which environments and paths a user or machine identity with that role can access. For example, an engineer might have a role that allows them to read secrets in the `development` environment but not those in the `production` environment.
+
+This model follows the [principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege) such that each user or machine identity has access only to the secrets it needs — and nothing more.
+
+## Advanced Capabilities
+
+Beyond basic role assignments, Infisical includes additional access control mechanisms for more advanced use cases:
+
+- Access approvals: Users can request access to specific environments or paths. Access can be temporary and reviewed before it is granted, reducing long-term exposure.
+
+- Secret change approvals: Updates to sensitive secrets can require approval before taking effect. This adds control in environments where unreviewed changes pose risk.
+
+- Attribute-based access control (ABAC): Permissions can be matched against metadata on a user or machine identity — such as team, service, or environment — enabling dynamic access rules without manual role changes.
+
+All access and approval actions are logged, so it’s always possible to trace who accessed what, when, and under what conditions.
