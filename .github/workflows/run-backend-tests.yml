@@ -53,9 +53,9 @@ jobs:
         run: npm run test:e2e
         working-directory: backend
         env:
-          E2E_TEST_ORACLE_DB_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_HOST }}
-          E2E_TEST_ORACLE_DB_USERNAME: ${{ secrets.E2E_TEST_ORACLE_DB_USERNAME }}
-          E2E_TEST_ORACLE_DB_PASSWORD: ${{ secrets.E2E_TEST_ORACLE_DB_PASSWORD }}
+          E2E_TEST_ORACLE_DB_19_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}
+          E2E_TEST_ORACLE_DB_19_USERNAME: ${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}
+          E2E_TEST_ORACLE_DB_19_PASSWORD: ${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}
           REDIS_URL: redis://172.17.0.1:6379
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           AUTH_SECRET: something-random
