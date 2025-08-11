@@ -100,7 +100,8 @@ export const accessApprovalPolicyServiceFactory = ({
     environments,
     enforcementLevel,
     allowedSelfApprovals,
-    approvalsRequired
+    approvalsRequired,
+    maxTimePeriod
   }) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -219,7 +220,8 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath,
           name,
           enforcementLevel,
-          allowedSelfApprovals
+          allowedSelfApprovals,
+          maxTimePeriod
         },
         tx
       );
@@ -318,7 +320,8 @@ export const accessApprovalPolicyServiceFactory = ({
     enforcementLevel,
     allowedSelfApprovals,
     approvalsRequired,
-    environments
+    environments,
+    maxTimePeriod
   }: TUpdateAccessApprovalPolicy) => {
     const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
 
@@ -461,7 +464,8 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath,
           name,
           enforcementLevel,
-          allowedSelfApprovals
+          allowedSelfApprovals,
+          maxTimePeriod
         },
         tx
       );
