@@ -52,19 +52,24 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await queueService.startPg<QueueName.DailyResourceCleanUp>(
       QueueJobs.DailyResourceCleanUp,
       async () => {
-        logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
-        await identityAccessTokenDAL.removeExpiredTokens();
-        await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
-        await secretSharingDAL.pruneExpiredSharedSecrets();
-        await secretSharingDAL.pruneExpiredSecretRequests();
-        await snapshotDAL.pruneExcessSnapshots();
-        await secretVersionDAL.pruneExcessVersions();
-        await secretVersionV2DAL.pruneExcessVersions();
-        await secretFolderVersionDAL.pruneExcessVersions();
-        await serviceTokenService.notifyExpiringTokens();
-        await orgService.notifyInvitedUsers();
-        await auditLogDAL.pruneAuditLog();
-        logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
+        try {
+          logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
+          await identityAccessTokenDAL.removeExpiredTokens();
+          await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
+          await secretSharingDAL.pruneExpiredSharedSecrets();
+          await secretSharingDAL.pruneExpiredSecretRequests();
+          await snapshotDAL.pruneExcessSnapshots();
+          await secretVersionDAL.pruneExcessVersions();
+          await secretVersionV2DAL.pruneExcessVersions();
+          await secretFolderVersionDAL.pruneExcessVersions();
+          await serviceTokenService.notifyExpiringTokens();
+          await orgService.notifyInvitedUsers();
+          await auditLogDAL.pruneAuditLog();
+          logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
+        } catch (error) {
+          logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
+          throw error;
+        }
       },
       {
         batchSize: 1,
@@ -78,6 +83,10 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       undefined,
       { tz: "UTC" }
     );
+
+    queueService.listen(QueueName.DailyResourceCleanUp, "failed", (_, err) => {
+      logger.error(err, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
+    });
   };
 
   return {
