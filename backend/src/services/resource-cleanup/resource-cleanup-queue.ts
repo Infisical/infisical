@@ -83,10 +83,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       undefined,
       { tz: "UTC" }
     );
-
-    queueService.listen(QueueName.DailyResourceCleanUp, "failed", (_, err) => {
-      logger.error(err, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
-    });
   };
 
   return {
