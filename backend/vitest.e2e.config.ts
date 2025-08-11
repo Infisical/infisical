@@ -6,9 +6,9 @@ export default defineConfig({
     globals: true,
     env: {
       NODE_ENV: "test",
-      E2E_TEST_ORACLE_DB_HOST: process.env.E2E_TEST_ORACLE_DB_HOST!,
-      E2E_TEST_ORACLE_DB_USERNAME: process.env.E2E_TEST_ORACLE_DB_USERNAME!,
-      E2E_TEST_ORACLE_DB_PASSWORD: process.env.E2E_TEST_ORACLE_DB_PASSWORD!
+      E2E_TEST_ORACLE_DB_19_HOST: process.env.E2E_TEST_ORACLE_DB_19_HOST!,
+      E2E_TEST_ORACLE_DB_19_USERNAME: process.env.E2E_TEST_ORACLE_DB_19_USERNAME!,
+      E2E_TEST_ORACLE_DB_19_PASSWORD: process.env.E2E_TEST_ORACLE_DB_19_PASSWORD!
     },
     environment: "./e2e-test/vitest-environment-knex.ts",
     include: ["./e2e-test/**/*.spec.ts"],

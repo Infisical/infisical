@@ -540,9 +540,9 @@ describe("Secret Rotations", async () => {
       name: "OracleDB (19.3) Secret Rotation",
       skippable: true,
       dbCredentials: {
-        password: process.env.E2E_TEST_ORACLE_DB_PASSWORD!,
-        host: process.env.E2E_TEST_ORACLE_DB_HOST!,
-        username: process.env.E2E_TEST_ORACLE_DB_USERNAME!,
+        password: process.env.E2E_TEST_ORACLE_DB_19_PASSWORD!,
+        host: process.env.E2E_TEST_ORACLE_DB_19_HOST!,
+        username: process.env.E2E_TEST_ORACLE_DB_19_USERNAME!,
         port: 1521,
         database: "ORCLPDB1"
       },
@@ -666,7 +666,7 @@ describe("Secret Rotations", async () => {
     const shouldSkip = () => {
       if (skippable) {
         if (type === SecretRotationType.OracleDb) {
-          if (!process.env.E2E_TEST_ORACLE_DB_HOST) {
+          if (!process.env.E2E_TEST_ORACLE_DB_19_HOST) {
             return true;
           }
         }
@@ -676,7 +676,7 @@ describe("Secret Rotations", async () => {
     };
 
     if (shouldSkip()) {
-      test.skip(`Skipping Secret Rotation for ${type} (${name}) because E2E_TEST_ORACLE_DB_HOST is not set`);
+      test.skip(`Skipping Secret Rotation for ${type} (${name}) because E2E_TEST_ORACLE_DB_19_HOST is not set`);
     } else {
       test.concurrent(
         `Create secret rotation for ${name}`,
