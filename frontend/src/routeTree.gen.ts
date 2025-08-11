@@ -50,7 +50,6 @@ import { Route as adminAuthenticationPageRouteImport } from './pages/admin/Authe
 import { Route as organizationProjectsPageRouteImport } from './pages/organization/ProjectsPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
-import { Route as organizationAdminPageRouteImport } from './pages/organization/AdminPage/route'
 import { Route as organizationAccessManagementPageRouteImport } from './pages/organization/AccessManagementPage/route'
 import { Route as adminGeneralPageRouteImport } from './pages/admin/GeneralPage/route'
 import { Route as secretManagerRedirectsRedirectApprovalPageImport } from './pages/secret-manager/redirects/redirect-approval-page'
@@ -630,15 +629,6 @@ const organizationAuditLogsPageRouteRoute =
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
-
-const organizationAdminPageRouteRoute = organizationAdminPageRouteImport.update(
-  {
-    id: '/admin',
-    path: '/admin',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
-  } as any,
-)
 
 const organizationAccessManagementPageRouteRoute =
   organizationAccessManagementPageRouteImport.update({
@@ -2293,13 +2283,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationAccessManagementPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organization/admin': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organization/admin'
-      path: '/admin'
-      fullPath: '/organization/admin'
-      preLoaderRoute: typeof organizationAdminPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs'
       path: '/audit-logs'
@@ -3758,7 +3741,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
 
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationAccessManagementPageRouteRoute: typeof organizationAccessManagementPageRouteRoute
-  organizationAdminPageRouteRoute: typeof organizationAdminPageRouteRoute
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRoute
@@ -3776,7 +3758,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
   {
     organizationAccessManagementPageRouteRoute:
       organizationAccessManagementPageRouteRoute,
-    organizationAdminPageRouteRoute: organizationAdminPageRouteRoute,
     organizationAuditLogsPageRouteRoute: organizationAuditLogsPageRouteRoute,
     organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
     organizationProjectsPageRouteRoute: organizationProjectsPageRouteRoute,
@@ -4668,7 +4649,6 @@ export interface FileRoutesByFullPath {
   '/organization': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteWithChildren
   '/admin/': typeof adminGeneralPageRouteRoute
   '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
-  '/organization/admin': typeof organizationAdminPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
@@ -4887,7 +4867,6 @@ export interface FileRoutesByTo {
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/organization': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteWithChildren
   '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
-  '/organization/admin': typeof organizationAdminPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
@@ -5106,7 +5085,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout/': typeof adminGeneralPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/access-management': typeof organizationAccessManagementPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organization/admin': typeof organizationAdminPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/billing': typeof organizationBillingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/projects': typeof organizationProjectsPageRouteRoute
@@ -5336,7 +5314,6 @@ export interface FileRouteTypes {
     | '/organization'
     | '/admin/'
     | '/organization/access-management'
-    | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
     | '/organization/projects'
@@ -5554,7 +5531,6 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/organization'
     | '/organization/access-management'
-    | '/organization/admin'
     | '/organization/audit-logs'
     | '/organization/billing'
     | '/organization/projects'
@@ -5771,7 +5747,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/access-management'
-    | '/_authenticate/_inject-org-details/_org-layout/organization/admin'
     | '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organization/billing'
     | '/_authenticate/_inject-org-details/_org-layout/organization/projects'
@@ -6202,7 +6177,6 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organization/access-management",
-        "/_authenticate/_inject-org-details/_org-layout/organization/admin",
         "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/organization/billing",
         "/_authenticate/_inject-org-details/_org-layout/organization/projects",
@@ -6237,10 +6211,6 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/access-management": {
       "filePath": "organization/AccessManagementPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organization/admin": {
-      "filePath": "organization/AdminPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs": {

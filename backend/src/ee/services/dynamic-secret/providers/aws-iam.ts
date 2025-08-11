@@ -23,6 +23,7 @@ import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { AwsIamAuthType, DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
@@ -118,22 +119,39 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown, { projectId }: { projectId: string }) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const client = await $getClient(providerInputs, projectId);
-    const isConnected = await client
-      .send(new GetUserCommand({}))
-      .then(() => true)
-      .catch((err) => {
-        const message = (err as Error)?.message;
-        if (
-          (providerInputs.method === AwsIamAuthType.AssumeRole || providerInputs.method === AwsIamAuthType.IRSA) &&
-          // assume role will throw an error asking to provider username, but if so this has access in aws correctly
-          message.includes("Must specify userName when calling with non-User credentials")
-        ) {
-          return true;
-        }
-        throw err;
+    try {
+      const client = await $getClient(providerInputs, projectId);
+      const isConnected = await client
+        .send(new GetUserCommand({}))
+        .then(() => true)
+        .catch((err) => {
+          const message = (err as Error)?.message;
+          if (
+            (providerInputs.method === AwsIamAuthType.AssumeRole || providerInputs.method === AwsIamAuthType.IRSA) &&
+            // assume role will throw an error asking to provider username, but if so this has access in aws correctly
+            message.includes("Must specify userName when calling with non-User credentials")
+          ) {
+            return true;
+          }
+          throw err;
+        });
+      return isConnected;
+    } catch (err) {
+      const sensitiveTokens = [];
+      if (providerInputs.method === AwsIamAuthType.AccessKey) {
+        sensitiveTokens.push(providerInputs.accessKey, providerInputs.secretAccessKey);
+      }
+      if (providerInputs.method === AwsIamAuthType.AssumeRole) {
+        sensitiveTokens.push(providerInputs.roleArn);
+      }
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: sensitiveTokens
       });
-    return isConnected;
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: {
@@ -162,62 +180,81 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
       awsTags.push(...additionalTags);
     }
 
-    const createUserRes = await client.send(
-      new CreateUserCommand({
-        Path: awsPath,
-        PermissionsBoundary: permissionBoundaryPolicyArn || undefined,
-        Tags: awsTags,
-        UserName: username
-      })
-    );
-
-    if (!createUserRes.User) throw new BadRequestError({ message: "Failed to create AWS IAM User" });
-    if (userGroups) {
-      await Promise.all(
-        userGroups
-          .split(",")
-          .filter(Boolean)
-          .map((group) =>
-            client.send(new AddUserToGroupCommand({ UserName: createUserRes?.User?.UserName, GroupName: group }))
-          )
-      );
-    }
-    if (policyArns) {
-      await Promise.all(
-        policyArns
-          .split(",")
-          .filter(Boolean)
-          .map((policyArn) =>
-            client.send(new AttachUserPolicyCommand({ UserName: createUserRes?.User?.UserName, PolicyArn: policyArn }))
-          )
-      );
-    }
-    if (policyDocument) {
-      await client.send(
-        new PutUserPolicyCommand({
-          UserName: createUserRes.User.UserName,
-          PolicyName: `infisical-dynamic-policy-${alphaNumericNanoId(4)}`,
-          PolicyDocument: policyDocument
+    try {
+      const createUserRes = await client.send(
+        new CreateUserCommand({
+          Path: awsPath,
+          PermissionsBoundary: permissionBoundaryPolicyArn || undefined,
+          Tags: awsTags,
+          UserName: username
         })
       );
-    }
 
-    const createAccessKeyRes = await client.send(
-      new CreateAccessKeyCommand({
-        UserName: createUserRes.User.UserName
-      })
-    );
-    if (!createAccessKeyRes.AccessKey)
-      throw new BadRequestError({ message: "Failed to create AWS IAM User access key" });
-
-    return {
-      entityId: username,
-      data: {
-        ACCESS_KEY: createAccessKeyRes.AccessKey.AccessKeyId,
-        SECRET_ACCESS_KEY: createAccessKeyRes.AccessKey.SecretAccessKey,
-        USERNAME: username
+      if (!createUserRes.User) throw new BadRequestError({ message: "Failed to create AWS IAM User" });
+      if (userGroups) {
+        await Promise.all(
+          userGroups
+            .split(",")
+            .filter(Boolean)
+            .map((group) =>
+              client.send(new AddUserToGroupCommand({ UserName: createUserRes?.User?.UserName, GroupName: group }))
+            )
+        );
       }
-    };
+      if (policyArns) {
+        await Promise.all(
+          policyArns
+            .split(",")
+            .filter(Boolean)
+            .map((policyArn) =>
+              client.send(
+                new AttachUserPolicyCommand({ UserName: createUserRes?.User?.UserName, PolicyArn: policyArn })
+              )
+            )
+        );
+      }
+      if (policyDocument) {
+        await client.send(
+          new PutUserPolicyCommand({
+            UserName: createUserRes.User.UserName,
+            PolicyName: `infisical-dynamic-policy-${alphaNumericNanoId(4)}`,
+            PolicyDocument: policyDocument
+          })
+        );
+      }
+
+      const createAccessKeyRes = await client.send(
+        new CreateAccessKeyCommand({
+          UserName: createUserRes.User.UserName
+        })
+      );
+      if (!createAccessKeyRes.AccessKey)
+        throw new BadRequestError({ message: "Failed to create AWS IAM User access key" });
+
+      return {
+        entityId: username,
+        data: {
+          ACCESS_KEY: createAccessKeyRes.AccessKey.AccessKeyId,
+          SECRET_ACCESS_KEY: createAccessKeyRes.AccessKey.SecretAccessKey,
+          USERNAME: username
+        }
+      };
+    } catch (err) {
+      const sensitiveTokens = [username];
+      if (providerInputs.method === AwsIamAuthType.AccessKey) {
+        sensitiveTokens.push(providerInputs.accessKey, providerInputs.secretAccessKey);
+      }
+      if (providerInputs.method === AwsIamAuthType.AssumeRole) {
+        sensitiveTokens.push(providerInputs.roleArn);
+      }
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: sensitiveTokens
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async (inputs: unknown, entityId: string, metadata: { projectId: string }) => {
@@ -278,8 +315,25 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
       )
     );
 
-    await client.send(new DeleteUserCommand({ UserName: username }));
-    return { entityId: username };
+    try {
+      await client.send(new DeleteUserCommand({ UserName: username }));
+      return { entityId: username };
+    } catch (err) {
+      const sensitiveTokens = [username];
+      if (providerInputs.method === AwsIamAuthType.AccessKey) {
+        sensitiveTokens.push(providerInputs.accessKey, providerInputs.secretAccessKey);
+      }
+      if (providerInputs.method === AwsIamAuthType.AssumeRole) {
+        sensitiveTokens.push(providerInputs.roleArn);
+      }
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: sensitiveTokens
+      });
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const renew = async (_inputs: unknown, entityId: string) => {

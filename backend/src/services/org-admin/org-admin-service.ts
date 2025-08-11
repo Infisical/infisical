@@ -6,8 +6,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
-import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -20,8 +18,6 @@ type TOrgAdminServiceFactoryDep = {
     TProjectMembershipDALFactory,
     "findOne" | "create" | "transaction" | "delete" | "findAllProjectMembers"
   >;
-  projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "create">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create" | "delete">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
@@ -32,8 +28,6 @@ export const orgAdminServiceFactory = ({
   permissionService,
   projectDAL,
   projectMembershipDAL,
-  projectKeyDAL,
-  projectBotDAL,
   projectUserMembershipRoleDAL,
   smtpService
 }: TOrgAdminServiceFactoryDep) => {
@@ -117,28 +111,6 @@ export const orgAdminServiceFactory = ({
         );
       });
       return { isExistingMember: true, membership: projectMembership };
-    }
-
-    // missing membership thus add admin back as admin to project
-    const ghostUser = await projectDAL.findProjectGhostUser(projectId);
-    if (!ghostUser) {
-      throw new NotFoundError({
-        message: `Project owner of project with ID '${projectId}' not found`
-      });
-    }
-
-    const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, projectId);
-    if (!ghostUserLatestKey) {
-      throw new NotFoundError({
-        message: `Project owner's latest key of project with ID '${projectId}' not found`
-      });
-    }
-
-    const bot = await projectBotDAL.findOne({ projectId });
-    if (!bot) {
-      throw new NotFoundError({
-        message: `Project bot for project with ID '${projectId}' not found`
-      });
     }
 
     const updatedMembership = await projectMembershipDAL.transaction(async (tx) => {

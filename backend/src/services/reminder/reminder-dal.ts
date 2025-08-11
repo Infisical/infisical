@@ -124,10 +124,35 @@ export const reminderDALFactory = (db: TDbClient) => {
     return reminders[0] || null;
   };
 
+  const findSecretReminders = async (secretIds: string[], tx?: Knex) => {
+    const rawReminders = await (tx || db)(TableName.Reminder)
+      .whereIn(`${TableName.Reminder}.secretId`, secretIds)
+      .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
+      .select(selectAllTableCols(TableName.Reminder))
+      .select(db.ref("userId").withSchema(TableName.ReminderRecipient));
+    const reminders = sqlNestRelationships({
+      data: rawReminders,
+      key: "id",
+      parentMapper: (el) => ({
+        _id: el.id,
+        ...RemindersSchema.parse(el)
+      }),
+      childrenMapper: [
+        {
+          key: "userId",
+          label: "recipients" as const,
+          mapper: ({ userId }) => userId
+        }
+      ]
+    });
+    return reminders;
+  };
+
   return {
     ...reminderOrm,
     findSecretDailyReminders,
     findUpcomingReminders,
-    findSecretReminder
+    findSecretReminder,
+    findSecretReminders
   };
 };

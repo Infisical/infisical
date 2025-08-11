@@ -7,7 +7,6 @@ import {
   faPlug,
   faShare,
   faTable,
-  faUserCog,
   faUsers,
   faUserTie
 } from "@fortawesome/free-solid-svg-icons";
@@ -179,18 +178,6 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                     }
                   >
                     Share Secret
-                  </MenuItem>
-                </Link>
-                <Link to="/organization/admin">
-                  <MenuItem
-                    className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
-                    leftIcon={
-                      <div className="w-6">
-                        <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faUserCog} />
-                      </div>
-                    }
-                  >
-                    Organization Admin
                   </MenuItem>
                 </Link>
                 {user.superAdmin && (

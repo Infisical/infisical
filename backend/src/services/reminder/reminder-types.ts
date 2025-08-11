@@ -103,4 +103,6 @@ export interface TReminderServiceFactory {
     id: string;
     created: boolean;
   }>;
+
+  getRemindersForDashboard: (secretIds: string[]) => Promise<Record<string, TReminder & { recipients: string[] }>>;
 }

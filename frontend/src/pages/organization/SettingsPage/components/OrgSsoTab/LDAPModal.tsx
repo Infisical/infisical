@@ -92,12 +92,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const watchUrl = watch("url");
   const watchBindDN = watch("bindDN");
   const watchBindPass = watch("bindPass");
-  const watchSearchBase = watch("searchBase");
-  const watchSearchFilter = watch("searchFilter");
-  const watchGroupSearchBase = watch("groupSearchBase");
-  const watchGroupSearchFilter = watch("groupSearchFilter");
   const watchCaCert = watch("caCert");
-  const watchUniqueUserAttribute = watch("uniqueUserAttribute");
 
   useEffect(() => {
     if (data) {
@@ -147,7 +142,6 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       } else {
         await updateMutateAsync({
           organizationId: currentOrg.id,
-          isActive: false,
           url,
           bindDN,
           bindPass,
@@ -179,22 +173,12 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const handleTestLDAPConnection = async () => {
     try {
-      await onSSOModalSubmit({
+      const result = await testLDAPConnection({
         url: watchUrl,
         bindDN: watchBindDN,
         bindPass: watchBindPass,
-        searchBase: watchSearchBase,
-        searchFilter: watchSearchFilter,
-        groupSearchBase: watchGroupSearchBase,
-        groupSearchFilter: watchGroupSearchFilter,
-        uniqueUserAttribute: watchUniqueUserAttribute,
-        caCert: watchCaCert,
-        shouldCloseModal: false
+        caCert: watchCaCert ?? ""
       });
-
-      if (!data) return;
-
-      const result = await testLDAPConnection(data.id);
 
       if (!result) {
         createNotification({

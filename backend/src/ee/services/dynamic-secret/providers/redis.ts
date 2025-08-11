@@ -4,6 +4,7 @@ import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
@@ -112,14 +113,27 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    const connection = await $getClient(providerInputs);
-
-    const pingResponse = await connection
-      .ping()
-      .then(() => true)
-      .catch(() => false);
-
-    return pingResponse;
+    let connection;
+    try {
+      connection = await $getClient(providerInputs);
+      const pingResponse = await connection.ping().then(() => true);
+      await connection.quit();
+      return pingResponse;
+    } catch (err) {
+      if (connection) await connection.quit();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [
+          providerInputs.password || "",
+          providerInputs.username,
+          providerInputs.host,
+          String(providerInputs.port)
+        ]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: {
@@ -144,10 +158,20 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
     const queries = creationStatement.toString().split(";").filter(Boolean);
 
-    await executeTransactions(connection, queries);
-
-    await connection.quit();
-    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+    try {
+      await executeTransactions(connection, queries);
+      await connection.quit();
+      return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+    } catch (err) {
+      await connection.quit();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, password, providerInputs.password || "", providerInputs.username]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
@@ -159,10 +183,20 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
     const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username });
     const queries = revokeStatement.toString().split(";").filter(Boolean);
 
-    await executeTransactions(connection, queries);
-
-    await connection.quit();
-    return { entityId: username };
+    try {
+      await executeTransactions(connection, queries);
+      await connection.quit();
+      return { entityId: username };
+    } catch (err) {
+      await connection.quit();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, providerInputs.password || "", providerInputs.username]
+      });
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
@@ -176,13 +210,23 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
 
     const renewStatement = handlebars.compile(providerInputs.renewStatement)({ username, expiration });
 
-    if (renewStatement) {
-      const queries = renewStatement.toString().split(";").filter(Boolean);
-      await executeTransactions(connection, queries);
+    try {
+      if (renewStatement) {
+        const queries = renewStatement.toString().split(";").filter(Boolean);
+        await executeTransactions(connection, queries);
+      }
+      await connection.quit();
+      return { entityId: username };
+    } catch (err) {
+      await connection.quit();
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, providerInputs.password || "", providerInputs.username]
+      });
+      throw new BadRequestError({
+        message: `Failed to renew lease from provider: ${sanitizedErrorMessage}`
+      });
     }
-
-    await connection.quit();
-    return { entityId: username };
   };
 
   return {

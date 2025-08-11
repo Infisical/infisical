@@ -79,6 +79,7 @@ const envSchema = z
     QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
+    DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),
@@ -215,6 +216,7 @@ const envSchema = z
           return JSON.parse(val) as { secretPath: string; projectId: string }[];
         })
     ),
+    PARAMS_FOLDER_SECRET_DETECTION_ENTROPY: z.coerce.number().optional().default(3.7),
 
     // HSM
     HSM_LIB_PATH: zpStr(z.string().optional()),
@@ -349,6 +351,8 @@ const envSchema = z
     isTestMode: data.NODE_ENV === "test",
     isRotationDevelopmentMode:
       (data.NODE_ENV === "development" && data.ROTATION_DEVELOPMENT_MODE) || data.NODE_ENV === "test",
+    isDailyResourceCleanUpDevelopmentMode:
+      data.NODE_ENV === "development" && data.DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()

@@ -411,7 +411,6 @@ export const samlConfigServiceFactory = ({
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     const isUserCompleted = Boolean(user.isAccepted && user.isEmailVerified);
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
@@ -424,7 +423,7 @@ export const samlConfigServiceFactory = ({
         organizationId: organization.id,
         organizationSlug: organization.slug,
         authMethod: authProvider,
-        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
+        hasExchangedPrivateKey: true,
         authType: UserAliasType.SAML,
         isUserCompleted,
         ...(relayState

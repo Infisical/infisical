@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -275,6 +276,14 @@ export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynam
             await client.raw(trimmedQuery);
           }
         }
+      } catch (err) {
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: (err as Error)?.message,
+          tokens: [username, password, providerInputs.username, providerInputs.password]
+        });
+        throw new BadRequestError({
+          message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+        });
       } finally {
         if (client) await client.destroy();
       }
@@ -339,6 +348,14 @@ export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynam
             await client.raw(trimmedQuery);
           }
         }
+      } catch (err) {
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: (err as Error)?.message,
+          tokens: [username, providerInputs.username, providerInputs.password]
+        });
+        throw new BadRequestError({
+          message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+        });
       } finally {
         if (client) await client.destroy();
       }

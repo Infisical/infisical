@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { OrgMembershipStatus, TableName, TLdapConfigsUpdate, TUsers } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -45,7 +46,7 @@ import { searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
-  ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne">;
+  ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
   orgDAL: Pick<
@@ -131,6 +132,19 @@ export const ldapConfigServiceFactory = ({
       orgId
     });
 
+    const isConnected = await testLDAPConfig({
+      bindDN,
+      bindPass,
+      caCert,
+      url
+    });
+
+    if (!isConnected) {
+      throw new BadRequestError({
+        message: "Failed to establish connection to LDAP directory. Please verify that your credentials are correct."
+      });
+    }
+
     const ldapConfig = await ldapConfigDAL.create({
       orgId,
       isActive,
@@ -146,6 +160,50 @@ export const ldapConfigServiceFactory = ({
     });
 
     return ldapConfig;
+  };
+
+  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean; id?: string }, tx?: Knex) => {
+    const ldapConfig = await ldapConfigDAL.findOne(filter, tx);
+    if (!ldapConfig) {
+      throw new NotFoundError({
+        message: `Failed to find organization LDAP data in organization with ID '${filter.orgId}'`
+      });
+    }
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: ldapConfig.orgId
+    });
+
+    let bindDN = "";
+    if (ldapConfig.encryptedLdapBindDN) {
+      bindDN = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapBindDN }).toString();
+    }
+
+    let bindPass = "";
+    if (ldapConfig.encryptedLdapBindPass) {
+      bindPass = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapBindPass }).toString();
+    }
+
+    let caCert = "";
+    if (ldapConfig.encryptedLdapCaCertificate) {
+      caCert = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapCaCertificate }).toString();
+    }
+
+    return {
+      id: ldapConfig.id,
+      organization: ldapConfig.orgId,
+      isActive: ldapConfig.isActive,
+      url: ldapConfig.url,
+      bindDN,
+      bindPass,
+      uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
+      searchBase: ldapConfig.searchBase,
+      searchFilter: ldapConfig.searchFilter,
+      groupSearchBase: ldapConfig.groupSearchBase,
+      groupSearchFilter: ldapConfig.groupSearchFilter,
+      caCert
+    };
   };
 
   const updateLdapCfg = async ({
@@ -202,53 +260,25 @@ export const ldapConfigServiceFactory = ({
       updateQuery.encryptedLdapCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
-    const [ldapConfig] = await ldapConfigDAL.update({ orgId }, updateQuery);
+    const config = await ldapConfigDAL.transaction(async (tx) => {
+      const [updatedLdapCfg] = await ldapConfigDAL.update({ orgId }, updateQuery, tx);
+      const decryptedLdapCfg = await getLdapCfg({ orgId }, tx);
 
-    return ldapConfig;
-  };
+      const isSoftDeletion = !decryptedLdapCfg.url && !decryptedLdapCfg.bindDN && !decryptedLdapCfg.bindPass;
+      if (!isSoftDeletion) {
+        const isConnected = await testLDAPConfig(decryptedLdapCfg);
+        if (!isConnected) {
+          throw new BadRequestError({
+            message:
+              "Failed to establish connection to LDAP directory. Please verify that your credentials are correct."
+          });
+        }
+      }
 
-  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean; id?: string }) => {
-    const ldapConfig = await ldapConfigDAL.findOne(filter);
-    if (!ldapConfig) {
-      throw new NotFoundError({
-        message: `Failed to find organization LDAP data in organization with ID '${filter.orgId}'`
-      });
-    }
-
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: ldapConfig.orgId
+      return updatedLdapCfg;
     });
 
-    let bindDN = "";
-    if (ldapConfig.encryptedLdapBindDN) {
-      bindDN = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapBindDN }).toString();
-    }
-
-    let bindPass = "";
-    if (ldapConfig.encryptedLdapBindPass) {
-      bindPass = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapBindPass }).toString();
-    }
-
-    let caCert = "";
-    if (ldapConfig.encryptedLdapCaCertificate) {
-      caCert = decryptor({ cipherTextBlob: ldapConfig.encryptedLdapCaCertificate }).toString();
-    }
-
-    return {
-      id: ldapConfig.id,
-      organization: ldapConfig.orgId,
-      isActive: ldapConfig.isActive,
-      url: ldapConfig.url,
-      bindDN,
-      bindPass,
-      uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
-      searchBase: ldapConfig.searchBase,
-      searchFilter: ldapConfig.searchFilter,
-      groupSearchBase: ldapConfig.groupSearchBase,
-      groupSearchFilter: ldapConfig.groupSearchFilter,
-      caCert
-    };
+    return config;
   };
 
   const getLdapCfgWithPermissionCheck = async ({
@@ -527,14 +557,13 @@ export const ldapConfigServiceFactory = ({
     });
 
     const isUserCompleted = Boolean(user.isAccepted);
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
 
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
-        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
+        hasExchangedPrivateKey: true,
         ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
         firstName,
         lastName,
@@ -694,7 +723,17 @@ export const ldapConfigServiceFactory = ({
     return deletedGroupMap;
   };
 
-  const testLDAPConnection = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TTestLdapConnectionDTO) => {
+  const testLDAPConnection = async ({
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId,
+    bindDN,
+    bindPass,
+    caCert,
+    url
+  }: TTestLdapConnectionDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
@@ -704,11 +743,12 @@ export const ldapConfigServiceFactory = ({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."
       });
 
-    const ldapConfig = await getLdapCfg({
-      orgId
+    return testLDAPConfig({
+      bindDN,
+      bindPass,
+      caCert,
+      url
     });
-
-    return testLDAPConfig(ldapConfig);
   };
 
   return {

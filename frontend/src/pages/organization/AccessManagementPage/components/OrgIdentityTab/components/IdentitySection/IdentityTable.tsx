@@ -7,6 +7,7 @@ import {
   faEdit,
   faEllipsisV,
   faFilter,
+  faInfoCircle,
   faMagnifyingGlass,
   faServer,
   faTrash
@@ -16,6 +17,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { LastLoginSection } from "@app/components/organization/LastLoginSection";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
@@ -40,6 +42,7 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -49,7 +52,12 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetOrgRoles, useSearchIdentities, useUpdateIdentity } from "@app/hooks/api";
+import {
+  identityAuthToNameMap,
+  useGetOrgRoles,
+  useSearchIdentities,
+  useUpdateIdentity
+} from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -284,112 +292,138 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <TBody>
             {isPending && <TableSkeleton columns={3} innerKey="org-identities" />}
             {!isPending &&
-              data?.identities?.map(({ identity: { id, name }, role, customRole }) => {
-                return (
-                  <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                    key={`identity-${id}`}
-                    onClick={() =>
-                      navigate({
-                        to: "/organization/identities/$identityId",
-                        params: {
-                          identityId: id
-                        }
-                      })
-                    }
-                  >
-                    <Td>{name}</Td>
-                    <Td>
-                      <OrgPermissionCan
-                        I={OrgPermissionIdentityActions.Edit}
-                        a={OrgPermissionSubjects.Identity}
-                      >
-                        {(isAllowed) => {
-                          return (
-                            <Select
-                              value={role === "custom" ? (customRole?.slug as string) : role}
-                              isDisabled={!isAllowed}
-                              className="h-8 w-48 bg-mineshaft-700"
-                              position="popper"
-                              dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
-                              onValueChange={(selectedRole) =>
-                                handleChangeRole({
-                                  identityId: id,
-                                  role: selectedRole
-                                })
-                              }
-                            >
-                              {(roles || []).map(({ slug, name: roleName }) => (
-                                <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                  {roleName}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          );
-                        }}
-                      </OrgPermissionCan>
-                    </Td>
-                    <Td>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            ariaLabel="Options"
-                            className="w-6"
-                            colorSchema="secondary"
-                            variant="plain"
+              data?.identities?.map(
+                ({
+                  identity: { id, name },
+                  role,
+                  customRole,
+                  lastLoginAuthMethod,
+                  lastLoginTime
+                }) => {
+                  return (
+                    <Tr
+                      className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                      key={`identity-${id}`}
+                      onClick={() =>
+                        navigate({
+                          to: "/organization/identities/$identityId",
+                          params: {
+                            identityId: id
+                          }
+                        })
+                      }
+                    >
+                      <Td className="group">
+                        {name}
+                        {lastLoginAuthMethod && lastLoginTime && (
+                          <Tooltip
+                            className="min-w-52 max-w-96 px-3"
+                            content={
+                              <LastLoginSection
+                                lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
+                                lastLoginTime={lastLoginTime}
+                              />
+                            }
                           >
-                            <FontAwesomeIcon icon={faEllipsisV} />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={2} align="end">
-                          <OrgPermissionCan
-                            I={OrgPermissionIdentityActions.Edit}
-                            a={OrgPermissionSubjects.Identity}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                icon={<FontAwesomeIcon icon={faEdit} />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate({
-                                    to: "/organization/identities/$identityId",
-                                    params: {
-                                      identityId: id
-                                    }
-                                  });
-                                }}
+                            <FontAwesomeIcon
+                              icon={faInfoCircle}
+                              className="ml-2 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100"
+                            />
+                          </Tooltip>
+                        )}
+                      </Td>
+                      <Td>
+                        <OrgPermissionCan
+                          I={OrgPermissionIdentityActions.Edit}
+                          a={OrgPermissionSubjects.Identity}
+                        >
+                          {(isAllowed) => {
+                            return (
+                              <Select
+                                value={role === "custom" ? (customRole?.slug as string) : role}
                                 isDisabled={!isAllowed}
-                              >
-                                Edit Identity
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                          <OrgPermissionCan
-                            I={OrgPermissionIdentityActions.Delete}
-                            a={OrgPermissionSubjects.Identity}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("deleteIdentity", {
+                                className="h-8 w-48 bg-mineshaft-700"
+                                position="popper"
+                                dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                                onValueChange={(selectedRole) =>
+                                  handleChangeRole({
                                     identityId: id,
-                                    name
-                                  });
-                                }}
-                                isDisabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faTrash} />}
+                                    role: selectedRole
+                                  })
+                                }
                               >
-                                Delete Identity
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </Td>
-                  </Tr>
-                );
-              })}
+                                {(roles || []).map(({ slug, name: roleName }) => (
+                                  <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                    {roleName}
+                                  </SelectItem>
+                                ))}
+                              </Select>
+                            );
+                          }}
+                        </OrgPermissionCan>
+                      </Td>
+                      <Td>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              ariaLabel="Options"
+                              className="w-6"
+                              colorSchema="secondary"
+                              variant="plain"
+                            >
+                              <FontAwesomeIcon icon={faEllipsisV} />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent sideOffset={2} align="end">
+                            <OrgPermissionCan
+                              I={OrgPermissionIdentityActions.Edit}
+                              a={OrgPermissionSubjects.Identity}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  icon={<FontAwesomeIcon icon={faEdit} />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate({
+                                      to: "/organization/identities/$identityId",
+                                      params: {
+                                        identityId: id
+                                      }
+                                    });
+                                  }}
+                                  isDisabled={!isAllowed}
+                                >
+                                  Edit Identity
+                                </DropdownMenuItem>
+                              )}
+                            </OrgPermissionCan>
+                            <OrgPermissionCan
+                              I={OrgPermissionIdentityActions.Delete}
+                              a={OrgPermissionSubjects.Identity}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("deleteIdentity", {
+                                      identityId: id,
+                                      name
+                                    });
+                                  }}
+                                  isDisabled={!isAllowed}
+                                  icon={<FontAwesomeIcon icon={faTrash} />}
+                                >
+                                  Delete Identity
+                                </DropdownMenuItem>
+                              )}
+                            </OrgPermissionCan>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </Td>
+                    </Tr>
+                  );
+                }
+              )}
           </TBody>
         </Table>
         {!isPending && data && totalCount > 0 && (

@@ -58,9 +58,9 @@ export function scanDirectory(inputPath: string, outputPath: string, configPath?
   });
 }
 
-export function scanFile(inputPath: string): Promise<void> {
+export function scanFile(inputPath: string, configPath?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = `infisical scan --exit-code=77 --source "${inputPath}" --no-git`;
+    const command = `infisical scan --exit-code=77 --source "${inputPath}" --no-git ${configPath ? `-c ${configPath}` : ""}`;
     exec(command, (error) => {
       if (error && error.code === 77) {
         reject(error);
@@ -166,6 +166,20 @@ export const parseScanErrorMessage = (err: unknown): string => {
     : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
 };
 
+const generateSecretValuePolicyConfiguration = (entropy: number): string => `
+# Extend default configuration to preserve existing rules
+[extend]
+useDefault = true
+
+# Add custom high-entropy rule
+[[rules]]
+id = "high-entropy"
+description = "Will scan for high entropy secrets"
+regex = '''.*'''
+entropy = ${entropy}
+keywords = []
+`;
+
 export const scanSecretPolicyViolations = async (
   projectId: string,
   secretPath: string,
@@ -188,14 +202,25 @@ export const scanSecretPolicyViolations = async (
 
   const tempFolder = await createTempFolder();
   try {
+    const configPath = join(tempFolder, "infisical-scan.toml");
+
+    const secretPolicyConfiguration = generateSecretValuePolicyConfiguration(
+      appCfg.PARAMS_FOLDER_SECRET_DETECTION_ENTROPY
+    );
+
+    await writeTextToFile(configPath, secretPolicyConfiguration);
+
     const scanPromises = secrets
       .filter((secret) => !ignoreValues.includes(secret.secretValue))
       .map(async (secret) => {
-        const secretFilePath = join(tempFolder, `${crypto.nativeCrypto.randomUUID()}.txt`);
-        await writeTextToFile(secretFilePath, `${secret.secretKey}=${secret.secretValue}`);
+        const secretKeyValueFilePath = join(tempFolder, `${crypto.nativeCrypto.randomUUID()}.txt`);
+        const secretValueOnlyFilePath = join(tempFolder, `${crypto.nativeCrypto.randomUUID()}.txt`);
+        await writeTextToFile(secretKeyValueFilePath, `${secret.secretKey}=${secret.secretValue}`);
+        await writeTextToFile(secretValueOnlyFilePath, secret.secretValue);
 
         try {
-          await scanFile(secretFilePath);
+          await scanFile(secretKeyValueFilePath);
+          await scanFile(secretValueOnlyFilePath, configPath);
         } catch (error) {
           throw new BadRequestError({
             message: `Secret value detected in ${secret.secretKey}. Please add this instead to the designated secrets path in the project.`,
