@@ -29,11 +29,8 @@ export const SecretOverviewFolderRow = ({
     if (isClicking) return;
 
     setIsClicking(true);
-    try {
-      onClick(folderName);
-    } finally {
-      setTimeout(() => setIsClicking(false), 1000);
-    }
+    onClick(folderName);
+    setTimeout(() => setIsClicking(false), 1000);
   };
   return (
     <Tr isHoverable isSelectable className="group" onClick={handleClick}>
