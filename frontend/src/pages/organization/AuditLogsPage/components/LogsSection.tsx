@@ -40,12 +40,20 @@ export const LogsSection = withPermission(
     });
     const [timezone, setTimezone] = useState<Timezone>(Timezone.Local);
 
-    const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>({
-      startDate: new Date(Number(new Date()) - ms("1h")),
-      endDate: new Date(),
-      type: AuditLogDateFilterType.Relative,
-      relativeModeValue: "1h"
-    });
+    const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>(
+      presets?.endDate || presets?.startDate
+        ? {
+            type: AuditLogDateFilterType.Absolute,
+            startDate: presets?.startDate || new Date(Number(new Date()) - ms("1h")),
+            endDate: presets?.endDate || new Date()
+          }
+        : {
+            startDate: new Date(Number(new Date()) - ms("1h")),
+            endDate: new Date(),
+            type: AuditLogDateFilterType.Relative,
+            relativeModeValue: "1h"
+          }
+    );
 
     useEffect(() => {
       if (subscription && !subscription.auditLogs) {
