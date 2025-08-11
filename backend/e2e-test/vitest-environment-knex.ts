@@ -61,6 +61,7 @@ export default {
 
       const smtp = mockSmtpServer();
       const queue = queueServiceFactory(envCfg, { dbConnectionUrl: envCfg.DB_CONNECTION_URI });
+      await queue.initialize();
       const keyStore = keyStoreFactory(envCfg);
 
       const hsmModule = initializeHsmModule(envCfg);
