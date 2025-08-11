@@ -538,6 +538,7 @@ describe("Secret Rotations", async () => {
     {
       type: SecretRotationType.OracleDb,
       name: "OracleDB (19.3) Secret Rotation",
+      skippable: true,
       dbCredentials: {
         password: process.env.E2E_TEST_ORACLE_DB_PASSWORD!,
         host: process.env.E2E_TEST_ORACLE_DB_HOST!,
@@ -628,6 +629,7 @@ describe("Secret Rotations", async () => {
       ]
     }
   ] as {
+    skippable?: boolean;
     type: SecretRotationType;
     name: string;
     dbCredentials: TGenericSqlCredentials;
@@ -660,47 +662,65 @@ describe("Secret Rotations", async () => {
     }
   });
 
-  test.concurrent.each(testCases)(
-    "Create secret rotation for $name",
-    async ({ dbCredentials, secretMapping, userCredentials, type }) => {
-      const appConnectionId = await createAppConnectionMap[type](dbCredentials);
-
-      if (appConnectionId) {
-        appConnectionIds.push({ id: appConnectionId, type });
-      }
-
-      const res = await createRotationMap[type](appConnectionId, dbCredentials, userCredentials, secretMapping);
-
-      const resJson = JSON.parse(res.payload);
-
-      if (resJson.secretRotation) {
-        secretRotationIds.push({ id: resJson.secretRotation.id, type });
-      }
-
-      const startSecretValue = await getSecretValue(secretMapping.password);
-      expect(startSecretValue).toBeDefined();
-
-      let attempts = 0;
-      while (attempts < 60) {
-        const currentSecretValue = await getSecretValue(secretMapping.password);
-
-        if (currentSecretValue !== startSecretValue) {
-          break;
+  testCases.forEach(({ skippable, dbCredentials, secretMapping, userCredentials, type, name }) => {
+    const shouldSkip = () => {
+      if (skippable) {
+        if (type === SecretRotationType.OracleDb) {
+          if (!process.env.E2E_TEST_ORACLE_DB_HOST) {
+            return true;
+          }
         }
-
-        attempts += 1;
-        await new Promise((resolve) => setTimeout(resolve, 2_500));
       }
 
-      if (attempts >= 60) {
-        throw new Error("Secret rotation failed to rotate after 60 attempts");
-      }
+      return false;
+    };
 
-      const finalSecretValue = await getSecretValue(secretMapping.password);
-      expect(finalSecretValue).not.toBe(startSecretValue);
-    },
-    {
-      timeout: 300_000
+    if (shouldSkip()) {
+      test.skip(`Skipping Secret Rotation for ${type} (${name}) because E2E_TEST_ORACLE_DB_HOST is not set`);
+    } else {
+      test.concurrent(
+        `Create secret rotation for ${name}`,
+        async () => {
+          const appConnectionId = await createAppConnectionMap[type](dbCredentials);
+
+          if (appConnectionId) {
+            appConnectionIds.push({ id: appConnectionId, type });
+          }
+
+          const res = await createRotationMap[type](appConnectionId, dbCredentials, userCredentials, secretMapping);
+
+          const resJson = JSON.parse(res.payload);
+
+          if (resJson.secretRotation) {
+            secretRotationIds.push({ id: resJson.secretRotation.id, type });
+          }
+
+          const startSecretValue = await getSecretValue(secretMapping.password);
+          expect(startSecretValue).toBeDefined();
+
+          let attempts = 0;
+          while (attempts < 60) {
+            const currentSecretValue = await getSecretValue(secretMapping.password);
+
+            if (currentSecretValue !== startSecretValue) {
+              break;
+            }
+
+            attempts += 1;
+            await new Promise((resolve) => setTimeout(resolve, 2_500));
+          }
+
+          if (attempts >= 60) {
+            throw new Error("Secret rotation failed to rotate after 60 attempts");
+          }
+
+          const finalSecretValue = await getSecretValue(secretMapping.password);
+          expect(finalSecretValue).not.toBe(startSecretValue);
+        },
+        {
+          timeout: 300_000
+        }
+      );
     }
-  );
+  });
 });

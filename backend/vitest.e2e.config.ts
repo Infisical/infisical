@@ -11,7 +11,7 @@ export default defineConfig({
       E2E_TEST_ORACLE_DB_PASSWORD: process.env.E2E_TEST_ORACLE_DB_PASSWORD!
     },
     environment: "./e2e-test/vitest-environment-knex.ts",
-    include: ["./e2e-test/**/secret-rotations.spec.ts"],
+    include: ["./e2e-test/**/*.spec.ts"],
     poolOptions: {
       threads: {
         singleThread: true,
