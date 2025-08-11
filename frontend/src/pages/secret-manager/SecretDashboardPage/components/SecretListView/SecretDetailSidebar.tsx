@@ -27,7 +27,10 @@ import { twMerge } from "tailwind-merge";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { hasSecretReference, SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
+import {
+  hasSecretReference,
+  SecretReferenceTree
+} from "@app/components/secrets/SecretReferenceDetails";
 import {
   Button,
   Drawer,
@@ -49,8 +52,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission, useWorkspace } from "@app/context";
-
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useWorkspace
+} from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
