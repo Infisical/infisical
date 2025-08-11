@@ -1,5 +1,6 @@
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
@@ -41,51 +42,45 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   serviceTokenService,
   orgService
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
-  queueService.start(QueueName.DailyResourceCleanUp, async () => {
-    logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
-    await identityAccessTokenDAL.removeExpiredTokens();
-    await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
-    await secretSharingDAL.pruneExpiredSharedSecrets();
-    await secretSharingDAL.pruneExpiredSecretRequests();
-    await snapshotDAL.pruneExcessSnapshots();
-    await secretVersionDAL.pruneExcessVersions();
-    await secretVersionV2DAL.pruneExcessVersions();
-    await secretFolderVersionDAL.pruneExcessVersions();
-    await serviceTokenService.notifyExpiringTokens();
-    await orgService.notifyInvitedUsers();
-    await auditLogDAL.pruneAuditLog();
-    logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
-  });
+  const appCfg = getConfig();
 
-  // we do a repeat cron job in utc timezone at 12 Midnight each day
-  const startCleanUp = async () => {
-    // TODO(akhilmhdh): remove later
-    await queueService.stopRepeatableJob(
-      QueueName.AuditLogPrune,
-      QueueJobs.AuditLogPrune,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.AuditLogPrune // just a job id
-    );
-    // clear previous job
-    await queueService.stopRepeatableJob(
-      QueueName.DailyResourceCleanUp,
+  if (appCfg.isDailyResourceCleanUpDevelopmentMode) {
+    logger.warn("Daily Resource Clean Up is in development mode.");
+  }
+
+  const init = async () => {
+    await queueService.startPg<QueueName.DailyResourceCleanUp>(
       QueueJobs.DailyResourceCleanUp,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.DailyResourceCleanUp // just a job id
+      async () => {
+        logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
+        await identityAccessTokenDAL.removeExpiredTokens();
+        await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
+        await secretSharingDAL.pruneExpiredSharedSecrets();
+        await secretSharingDAL.pruneExpiredSecretRequests();
+        await snapshotDAL.pruneExcessSnapshots();
+        await secretVersionDAL.pruneExcessVersions();
+        await secretVersionV2DAL.pruneExcessVersions();
+        await secretFolderVersionDAL.pruneExcessVersions();
+        await serviceTokenService.notifyExpiringTokens();
+        await orgService.notifyInvitedUsers();
+        await auditLogDAL.pruneAuditLog();
+        logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
+      },
+      {
+        batchSize: 1,
+        workerCount: 1,
+        pollingIntervalSeconds: 1
+      }
     );
-
-    await queueService.queue(QueueName.DailyResourceCleanUp, QueueJobs.DailyResourceCleanUp, undefined, {
-      delay: 5000,
-      jobId: QueueName.DailyResourceCleanUp,
-      repeat: { pattern: "0 0 * * *", utc: true }
-    });
+    await queueService.schedulePg(
+      QueueJobs.DailyResourceCleanUp,
+      appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+      undefined,
+      { tz: "UTC" }
+    );
   };
 
-  queueService.listen(QueueName.DailyResourceCleanUp, "failed", (_, err) => {
-    logger.error(err, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
-  });
-
   return {
-    startCleanUp
+    init
   };
 };

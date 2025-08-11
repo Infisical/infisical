@@ -1972,7 +1972,7 @@ export const registerRoutes = async (
 
   await telemetryQueue.startTelemetryCheck();
   await telemetryQueue.startAggregatedEventsJob();
-  await dailyResourceCleanUp.startCleanUp();
+  await dailyResourceCleanUp.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
