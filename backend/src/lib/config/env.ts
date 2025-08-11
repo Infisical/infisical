@@ -348,7 +348,9 @@ const envSchema = z
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS),
     isDevelopmentMode: data.NODE_ENV === "development",
-    isRotationDevelopmentMode: data.NODE_ENV === "development" && data.ROTATION_DEVELOPMENT_MODE,
+    isTestMode: data.NODE_ENV === "test",
+    isRotationDevelopmentMode:
+      (data.NODE_ENV === "development" && data.ROTATION_DEVELOPMENT_MODE) || data.NODE_ENV === "test",
     isDailyResourceCleanUpDevelopmentMode:
       data.NODE_ENV === "development" && data.DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
