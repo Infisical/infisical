@@ -2171,7 +2171,7 @@ export const CertificateAuthorities = {
 
 export const AppConnections = {
   LIST: (app?: AppConnection) => ({
-    projectId: `The ID of the project to list  ${app ? APP_CONNECTION_NAME_MAP[app] : "App"} Connections from.`
+    projectId: `The ID of the project to list ${app ? APP_CONNECTION_NAME_MAP[app] : "App"} Connections from.`
   }),
   GET_BY_ID: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
