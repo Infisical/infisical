@@ -36,8 +36,7 @@ export enum ProjectPermissionSecretActions {
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
-  Delete = "delete",
-  Subscribe = "subscribe"
+  Delete = "delete"
 }
 
 export enum ProjectPermissionCmekActions {
@@ -158,6 +157,12 @@ export enum ProjectPermissionSecretScanningConfigActions {
   Update = "update-configs"
 }
 
+export enum ProjectPermissionSecretEventActions {
+  SubscribeCreated = "subcribe-on-created",
+  SubscribeUpdated = "subscribe-on-updated",
+  SubscribeDeleted = "subscribe-on-deleted"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -197,7 +202,8 @@ export enum ProjectPermissionSub {
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
-  SecretScanningConfigs = "secret-scanning-configs"
+  SecretScanningConfigs = "secret-scanning-configs",
+  SecretEvents = "secret-events"
 }
 
 export type SecretSubjectFields = {
@@ -344,7 +350,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionCommitsActions, ProjectPermissionSub.Commits]
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
-  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
+  | [ProjectPermissionSecretEventActions, ProjectPermissionSub.SecretEvents];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
