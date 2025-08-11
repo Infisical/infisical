@@ -423,6 +423,7 @@ export const samlConfigServiceFactory = ({
         organizationSlug: organization.slug,
         authMethod: authProvider,
         hasExchangedPrivateKey: true,
+        aliasId: userAlias.id,
         authType: UserAliasType.SAML,
         isUserCompleted,
         ...(relayState

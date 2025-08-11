@@ -54,18 +54,22 @@ export const userServiceFactory = ({
   permissionService,
   userAliasDAL
 }: TUserServiceFactoryDep) => {
-  const sendEmailVerificationCode = async (username: string, referer: string) => {
+  const sendEmailVerificationCode = async (referer: string) => {
+    const url = new URL(referer);
+    const refererToken = url.searchParams.get("token");
+    if (!refererToken)
+      throw new BadRequestError({ name: "Failed to send email verification code due to no token on referer" });
+    const { authType, aliasId, username } = crypto.jwt().decode(refererToken) as {
+      authType: string;
+      aliasId: string;
+      username: string;
+    };
     // akhilmhdh: case sensitive email resolution
     const users = await userDAL.findUserByUsername(username);
     const user = users?.length > 1 ? users.find((el) => el.username === username) : users?.[0];
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     let { isEmailVerified } = user;
-    const url = new URL(referer);
-    const refererToken = url.searchParams.get("token");
-    if (!refererToken)
-      throw new BadRequestError({ name: "Failed to send email verification code due to no token on referer" });
-    const { authType } = crypto.jwt().decode(refererToken) as { authType: string };
-    const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType });
+    const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType, id: aliasId });
     if (userAlias) {
       isEmailVerified = userAlias.isEmailVerified;
     }

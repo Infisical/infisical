@@ -20,15 +20,12 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       headers: z.object({
         referer: z.string().trim()
       }),
-      body: z.object({
-        username: z.string().trim()
-      }),
       response: {
         200: z.object({})
       }
     },
     handler: async (req) => {
-      await server.services.user.sendEmailVerificationCode(req.body.username, req.headers.referer);
+      await server.services.user.sendEmailVerificationCode(req.headers.referer);
       return {};
     }
   });
