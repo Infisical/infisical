@@ -215,6 +215,7 @@ const envSchema = z
           return JSON.parse(val) as { secretPath: string; projectId: string }[];
         })
     ),
+    PARAMS_FOLDER_SECRET_DETECTION_ENTROPY: z.coerce.number().optional().default(4.5),
 
     // HSM
     HSM_LIB_PATH: zpStr(z.string().optional()),
