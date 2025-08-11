@@ -8,12 +8,15 @@ import { z } from "zod";
 import { Button, FormControl, ModalClose, Select, SelectItem } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   GitHubRadarConnectionMethod,
   TGitHubRadarConnection,
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
+import { GithubRadarFormData } from "@app/pages/organization/AppConnections/OauthCallbackPage/OauthCallbackPage";
 
 import {
   genericAppConnectionFieldsSchema,
@@ -22,6 +25,8 @@ import {
 
 type Props = {
   appConnection?: TGitHubRadarConnection;
+  projectId: string | undefined | null;
+  projectType: ProjectType | undefined | null;
 };
 
 const formSchema = genericAppConnectionFieldsSchema.extend({
@@ -31,7 +36,7 @@ const formSchema = genericAppConnectionFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const GitHubRadarConnectionForm = ({ appConnection }: Props) => {
+export const GitHubRadarConnectionForm = ({ appConnection, projectId, projectType }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -63,7 +68,13 @@ export const GitHubRadarConnectionForm = ({ appConnection }: Props) => {
     localStorage.setItem("latestCSRFToken", state);
     localStorage.setItem(
       "githubRadarConnectionFormData",
-      JSON.stringify({ ...formData, connectionId: appConnection?.id })
+      JSON.stringify({
+        ...formData,
+        connectionId: appConnection?.id,
+        projectId,
+        returnUrl:
+          projectType && projectId ? `${getProjectBaseURL(projectType)}/app-connections` : undefined
+      } as GithubRadarFormData)
     );
 
     switch (formData.method) {

@@ -27,6 +27,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import {
   GitHubConnectionMethod,
@@ -34,6 +35,8 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
+import { GithubFormData } from "@app/pages/organization/AppConnections/OauthCallbackPage/OauthCallbackPage";
 
 import {
   genericAppConnectionFieldsSchema,
@@ -42,6 +45,8 @@ import {
 
 type Props = {
   appConnection?: TGitHubConnection;
+  projectId: string | undefined | null;
+  projectType: ProjectType | undefined | null;
 };
 
 const formSchema = genericAppConnectionFieldsSchema.extend({
@@ -63,7 +68,7 @@ const formSchema = genericAppConnectionFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const GitHubConnectionForm = ({ appConnection }: Props) => {
+export const GitHubConnectionForm = ({ appConnection, projectId, projectType }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -104,7 +109,14 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
     localStorage.setItem("latestCSRFToken", state);
     localStorage.setItem(
       "githubConnectionFormData",
-      JSON.stringify({ ...formData, connectionId: appConnection?.id })
+      JSON.stringify({
+        ...formData,
+        credentials: formData.credentials as TGitHubConnection["credentials"],
+        connectionId: appConnection?.id,
+        projectId,
+        returnUrl:
+          projectType && projectId ? `${getProjectBaseURL(projectType)}/app-connections` : undefined
+      } as GithubFormData)
     );
 
     const githubHost =

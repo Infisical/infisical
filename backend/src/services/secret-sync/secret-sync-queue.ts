@@ -446,13 +446,14 @@ export const secretSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials, projectId }
       } = secretSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId
       });
 
       const secretSyncWithCredentials = {
@@ -589,13 +590,14 @@ export const secretSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials, projectId }
       } = secretSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId
       });
 
       await $importSecrets(
@@ -713,13 +715,14 @@ export const secretSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials, projectId }
       } = secretSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId
       });
 
       const secretMap = await $getInfisicalSecrets(secretSync);

@@ -16,6 +16,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
+import { AppConnectionPermissionConditions } from "./AppConnectionPermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
@@ -70,6 +71,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.SecretSyncs) {
       return <SecretSyncPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.AppConnections) {
+      return <AppConnectionPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

@@ -8,4 +8,5 @@ export type TRootAppConnection = {
   updatedAt: string;
   isPlatformManagedCredentials?: boolean;
   gatewayId?: string | null;
+  projectId?: string | null;
 };

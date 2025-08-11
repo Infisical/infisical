@@ -6,6 +6,7 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 import { DiscriminativePick } from "@app/types";
 
 import { AppConnectionHeader } from "../AppConnectionHeader";
@@ -49,14 +50,18 @@ import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
+  projectType?: ProjectType;
 } & ({ appConnection: TAppConnection } | { app: AppConnection });
 
-type CreateFormProps = FormProps & { app: AppConnection };
+type CreateFormProps = FormProps & {
+  app: AppConnection;
+  projectId?: string;
+};
 type UpdateFormProps = FormProps & {
   appConnection: TAppConnection;
 };
 
-const CreateForm = ({ app, onComplete }: CreateFormProps) => {
+const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps) => {
   const createAppConnection = useCreateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[app];
 
@@ -67,7 +72,10 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
     >
   ) => {
     try {
-      const connection = await createAppConnection.mutateAsync(formData);
+      const connection = await createAppConnection.mutateAsync({
+        ...formData,
+        projectId: projectId!
+      });
       createNotification({
         text: `Successfully added ${appName} Connection`,
         type: "success"
@@ -87,15 +95,27 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
     case AppConnection.AWS:
       return <AwsConnectionForm onSubmit={onSubmit} />;
     case AppConnection.GitHub:
-      return <GitHubConnectionForm />;
+      return <GitHubConnectionForm projectId={projectId} projectType={projectType} />;
     case AppConnection.GitHubRadar:
-      return <GitHubRadarConnectionForm />;
+      return <GitHubRadarConnectionForm projectId={projectId} projectType={projectType} />;
     case AppConnection.GCP:
       return <GcpConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureKeyVault:
-      return <AzureKeyVaultConnectionForm onSubmit={onSubmit} />;
+      return (
+        <AzureKeyVaultConnectionForm
+          onSubmit={onSubmit}
+          projectId={projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.AzureAppConfiguration:
-      return <AzureAppConfigurationConnectionForm onSubmit={onSubmit} />;
+      return (
+        <AzureAppConfigurationConnectionForm
+          onSubmit={onSubmit}
+          projectId={projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.Databricks:
       return <DatabricksConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Humanitec:
@@ -115,9 +135,21 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureClientSecrets:
-      return <AzureClientSecretsConnectionForm onSubmit={onSubmit} />;
+      return (
+        <AzureClientSecretsConnectionForm
+          onSubmit={onSubmit}
+          projectId={projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.AzureDevOps:
-      return <AzureDevOpsConnectionForm onSubmit={onSubmit} />;
+      return (
+        <AzureDevOpsConnectionForm
+          onSubmit={onSubmit}
+          projectId={projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.Windmill:
       return <WindmillConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Auth0:
@@ -139,7 +171,9 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} />;
     case AppConnection.GitLab:
-      return <GitLabConnectionForm onSubmit={onSubmit} />;
+      return (
+        <GitLabConnectionForm onSubmit={onSubmit} projectId={projectId} projectType={projectType} />
+      );
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Bitbucket:
@@ -163,7 +197,7 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
   }
 };
 
-const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
+const UpdateForm = ({ appConnection, onComplete, projectType }: UpdateFormProps) => {
   const updateAppConnection = useUpdateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
@@ -197,16 +231,40 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
     case AppConnection.AWS:
       return <AwsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.GitHub:
-      return <GitHubConnectionForm appConnection={appConnection} />;
+      return (
+        <GitHubConnectionForm
+          appConnection={appConnection}
+          projectId={appConnection.projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.GitHubRadar:
-      return <GitHubRadarConnectionForm appConnection={appConnection} />;
+      return (
+        <GitHubRadarConnectionForm
+          appConnection={appConnection}
+          projectId={appConnection.projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.GCP:
       return <GcpConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.AzureKeyVault:
-      return <AzureKeyVaultConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+      return (
+        <AzureKeyVaultConnectionForm
+          appConnection={appConnection}
+          onSubmit={onSubmit}
+          projectId={appConnection.projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.AzureAppConfiguration:
       return (
-        <AzureAppConfigurationConnectionForm appConnection={appConnection} onSubmit={onSubmit} />
+        <AzureAppConfigurationConnectionForm
+          appConnection={appConnection}
+          onSubmit={onSubmit}
+          projectId={appConnection.projectId}
+          projectType={projectType}
+        />
       );
     case AppConnection.Databricks:
       return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
@@ -227,9 +285,23 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
     case AppConnection.Camunda:
       return <CamundaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.AzureClientSecrets:
-      return <AzureClientSecretsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+      return (
+        <AzureClientSecretsConnectionForm
+          appConnection={appConnection}
+          onSubmit={onSubmit}
+          projectId={appConnection.projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.AzureDevOps:
-      return <AzureDevOpsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+      return (
+        <AzureDevOpsConnectionForm
+          appConnection={appConnection}
+          onSubmit={onSubmit}
+          projectId={appConnection.projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.Windmill:
       return <WindmillConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Auth0:
@@ -251,7 +323,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.GitLab:
-      return <GitLabConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      return (
+        <GitLabConnectionForm
+          onSubmit={onSubmit}
+          appConnection={appConnection}
+          projectId={appConnection.projectId}
+          projectType={projectType}
+        />
+      );
     case AppConnection.Cloudflare:
       return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Bitbucket:
@@ -273,12 +352,15 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
   }
 };
 
-type Props = { onBack?: () => void } & Pick<FormProps, "onComplete"> &
+type Props = { onBack?: () => void; projectId?: string; projectType?: ProjectType } & Pick<
+  FormProps,
+  "onComplete"
+> &
   (
     | { app: AppConnection; appConnection?: undefined }
     | { app?: undefined; appConnection: TAppConnection }
   );
-export const AppConnectionForm = ({ onBack, ...props }: Props) => {
+export const AppConnectionForm = ({ onBack, projectId, projectType, ...props }: Props) => {
   const { app, appConnection } = props;
 
   return (
@@ -289,9 +371,9 @@ export const AppConnectionForm = ({ onBack, ...props }: Props) => {
         onBack={onBack}
       />
       {appConnection ? (
-        <UpdateForm {...props} appConnection={appConnection} />
+        <UpdateForm {...props} appConnection={appConnection} projectType={projectType} />
       ) : (
-        <CreateForm {...props} app={app} />
+        <CreateForm {...props} app={app} projectId={projectId} projectType={projectType} />
       )}
     </div>
   );

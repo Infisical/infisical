@@ -1,6 +1,7 @@
 import { Modal, ModalContent } from "@app/components/v2";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAppConnection } from "@app/hooks/api/appConnections";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AppConnectionForm } from "./AppConnectionForm";
 
@@ -8,12 +9,14 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   appConnection?: TAppConnection;
+  projectType?: ProjectType;
 };
 
 export const EditAppConnectionCredentialsModal = ({
   isOpen,
   onOpenChange,
-  appConnection
+  appConnection,
+  projectType
 }: Props) => {
   if (!appConnection) return null;
 
@@ -26,7 +29,11 @@ export const EditAppConnectionCredentialsModal = ({
           appConnection ? APP_CONNECTION_MAP[appConnection.app].name : "App"
         } Connection.`}
       >
-        <AppConnectionForm onComplete={() => onOpenChange(false)} appConnection={appConnection} />
+        <AppConnectionForm
+          onComplete={() => onOpenChange(false)}
+          appConnection={appConnection}
+          projectType={projectType}
+        />
       </ModalContent>
     </Modal>
   );

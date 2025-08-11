@@ -16,9 +16,17 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Menu, MenuGroup, MenuItem, Tooltip } from "@app/components/v2";
-import { useOrganization, useSubscription, useUser } from "@app/context";
+import {
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useSubscription,
+  useUser
+} from "@app/context";
+import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useGetOrgTrialUrl } from "@app/hooks/api";
+import { useListAppConnections } from "@app/hooks/api/appConnections";
 
 type Props = {
   isHidden?: boolean;
@@ -33,6 +41,17 @@ export const OrgSidebar = ({ isHidden }: Props) => {
   const { currentOrg } = useOrganization();
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
+
+  const { permission } = useOrgPermission();
+
+  const canReadAppConnections = permission.can(
+    OrgPermissionAppConnectionActions.Read,
+    OrgPermissionSubjects.AppConnections
+  );
+
+  const { data: appConnections = [] } = useListAppConnections(undefined, {
+    enabled: canReadAppConnections
+  });
 
   return (
     <>
@@ -112,18 +131,20 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   </Link>
                 </MenuGroup>
                 <MenuGroup title="Resources">
-                  <Link to="/organization/app-connections">
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
-                        <div className="mx-1 flex gap-2">
-                          <div className="w-6">
-                            <FontAwesomeIcon icon={faPlug} className="mr-4" />
+                  {appConnections.length > 0 && (
+                    <Link to="/organization/app-connections">
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faPlug} className="mr-4" />
+                            </div>
+                            App Connections
                           </div>
-                          App Connections
-                        </div>
-                      </MenuItem>
-                    )}
-                  </Link>
+                        </MenuItem>
+                      )}
+                    </Link>
+                  )}
                   <Link to="/organization/gateways">
                     {({ isActive }) => (
                       <MenuItem isSelected={isActive}>

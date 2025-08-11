@@ -9,12 +9,15 @@ import { z } from "zod";
 import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { getProjectBaseURL } from "@app/helpers/project";
 import {
   AzureDevOpsConnectionMethod,
   TAzureDevOpsConnection,
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
+import { AzureDevOpsFormData } from "@app/pages/organization/AppConnections/OauthCallbackPage/OauthCallbackPage";
 
 import {
   genericAppConnectionFieldsSchema,
@@ -65,6 +68,8 @@ type OnSubmitForm = z.infer<typeof accessTokenSchema> | z.infer<typeof clientSec
 type Props = {
   appConnection?: TAzureDevOpsConnection;
   onSubmit: (formData: OnSubmitForm) => Promise<void>;
+  projectId: string | undefined | null;
+  projectType: ProjectType | undefined | null;
 };
 
 const getDefaultValues = (appConnection?: TAzureDevOpsConnection): Partial<FormData> => {
@@ -132,7 +137,12 @@ const getDefaultValues = (appConnection?: TAzureDevOpsConnection): Partial<FormD
   return base;
 };
 
-export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) => {
+export const AzureDevOpsConnectionForm = ({
+  appConnection,
+  onSubmit,
+  projectId,
+  projectType
+}: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -164,7 +174,16 @@ export const AzureDevOpsConnectionForm = ({ appConnection, onSubmit }: Props) =>
         localStorage.setItem("latestCSRFToken", state);
         localStorage.setItem(
           "azureDevOpsConnectionFormData",
-          JSON.stringify({ ...formData, connectionId: appConnection?.id })
+          JSON.stringify({
+            ...formData,
+            connectionId: appConnection?.id,
+
+            projectId,
+            returnUrl:
+              projectType && projectId
+                ? `${getProjectBaseURL(projectType)}/app-connections`
+                : undefined
+          } as AzureDevOpsFormData)
         );
 
         window.location.assign(

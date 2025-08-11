@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { subject } from "@casl/ability";
 import {
   faAsterisk,
   faCheck,
@@ -7,13 +8,14 @@ import {
   faEllipsisV,
   faInfoCircle,
   faServer,
-  faTrash
+  faTrash,
+  faUpload
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   DropdownMenu,
@@ -25,9 +27,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSubjects, ProjectPermissionSub, useOrgPermission } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 
@@ -36,17 +40,40 @@ type Props = {
   onDelete: (appConnection: TAppConnection) => void;
   onEditCredentials: (appConnection: TAppConnection) => void;
   onEditDetails: (appConnection: TAppConnection) => void;
+  onMigrate: (appConnection: TAppConnection) => void;
+  isProjectView: boolean;
+};
+
+interface PermissionCanProps {
+  isProjectView: boolean;
+  I: any;
+  a: any;
+  children: (isAllowed: boolean, ability?: any) => React.ReactNode;
+}
+
+const PermissionCan = ({ isProjectView, children, ...props }: PermissionCanProps) => {
+  if (isProjectView) {
+    return <ProjectPermissionCan {...props}>{children}</ProjectPermissionCan>;
+  }
+
+  return <OrgPermissionCan {...props}>{children}</OrgPermissionCan>;
 };
 
 export const AppConnectionRow = ({
   appConnection,
   onDelete,
   onEditCredentials,
-  onEditDetails
+  onEditDetails,
+  onMigrate,
+  isProjectView
 }: Props) => {
   const { id, name, method, app, description, isPlatformManagedCredentials } = appConnection;
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const { membership } = useOrgPermission();
+
+  const isOrgAdmin = membership?.role === OrgMembershipRole.Admin;
 
   const handleCopyId = useCallback(() => {
     setIsIdCopied.on();
@@ -143,9 +170,22 @@ export const AppConnectionRow = ({
                 >
                   Copy Connection ID
                 </DropdownMenuItem>
-                <OrgPermissionCan
-                  I={OrgPermissionAppConnectionActions.Edit}
-                  a={OrgPermissionSubjects.AppConnections}
+                <PermissionCan
+                  isProjectView={isProjectView}
+                  I={
+                    isProjectView
+                      ? ProjectPermissionAppConnectionActions.Edit
+                      : OrgPermissionAppConnectionActions.Edit
+                  }
+                  a={
+                    isProjectView
+                      ? subject(ProjectPermissionSub.AppConnections, {
+                          connectionId: id
+                        })
+                      : subject(OrgPermissionSubjects.AppConnections, {
+                          connectionId: id
+                        })
+                  }
                 >
                   {(isAllowed: boolean) => (
                     <DropdownMenuItem
@@ -156,10 +196,23 @@ export const AppConnectionRow = ({
                       Edit Details
                     </DropdownMenuItem>
                   )}
-                </OrgPermissionCan>
-                <OrgPermissionCan
-                  I={OrgPermissionAppConnectionActions.Edit}
-                  a={OrgPermissionSubjects.AppConnections}
+                </PermissionCan>
+                <PermissionCan
+                  isProjectView={isProjectView}
+                  I={
+                    isProjectView
+                      ? ProjectPermissionAppConnectionActions.Edit
+                      : OrgPermissionAppConnectionActions.Edit
+                  }
+                  a={
+                    isProjectView
+                      ? subject(ProjectPermissionSub.AppConnections, {
+                          connectionId: id
+                        })
+                      : subject(OrgPermissionSubjects.AppConnections, {
+                          connectionId: id
+                        })
+                  }
                 >
                   {(isAllowed: boolean) => (
                     <DropdownMenuItem
@@ -170,10 +223,43 @@ export const AppConnectionRow = ({
                       {isPlatformManagedCredentials ? "View" : "Edit"} Credentials
                     </DropdownMenuItem>
                   )}
-                </OrgPermissionCan>
-                <OrgPermissionCan
-                  I={OrgPermissionAppConnectionActions.Delete}
-                  a={OrgPermissionSubjects.AppConnections}
+                </PermissionCan>
+                {!isProjectView && isOrgAdmin && (
+                  <OrgPermissionCan
+                    I={OrgPermissionAppConnectionActions.Delete}
+                    a={
+                      subject(OrgPermissionSubjects.AppConnections, {
+                        connectionId: id
+                      }) as unknown as OrgPermissionSubjects.AppConnections
+                    }
+                  >
+                    {(isAllowed) => (
+                      <DropdownMenuItem
+                        isDisabled={!isAllowed}
+                        icon={<FontAwesomeIcon icon={faUpload} />}
+                        onClick={() => onMigrate(appConnection)}
+                      >
+                        Migrate to Projects
+                      </DropdownMenuItem>
+                    )}
+                  </OrgPermissionCan>
+                )}
+                <PermissionCan
+                  isProjectView={isProjectView}
+                  I={
+                    isProjectView
+                      ? ProjectPermissionAppConnectionActions.Delete
+                      : OrgPermissionAppConnectionActions.Delete
+                  }
+                  a={
+                    isProjectView
+                      ? subject(ProjectPermissionSub.AppConnections, {
+                          connectionId: id
+                        })
+                      : subject(OrgPermissionSubjects.AppConnections, {
+                          connectionId: id
+                        })
+                  }
                 >
                   {(isAllowed: boolean) => (
                     <DropdownMenuItem
@@ -184,7 +270,7 @@ export const AppConnectionRow = ({
                       Delete Connection
                     </DropdownMenuItem>
                   )}
-                </OrgPermissionCan>
+                </PermissionCan>
               </DropdownMenuContent>
             </DropdownMenu>
           </Tooltip>

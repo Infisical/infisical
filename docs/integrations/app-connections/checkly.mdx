@@ -37,7 +37,7 @@ Infisical supports the use of [API Keys](https://app.checklyhq.com/settings/user
   <Tab title="Infisical UI">
     <Steps>
       <Step title="Navigate to App Connections">
-        In your Infisical dashboard, go to **Organization Settings** and open the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+        In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
 
         ![App Connections Tab](/images/app-connections/general/add-connection.png)
       </Step>
@@ -55,7 +55,7 @@ Infisical supports the use of [API Keys](https://app.checklyhq.com/settings/user
         ![Checkly Connection Modal](/images/app-connections/checkly/checkly-app-connection-form.png)
       </Step>
       <Step title="Connection created">
-        After submitting the form, your **Checkly Connection** will be successfully created and ready to use with your Infisical projects.
+        After submitting the form, your **Checkly Connection** will be successfully created and ready to use with your Infisical project.
 
         ![Checkly Connection Created](/images/app-connections/checkly/checkly-app-connection-generated.png)
       </Step>
@@ -75,6 +75,7 @@ Infisical supports the use of [API Keys](https://app.checklyhq.com/settings/user
             --data '{
                 "name": "my-checkly-connection",
                 "method": "api-key",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                 "credentials": {
                     "apiKey": "[API KEY]"
                 }
@@ -88,6 +89,7 @@ Infisical supports the use of [API Keys](https://app.checklyhq.com/settings/user
       "appConnection": {
           "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
           "name": "my-checkly-connection",
+          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
           "description": null,
           "version": 1,
           "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",

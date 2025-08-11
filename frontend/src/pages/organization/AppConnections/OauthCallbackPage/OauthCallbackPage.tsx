@@ -25,28 +25,30 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 type BaseFormData = {
-  returnUrl?: string;
+  returnUrl: string;
   connectionId?: string;
   isUpdate?: boolean;
+  projectId: string;
 };
 
-type GithubFormData = BaseFormData &
+export type GithubFormData = BaseFormData &
   Pick<TGitHubConnection, "name" | "method" | "description" | "gatewayId" | "credentials">;
 
-type GithubRadarFormData = BaseFormData &
+export type GithubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
 
-type GitLabFormData = BaseFormData & Pick<TGitLabConnection, "name" | "method" | "description">;
+export type GitLabFormData = BaseFormData &
+  Pick<TGitLabConnection, "name" | "method" | "description">;
 
-type AzureKeyVaultFormData = BaseFormData &
+export type AzureKeyVaultFormData = BaseFormData &
   Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
   Pick<TAzureKeyVaultConnection["credentials"], "tenantId">;
 
-type AzureAppConfigurationFormData = BaseFormData &
+export type AzureAppConfigurationFormData = BaseFormData &
   Pick<TAzureAppConfigurationConnection, "name" | "method" | "description"> &
   Pick<TAzureAppConfigurationConnection["credentials"], "tenantId">;
 
-type AzureClientSecretsFormData = BaseFormData &
+export type AzureClientSecretsFormData = BaseFormData &
   Pick<TAzureClientSecretsConnection, "name" | "method" | "description"> &
   Pick<TAzureClientSecretsConnection["credentials"], "tenantId">;
 
@@ -59,7 +61,7 @@ type AccessTokenCredentials = Extract<
   { method: AzureDevOpsConnectionMethod.AccessToken }
 >["credentials"];
 
-type AzureDevOpsFormData = BaseFormData &
+export type AzureDevOpsFormData = BaseFormData &
   Pick<TAzureDevOpsConnection, "name" | "method" | "description"> &
   (Pick<OAuthCredentials, "tenantId" | "orgName"> | Pick<AccessTokenCredentials, "orgName">);
 
@@ -147,7 +149,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitLab);
 
-    const { connectionId, name, description, returnUrl, isUpdate } = formData;
+    const { connectionId, name, description, returnUrl, isUpdate, projectId } = formData;
 
     try {
       if (isUpdate && connectionId) {
@@ -163,6 +165,7 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.GitLab,
           name,
           description,
+          projectId,
           method: GitLabConnectionMethod.OAuth,
           credentials: {
             code: code as string
@@ -170,14 +173,11 @@ export const OAuthCallbackPage = () => {
         });
       }
 
-      navigate({
-        to: returnUrl ?? "/organization/app-connections"
-      });
-
       return {
         connectionId,
         returnUrl,
-        appConnectionName: formData.app
+        appConnectionName: formData.app,
+        projectId
       };
     } catch (err: any) {
       createNotification({
@@ -186,7 +186,10 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections"
+        to: returnUrl ?? "/organization/app-connections",
+        params: {
+          projectId
+        }
       });
       return null;
     }
@@ -198,7 +201,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.AzureKeyVault);
 
-    const { connectionId, name, description, returnUrl } = formData;
+    const { connectionId, name, description, returnUrl, projectId } = formData;
 
     try {
       if (connectionId) {
@@ -215,6 +218,7 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.AzureKeyVault,
           name,
           description,
+          projectId,
           method: AzureKeyVaultConnectionMethod.OAuth,
           credentials: {
             tenantId: formData.tenantId,
@@ -229,14 +233,19 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections"
+        to: returnUrl ?? "/organization/app-connections",
+        params: {
+          projectId
+        }
       });
+      return null;
     }
 
     return {
       connectionId,
       returnUrl,
-      appConnectionName: formData.app
+      appConnectionName: formData.app,
+      projectId
     };
   }, []);
 
@@ -246,7 +255,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.AzureAppConfiguration);
 
-    const { connectionId, name, description, returnUrl } = formData;
+    const { connectionId, name, description, returnUrl, projectId } = formData;
 
     try {
       if (connectionId) {
@@ -263,6 +272,7 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.AzureAppConfiguration,
           name,
           description,
+          projectId,
           method: AzureAppConfigurationConnectionMethod.OAuth,
           credentials: {
             code: code as string,
@@ -277,14 +287,19 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections"
+        to: returnUrl ?? "/organization/app-connections",
+        params: {
+          projectId
+        }
       });
+      return null;
     }
 
     return {
       connectionId,
       returnUrl,
-      appConnectionName: formData.app
+      appConnectionName: formData.app,
+      projectId
     };
   }, []);
 
@@ -294,7 +309,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.AzureClientSecrets);
 
-    const { connectionId, name, description, returnUrl } = formData;
+    const { connectionId, name, description, returnUrl, projectId } = formData;
 
     try {
       if (connectionId) {
@@ -312,6 +327,7 @@ export const OAuthCallbackPage = () => {
           name,
           description,
           method: AzureClientSecretsConnectionMethod.OAuth,
+          projectId,
           credentials: {
             code: code as string,
             tenantId: formData.tenantId
@@ -325,14 +341,19 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections"
+        to: returnUrl ?? "/organization/app-connections",
+        params: {
+          projectId
+        }
       });
+      return null;
     }
 
     return {
       connectionId,
       returnUrl,
-      appConnectionName: formData.app
+      appConnectionName: formData.app,
+      projectId
     };
   }, []);
 
@@ -342,7 +363,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.AzureDevOps);
 
-    const { connectionId, name, description, returnUrl } = formData;
+    const { connectionId, name, description, returnUrl, projectId } = formData;
 
     try {
       if (!("tenantId" in formData)) {
@@ -365,6 +386,7 @@ export const OAuthCallbackPage = () => {
           name,
           description,
           method: AzureDevOpsConnectionMethod.OAuth,
+          projectId,
           credentials: {
             code: code as string,
             tenantId: formData.tenantId as string,
@@ -379,14 +401,19 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections"
+        to: returnUrl ?? "/organization/app-connections",
+        params: {
+          projectId
+        }
       });
+      return null;
     }
 
     return {
       connectionId,
       returnUrl,
-      appConnectionName: formData.app
+      appConnectionName: formData.app,
+      projectId
     };
   }, []);
 
@@ -396,7 +423,8 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitHub);
 
-    const { connectionId, name, description, returnUrl, gatewayId, credentials } = formData;
+    const { connectionId, name, description, returnUrl, gatewayId, credentials, projectId } =
+      formData;
 
     try {
       if (connectionId) {
@@ -428,6 +456,7 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.GitHub,
           name,
           description,
+          projectId,
           ...(installationId
             ? {
                 method: GitHubConnectionMethod.App,
@@ -457,14 +486,19 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections"
+        to: returnUrl ?? "/organization/app-connections",
+        params: {
+          projectId
+        }
       });
+      return null;
     }
 
     return {
       connectionId,
       returnUrl,
-      appConnectionName: formData.app
+      appConnectionName: formData.app,
+      projectId
     };
   }, []);
 
@@ -474,7 +508,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitHubRadar);
 
-    const { connectionId, name, description, returnUrl } = formData;
+    const { connectionId, name, description, returnUrl, projectId } = formData;
 
     try {
       if (connectionId) {
@@ -492,6 +526,7 @@ export const OAuthCallbackPage = () => {
           name,
           description,
           method: GitHubConnectionMethod.App,
+          projectId,
           credentials: {
             code: code as string,
             installationId: installationId as string
@@ -505,14 +540,19 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections"
+        to: returnUrl ?? "/organization/app-connections",
+        params: {
+          projectId
+        }
       });
+      return null;
     }
 
     return {
       connectionId,
       returnUrl,
-      appConnectionName: formData.app
+      appConnectionName: formData.app,
+      projectId
     };
   }, []);
 
@@ -527,8 +567,12 @@ export const OAuthCallbackPage = () => {
     if (!isReady) return;
 
     (async () => {
-      let data: { connectionId?: string; returnUrl?: string; appConnectionName?: string } | null =
-        null;
+      let data: {
+        connectionId?: string;
+        returnUrl?: string;
+        appConnectionName?: string;
+        projectId?: string;
+      } | null = null;
 
       if (appConnection === AppConnection.GitHub) {
         data = await handleGithub();
@@ -551,16 +595,14 @@ export const OAuthCallbackPage = () => {
           text: `Successfully ${data.connectionId ? "updated" : "added"} ${data.appConnectionName ? APP_CONNECTION_MAP[data.appConnectionName as AppConnection].name : ""} Connection`,
           type: "success"
         });
-      } else {
-        createNotification({
-          text: "Failed to add connection",
-          type: "error"
+
+        await navigate({
+          to: data.returnUrl ?? "/organization/app-connections",
+          params: {
+            projectId: data.projectId
+          }
         });
       }
-
-      await navigate({
-        to: data?.returnUrl ?? "/organization/app-connections"
-      });
     })();
   }, [isReady]);
 

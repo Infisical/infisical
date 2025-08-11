@@ -2,16 +2,21 @@ import { useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faArrowUpRightFromSquare,
+  faBookOpen,
   faCheckCircle,
   faFilter,
   faMagnifyingGlass,
   faPlug,
+  faPlus,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,6 +34,8 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import {
   getUserTablePreference,
@@ -39,11 +46,14 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { TAppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
+import { AddAppConnectionModal } from "./AddAppConnectionModal";
 import { AppConnectionRow } from "./AppConnectionRow";
 import { DeleteAppConnectionModal } from "./DeleteAppConnectionModal";
 import { EditAppConnectionCredentialsModal } from "./EditAppConnectionCredentialsModal";
 import { EditAppConnectionDetailsModal } from "./EditAppConnectionDetailsModal";
+import { MigrateAppConnectionModal } from "./MigrateAppConnectionModal";
 
 enum AppConnectionsOrderBy {
   App = "app",
@@ -55,13 +65,21 @@ type AppConnectionFilters = {
   apps: AppConnection[];
 };
 
-export const AppConnectionsTable = () => {
-  const { isPending, data: appConnections = [] } = useListAppConnections();
+type Props = {
+  projectId?: string;
+  projectType?: ProjectType;
+};
+
+export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
+  const isProjectView = Boolean(projectId);
+  const { isPending, data: appConnections = [] } = useListAppConnections(projectId);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "addConnection",
     "deleteConnection",
     "editCredentials",
-    "editDetails"
+    "editDetails",
+    "migrateConnection"
   ] as const);
 
   const [filters, setFilters] = useState<AppConnectionFilters>({
@@ -164,8 +182,54 @@ export const AppConnectionsTable = () => {
   const handleEditDetails = (appConnection: TAppConnection) =>
     handlePopUpOpen("editDetails", appConnection);
 
+  const handleMigrate = (appConnection: TAppConnection) =>
+    handlePopUpOpen("migrateConnection", appConnection);
+
   return (
-    <div>
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-1">
+            <p className="text-xl font-semibold text-mineshaft-100">App Connections</p>
+            <a
+              href="https://infisical.com/docs/documentation/platform/secret-scanning/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <div className="ml-1 mt-[0.12rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                <span>Docs</span>
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="mb-[0.07rem] ml-1.5 text-[10px]"
+                />
+              </div>
+            </a>
+          </div>
+          <p className="text-sm text-bunker-300">
+            Create and configure connections with third-party apps for re-use across your project
+            {isProjectView ? "" : "s"}.
+          </p>
+        </div>
+        {isProjectView && (
+          <ProjectPermissionCan
+            I={ProjectPermissionAppConnectionActions.Create}
+            a={ProjectPermissionSub.AppConnections}
+          >
+            {(isAllowed) => (
+              <Button
+                colorSchema="secondary"
+                type="submit"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handlePopUpOpen("addConnection")}
+                isDisabled={!isAllowed}
+              >
+                Add Connection
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        )}
+      </div>
       <div className="flex gap-2">
         <Input
           value={search}
@@ -284,6 +348,8 @@ export const AppConnectionsTable = () => {
                 onDelete={handleDelete}
                 onEditCredentials={handleEditCredentials}
                 onEditDetails={handleEditDetails}
+                onMigrate={handleMigrate}
+                isProjectView={isProjectView}
               />
             ))}
           </TBody>
@@ -317,11 +383,23 @@ export const AppConnectionsTable = () => {
         isOpen={popUp.editCredentials.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editCredentials", isOpen)}
         appConnection={popUp.editCredentials.data}
+        projectType={projectType}
       />
       <EditAppConnectionDetailsModal
         isOpen={popUp.editDetails.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
         appConnection={popUp.editDetails.data}
+      />
+      <AddAppConnectionModal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addConnection", isOpen)}
+        projectId={projectId}
+        projectType={projectType}
+      />
+      <MigrateAppConnectionModal
+        isOpen={popUp.migrateConnection.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("migrateConnection", isOpen)}
+        appConnection={popUp.migrateConnection.data}
       />
     </div>
   );
