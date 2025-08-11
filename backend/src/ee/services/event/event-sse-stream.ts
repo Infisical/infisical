@@ -73,15 +73,12 @@ export function createEventStreamClient(redis: Redis, options: IEventStreamClien
     return {
       subject: options.type,
       action: "subscribe",
-      conditions: {
-        eventType: r.event,
-        ...(hasConditions
-          ? {
-              environment: r.conditions?.environmentSlug ?? "",
-              secretPath: { $glob: secretPath }
-            }
-          : {})
-      }
+      conditions: hasConditions
+        ? {
+            environment: r.conditions?.environmentSlug ?? "",
+            secretPath: { $glob: secretPath }
+          }
+        : undefined
     };
   });
 

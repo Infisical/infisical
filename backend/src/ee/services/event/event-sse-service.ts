@@ -7,7 +7,7 @@ import { logger } from "@app/lib/logger";
 
 import { TEventBusService } from "./event-bus-service";
 import { createEventStreamClient, EventStreamClient, IEventStreamClientOpts } from "./event-sse-stream";
-import { EventData, RegisteredEvent, toBusEventName } from "./types";
+import { EventData, NameMappings, RegisteredEvent } from "./types";
 
 const AUTH_REFRESH_INTERVAL = 60 * 1000;
 const HEART_BEAT_INTERVAL = 15 * 1000;
@@ -70,8 +70,8 @@ export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
   };
 
   function filterEventsForClient(client: EventStreamClient, event: EventData, registered: RegisteredEvent[]) {
-    const eventType = toBusEventName(event.data.eventType);
-    const match = registered.find((r) => r.event === eventType);
+    const eventType = NameMappings.EventTypeToBusEvent(event.data.eventType);
+    const match = registered.find((r) => NameMappings.ActionToBusEvent(r.action) === eventType);
     if (!match) return;
 
     const item = event.data.payload;

@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import { ProjectType } from "@app/db/schemas";
-import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ProjectPermissionSecretEventActions, ProjectPermissionSub } from "../permission/project-permission";
 
 export enum TopicName {
   CoreServers = "infisical::core-servers"
@@ -13,7 +14,7 @@ export enum BusEventName {
   DeleteSecret = "secret:delete"
 }
 
-type PublisableEventTypes =
+export type PublisableEventTypes =
   | EventType.CREATE_SECRET
   | EventType.CREATE_SECRETS
   | EventType.DELETE_SECRET
@@ -21,66 +22,55 @@ type PublisableEventTypes =
   | EventType.UPDATE_SECRETS
   | EventType.UPDATE_SECRET;
 
-export function toBusEventName(input: EventType) {
-  switch (input) {
-    case EventType.CREATE_SECRET:
-    case EventType.CREATE_SECRETS:
-      return BusEventName.CreateSecret;
-    case EventType.UPDATE_SECRET:
-    case EventType.UPDATE_SECRETS:
-      return BusEventName.UpdateSecret;
-    case EventType.DELETE_SECRET:
-    case EventType.DELETE_SECRETS:
-      return BusEventName.DeleteSecret;
-    default:
-      return null;
-  }
-}
-
-const isBulkEvent = (event: Event): event is Extract<Event, { metadata: { secrets: Array<unknown> } }> => {
-  return event.type.endsWith("-secrets"); // Feels so wrong
-};
-
-export const toPublishableEvent = (event: Event) => {
-  const name = toBusEventName(event.type);
-
-  if (!name) return null;
-
-  const e = event as Extract<Event, { type: PublisableEventTypes }>;
-
-  if (isBulkEvent(e)) {
-    return {
-      name,
-      isBulk: true,
-      data: {
-        eventType: e.type,
-        payload: e.metadata.secrets.map((s) => ({
-          environment: e.metadata.environment,
-          secretPath: e.metadata.secretPath,
-          ...s
-        }))
-      }
-    } as const;
-  }
-
-  return {
-    name,
-    isBulk: false,
-    data: {
-      eventType: e.type,
-      payload: {
-        ...e.metadata,
-        environment: e.metadata.environment
-      }
+export const NameMappings = {
+  ActionToBusEvent(input: ProjectPermissionSecretEventActions) {
+    switch (input) {
+      case ProjectPermissionSecretEventActions.SubscribeCreated:
+        return BusEventName.CreateSecret;
+      case ProjectPermissionSecretEventActions.SubscribeUpdated:
+        return BusEventName.UpdateSecret;
+      case ProjectPermissionSecretEventActions.SubscribeDeleted:
+        return BusEventName.DeleteSecret;
+      default:
+        return null;
     }
-  } as const;
+  },
+  EventTypeToBusEvent(input: EventType) {
+    switch (input) {
+      case EventType.CREATE_SECRET:
+      case EventType.CREATE_SECRETS:
+        return BusEventName.CreateSecret;
+      case EventType.UPDATE_SECRET:
+      case EventType.UPDATE_SECRETS:
+        return BusEventName.UpdateSecret;
+      case EventType.DELETE_SECRET:
+      case EventType.DELETE_SECRETS:
+        return BusEventName.DeleteSecret;
+      default:
+        return null;
+    }
+  }
 };
+
+export type SecretEventData =
+  | {
+      secretId: string;
+      secretKey: string;
+      secretPath: string;
+      environment: string;
+    }
+  | Array<{
+      secretId: string;
+      secretKey: string;
+      secretPath: string;
+      environment: string;
+    }>;
 
 export const EventName = z.nativeEnum(BusEventName);
 
 const EventSecretPayload = z.object({
-  secretPath: z.string().optional(),
   secretId: z.string(),
+  secretPath: z.string().optional(),
   secretKey: z.string(),
   environment: z.string()
 });
@@ -113,7 +103,8 @@ export const EventSchema = z.object({
 export type EventData = z.infer<typeof EventSchema>;
 
 export const EventRegisterSchema = z.object({
-  event: EventName,
+  subject: z.enum([ProjectPermissionSub.SecretEvents]),
+  action: z.nativeEnum(ProjectPermissionSecretEventActions),
   conditions: z
     .object({
       secretPath: z.string().optional().default("/"),

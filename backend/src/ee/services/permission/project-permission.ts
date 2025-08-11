@@ -158,7 +158,7 @@ export enum ProjectPermissionSecretScanningConfigActions {
 }
 
 export enum ProjectPermissionSecretEventActions {
-  SubscribeCreated = "subcribe-on-created",
+  SubscribeCreated = "subscribe-on-created",
   SubscribeUpdated = "subscribe-on-updated",
   SubscribeDeleted = "subscribe-on-deleted"
 }
@@ -211,7 +211,14 @@ export type SecretSubjectFields = {
   secretPath: string;
   secretName?: string;
   secretTags?: string[];
-  eventType?: string;
+};
+
+export type SecretEventSubjectFields = {
+  environment: string;
+  secretPath: string;
+  secretName?: string;
+  secretTags?: string[];
+  action: string;
 };
 
 export type SecretFolderSubjectFields = {
@@ -351,7 +358,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
   | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
-  | [ProjectPermissionSecretEventActions, ProjectPermissionSub.SecretEvents];
+  | [
+      ProjectPermissionSecretEventActions,
+      ProjectPermissionSub.SecretEvents | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+    ];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -884,7 +894,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
-
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretEvents).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretEventActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretSyncConditionV2Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
   ...GeneralPermissionSchema
 ]);
 
