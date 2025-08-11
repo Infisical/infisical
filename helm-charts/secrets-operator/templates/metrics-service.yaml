@@ -8,7 +8,6 @@ metadata:
 spec:
   type: {{ .Values.metricsService.type }}
   selector:
-    app.kubernetes.io/name: k8-operator
     control-plane: controller-manager
   {{- include "secrets-operator.selectorLabels" . | nindent 4 }}
   ports:

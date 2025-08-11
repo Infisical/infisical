@@ -9,13 +9,11 @@ spec:
   replicas: {{ .Values.controllerManager.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: k8-operator
       control-plane: controller-manager
     {{- include "secrets-operator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: k8-operator
         control-plane: controller-manager
       {{- include "secrets-operator.selectorLabels" . | nindent 8 }}
       annotations:
