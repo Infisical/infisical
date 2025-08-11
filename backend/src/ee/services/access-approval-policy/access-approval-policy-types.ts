@@ -41,7 +41,7 @@ export type TCreateAccessApprovalPolicy = {
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
-  maxTimePeriod?: string;
+  maxTimePeriod?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -61,7 +61,7 @@ export type TUpdateAccessApprovalPolicy = {
   allowedSelfApprovals: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   environments?: string[];
-  maxTimePeriod?: string;
+  maxTimePeriod?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {

@@ -13,9 +13,10 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const maxTimePeriodSchema = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((val, ctx) => {
     if (val === undefined) return undefined;
+    if (!val || val === "permanent") return null;
     const parsedMs = ms(val);
 
     if (typeof parsedMs !== "number" || parsedMs <= 0) {
