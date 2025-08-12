@@ -3,7 +3,7 @@ package util
 import (
 	"context"
 
-	"github.com/Infisical/infisical/k8-operator/packages/util/sse"
+	"github.com/Infisical/infisical/k8-operator/internal/util/sse"
 	infisicalSdk "github.com/infisical/go-sdk"
 )
 

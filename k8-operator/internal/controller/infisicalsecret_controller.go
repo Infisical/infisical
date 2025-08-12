@@ -203,14 +203,14 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if infisicalSecretCRD.Spec.InstantUpdates {
 		logger.Info("Instant updates are enabled")
 
-		if err := r.EnsureEventStream(ctx, logger, &infisicalSecretCRD); err != nil {
+		if err := handler.OpenInstantUpdatesStream(ctx, logger, &infisicalSecretCRD, infisicalSecretResourceVariablesMap, r.SourceCh); err != nil {
 			logger.Error(err, fmt.Sprintf("unable to ensure event stream. Will requeue after [requeueTime=%v]", requeueTime))
 			return ctrl.Result{
 				RequeueAfter: requeueTime,
 			}, nil
 		}
 	} else {
-		r.CloseEventStream(ctx, logger, &infisicalSecretCRD)
+		handler.CloseInstantUpdatesStream(ctx, logger, &infisicalSecretCRD, infisicalSecretResourceVariablesMap)
 	}
 
 	// Sync again after the specified time

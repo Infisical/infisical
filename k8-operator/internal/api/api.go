@@ -3,7 +3,7 @@ package api
 import (
 	"fmt"
 
-	"github.com/Infisical/infisical/k8-operator/packages/model"
+	"github.com/Infisical/infisical/k8-operator/internal/model"
 	"github.com/go-resty/resty/v2"
 )
 

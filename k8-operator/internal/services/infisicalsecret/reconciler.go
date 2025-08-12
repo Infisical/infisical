@@ -36,9 +36,7 @@ const FINALIZER_NAME = "secrets.finalizers.infisical.com"
 
 type InfisicalSecretReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-
-	SourceCh          chan event.TypedGenericEvent[client.Object]
+	Scheme            *runtime.Scheme
 	IsNamespaceScoped bool
 }
 
@@ -533,7 +531,33 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	return secretsCount, nil
 }
 
-func (r *InfisicalSecretReconciler) EnsureEventStream(ctx context.Context, logger logr.Logger, secret *v1alpha1.InfisicalSecret, variables util.ResourceVariables) error {
+func (r *InfisicalSecretReconciler) CloseInstantUpdatesStream(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, resourceVariablesMap map[string]util.ResourceVariables) error {
+	if infisicalSecret == nil {
+		return fmt.Errorf("infisicalSecret is nil")
+	}
+
+	variables := r.getResourceVariables(*infisicalSecret, resourceVariablesMap)
+
+	if !variables.AuthDetails.IsMachineIdentityAuth {
+		return fmt.Errorf("only machine identity is supported for subscriptions")
+	}
+
+	conn := variables.ServerSentEvents
+
+	if _, ok := conn.Get(); ok {
+		conn.Close()
+	}
+
+	return nil
+}
+
+func (r *InfisicalSecretReconciler) OpenInstantUpdatesStream(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, resourceVariablesMap map[string]util.ResourceVariables, eventCh chan<- event.TypedGenericEvent[client.Object]) error {
+	if infisicalSecret == nil {
+		return fmt.Errorf("infisicalSecret is nil")
+	}
+
+	variables := r.getResourceVariables(*infisicalSecret, resourceVariablesMap)
+
 	if !variables.AuthDetails.IsMachineIdentityAuth {
 		return fmt.Errorf("only machine identity is supported for subscriptions")
 	}
@@ -613,8 +637,8 @@ func (r *InfisicalSecretReconciler) EnsureEventStream(ctx context.Context, logge
 			select {
 			case ev := <-events:
 				logger.Info("Received SSE Event", "event", ev)
-				r.SourceCh <- event.TypedGenericEvent[client.Object]{
-					Object: secret,
+				eventCh <- event.TypedGenericEvent[client.Object]{
+					Object: infisicalSecret,
 				}
 			case err := <-errors:
 				logger.Error(err, "Error occurred")
@@ -624,20 +648,6 @@ func (r *InfisicalSecretReconciler) EnsureEventStream(ctx context.Context, logge
 			}
 		}
 	}()
-
-	return nil
-}
-
-func (r *InfisicalSecretReconciler) CloseEventStream(ctx context.Context, logger logr.Logger, variables util.ResourceVariables) error {
-	if !variables.AuthDetails.IsMachineIdentityAuth {
-		return fmt.Errorf("only machine identity is supported for subscriptions")
-	}
-
-	conn := variables.ServerSentEvents
-
-	if _, ok := conn.Get(); ok {
-		conn.Close()
-	}
 
 	return nil
 }
