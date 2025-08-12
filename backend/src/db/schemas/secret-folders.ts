@@ -17,8 +17,7 @@ export const SecretFoldersSchema = z.object({
   parentId: z.string().uuid().nullable().optional(),
   isReserved: z.boolean().default(false).nullable().optional(),
   description: z.string().nullable().optional(),
-  lastSecretModified: z.date().nullable().optional(),
-  path: z.string()
+  lastSecretModified: z.date().nullable().optional()
 });
 
 export type TSecretFolders = z.infer<typeof SecretFoldersSchema>;
