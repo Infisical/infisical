@@ -1,4 +1,5 @@
 import { ProjectPermissionActions } from "@app/context";
+import { Reminder } from "@app/hooks/api/reminders/types";
 
 import { PendingAction } from "../secretFolders/types";
 import type { WsTag } from "../tags/types";
@@ -69,6 +70,7 @@ export type SecretV3RawSanitized = {
   rotationId?: string;
   isPending?: boolean;
   pendingAction?: PendingAction;
+  reminder?: Reminder;
 };
 
 export type SecretV3Raw = {
@@ -94,6 +96,7 @@ export type SecretV3Raw = {
   isRotatedSecret?: boolean;
   rotationId?: string;
   secretReminderRecipients?: SecretReminderRecipient[];
+  reminder?: Reminder;
 };
 
 export type SecretV3RawResponse = {

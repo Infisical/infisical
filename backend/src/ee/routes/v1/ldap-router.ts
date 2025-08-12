@@ -379,14 +379,17 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/config/:configId/test-connection",
+    url: "/config/test-connection",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      params: z.object({
-        configId: z.string().trim()
+      body: z.object({
+        url: z.string().trim(),
+        bindDN: z.string().trim(),
+        bindPass: z.string().trim(),
+        caCert: z.string().trim()
       }),
       response: {
         200: z.boolean()
@@ -399,8 +402,9 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ldapConfigId: req.params.configId
+        ...req.body
       });
+
       return result;
     }
   });

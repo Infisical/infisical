@@ -238,8 +238,16 @@ export const secretFolderServiceFactory = ({
       return doc;
     });
 
+    const [folderWithFullPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folder.id]);
+
+    if (!folderWithFullPath) {
+      throw new NotFoundError({
+        message: `Failed to retrieve path for folder with ID '${folder.id}'`
+      });
+    }
+
     await snapshotService.performSnapshot(folder.parentId as string);
-    return folder;
+    return { ...folder, path: folderWithFullPath.path };
   };
 
   const updateManyFolders = async ({
@@ -496,8 +504,27 @@ export const secretFolderServiceFactory = ({
       return doc;
     });
 
+    const foldersWithFullPaths = await folderDAL.findSecretPathByFolderIds(projectId, [newFolder.id, folder.id]);
+
+    const newFolderWithFullPath = foldersWithFullPaths.find((f) => f?.id === newFolder.id);
+    if (!newFolderWithFullPath) {
+      throw new NotFoundError({
+        message: `Failed to retrieve path for folder with ID '${newFolder.id}'`
+      });
+    }
+
+    const folderWithFullPath = foldersWithFullPaths.find((f) => f?.id === folder.id);
+    if (!folderWithFullPath) {
+      throw new NotFoundError({
+        message: `Failed to retrieve path for folder with ID '${folder.id}'`
+      });
+    }
+
     await snapshotService.performSnapshot(newFolder.parentId as string);
-    return { folder: newFolder, old: folder };
+    return {
+      folder: { ...newFolder, path: newFolderWithFullPath.path },
+      old: { ...folder, path: folderWithFullPath.path }
+    };
   };
 
   const $checkFolderPolicy = async ({

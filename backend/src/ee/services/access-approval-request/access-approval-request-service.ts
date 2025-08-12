@@ -156,6 +156,15 @@ export const accessApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "The policy linked to this request has been deleted" });
     }
 
+    // Check if the requested time falls under policy.maxTimePeriod
+    if (policy.maxTimePeriod) {
+      if (!temporaryRange || ms(temporaryRange) > ms(policy.maxTimePeriod)) {
+        throw new BadRequestError({
+          message: `Requested access time range is limited to ${policy.maxTimePeriod} by policy`
+        });
+      }
+    }
+
     const approverIds: string[] = [];
     const approverGroupIds: string[] = [];
 

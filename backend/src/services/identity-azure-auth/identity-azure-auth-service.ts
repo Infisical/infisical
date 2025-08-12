@@ -33,7 +33,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
     TIdentityAzureAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -80,6 +80,14 @@ export const identityAzureAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityAzureAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoginAuthMethod: IdentityAuthMethod.AZURE_AUTH,
+          lastLoginTime: new Date()
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityAzureAuth.identityId,

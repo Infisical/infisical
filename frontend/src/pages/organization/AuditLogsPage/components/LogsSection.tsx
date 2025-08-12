@@ -35,16 +35,25 @@ export const LogsSection = withPermission(
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
     const [logFilter, setLogFilter] = useState<TAuditLogFilterFormData>({
       eventType: presets?.eventType || [],
-      actor: presets?.actorId
+      actor: presets?.actorId,
+      eventMetadata: presets?.eventMetadata
     });
     const [timezone, setTimezone] = useState<Timezone>(Timezone.Local);
 
-    const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>({
-      startDate: new Date(Number(new Date()) - ms("1h")),
-      endDate: new Date(),
-      type: AuditLogDateFilterType.Relative,
-      relativeModeValue: "1h"
-    });
+    const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>(
+      presets?.endDate || presets?.startDate
+        ? {
+            type: AuditLogDateFilterType.Absolute,
+            startDate: presets?.startDate || new Date(Number(new Date()) - ms("1h")),
+            endDate: presets?.endDate || new Date()
+          }
+        : {
+            startDate: new Date(Number(new Date()) - ms("1h")),
+            endDate: new Date(),
+            type: AuditLogDateFilterType.Relative,
+            relativeModeValue: "1h"
+          }
+    );
 
     useEffect(() => {
       if (subscription && !subscription.auditLogs) {

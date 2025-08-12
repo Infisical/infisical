@@ -41,8 +41,6 @@
             "group": "Platform Reference",
             "pages": [
               "documentation/platform/organization",
-              "documentation/platform/event-subscriptions",
-              "documentation/platform/folder",
               {
                 "group": "Projects",
                 "pages": [
@@ -145,6 +143,7 @@
                   }
                 ]
               },
+              "documentation/platform/event-subscriptions",
               {
                 "group": "Workflow Integrations",
                 "pages": [
@@ -303,6 +302,7 @@
               },
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
+              "self-hosting/guides/releases",
               "self-hosting/configuration/requirements",
               {
                 "group": "Guides",
@@ -388,6 +388,32 @@
                 "group": "Secrets Management",
                 "pages": [
                   "documentation/platform/secrets-mgmt/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/secrets-mgmt/concepts/secrets-mgmt",
+                      "documentation/platform/secrets-mgmt/concepts/access-control",
+                      "documentation/platform/secrets-mgmt/concepts/secrets-delivery",
+                      "documentation/platform/secrets-mgmt/concepts/secrets-rotation",
+                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/guides/introduction",
+                      "documentation/guides/local-development",
+                      "documentation/guides/node",
+                      "documentation/guides/python",
+                      "documentation/guides/nextjs-vercel",
+                      "documentation/guides/microsoft-power-apps"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Product Reference",
+                "pages": [
                   "documentation/platform/secrets-mgmt/project",
                   "documentation/platform/folder",
                   {
@@ -432,17 +458,6 @@
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
-                  },
-                  {
-                    "group": "Guides",
-                    "pages": [
-                      "documentation/guides/introduction",
-                      "documentation/guides/local-development",
-                      "documentation/guides/node",
-                      "documentation/guides/python",
-                      "documentation/guides/nextjs-vercel",
-                      "documentation/guides/microsoft-power-apps"
-                    ]
                   }
                 ]
               },
@@ -466,7 +481,7 @@
                     "group": "Agent",
                     "pages": [
                       "integrations/platforms/infisical-agent",
-                       "integrations/platforms/docker-swarm-with-agent",
+                      "integrations/platforms/docker-swarm-with-agent",
                       "integrations/platforms/ecs-with-agent"
                     ]
                   },
@@ -635,14 +650,21 @@
             "item": "Secrets Scanning",
             "groups": [
               {
-                "group": "Secret Scanning",
+                "group": "Secrets Scanning",
                 "pages": [
-                  "documentation/platform/secret-scanning/overview"
+                  "documentation/platform/secret-scanning/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/secret-scanning/concepts/secret-scanning"
+                    ]
+                  }
                 ]
               },
               {
-                "group": "Datasources",
+                "group": "Product Reference",
                 "pages": [
+                  "documentation/platform/secret-scanning/usage",
                   "documentation/platform/secret-scanning/bitbucket",
                   "documentation/platform/secret-scanning/github",
                   "documentation/platform/secret-scanning/gitlab"
@@ -682,6 +704,18 @@
                 "group": "Infisical SSH",
                 "pages": [
                   "documentation/platform/ssh/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/ssh/concepts/ssh-certificates"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Platform Reference",
+                "pages": [
+                  "documentation/platform/ssh/usage",
                   "documentation/platform/ssh/host-groups"
                 ]
               }

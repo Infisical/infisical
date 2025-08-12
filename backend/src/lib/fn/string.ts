@@ -19,3 +19,17 @@ export const prefixWithSlash = (str: string) => {
 const vowelRegex = new RE2(/^[aeiou]/i);
 
 export const startsWithVowel = (str: string) => vowelRegex.test(str);
+
+const pickWordsRegex = new RE2(/(\W+)/);
+export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[] }) => {
+  const words = dto.unsanitizedString.split(pickWordsRegex);
+
+  const redactionSet = new Set(dto.tokens.filter(Boolean));
+  const sanitizedWords = words.map((el) => {
+    if (redactionSet.has(el)) {
+      return "[REDACTED]";
+    }
+    return el;
+  });
+  return sanitizedWords.join("");
+};

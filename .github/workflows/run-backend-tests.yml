@@ -16,6 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          docker system prune -af
+          
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - uses: KengoTODA/actions-setup-docker-compose@v1
@@ -34,6 +44,8 @@ jobs:
         working-directory: backend
       - name: Start postgres and redis
         run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
+      - name: Start Secret Rotation testing databases
+        run: docker compose -f docker-compose.e2e-dbs.yml up -d --wait --wait-timeout 300
       - name: Run unit test
         run: npm run test:unit
         working-directory: backend
@@ -41,6 +53,9 @@ jobs:
         run: npm run test:e2e
         working-directory: backend
         env:
+          E2E_TEST_ORACLE_DB_19_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}
+          E2E_TEST_ORACLE_DB_19_USERNAME: ${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}
+          E2E_TEST_ORACLE_DB_19_PASSWORD: ${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}
           REDIS_URL: redis://172.17.0.1:6379
           DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
           AUTH_SECRET: something-random

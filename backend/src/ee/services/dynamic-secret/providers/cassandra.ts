@@ -3,6 +3,8 @@ import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
@@ -71,9 +73,24 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const isConnected = await client.execute("SELECT * FROM system_schema.keyspaces").then(() => true);
-    await client.shutdown();
-    return isConnected;
+    try {
+      const isConnected = await client.execute("SELECT * FROM system_schema.keyspaces").then(() => true);
+      await client.shutdown();
+      return isConnected;
+    } catch (err) {
+      const tokens = [providerInputs.password, providerInputs.username];
+      if (providerInputs.keyspace) {
+        tokens.push(providerInputs.keyspace);
+      }
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens
+      });
+      await client.shutdown();
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: {
@@ -89,23 +106,39 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
     const { keyspace } = providerInputs;
-    const expiration = new Date(expireAt).toISOString();
 
-    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
-      username,
-      password,
-      expiration,
-      keyspace
-    });
+    try {
+      const expiration = new Date(expireAt).toISOString();
 
-    const queries = creationStatement.toString().split(";").filter(Boolean);
-    for (const query of queries) {
-      // eslint-disable-next-line
-      await client.execute(query);
+      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+        username,
+        password,
+        expiration,
+        keyspace
+      });
+
+      const queries = creationStatement.toString().split(";").filter(Boolean);
+      for (const query of queries) {
+        // eslint-disable-next-line
+        await client.execute(query);
+      }
+      await client.shutdown();
+
+      return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+    } catch (err) {
+      const tokens = [username, password];
+      if (keyspace) {
+        tokens.push(keyspace);
+      }
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens
+      });
+      await client.shutdown();
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
     }
-    await client.shutdown();
-
-    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
@@ -115,14 +148,29 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     const username = entityId;
     const { keyspace } = providerInputs;
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, keyspace });
-    const queries = revokeStatement.toString().split(";").filter(Boolean);
-    for (const query of queries) {
-      // eslint-disable-next-line
-      await client.execute(query);
+    try {
+      const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, keyspace });
+      const queries = revokeStatement.toString().split(";").filter(Boolean);
+      for (const query of queries) {
+        // eslint-disable-next-line
+        await client.execute(query);
+      }
+      await client.shutdown();
+      return { entityId: username };
+    } catch (err) {
+      const tokens = [username];
+      if (keyspace) {
+        tokens.push(keyspace);
+      }
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens
+      });
+      await client.shutdown();
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+      });
     }
-    await client.shutdown();
-    return { entityId: username };
   };
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
@@ -130,21 +178,36 @@ export const CassandraProvider = (): TDynamicProviderFns => {
     if (!providerInputs.renewStatement) return { entityId };
 
     const client = await $getClient(providerInputs);
-
-    const expiration = new Date(expireAt).toISOString();
     const { keyspace } = providerInputs;
 
-    const renewStatement = handlebars.compile(providerInputs.renewStatement)({
-      username: entityId,
-      keyspace,
-      expiration
-    });
-    const queries = renewStatement.toString().split(";").filter(Boolean);
-    for await (const query of queries) {
-      await client.execute(query);
+    try {
+      const expiration = new Date(expireAt).toISOString();
+
+      const renewStatement = handlebars.compile(providerInputs.renewStatement)({
+        username: entityId,
+        keyspace,
+        expiration
+      });
+      const queries = renewStatement.toString().split(";").filter(Boolean);
+      for await (const query of queries) {
+        await client.execute(query);
+      }
+      await client.shutdown();
+      return { entityId };
+    } catch (err) {
+      const tokens = [entityId];
+      if (keyspace) {
+        tokens.push(keyspace);
+      }
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens
+      });
+      await client.shutdown();
+      throw new BadRequestError({
+        message: `Failed to renew lease from provider: ${sanitizedErrorMessage}`
+      });
     }
-    await client.shutdown();
-    return { entityId };
   };
 
   return {

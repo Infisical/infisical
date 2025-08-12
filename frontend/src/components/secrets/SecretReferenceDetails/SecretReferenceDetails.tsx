@@ -125,7 +125,7 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
   if (isPending) {
     return (
       <div className="flex items-center justify-center py-4">
-        <Spinner size="xs" />
+        <Spinner className="text-mineshaft-400" />
       </div>
     );
   }
