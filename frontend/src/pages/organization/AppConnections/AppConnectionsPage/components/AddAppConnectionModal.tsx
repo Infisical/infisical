@@ -13,23 +13,26 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   projectId?: string;
   projectType?: ProjectType;
+  app?: AppConnection;
+  onComplete?: (appConnection: TAppConnection) => void;
 };
 
 type ContentProps = {
   onComplete: (appConnection: TAppConnection) => void;
   projectId?: string;
   projectType?: ProjectType;
+  app?: AppConnection;
 };
 
-const Content = ({ onComplete, projectId, projectType }: ContentProps) => {
+const Content = ({ onComplete, projectId, projectType, app }: ContentProps) => {
   const [selectedApp, setSelectedApp] = useState<AppConnection | null>(null);
 
-  if (selectedApp) {
+  if (app ?? selectedApp) {
     return (
       <AppConnectionForm
         onComplete={onComplete}
         onBack={() => setSelectedApp(null)}
-        app={selectedApp}
+        app={(app ?? selectedApp)!}
         projectId={projectId}
         projectType={projectType}
       />
@@ -39,7 +42,14 @@ const Content = ({ onComplete, projectId, projectType }: ContentProps) => {
   return <AppConnectionsSelect onSelect={setSelectedApp} projectType={projectType} />;
 };
 
-export const AddAppConnectionModal = ({ isOpen, onOpenChange, projectId, projectType }: Props) => {
+export const AddAppConnectionModal = ({
+  isOpen,
+  onOpenChange,
+  projectId,
+  projectType,
+  app,
+  onComplete
+}: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -50,7 +60,11 @@ export const AddAppConnectionModal = ({ isOpen, onOpenChange, projectId, project
         <Content
           projectId={projectId}
           projectType={projectType}
-          onComplete={() => onOpenChange(false)}
+          app={app}
+          onComplete={(appConnection) => {
+            if (onComplete) onComplete(appConnection);
+            onOpenChange(false);
+          }}
         />
       </ModalContent>
     </Modal>

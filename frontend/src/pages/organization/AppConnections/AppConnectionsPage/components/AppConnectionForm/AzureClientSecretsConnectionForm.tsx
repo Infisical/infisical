@@ -7,9 +7,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { getProjectBaseURL } from "@app/helpers/project";
 import {
   AzureClientSecretsConnectionMethod,
   TAzureClientSecretsConnection,
@@ -121,6 +124,11 @@ export const AzureClientSecretsConnectionForm = ({
     defaultValues: getDefaultValues(appConnection)
   });
 
+  const returnUrl = useGetAppConnectionOauthReturnUrl({
+    projectId,
+    projectType
+  });
+
   const {
     handleSubmit,
     control,
@@ -143,10 +151,7 @@ export const AzureClientSecretsConnectionForm = ({
             ...formData,
             connectionId: appConnection?.id,
             projectId,
-            returnUrl:
-              projectType && projectId
-                ? `${getProjectBaseURL(projectType)}/app-connections`
-                : undefined
+            returnUrl
           } as AzureClientSecretsFormData)
         );
         window.location.assign(

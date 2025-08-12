@@ -7,9 +7,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { getProjectBaseURL } from "@app/helpers/project";
 import {
   AzureDevOpsConnectionMethod,
   TAzureDevOpsConnection,
@@ -156,6 +159,11 @@ export const AzureDevOpsConnectionForm = ({
     defaultValues: getDefaultValues(appConnection)
   });
 
+  const returnUrl = useGetAppConnectionOauthReturnUrl({
+    projectId,
+    projectType
+  });
+
   const {
     handleSubmit,
     control,
@@ -177,12 +185,8 @@ export const AzureDevOpsConnectionForm = ({
           JSON.stringify({
             ...formData,
             connectionId: appConnection?.id,
-
             projectId,
-            returnUrl:
-              projectType && projectId
-                ? `${getProjectBaseURL(projectType)}/app-connections`
-                : undefined
+            returnUrl
           } as AzureDevOpsFormData)
         );
 

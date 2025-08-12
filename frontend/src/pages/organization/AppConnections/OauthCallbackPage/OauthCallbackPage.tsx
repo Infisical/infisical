@@ -12,6 +12,7 @@ import {
   AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
   GitLabConnectionMethod,
+  TAppConnection,
   TAzureAppConfigurationConnection,
   TAzureClientSecretsConnection,
   TAzureDevOpsConnection,
@@ -23,6 +24,7 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type BaseFormData = {
   returnUrl: string;
@@ -151,9 +153,11 @@ export const OAuthCallbackPage = () => {
 
     const { connectionId, name, description, returnUrl, isUpdate, projectId } = formData;
 
+    let connection: TAppConnection;
+
     try {
       if (isUpdate && connectionId) {
-        await updateAppConnection.mutateAsync({
+        connection = await updateAppConnection.mutateAsync({
           app: AppConnection.GitLab,
           connectionId,
           credentials: {
@@ -161,7 +165,7 @@ export const OAuthCallbackPage = () => {
           }
         });
       } else {
-        await createAppConnection.mutateAsync({
+        connection = await createAppConnection.mutateAsync({
           app: AppConnection.GitLab,
           name,
           description,
@@ -177,7 +181,8 @@ export const OAuthCallbackPage = () => {
         connectionId,
         returnUrl,
         appConnectionName: formData.app,
-        projectId
+        projectId,
+        connection
       };
     } catch (err: any) {
       createNotification({
@@ -186,7 +191,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections",
+        to: returnUrl,
         params: {
           projectId
         }
@@ -203,9 +208,11 @@ export const OAuthCallbackPage = () => {
 
     const { connectionId, name, description, returnUrl, projectId } = formData;
 
+    let connection: TAppConnection;
+
     try {
       if (connectionId) {
-        await updateAppConnection.mutateAsync({
+        connection = await updateAppConnection.mutateAsync({
           app: AppConnection.AzureKeyVault,
           connectionId,
           credentials: {
@@ -214,7 +221,7 @@ export const OAuthCallbackPage = () => {
           }
         });
       } else {
-        await createAppConnection.mutateAsync({
+        connection = await createAppConnection.mutateAsync({
           app: AppConnection.AzureKeyVault,
           name,
           description,
@@ -233,7 +240,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections",
+        to: returnUrl,
         params: {
           projectId
         }
@@ -245,7 +252,8 @@ export const OAuthCallbackPage = () => {
       connectionId,
       returnUrl,
       appConnectionName: formData.app,
-      projectId
+      projectId,
+      connection
     };
   }, []);
 
@@ -257,9 +265,11 @@ export const OAuthCallbackPage = () => {
 
     const { connectionId, name, description, returnUrl, projectId } = formData;
 
+    let connection: TAppConnection;
+
     try {
       if (connectionId) {
-        await updateAppConnection.mutateAsync({
+        connection = await updateAppConnection.mutateAsync({
           app: AppConnection.AzureAppConfiguration,
           connectionId,
           credentials: {
@@ -268,7 +278,7 @@ export const OAuthCallbackPage = () => {
           }
         });
       } else {
-        await createAppConnection.mutateAsync({
+        connection = await createAppConnection.mutateAsync({
           app: AppConnection.AzureAppConfiguration,
           name,
           description,
@@ -287,7 +297,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections",
+        to: returnUrl,
         params: {
           projectId
         }
@@ -299,7 +309,8 @@ export const OAuthCallbackPage = () => {
       connectionId,
       returnUrl,
       appConnectionName: formData.app,
-      projectId
+      projectId,
+      connection
     };
   }, []);
 
@@ -311,9 +322,11 @@ export const OAuthCallbackPage = () => {
 
     const { connectionId, name, description, returnUrl, projectId } = formData;
 
+    let connection: TAppConnection;
+
     try {
       if (connectionId) {
-        await updateAppConnection.mutateAsync({
+        connection = await updateAppConnection.mutateAsync({
           app: AppConnection.AzureClientSecrets,
           connectionId,
           credentials: {
@@ -322,7 +335,7 @@ export const OAuthCallbackPage = () => {
           }
         });
       } else {
-        await createAppConnection.mutateAsync({
+        connection = await createAppConnection.mutateAsync({
           app: AppConnection.AzureClientSecrets,
           name,
           description,
@@ -341,7 +354,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections",
+        to: returnUrl,
         params: {
           projectId
         }
@@ -353,7 +366,8 @@ export const OAuthCallbackPage = () => {
       connectionId,
       returnUrl,
       appConnectionName: formData.app,
-      projectId
+      projectId,
+      connection
     };
   }, []);
 
@@ -365,13 +379,15 @@ export const OAuthCallbackPage = () => {
 
     const { connectionId, name, description, returnUrl, projectId } = formData;
 
+    let connection: TAppConnection;
+
     try {
       if (!("tenantId" in formData)) {
         throw new Error("Expected OAuth form data but got access token data");
       }
 
       if (connectionId) {
-        await updateAppConnection.mutateAsync({
+        connection = await updateAppConnection.mutateAsync({
           app: AppConnection.AzureDevOps,
           connectionId,
           credentials: {
@@ -381,7 +397,7 @@ export const OAuthCallbackPage = () => {
           }
         });
       } else {
-        await createAppConnection.mutateAsync({
+        connection = await createAppConnection.mutateAsync({
           app: AppConnection.AzureDevOps,
           name,
           description,
@@ -401,7 +417,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections",
+        to: returnUrl,
         params: {
           projectId
         }
@@ -413,7 +429,8 @@ export const OAuthCallbackPage = () => {
       connectionId,
       returnUrl,
       appConnectionName: formData.app,
-      projectId
+      projectId,
+      connection
     };
   }, []);
 
@@ -426,9 +443,11 @@ export const OAuthCallbackPage = () => {
     const { connectionId, name, description, returnUrl, gatewayId, credentials, projectId } =
       formData;
 
+    let connection: TAppConnection;
+
     try {
       if (connectionId) {
-        await updateAppConnection.mutateAsync({
+        connection = await updateAppConnection.mutateAsync({
           app: AppConnection.GitHub,
           ...(installationId
             ? {
@@ -452,7 +471,7 @@ export const OAuthCallbackPage = () => {
               })
         });
       } else {
-        await createAppConnection.mutateAsync({
+        connection = await createAppConnection.mutateAsync({
           app: AppConnection.GitHub,
           name,
           description,
@@ -486,7 +505,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections",
+        to: returnUrl,
         params: {
           projectId
         }
@@ -498,7 +517,8 @@ export const OAuthCallbackPage = () => {
       connectionId,
       returnUrl,
       appConnectionName: formData.app,
-      projectId
+      projectId,
+      connection
     };
   }, []);
 
@@ -510,9 +530,11 @@ export const OAuthCallbackPage = () => {
 
     const { connectionId, name, description, returnUrl, projectId } = formData;
 
+    let connection: TAppConnection;
+
     try {
       if (connectionId) {
-        await updateAppConnection.mutateAsync({
+        connection = await updateAppConnection.mutateAsync({
           app: AppConnection.GitHubRadar,
           connectionId,
           credentials: {
@@ -521,7 +543,7 @@ export const OAuthCallbackPage = () => {
           }
         });
       } else {
-        await createAppConnection.mutateAsync({
+        connection = await createAppConnection.mutateAsync({
           app: AppConnection.GitHubRadar,
           name,
           description,
@@ -540,7 +562,7 @@ export const OAuthCallbackPage = () => {
         type: "error"
       });
       navigate({
-        to: returnUrl ?? "/organization/app-connections",
+        to: returnUrl,
         params: {
           projectId
         }
@@ -552,7 +574,8 @@ export const OAuthCallbackPage = () => {
       connectionId,
       returnUrl,
       appConnectionName: formData.app,
-      projectId
+      projectId,
+      connection
     };
   }, []);
 
@@ -568,10 +591,11 @@ export const OAuthCallbackPage = () => {
 
     (async () => {
       let data: {
+        returnUrl: string;
+        appConnectionName: string;
         connectionId?: string;
-        returnUrl?: string;
-        appConnectionName?: string;
         projectId?: string;
+        connection: TAppConnection;
       } | null = null;
 
       if (appConnection === AppConnection.GitHub) {
@@ -597,10 +621,22 @@ export const OAuthCallbackPage = () => {
         });
 
         await navigate({
-          to: data.returnUrl ?? "/organization/app-connections",
+          to: data.returnUrl,
           params: {
-            projectId: data.projectId
-          }
+            projectId: data.projectId ?? undefined
+          },
+          // scott: if it's not an app connection page we need to pass connection details as it's an inline creation
+          search: data.returnUrl.includes("app-connections")
+            ? undefined
+            : {
+                connectionId: data.connection.id,
+                connectionName: data.connection.name,
+                ...(data.returnUrl.includes("integrations")
+                  ? {
+                      selectedTab: IntegrationsListPageTabs.SecretSyncs
+                    }
+                  : {})
+              }
         });
       }
     })();

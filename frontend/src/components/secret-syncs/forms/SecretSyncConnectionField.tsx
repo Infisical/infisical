@@ -1,15 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
 
 import { AppConnectionOption } from "@app/components/app-connections";
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { OrgPermissionSubjects, useOrgPermission, useWorkspace } from "@app/context";
-import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
+import { ProjectPermissionSub, useProjectPermission, useWorkspace } from "@app/context";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
+import { usePopUp } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { TSecretSyncForm } from "./schemas";
 
@@ -18,8 +20,10 @@ type Props = {
 };
 
 export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
-  const { permission } = useOrgPermission();
-  const { control, watch } = useFormContext<TSecretSyncForm>();
+  const { permission } = useProjectPermission();
+  const { control, watch, setValue } = useFormContext<TSecretSyncForm>();
+
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const destination = watch("destination");
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
@@ -34,8 +38,8 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
   const connectionName = APP_CONNECTION_MAP[app].name;
 
   const canCreateConnection = permission.can(
-    OrgPermissionAppConnectionActions.Create,
-    OrgPermissionSubjects.AppConnections
+    ProjectPermissionAppConnectionActions.Create,
+    ProjectPermissionSub.AppConnections
   );
 
   const appName = APP_CONNECTION_MAP[SECRET_SYNC_CONNECTION_MAP[destination]].name;
@@ -57,11 +61,23 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
             <FilterableSelect
               value={value}
               onChange={(newValue) => {
+                if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
+                  handlePopUpOpen("addConnection");
+                  onChange(null);
+                  // store for oauth callback connections
+                  localStorage.setItem("secretSyncFormData", JSON.stringify(watch()));
+                  if (callback) callback();
+                  return;
+                }
+
                 onChange(newValue);
                 if (callback) callback();
               }}
               isLoading={isPending}
-              options={availableConnections}
+              options={[
+                ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
+                ...(availableConnections ?? [])
+              ]}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
@@ -72,22 +88,28 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
         control={control}
         name="connection"
       />
-      {!isPending && !availableConnections?.length && (
+      {!isPending && !availableConnections?.length && !canCreateConnection && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
-          {canCreateConnection ? (
-            <>
-              You do not have access to any {appName} Connections. Create one from the{" "}
-              <Link to="/organization/app-connections" className="underline">
-                App Connections
-              </Link>{" "}
-              page.
-            </>
-          ) : (
-            `You do not have access to any ${appName} Connections. Contact an admin to create one.`
-          )}
+          You do not have access to any ${appName} Connections. Contact an admin to create one.
         </p>
       )}
+      <AddAppConnectionModal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isOpen) => {
+          // remove form storage, not oauth connection
+          localStorage.removeItem("secretSyncFormData");
+          handlePopUpToggle("addConnection", isOpen);
+        }}
+        projectType={currentWorkspace.type}
+        projectId={currentWorkspace.id}
+        app={app}
+        onComplete={(connection) => {
+          if (connection) {
+            setValue("connection", connection);
+          }
+        }}
+      />
     </>
   );
 };

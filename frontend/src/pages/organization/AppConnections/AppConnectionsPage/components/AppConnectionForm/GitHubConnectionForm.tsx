@@ -25,9 +25,12 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { getProjectBaseURL } from "@app/helpers/project";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import {
   GitHubConnectionMethod,
@@ -103,6 +106,11 @@ export const GitHubConnectionForm = ({ appConnection, projectId, projectType }: 
   const selectedMethod = watch("method");
   const instanceType = watch("credentials.instanceType");
 
+  const returnUrl = useGetAppConnectionOauthReturnUrl({
+    projectId,
+    projectType
+  });
+
   const onSubmit = (formData: FormData) => {
     setIsRedirecting(true);
     const state = crypto.randomBytes(16).toString("hex");
@@ -114,8 +122,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId, projectType }: 
         credentials: formData.credentials as TGitHubConnection["credentials"],
         connectionId: appConnection?.id,
         projectId,
-        returnUrl:
-          projectType && projectId ? `${getProjectBaseURL(projectType)}/app-connections` : undefined
+        returnUrl
       } as GithubFormData)
     );
 
