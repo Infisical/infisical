@@ -43,6 +43,8 @@ import {
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
+import { PolicyMemberOption } from "./PolicyMemberOption";
+
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
@@ -59,7 +61,11 @@ const formSchema = z
     secretPath: z.string().trim().min(1),
     approvals: z.number().min(1).default(1),
     userApprovers: z
-      .object({ type: z.literal(ApproverType.User), id: z.string() })
+      .object({
+        type: z.literal(ApproverType.User),
+        id: z.string(),
+        isOrgMembershipActive: z.boolean()
+      })
       .array()
       .default([]),
     groupApprovers: z
@@ -80,7 +86,11 @@ const formSchema = z
     sequenceApprovers: z
       .object({
         user: z
-          .object({ type: z.literal(ApproverType.User), id: z.string() })
+          .object({
+            type: z.literal(ApproverType.User),
+            id: z.string(),
+            isOrgMembershipActive: z.boolean()
+          })
           .array()
           .default([]),
         group: z
@@ -139,7 +149,11 @@ const Form = ({
           userApprovers:
             editValues?.approvers
               ?.filter((approver) => approver.type === ApproverType.User)
-              .map(({ id, type }) => ({ id, type: type as ApproverType.User })) || [],
+              .map(({ id, type, isOrgMembershipActive }) => ({
+                id,
+                type: type as ApproverType.User,
+                isOrgMembershipActive
+              })) || [],
           groupApprovers:
             editValues?.approvers
               ?.filter((approver) => approver.type === ApproverType.Group)
@@ -333,7 +347,8 @@ const Form = ({
     () =>
       members.map((member) => ({
         id: member.user.id,
-        type: ApproverType.User
+        type: ApproverType.User,
+        isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
   );
@@ -612,6 +627,7 @@ const Form = ({
                             isMulti
                             placeholder="Select members..."
                             options={memberOptions}
+                            components={{ Option: PolicyMemberOption }}
                             getOptionValue={(option) => option.id}
                             getOptionLabel={(option) => {
                               const member = members?.find((m) => m.user.id === option.id);
@@ -689,6 +705,7 @@ const Form = ({
                     menuPlacement="top"
                     isMulti
                     placeholder="Select members..."
+                    components={{ Option: PolicyMemberOption }}
                     options={memberOptions}
                     getOptionValue={(option) => option.id}
                     getOptionLabel={(option) => {
