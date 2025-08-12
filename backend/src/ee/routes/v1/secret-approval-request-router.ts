@@ -298,7 +298,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 id: z.string(),
                 name: z.string(),
                 approvals: z.number(),
-                approvers: approvalRequestUser.extend({ isOrgMembershipActive: z.boolean() }).array(),
+                approvers: approvalRequestUser
+                  .extend({ isOrgMembershipActive: z.boolean().nullable().optional() })
+                  .array(),
                 bypassers: approvalRequestUser.array(),
                 secretPath: z.string().optional().nullable(),
                 enforcementLevel: z.string(),
@@ -309,7 +311,11 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               statusChangedByUser: approvalRequestUser.optional(),
               committerUser: approvalRequestUser.nullish(),
               reviewers: approvalRequestUser
-                .extend({ status: z.string(), comment: z.string().optional(), isOrgMembershipActive: z.boolean() })
+                .extend({
+                  status: z.string(),
+                  comment: z.string().optional(),
+                  isOrgMembershipActive: z.boolean().nullable().optional()
+                })
                 .array(),
               secretPath: z.string(),
               commits: secretRawSchema

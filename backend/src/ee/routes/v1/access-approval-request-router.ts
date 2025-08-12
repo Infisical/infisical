@@ -116,7 +116,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               approvals: z.number(),
               approvers: z
                 .object({
-                  isOrgMembershipActive: z.boolean(),
+                  isOrgMembershipActive: z.boolean().nullable().optional(),
                   userId: z.string().nullable().optional(),
                   sequence: z.number().nullable().optional(),
                   approvalsRequired: z.number().nullable().optional(),
@@ -134,7 +134,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             }),
             reviewers: z
               .object({
-                isOrgMembershipActive: z.boolean(),
+                isOrgMembershipActive: z.boolean().nullable().optional(),
                 userId: z.string(),
                 status: z.string()
               })

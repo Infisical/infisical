@@ -21,7 +21,14 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .where({ [`${TableName.ProjectMembership}.projectId` as "projectId"]: projectId })
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
-        .join(TableName.OrgMembership, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
+        .join(TableName.OrgMembership, (qb) => {
+          qb.on(`${TableName.Users}.id`, "=", `${TableName.OrgMembership}.userId`).andOn(
+            `${TableName.OrgMembership}.orgId`,
+            "=",
+            `${TableName.Project}.orgId`
+          );
+        })
+
         .where((qb) => {
           if (filter.usernames) {
             void qb.whereIn("username", filter.usernames);

@@ -177,8 +177,6 @@ export const SecretApprovalRequestChanges = ({
     {}
   );
 
-  console.log("reviewedUsers", reviewedUsers);
-
   const handleSecretApprovalStatusUpdate = async (status: ApprovalStatus, comment: string) => {
     try {
       await updateSecretApprovalRequestStatus({
@@ -532,7 +530,7 @@ export const SecretApprovalRequestChanges = ({
         </div>
       </div>
       <div className="sticky top-0 z-[51] w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
-        <div className="text-sm text-bunker-300">Reviewerssss</div>
+        <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
           {secretApprovalRequestDetails?.policy?.approvers
             .filter(
@@ -542,8 +540,6 @@ export const SecretApprovalRequestChanges = ({
             .map((requiredApprover) => {
               const reviewer = reviewedUsers?.[requiredApprover.userId];
               const isOrgMembershipActive = requiredApprover.isOrgMembershipActive;
-
-              console.log("isOrgMembershipActive", isOrgMembershipActive);
 
               return (
                 <div
