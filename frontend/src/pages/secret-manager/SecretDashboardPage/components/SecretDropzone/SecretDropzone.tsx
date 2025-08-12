@@ -241,7 +241,14 @@ export const SecretDropzone = ({
 
     setIsLoading.on();
     reader.onload = (event) => {
-      if (!event?.target?.result) return;
+      if (!event?.target?.result) {
+        createNotification({
+          type: "error",
+          text: "Invalid file contents."
+        });
+        setIsLoading.off();
+        return;
+      }
 
       let env: TParsedEnv;
 
