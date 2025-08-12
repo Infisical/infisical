@@ -45,7 +45,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .transform(removeTrailingSlash)
           .describe(FOLDERS.CREATE.path)
           .optional(),
-        // backward compatiability with cli
+        // backward compatibility with cli
         directory: z
           .string()
           .trim()
@@ -130,7 +130,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .transform(removeTrailingSlash)
           .describe(FOLDERS.UPDATE.path)
           .optional(),
-        // backward compatiability with cli
+        // backward compatibility with cli
         directory: z
           .string()
           .trim()
@@ -359,7 +359,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .transform(removeTrailingSlash)
           .describe(FOLDERS.LIST.path)
           .optional(),
-        // backward compatiability with cli
+        // backward compatibility with cli
         directory: z
           .string()
           .trim()
