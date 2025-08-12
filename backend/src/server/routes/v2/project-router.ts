@@ -285,6 +285,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.Projects],
+      description: "Get project details by slug",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
         slug: slugSchema({ max: 36 }).describe("The slug of the project to get.")
       }),
