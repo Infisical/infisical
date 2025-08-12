@@ -283,6 +283,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
       params: z.object({
         slug: slugSchema({ max: 36 }).describe("The slug of the project to get.")
       }),
