@@ -84,6 +84,7 @@ export interface TAccessApprovalRequestServiceFactory {
         allowedSelfApprovals: boolean;
         envId: string;
         deletedAt: Date | null | undefined;
+        maxTimePeriod?: string | null;
       };
       projectId: string;
       environment: string;

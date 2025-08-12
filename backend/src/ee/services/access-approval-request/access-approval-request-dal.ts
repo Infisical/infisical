@@ -64,6 +64,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
           enforcementLevel: string;
           allowedSelfApprovals: boolean;
           deletedAt: Date | null | undefined;
+          maxTimePeriod?: string | null;
         };
         projectId: string;
         environments: string[];
@@ -164,6 +165,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         allowedSelfApprovals: boolean;
         envId: string;
         deletedAt: Date | null | undefined;
+        maxTimePeriod?: string | null;
       };
       projectId: string;
       environment: string;
@@ -292,7 +294,6 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             `requestedByUser.id`
           )
 
-          // I added these 3:
           .leftJoin<TOrgMemberships>(
             db(TableName.OrgMembership).as("approverOrgMembership"),
             `${TableName.AccessApprovalPolicyApprover}.approverUserId`,
@@ -324,10 +325,10 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             db.ref("envId").withSchema(TableName.AccessApprovalPolicy).as("policyEnvId"),
             db.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt"),
 
-            // Added:
             db.ref("isActive").withSchema("approverOrgMembership").as("approverIsOrgMembershipActive"),
             db.ref("isActive").withSchema("approverGroupOrgMembership").as("approverGroupIsOrgMembershipActive"),
-            db.ref("isActive").withSchema("reviewerOrgMembership").as("reviewerIsOrgMembershipActive")
+            db.ref("isActive").withSchema("reviewerOrgMembership").as("reviewerIsOrgMembershipActive"),
+            db.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod")
           )
           .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
           .select(db.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
@@ -394,7 +395,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               enforcementLevel: doc.policyEnforcementLevel,
               allowedSelfApprovals: doc.policyAllowedSelfApprovals,
               envId: doc.policyEnvId,
-              deletedAt: doc.policyDeletedAt
+              deletedAt: doc.policyDeletedAt,
+              maxTimePeriod: doc.policyMaxTimePeriod
             },
             requestedByUser: {
               userId: doc.requestedByUserId,
@@ -615,7 +617,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         tx.ref("enforcementLevel").withSchema(TableName.AccessApprovalPolicy).as("policyEnforcementLevel"),
         tx.ref("allowedSelfApprovals").withSchema(TableName.AccessApprovalPolicy).as("policyAllowedSelfApprovals"),
         tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
-        tx.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt")
+        tx.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt"),
+        tx.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod")
       );
 
   const findById: TAccessApprovalRequestDALFactory["findById"] = async (id, tx) => {
@@ -636,7 +639,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             secretPath: el.policySecretPath,
             enforcementLevel: el.policyEnforcementLevel,
             allowedSelfApprovals: el.policyAllowedSelfApprovals,
-            deletedAt: el.policyDeletedAt
+            deletedAt: el.policyDeletedAt,
+            maxTimePeriod: el.policyMaxTimePeriod
           },
           requestedByUser: {
             userId: el.requestedByUserId,

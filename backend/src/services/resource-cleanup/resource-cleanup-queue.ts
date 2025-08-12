@@ -49,6 +49,19 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   }
 
   const init = async () => {
+    await queueService.stopRepeatableJob(
+      QueueName.AuditLogPrune,
+      QueueJobs.AuditLogPrune,
+      { pattern: "0 0 * * *", utc: true },
+      QueueName.AuditLogPrune // just a job id
+    );
+    await queueService.stopRepeatableJob(
+      QueueName.DailyResourceCleanUp,
+      QueueJobs.DailyResourceCleanUp,
+      { pattern: "0 0 * * *", utc: true },
+      QueueName.DailyResourceCleanUp // just a job id
+    );
+
     await queueService.startPg<QueueName.DailyResourceCleanUp>(
       QueueJobs.DailyResourceCleanUp,
       async () => {
