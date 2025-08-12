@@ -2,9 +2,7 @@
 import React, { useCallback, useState } from "react";
 import {
   faClipboardCheck,
-  faClipboardList,
   faCodeCommit,
-  faEye,
   faFolder,
   faKey,
   faSave
