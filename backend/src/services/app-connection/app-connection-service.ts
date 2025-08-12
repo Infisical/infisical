@@ -32,13 +32,7 @@ import {
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
-import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
-import {
-  githubRadarConnectionService
-} from "@app/services/app-connection/github-radar/github-radar-connection-service";
-import {
-  TExternalCertificateAuthorityDALFactory
-} from "@app/services/certificate-authority/external-certificate-authority-dal";
+import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
@@ -57,6 +51,7 @@ import {
   TValidateAppConnectionCredentialsSchema
 } from "./app-connection-types";
 import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
+import { auth0ConnectionService } from "./auth0/auth0-connection-service";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
@@ -84,6 +79,7 @@ import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
+import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
