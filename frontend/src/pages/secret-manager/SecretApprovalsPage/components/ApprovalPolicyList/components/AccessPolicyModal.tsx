@@ -92,7 +92,7 @@ const formSchema = z
       .array()
       .default([])
       .optional(),
-    maxTimePeriod: z.string().trim().optional()
+    maxTimePeriod: z.string().trim().nullish()
   })
   .superRefine((data, ctx) => {
     if (data.policyType === PolicyType.ChangePolicy) {
@@ -454,7 +454,7 @@ const Form = ({
                   errorText={error?.message}
                   className="flex-shrink"
                 >
-                  <Input {...field} value={field.value} placeholder="permanent" />
+                  <Input {...field} value={field.value || ""} placeholder="permanent" />
                 </FormControl>
               )}
             />
