@@ -20,8 +20,8 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { AzureDevOpsFormData } from "@app/pages/organization/AppConnections/OauthCallbackPage/OauthCallbackPage";
 
+import { AzureDevOpsFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields

@@ -55,7 +55,7 @@ type FormProps = {
 
 type CreateFormProps = FormProps & {
   app: AppConnection;
-  projectId?: string;
+  projectId: string;
 };
 type UpdateFormProps = FormProps & {
   appConnection: TAppConnection;
@@ -373,7 +373,7 @@ export const AppConnectionForm = ({ onBack, projectId, projectType, ...props }: 
       {appConnection ? (
         <UpdateForm {...props} appConnection={appConnection} projectType={projectType} />
       ) : (
-        <CreateForm {...props} app={app} projectId={projectId} projectType={projectType} />
+        <CreateForm {...props} app={app} projectId={projectId!} projectType={projectType} />
       )}
     </div>
   );

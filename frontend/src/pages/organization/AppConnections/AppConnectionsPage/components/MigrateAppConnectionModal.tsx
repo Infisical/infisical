@@ -149,7 +149,7 @@ export const MigrateAppConnectionModal = ({ isOpen, onOpenChange, appConnection 
         className="max-w-2xl"
         title="Migrate App Connection"
         subTitle={`Migrate this organization-level ${
-          appConnection ? APP_CONNECTION_MAP[appConnection.app].name : "App"
+          APP_CONNECTION_MAP[appConnection.app].name
         } Connection to projects using it.`}
       >
         <Content appConnection={appConnection} onComplete={() => onOpenChange(false)} />

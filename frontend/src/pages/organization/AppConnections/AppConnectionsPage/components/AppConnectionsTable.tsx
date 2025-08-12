@@ -192,7 +192,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
           <div className="flex items-center gap-1">
             <p className="text-xl font-semibold text-mineshaft-100">App Connections</p>
             <a
-              href="https://infisical.com/docs/documentation/platform/secret-scanning/overview"
+              href="https://infisical.com/docs/integrations/app-connections/overview"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -219,7 +219,6 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
             {(isAllowed) => (
               <Button
                 colorSchema="secondary"
-                type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => handlePopUpOpen("addConnection")}
                 isDisabled={!isAllowed}

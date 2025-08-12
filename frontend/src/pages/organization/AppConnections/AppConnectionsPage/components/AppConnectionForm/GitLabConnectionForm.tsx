@@ -30,8 +30,8 @@ import {
   TGitLabConnection
 } from "@app/hooks/api/appConnections/types/gitlab-connection";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { GitLabFormData } from "@app/pages/organization/AppConnections/OauthCallbackPage/OauthCallbackPage";
 
+import { GitLabFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields

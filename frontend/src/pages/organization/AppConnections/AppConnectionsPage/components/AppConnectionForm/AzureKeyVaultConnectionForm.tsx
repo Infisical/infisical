@@ -19,8 +19,8 @@ import {
   TAzureKeyVaultConnection
 } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { ProjectType } from "@app/hooks/api/workspace/types";
-import { AzureKeyVaultFormData } from "@app/pages/organization/AppConnections/OauthCallbackPage/OauthCallbackPage";
 
+import { AzureKeyVaultFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields

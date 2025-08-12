@@ -33,8 +33,12 @@ import {
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
 import { auth0ConnectionService } from "@app/services/app-connection/auth0/auth0-connection-service";
-import { githubRadarConnectionService } from "@app/services/app-connection/github-radar/github-radar-connection-service";
-import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
+import {
+  githubRadarConnectionService
+} from "@app/services/app-connection/github-radar/github-radar-connection-service";
+import {
+  TExternalCertificateAuthorityDALFactory
+} from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
@@ -299,10 +303,6 @@ export const appConnectionServiceFactory = ({
     { method, app, credentials, gatewayId, projectId, ...params }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
-    const project = await projectDAL.findProjectById(projectId);
-
-    if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -316,6 +316,10 @@ export const appConnectionServiceFactory = ({
       ProjectPermissionAppConnectionActions.Create,
       ProjectPermissionSub.AppConnections
     );
+
+    const project = await projectDAL.findProjectById(projectId);
+
+    if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
 
     if (gatewayId) {
       const { permission: orgPermission } = await permissionService.getOrgPermission(

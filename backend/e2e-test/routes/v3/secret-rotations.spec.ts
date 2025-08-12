@@ -94,7 +94,8 @@ const createOracleDBAppConnection = async (credentials: TGenericSqlCredentials) 
     description: "Test OracleDB App Connection",
     gatewayId: null,
     isPlatformManagedCredentials: false,
-    method: "username-and-password"
+    method: "username-and-password",
+    projectId: seedData1.projectV3.id
   };
 
   const res = await testServer.inject({
@@ -120,6 +121,7 @@ const createMySQLAppConnection = async (credentials: TGenericSqlCredentials) => 
     description: "test-mysql",
     gatewayId: null,
     method: "username-and-password",
+    projectId: seedData1.projectV3.id,
     credentials: {
       host: credentials.host,
       port: credentials.port,
@@ -162,7 +164,8 @@ const createPostgresAppConnection = async (credentials: TGenericSqlCredentials) 
     name: `postgres-test-${uuidv4()}`,
     description: "test-postgres",
     gatewayId: null,
-    method: "username-and-password"
+    method: "username-and-password",
+    projectId: seedData1.projectV3.id
   };
 
   const res = await testServer.inject({

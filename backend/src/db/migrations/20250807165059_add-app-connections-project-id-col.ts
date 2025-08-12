@@ -11,6 +11,7 @@ export async function up(knex: Knex): Promise<void> {
     if (!(await knex.schema.hasColumn(TableName.AppConnection, "projectId"))) {
       await knex.schema.alterTable(TableName.AppConnection, (t) => {
         t.string("projectId").nullable();
+        t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
         t.unique(["name", "projectId"]);
       });
     }

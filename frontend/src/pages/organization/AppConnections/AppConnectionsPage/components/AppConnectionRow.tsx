@@ -227,11 +227,9 @@ export const AppConnectionRow = ({
                 {!isProjectView && isOrgAdmin && (
                   <OrgPermissionCan
                     I={OrgPermissionAppConnectionActions.Delete}
-                    a={
-                      subject(OrgPermissionSubjects.AppConnections, {
-                        connectionId: id
-                      }) as unknown as OrgPermissionSubjects.AppConnections
-                    }
+                    a={subject(OrgPermissionSubjects.AppConnections, {
+                      connectionId: id
+                    })}
                   >
                     {(isAllowed) => (
                       <DropdownMenuItem
