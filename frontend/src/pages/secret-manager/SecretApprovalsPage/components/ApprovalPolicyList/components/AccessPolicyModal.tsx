@@ -454,7 +454,7 @@ const Form = ({
                   errorText={error?.message}
                   className="flex-shrink"
                 >
-                  <Input {...field} value={field.value} placeholder="permanent" />
+                  <Input {...field} value={field.value || ""} placeholder="permanent" />
                 </FormControl>
               )}
             />
