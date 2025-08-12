@@ -3,6 +3,7 @@ import {
   faClipboardCheck,
   faEdit,
   faEllipsisV,
+  faQuestionCircle,
   faTrash,
   faUser,
   faUserGroup
@@ -19,6 +20,7 @@ import {
   GenericFieldLabel,
   IconButton,
   Td,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
@@ -86,10 +88,9 @@ export const ApprovalPolicyRow = ({
     return entityInSameSequence?.map((el) => {
       return {
         sequence: el.sequence || policy.approvals,
-        userLabels: members
-          ?.filter((member) => el.user.find((i) => i.id === member.user.id))
-          .map((member) => getMemberLabel(member))
-          .join(", "),
+
+        users: members.filter((member) => el.user.find((i) => i.id === member.user.id)),
+
         groupLabels: groups
           ?.filter(({ group }) => el.group.find((i) => i.id === group.id))
           .map(({ group }) => group.name)
@@ -212,7 +213,27 @@ export const ApprovalPolicyRow = ({
                   )}
                   <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
                     <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
-                      {el.userLabels}
+                      {Boolean(el.users.length) && (
+                        <div className="flex flex-row flex-wrap gap-2">
+                          {el.users.map((u, i) => {
+                            return u.user.isOrgMembershipActive ? (
+                              <span key={u.id}>{getMemberLabel(u)}</span>
+                            ) : (
+                              <span className="opacity-40" key={u.id}>
+                                {getMemberLabel(u)}{" "}
+                                <span className="text-xs">
+                                  <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
+                                    <div>
+                                      (Inactive){" "}
+                                      <FontAwesomeIcon size="xs" icon={faQuestionCircle} />
+                                    </div>
+                                  </Tooltip>
+                                </span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </GenericFieldLabel>
                     <GenericFieldLabel className="col-span-2" icon={faUserGroup} label="Groups">
                       {el.groupLabels}

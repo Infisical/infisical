@@ -21,6 +21,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .where({ [`${TableName.ProjectMembership}.projectId` as "projectId"]: projectId })
         .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
         .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .join(TableName.OrgMembership, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
         .where((qb) => {
           if (filter.usernames) {
             void qb.whereIn("username", filter.usernames);
@@ -90,7 +91,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("temporaryRange").withSchema(TableName.ProjectUserMembershipRole),
           db.ref("temporaryAccessStartTime").withSchema(TableName.ProjectUserMembershipRole),
           db.ref("temporaryAccessEndTime").withSchema(TableName.ProjectUserMembershipRole),
-          db.ref("name").as("projectName").withSchema(TableName.Project)
+          db.ref("name").as("projectName").withSchema(TableName.Project),
+          db.ref("isActive").withSchema(TableName.OrgMembership)
         )
         .where({ isGhost: false })
         .orderBy(`${TableName.Users}.username` as "username");
@@ -107,12 +109,22 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           id,
           userId,
           projectName,
-          createdAt
+          createdAt,
+          isActive
         }) => ({
           id,
           userId,
           projectId,
-          user: { email, username, firstName, lastName, id: userId, publicKey, isGhost },
+          user: {
+            email,
+            username,
+            firstName,
+            lastName,
+            id: userId,
+            publicKey,
+            isGhost,
+            isOrgMembershipActive: isActive
+          },
           project: {
             id: projectId,
             name: projectName

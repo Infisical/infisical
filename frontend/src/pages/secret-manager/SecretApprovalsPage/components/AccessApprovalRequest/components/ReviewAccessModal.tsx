@@ -3,7 +3,10 @@ import {
   faBan,
   faCheck,
   faHourglass,
-  faTriangleExclamation
+  faQuestionCircle,
+  faTriangleExclamation,
+  faUser,
+  faUserSlash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
@@ -33,7 +36,7 @@ import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { groupBy } from "@app/lib/fn/array";
 
-const getReviewedStatusSymbol = (status?: ApprovalStatus) => {
+const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
   if (status === ApprovalStatus.APPROVED)
     return (
       <Badge variant="success" className="flex h-4 items-center justify-center">
@@ -46,6 +49,16 @@ const getReviewedStatusSymbol = (status?: ApprovalStatus) => {
         <FontAwesomeIcon icon={faBan} size="xs" />
       </Badge>
     );
+
+  if (!isOrgMembershipActive) {
+    return (
+      // Can't do a tooltip here because nested tooltips doesn't work properly as of yet.
+      // TODO(daniel): Fix nested tooltips in the future.
+      <Badge variant="danger" className="flex h-4 items-center justify-center">
+        <FontAwesomeIcon icon={faUserSlash} size="xs" />
+      </Badge>
+    );
+  }
   return (
     <Badge variant="primary" className="flex h-4 items-center justify-center">
       <FontAwesomeIcon icon={faHourglass} size="xs" />
@@ -81,6 +94,7 @@ export const ReviewAccessRequestModal = ({
 }) => {
   const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
+
   const [bypassReason, setBypassReason] = useState("");
   const { currentWorkspace } = useWorkspace();
   const { data: groupMemberships = [] } = useListWorkspaceGroups(currentWorkspace?.id || "");
@@ -215,7 +229,10 @@ export const ReviewAccessRequestModal = ({
     const approvers = approversBySequence?.map((approverChain) => {
       const reviewers = request.policy.approvers
         .filter((el) => (el.sequence || 1) === approverChain.sequence)
-        .map((el) => ({ ...el, status: reviewesGroupById?.[el.userId]?.[0]?.status }));
+        .map((el) => ({
+          ...el,
+          status: reviewesGroupById?.[el.userId]?.[0]?.status
+        }));
       const hasApproved =
         reviewers.filter((el) => el.status === "approved").length >=
         (approverChain?.approvals || 1);
@@ -383,12 +400,31 @@ export const ReviewAccessRequestModal = ({
                       </div>
                     )}
                     <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
-                      <GenericFieldLabel className="col-span-2" label="Users">
-                        {approver?.user
-                          ?.map(
-                            (el) => approverSequence?.membersGroupById?.[el.id]?.[0]?.user?.username
-                          )
-                          .join(", ")}
+                      <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
+                        {Boolean(approver.user.length) && (
+                          <div className="flex flex-row flex-wrap gap-2">
+                            {approver?.user?.map((el) => {
+                              const member = approverSequence?.membersGroupById?.[el.id]?.[0];
+                              if (!member) return null;
+
+                              return member.user.isOrgMembershipActive ? (
+                                <span key={el.id}>{member.user.username}</span>
+                              ) : (
+                                <span className="opacity-40" key={el.id}>
+                                  {member.user.username}{" "}
+                                  <span className="text-xs">
+                                    <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
+                                      <div>
+                                        (Inactive){" "}
+                                        <FontAwesomeIcon size="xs" icon={faQuestionCircle} />
+                                      </div>
+                                    </Tooltip>
+                                  </span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </GenericFieldLabel>
                       <GenericFieldLabel className="col-span-2" label="Groups">
                         {approver?.group
@@ -413,8 +449,18 @@ export const ReviewAccessRequestModal = ({
                                         key={`reviewer-${idx + 1}`}
                                         className="flex items-center gap-2 px-2 py-2 text-sm"
                                       >
-                                        <div className="flex-1">{el.username}</div>
-                                        {getReviewedStatusSymbol(el?.status as ApprovalStatus)}
+                                        <div
+                                          className={twMerge(
+                                            "flex-1",
+                                            !el.isOrgMembershipActive && "opacity-40"
+                                          )}
+                                        >
+                                          {el.username}
+                                        </div>
+                                        {getReviewedStatusSymbol(
+                                          el?.status as ApprovalStatus,
+                                          el.isOrgMembershipActive
+                                        )}
                                       </div>
                                     ))}
                                   </div>
