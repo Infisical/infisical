@@ -1,6 +1,14 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useCallback, useState } from "react";
-import { faCodeCommit, faEye, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
+import {
+  faClipboardCheck,
+  faClipboardList,
+  faCodeCommit,
+  faEye,
+  faFolder,
+  faKey,
+  faSave
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Badge, Button, Input, Modal, ModalContent } from "@app/components/v2";
@@ -328,12 +336,12 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               </Button>
               <Button
                 variant="solid"
-                leftIcon={<FontAwesomeIcon icon={faEye} />}
+                leftIcon={<FontAwesomeIcon icon={faSave} />}
                 onClick={() => setIsModalOpen(true)}
                 isDisabled={totalChangesCount === 0}
                 className="px-6"
               >
-                Review Changes
+                Save Changes
               </Button>
             </div>
           </div>
@@ -345,14 +353,14 @@ export const CommitForm: React.FC<CommitFormProps> = ({
         <ModalContent
           title={
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faCodeCommit} className="text-mineshaft-400" />
-              Commit Changes
+              <FontAwesomeIcon icon={faClipboardCheck} className="text-mineshaft-400" />
+              Review Changes
               <Badge variant="primary" className="mt-[0.05rem]">
                 {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
               </Badge>
             </div>
           }
-          subTitle={"Write a commit message and review the changes you&apos;re about to commit."}
+          subTitle="Write a commit message and review the changes you're about to save."
           className="max-h-[90vh] max-w-[95%] md:max-w-7xl"
         >
           <div className="space-y-6">
@@ -413,6 +421,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 onChange={(e) => setCommitMessage(e.target.value)}
                 placeholder="Describe your changes..."
                 className="w-full"
+                autoFocus
                 required
               />
             </div>
@@ -435,7 +444,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 colorSchema="primary"
                 variant="outline_bg"
               >
-                {isCommitting ? "Committing..." : "Commit Changes"}
+                {isCommitting ? "Save..." : "Save Changes"}
               </Button>
             </div>
           </div>
