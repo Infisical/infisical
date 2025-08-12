@@ -92,7 +92,7 @@ const formSchema = z
       .array()
       .default([])
       .optional(),
-    maxTimePeriod: z.string().trim().optional()
+    maxTimePeriod: z.string().trim().nullish()
   })
   .superRefine((data, ctx) => {
     if (data.policyType === PolicyType.ChangePolicy) {
