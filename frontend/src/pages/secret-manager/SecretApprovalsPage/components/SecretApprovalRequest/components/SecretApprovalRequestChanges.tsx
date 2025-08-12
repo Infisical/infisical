@@ -539,7 +539,7 @@ export const SecretApprovalRequestChanges = ({
             )
             .map((requiredApprover) => {
               const reviewer = reviewedUsers?.[requiredApprover.userId];
-              const isOrgMembershipActive = requiredApprover.isOrgMembershipActive;
+              const { isOrgMembershipActive } = requiredApprover;
 
               return (
                 <div
@@ -618,7 +618,7 @@ export const SecretApprovalRequestChanges = ({
             )
             .map((reviewer) => {
               const status = reviewedUsers?.[reviewer.userId].status;
-              const isOrgMembershipActive = reviewer.isOrgMembershipActive;
+              const { isOrgMembershipActive } = reviewer;
               return (
                 <div
                   className="flex flex-nowrap items-center justify-between space-x-2 rounded bg-mineshaft-800 px-2 py-1"
