@@ -234,7 +234,9 @@ const Form = ({
           ...data,
           approvers: sequenceApprovers?.flatMap((approvers, index) =>
             approvers.user
-              .map((el) => ({ ...el, sequence: index + 1 }) as Approver)
+              .map(
+                (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
+              )
               .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
           ),
           approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -290,7 +292,9 @@ const Form = ({
           ...data,
           approvers: sequenceApprovers?.flatMap((approvers, index) =>
             approvers.user
-              .map((el) => ({ ...el, sequence: index + 1 }) as Approver)
+              .map(
+                (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
+              )
               .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
           ),
           approvalsRequired: sequenceApprovers?.map((el, index) => ({

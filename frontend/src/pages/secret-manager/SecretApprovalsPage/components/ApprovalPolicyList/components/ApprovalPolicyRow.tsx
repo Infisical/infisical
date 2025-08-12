@@ -215,7 +215,7 @@ export const ApprovalPolicyRow = ({
                     <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
                       {Boolean(el.users.length) && (
                         <div className="flex flex-row flex-wrap gap-2">
-                          {el.users.map((u, i) => {
+                          {el.users.map((u) => {
                             return u.user.isOrgMembershipActive ? (
                               <span key={u.id}>{getMemberLabel(u)}</span>
                             ) : (

@@ -84,7 +84,6 @@ export interface TAccessApprovalRequestServiceFactory {
         allowedSelfApprovals: boolean;
         envId: string;
         deletedAt: Date | null | undefined;
-        isOrgMembershipActive: boolean;
       };
       projectId: string;
       environment: string;
