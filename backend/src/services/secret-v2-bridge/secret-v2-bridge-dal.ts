@@ -417,7 +417,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       tagSlugs?: string[];
       includeTagsInSearch?: boolean;
       includeMetadataInSearch?: boolean;
-      includeEmptySecrets?: boolean;
     }
   ) => {
     try {
