@@ -491,88 +491,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  // get unique empty secret count by folder IDs
-  const countEmptySecretsByFolderIds = async (
-    folderIds: string[],
-    userId?: string,
-    tx?: Knex,
-    filters?: {
-      search?: string;
-      tagSlugs?: string[];
-      includeTagsInSearch?: boolean;
-      includeMetadataInSearch?: boolean;
-    }
-  ) => {
-    try {
-      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
-      if (userId && !uuidValidate(userId)) {
-        // eslint-disable-next-line no-param-reassign
-        userId = undefined;
-      }
-      const query = (tx || db.replicaNode())(TableName.SecretV2)
-        .leftJoin(
-          TableName.SecretRotationV2SecretMapping,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretRotationV2SecretMapping}.secretId`
-        )
-        .whereIn("folderId", folderIds)
-        .where(`${TableName.SecretV2}.encryptedValue`, "")
-        .where((bd) => {
-          if (filters?.search) {
-            void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
-            if (filters?.includeTagsInSearch) {
-              void bd.orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
-            }
-            if (filters?.includeMetadataInSearch) {
-              void bd
-                .orWhereILike(`${TableName.ResourceMetadata}.key`, `%${filters?.search}%`)
-                .orWhereILike(`${TableName.ResourceMetadata}.value`, `%${filters?.search}%`);
-            }
-          }
-        })
-        .where((bd) => {
-          void bd
-            .whereNull(`${TableName.SecretV2}.userId`)
-            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
-        })
-        .countDistinct(`${TableName.SecretV2}.key`);
-
-      // only need to join tags if filtering by tag slugs
-      const slugs = filters?.tagSlugs?.filter(Boolean);
-      if ((slugs && slugs.length > 0) || filters?.includeTagsInSearch) {
-        void query
-          .leftJoin(
-            TableName.SecretV2JnTag,
-            `${TableName.SecretV2}.id`,
-            `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
-          )
-          .leftJoin(
-            TableName.SecretTag,
-            `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
-            `${TableName.SecretTag}.id`
-          );
-
-        if (slugs?.length) {
-          void query.whereIn("slug", slugs);
-        }
-      }
-
-      if (filters?.includeMetadataInSearch) {
-        void query.leftJoin(
-          TableName.ResourceMetadata,
-          `${TableName.SecretV2}.id`,
-          `${TableName.ResourceMetadata}.secretId`
-        );
-      }
-
-      const secrets = await query;
-
-      return Number(secrets[0]?.count ?? 0);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "get folder empty secret count" });
-    }
-  };
-
   // This method currently uses too many joins which is not performant, in case we need to add more filters we should consider refactoring this method
   const findByFolderIds = async (dto: {
     folderIds: string[];
@@ -1015,7 +933,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findReferencedSecretReferences,
     findAllProjectSecretValues,
     countByFolderIds,
-    countEmptySecretsByFolderIds,
     findOne,
     find,
     invalidateSecretCacheByProjectId,

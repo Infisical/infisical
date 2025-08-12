@@ -10,6 +10,7 @@ import {
   faArrowRight,
   faArrowRightToBracket,
   faArrowUp,
+  faExclamationTriangle,
   faFilter,
   faFingerprint,
   faFolder,
@@ -293,10 +294,10 @@ export const OverviewPage = () => {
       orderBy,
       includeFolders: isFilteredByResources ? filter.folder : true,
       includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
-      includeSecrets: isFilteredByResources ? filter.secret || filter[RowType.EmptySecret] : true,
+      includeSecrets: isFilteredByResources ? filter.secret || filter.empty : true,
       includeImports: true,
       includeSecretRotations: isFilteredByResources ? filter.rotation : true,
-      includeEmptySecrets: filter[RowType.EmptySecret],
+      includeEmptySecrets: isFilteredByResources ? filter.empty : false,
       search: debouncedSearchFilter,
       limit,
       offset
@@ -311,7 +312,6 @@ export const OverviewPage = () => {
     secretRotations,
     totalFolderCount,
     totalSecretCount,
-    // totalEmptySecretCount,
     totalDynamicSecretCount,
     totalSecretRotationCount,
     totalImportCount,
@@ -362,15 +362,6 @@ export const OverviewPage = () => {
   const { secKeys, getEnvSecretKeyCount } = useSecretOverview(
     filter[RowType.EmptySecret] ? secrets || [] : secrets?.concat(secretImportsShaped) || []
   );
-
-  if (filter[RowType.EmptySecret]) {
-    console.log("🔍 EMPTY SECRETS FRONTEND DEBUG:");
-    console.log("Secrets from backend:", secrets?.length || 0);
-    console.log("Secret keys:", secrets?.map((s) => s.key) || []);
-    console.log("SecKeys for table:", secKeys);
-    console.log("Total count from API:", totalCount);
-    console.log("IsTableEmpty:", totalCount === 0);
-  }
 
   const getSecretByKey = useCallback(
     (env: string, key: string) => {
@@ -1094,7 +1085,7 @@ export const OverviewPage = () => {
                     iconPos="right"
                   >
                     <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faKey} className="text-yellow-500" />
+                      <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-500" />
                       <span>Empty Secrets</span>
                     </div>
                   </DropdownMenuItem>
@@ -1632,7 +1623,6 @@ export const OverviewPage = () => {
                   folderCount={totalFolderCount}
                   importCount={totalImportCount}
                   secretRotationCount={totalSecretRotationCount}
-                  // emptySecretCount={totalEmptySecretCount}
                 />
               }
               className="rounded-b-md border-t border-solid border-t-mineshaft-600"

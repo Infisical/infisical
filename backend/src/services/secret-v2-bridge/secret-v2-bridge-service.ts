@@ -791,6 +791,7 @@ export const secretV2BridgeServiceFactory = ({
   }: Pick<TGetSecretsDTO, "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "search"> & {
     environments: string[];
     isInternal?: boolean;
+    includeEmptySecrets?: boolean;
   }) => {
     if (!isInternal) {
       const { permission } = await permissionService.getProjectPermission({
@@ -806,6 +807,57 @@ export const secretV2BridgeServiceFactory = ({
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
     if (!folders.length) return 0;
+
+    // Get and decrypt secrets to check if they're empty
+    if (params.includeEmptySecrets) {
+      const secrets = await secretDAL.findByFolderIds({
+        folderIds: folders.map((folder) => folder.id),
+        userId: actorId,
+        tx: undefined,
+        filters: { ...params, includeEmptySecrets: false } // Get all secrets first
+      });
+
+      if (!secrets.length) return 0;
+
+      // To find unique empty secrets across environments
+      const secretsByKey = groupBy(secrets, (secret) => secret.key);
+      let emptySecretKeysCount = 0;
+
+      const needsDecryption = Object.values(secretsByKey).some(secretsForKey =>
+        secretsForKey.some(secret => secret.encryptedValue)
+      );
+
+      let secretManagerDecryptor: any = null;
+
+      if (needsDecryption) {
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({       
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+        secretManagerDecryptor = decryptor;
+      }
+
+      for (const [, secretsForKey] of Object.entries(secretsByKey)) {
+        const hasEmptyValue = secretsForKey.some((secret) => {
+
+          if (!secret.encryptedValue) {
+            return true; // truly empty secrets
+          }
+
+          const decryptedValue = secretManagerDecryptor({
+            cipherTextBlob: secret.encryptedValue
+          }).toString();
+
+          return decryptedValue === "";
+        });
+        
+        if (hasEmptyValue) {
+          emptySecretKeysCount++;
+        }
+      }
+
+      return emptySecretKeysCount;
+    }
 
     const count = await secretDAL.countByFolderIds(
       folders.map((folder) => folder.id),

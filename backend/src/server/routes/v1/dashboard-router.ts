@@ -424,7 +424,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           projectId,
           path: secretPath,
           search,
-          isInternal: true
+          isInternal: true,
+          includeEmptySecrets
         });
 
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
