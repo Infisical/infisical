@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -128,10 +128,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
-  const availableConnections: TAvailableAppConnection[] = [
-    ...(availableRoute53Connections || []),
-    ...(availableCloudflareConnections || [])
-  ];
+  const availableConnections: TAvailableAppConnection[] = useMemo(
+    () => [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])],
+    [availableRoute53Connections, availableCloudflareConnections]
+  );
 
   const isPending = isRoute53Pending || isCloudflarePending;
 
