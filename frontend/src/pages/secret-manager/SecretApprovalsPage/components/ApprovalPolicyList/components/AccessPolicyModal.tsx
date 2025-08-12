@@ -44,6 +44,7 @@ import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { PolicyMemberOption } from "./PolicyMemberOption";
+import { PolicyBypasserMemberOption } from "./PolicyBypasserMemberOption";
 
 type Props = {
   isOpen?: boolean;
@@ -64,7 +65,7 @@ const formSchema = z
       .object({
         type: z.literal(ApproverType.User),
         id: z.string(),
-        isOrgMembershipActive: z.boolean()
+        isOrgMembershipActive: z.boolean().optional().nullable()
       })
       .array()
       .default([]),
@@ -73,7 +74,11 @@ const formSchema = z
       .array()
       .default([]),
     userBypassers: z
-      .object({ type: z.literal(BypasserType.User), id: z.string() })
+      .object({
+        type: z.literal(BypasserType.User),
+        id: z.string(),
+        isOrgMembershipActive: z.boolean().optional().nullable()
+      })
       .array()
       .default([]),
     groupBypassers: z
@@ -89,7 +94,7 @@ const formSchema = z
           .object({
             type: z.literal(ApproverType.User),
             id: z.string(),
-            isOrgMembershipActive: z.boolean()
+            isOrgMembershipActive: z.boolean().optional().nullable()
           })
           .array()
           .default([]),
@@ -139,7 +144,7 @@ const Form = ({
     handleSubmit,
     watch,
     resetField,
-    formState: { isSubmitting }
+    formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
     values: editValues
@@ -366,7 +371,8 @@ const Form = ({
     () =>
       members.map((member) => ({
         id: member.user.id,
-        type: BypasserType.User
+        type: BypasserType.User,
+        isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
   );
@@ -408,6 +414,8 @@ const Form = ({
     setDraggedItem(null);
     setDragOverItem(null);
   };
+
+  console.log("error", errors);
 
   return (
     <div className="flex flex-col space-y-3">
@@ -804,6 +812,7 @@ const Form = ({
                       menuPlacement="top"
                       isMulti
                       placeholder="Select members..."
+                      components={{ Option: PolicyBypasserMemberOption }}
                       options={bypasserMemberOptions}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => {
