@@ -444,7 +444,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 colorSchema="primary"
                 variant="outline_bg"
               >
-                {isCommitting ? "Save..." : "Save Changes"}
+                {isCommitting ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>
