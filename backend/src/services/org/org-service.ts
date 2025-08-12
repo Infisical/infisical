@@ -198,6 +198,15 @@ export const orgServiceFactory = ({
     // Filter out orgs where the membership object is an invitation
     return orgs.filter((org) => org.userStatus !== "invited");
   };
+
+  /*
+   * Get all organization an identity is part of
+   * */
+  const findIdentityOrganization = async (identityId: string) => {
+    const org = await orgDAL.findIdentityOrganization(identityId);
+
+    return org;
+  };
   /*
    * Get all workspace members
    * */
@@ -1403,6 +1412,7 @@ export const orgServiceFactory = ({
     findOrganizationById,
     findAllOrgMembers,
     findAllOrganizationOfUser,
+    findIdentityOrganization,
     inviteUserToOrganization,
     verifyUserToOrg,
     updateOrg,

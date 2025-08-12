@@ -29,18 +29,30 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       response: {
-        200: z.object({
-          organizations: sanitizedOrganizationSchema
-            .extend({
-              orgAuthMethod: z.string(),
-              userRole: z.string()
-            })
-            .array()
-        })
+        200: z.union([
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            slug: z.string(),
+            role: z.string()
+          }),
+          z.object({
+            organizations: sanitizedOrganizationSchema
+              .extend({
+                orgAuthMethod: z.string(),
+                userRole: z.string()
+              })
+              .array()
+          })
+        ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN], { requireOrg: false }),
     handler: async (req) => {
+      if (req.permission.type === ActorType.IDENTITY) {
+        const organization = await server.services.org.findIdentityOrganization(req.permission.id);
+        return organization;
+      }
       const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
       return { organizations };
     }
