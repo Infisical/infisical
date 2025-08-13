@@ -645,7 +645,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
       return org?.[0];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find all org by user id" });
+      throw new DatabaseError({ error, name: "Find identity organization" });
     }
   };
 
