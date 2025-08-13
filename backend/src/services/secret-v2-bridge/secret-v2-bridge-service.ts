@@ -2800,7 +2800,12 @@ export const secretV2BridgeServiceFactory = ({
         environmentSlug: destinationFolder.environment.slug,
         actorId,
         actor,
-        event: {}
+        event: {
+          importMutation: {
+            secretPath: sourceFolder.path,
+            environment: sourceFolder.environment.slug
+          }
+        }
       });
     }
 
