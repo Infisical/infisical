@@ -511,16 +511,26 @@ export const DynamicSecretCouchbaseSchema = z.object({
   projectId: z.string().trim().min(1).describe("Project ID"),
   clusterId: z.string().trim().min(1).describe("Cluster ID"),
   roles: z.array(z.string().trim().min(1)).min(1).describe("Roles to assign to the user"),
-  buckets: z.union([
-    z.string().trim().min(1).default("*"),
-    z.array(z.object({
-      name: z.string().trim().min(1).describe("Bucket name"),
-      scopes: z.array(z.object({
-        name: z.string().trim().min(1).describe("Scope name"),
-        collections: z.array(z.string().trim().min(1)).optional().describe("Collection names")
-      })).optional().describe("Scopes within the bucket")
-    }))
-  ]).default("*").describe("Bucket configuration: '*' for all buckets or array of bucket objects with scopes and collections"),
+  buckets: z
+    .union([
+      z.string().trim().min(1).default("*"),
+      z.array(
+        z.object({
+          name: z.string().trim().min(1).describe("Bucket name"),
+          scopes: z
+            .array(
+              z.object({
+                name: z.string().trim().min(1).describe("Scope name"),
+                collections: z.array(z.string().trim().min(1)).optional().describe("Collection names")
+              })
+            )
+            .optional()
+            .describe("Scopes within the bucket")
+        })
+      )
+    ])
+    .default("*")
+    .describe("Bucket configuration: '*' for all buckets or array of bucket objects with scopes and collections"),
   passwordRequirements: z
     .object({
       length: z.number().min(8, "Password must be at least 8 characters").max(128),
@@ -535,10 +545,13 @@ export const DynamicSecretCouchbaseSchema = z.object({
           const total = Object.values(data).reduce((sum, count) => sum + count, 0);
           return total <= 128;
         }, "Sum of required characters cannot exceed 128"),
-      allowedSymbols: z.string().refine((symbols) => {
-        const forbiddenChars = ['<', '>', ';', '.', '*', '&', '|', '£'];
-        return !forbiddenChars.some(char => symbols?.includes(char));
-      }, "Cannot contain: < > ; . * & | £").optional()
+      allowedSymbols: z
+        .string()
+        .refine((symbols) => {
+          const forbiddenChars = ["<", ">", ";", ".", "*", "&", "|", "£"];
+          return !forbiddenChars.some((char) => symbols?.includes(char));
+        }, "Cannot contain: < > ; . * & | £")
+        .optional()
     })
     .refine((data) => {
       const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);

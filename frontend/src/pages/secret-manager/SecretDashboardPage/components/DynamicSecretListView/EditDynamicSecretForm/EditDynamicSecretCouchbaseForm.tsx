@@ -1,7 +1,8 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
@@ -27,8 +28,8 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../MetadataForm";
 
-const BucketScopesConfiguration = ({ 
-  control, 
+const BucketScopesConfiguration = ({
+  control,
   bucketIndex,
   bucketsValue,
   setValue,
@@ -36,8 +37,8 @@ const BucketScopesConfiguration = ({
   removeScope,
   addCollection,
   removeCollection
-}: { 
-  control: any; 
+}: {
+  control: any;
   bucketIndex: number;
   bucketsValue: any;
   setValue: any;
@@ -48,7 +49,6 @@ const BucketScopesConfiguration = ({
 }) => {
   const bucket = Array.isArray(bucketsValue) ? bucketsValue[bucketIndex] : null;
   const scopeFields = bucket?.scopes || [];
-
 
   return (
     <div className="space-y-3">
@@ -66,11 +66,12 @@ const BucketScopesConfiguration = ({
       </div>
 
       {scopeFields.map((_scope: any, scopeIndex: number) => (
-        <div key={scopeIndex} className="p-3 bg-mineshaft-700 rounded border border-mineshaft-600 space-y-3">
+        <div
+          key={`scope-${scopeIndex + 1}`}
+          className="space-y-3 rounded border border-mineshaft-600 bg-mineshaft-700 p-3"
+        >
           <div className="flex items-center justify-between">
-            <h5 className="text-xs font-medium text-mineshaft-200">
-              Scope {scopeIndex + 1}
-            </h5>
+            <h5 className="text-xs font-medium text-mineshaft-200">Scope {scopeIndex + 1}</h5>
             <IconButton
               type="button"
               variant="plain"
@@ -81,22 +82,18 @@ const BucketScopesConfiguration = ({
               <FontAwesomeIcon icon={faTrash} className="text-red-400" />
             </IconButton>
           </div>
-          
+
           <Controller
             control={control}
             name={`inputs.buckets.${bucketIndex}.scopes.${scopeIndex}.name`}
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Scope Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
+              <FormControl label="Scope Name" isError={Boolean(error)} errorText={error?.message}>
                 <Input {...field} placeholder="e.g., inventory, _default" className="text-sm" />
               </FormControl>
             )}
           />
 
-          <div className="pl-4 space-y-2">
+          <div className="space-y-2 pl-4">
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-mineshaft-300">Collections</label>
               <Button
@@ -109,47 +106,52 @@ const BucketScopesConfiguration = ({
                 Add Collection
               </Button>
             </div>
-            
-            {scopeFields[scopeIndex]?.collections?.map((collection: string, collectionIndex: number) => (
-              <div key={`${bucketIndex}-${scopeIndex}-${collectionIndex}`} className="flex items-center space-x-2">
-                <FormControl className="flex-1">
-                  <Input 
-                    value={collection || ""}
-                    onChange={(e) => {
-                      const currentBuckets = Array.isArray(bucketsValue) ? [...bucketsValue] : [];
-                      if (currentBuckets[bucketIndex]?.scopes?.[scopeIndex]?.collections) {
-                        currentBuckets[bucketIndex].scopes[scopeIndex].collections[collectionIndex] = e.target.value;
-                        setValue("inputs.buckets", currentBuckets);
-                      }
-                    }}
-                    placeholder="e.g., airport, airline"
-                    className="text-sm"
-                  />
-                </FormControl>
-                <IconButton
-                  type="button"
-                  variant="plain"
-                  ariaLabel="Remove collection"
-                  size="sm"
-                  onClick={() => removeCollection(bucketIndex, scopeIndex, collectionIndex)}
-                >
-                  <FontAwesomeIcon icon={faTrash} className="text-red-400" />
-                </IconButton>
-              </div>
-            ))}
-            
-            {(!scopeFields[scopeIndex]?.collections || scopeFields[scopeIndex].collections.length === 0) && (
-              <div className="text-xs text-mineshaft-400 italic">
+
+            {scopeFields[scopeIndex]?.collections?.map(
+              (collection: string, collectionIndex: number) => (
+                <div key={collection} className="flex items-center space-x-2">
+                  <FormControl className="flex-1">
+                    <Input
+                      value={collection || ""}
+                      onChange={(e) => {
+                        const currentBuckets = Array.isArray(bucketsValue) ? [...bucketsValue] : [];
+                        if (currentBuckets[bucketIndex]?.scopes?.[scopeIndex]?.collections) {
+                          currentBuckets[bucketIndex].scopes[scopeIndex].collections[
+                            collectionIndex
+                          ] = e.target.value;
+                          setValue("inputs.buckets", currentBuckets);
+                        }
+                      }}
+                      placeholder="e.g., airport, airline"
+                      className="text-sm"
+                    />
+                  </FormControl>
+                  <IconButton
+                    type="button"
+                    variant="plain"
+                    ariaLabel="Remove collection"
+                    size="sm"
+                    onClick={() => removeCollection(bucketIndex, scopeIndex, collectionIndex)}
+                  >
+                    <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+                  </IconButton>
+                </div>
+              )
+            )}
+
+            {(!scopeFields[scopeIndex]?.collections ||
+              scopeFields[scopeIndex].collections.length === 0) && (
+              <div className="text-xs italic text-mineshaft-400">
                 No collections specified (access to all collections in scope)
               </div>
             )}
           </div>
         </div>
       ))}
-      
+
       {scopeFields.length === 0 && (
-        <div className="p-4 text-center border border-dashed border-mineshaft-600 rounded bg-mineshaft-700">
-          <p className="text-xs text-mineshaft-400 mb-2">
+        <div className="rounded border border-dashed border-mineshaft-600 bg-mineshaft-700 p-4 text-center">
+          <p className="mb-2 text-xs text-mineshaft-400">
             No scopes configured (access to all scopes in bucket)
           </p>
           <Button
@@ -169,9 +171,21 @@ const BucketScopesConfiguration = ({
 
 const couchbaseRoles = [
   { value: "data_reader", label: "Data Reader", description: "Read access to bucket data" },
-  { value: "data_writer", label: "Data Writer", description: "Read and write access to bucket data" },
-  { value: "read", label: "Read", description: "Read access to bucket data (alias for data_reader)" },
-  { value: "write", label: "Write", description: "Read and write access to bucket data (alias for data_writer)" }
+  {
+    value: "data_writer",
+    label: "Data Writer",
+    description: "Read and write access to bucket data"
+  },
+  {
+    value: "read",
+    label: "Read",
+    description: "Read access to bucket data (alias for data_reader)"
+  },
+  {
+    value: "write",
+    label: "Write",
+    description: "Read and write access to bucket data (alias for data_writer)"
+  }
 ];
 
 const passwordRequirementsSchema = z
@@ -188,10 +202,13 @@ const passwordRequirementsSchema = z
         const total = Object.values(data).reduce((sum, count) => sum + count, 0);
         return total <= 128;
       }, "Sum of required characters cannot exceed 128"),
-    allowedSymbols: z.string().refine((symbols) => {
-      const forbiddenChars = ['<', '>', ';', '.', '*', '&', '|', '�'];
-      return !forbiddenChars.some(char => symbols?.includes(char));
-    }, "Cannot contain: < > ; . * & | �").optional()
+    allowedSymbols: z
+      .string()
+      .refine((symbols) => {
+        const forbiddenChars = ["<", ">", ";", ".", "*", "&", "|", "�"];
+        return !forbiddenChars.some((char) => symbols?.includes(char));
+      }, "Cannot contain: < > ; . * &")
+      .optional()
   })
   .refine((data) => {
     const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
@@ -200,10 +217,14 @@ const passwordRequirementsSchema = z
 
 const bucketSchema = z.object({
   name: z.string().trim().min(1, "Bucket name is required"),
-  scopes: z.array(z.object({
-    name: z.string().trim().min(1, "Scope name is required"),
-    collections: z.array(z.string().trim().min(1)).optional()
-  })).optional()
+  scopes: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1, "Scope name is required"),
+        collections: z.array(z.string().trim().min(1)).optional()
+      })
+    )
+    .optional()
 });
 
 const formSchema = z.object({
@@ -214,10 +235,7 @@ const formSchema = z.object({
       projectId: z.string().min(1),
       clusterId: z.string().min(1),
       roles: z.array(z.string()).min(1),
-      buckets: z.union([
-        z.string().trim().min(1),
-        z.array(bucketSchema)
-      ]),
+      buckets: z.union([z.string().trim().min(1), z.array(bucketSchema)]),
       useAdvancedBuckets: z.boolean().default(false),
       passwordRequirements: passwordRequirementsSchema.optional(),
       auth: z.object({
@@ -287,7 +305,7 @@ export const EditDynamicSecretCouchbaseForm = ({
       metadata: dynamicSecret.metadata,
       usernameTemplate: dynamicSecret.usernameTemplate,
       inputs: {
-        ...dynamicSecret.inputs as any,
+        ...(dynamicSecret.inputs as any),
         useAdvancedBuckets: Array.isArray((dynamicSecret.inputs as any)?.buckets)
       }
     }
@@ -324,7 +342,9 @@ export const EditDynamicSecretCouchbaseForm = ({
   const removeScope = (bucketIndex: number, scopeIndex: number) => {
     const currentBuckets = Array.isArray(bucketsValue) ? [...bucketsValue] : [];
     if (currentBuckets[bucketIndex]?.scopes) {
-      currentBuckets[bucketIndex].scopes = currentBuckets[bucketIndex].scopes.filter((_, i) => i !== scopeIndex);
+      currentBuckets[bucketIndex].scopes = currentBuckets[bucketIndex].scopes.filter(
+        (_, i) => i !== scopeIndex
+      );
       setValue("inputs.buckets", currentBuckets);
     }
   };
@@ -341,31 +361,36 @@ export const EditDynamicSecretCouchbaseForm = ({
   const removeCollection = (bucketIndex: number, scopeIndex: number, collectionIndex: number) => {
     const currentBuckets = Array.isArray(bucketsValue) ? [...bucketsValue] : [];
     if (currentBuckets[bucketIndex]?.scopes?.[scopeIndex]?.collections) {
-      currentBuckets[bucketIndex].scopes[scopeIndex].collections = 
-        currentBuckets[bucketIndex].scopes[scopeIndex].collections.filter((_, i) => i !== collectionIndex);
+      currentBuckets[bucketIndex].scopes[scopeIndex].collections = currentBuckets[
+        bucketIndex
+      ].scopes[scopeIndex].collections.filter((_, i) => i !== collectionIndex);
       setValue("inputs.buckets", currentBuckets);
     }
   };
 
-  const handleUpdateDynamicSecret = async ({ 
-    inputs, 
-    newName, 
-    defaultTTL, 
-    maxTTL, 
-    metadata, 
-    usernameTemplate 
+  const handleUpdateDynamicSecret = async ({
+    inputs,
+    newName,
+    defaultTTL,
+    maxTTL,
+    metadata,
+    usernameTemplate
   }: TForm) => {
     if (updateDynamicSecret.isPending) return;
 
-    const transformedInputs = inputs ? {
-      ...inputs,
-      buckets: inputs.useAdvancedBuckets ? inputs.buckets : (inputs.buckets as string)
-    } : inputs;
-    
-    const finalInputs = transformedInputs ? (() => {
-      const { useAdvancedBuckets, ...rest } = transformedInputs;
-      return rest;
-    })() : transformedInputs;
+    const transformedInputs = inputs
+      ? {
+          ...inputs,
+          buckets: inputs.useAdvancedBuckets ? inputs.buckets : (inputs.buckets as string)
+        }
+      : inputs;
+
+    const finalInputs = transformedInputs
+      ? (() => {
+          const { useAdvancedBuckets, ...rest } = transformedInputs;
+          return rest;
+        })()
+      : transformedInputs;
 
     try {
       await updateDynamicSecret.mutateAsync({
@@ -378,7 +403,10 @@ export const EditDynamicSecretCouchbaseForm = ({
           maxTTL: maxTTL || undefined,
           newName: newName === dynamicSecret.name ? undefined : newName,
           metadata,
-          usernameTemplate: !usernameTemplate || usernameTemplate === "{{randomUsername}}" ? undefined : usernameTemplate,
+          usernameTemplate:
+            !usernameTemplate || usernameTemplate === "{{randomUsername}}"
+              ? undefined
+              : usernameTemplate,
           inputs: finalInputs
         }
       });
@@ -392,7 +420,7 @@ export const EditDynamicSecretCouchbaseForm = ({
     } catch (err) {
       createNotification({
         type: "error",
-        text: "Failed to update dynamic secret"
+        text: `Failed to update dynamic secret: ${err}`
       });
     }
   };
@@ -468,10 +496,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input
-                        placeholder="https://cloudapi.cloud.couchbase.com"
-                        {...field}
-                      />
+                      <Input placeholder="https://cloudapi.cloud.couchbase.com" {...field} />
                     </FormControl>
                   )}
                 />
@@ -534,7 +559,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                   >
                     <FilterableSelect
                       isMulti
-                      value={couchbaseRoles.filter(role => value?.includes(role.value))}
+                      value={couchbaseRoles.filter((role) => value?.includes(role.value))}
                       onChange={(selectedRoles) => {
                         if (Array.isArray(selectedRoles)) {
                           onChange(selectedRoles.map((role: any) => role.value));
@@ -558,7 +583,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                     label="Advanced Bucket Configuration"
                     helperText="Enable to configure specific scopes and collections within buckets"
                   >
-                    <Switch 
+                    <Switch
                       id="advanced-buckets-switch"
                       isChecked={value}
                       onCheckedChange={(checked) => {
@@ -588,9 +613,9 @@ export const EditDynamicSecretCouchbaseForm = ({
                       errorText={error?.message}
                       helperText="Specify bucket names separated by commas (e.g., 'bucket1,bucket2') or use '*' for all buckets"
                     >
-                      <Input 
-                        {...field} 
-                        value={typeof field.value === 'string' ? field.value : '*'}
+                      <Input
+                        {...field}
+                        value={typeof field.value === "string" ? field.value : "*"}
                         onChange={(e) => field.onChange(e.target.value)}
                         placeholder="* (all buckets) or bucket1,bucket2,bucket3"
                       />
@@ -622,54 +647,56 @@ export const EditDynamicSecretCouchbaseForm = ({
                   </div>
 
                   <div className="space-y-4">
-                    {Array.isArray(bucketsValue) && (bucketsValue as any[]).map((_, bucketIndex) => (
-                      <div key={bucketIndex} className="p-4 border border-mineshaft-600 rounded bg-mineshaft-800 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-mineshaft-200">
-                            Bucket {bucketIndex + 1}
-                          </h4>
-                          <IconButton
-                            type="button"
-                            variant="plain"
-                            ariaLabel="Remove bucket"
-                            onClick={() => removeBucket(bucketIndex)}
-                          >
-                            <FontAwesomeIcon icon={faTrash} className="text-red-400" />
-                          </IconButton>
-                        </div>
-                        
-                        <Controller
-                          control={control}
-                          name={`inputs.buckets.${bucketIndex}.name`}
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Bucket Name"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
+                    {Array.isArray(bucketsValue) &&
+                      (bucketsValue as any[]).map((_, bucketIndex) => (
+                        <div
+                          key={`bucket-${bucketIndex + 1}`}
+                          className="space-y-4 rounded border border-mineshaft-600 bg-mineshaft-800 p-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-mineshaft-200">
+                              Bucket {bucketIndex + 1}
+                            </h4>
+                            <IconButton
+                              type="button"
+                              variant="plain"
+                              ariaLabel="Remove bucket"
+                              onClick={() => removeBucket(bucketIndex)}
                             >
-                              <Input {...field} placeholder="e.g., travel-sample" />
-                            </FormControl>
-                          )}
-                        />
+                              <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+                            </IconButton>
+                          </div>
 
-                        <BucketScopesConfiguration 
-                          control={control}
-                          bucketIndex={bucketIndex}
-                          bucketsValue={bucketsValue}
-                          setValue={setValue}
-                          addScope={addScope}
-                          removeScope={removeScope}
-                          addCollection={addCollection}
-                          removeCollection={removeCollection}
-                        />
-                      </div>
-                    ))}
-                    
+                          <Controller
+                            control={control}
+                            name={`inputs.buckets.${bucketIndex}.name`}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Bucket Name"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                              >
+                                <Input {...field} placeholder="e.g., travel-sample" />
+                              </FormControl>
+                            )}
+                          />
+
+                          <BucketScopesConfiguration
+                            control={control}
+                            bucketIndex={bucketIndex}
+                            bucketsValue={bucketsValue}
+                            setValue={setValue}
+                            addScope={addScope}
+                            removeScope={removeScope}
+                            addCollection={addCollection}
+                            removeCollection={removeCollection}
+                          />
+                        </div>
+                      ))}
+
                     {(!Array.isArray(bucketsValue) || bucketsValue.length === 0) && (
-                      <div className="p-8 text-center border border-dashed border-mineshaft-600 rounded">
-                        <p className="text-sm text-mineshaft-400 mb-2">
-                          No buckets configured
-                        </p>
+                      <div className="rounded border border-dashed border-mineshaft-600 p-8 text-center">
+                        <p className="mb-2 text-sm text-mineshaft-400">No buckets configured</p>
                         <Button
                           type="button"
                           variant="outline_bg"
@@ -729,7 +756,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                     <div className="flex items-center space-x-2">
                       <span>Password Configuration (optional)</span>
                       <Tooltip content="Couchbase password requirements: minimum 8 characters, at least 1 uppercase, 1 lowercase, 1 digit, 1 special character. Cannot contain: < > ; . * & | �">
-                        <div className="h-4 w-4 rounded-full bg-mineshaft-600 text-xs text-mineshaft-300 flex items-center justify-center cursor-help">
+                        <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-mineshaft-600 text-xs text-mineshaft-300">
                           ?
                         </div>
                       </Tooltip>

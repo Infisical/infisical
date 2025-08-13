@@ -1,7 +1,8 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
 
@@ -27,8 +28,8 @@ import { WorkspaceEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
 // Component for managing scopes and collections within a bucket
-const BucketScopesConfiguration = ({ 
-  control, 
+const BucketScopesConfiguration = ({
+  control,
   bucketIndex,
   bucketsValue,
   setValue,
@@ -36,8 +37,8 @@ const BucketScopesConfiguration = ({
   removeScope,
   addCollection,
   removeCollection
-}: { 
-  control: any; 
+}: {
+  control: any;
   bucketIndex: number;
   bucketsValue: any;
   setValue: any;
@@ -48,7 +49,6 @@ const BucketScopesConfiguration = ({
 }) => {
   const bucket = Array.isArray(bucketsValue) ? bucketsValue[bucketIndex] : null;
   const scopeFields = bucket?.scopes || [];
-
 
   return (
     <div className="space-y-3">
@@ -66,11 +66,12 @@ const BucketScopesConfiguration = ({
       </div>
 
       {scopeFields.map((_scope: any, scopeIndex: number) => (
-        <div key={scopeIndex} className="p-3 bg-mineshaft-700 rounded border border-mineshaft-600 space-y-3">
+        <div
+          key={`scope-${scopeIndex + 1}`}
+          className="space-y-3 rounded border border-mineshaft-600 bg-mineshaft-700 p-3"
+        >
           <div className="flex items-center justify-between">
-            <h5 className="text-xs font-medium text-mineshaft-200">
-              Scope {scopeIndex + 1}
-            </h5>
+            <h5 className="text-xs font-medium text-mineshaft-200">Scope {scopeIndex + 1}</h5>
             <IconButton
               type="button"
               variant="plain"
@@ -81,22 +82,18 @@ const BucketScopesConfiguration = ({
               <FontAwesomeIcon icon={faTrash} className="text-red-400" />
             </IconButton>
           </div>
-          
+
           <Controller
             control={control}
             name={`provider.buckets.${bucketIndex}.scopes.${scopeIndex}.name`}
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Scope Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
+              <FormControl label="Scope Name" isError={Boolean(error)} errorText={error?.message}>
                 <Input {...field} placeholder="e.g., inventory, _default" className="text-sm" />
               </FormControl>
             )}
           />
 
-          <div className="pl-4 space-y-2">
+          <div className="space-y-2 pl-4">
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-mineshaft-300">Collections</label>
               <Button
@@ -109,48 +106,53 @@ const BucketScopesConfiguration = ({
                 Add Collection
               </Button>
             </div>
-            
-            {scopeFields[scopeIndex]?.collections?.map((collection: string, collectionIndex: number) => (
-              <div key={`${bucketIndex}-${scopeIndex}-${collectionIndex}`} className="flex items-center space-x-2">
-                <FormControl className="flex-1">
-                  <Input 
-                    value={collection || ""}
-                    onChange={(e) => {
-                      const currentBuckets = Array.isArray(bucketsValue) ? [...bucketsValue] : [];
-                      if (currentBuckets[bucketIndex]?.scopes?.[scopeIndex]?.collections) {
-                        currentBuckets[bucketIndex].scopes[scopeIndex].collections[collectionIndex] = e.target.value;
-                        setValue("provider.buckets", currentBuckets);
-                      }
-                    }}
-                    placeholder="e.g., airport, airline"
-                    className="text-sm"
-                  />
-                </FormControl>
-                <IconButton
-                  type="button"
-                  variant="plain"
-                  ariaLabel="Remove collection"
-                  className="mb-4"
-                  size="sm"
-                  onClick={() => removeCollection(bucketIndex, scopeIndex, collectionIndex)}
-                >
-                  <FontAwesomeIcon icon={faTrash} className="text-red-400" />
-                </IconButton>
-              </div>
-            ))}
-            
-            {(!scopeFields[scopeIndex]?.collections || scopeFields[scopeIndex].collections.length === 0) && (
-              <div className="text-xs text-mineshaft-400 italic">
+
+            {scopeFields[scopeIndex]?.collections?.map(
+              (collection: string, collectionIndex: number) => (
+                <div key={collection} className="flex items-center space-x-2">
+                  <FormControl className="flex-1">
+                    <Input
+                      value={collection || ""}
+                      onChange={(e) => {
+                        const currentBuckets = Array.isArray(bucketsValue) ? [...bucketsValue] : [];
+                        if (currentBuckets[bucketIndex]?.scopes?.[scopeIndex]?.collections) {
+                          currentBuckets[bucketIndex].scopes[scopeIndex].collections[
+                            collectionIndex
+                          ] = e.target.value;
+                          setValue("provider.buckets", currentBuckets);
+                        }
+                      }}
+                      placeholder="e.g., airport, airline"
+                      className="text-sm"
+                    />
+                  </FormControl>
+                  <IconButton
+                    type="button"
+                    variant="plain"
+                    ariaLabel="Remove collection"
+                    className="mb-4"
+                    size="sm"
+                    onClick={() => removeCollection(bucketIndex, scopeIndex, collectionIndex)}
+                  >
+                    <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+                  </IconButton>
+                </div>
+              )
+            )}
+
+            {(!scopeFields[scopeIndex]?.collections ||
+              scopeFields[scopeIndex].collections.length === 0) && (
+              <div className="text-xs italic text-mineshaft-400">
                 No collections specified (access to all collections in scope)
               </div>
             )}
           </div>
         </div>
       ))}
-      
+
       {scopeFields.length === 0 && (
-        <div className="p-4 text-center border border-dashed border-mineshaft-600 rounded bg-mineshaft-700">
-          <p className="text-xs text-mineshaft-400 mb-2">
+        <div className="rounded border border-dashed border-mineshaft-600 bg-mineshaft-700 p-4 text-center">
+          <p className="mb-2 text-xs text-mineshaft-400">
             No scopes configured (access to all scopes in bucket)
           </p>
           <Button
@@ -170,9 +172,21 @@ const BucketScopesConfiguration = ({
 
 const couchbaseRoles = [
   { value: "data_reader", label: "Data Reader", description: "Read access to bucket data" },
-  { value: "data_writer", label: "Data Writer", description: "Read and write access to bucket data" },
-  { value: "read", label: "Read", description: "Read access to bucket data (alias for data_reader)" },
-  { value: "write", label: "Write", description: "Read and write access to bucket data (alias for data_writer)" }
+  {
+    value: "data_writer",
+    label: "Data Writer",
+    description: "Read and write access to bucket data"
+  },
+  {
+    value: "read",
+    label: "Read",
+    description: "Read access to bucket data (alias for data_reader)"
+  },
+  {
+    value: "write",
+    label: "Write",
+    description: "Read and write access to bucket data (alias for data_writer)"
+  }
 ];
 
 const passwordRequirementsSchema = z
@@ -189,10 +203,13 @@ const passwordRequirementsSchema = z
         const total = Object.values(data).reduce((sum, count) => sum + count, 0);
         return total <= 128;
       }, "Sum of required characters cannot exceed 128"),
-    allowedSymbols: z.string().refine((symbols) => {
-      const forbiddenChars = ['<', '>', ';', '.', '*', '&', '|', '£'];
-      return !forbiddenChars.some(char => symbols?.includes(char));
-    }, "Cannot contain: < > ; . * & | £").optional()
+    allowedSymbols: z
+      .string()
+      .refine((symbols) => {
+        const forbiddenChars = ["<", ">", ";", ".", "*", "&", "|", "£"];
+        return !forbiddenChars.some((char) => symbols?.includes(char));
+      }, "Cannot contain: < > ; . * & | £")
+      .optional()
   })
   .refine((data) => {
     const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
@@ -201,10 +218,14 @@ const passwordRequirementsSchema = z
 
 const bucketSchema = z.object({
   name: z.string().trim().min(1, "Bucket name is required"),
-  scopes: z.array(z.object({
-    name: z.string().trim().min(1, "Scope name is required"),
-    collections: z.array(z.string().trim().min(1)).optional()
-  })).optional()
+  scopes: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1, "Scope name is required"),
+        collections: z.array(z.string().trim().min(1)).optional()
+      })
+    )
+    .optional()
 });
 
 const formSchema = z.object({
@@ -214,14 +235,11 @@ const formSchema = z.object({
     projectId: z.string().trim().min(1),
     clusterId: z.string().trim().min(1),
     roles: z.array(z.string()).min(1, "At least one role must be selected"),
-    buckets: z.union([
-      z.string().trim().min(1),
-      z.array(bucketSchema)
-    ]),
+    buckets: z.union([z.string().trim().min(1), z.array(bucketSchema)]),
     useAdvancedBuckets: z.boolean().default(false),
     passwordRequirements: passwordRequirementsSchema.optional(),
     auth: z.object({
-      apiKey: z.string().trim()
+      apiKey: z.string().trim().min(1)
     })
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -270,6 +288,7 @@ export const CouchbaseInputForm = ({
     formState: { isSubmitting },
     handleSubmit,
     setValue,
+    getValues,
     watch
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
@@ -329,7 +348,9 @@ export const CouchbaseInputForm = ({
   const removeScope = (bucketIndex: number, scopeIndex: number) => {
     const currentBuckets = Array.isArray(bucketsValue) ? [...bucketsValue] : [];
     if (currentBuckets[bucketIndex]?.scopes) {
-      currentBuckets[bucketIndex].scopes = currentBuckets[bucketIndex].scopes.filter((_, i) => i !== scopeIndex);
+      currentBuckets[bucketIndex].scopes = currentBuckets[bucketIndex].scopes.filter(
+        (_, i) => i !== scopeIndex
+      );
       setValue("provider.buckets", currentBuckets);
     }
   };
@@ -346,8 +367,9 @@ export const CouchbaseInputForm = ({
   const removeCollection = (bucketIndex: number, scopeIndex: number, collectionIndex: number) => {
     const currentBuckets = Array.isArray(bucketsValue) ? [...bucketsValue] : [];
     if (currentBuckets[bucketIndex]?.scopes?.[scopeIndex]?.collections) {
-      currentBuckets[bucketIndex].scopes[scopeIndex].collections = 
-        currentBuckets[bucketIndex].scopes[scopeIndex].collections.filter((_, i) => i !== collectionIndex);
+      currentBuckets[bucketIndex].scopes[scopeIndex].collections = currentBuckets[
+        bucketIndex
+      ].scopes[scopeIndex].collections.filter((_, i) => i !== collectionIndex);
       setValue("provider.buckets", currentBuckets);
     }
   };
@@ -362,14 +384,14 @@ export const CouchbaseInputForm = ({
   }: TForm) => {
     if (createDynamicSecret.isPending) return;
     const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-    
+
     const transformedProvider = {
       ...provider,
       buckets: provider.useAdvancedBuckets ? provider.buckets : (provider.buckets as string)
     };
-    
+
     const { useAdvancedBuckets, ...finalProvider } = transformedProvider;
-    
+
     try {
       await createDynamicSecret.mutateAsync({
         provider: { type: DynamicSecretProviders.Couchbase, inputs: finalProvider },
@@ -462,38 +484,19 @@ export const CouchbaseInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
-                      <Input
-                        placeholder="https://cloudapi.cloud.couchbase.com"
-                        {...field}
-                      />
+                      <Input placeholder="https://cloudapi.cloud.couchbase.com" {...field} />
                     </FormControl>
                   )}
                 />
               </div>
               <div className="flex flex-col space-y-4">
-              <Controller
-                control={control}
-                name="provider.orgId"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Organization ID"
-                    className="w-full"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-              <div className="flex items-center space-x-2">
                 <Controller
                   control={control}
-                  name="provider.projectId"
+                  name="provider.orgId"
                   defaultValue=""
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label="Project ID"
+                      label="Organization ID"
                       className="w-full"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
@@ -502,207 +505,225 @@ export const CouchbaseInputForm = ({
                     </FormControl>
                   )}
                 />
+                <div className="flex items-center space-x-2">
+                  <Controller
+                    control={control}
+                    name="provider.projectId"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Project ID"
+                        className="w-full"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="provider.clusterId"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Cluster ID"
+                        className="w-full"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                </div>
                 <Controller
                   control={control}
-                  name="provider.clusterId"
-                  defaultValue=""
-                  render={({ field, fieldState: { error } }) => (
+                  name="provider.roles"
+                  defaultValue={["data_reader"]}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl
-                      label="Cluster ID"
+                      label="Roles"
                       className="w-full"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
+                      helperText="Select one or more roles to assign to the user"
                     >
-                      <Input {...field} />
-                    </FormControl>
-                  )}
-                />
-              </div>
-              <Controller
-                control={control}
-                name="provider.roles"
-                defaultValue={["data_reader"]}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Roles"
-                    className="w-full"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    helperText="Select one or more roles to assign to the user"
-                  >
-                    <FilterableSelect
-                      isMulti
-                      value={couchbaseRoles.filter(role => value?.includes(role.value))}
-                      onChange={(selectedRoles) => {
-                        if (Array.isArray(selectedRoles)) {
-                          onChange(selectedRoles.map((role: any) => role.value));
-                        } else {
-                          onChange([]);
-                        }
-                      }}
-                      options={couchbaseRoles}
-                      placeholder="Select roles..."
-                      getOptionLabel={(option) => option.label}
-                      getOptionValue={(option) => option.value}
-                    />
-                  </FormControl>
-                )}
-              />
-              
-              <Controller
-                control={control}
-                name="provider.useAdvancedBuckets"
-                render={({ field: { value, onChange } }) => (
-                  <FormControl
-                    label="Advanced Bucket Configuration"
-                    helperText="Enable to configure specific scopes and collections within buckets"
-                  >
-                    <Switch 
-                      id="advanced-buckets-switch"
-                      isChecked={value}
-                      onCheckedChange={(checked) => {
-                        onChange(checked);
-                        const bucketsController = control._formValues.provider.buckets;
-                        if (checked && typeof bucketsController === "string") {
-                          setValue("provider.buckets", []);
-                        } else if (!checked && Array.isArray(bucketsController)) {
-                          setValue("provider.buckets", "*");
-                        }
-                      }}
-                    />
-                  </FormControl>
-                )}
-              />
-
-              {!watch("provider.useAdvancedBuckets") && (
-                <Controller
-                  control={control}
-                  name="provider.buckets"
-                  defaultValue="*"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Bucket Access"
-                      className="w-full"
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                      helperText="Specify bucket names separated by commas (e.g., 'bucket1,bucket2') or use '*' for all buckets"
-                    >
-                      <Input 
-                        {...field} 
-                        value={typeof field.value === 'string' ? field.value : '*'}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        placeholder="* (all buckets) or bucket1,bucket2,bucket3"
+                      <FilterableSelect
+                        isMulti
+                        value={couchbaseRoles.filter((role) => value?.includes(role.value))}
+                        onChange={(selectedRoles) => {
+                          if (Array.isArray(selectedRoles)) {
+                            onChange(selectedRoles.map((role: any) => role.value));
+                          } else {
+                            onChange([]);
+                          }
+                        }}
+                        options={couchbaseRoles}
+                        placeholder="Select roles..."
+                        getOptionLabel={(option) => option.label}
+                        getOptionValue={(option) => option.value}
                       />
                     </FormControl>
                   )}
                 />
-              )}
 
-              {isAdvancedMode && Array.isArray(bucketsValue) && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-medium text-mineshaft-200">
-                        Advanced Bucket Configuration
-                      </div>
-                      <div className="text-sm text-mineshaft-400">
-                        Configure specific buckets with their scopes and collections
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline_bg"
-                      size="sm"
-                      onClick={addBucket}
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    >
-                      Add Bucket
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {Array.isArray(bucketsValue) && (bucketsValue as any[]).map((_, bucketIndex) => (
-                      <div key={bucketIndex} className="p-4 border border-mineshaft-600 rounded bg-mineshaft-800 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-mineshaft-200">
-                            Bucket {bucketIndex + 1}
-                          </h4>
-                          <IconButton
-                            type="button"
-                            variant="plain"
-                            ariaLabel="Remove bucket"
-                            onClick={() => removeBucket(bucketIndex)}
-                          >
-                            <FontAwesomeIcon icon={faTrash} className="text-red-400" />
-                          </IconButton>
-                        </div>
-                        
-                        <Controller
-                          control={control}
-                          name={`provider.buckets.${bucketIndex}.name`}
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Bucket Name"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                            >
-                              <Input {...field} placeholder="e.g., travel-sample" />
-                            </FormControl>
-                          )}
-                        />
-
-                        <BucketScopesConfiguration 
-                          control={control}
-                          bucketIndex={bucketIndex}
-                          bucketsValue={bucketsValue}
-                          setValue={setValue}
-                          addScope={addScope}
-                          removeScope={removeScope}
-                          addCollection={addCollection}
-                          removeCollection={removeCollection}
-                        />
-                      </div>
-                    ))}
-                    
-                    {(!Array.isArray(bucketsValue) || bucketsValue.length === 0) && (
-                      <div className="p-8 text-center border border-dashed border-mineshaft-600 rounded">
-                        <p className="text-sm text-mineshaft-400 mb-2">
-                          No buckets configured
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline_bg"
-                          size="sm"
-                          onClick={addBucket}
-                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                        >
-                          Add First Bucket
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              <Controller
-                    name="provider.auth.apiKey"
-                    control={control}
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Controller
+                  control={control}
+                  name="provider.useAdvancedBuckets"
+                  render={({ field: { value, onChange } }) => (
                     <FormControl
-                        errorText={error?.message}
-                        isError={Boolean(error?.message)}
-                        className="w-full"
-                        label="API Key"
+                      label="Advanced Bucket Configuration"
+                      helperText="Enable to configure specific scopes and collections within buckets"
                     >
-                        <SecretInput
-                            containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                            value={value}
-                            valueAlwaysHidden
-                            rows={1}
-                            wrap="hard"
-                            onChange={(e) => onChange(e.target.value)}
-                        />
+                      <Switch
+                        id="advanced-buckets-switch"
+                        isChecked={value}
+                        onCheckedChange={(checked) => {
+                          onChange(checked);
+                          const bucketsController = getValues("provider.buckets");
+                          if (checked && typeof bucketsController === "string") {
+                            setValue("provider.buckets", []);
+                          } else if (!checked && Array.isArray(bucketsController)) {
+                            setValue("provider.buckets", "*");
+                          }
+                        }}
+                      />
                     </FormControl>
+                  )}
+                />
+
+                {!watch("provider.useAdvancedBuckets") && (
+                  <Controller
+                    control={control}
+                    name="provider.buckets"
+                    defaultValue="*"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Bucket Access"
+                        className="w-full"
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        helperText="Specify bucket names separated by commas (e.g., 'bucket1,bucket2') or use '*' for all buckets"
+                      >
+                        <Input
+                          {...field}
+                          value={typeof field.value === "string" ? field.value : "*"}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          placeholder="* (all buckets) or bucket1,bucket2,bucket3"
+                        />
+                      </FormControl>
                     )}
+                  />
+                )}
+
+                {isAdvancedMode && Array.isArray(bucketsValue) && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-mineshaft-200">
+                          Advanced Bucket Configuration
+                        </div>
+                        <div className="text-sm text-mineshaft-400">
+                          Configure specific buckets with their scopes and collections
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline_bg"
+                        size="sm"
+                        onClick={addBucket}
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      >
+                        Add Bucket
+                      </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {Array.isArray(bucketsValue) &&
+                        (bucketsValue as any[]).map((_, bucketIndex) => (
+                          <div
+                            key={`bucket-${bucketIndex + 1}`}
+                            className="space-y-4 rounded border border-mineshaft-600 bg-mineshaft-800 p-4"
+                          >
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-medium text-mineshaft-200">
+                                Bucket {bucketIndex + 1}
+                              </h4>
+                              <IconButton
+                                type="button"
+                                variant="plain"
+                                ariaLabel="Remove bucket"
+                                onClick={() => removeBucket(bucketIndex)}
+                              >
+                                <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+                              </IconButton>
+                            </div>
+
+                            <Controller
+                              control={control}
+                              name={`provider.buckets.${bucketIndex}.name`}
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label="Bucket Name"
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                >
+                                  <Input {...field} placeholder="e.g., travel-sample" />
+                                </FormControl>
+                              )}
+                            />
+
+                            <BucketScopesConfiguration
+                              control={control}
+                              bucketIndex={bucketIndex}
+                              bucketsValue={bucketsValue}
+                              setValue={setValue}
+                              addScope={addScope}
+                              removeScope={removeScope}
+                              addCollection={addCollection}
+                              removeCollection={removeCollection}
+                            />
+                          </div>
+                        ))}
+
+                      {(!Array.isArray(bucketsValue) || bucketsValue.length === 0) && (
+                        <div className="rounded border border-dashed border-mineshaft-600 p-8 text-center">
+                          <p className="mb-2 text-sm text-mineshaft-400">No buckets configured</p>
+                          <Button
+                            type="button"
+                            variant="outline_bg"
+                            size="sm"
+                            onClick={addBucket}
+                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                          >
+                            Add First Bucket
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <Controller
+                  name="provider.auth.apiKey"
+                  control={control}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      errorText={error?.message}
+                      isError={Boolean(error?.message)}
+                      className="w-full"
+                      label="API Key"
+                    >
+                      <SecretInput
+                        containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                        value={value}
+                        valueAlwaysHidden
+                        rows={1}
+                        wrap="hard"
+                        onChange={(e) => onChange(e.target.value)}
+                      />
+                    </FormControl>
+                  )}
                 />
               </div>
 
@@ -731,7 +752,7 @@ export const CouchbaseInputForm = ({
                     <div className="flex items-center space-x-2">
                       <span>Password Configuration (optional)</span>
                       <Tooltip content="Couchbase password requirements: minimum 8 characters, at least 1 uppercase, 1 lowercase, 1 digit, 1 special character. Cannot contain: < > ; . * & | £">
-                        <div className="h-4 w-4 rounded-full bg-mineshaft-600 text-xs text-mineshaft-300 flex items-center justify-center cursor-help">
+                        <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-mineshaft-600 text-xs text-mineshaft-300">
                           ?
                         </div>
                       </Tooltip>
@@ -750,7 +771,7 @@ export const CouchbaseInputForm = ({
                         <Controller
                           control={control}
                           name="provider.passwordRequirements.length"
-                          defaultValue={48}
+                          defaultValue={12}
                           render={({ field, fieldState: { error } }) => (
                             <FormControl
                               label="Password Length"

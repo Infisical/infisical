@@ -30,6 +30,7 @@ import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
+import { CouchbaseInputForm } from "./CouchbaseInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
 import { GcpIamInputForm } from "./GcpIamInputForm";
 import { GithubInputForm } from "./GithubInputForm";
@@ -45,7 +46,6 @@ import { SnowflakeInputForm } from "./SnowflakeInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 import { TotpInputForm } from "./TotpInputForm";
 import { VerticaInputForm } from "./VerticaInputForm";
-import { CouchbaseInputForm } from "./CouchbaseInputForm";
 
 type Props = {
   isOpen?: boolean;
@@ -615,7 +615,7 @@ export const CreateDynamicSecretForm = ({
                 />
               </motion.div>
             )}
-            {wizardStep === WizardSteps.ProviderInputs &&
+          {wizardStep === WizardSteps.ProviderInputs &&
             selectedProvider === DynamicSecretProviders.Couchbase && (
               <motion.div
                 key="dynamic-couchbase-step"
