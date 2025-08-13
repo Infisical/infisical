@@ -597,7 +597,7 @@ export const AccessApprovalRequest = ({
               // we shouldn't be using state like this...
               handleSelectRequest({
                 ...selectedRequest,
-                isTemporary: true,
+                isTemporary: request.isTemporary,
                 temporaryRange: request.temporaryRange,
                 reviewers: []
               });

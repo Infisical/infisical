@@ -380,9 +380,12 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       // reset review progress
-      await accessApprovalRequestReviewerDAL.delete({
-        requestId
-      });
+      await accessApprovalRequestReviewerDAL.delete(
+        {
+          requestId
+        },
+        tx
+      );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const editorFullName = `${editedByUser.firstName} ${editedByUser.lastName}`;

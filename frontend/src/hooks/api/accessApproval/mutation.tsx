@@ -149,7 +149,7 @@ export const useUpdateAccessRequest = () => {
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug)
       });
     }
   });
