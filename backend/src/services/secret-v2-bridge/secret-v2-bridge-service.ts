@@ -967,9 +967,11 @@ export const secretV2BridgeServiceFactory = ({
             return false; // Don't count hidden secrets as empty
           }
           
-          const decryptedValue = secret.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-            : "";
+          if (!secret.encryptedValue) {
+            return true;
+          }
+          
+          const decryptedValue = secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString();
           return decryptedValue === "";
         });
         
