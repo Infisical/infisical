@@ -6,10 +6,12 @@ import { apiRequest } from "@app/config/request";
 import { accessApprovalKeys } from "./queries";
 import {
   TAccessApproval,
+  TAccessApprovalRequest,
   TCreateAccessPolicyDTO,
   TCreateAccessRequestDTO,
   TDeleteSecretPolicyDTO,
-  TUpdateAccessPolicyDTO
+  TUpdateAccessPolicyDTO,
+  TUpdateAccessRequestDTO
 } from "./types";
 
 export const useCreateAccessApprovalPolicy = () => {
@@ -129,6 +131,25 @@ export const useCreateAccessRequest = () => {
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
+    }
+  });
+};
+
+export const useUpdateAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TAccessApprovalRequest, object, TUpdateAccessRequestDTO>({
+    mutationFn: async ({ requestId, ...payload }) => {
+      const { data } = await apiRequest.patch<{ approval: TAccessApprovalRequest }>(
+        `/api/v1/access-approvals/requests/${requestId}`,
+        payload
+      );
+
+      return data.approval;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
       });
     }
   });

@@ -103,6 +103,8 @@ export type TAccessApprovalRequest = {
   }[];
 
   note?: string;
+  editNote?: string;
+  editedByUserId: string;
 };
 
 export type TAccessApproval = {
@@ -145,6 +147,13 @@ export type TCreateAccessRequestDTO = {
   projectSlug: string;
   note?: string;
 } & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
+
+export type TUpdateAccessRequestDTO = {
+  requestId: string;
+  editNote: string;
+  temporaryRange: string;
+  projectSlug: string;
+};
 
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;

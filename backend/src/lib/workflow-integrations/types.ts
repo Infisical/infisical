@@ -33,6 +33,9 @@ export type TNotification =
         permissions: string[];
         approvalUrl: string;
         note?: string;
+        editNote?: string;
+        editorFullName?: string;
+        editorEmail?: string;
       };
     };
 
