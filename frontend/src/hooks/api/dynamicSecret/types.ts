@@ -37,7 +37,8 @@ export enum DynamicSecretProviders {
   Kubernetes = "kubernetes",
   Vertica = "vertica",
   GcpIam = "gcp-iam",
-  Github = "github"
+  Github = "github",
+  Couchbase = "couchbase"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -352,6 +353,36 @@ export type TDynamicSecretProvider =
         appId: number;
         installationId: number;
         privateKey: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Couchbase;
+      inputs: {
+        url: string;
+        orgId: string;
+        projectId: string;
+        clusterId: string;
+        roles: string[];
+        buckets: string | Array<{
+          name: string;
+          scopes?: Array<{
+            name: string;
+            collections?: string[];
+          }>;
+        }>;
+        passwordRequirements?: {
+          length: number;
+          required: {
+            lowercase: number;
+            uppercase: number;
+            digits: number;
+            symbols: number;
+          };
+          allowedSymbols?: string;
+        };
+        auth: {
+          apiKey: string;
+        };
       };
     };
 

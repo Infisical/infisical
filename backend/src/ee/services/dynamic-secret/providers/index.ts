@@ -5,6 +5,7 @@ import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
 import { AwsIamProvider } from "./aws-iam";
 import { AzureEntraIDProvider } from "./azure-entra-id";
 import { CassandraProvider } from "./cassandra";
+import { CouchbaseProvider } from "./couchbase";
 import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
 import { GithubProvider } from "./github";
@@ -46,5 +47,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService }),
   [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService }),
   [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
-  [DynamicSecretProviders.Github]: GithubProvider()
+  [DynamicSecretProviders.Github]: GithubProvider(),
+  [DynamicSecretProviders.Couchbase]: CouchbaseProvider()
 });
