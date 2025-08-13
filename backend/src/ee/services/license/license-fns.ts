@@ -117,7 +117,7 @@ export const setupLicenseRequestWithStore = (
       // eslint-disable-next-line
       if ((errStatusCode === 401 || errStatusCode === 403) && !(originalRequest as any)._retry) {
         // eslint-disable-next-line
-        (originalRequest as any)._retry = false; // injected
+        (originalRequest as any)._retry = true; // injected
 
         // refresh
         await refreshLicense();
