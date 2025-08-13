@@ -12,9 +12,15 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
 import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -35,6 +41,7 @@ type Props = {
 
 export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
+  const { subscription } = useSubscription();
 
   const updateEnvironment = useUpdateWsEnvironment();
 
@@ -60,6 +67,16 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
       });
     }
   };
+
+  const isMoreEnvironmentsAllowed =
+    subscription?.environmentLimit && currentWorkspace?.environments
+      ? currentWorkspace.environments.length <= subscription.environmentLimit
+      : true;
+
+  const environmentsOverPlanLimit =
+    subscription?.environmentLimit && currentWorkspace?.environments
+      ? currentWorkspace.environments.length - subscription.environmentLimit
+      : 0;
 
   return (
     <TableContainer>
@@ -122,18 +139,26 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                   a={ProjectPermissionSub.Environments}
                 >
                   {(isAllowed) => (
-                    <IconButton
-                      className="mr-3 py-2"
-                      onClick={() => {
-                        handlePopUpOpen("updateEnv", { name, slug, id });
-                      }}
-                      isDisabled={!isAllowed}
-                      colorSchema="primary"
-                      variant="plain"
-                      ariaLabel="update"
+                    <Tooltip
+                      content={
+                        isMoreEnvironmentsAllowed
+                          ? ""
+                          : `You have exceeded the number of environments allowed by your plan. To edit an existing environment, either upgrade your plan or remove at least ${environmentsOverPlanLimit} environment${environmentsOverPlanLimit === 1 ? "" : "s"}.`
+                      }
                     >
-                      <FontAwesomeIcon icon={faPencil} />
-                    </IconButton>
+                      <IconButton
+                        className="mr-3 py-2"
+                        onClick={() => {
+                          handlePopUpOpen("updateEnv", { name, slug, id });
+                        }}
+                        isDisabled={!isAllowed || !isMoreEnvironmentsAllowed}
+                        colorSchema="primary"
+                        variant="plain"
+                        ariaLabel="update"
+                      >
+                        <FontAwesomeIcon icon={faPencil} />
+                      </IconButton>
+                    </Tooltip>
                   )}
                 </ProjectPermissionCan>
                 <ProjectPermissionCan
