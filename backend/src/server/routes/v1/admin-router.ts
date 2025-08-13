@@ -583,16 +583,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         email: z.string().email().trim(),
         password: z.string().trim(),
         firstName: z.string().trim(),
-        lastName: z.string().trim().optional(),
-        protectedKey: z.string().trim(),
-        protectedKeyIV: z.string().trim(),
-        protectedKeyTag: z.string().trim(),
-        publicKey: z.string().trim(),
-        encryptedPrivateKey: z.string().trim(),
-        encryptedPrivateKeyIV: z.string().trim(),
-        encryptedPrivateKeyTag: z.string().trim(),
-        salt: z.string().trim(),
-        verifier: z.string().trim()
+        lastName: z.string().trim().optional()
       }),
       response: {
         200: z.object({

@@ -11,7 +11,7 @@ import {
   validateOverrides
 } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
+import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -465,43 +465,15 @@ export const superAdminServiceFactory = ({
     return updatedServerCfg;
   };
 
-  const adminSignUp = async ({
-    lastName,
-    firstName,
-    email,
-    salt,
-    password,
-    verifier,
-    publicKey,
-    protectedKey,
-    protectedKeyIV,
-    protectedKeyTag,
-    encryptedPrivateKey,
-    encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag,
-    ip,
-    userAgent
-  }: TAdminSignUpDTO) => {
+  const adminSignUp = async ({ lastName, firstName, email, password, ip, userAgent }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
 
     const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
-    const privateKey = await getUserPrivateKey(password, {
-      encryptionVersion: 2,
-      salt,
-      protectedKey,
-      protectedKeyIV,
-      protectedKeyTag,
-      encryptedPrivateKey,
-      iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag
-    });
-
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
-    const { iv, tag, ciphertext, encoding } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(
         {
@@ -519,25 +491,13 @@ export const superAdminServiceFactory = ({
       );
       const userEnc = await userDAL.createUserEncryption(
         {
-          salt,
           encryptionVersion: 2,
-          protectedKey,
-          protectedKeyIV,
-          protectedKeyTag,
-          publicKey,
-          encryptedPrivateKey,
-          iv: encryptedPrivateKeyIV,
-          tag: encryptedPrivateKeyTag,
-          verifier,
           userId: newUser.id,
-          hashedPassword,
-          serverEncryptedPrivateKey: ciphertext,
-          serverEncryptedPrivateKeyIV: iv,
-          serverEncryptedPrivateKeyTag: tag,
-          serverEncryptedPrivateKeyEncoding: encoding
+          hashedPassword
         },
         tx
       );
+
       return { user: newUser, enc: userEnc };
     });
 
