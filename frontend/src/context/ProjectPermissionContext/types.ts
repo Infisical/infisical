@@ -146,7 +146,8 @@ export enum ProjectPermissionSecretScanningConfigActions {
 export enum ProjectPermissionSecretEventActions {
   SubscribeCreated = "subscribe-on-created",
   SubscribeUpdated = "subscribe-on-updated",
-  SubscribeDeleted = "subscribe-on-deleted"
+  SubscribeDeleted = "subscribe-on-deleted",
+  SubscribeImportMutations = "subscribe-on-import-mutations"
 }
 
 export enum PermissionConditionOperators {

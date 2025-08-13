@@ -160,7 +160,8 @@ export enum ProjectPermissionSecretScanningConfigActions {
 export enum ProjectPermissionSecretEventActions {
   SubscribeCreated = "subscribe-on-created",
   SubscribeUpdated = "subscribe-on-updated",
-  SubscribeDeleted = "subscribe-on-deleted"
+  SubscribeDeleted = "subscribe-on-deleted",
+  SubscribeImportMutations = "subscribe-on-import-mutations"
 }
 
 export enum ProjectPermissionSub {
@@ -218,7 +219,6 @@ export type SecretEventSubjectFields = {
   secretPath: string;
   secretName?: string;
   secretTags?: string[];
-  action: string;
 };
 
 export type SecretFolderSubjectFields = {

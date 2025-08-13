@@ -386,7 +386,15 @@ export const secretV2BridgeServiceFactory = ({
         actorId,
         actor,
         projectId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        event: {
+          created: {
+            secretId: secret.id,
+            environment: folder.environment.slug,
+            secretKey: secret.key,
+            secretPath
+          }
+        }
       });
     }
 
@@ -616,7 +624,15 @@ export const secretV2BridgeServiceFactory = ({
         actor,
         projectId,
         orgId: actorOrgId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        event: {
+          updated: {
+            secretId: secret.id,
+            environment: folder.environment.slug,
+            secretKey: secret.key,
+            secretPath
+          }
+        }
       });
     }
 
@@ -728,7 +744,15 @@ export const secretV2BridgeServiceFactory = ({
           actor,
           projectId,
           orgId: actorOrgId,
-          environmentSlug: folder.environment.slug
+          environmentSlug: folder.environment.slug,
+          event: {
+            deleted: {
+              secretId: secretToDelete.id,
+              environment: folder.environment.slug,
+              secretKey: secretToDelete.key,
+              secretPath
+            }
+          }
         });
       }
 
@@ -1708,7 +1732,15 @@ export const secretV2BridgeServiceFactory = ({
       secretPath,
       projectId,
       orgId: actorOrgId,
-      environmentSlug: folder.environment.slug
+      environmentSlug: folder.environment.slug,
+      event: {
+        created: newSecrets.map((el) => ({
+          secretId: el.id,
+          secretKey: el.key,
+          secretPath,
+          environment: folder.environment.slug
+        }))
+      }
     });
 
     return newSecrets.map((el) => {
@@ -2075,7 +2107,15 @@ export const secretV2BridgeServiceFactory = ({
               secretPath: el.path,
               projectId,
               orgId: actorOrgId,
-              environmentSlug: environment
+              environmentSlug: environment,
+              event: {
+                updated: updatedSecrets.map((sec) => ({
+                  secretId: sec.id,
+                  secretKey: sec.key,
+                  secretPath: sec.secretPath,
+                  environment
+                }))
+              }
             })
           : undefined
       )
@@ -2214,7 +2254,15 @@ export const secretV2BridgeServiceFactory = ({
         secretPath,
         projectId,
         orgId: actorOrgId,
-        environmentSlug: folder.environment.slug
+        environmentSlug: folder.environment.slug,
+        event: {
+          deleted: secretsDeleted.map((el) => ({
+            secretId: el.id,
+            secretKey: el.key,
+            secretPath,
+            environment: folder.environment.slug
+          }))
+        }
       });
 
       const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -2751,7 +2799,8 @@ export const secretV2BridgeServiceFactory = ({
         secretPath: destinationFolder.path,
         environmentSlug: destinationFolder.environment.slug,
         actorId,
-        actor
+        actor,
+        event: {}
       });
     }
 
@@ -2763,7 +2812,13 @@ export const secretV2BridgeServiceFactory = ({
         secretPath: sourceFolder.path,
         environmentSlug: sourceFolder.environment.slug,
         actorId,
-        actor
+        actor,
+        event: {
+          importMutation: {
+            secretPath: sourceFolder.path,
+            environment: sourceFolder.environment.slug
+          }
+        }
       });
     }
 

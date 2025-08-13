@@ -192,7 +192,8 @@ const PkiTemplatePolicyActionSchema = z.object({
 const SecretEventsPolicyActionSchema = z.object({
   [ProjectPermissionSecretEventActions.SubscribeCreated]: z.boolean().optional(),
   [ProjectPermissionSecretEventActions.SubscribeUpdated]: z.boolean().optional(),
-  [ProjectPermissionSecretEventActions.SubscribeDeleted]: z.boolean().optional()
+  [ProjectPermissionSecretEventActions.SubscribeDeleted]: z.boolean().optional(),
+  [ProjectPermissionSecretEventActions.SubscribeImportMutations]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -632,12 +633,16 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canSubscribeDelete = action.includes(
             ProjectPermissionSecretEventActions.SubscribeDeleted
           );
+          const canSubscribeImportMutations = action.includes(
+            ProjectPermissionSecretEventActions.SubscribeImportMutations
+          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
             "subscribe-on-created": canSubscribeCreate,
             "subscribe-on-deleted": canSubscribeDelete,
             "subscribe-on-updated": canSubscribeUpdate,
+            "subscribe-on-import-mutations": canSubscribeImportMutations,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : []
           });
 
@@ -1575,9 +1580,22 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.SecretEvents]: {
     title: "Secret Events",
     actions: [
-      { label: "Subscribe Created", value: ProjectPermissionSecretEventActions.SubscribeCreated },
-      { label: "Subscribe Deleted", value: ProjectPermissionSecretEventActions.SubscribeDeleted },
-      { label: "Subscribe Updated", value: ProjectPermissionSecretEventActions.SubscribeUpdated }
+      {
+        label: "Subscribe on Created",
+        value: ProjectPermissionSecretEventActions.SubscribeCreated
+      },
+      {
+        label: "Subscribe on Deleted",
+        value: ProjectPermissionSecretEventActions.SubscribeDeleted
+      },
+      {
+        label: "Subscribe on Updated",
+        value: ProjectPermissionSecretEventActions.SubscribeUpdated
+      },
+      {
+        label: "Subscribe on Import Mutations",
+        value: ProjectPermissionSecretEventActions.SubscribeImportMutations
+      }
     ]
   }
 };

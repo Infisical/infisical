@@ -14,7 +14,7 @@ import {
 } from "@app/db/schemas";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEventBusService } from "@app/ee/services/event/event-bus-service";
-import { EventData, TopicName } from "@app/ee/services/event/types";
+import { BusEventName, PublishableEvent, TopicName } from "@app/ee/services/event/types";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
@@ -539,12 +539,51 @@ export const secretQueueFactory = ({
     });
   };
 
-  const publishEvents = async (data: EventData["data"]) => {
-    await eventBusService.publish(TopicName.CoreServers, {
-      type: ProjectType.SecretManager,
-      source: "infiscal",
-      data
-    });
+  const publishEvents = async (event: PublishableEvent) => {
+    logger.info(event, "Publishing events");
+    if (event.created) {
+      await eventBusService.publish(TopicName.CoreServers, {
+        type: ProjectType.SecretManager,
+        source: "infiscal",
+        data: {
+          event: BusEventName.CreateSecret,
+          payload: event.created
+        }
+      });
+    }
+
+    if (event.updated) {
+      await eventBusService.publish(TopicName.CoreServers, {
+        type: ProjectType.SecretManager,
+        source: "infiscal",
+        data: {
+          event: BusEventName.UpdateSecret,
+          payload: event.updated
+        }
+      });
+    }
+
+    if (event.deleted) {
+      await eventBusService.publish(TopicName.CoreServers, {
+        type: ProjectType.SecretManager,
+        source: "infiscal",
+        data: {
+          event: BusEventName.DeleteSecret,
+          payload: event.deleted
+        }
+      });
+    }
+
+    if (event.deleted) {
+      await eventBusService.publish(TopicName.CoreServers, {
+        type: ProjectType.SecretManager,
+        source: "infiscal",
+        data: {
+          event: BusEventName.DeleteSecret,
+          payload: event.deleted
+        }
+      });
+    }
   };
 
   const syncSecrets = async <T extends boolean = false>({
@@ -554,14 +593,12 @@ export const secretQueueFactory = ({
     _deDupeReplicationQueue: deDupeReplicationQueue = {},
     event,
     ...dto
-  }: TSyncSecretsDTO<T> & { event: EventData["data"] | false }) => {
+  }: TSyncSecretsDTO<T> & { event?: PublishableEvent }) => {
     logger.info(
       `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
     );
 
-    if (event) {
-      await publishEvents(event);
-    }
+    if (event) await publishEvents(event);
 
     const deDuplicationKey = uniqueSecretQueueKey(dto.environmentSlug, dto.secretPath);
     if (
@@ -758,7 +795,12 @@ export const secretQueueFactory = ({
                 _deDupeQueue: deDupeQueue,
                 _depth: depth + 1,
                 excludeReplication: true,
-                event: false
+                event: {
+                  importMutation: {
+                    secretPath: foldersGroupedById[folderId][0]?.path as string,
+                    environment: foldersGroupedById[folderId][0]?.environmentSlug as string
+                  }
+                }
               })
             )
         );
@@ -812,7 +854,12 @@ export const secretQueueFactory = ({
                 _deDupeQueue: deDupeQueue,
                 _depth: depth + 1,
                 excludeReplication: true,
-                event: false
+                event: {
+                  importMutation: {
+                    secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
+                    environment: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string
+                  }
+                }
               })
             )
         );

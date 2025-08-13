@@ -12,7 +12,7 @@ import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { conditionsMatcher } from "@app/lib/casl";
 import { logger } from "@app/lib/logger";
 
-import { EventData, RegisteredEvent } from "./types";
+import { BusEvent, RegisteredEvent } from "./types";
 
 export const getServerSentEventsHeaders = () =>
   ({
@@ -55,7 +55,7 @@ export type EventStreamClient = {
   id: string;
   stream: Readable;
   open: () => Promise<void>;
-  send: (data: EventMessage | EventData) => void;
+  send: (data: EventMessage | BusEvent) => void;
   ping: () => Promise<void>;
   refresh: () => Promise<void>;
   close: () => void;
@@ -95,7 +95,7 @@ export function createEventStreamClient(redis: Redis, options: IEventStreamClien
   // We will manually push data to the stream
   stream._read = () => {};
 
-  const send = (data: EventMessage | EventData) => {
+  const send = (data: EventMessage | BusEvent) => {
     const chunk = serializeSseEvent(data);
     if (!stream.push(chunk)) {
       logger.debug("Backpressure detected: dropped manual event");
