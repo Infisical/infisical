@@ -41,6 +41,11 @@ const EventSecretPayload = z.object({
   environment: z.string()
 });
 
+const EventImportMutationPayload = z.object({
+  secretPath: z.string(),
+  environment: z.string()
+});
+
 export type EventSecret = z.infer<typeof EventSecretPayload>;
 
 export const BusEventSchema = z.object({
@@ -54,8 +59,13 @@ export const BusEventSchema = z.object({
   data: z.discriminatedUnion("event", [
     z.object({
       specversion: z.number().optional().default(1),
-      event: z.nativeEnum(BusEventName),
+      event: z.enum([BusEventName.CreateSecret, BusEventName.DeleteSecret, BusEventName.UpdateSecret]),
       payload: z.union([EventSecretPayload, EventSecretPayload.array()])
+    }),
+    z.object({
+      specversion: z.number().optional().default(1),
+      event: z.enum([BusEventName.ImportMutation]),
+      payload: z.union([EventImportMutationPayload, EventImportMutationPayload.array()])
     })
     // Add more event types as needed
   ])
@@ -63,16 +73,14 @@ export const BusEventSchema = z.object({
 
 export type BusEvent = z.infer<typeof BusEventSchema>;
 
-type PublishableEventPayload = z.input<typeof BusEventSchema>["data"]["payload"];
+type PublishableEventPayload = z.input<typeof BusEventSchema>["data"];
+type PublishableSecretEvent = Extract<PublishableEventPayload, { event: Exclude<BusEventName, BusEventName.ImportMutation> }>["payload"]
 
 export type PublishableEvent = {
-  created?: PublishableEventPayload;
-  updated?: PublishableEventPayload;
-  deleted?: PublishableEventPayload;
-  importMutation?: {
-    environment: string;
-    secretPath: string;
-  };
+  created?: PublishableSecretEvent;
+  updated?: PublishableSecretEvent;
+  deleted?: PublishableSecretEvent;
+  importMutation?: Extract<PublishableEventPayload, { event: BusEventName.ImportMutation }>["payload"];
 };
 
 export const EventRegisterSchema = z.object({
