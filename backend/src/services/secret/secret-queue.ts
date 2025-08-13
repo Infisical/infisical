@@ -75,6 +75,7 @@ import {
   TRemoveSecretReminderDTO,
   TSyncSecretsDTO
 } from "./secret-types";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
@@ -115,6 +116,7 @@ type TSecretQueueFactoryDep = {
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   reminderService: Pick<TReminderServiceFactory, "createReminderInternal" | "deleteReminderBySecretId">;
   eventBusService: TEventBusService;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TGetSecrets = {
@@ -177,7 +179,8 @@ export const secretQueueFactory = ({
   secretSyncQueue,
   folderCommitService,
   reminderService,
-  eventBusService
+  eventBusService,
+  licenseService
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -540,7 +543,6 @@ export const secretQueueFactory = ({
   };
 
   const publishEvents = async (event: PublishableEvent) => {
-    logger.info(event, "Publishing events");
     if (event.created) {
       await eventBusService.publish(TopicName.CoreServers, {
         type: ProjectType.SecretManager,
@@ -598,7 +600,11 @@ export const secretQueueFactory = ({
       `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
     );
 
-    if (event) await publishEvents(event);
+    const plan = await licenseService.getPlan(dto.orgId);
+
+    if (event && plan.eventSubscriptions) {
+      await publishEvents(event);
+    }
 
     const deDuplicationKey = uniqueSecretQueueKey(dto.environmentSlug, dto.secretPath);
     if (

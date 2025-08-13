@@ -1121,7 +1121,8 @@ export const registerRoutes = async (
     folderCommitService,
     secretSyncQueue,
     reminderService,
-    eventBusService
+    eventBusService,
+    licenseService
   });
 
   const projectService = projectServiceFactory({
