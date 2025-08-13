@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { ProjectType } from "@app/db/schemas";
 
-import { ProjectPermissionSecretEventActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionSecretEventActions } from "../permission/project-permission";
 
 export enum TopicName {
   CoreServers = "infisical::core-servers"
