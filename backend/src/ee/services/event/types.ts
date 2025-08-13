@@ -15,19 +15,19 @@ export enum BusEventName {
   ImportMutation = "secret:import-mutation"
 }
 
-export const NameMappings = {
-  ActionToBusEvent(input: ProjectPermissionSecretEventActions) {
+export const Mappings = {
+  BusEventToAction(input: BusEventName) {
     switch (input) {
-      case ProjectPermissionSecretEventActions.SubscribeCreated:
-        return BusEventName.CreateSecret;
-      case ProjectPermissionSecretEventActions.SubscribeUpdated:
-        return BusEventName.UpdateSecret;
-      case ProjectPermissionSecretEventActions.SubscribeDeleted:
-        return BusEventName.DeleteSecret;
-      case ProjectPermissionSecretEventActions.SubscribeImportMutations:
-        return BusEventName.ImportMutation;
+      case BusEventName.CreateSecret:
+        return ProjectPermissionSecretEventActions.SubscribeCreated;
+      case BusEventName.DeleteSecret:
+        return ProjectPermissionSecretEventActions.SubscribeDeleted;
+      case BusEventName.ImportMutation:
+        return ProjectPermissionSecretEventActions.SubscribeImportMutations;
+      case BusEventName.UpdateSecret:
+        return ProjectPermissionSecretEventActions.SubscribeUpdated;
       default:
-        return null;
+        throw new Error("Unknown bus event name");
     }
   }
 };
@@ -87,8 +87,7 @@ export type PublishableEvent = {
 };
 
 export const EventRegisterSchema = z.object({
-  subject: z.enum([ProjectPermissionSub.SecretEvents]),
-  action: z.nativeEnum(ProjectPermissionSecretEventActions),
+  event: z.nativeEnum(BusEventName),
   conditions: z
     .object({
       secretPath: z.string().optional().default("/"),

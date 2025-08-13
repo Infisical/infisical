@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { getServerSentEventsHeaders } from "@app/ee/services/event/event-sse-stream";
-import { EventRegisterSchema } from "@app/ee/services/event/types";
+import { EventRegisterSchema, Mappings } from "@app/ee/services/event/types";
 import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, EventSubscriptions } from "@app/lib/api-docs";
 import { BadRequestError, ForbiddenRequestError, RateLimitError } from "@app/lib/errors";
@@ -85,14 +85,19 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
                 secretPath: r.conditions?.secretPath ?? "/"
               };
 
-              const allowed = info.permission.can(r.action, subject(ProjectPermissionSub.SecretEvents, fields));
+              const action = Mappings.BusEventToAction(r.event)
+
+              const allowed = info.permission.can(
+                action,
+                subject(ProjectPermissionSub.SecretEvents, fields)
+              );
 
               if (!allowed) {
                 throw new ForbiddenRequestError({
                   name: "PermissionDenied",
-                  message: `You are not allowed to subscribe on ${r.subject}`,
+                  message: `You are not allowed to subscribe on ${ProjectPermissionSub.SecretEvents}`,
                   details: {
-                    action: r.action,
+                    action,
                     environmentSlug: fields.environment,
                     secretPath: fields.secretPath
                   }
