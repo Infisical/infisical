@@ -443,7 +443,8 @@ export const samlConfigServiceFactory = ({
     if (user.email && !userAlias.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
-        userId: user.id
+        userId: user.id,
+        aliasId: userAlias.id
       });
 
       await smtpService.sendMail({

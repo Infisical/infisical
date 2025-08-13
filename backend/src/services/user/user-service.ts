@@ -10,7 +10,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { AuthMethod } from "../auth/auth-type";
+import { AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
@@ -39,7 +39,7 @@ type TUserServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "update">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -54,23 +54,23 @@ export const userServiceFactory = ({
   permissionService,
   userAliasDAL
 }: TUserServiceFactoryDep) => {
-  const sendEmailVerificationCode = async (referer: string) => {
-    const url = new URL(referer);
-    const refererToken = url.searchParams.get("token");
-    if (!refererToken)
-      throw new BadRequestError({ name: "Failed to send email verification code due to no token on referer" });
-    const { authType, aliasId, username } = crypto.jwt().decode(refererToken) as {
+  const sendEmailVerificationCode = async (token: string) => {
+    const { authType, aliasId, username, authTokenType } = crypto.jwt().decode(token) as {
       authType: string;
-      aliasId: string;
+      aliasId?: string;
       username: string;
+      authTokenType: AuthTokenType;
     };
+    if (authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
+
     // akhilmhdh: case sensitive email resolution
     const users = await userDAL.findUserByUsername(username);
     const user = users?.length > 1 ? users.find((el) => el.username === username) : users?.[0];
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     let { isEmailVerified } = user;
-    const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType, id: aliasId });
-    if (userAlias) {
+    if (aliasId) {
+      const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType, id: aliasId });
+      if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${aliasId}' not found` });
       isEmailVerified = userAlias.isEmailVerified;
     }
 
@@ -79,9 +79,10 @@ export const userServiceFactory = ({
     if (isEmailVerified)
       throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
 
-    const token = await tokenService.createTokenForUser({
+    const userToken = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
-      userId: user.id
+      userId: user.id,
+      aliasId
     });
 
     await smtpService.sendMail({
@@ -89,7 +90,7 @@ export const userServiceFactory = ({
       subjectLine: "Infisical confirmation code",
       recipients: [user.email],
       substitutions: {
-        code: token
+        code: userToken
       }
     });
   };
@@ -114,19 +115,20 @@ export const userServiceFactory = ({
     if (!user.email)
       throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
 
-    const userAliases = await userAliasDAL.find({ userId: user.id });
-    if (user.isEmailVerified && userAliases?.every((alias) => alias.isEmailVerified))
-      throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
-
-    await tokenService.validateTokenForUser({
+    const token = await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
       userId: user.id,
       code
     });
 
-    const userEmails = user?.email ? await userDAL.find({ email: user.email }) : [];
+    if (token?.aliasId) {
+      const userAlias = await userAliasDAL.findOne({ userId: user.id, id: token.aliasId });
+      if (userAlias?.isEmailVerified)
+        throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
 
-    await userAliasDAL.update({ userId: user.id }, { isEmailVerified: true });
+      await userAliasDAL.updateById(token.aliasId, { isEmailVerified: true });
+    }
+    const userEmails = user?.email ? await userDAL.find({ email: user.email }) : [];
 
     await userDAL.updateById(user.id, {
       isEmailVerified: true,

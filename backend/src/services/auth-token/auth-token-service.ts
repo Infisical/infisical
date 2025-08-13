@@ -75,7 +75,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
 };
 
 export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAuthTokenServiceFactoryDep) => {
-  const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
+  const createTokenForUser = async ({ type, userId, orgId, aliasId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
     const tokenHash = await crypto.hashing().createHash(token, appCfg.SALT_ROUNDS);
@@ -88,7 +88,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
           type,
           userId,
           orgId,
-          triesLeft: tkCfg?.triesLeft
+          triesLeft: tkCfg?.triesLeft,
+          aliasId
         },
         tx
       );

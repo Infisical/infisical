@@ -26,12 +26,24 @@ export async function up(knex: Knex): Promise<void> {
       }
     }
   }
+
+  if (!(await knex.schema.hasColumn(TableName.AuthTokens, "aliasId"))) {
+    await knex.schema.alterTable(TableName.AuthTokens, (t) => {
+      t.string("aliasId").nullable();
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.UserAliases, "isEmailVerified")) {
     await knex.schema.alterTable(TableName.UserAliases, (t) => {
       t.dropColumn("isEmailVerified");
+    });
+  }
+
+  if (await knex.schema.hasColumn(TableName.AuthTokens, "aliasId")) {
+    await knex.schema.alterTable(TableName.AuthTokens, (t) => {
+      t.dropColumn("aliasId");
     });
   }
 }
