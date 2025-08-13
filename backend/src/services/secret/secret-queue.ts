@@ -15,6 +15,7 @@ import {
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEventBusService } from "@app/ee/services/event/event-bus-service";
 import { BusEventName, PublishableEvent, TopicName } from "@app/ee/services/event/types";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
@@ -75,7 +76,6 @@ import {
   TRemoveSecretReminderDTO,
   TSyncSecretsDTO
 } from "./secret-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
@@ -576,13 +576,13 @@ export const secretQueueFactory = ({
       });
     }
 
-    if (event.deleted) {
+    if (event.importMutation) {
       await eventBusService.publish(TopicName.CoreServers, {
         type: ProjectType.SecretManager,
         source: "infiscal",
         data: {
-          event: BusEventName.DeleteSecret,
-          payload: event.deleted
+          event: BusEventName.ImportMutation,
+          payload: event.importMutation
         }
       });
     }

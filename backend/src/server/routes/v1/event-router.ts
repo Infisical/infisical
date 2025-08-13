@@ -85,12 +85,9 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
                 secretPath: r.conditions?.secretPath ?? "/"
               };
 
-              const action = Mappings.BusEventToAction(r.event)
+              const action = Mappings.BusEventToAction(r.event);
 
-              const allowed = info.permission.can(
-                action,
-                subject(ProjectPermissionSub.SecretEvents, fields)
-              );
+              const allowed = info.permission.can(action, subject(ProjectPermissionSub.SecretEvents, fields));
 
               if (!allowed) {
                 throw new ForbiddenRequestError({
