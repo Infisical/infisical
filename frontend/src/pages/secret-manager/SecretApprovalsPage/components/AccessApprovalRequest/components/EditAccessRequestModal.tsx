@@ -3,6 +3,7 @@ import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
@@ -27,7 +28,22 @@ type ContentProps = {
 };
 
 const EditSchema = z.object({
-  temporaryRange: z.string().nonempty("Required"),
+  temporaryRange: z
+    .string()
+    .nonempty("Required")
+    .transform((val, ctx) => {
+      const parsedMs = ms(val);
+
+      if (typeof parsedMs !== "number" || parsedMs <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Invalid time period format or value. Must be a positive duration (e.g., '1h', '30m', '2d')."
+        });
+        return z.NEVER;
+      }
+      return val;
+    }),
   editNote: z.string().nonempty("Required")
 });
 

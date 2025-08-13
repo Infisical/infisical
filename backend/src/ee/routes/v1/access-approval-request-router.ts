@@ -27,7 +27,23 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       body: z.object({
         permissions: z.any().array(),
         isTemporary: z.boolean(),
-        temporaryRange: z.string().optional(),
+        temporaryRange: z
+          .string()
+          .optional()
+          .transform((val, ctx) => {
+            if (!val || val === "permanent") return undefined;
+
+            const parsedMs = ms(val);
+
+            if (typeof parsedMs !== "number" || parsedMs <= 0) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Invalid time period format or value. Must be a positive duration (e.g., '1h', '30m', '2d')."
+              });
+              return z.NEVER;
+            }
+            return val;
+          }),
         note: z.string().max(255).optional()
       }),
       querystring: z.object({

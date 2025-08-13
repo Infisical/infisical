@@ -115,6 +115,44 @@ User Note: ${payload.note}`
         payloadBlocks
       };
     }
+    case TriggerFeature.ACCESS_REQUEST_UPDATED: {
+      const { payload } = notification;
+      const messageBody = `${payload.editorFullName} (${payload.editorEmail}) has updated the ${
+        payload.isTemporary ? "temporary" : "permanent"
+      } access request from ${payload.requesterFullName} (${payload.requesterEmail}) to ${payload.secretPath} in the ${payload.environment} environment of ${payload.projectName}.
+      
+The following permissions are requested: ${payload.permissions.join(", ")}
+
+View the request and approve or deny it <${payload.approvalUrl}|here>.${
+        payload.editNote
+          ? `
+Editor Note: ${payload.editNote}`
+          : ""
+      }`;
+
+      const payloadBlocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "Updated access approval request pending for review",
+            emoji: true
+          }
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: messageBody
+          }
+        }
+      ];
+
+      return {
+        payloadMessage: messageBody,
+        payloadBlocks
+      };
+    }
     default: {
       throw new BadRequestError({
         message: "Slack notification type not supported."

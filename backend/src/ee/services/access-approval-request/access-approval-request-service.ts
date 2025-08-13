@@ -346,7 +346,9 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findById(accessApprovalRequest.projectId);
 
     if (!project) {
-      throw new NotFoundError({ message: "The project associated with this access request was not found." });
+      throw new NotFoundError({
+        message: `The project associated with this access request was not found. [projectId=${accessApprovalRequest.projectId}]`
+      });
     }
 
     if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
@@ -355,7 +357,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     const editedByUser = await userDAL.findById(actorId);
 
-    if (!editedByUser) throw new ForbiddenRequestError({ message: "User not found" });
+    if (!editedByUser) throw new NotFoundError({ message: "Editing user not found" });
 
     if (accessApprovalRequest.isTemporary && accessApprovalRequest.temporaryRange) {
       if (ms(temporaryRange) > ms(accessApprovalRequest.temporaryRange)) {
@@ -394,7 +396,7 @@ export const accessApprovalRequestServiceFactory = ({
       await triggerWorkflowIntegrationNotification({
         input: {
           notification: {
-            type: TriggerFeature.ACCESS_REQUEST,
+            type: TriggerFeature.ACCESS_REQUEST_UPDATED,
             payload: {
               projectName: project.name,
               requesterFullName,
@@ -421,7 +423,9 @@ export const accessApprovalRequestServiceFactory = ({
       });
 
       await smtpService.sendMail({
-        recipients: policy.approvers.filter((approver) => approver.email).map((approver) => approver.email!),
+        recipients: policy.approvers
+          .filter((approver) => Boolean(approver.email) && approver.userId !== editedByUser.id)
+          .map((approver) => approver.email!),
         subjectLine: "Access Approval Request Updated",
         substitutions: {
           projectName: project.name,

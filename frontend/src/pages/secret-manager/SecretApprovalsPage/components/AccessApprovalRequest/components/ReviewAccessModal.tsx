@@ -129,9 +129,6 @@ export const ReviewAccessRequestModal = ({
     if (!accessDetails.temporaryAccess.isTemporary || !accessDetails.temporaryAccess.temporaryRange)
       return "Permanent";
 
-    // convert the range to human readable format
-    ms(ms(accessDetails.temporaryAccess.temporaryRange), { long: true });
-
     return `Valid for ${ms(ms(accessDetails.temporaryAccess.temporaryRange), {
       long: true
     })} after approval`;
@@ -293,7 +290,7 @@ export const ReviewAccessRequestModal = ({
               <GenericFieldLabel label="Access Duration">
                 <div className="flex h-min gap-1">
                   {getAccessLabel()}
-                  {request.isApprover && (
+                  {request.isApprover && request.status === ApprovalStatus.PENDING && (
                     <>
                       <EditAccessRequestModal
                         isOpen={popUp.editRequest.isOpen}
