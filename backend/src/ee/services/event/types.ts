@@ -74,7 +74,10 @@ export const BusEventSchema = z.object({
 export type BusEvent = z.infer<typeof BusEventSchema>;
 
 type PublishableEventPayload = z.input<typeof BusEventSchema>["data"];
-type PublishableSecretEvent = Extract<PublishableEventPayload, { event: Exclude<BusEventName, BusEventName.ImportMutation> }>["payload"]
+type PublishableSecretEvent = Extract<
+  PublishableEventPayload,
+  { event: Exclude<BusEventName, BusEventName.ImportMutation> }
+>["payload"];
 
 export type PublishableEvent = {
   created?: PublishableSecretEvent;
