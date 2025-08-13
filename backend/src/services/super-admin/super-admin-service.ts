@@ -11,7 +11,6 @@ import {
   validateOverrides
 } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -547,26 +546,14 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
-      const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(password);
-      const encKeys = await generateUserSrpKeys(sanitizedEmail, password);
+
+      const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
       const userEnc = await userDAL.createUserEncryption(
         {
           userId: newUser.id,
           encryptionVersion: 2,
-          protectedKey: encKeys.protectedKey,
-          protectedKeyIV: encKeys.protectedKeyIV,
-          protectedKeyTag: encKeys.protectedKeyTag,
-          publicKey: encKeys.publicKey,
-          encryptedPrivateKey: encKeys.encryptedPrivateKey,
-          iv: encKeys.encryptedPrivateKeyIV,
-          tag: encKeys.encryptedPrivateKeyTag,
-          salt: encKeys.salt,
-          verifier: encKeys.verifier,
-          serverEncryptedPrivateKeyEncoding: encoding,
-          serverEncryptedPrivateKeyTag: tag,
-          serverEncryptedPrivateKeyIV: iv,
-          serverEncryptedPrivateKey: ciphertext
+          hashedPassword
         },
         tx
       );
