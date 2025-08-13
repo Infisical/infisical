@@ -10,6 +10,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProjectPermission,
+  useSubscription,
   useWorkspace
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -51,6 +52,7 @@ export const SelectionPanel = ({
   usedBySecretSyncs = []
 }: Props) => {
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries",
@@ -99,6 +101,16 @@ export const SelectionPanel = ({
       return "Do you want to delete the selected secrets across environments?";
     }
     return "Do you want to delete the selected folders across environments?";
+  };
+
+  const getDeleteModalSubTitle = () => {
+    if (selectedFolderCount > 0) {
+      if (subscription?.pitRecovery) {
+        return "This folder and all its contents will be removed. You can reverse this action by rolling back to a previous commit.";
+      }
+      return "This folder and all its contents will be removed. Rolling back to a previous commit isn't available on your current plan. Upgrade to enable this feature.";
+    }
+    return undefined;
   };
 
   const handleBulkDelete = async () => {
@@ -279,6 +291,7 @@ export const SelectionPanel = ({
         isOpen={popUp.bulkDeleteEntries.isOpen}
         deleteKey="delete"
         title={getDeleteModalTitle()}
+        subTitle={getDeleteModalSubTitle()}
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         onDeleteApproved={handleBulkDelete}
         formContent={
