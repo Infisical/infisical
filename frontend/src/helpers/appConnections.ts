@@ -8,6 +8,7 @@ import {
   faServer,
   faUser
 } from "@fortawesome/free-solid-svg-icons";
+import { useRouterState } from "@tanstack/react-router";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -50,6 +51,7 @@ import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-con
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -218,3 +220,18 @@ export const AWS_REGIONS = [
   { name: "AWS GovCloud (US-East)", slug: "us-gov-east-1" },
   { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
 ];
+
+type Params = {
+  projectId: string | undefined | null;
+  projectType: ProjectType | undefined | null;
+};
+
+export const useGetAppConnectionOauthReturnUrl = ({ projectId, projectType }: Params) => {
+  const {
+    location: { pathname }
+  } = useRouterState();
+
+  if (!projectId || !projectType) return undefined;
+
+  return pathname;
+};

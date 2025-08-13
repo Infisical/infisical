@@ -6,7 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AzureAppConfigurationConnectionMethod,
@@ -14,7 +18,9 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
+import { AzureAppConfigurationFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -25,6 +31,8 @@ type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 type Props = {
   appConnection?: TAzureAppConfigurationConnection;
   onSubmit: (formData: ClientSecretForm) => Promise<void>;
+  projectId: string | undefined | null;
+  projectType: ProjectType | undefined | null;
 };
 
 const baseSchema = genericAppConnectionFieldsSchema.extend({
@@ -96,7 +104,12 @@ const getDefaultValues = (appConnection?: TAzureAppConfigurationConnection): Par
   return base;
 };
 
-export const AzureAppConfigurationConnectionForm = ({ appConnection, onSubmit }: Props) => {
+export const AzureAppConfigurationConnectionForm = ({
+  appConnection,
+  onSubmit,
+  projectType,
+  projectId
+}: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -108,6 +121,11 @@ export const AzureAppConfigurationConnectionForm = ({ appConnection, onSubmit }:
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: getDefaultValues(appConnection)
+  });
+
+  const returnUrl = useGetAppConnectionOauthReturnUrl({
+    projectId,
+    projectType
   });
 
   const {
@@ -128,7 +146,12 @@ export const AzureAppConfigurationConnectionForm = ({ appConnection, onSubmit }:
         localStorage.setItem("latestCSRFToken", state);
         localStorage.setItem(
           "azureAppConfigurationConnectionFormData",
-          JSON.stringify({ ...formData, connectionId: appConnection?.id })
+          JSON.stringify({
+            ...formData,
+            connectionId: appConnection?.id,
+            projectId,
+            returnUrl
+          } as AzureAppConfigurationFormData)
         );
         window.location.assign(
           `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure/oauth/callback&response_mode=query&scope=https://azconfig.io/.default%20openid%20offline_access&state=${state}<:>azure-app-configuration`

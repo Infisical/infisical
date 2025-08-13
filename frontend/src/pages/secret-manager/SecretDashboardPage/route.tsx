@@ -10,7 +10,9 @@ import { SecretDashboardPage } from "./SecretDashboardPage";
 const SecretDashboardPageQueryParamsSchema = z.object({
   secretPath: z.string().catch("/"),
   search: z.string().catch(""),
-  tags: z.string().catch("")
+  tags: z.string().catch(""),
+  connectionId: z.string().optional(),
+  connectionName: z.string().optional()
 });
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug"

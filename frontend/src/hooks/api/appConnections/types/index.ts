@@ -1,3 +1,5 @@
+import { ProjectType } from "@app/hooks/api/workspace/types";
+
 import { AppConnection } from "../enums";
 import { TOnePassConnection } from "./1password-connection";
 import { TAppConnectionOption } from "./app-options";
@@ -113,7 +115,7 @@ export type TAppConnection =
   | TNetlifyConnection
   | TOktaConnection;
 
-export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
+export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
 export type TListAppConnections<T extends TAppConnection> = { appConnections: T[] };
 export type TGetAppConnection<T extends TAppConnection> = { appConnection: T };
@@ -130,7 +132,7 @@ export type TCreateAppConnectionDTO = Pick<
   | "description"
   | "isPlatformManagedCredentials"
   | "gatewayId"
->;
+> & { projectId: string };
 
 export type TUpdateAppConnectionDTO = Partial<
   Pick<
@@ -147,42 +149,63 @@ export type TDeleteAppConnectionDTO = {
   connectionId: string;
 };
 
-export type TAppConnectionMap = {
-  [AppConnection.AWS]: TAwsConnection;
-  [AppConnection.GitHub]: TGitHubConnection;
-  [AppConnection.GitHubRadar]: TGitHubRadarConnection;
-  [AppConnection.GCP]: TGcpConnection;
-  [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
-  [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
-  [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnection;
-  [AppConnection.AzureDevOps]: TAzureDevOpsConnection;
-  [AppConnection.Databricks]: TDatabricksConnection;
-  [AppConnection.Humanitec]: THumanitecConnection;
-  [AppConnection.TerraformCloud]: TTerraformCloudConnection;
-  [AppConnection.Vercel]: TVercelConnection;
-  [AppConnection.Postgres]: TPostgresConnection;
-  [AppConnection.MsSql]: TMsSqlConnection;
-  [AppConnection.MySql]: TMySqlConnection;
-  [AppConnection.OracleDB]: TOracleDBConnection;
-  [AppConnection.Camunda]: TCamundaConnection;
-  [AppConnection.Windmill]: TWindmillConnection;
-  [AppConnection.Auth0]: TAuth0Connection;
-  [AppConnection.HCVault]: THCVaultConnection;
-  [AppConnection.LDAP]: TLdapConnection;
-  [AppConnection.TeamCity]: TTeamCityConnection;
-  [AppConnection.OCI]: TOCIConnection;
-  [AppConnection.OnePass]: TOnePassConnection;
-  [AppConnection.Heroku]: THerokuConnection;
-  [AppConnection.Render]: TRenderConnection;
-  [AppConnection.Flyio]: TFlyioConnection;
-  [AppConnection.GitLab]: TGitLabConnection;
-  [AppConnection.Cloudflare]: TCloudflareConnection;
-  [AppConnection.Bitbucket]: TBitbucketConnection;
-  [AppConnection.Zabbix]: TZabbixConnection;
-  [AppConnection.Railway]: TRailwayConnection;
-  [AppConnection.Checkly]: TChecklyConnection;
-  [AppConnection.Supabase]: TSupabaseConnection;
-  [AppConnection.DigitalOcean]: TDigitalOceanConnection;
-  [AppConnection.Netlify]: TNetlifyConnection;
-  [AppConnection.Okta]: TOktaConnection;
+export type TMigrateAppConnectionDTO = {
+  app: AppConnection;
+  connectionId: string;
+};
+
+// scott: may need this once we have individual page
+// export type TAppConnectionMap = {
+//   [AppConnection.AWS]: TAwsConnection;
+//   [AppConnection.GitHub]: TGitHubConnection;
+//   [AppConnection.GitHubRadar]: TGitHubRadarConnection;
+//   [AppConnection.GCP]: TGcpConnection;
+//   [AppConnection.AzureKeyVault]: TAzureKeyVaultConnection;
+//   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
+//   [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnection;
+//   [AppConnection.AzureDevOps]: TAzureDevOpsConnection;
+//   [AppConnection.Databricks]: TDatabricksConnection;
+//   [AppConnection.Humanitec]: THumanitecConnection;
+//   [AppConnection.TerraformCloud]: TTerraformCloudConnection;
+//   [AppConnection.Vercel]: TVercelConnection;
+//   [AppConnection.Postgres]: TPostgresConnection;
+//   [AppConnection.MsSql]: TMsSqlConnection;
+//   [AppConnection.MySql]: TMySqlConnection;
+//   [AppConnection.OracleDB]: TOracleDBConnection;
+//   [AppConnection.Camunda]: TCamundaConnection;
+//   [AppConnection.Windmill]: TWindmillConnection;
+//   [AppConnection.Auth0]: TAuth0Connection;
+//   [AppConnection.HCVault]: THCVaultConnection;
+//   [AppConnection.LDAP]: TLdapConnection;
+//   [AppConnection.TeamCity]: TTeamCityConnection;
+//   [AppConnection.OCI]: TOCIConnection;
+//   [AppConnection.OnePass]: TOnePassConnection;
+//   [AppConnection.Heroku]: THerokuConnection;
+//   [AppConnection.Render]: TRenderConnection;
+//   [AppConnection.Flyio]: TFlyioConnection;
+//   [AppConnection.GitLab]: TGitLabConnection;
+//   [AppConnection.Cloudflare]: TCloudflareConnection;
+//   [AppConnection.Bitbucket]: TBitbucketConnection;
+//   [AppConnection.Zabbix]: TZabbixConnection;
+//   [AppConnection.Railway]: TRailwayConnection;
+//   [AppConnection.Checkly]: TChecklyConnection;
+//   [AppConnection.Supabase]: TSupabaseConnection;
+//   [AppConnection.DigitalOcean]: TDigitalOceanConnection;
+//   [AppConnection.Netlify]: TNetlifyConnection;
+//   [AppConnection.Okta]: TOktaConnection;
+// };
+
+export type AppConnectionUsage = {
+  projects: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    type: ProjectType;
+    resources: {
+      secretSyncs: Array<{ id: string; name: string }>;
+      externalCas: Array<{ id: string; name: string }>;
+      secretRotations: Array<{ id: string; name: string }>;
+      dataSources: Array<{ id: string; name: string }>;
+    };
+  }>;
 };

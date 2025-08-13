@@ -51,7 +51,7 @@ Infisical supports connecting to TeamCity using Access Tokens.
             <Tab title="Infisical UI">
                 1. Navigate to App Connections
 
-                    In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+                    In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
                     ![App Connections Tab](/images/app-connections/general/add-connection.png)
                 2. Add Connection
 
@@ -68,7 +68,7 @@ Infisical supports connecting to TeamCity using Access Tokens.
                     ![TeamCity Connection Modal](/images/app-connections/teamcity/teamcity-app-connection-modal.png)
                 4. Connection Created
 
-                    After clicking Create, your **TeamCity Connection** is established and ready to use with your Infisical projects.
+                    After clicking Create, your **TeamCity Connection** is established and ready to use with your Infisical project.
                     ![TeamCity Connection Created](/images/app-connections/teamcity/teamcity-app-connection-created.png)
             </Tab>
             <Tab title="API">
@@ -84,6 +84,7 @@ Infisical supports connecting to TeamCity using Access Tokens.
                         --data '{
                             "name": "my-teamcity-connection",
                             "method": "access-token",
+                            "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                             "credentials": {
                                 "accessToken": "...",
                                 "instanceUrl": "https://yourcompany.teamcity.com"
@@ -98,6 +99,7 @@ Infisical supports connecting to TeamCity using Access Tokens.
                   "appConnection": {
                     "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
                     "name": "my-teamcity-connection",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                     "description": null,
                     "version": 1,
                     "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",

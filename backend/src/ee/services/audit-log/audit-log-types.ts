@@ -390,6 +390,8 @@ export enum EventType {
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
   DELETE_APP_CONNECTION = "delete-app-connection",
+  GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
+  MIGRATE_APP_CONNECTION = "migrate-app-connection",
   CREATE_SHARED_SECRET = "create-shared-secret",
   CREATE_SECRET_REQUEST = "create-secret-request",
   DELETE_SHARED_SECRET = "delete-shared-secret",
@@ -2756,14 +2758,31 @@ interface GetAppConnectionEvent {
   };
 }
 
+interface GetAppConnectionUsageEvent {
+  type: EventType.GET_APP_CONNECTION_USAGE;
+  metadata: {
+    connectionId: string;
+  };
+}
+
+interface MigrateAppConnectionEvent {
+  type: EventType.MIGRATE_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
 interface CreateAppConnectionEvent {
   type: EventType.CREATE_APP_CONNECTION;
-  metadata: Omit<TCreateAppConnectionDTO, "credentials"> & { connectionId: string };
+  metadata: Omit<TCreateAppConnectionDTO, "credentials" | "projectId"> & { connectionId: string };
 }
 
 interface UpdateAppConnectionEvent {
   type: EventType.UPDATE_APP_CONNECTION;
-  metadata: Omit<TUpdateAppConnectionDTO, "credentials"> & { connectionId: string; credentialsUpdated: boolean };
+  metadata: Omit<TUpdateAppConnectionDTO, "credentials" | "projectId"> & {
+    connectionId: string;
+    credentialsUpdated: boolean;
+  };
 }
 
 interface DeleteAppConnectionEvent {
@@ -3670,6 +3689,8 @@ export type Event =
   | CreateAppConnectionEvent
   | UpdateAppConnectionEvent
   | DeleteAppConnectionEvent
+  | GetAppConnectionUsageEvent
+  | MigrateAppConnectionEvent
   | GetSshHostGroupEvent
   | CreateSshHostGroupEvent
   | UpdateSshHostGroupEvent

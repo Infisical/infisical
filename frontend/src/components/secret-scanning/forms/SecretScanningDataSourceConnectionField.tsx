@@ -1,14 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
-import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
+import { ProjectPermissionSub, useProjectPermission, useWorkspace } from "@app/context";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
+import { usePopUp } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { TSecretScanningDataSourceForm } from "./schemas";
 
@@ -21,19 +24,26 @@ export const SecretScanningDataSourceConnectionField = ({
   onChange: callback,
   isUpdate
 }: Props) => {
-  const { permission } = useOrgPermission();
-  const { control, watch } = useFormContext<TSecretScanningDataSourceForm>();
+  const { permission } = useProjectPermission();
+  const { control, watch, setValue } = useFormContext<TSecretScanningDataSourceForm>();
+
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const dataSourceType = watch("type");
   const app = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSourceType];
 
-  const { data: availableConnections, isPending } = useListAvailableAppConnections(app);
+  const { currentWorkspace } = useWorkspace();
+
+  const { data: availableConnections, isPending } = useListAvailableAppConnections(
+    app,
+    currentWorkspace.id
+  );
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
   const canCreateConnection = permission.can(
-    OrgPermissionAppConnectionActions.Create,
-    OrgPermissionSubjects.AppConnections
+    ProjectPermissionAppConnectionActions.Create,
+    ProjectPermissionSub.AppConnections
   );
 
   return (
@@ -67,37 +77,57 @@ export const SecretScanningDataSourceConnectionField = ({
             <FilterableSelect
               value={value}
               onChange={(newValue) => {
+                if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
+                  handlePopUpOpen("addConnection");
+                  onChange(null);
+                  // store for oauth callback connections
+                  localStorage.setItem("secretScanningDataSourceFormData", JSON.stringify(watch()));
+                  if (callback) callback();
+                  return;
+                }
+
                 onChange(newValue);
                 if (callback) callback();
               }}
               isLoading={isPending}
-              options={availableConnections}
+              options={[
+                ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
+                ...(availableConnections ?? [])
+              ]}
               isDisabled={isUpdate}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              components={{ Option: AppConnectionOption }}
             />
           </FormControl>
         )}
         control={control}
         name="connection"
       />
-      {!isUpdate && availableConnections?.length === 0 && (
+      {!isUpdate && !isPending && !availableConnections?.length && !canCreateConnection && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
-          {canCreateConnection ? (
-            <>
-              You do not have access to any {connectionName} Connections. Create one from the{" "}
-              <Link to="/organization/app-connections" className="underline">
-                App Connections
-              </Link>{" "}
-              page.
-            </>
-          ) : (
-            `You do not have access to any ${connectionName} Connections. Contact an admin to create one.`
-          )}
+          You do not have access to any ${connectionName} Connections. Contact an admin to create
+          one.
         </p>
       )}
+      <AddAppConnectionModal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isOpen) => {
+          // remove form storage, not oauth connection
+          localStorage.removeItem("secretScanningDataSourceFormData");
+          handlePopUpToggle("addConnection", isOpen);
+        }}
+        projectType={currentWorkspace.type}
+        projectId={currentWorkspace.id}
+        app={app}
+        onComplete={(connection) => {
+          if (connection) {
+            setValue("connection", connection);
+          }
+        }}
+      />
     </>
   );
 };

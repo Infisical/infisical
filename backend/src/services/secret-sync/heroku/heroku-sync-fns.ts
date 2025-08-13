@@ -32,6 +32,7 @@ const getValidAuthToken = async (
       connection.credentials.refreshToken,
       connection.id,
       connection.orgId,
+      connection.projectId,
       appConnectionDAL,
       kmsService
     );

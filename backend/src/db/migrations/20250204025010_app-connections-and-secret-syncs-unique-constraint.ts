@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
 import { TableName } from "@app/db/schemas";
 
 export async function up(knex: Knex): Promise<void> {
@@ -13,9 +14,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.alterTable(TableName.AppConnection, (t) => {
-    t.dropUnique(["orgId", "name"]);
-  });
+  await dropConstraintIfExists(TableName.AppConnection, "app_connections_orgid_name_unique", knex);
 
   await knex.schema.alterTable(TableName.SecretSync, (t) => {
     t.dropUnique(["projectId", "name"]);

@@ -6,6 +6,7 @@ import {
   TAppConnectionResponse,
   TCreateAppConnectionDTO,
   TDeleteAppConnectionDTO,
+  TMigrateAppConnectionDTO,
   TUpdateAppConnectionDTO
 } from "@app/hooks/api/appConnections/types";
 
@@ -20,7 +21,10 @@ export const useCreateAppConnection = () => {
 
       return data.appConnection;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() })
+    onSuccess: ({ projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+    }
   });
 };
 
@@ -35,9 +39,10 @@ export const useUpdateAppConnection = () => {
 
       return data.appConnection;
     },
-    onSuccess: (_, { connectionId, app }) => {
-      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() });
-      queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
+    onSuccess: ({ projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });
 };
@@ -50,9 +55,28 @@ export const useDeleteAppConnection = () => {
 
       return data;
     },
-    onSuccess: (_, { connectionId, app }) => {
-      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() });
-      queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
+    onSuccess: ({ projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
+    }
+  });
+};
+
+export const useMigrateAppConnection = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ connectionId, app }: TMigrateAppConnectionDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/app-connections/${app}/${connectionId}/migrate`
+      );
+
+      return data;
+    },
+    onSuccess: ({ projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });
 };

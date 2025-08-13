@@ -131,6 +131,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_APP_CONNECTION]: "Create App Connection",
   [EventType.UPDATE_APP_CONNECTION]: "Update App Connection",
   [EventType.DELETE_APP_CONNECTION]: "Delete App Connection",
+  [EventType.GET_APP_CONNECTION_USAGE]: "Get App Connection Usage",
+  [EventType.MIGRATE_APP_CONNECTION]: "Migrate App Connection",
   [EventType.GET_SECRET_SYNCS]: "List secret syncs",
   [EventType.GET_SECRET_SYNC]: "Get Secret Sync",
   [EventType.CREATE_SECRET_SYNC]: "Create Secret Sync",

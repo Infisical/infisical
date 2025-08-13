@@ -16,7 +16,11 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -25,7 +29,9 @@ import {
   GitLabConnectionMethod,
   TGitLabConnection
 } from "@app/hooks/api/appConnections/types/gitlab-connection";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
+import { GitLabFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -34,6 +40,8 @@ import {
 type Props = {
   appConnection?: TGitLabConnection;
   onSubmit: (formData: FormData) => Promise<void>;
+  projectId: string | undefined | null;
+  projectType: ProjectType | undefined | null;
 };
 
 const formSchema = z.discriminatedUnion("method", [
@@ -72,7 +80,12 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
-export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Props) => {
+export const GitLabConnectionForm = ({
+  appConnection,
+  onSubmit: formSubmit,
+  projectId,
+  projectType
+}: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -96,6 +109,11 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
               instanceUrl: ""
             }
           } as FormData))
+  });
+
+  const returnUrl = useGetAppConnectionOauthReturnUrl({
+    projectId,
+    projectType
   });
 
   const {
@@ -132,8 +150,10 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
             JSON.stringify({
               ...formData,
               connectionId: appConnection?.id,
-              isUpdate
-            })
+              isUpdate,
+              projectId,
+              returnUrl
+            } as GitLabFormData)
           );
 
           // Redirect to Gitlab OAuth

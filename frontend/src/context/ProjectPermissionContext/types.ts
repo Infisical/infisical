@@ -143,6 +143,14 @@ export enum ProjectPermissionSecretScanningConfigActions {
   Update = "update-configs"
 }
 
+export enum ProjectPermissionAppConnectionActions {
+  Read = "read-app-connections",
+  Create = "create-app-connections",
+  Edit = "edit-app-connections",
+  Delete = "delete-app-connections",
+  Connect = "connect-app-connections"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -162,6 +170,10 @@ export type IdentityManagementSubjectFields = {
   identityId: string;
 };
 
+export type AppConnectionSubjectFields = {
+  connectionId: string;
+};
+
 export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretSyncs
   | ProjectPermissionSub.Secrets
@@ -172,7 +184,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.CertificateTemplates
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
-  | ProjectPermissionSub.SecretRotation;
+  | ProjectPermissionSub.SecretRotation
+  | ProjectPermissionSub.AppConnections;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -250,7 +263,8 @@ export enum ProjectPermissionSub {
   Commits = "commits",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
-  SecretScanningConfigs = "secret-scanning-configs"
+  SecretScanningConfigs = "secret-scanning-configs",
+  AppConnections = "app-connections"
 }
 
 export type SecretSubjectFields = {
@@ -403,6 +417,13 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.SecretScanningDataSources
     ]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
-  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
+  | [
+      ProjectPermissionAppConnectionActions,
+      (
+        | ProjectPermissionSub.AppConnections
+        | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
+      )
+    ];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

@@ -25,7 +25,11 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import {
@@ -34,7 +38,9 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/workspace/types";
 
+import { GithubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -42,6 +48,8 @@ import {
 
 type Props = {
   appConnection?: TGitHubConnection;
+  projectId: string | undefined | null;
+  projectType: ProjectType | undefined | null;
 };
 
 const formSchema = genericAppConnectionFieldsSchema.extend({
@@ -63,7 +71,7 @@ const formSchema = genericAppConnectionFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const GitHubConnectionForm = ({ appConnection }: Props) => {
+export const GitHubConnectionForm = ({ appConnection, projectId, projectType }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -98,13 +106,24 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
   const selectedMethod = watch("method");
   const instanceType = watch("credentials.instanceType");
 
+  const returnUrl = useGetAppConnectionOauthReturnUrl({
+    projectId,
+    projectType
+  });
+
   const onSubmit = (formData: FormData) => {
     setIsRedirecting(true);
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
     localStorage.setItem(
       "githubConnectionFormData",
-      JSON.stringify({ ...formData, connectionId: appConnection?.id })
+      JSON.stringify({
+        ...formData,
+        credentials: formData.credentials as TGitHubConnection["credentials"],
+        connectionId: appConnection?.id,
+        projectId,
+        returnUrl
+      } as GithubFormData)
     );
 
     const githubHost =
