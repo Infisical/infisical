@@ -43,6 +43,7 @@ export const OrgAlertBanner = ({ text, link }: Props) => {
         className="ml-auto p-0 text-yellow-200"
         ariaLabel="Dismiss banner"
         variant="plain"
+        colorSchema="danger"
         onClick={() => setIsDismissed.on()}
       >
         <FontAwesomeIcon icon={faXmark} />
