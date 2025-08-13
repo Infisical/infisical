@@ -65,7 +65,7 @@ const formSchema = z
       .object({
         type: z.literal(ApproverType.User),
         id: z.string(),
-        isOrgMembershipActive: z.boolean().optional().nullable()
+        isOrgMembershipActive: z.boolean().optional()
       })
       .array()
       .default([]),
@@ -77,7 +77,7 @@ const formSchema = z
       .object({
         type: z.literal(BypasserType.User),
         id: z.string(),
-        isOrgMembershipActive: z.boolean().optional().nullable()
+        isOrgMembershipActive: z.boolean().optional()
       })
       .array()
       .default([]),
@@ -94,7 +94,7 @@ const formSchema = z
           .object({
             type: z.literal(ApproverType.User),
             id: z.string(),
-            isOrgMembershipActive: z.boolean().optional().nullable()
+            isOrgMembershipActive: z.boolean().optional()
           })
           .array()
           .default([]),

@@ -13,7 +13,7 @@ export const PolicyMemberOption = ({
   ...props
 }: OptionProps<{
   id: string;
-  isOrgMembershipActive: boolean;
+  isOrgMembershipActive?: boolean;
   type: ApproverType;
 }>) => {
   return (
