@@ -423,8 +423,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
   | [
       ProjectPermissionSecretEventActions,
-      ProjectPermissionSub.SecretEvents &
-        (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+      (
+        | ProjectPermissionSub.SecretEvents
+        | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+      )
     ];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;
