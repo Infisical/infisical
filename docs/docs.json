@@ -439,6 +439,7 @@
                       "documentation/platform/dynamic-secrets/aws-iam",
                       "documentation/platform/dynamic-secrets/azure-entra-id",
                       "documentation/platform/dynamic-secrets/cassandra",
+                      "documentation/platform/dynamic-secrets/couchbase",
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
                       "documentation/platform/dynamic-secrets/github",
@@ -995,6 +996,7 @@
               {
                 "group": "Projects",
                 "pages": [
+                  "api-reference/endpoints/workspaces/get-workspace-by-slug",
                   "api-reference/endpoints/workspaces/create-workspace",
                   "api-reference/endpoints/workspaces/delete-workspace",
                   "api-reference/endpoints/workspaces/get-workspace",

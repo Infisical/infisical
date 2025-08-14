@@ -143,6 +143,13 @@ export enum ProjectPermissionSecretScanningConfigActions {
   Update = "update-configs"
 }
 
+export enum ProjectPermissionSecretEventActions {
+  SubscribeCreated = "subscribe-on-created",
+  SubscribeUpdated = "subscribe-on-updated",
+  SubscribeDeleted = "subscribe-on-deleted",
+  SubscribeImportMutations = "subscribe-on-import-mutations"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -172,7 +179,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.CertificateTemplates
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
-  | ProjectPermissionSub.SecretRotation;
+  | ProjectPermissionSub.SecretRotation
+  | ProjectPermissionSub.SecretEvents;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -250,7 +258,8 @@ export enum ProjectPermissionSub {
   Commits = "commits",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
-  SecretScanningConfigs = "secret-scanning-configs"
+  SecretScanningConfigs = "secret-scanning-configs",
+  SecretEvents = "secret-events"
 }
 
 export type SecretSubjectFields = {
@@ -258,6 +267,14 @@ export type SecretSubjectFields = {
   secretPath: string;
   secretName: string;
   secretTags: string[];
+};
+
+export type SecretEventSubjectFields = {
+  environment: string;
+  secretPath: string;
+  secretName: string;
+  secretTags: string[];
+  action: string;
 };
 
 export type SecretFolderSubjectFields = {
@@ -403,6 +420,13 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.SecretScanningDataSources
     ]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
-  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
+  | [
+      ProjectPermissionSecretEventActions,
+      (
+        | ProjectPermissionSub.SecretEvents
+        | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+      )
+    ];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;
