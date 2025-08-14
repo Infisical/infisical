@@ -135,7 +135,7 @@ export const OrgGeneralAuthSection = ({
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
               {(isAllowed) => (
                 <Switch
-                  id="enforce-org-auth"
+                  id="enforce-saml-auth"
                   onCheckedChange={(value) =>
                     handleEnforceOrgAuthToggle(value, EnforceAuthType.SAML)
                   }
@@ -158,7 +158,7 @@ export const OrgGeneralAuthSection = ({
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
               {(isAllowed) => (
                 <Switch
-                  id="enforce-org-auth"
+                  id="enforce-oidc-auth"
                   isChecked={currentOrg?.authEnforced ?? false}
                   onCheckedChange={(value) =>
                     handleEnforceOrgAuthToggle(value, EnforceAuthType.OIDC)

@@ -148,7 +148,7 @@ declare module "fastify" {
   interface Session {
     callbackPort: string;
     isAdminLogin: boolean;
-    orgSlug: string;
+    orgSlug?: string;
   }
 
   interface FastifyRequest {

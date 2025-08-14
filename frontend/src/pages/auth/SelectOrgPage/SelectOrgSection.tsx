@@ -85,8 +85,6 @@ export const SelectOrganizationSection = () => {
       if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
         const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
 
-        await new Promise((resolve) => setTimeout(resolve, 5_000));
-
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
         let url = "";
@@ -215,8 +213,6 @@ export const SelectOrganizationSection = () => {
         handleCliRedirect();
         setIsInitialOrgCheckLoading(false);
       } else {
-        console.log(organizations.data);
-        console.log("Calling this with single org?!??!?!::::", organizations.data.length);
         handleSelectOrganization(organizations.data[0]);
       }
     } else {
@@ -226,7 +222,6 @@ export const SelectOrganizationSection = () => {
 
   useEffect(() => {
     if (defaultSelectedOrg) {
-      console.log("Calling this with default org?!??!?!::::", defaultSelectedOrg);
       handleSelectOrganization(defaultSelectedOrg);
     }
   }, [defaultSelectedOrg]);

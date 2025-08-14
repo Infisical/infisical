@@ -431,6 +431,12 @@ export const orgServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
     }
 
+    if (authEnforced && googleSsoAuthEnforced) {
+      throw new BadRequestError({
+        message: "SAML/OIDC auth enforcement and Google SSO auth enforcement cannot be enabled at the same time."
+      });
+    }
+
     if (authEnforced) {
       const samlCfg = await samlConfigDAL.findOne({
         orgId,
@@ -461,22 +467,10 @@ export const orgServiceFactory = ({
       }
     }
 
-    if (googleSsoAuthEnforced || authEnforced) {
-      if (googleSsoAuthEnforced && authEnforced) {
-        throw new BadRequestError({
-          message: "Google SSO and SAML/OIDC auth enforcement cannot be enabled at the same time."
-        });
-      }
-
+    if (googleSsoAuthEnforced) {
       if (googleSsoAuthEnforced && currentOrg.authEnforced) {
         throw new BadRequestError({
           message: "Google SSO auth enforcement cannot be enabled when SAML/OIDC auth enforcement is enabled."
-        });
-      }
-
-      if (authEnforced && currentOrg.googleSsoAuthEnforced) {
-        throw new BadRequestError({
-          message: "SAML/OIDC auth enforcement cannot be enabled when Google SSO auth enforcement is enabled."
         });
       }
 

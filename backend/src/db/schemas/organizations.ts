@@ -37,7 +37,7 @@ export const OrganizationsSchema = z.object({
   shareSecretsProductEnabled: z.boolean().default(true).nullable().optional(),
   maxSharedSecretLifetime: z.number().default(2592000).nullable().optional(),
   maxSharedSecretViewLimit: z.number().nullable().optional(),
-  googleSsoAuthEnforced: z.boolean().default(false).nullable().optional(),
+  googleSsoAuthEnforced: z.boolean().default(false),
   googleSsoAuthLastUsed: z.date().nullable().optional()
 });
 

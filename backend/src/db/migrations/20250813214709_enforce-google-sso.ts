@@ -15,7 +15,8 @@ export async function up(knex: Knex): Promise<void> {
   );
 
   await knex.schema.alterTable(TableName.Organization, (table) => {
-    if (!hasGoogleSsoAuthEnforcedColumn) table.boolean(GOOGLE_SSO_AUTH_ENFORCED_COLUMN_NAME).defaultTo(false);
+    if (!hasGoogleSsoAuthEnforcedColumn)
+      table.boolean(GOOGLE_SSO_AUTH_ENFORCED_COLUMN_NAME).defaultTo(false).notNullable();
     if (!hasGoogleSsoAuthLastUsedColumn) table.timestamp(GOOGLE_SSO_AUTH_LAST_USED_COLUMN_NAME).nullable();
   });
 }
