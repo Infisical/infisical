@@ -2,48 +2,61 @@ package sse
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 )
 
-type SSEEvent struct {
+// Event represents a Server-Sent Event
+type Event struct {
 	ID    string
 	Event string
 	Data  string
+	Retry int
 }
 
-// SSEClient handles SSE connections
-type SSEClient struct {
-	URL             string
-	Client          *http.Client
-	LastHealthCheck time.Time
-	mu              *sync.Mutex // for safe concurrent access to LastHealthCheck
+// Client handles SSE connections with high performance
+type Client struct {
+	httpClient *http.Client
+	onPing     func() // Callback for ping events
 }
 
-// NewClient creates a new SSE client
-func NewClient() SSEClient {
-	return SSEClient{
-		mu: &sync.Mutex{},
-		Client: &http.Client{
+// NewClient creates a new high-performance SSE client
+func NewClient() Client {
+	return Client{
+		httpClient: &http.Client{
 			Timeout: 0, // No timeout for streaming
+			Transport: &http.Transport{
+				MaxIdleConns:       100,
+				IdleConnTimeout:    90 * time.Second,
+				DisableCompression: true, // SSE typically doesn't benefit from compression
+			},
 		},
 	}
 }
 
-// Connect establishes SSE connection and returns a channel of events
-func (c *SSEClient) Connect(req *http.Request) (<-chan SSEEvent, <-chan error, error) {
-	// Set required headers for SSE
-	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("Connection", "keep-alive")
-	req.Header.Set("Content-Type", "application/json")
+// WithPingHandler sets a callback for ping events
+func (c *Client) WithPingHandler(handler func()) *Client {
+	c.onPing = handler
+	return c
+}
 
-	resp, err := c.Client.Do(req)
+// Connect establishes an SSE connection and returns event channels
+func (c *Client) Connect(ctx context.Context, req *http.Request) (<-chan Event, <-chan error, error) {
+	// Configure SSE headers
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Connection", "keep-alive")
+
+	// Add context to request
+	req = req.WithContext(ctx)
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("request failed: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -51,66 +64,124 @@ func (c *SSEClient) Connect(req *http.Request) (<-chan SSEEvent, <-chan error, e
 		return nil, nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	eventChan := make(chan SSEEvent)
-	errorChan := make(chan error)
+	eventChan := make(chan Event, 10)
+	errorChan := make(chan error, 1)
 
-	go c.stream(resp.Body, eventChan, errorChan)
+	go c.stream(ctx, resp.Body, eventChan, errorChan)
 
 	return eventChan, errorChan, nil
 }
 
-func (c *SSEClient) stream(body io.ReadCloser, eventChan chan<- SSEEvent, errorChan chan<- error) {
+func (c *Client) stream(ctx context.Context, body io.ReadCloser, eventChan chan<- Event, errorChan chan<- error) {
 	defer body.Close()
 	defer close(eventChan)
 	defer close(errorChan)
 
 	scanner := bufio.NewScanner(body)
-	var event SSEEvent
+
+	var currentEvent Event
+	var dataBuilder strings.Builder
 
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 
-		// End of event
-		if line == "" {
-			if event.Data != "" || event.Event != "" {
-				if strings.TrimSpace(event.Data) == "1" {
-					c.mu.Lock()
-					c.LastHealthCheck = time.Now()
-					c.mu.Unlock()
-				} else if event.Event != "ping" {
-					eventChan <- event
+		line := scanner.Text()
+
+		// Empty line indicates end of event
+		if len(line) == 0 {
+			if currentEvent.Data != "" || currentEvent.Event != "" {
+				// Finalize data
+				if dataBuilder.Len() > 0 {
+					currentEvent.Data = dataBuilder.String()
+					dataBuilder.Reset()
 				}
 
-				event = SSEEvent{} // Reset for next event
+				// Handle ping events
+				if c.isPingEvent(currentEvent) {
+					if c.onPing != nil {
+						c.onPing()
+					}
+				} else {
+					// Send non-ping events
+					select {
+					case eventChan <- currentEvent:
+					case <-ctx.Done():
+						return
+					}
+				}
+
+				// Reset for next event
+				currentEvent = Event{}
 			}
 			continue
 		}
 
-		switch {
-		case strings.HasPrefix(line, "data:"):
-			data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
-			if event.Data != "" {
-				event.Data += "\n"
-			}
-			event.Data += data
-
-		case strings.HasPrefix(line, "event:"):
-			event.Event = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
-
-		case strings.HasPrefix(line, "id:"):
-			event.ID = strings.TrimSpace(strings.TrimPrefix(line, "id:"))
-
-		case strings.HasPrefix(line, "retry:"):
-			// Optional: parse and apply retry interval here
-
-		case strings.HasPrefix(line, ":"):
-			// Comment line — ignored
-		default:
-			// Unknown line format — can log/debug if needed
-		}
+		// Parse line efficiently
+		c.parseLine(line, &currentEvent, &dataBuilder)
 	}
 
 	if err := scanner.Err(); err != nil {
-		errorChan <- err
+		select {
+		case errorChan <- err:
+		case <-ctx.Done():
+		}
 	}
+}
+
+// parseLine efficiently parses SSE protocol lines
+func (c *Client) parseLine(line string, event *Event, dataBuilder *strings.Builder) {
+	colonIndex := strings.IndexByte(line, ':')
+	if colonIndex == -1 {
+		return // Invalid line format
+	}
+
+	field := line[:colonIndex]
+	value := line[colonIndex+1:]
+
+	// Trim leading space from value (SSE spec)
+	if len(value) > 0 && value[0] == ' ' {
+		value = value[1:]
+	}
+
+	switch field {
+	case "data":
+		if dataBuilder.Len() > 0 {
+			dataBuilder.WriteByte('\n')
+		}
+		dataBuilder.WriteString(value)
+	case "event":
+		event.Event = value
+	case "id":
+		event.ID = value
+	case "retry":
+		// Parse retry value if needed
+		// This could be used to configure reconnection delay
+	case "":
+		// Comment line, ignore
+	}
+}
+
+// isPingEvent checks if an event is a ping/keepalive
+func (c *Client) isPingEvent(event Event) bool {
+	// Check for common ping patterns
+	if event.Event == "ping" {
+		return true
+	}
+
+	// Check for heartbeat data (common pattern is "1" or similar)
+	if event.Event == "" && strings.TrimSpace(event.Data) == "1" {
+		return true
+	}
+
+	return false
+}
+
+// WithHTTPClient sets a custom HTTP client
+func (c *Client) WithHTTPClient(client *http.Client) *Client {
+	c.httpClient = client
+	return c
 }

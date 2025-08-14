@@ -601,6 +601,10 @@ func (r *InfisicalSecretReconciler) OpenInstantUpdatesStream(ctx context.Context
 				Event:      "secret:delete",
 				Conditions: conditions,
 			},
+			{
+				Event:      "secret:import-mutation",
+				Conditions: conditions,
+			},
 		},
 	})
 
@@ -612,9 +616,10 @@ func (r *InfisicalSecretReconciler) OpenInstantUpdatesStream(ctx context.Context
 		headers := map[string]string{
 			"User-Agent":    api.USER_AGENT_NAME,
 			"Authorization": fmt.Sprint("Bearer ", token),
+			"Content-Type":  "application/json",
 		}
 
-		req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/v1/events/subscribe/project-events", api.API_HOST_URL), strings.NewReader(string(body)))
+		req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/events/subscribe/project-events", api.API_HOST_URL), strings.NewReader(string(body)))
 
 		if err != nil {
 			return nil, err

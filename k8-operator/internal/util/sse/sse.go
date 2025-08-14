@@ -5,161 +5,203 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
+// ConnectionMeta holds metadata about an SSE connection
 type ConnectionMeta struct {
-	EventChan  <-chan SSEEvent
+	EventChan  <-chan Event
 	ErrorChan  <-chan error
-	LastPingAt time.Time
-	Cancel     context.CancelFunc
+	lastPingAt atomic.Value // stores time.Time
+	cancel     context.CancelFunc
 }
 
-type ConnectionRegistry struct {
-	Ctx    context.Context
-	meta   *ConnectionMeta
-	client SSEClient
-	mu     sync.RWMutex
-
-	monitorCancel context.CancelFunc
-	monitorCtx    context.Context
+// LastPing returns the last ping time
+func (c *ConnectionMeta) LastPing() time.Time {
+	if t, ok := c.lastPingAt.Load().(time.Time); ok {
+		return t
+	}
+	return time.Time{}
 }
 
-func NewConnectionRegistry(ctx context.Context) *ConnectionRegistry {
-	monitorCtx, monitorCancel := context.WithCancel(ctx)
-	return &ConnectionRegistry{
-		Ctx:           ctx,
-		client:        NewClient(),
-		monitorCtx:    monitorCtx,
-		monitorCancel: monitorCancel,
+// UpdateLastPing atomically updates the last ping time
+func (c *ConnectionMeta) UpdateLastPing() {
+	c.lastPingAt.Store(time.Now())
+}
+
+// Cancel terminates the connection
+func (c *ConnectionMeta) Cancel() {
+	if c.cancel != nil {
+		c.cancel()
 	}
 }
 
-// create creates a new connection
-func (r *ConnectionRegistry) create(req *http.Request) (*ConnectionMeta, error) {
-	// Create new connection using provided request
-	eventChan, errorChan, err := r.client.Connect(req)
+// ConnectionRegistry manages SSE connections with high performance
+type ConnectionRegistry struct {
+	ctx    context.Context
+	client Client
+
+	mu   sync.RWMutex
+	conn *ConnectionMeta
+
+	monitorOnce sync.Once
+	monitorStop chan struct{}
+}
+
+// NewConnectionRegistry creates a new high-performance connection registry
+func NewConnectionRegistry(ctx context.Context) *ConnectionRegistry {
+	r := &ConnectionRegistry{
+		ctx:         ctx,
+		monitorStop: make(chan struct{}),
+	}
+
+	// Configure client with ping handler
+	r.client = NewClient()
+	r.client.WithPingHandler(func() {
+		r.UpdateLastPing()
+	})
+
+	return r
+}
+
+// Subscribe provides SSE events, creating a connection if needed
+func (r *ConnectionRegistry) Subscribe(buildRequest func() (*http.Request, error)) (<-chan Event, <-chan error, error) {
+	// Fast path: check if connection exists
+	if conn := r.getConnection(); conn != nil {
+		return conn.EventChan, conn.ErrorChan, nil
+	}
+
+	// Slow path: create new connection under lock
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Double-check after acquiring lock
+	if r.conn != nil {
+		return r.conn.EventChan, r.conn.ErrorChan, nil
+	}
+
+	req, err := buildRequest()
 	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build request: %w", err)
+	}
+
+	conn, err := r.createConnection(req)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r.conn = conn
+
+	// Start monitor once
+	r.monitorOnce.Do(func() {
+		go r.monitorConnections()
+	})
+
+	return conn.EventChan, conn.ErrorChan, nil
+}
+
+// Get retrieves the current connection
+func (r *ConnectionRegistry) Get() (*ConnectionMeta, bool) {
+	conn := r.getConnection()
+	return conn, conn != nil
+}
+
+// IsConnected checks if there's an active connection
+func (r *ConnectionRegistry) IsConnected() bool {
+	return r.getConnection() != nil
+}
+
+// UpdateLastPing updates the last ping time for the current connection
+func (r *ConnectionRegistry) UpdateLastPing() {
+	if conn := r.getConnection(); conn != nil {
+		conn.UpdateLastPing()
+	}
+}
+
+// Close gracefully shuts down the registry
+func (r *ConnectionRegistry) Close() {
+	// Stop monitor first
+	select {
+	case <-r.monitorStop:
+		// Already closed
+	default:
+		close(r.monitorStop)
+	}
+
+	// Close connection
+	r.mu.Lock()
+	if r.conn != nil {
+		r.conn.Cancel()
+		r.conn = nil
+	}
+	r.mu.Unlock()
+}
+
+// getConnection returns the current connection without locking
+func (r *ConnectionRegistry) getConnection() *ConnectionMeta {
+	r.mu.RLock()
+	conn := r.conn
+	r.mu.RUnlock()
+	return conn
+}
+
+// createConnection creates a new SSE connection
+func (r *ConnectionRegistry) createConnection(req *http.Request) (*ConnectionMeta, error) {
+	ctx, cancel := context.WithCancel(r.ctx)
+
+	eventChan, errorChan, err := r.client.Connect(ctx, req)
+	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 
 	meta := &ConnectionMeta{
-		EventChan:  eventChan,
-		ErrorChan:  errorChan,
-		LastPingAt: time.Now(),
+		EventChan: eventChan,
+		ErrorChan: errorChan,
+		cancel:    cancel,
 	}
+	meta.UpdateLastPing()
 
-	r.meta = meta
-
-	// Start cleanup monitor for this connection (NON-BLOCKING)
-	go r.monitor(meta)
-
-	println("Creating new connection\n")
 	return meta, nil
 }
 
-// Get retrieves the existing connection
-func (r *ConnectionRegistry) Get() (*ConnectionMeta, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.meta, r.meta != nil
-}
+// monitorConnections checks connection health periodically
+func (r *ConnectionRegistry) monitorConnections() {
+	const (
+		checkInterval = 30 * time.Second
+		pingTimeout   = 2 * time.Minute
+	)
 
-// Close closes the connection
-func (r *ConnectionRegistry) Close() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.meta != nil {
-		if r.meta.Cancel != nil {
-			r.meta.Cancel()
-		}
-		r.meta = nil
-	}
-
-	// Cancel the monitor
-	if r.monitorCancel != nil {
-		r.monitorCancel()
-	}
-}
-
-// IsConnected returns whether there's an active connection
-func (r *ConnectionRegistry) IsConnected() bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.meta != nil
-}
-
-// UpdateLastPing updates the last ping time
-func (r *ConnectionRegistry) UpdateLastPing() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.meta != nil {
-		r.meta.LastPingAt = time.Now()
-	}
-}
-
-// monitor watches for connection closure and cleans up
-func (r *ConnectionRegistry) monitor(meta *ConnectionMeta) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(checkInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-r.monitorCtx.Done():
-			// Context cancelled, exit monitor
+		case <-r.monitorStop:
 			return
-
+		case <-r.ctx.Done():
+			return
 		case <-ticker.C:
-			r.mu.RLock()
-			currentMeta := r.meta
-			r.mu.RUnlock()
-
-			// Check if this monitor is still relevant
-			if currentMeta != meta {
-				// This connection has been replaced, exit monitor
-				return
-			}
-
-			if currentMeta != nil && time.Since(currentMeta.LastPingAt) > 2*time.Minute {
-				fmt.Println("Last ping was more than 2 minutes ago, closing connection")
-				r.mu.Lock()
-				if r.meta == meta { // Double-check under lock
-					if r.meta.Cancel != nil {
-						r.meta.Cancel()
-					}
-					r.meta = nil
-				}
-				r.mu.Unlock()
-				return // Exit monitor after cleanup
-			}
+			r.checkConnectionHealth(pingTimeout)
 		}
 	}
 }
 
-// Subscribe provides a convenient way to get events from the connection
-func (r *ConnectionRegistry) Subscribe(build func() (*http.Request, error)) (<-chan SSEEvent, <-chan error, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	// Get existing connection if available
-	if r.meta != nil {
-		return r.meta.EventChan, r.meta.ErrorChan, nil
+// checkConnectionHealth verifies connection is still alive
+func (r *ConnectionRegistry) checkConnectionHealth(timeout time.Duration) {
+	conn := r.getConnection()
+	if conn == nil {
+		return
 	}
 
-	req, err := build()
-
-	if err != nil {
-		return nil, nil, err
+	if time.Since(conn.LastPing()) > timeout {
+		// Connection is stale, close it
+		r.mu.Lock()
+		if r.conn == conn { // Verify it's still the same connection
+			r.conn.Cancel()
+			r.conn = nil
+		}
+		r.mu.Unlock()
 	}
-
-	// Create new connection if none exists
-	meta, err := r.create(req)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return meta.EventChan, meta.ErrorChan, nil
 }
