@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
+import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -26,7 +27,23 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       body: z.object({
         permissions: z.any().array(),
         isTemporary: z.boolean(),
-        temporaryRange: z.string().optional(),
+        temporaryRange: z
+          .string()
+          .optional()
+          .transform((val, ctx) => {
+            if (!val || val === "permanent") return undefined;
+
+            const parsedMs = ms(val);
+
+            if (typeof parsedMs !== "number" || parsedMs <= 0) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Invalid time period format or value. Must be a positive duration (e.g., '1h', '30m', '2d')."
+              });
+              return z.NEVER;
+            }
+            return val;
+          }),
         note: z.string().max(255).optional()
       }),
       querystring: z.object({
@@ -188,6 +205,49 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       });
 
       return { review };
+    }
+  });
+
+  server.route({
+    url: "/:requestId",
+    method: "PATCH",
+    schema: {
+      params: z.object({
+        requestId: z.string().trim()
+      }),
+      body: z.object({
+        temporaryRange: z.string().transform((val, ctx) => {
+          const parsedMs = ms(val);
+
+          if (typeof parsedMs !== "number" || parsedMs <= 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Invalid time period format or value. Must be a positive duration (e.g., '1h', '30m', '2d')."
+            });
+            return z.NEVER;
+          }
+          return val;
+        }),
+        editNote: z.string().max(255)
+      }),
+      response: {
+        200: z.object({
+          approval: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { request } = await server.services.accessApprovalRequest.updateAccessApprovalRequest({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        temporaryRange: req.body.temporaryRange,
+        editNote: req.body.editNote,
+        requestId: req.params.requestId
+      });
+      return { approval: request };
     }
   });
 };

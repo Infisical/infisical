@@ -30,6 +30,12 @@ export type TCreateAccessApprovalRequestDTO = {
   note?: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TUpdateAccessApprovalRequestDTO = {
+  requestId: string;
+  temporaryRange: string;
+  editNote: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TListApprovalRequestsDTO = {
   projectSlug: string;
   authorUserId?: string;
@@ -38,6 +44,23 @@ export type TListApprovalRequestsDTO = {
 
 export interface TAccessApprovalRequestServiceFactory {
   createAccessApprovalRequest: (arg: TCreateAccessApprovalRequestDTO) => Promise<{
+    request: {
+      status: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      policyId: string;
+      isTemporary: boolean;
+      requestedByUserId: string;
+      privilegeId?: string | null | undefined;
+      requestedBy?: string | null | undefined;
+      temporaryRange?: string | null | undefined;
+      permissions?: unknown;
+      note?: string | null | undefined;
+      privilegeDeletedAt?: Date | null | undefined;
+    };
+  }>;
+  updateAccessApprovalRequest: (arg: TUpdateAccessApprovalRequestDTO) => Promise<{
     request: {
       status: string;
       id: string;
