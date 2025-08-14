@@ -142,12 +142,12 @@ Below is a comprehensive list of all available project-level subjects and their 
 Supports conditions and permission inversion
 | Action | Description | Notes |
 | -------- | ------------------------------- | ----- |
-| `read` | View secrets and their values     | This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead.       |
+| `read` | View secrets and their values | This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead. |
 | `describeSecret` | View secret details such as key, path, metadata, tags, and more | If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. |
 | `readValue` | View the value of a secret.| In order to read secret values, the `describeSecret` action must also be granted. |
-| `create` | Add new secrets to the project  |       |
-| `edit` | Modify existing secret values     |       |
-| `delete` | Remove secrets from the project |       |
+| `create` | Add new secrets to the project | |
+| `edit` | Modify existing secret values | |
+| `delete` | Remove secrets from the project | |
 
 #### Subject: `secret-folders`
 
@@ -169,6 +169,15 @@ Supports conditions and permission inversion
 | `edit` | Modify secret imports |
 | `delete` | Remove secret imports |
 
+#### Subject: `secret-events`
+
+| Action                          | Description                                                   |
+| ------------------------------- | ------------------------------------------------------------- |
+| `subscribe-on-created`          | Subscribe to events when secrets are created                  |
+| `subscribe-on-updated`          | Subscribe to events when secrets are updated                  |
+| `subscribe-on-deleted`          | Subscribe to events when secrets are deleted                  |
+| `subscribe-on-import-mutations` | Subscribe to events when secrets are modified through imports |
+
 #### Subject: `secret-rollback`
 
 | Action   | Description                        |
@@ -178,10 +187,10 @@ Supports conditions and permission inversion
 
 #### Subject: `commits`
 
-| Action   | Description                        |
-| -------- | ---------------------------------- |
-| `read`   | View commits and changes across folders |
-| `perform-rollback` | Roll back commits changes and restore folders to previous state|
+| Action             | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `read`             | View commits and changes across folders                         |
+| `perform-rollback` | Roll back commits changes and restore folders to previous state |
 
 #### Subject: `secret-approval`
 
@@ -197,14 +206,14 @@ Supports conditions and permission inversion
 #### Subject: `secret-rotation`
 
 Supports conditions and permission inversion
-| Action                         | Description                                    |
+| Action | Description |
 | ------------------------------ | ---------------------------------------------- |
-| `read`                         | View secret rotation configurations            |
-| `read-generated-credentials`   | View the generated credentials of a rotation   |
-| `create`                       | Set up secret rotation configurations          |
-| `edit`                         | Modify secret rotation configurations          |
-| `rotate-secrets`               | Rotate the generated credentials of a rotation |
-| `delete`                       | Remove secret rotation configurations          |
+| `read` | View secret rotation configurations |
+| `read-generated-credentials` | View the generated credentials of a rotation |
+| `create` | Set up secret rotation configurations |
+| `edit` | Modify secret rotation configurations |
+| `rotate-secrets` | Rotate the generated credentials of a rotation |
+| `delete` | Remove secret rotation configurations |
 
 #### Subject: `secret-syncs`
 
@@ -263,12 +272,12 @@ Supports conditions and permission inversion
 
 #### Subject: `certificates`
 
-| Action               | Description                   |
-| -------------------- | ----------------------------- |
-| `read`               | View certificates             |
-| `read-private-key`   | Read certificate private key  |
-| `create`             | Issue new certificates        |
-| `delete`             | Revoke or remove certificates |
+| Action             | Description                   |
+| ------------------ | ----------------------------- |
+| `read`             | View certificates             |
+| `read-private-key` | Read certificate private key  |
+| `create`           | Issue new certificates        |
+| `delete`           | Revoke or remove certificates |
 
 #### Subject: `certificate-templates`
 
@@ -330,8 +339,8 @@ Supports conditions and permission inversion
 
 #### Subject: `secret-scanning-data-sources`
 
-| Action   | Description                                          |
-| -------- | ---------------------------------------------------- |
+| Action                       | Description                      |
+| ---------------------------- | -------------------------------- |
 | `read-data-sources`          | View Data Sources                |
 | `create-data-sources`        | Create new Data Sources          |
 | `edit-data-sources`          | Modify Data Sources              |
@@ -342,15 +351,14 @@ Supports conditions and permission inversion
 
 #### Subject: `secret-scanning-findings`
 
-| Action   | Description                       |
-| -------- | --------------------------------- |
-| `read-findings`     | View Secret Scanning Findings   |
-| `update-findings`   | Update Secret Scanning Findings |
-
+| Action            | Description                     |
+| ----------------- | ------------------------------- |
+| `read-findings`   | View Secret Scanning Findings   |
+| `update-findings` | Update Secret Scanning Findings |
 
 #### Subject: `secret-scanning-configs`
 
-| Action           | Description                                      |
-| ---------------- | ------------------------------------------------ |
-| `read-configs`   | View Secret Scanning Project Configuration       |
-| `update-configs` | Update Secret Scanning Project Configuration     |
+| Action           | Description                                  |
+| ---------------- | -------------------------------------------- |
+| `read-configs`   | View Secret Scanning Project Configuration   |
+| `update-configs` | Update Secret Scanning Project Configuration |

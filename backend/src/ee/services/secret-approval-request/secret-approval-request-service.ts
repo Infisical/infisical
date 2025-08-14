@@ -952,13 +952,39 @@ export const secretApprovalRequestServiceFactory = ({
     if (!folder) {
       throw new NotFoundError({ message: `Folder with ID '${folderId}' not found in project with ID '${projectId}'` });
     }
+
+    const { secrets } = mergeStatus;
+
     await secretQueueService.syncSecrets({
       projectId,
       orgId: actorOrgId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
       actorId,
-      actor
+      actor,
+      event: {
+        created: secrets.created.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        })),
+        updated: secrets.updated.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        })),
+        deleted: secrets.deleted.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        }))
+      }
     });
 
     if (isSoftEnforcement) {

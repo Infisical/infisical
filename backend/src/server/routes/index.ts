@@ -560,8 +560,7 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL,
-    eventBusService
+    auditLogStreamDAL
   });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
@@ -1121,7 +1120,9 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     secretSyncQueue,
-    reminderService
+    reminderService,
+    eventBusService,
+    licenseService
   });
 
   const projectService = projectServiceFactory({
