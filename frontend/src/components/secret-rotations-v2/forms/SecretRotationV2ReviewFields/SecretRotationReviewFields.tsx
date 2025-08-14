@@ -8,6 +8,7 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
+import { AzureCertificateRotationReviewFields } from "./AzureCertificateRotationReviewFields";
 import { AzureClientSecretRotationReviewFields } from "./AzureClientSecretRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
 import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotationReviewFields";
@@ -22,7 +23,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.AzureClientSecret]: AzureClientSecretRotationReviewFields,
   [SecretRotation.LdapPassword]: LdapPasswordRotationReviewFields,
   [SecretRotation.AwsIamUserSecret]: AwsIamUserSecretRotationReviewFields,
-  [SecretRotation.OktaClientSecret]: OktaClientSecretRotationReviewFields
+  [SecretRotation.OktaClientSecret]: OktaClientSecretRotationReviewFields,
+  [SecretRotation.AzureCertificate]: AzureCertificateRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

@@ -35,5 +35,6 @@ export enum AppConnection {
   Supabase = "supabase",
   DigitalOcean = "digital-ocean",
   Netlify = "netlify",
-  Okta = "okta"
+  Okta = "okta",
+  AzureCertificate = "azure-certificate"
 }

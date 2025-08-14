@@ -32,6 +32,11 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { DiscriminativePick } from "@app/types";
 
 import {
+  TAzureCertificateRotation,
+  TAzureCertificateRotationGeneratedCredentialsResponse,
+  TAzureCertificateRotationOption
+} from "./azure-certificate-secret-rotation";
+import {
   TMySqlCredentialsRotation,
   TMySqlCredentialsRotationGeneratedCredentialsResponse
 } from "./mysql-credentials-rotation";
@@ -55,6 +60,7 @@ export type TSecretRotationV2 = (
   | TLdapPasswordRotation
   | TAwsIamUserSecretRotation
   | TOktaClientSecretRotation
+  | TAzureCertificateRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -65,7 +71,8 @@ export type TSecretRotationV2Option =
   | TAzureClientSecretRotationOption
   | TLdapPasswordRotationOption
   | TAwsIamUserSecretRotationOption
-  | TOktaClientSecretRotationOption;
+  | TOktaClientSecretRotationOption
+  | TAzureCertificateRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -80,7 +87,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TAzureClientSecretRotationGeneratedCredentialsResponse
   | TLdapPasswordRotationGeneratedCredentialsResponse
   | TAwsIamUserSecretRotationGeneratedCredentialsResponse
-  | TOktaClientSecretRotationGeneratedCredentialsResponse;
+  | TOktaClientSecretRotationGeneratedCredentialsResponse
+  | TAzureCertificateRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -133,6 +141,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.LdapPassword]: TLdapPasswordRotationOption;
   [SecretRotation.AwsIamUserSecret]: TAwsIamUserSecretRotationOption;
   [SecretRotation.OktaClientSecret]: TOktaClientSecretRotationOption;
+  [SecretRotation.AzureCertificate]: TAzureCertificateRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -145,4 +154,5 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.LdapPassword]: TLdapPasswordRotationGeneratedCredentialsResponse;
   [SecretRotation.AwsIamUserSecret]: TAwsIamUserSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.OktaClientSecret]: TOktaClientSecretRotationGeneratedCredentialsResponse;
+  [SecretRotation.AzureCertificate]: TAzureCertificateRotationGeneratedCredentialsResponse;
 };

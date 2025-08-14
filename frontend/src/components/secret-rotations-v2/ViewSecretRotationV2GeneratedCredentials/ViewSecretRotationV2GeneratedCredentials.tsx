@@ -22,6 +22,7 @@ import {
 
 import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
+import { ViewAzureCertificateRotationGeneratedCredentials } from "./ViewAzureCertificateRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
 
 type Props = {
@@ -103,6 +104,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.OktaClientSecret:
       Component = (
         <ViewOktaClientSecretRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.AzureCertificate:
+      Component = (
+        <ViewAzureCertificateRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );
