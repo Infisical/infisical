@@ -306,7 +306,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
         <div className="fixed bottom-4 left-1/2 z-40 w-full max-w-3xl -translate-x-1/2 self-center lg:left-auto lg:translate-x-0">
           <AnimatePresence mode="wait">
             <motion.div
-              key="select-type-step"
+              key="commit-panel"
               transition={{ duration: 0.3 }}
               initial={{ opacity: 0, translateY: 30 }}
               animate={{ opacity: 1, translateY: 0 }}
