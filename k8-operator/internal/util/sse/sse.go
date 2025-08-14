@@ -39,7 +39,6 @@ func (c *ConnectionMeta) Cancel() {
 
 // ConnectionRegistry manages SSE connections with high performance
 type ConnectionRegistry struct {
-	ctx    context.Context
 	client Client
 
 	mu   sync.RWMutex
@@ -52,7 +51,6 @@ type ConnectionRegistry struct {
 // NewConnectionRegistry creates a new high-performance connection registry
 func NewConnectionRegistry(ctx context.Context) *ConnectionRegistry {
 	r := &ConnectionRegistry{
-		ctx:         ctx,
 		monitorStop: make(chan struct{}),
 	}
 
@@ -148,7 +146,7 @@ func (r *ConnectionRegistry) getConnection() *ConnectionMeta {
 
 // createConnection creates a new SSE connection
 func (r *ConnectionRegistry) createConnection(req *http.Request) (*ConnectionMeta, error) {
-	ctx, cancel := context.WithCancel(r.ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	eventChan, errorChan, err := r.client.Connect(ctx, req)
 	if err != nil {
@@ -180,8 +178,6 @@ func (r *ConnectionRegistry) monitorConnections() {
 		select {
 		case <-r.monitorStop:
 			return
-		case <-r.ctx.Done():
-			return
 		case <-ticker.C:
 			r.checkConnectionHealth(pingTimeout)
 		}
@@ -200,6 +196,7 @@ func (r *ConnectionRegistry) checkConnectionHealth(timeout time.Duration) {
 		r.mu.Lock()
 		if r.conn == conn { // Verify it's still the same connection
 			r.conn.Cancel()
+			r.monitorStop <- struct{}{}
 			r.conn = nil
 		}
 		r.mu.Unlock()
