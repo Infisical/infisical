@@ -35,7 +35,7 @@ export interface TPermissionDALFactory {
       projectFavorites?: string[] | null | undefined;
       customRoleSlug?: string | null | undefined;
       orgAuthEnforced?: boolean | null | undefined;
-      orgGoogleSsoAuthEnforced?: boolean | null | undefined;
+      orgGoogleSsoAuthEnforced: boolean;
     } & {
       groups: {
         id: string;
@@ -88,7 +88,7 @@ export interface TPermissionDALFactory {
         }[];
         orgId: string;
         orgAuthEnforced: boolean | null | undefined;
-        orgGoogleSsoAuthEnforced: boolean | null | undefined;
+        orgGoogleSsoAuthEnforced: boolean;
         orgRole: OrgMembershipRole;
         userId: string;
         projectId: string;
@@ -372,7 +372,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           OrgMembershipsSchema.extend({
             permissions: z.unknown(),
             orgAuthEnforced: z.boolean().optional().nullable(),
-            orgGoogleSsoAuthEnforced: z.boolean().optional().nullable(),
+            orgGoogleSsoAuthEnforced: z.boolean(),
             bypassOrgAuthEnabled: z.boolean(),
             customRoleSlug: z.string().optional().nullable(),
             shouldUseNewPrivilegeSystem: z.boolean()
