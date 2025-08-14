@@ -75,7 +75,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
 
   const environmentsOverPlanLimit =
     subscription?.environmentLimit && currentWorkspace?.environments
-      ? currentWorkspace.environments.length - subscription.environmentLimit
+      ? Math.max(0, currentWorkspace.environments.length - subscription.environmentLimit)
       : 0;
 
   return (
