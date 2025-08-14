@@ -38,6 +38,10 @@ const sleep = async () =>
 const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema?: string; environment: string }) => {
   if (!keySchema || !keySchema.includes("/")) return path;
 
+  if (keySchema.startsWith("/")) {
+    throw new SecretSyncError({ message: `Key schema cannot contain leading '/'`, shouldRetry: false });
+  }
+
   const keySchemaSegments = handlebars
     .compile(keySchema)({
       environment,
