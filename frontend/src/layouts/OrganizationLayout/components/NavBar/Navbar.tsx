@@ -238,6 +238,11 @@ export const Navbar = () => {
                         }
                         window.close();
                         return;
+                      } else if (org.googleSsoAuthEnforced) {
+                        await logout.mutateAsync();
+                        window.open(`/api/v1/sso/redirect/google?org_slug=${org.slug}`);
+                        window.close();
+                        return;
                       }
 
                       handleOrgChange(org?.id);

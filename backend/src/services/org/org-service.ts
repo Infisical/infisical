@@ -355,6 +355,7 @@ export const orgServiceFactory = ({
       name,
       slug,
       authEnforced,
+      googleSsoAuthEnforced,
       scimEnabled,
       defaultMembershipRoleSlug,
       enforceMfa,
@@ -421,6 +422,15 @@ export const orgServiceFactory = ({
       }
     }
 
+    if (googleSsoAuthEnforced !== undefined) {
+      if (!plan.enforceGoogleSSO) {
+        throw new BadRequestError({
+          message: "Failed to enforce Google SSO due to plan restriction. Upgrade plan to enforce Google SSO."
+        });
+      }
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
+    }
+
     if (authEnforced) {
       const samlCfg = await samlConfigDAL.findOne({
         orgId,
@@ -451,6 +461,33 @@ export const orgServiceFactory = ({
       }
     }
 
+    if (googleSsoAuthEnforced || authEnforced) {
+      if (googleSsoAuthEnforced && authEnforced) {
+        throw new BadRequestError({
+          message: "Google SSO and SAML/OIDC auth enforcement cannot be enabled at the same time."
+        });
+      }
+
+      if (googleSsoAuthEnforced && currentOrg.authEnforced) {
+        throw new BadRequestError({
+          message: "Google SSO auth enforcement cannot be enabled when SAML/OIDC auth enforcement is enabled."
+        });
+      }
+
+      if (authEnforced && currentOrg.googleSsoAuthEnforced) {
+        throw new BadRequestError({
+          message: "SAML/OIDC auth enforcement cannot be enabled when Google SSO auth enforcement is enabled."
+        });
+      }
+
+      if (!currentOrg.googleSsoAuthLastUsed) {
+        throw new BadRequestError({
+          message:
+            "Google SSO auth enforcement cannot be enabled because Google SSO has not been used yet. Please log in via Google SSO at least once before enforcing it for your organization."
+        });
+      }
+    }
+
     let defaultMembershipRole: string | undefined;
     if (defaultMembershipRoleSlug) {
       defaultMembershipRole = await getDefaultOrgMembershipRoleForUpdateOrg({
@@ -465,6 +502,7 @@ export const orgServiceFactory = ({
       name,
       slug: slug ? slugify(slug) : undefined,
       authEnforced,
+      googleSsoAuthEnforced,
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,

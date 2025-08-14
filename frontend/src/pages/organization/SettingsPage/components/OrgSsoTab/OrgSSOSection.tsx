@@ -79,10 +79,9 @@ export const OrgSSOSection = (): JSX.Element => {
   };
 
   return (
-    <>
-      <hr className="border-mineshaft-600" />
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">SAML</h2>
           {!isPending && (
             <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
@@ -96,7 +95,7 @@ export const OrgSSOSection = (): JSX.Element => {
         </div>
         <p className="text-sm text-mineshaft-300">Manage SAML authentication configuration</p>
       </div>
-      <div className="py-4">
+      <div>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">Enable SAML</h2>
           {!isPending && (
@@ -126,6 +125,6 @@ export const OrgSSOSection = (): JSX.Element => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can use SAML SSO if you switch to Infisical's Pro plan."
       />
-    </>
+    </div>
   );
 };

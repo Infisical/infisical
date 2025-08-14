@@ -82,25 +82,42 @@ export const SelectOrganizationSection = () => {
         }
       }
 
-      if (organization.authEnforced && !canBypassOrgAuth) {
+      if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
+        const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
+
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
+
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
-        await logout.mutateAsync();
         let url = "";
         if (organization.orgAuthMethod === AuthMethod.OIDC) {
           url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
             callbackPort ? `&callbackPort=${callbackPort}` : ""
           }`;
-        } else {
+        } else if (organization.orgAuthMethod === AuthMethod.SAML) {
           url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
 
           if (callbackPort) {
             url += `?callback_port=${callbackPort}`;
           }
+        } else if (
+          organization.googleSsoAuthEnforced &&
+          authToken.authMethod !== AuthMethod.GOOGLE
+        ) {
+          url = `/api/v1/sso/redirect/google?org_slug=${organization.slug}`;
+
+          if (callbackPort) {
+            url += `&callback_port=${callbackPort}`;
+          }
         }
 
-        window.location.href = url;
-        return;
+        // we are conditionally checking if the url is set because it may not be set if google SSO is enforced, but the user is already logged in with google SSO
+        // see line 103-106
+        if (url) {
+          await logout.mutateAsync();
+          window.location.href = url;
+          return;
+        }
       }
 
       const { token, isMfaEnabled, mfaMethod } = await selectOrg
@@ -198,6 +215,8 @@ export const SelectOrganizationSection = () => {
         handleCliRedirect();
         setIsInitialOrgCheckLoading(false);
       } else {
+        console.log(organizations.data);
+        console.log("Calling this with single org?!??!?!::::", organizations.data.length);
         handleSelectOrganization(organizations.data[0]);
       }
     } else {
@@ -207,6 +226,7 @@ export const SelectOrganizationSection = () => {
 
   useEffect(() => {
     if (defaultSelectedOrg) {
+      console.log("Calling this with default org?!??!?!::::", defaultSelectedOrg);
       handleSelectOrganization(defaultSelectedOrg);
     }
   }, [defaultSelectedOrg]);
