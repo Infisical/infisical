@@ -6,6 +6,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import {
   Alert,
   AlertDescription,
@@ -320,6 +321,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                 >
                   <FilterableSelect
                     options={roles}
+                    components={{ Option: RoleOption }}
                     placeholder="Select roles..."
                     value={value}
                     onChange={onChange}

@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { RoleOption } from "@app/components/roles";
 import {
   Button,
   FilterableSelect,
@@ -45,7 +46,11 @@ const addMemberFormSchema = z.object({
     )
     .default([]),
   projectRoleSlug: z.string().min(1).default(DEFAULT_ORG_AND_PROJECT_MEMBER_ROLE_SLUG),
-  organizationRole: z.object({ name: z.string(), slug: z.string() })
+  organizationRole: z.object({
+    name: z.string(),
+    slug: z.string(),
+    description: z.string().optional()
+  })
 });
 
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
@@ -238,6 +243,7 @@ export const AddOrgMemberModal = ({
                     getOptionLabel={(option) => option.name}
                     value={value}
                     onChange={onChange}
+                    components={{ Option: RoleOption }}
                   />
                 </FormControl>
               )}
