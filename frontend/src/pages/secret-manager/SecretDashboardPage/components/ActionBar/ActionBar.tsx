@@ -14,6 +14,7 @@ import {
   faFingerprint,
   faFolder,
   faFolderPlus,
+  faInfoCircle,
   faKey,
   faLock,
   faPaste,
@@ -32,6 +33,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import {
+  Badge,
   Button,
   DeleteActionModal,
   DropdownMenu,
@@ -70,10 +72,7 @@ import {
   useMoveSecrets,
   useUpdateSecretBatch
 } from "@app/hooks/api";
-import {
-  dashboardKeys,
-  fetchDashboardProjectSecretsByKeys
-} from "@app/hooks/api/dashboard/queries";
+import { dashboardKeys, fetchDashboardProjectSecretsByKeys } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -665,6 +664,8 @@ export const ActionBar = ({
   const isTableFiltered =
     Object.values(filter.tags).some(Boolean) || Object.values(filter.include).some(Boolean);
 
+  const filteredTags = Object.values(filter?.tags ?? {}).filter(Boolean).length;
+
   return (
     <>
       <div className="mt-4 flex items-center space-x-2">
@@ -697,7 +698,7 @@ export const ActionBar = ({
                 Filters
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="p-0">
+            <DropdownMenuContent align="end" sideOffset={2} className="p-0">
               <DropdownMenuGroup>Filter By</DropdownMenuGroup>
               <DropdownMenuItem
                 onClick={(e) => {
@@ -776,11 +777,19 @@ export const ActionBar = ({
                     iconPos="right"
                     icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
                   >
-                    Tags
+                    <div className="flex w-full justify-between">
+                      <span>Tags</span>
+                      {Boolean(filteredTags) && <Badge>{filteredTags} Applied</Badge>}
+                    </div>
                   </DropdownSubMenuTrigger>
                   <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
                     <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                      Apply Tags to Filter Secrets
+                      <div className="flex w-full items-center justify-between">
+                        <span>Filter by Secret Tags</span>
+                        <Tooltip content="Matches secrets with one or more of the applied tags">
+                          <FontAwesomeIcon icon={faInfoCircle} />
+                        </Tooltip>
+                      </div>
                     </DropdownMenuLabel>
                     {tags.map(({ id, slug, color }) => (
                       <DropdownMenuItem
