@@ -6,7 +6,7 @@ services:
     image: nginx
     restart: "always"
     ports:
-      - 8085:80
+      - 8080:80
       - 8443:443
     volumes:
       - ./nginx/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
@@ -35,16 +35,16 @@ services:
     volumes:
       - redis_data:/data
 
-  # redis-commander:
-  #   container_name: infisical-dev-redis-commander
-  #   image: rediscommander/redis-commander
-  #   restart: always
-  #   depends_on:
-  #     - redis
-  #   environment:
-  #     - REDIS_HOSTS=local:redis:6379
-  #   ports:
-  #     - "8085:8081"
+  redis-commander:
+    container_name: infisical-dev-redis-commander
+    image: rediscommander/redis-commander
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8085:8081"
 
   db-test:
     profiles: ["test"]
@@ -129,18 +129,18 @@ services:
       - ./frontend/public:/app/public
     env_file: .env
 
-  # pgadmin:
-  #   image: dpage/pgadmin4
-  #   restart: always
-  #   volumes:
-  #     - ./servers.json:/pgadmin4/servers.json
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: admin@example.com
-  #     PGADMIN_DEFAULT_PASSWORD: pass
-  #   ports:
-  #     - 5050:80
-  #   depends_on:
-  #     - db
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: pass
+    ports:
+      - 5050:80
+    depends_on:
+      - db
 
   smtp-server:
     container_name: infisical-dev-smtp-server

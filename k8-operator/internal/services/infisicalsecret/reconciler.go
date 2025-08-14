@@ -567,7 +567,7 @@ func (r *InfisicalSecretReconciler) OpenInstantUpdatesStream(ctx context.Context
 	envSlug := variables.AuthDetails.MachineIdentityScope.EnvSlug
 
 	infiscalClient := variables.InfisicalClient
-	conn := variables.ServerSentEvents
+	sseRegistry := variables.ServerSentEvents
 
 	token := infiscalClient.Auth().GetAccessToken()
 
@@ -581,14 +581,14 @@ func (r *InfisicalSecretReconciler) OpenInstantUpdatesStream(ctx context.Context
 		secretsPath = fmt.Sprint(secretsPath, "**")
 	}
 
-	conditions := &api.SubProjectEventsRequestCondition{
+	conditions := &api.SubscribeProjectEventsRequestCondition{
 		SecretPath:      secretsPath,
 		EnvironmentSlug: envSlug,
 	}
 
-	body, err := json.Marshal(api.SubProjectEventsRequest{
+	body, err := json.Marshal(api.SubscribeProjectEventsRequest{
 		ProjectID: project.ID,
-		Register: []api.SubProjectEventsRequestRegister{
+		Register: []api.SubscribeProjectEventsRequestRegister{
 			{
 				Event:      "secret:create",
 				Conditions: conditions,
@@ -612,7 +612,7 @@ func (r *InfisicalSecretReconciler) OpenInstantUpdatesStream(ctx context.Context
 		return fmt.Errorf("CallSubscribeProjectEvents: unable to marshal body [err=%s]", err)
 	}
 
-	events, errors, err := conn.Subscribe(func() (*http.Request, error) {
+	events, errors, err := sseRegistry.Subscribe(func() (*http.Request, error) {
 		headers := map[string]string{
 			"User-Agent":    api.USER_AGENT_NAME,
 			"Authorization": fmt.Sprint("Bearer ", token),

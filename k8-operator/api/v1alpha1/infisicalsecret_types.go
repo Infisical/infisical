@@ -161,7 +161,7 @@ type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Optional
 	TLS TLSConfig `json:"tls"`
 
-	// +kubebuilder:default:=true
+	// +kubebuilder:default:=false
 	InstantUpdates bool `json:"instantUpdates"`
 }
 

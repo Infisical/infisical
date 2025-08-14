@@ -79,8 +79,6 @@ func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.GetLogger(req)
 
-	logger.Info("Reconcile called")
-
 	var infisicalSecretCRD secretsv1alpha1.InfisicalSecret
 	requeueTime := time.Minute // seconds
 
