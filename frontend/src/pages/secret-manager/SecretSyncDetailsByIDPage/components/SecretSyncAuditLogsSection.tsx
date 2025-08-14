@@ -28,7 +28,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
         <h3 className="font-semibold text-mineshaft-100">Sync Logs</h3>
         {subscription.auditLogs && (
           <p className="text-xs text-bunker-300">
-            Displaying audit logs from the last {auditLogsRetentionDays} days
+            Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
           </p>
         )}
       </div>
@@ -38,7 +38,9 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
           showFilters={false}
           presets={{
             eventMetadata: { syncId: secretSync.id },
-            startDate: new Date(new Date().setDate(new Date().getDate() - auditLogsRetentionDays)),
+            startDate: new Date(
+              new Date().setDate(new Date().getDate() - Math.min(auditLogsRetentionDays, 60))
+            ),
             eventType: INTEGRATION_EVENTS
           }}
         />
