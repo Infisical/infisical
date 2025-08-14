@@ -171,6 +171,52 @@ const batchUpdateEnvironmentSecrets = async (
   }
 };
 
+const deleteEnvironmentSecret = async (
+  secretSync: TRenderSyncWithCredentials,
+  envVar: { key: string; value: string }
+): Promise<void> => {
+  const {
+    destinationConfig,
+    connection: {
+      credentials: { apiKey }
+    }
+  } = secretSync;
+
+  const req: AxiosRequestConfig = {
+    baseURL: `${IntegrationUrls.RENDER_API_URL}/v1`,
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json"
+    }
+  };
+
+  switch (destinationConfig.scope) {
+    case RenderSyncScope.Service: {
+      await makeRequestWithRetry(() =>
+        request.request({
+          ...req,
+          url: `/services/${destinationConfig.serviceId}/env-vars/${envVar.key}`
+        })
+      );
+      break;
+    }
+
+    case RenderSyncScope.EnvironmentGroup: {
+      await makeRequestWithRetry(() =>
+        request.request({
+          ...req,
+          url: `/env-groups/${destinationConfig.environmentGroupId}/env-vars/${envVar.key}`
+        })
+      );
+      break;
+    }
+
+    default:
+      throw new BadRequestError({ message: "Unknown render sync destination scope" });
+  }
+};
+
 const redeployService = async (secretSync: TRenderSyncWithCredentials) => {
   const {
     destinationConfig,
@@ -275,14 +321,16 @@ export const RenderSyncFns = {
     const finalEnvVars: Array<{ key: string; value: string }> = [];
 
     for (const renderSecret of renderSecrets) {
-      if (!(renderSecret.key in secretMap)) {
+      console.log("Render secret: ", renderSecret);
+      if (renderSecret.key in secretMap) {
         finalEnvVars.push({
           key: renderSecret.key,
           value: renderSecret.value
         });
       }
     }
-    await batchUpdateEnvironmentSecrets(secretSync, finalEnvVars);
+
+    await Promise.all(finalEnvVars.map((el) => deleteEnvironmentSecret(secretSync, el)));
 
     if (secretSync.syncOptions.autoRedeployServices) {
       await redeployService(secretSync);
