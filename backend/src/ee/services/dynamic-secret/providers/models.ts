@@ -513,24 +513,50 @@ export const DynamicSecretCouchbaseSchema = z.object({
   roles: z.array(z.string().trim().min(1)).min(1).describe("Roles to assign to the user"),
   buckets: z
     .union([
-      z.string().trim().min(1).default("*"),
-      z.array(
-        z.object({
-          name: z.string().trim().min(1).describe("Bucket name"),
-          scopes: z
-            .array(
-              z.object({
-                name: z.string().trim().min(1).describe("Scope name"),
-                collections: z.array(z.string().trim().min(1)).optional().describe("Collection names")
-              })
-            )
-            .optional()
-            .describe("Scopes within the bucket")
-        })
-      )
+      z
+        .string()
+        .trim()
+        .min(1)
+        .default("*")
+        .refine((val) => {
+          if (val.includes(",")) {
+            const buckets = val
+              .split(",")
+              .map((b) => b.trim())
+              .filter((b) => b.length > 0);
+            if (buckets.includes("*") && buckets.length > 1) {
+              return false;
+            }
+          }
+          return true;
+        }, "Cannot combine '*' with other bucket names"),
+      z
+        .array(
+          z.object({
+            name: z.string().trim().min(1).describe("Bucket name"),
+            scopes: z
+              .array(
+                z.object({
+                  name: z.string().trim().min(1).describe("Scope name"),
+                  collections: z.array(z.string().trim().min(1)).optional().describe("Collection names")
+                })
+              )
+              .optional()
+              .describe("Scopes within the bucket")
+          })
+        )
+        .refine((buckets) => {
+          const hasWildcard = buckets.some((bucket) => bucket.name === "*");
+          if (hasWildcard && buckets.length > 1) {
+            return false;
+          }
+          return true;
+        }, "Cannot combine '*' bucket with other buckets")
     ])
     .default("*")
-    .describe("Bucket configuration: '*' for all buckets or array of bucket objects with scopes and collections"),
+    .describe(
+      "Bucket configuration: '*' for all buckets, scopes, and collections or array of bucket objects with specific scopes and collections"
+    ),
   passwordRequirements: z
     .object({
       length: z.number().min(8, "Password must be at least 8 characters").max(128),

@@ -54,8 +54,6 @@ Create an API Key in your Couchbase Cloud following the [official documentation]
 
     <ParamField path="Roles" type="array" required>
        Database credential roles to assign to the generated user. Available options:
-    	 - **data_reader**: Read access to bucket data
-    	 - **data_writer**: Read and write access to bucket data
     	 - **read**: Read access to bucket data (alias for data_reader)
     	 - **write**: Read and write access to bucket data (alias for data_writer)
     </ParamField>
@@ -244,8 +242,8 @@ To extend the life of the generated dynamic secret leases past its initial time 
 
 The Couchbase dynamic secret integration supports the following database credential roles:
 
-- **data_reader** / **read**: Provides read-only access to bucket data
-- **data_writer** / **write**: Provides read and write access to bucket data
+- **read**: Provides read-only access to bucket data
+- **write**: Provides read and write access to bucket data
 
 <Note>
 These roles are specifically for database credentials and are different from Couchbase's administrative roles. They provide data-level access to buckets, scopes, and collections based on your configuration.
@@ -257,5 +255,5 @@ These roles are specifically for database credentials and are different from Cou
 
 1. **Invalid API Key**: Ensure your Couchbase Cloud API key has the necessary permissions to manage database users
 2. **Invalid Organization/Project/Cluster IDs**: Verify that the provided IDs exist and are accessible with your API key
-3. **Role Permission Errors**: Make sure you're using only the supported database credential roles (data_reader, data_writer, read, write)
+3. **Role Permission Errors**: Make sure you're using only the supported database credential roles (read, write)
 4. **Bucket Access Issues**: Ensure the specified buckets exist in your cluster and are accessible

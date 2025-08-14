@@ -109,7 +109,11 @@ const BucketScopesConfiguration = ({
 
             {scopeFields[scopeIndex]?.collections?.map(
               (collection: string, collectionIndex: number) => (
-                <div key={collection} className="flex items-center space-x-2">
+                <div
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={`collection-${bucketIndex}-${scopeIndex}-${collectionIndex}`}
+                  className="flex items-center space-x-2"
+                >
                   <FormControl className="flex-1">
                     <Input
                       value={collection || ""}
@@ -133,7 +137,7 @@ const BucketScopesConfiguration = ({
                     size="sm"
                     onClick={() => removeCollection(bucketIndex, scopeIndex, collectionIndex)}
                   >
-                    <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+                    <FontAwesomeIcon icon={faTrash} className="mb-4 text-red-400" />
                   </IconButton>
                 </div>
               )
@@ -170,21 +174,11 @@ const BucketScopesConfiguration = ({
 };
 
 const couchbaseRoles = [
-  { value: "data_reader", label: "Data Reader", description: "Read access to bucket data" },
-  {
-    value: "data_writer",
-    label: "Data Writer",
-    description: "Read and write access to bucket data"
-  },
-  {
-    value: "read",
-    label: "Read",
-    description: "Read access to bucket data (alias for data_reader)"
-  },
+  { value: "read", label: "Read", description: "Read-only access to bucket data" },
   {
     value: "write",
     label: "Write",
-    description: "Read and write access to bucket data (alias for data_writer)"
+    description: "Full write access to bucket data"
   }
 ];
 
@@ -548,7 +542,7 @@ export const EditDynamicSecretCouchbaseForm = ({
               <Controller
                 control={control}
                 name="inputs.roles"
-                defaultValue={["data_reader"]}
+                defaultValue={["read"]}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
                     label="Roles"
@@ -581,7 +575,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                 render={({ field: { value, onChange } }) => (
                   <FormControl
                     label="Advanced Bucket Configuration"
-                    helperText="Enable to configure specific scopes and collections within buckets"
+                    helperText="Enable to configure specific buckets, scopes and collections. When disabled, '*' grants access to all buckets, scopes, and collections."
                   >
                     <Switch
                       id="advanced-buckets-switch"
@@ -611,13 +605,13 @@ export const EditDynamicSecretCouchbaseForm = ({
                       className="w-full"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
-                      helperText="Specify bucket names separated by commas (e.g., 'bucket1,bucket2') or use '*' for all buckets"
+                      helperText="Specify bucket names separated by commas (e.g., 'bucket1,bucket2') or use '*' for all buckets, scopes, and collections"
                     >
                       <Input
                         {...field}
                         value={typeof field.value === "string" ? field.value : "*"}
                         onChange={(e) => field.onChange(e.target.value)}
-                        placeholder="* (all buckets) or bucket1,bucket2,bucket3"
+                        placeholder="* (all buckets, scopes & collections) or bucket1,bucket2,bucket3"
                       />
                     </FormControl>
                   )}
@@ -632,7 +626,8 @@ export const EditDynamicSecretCouchbaseForm = ({
                         Advanced Bucket Configuration
                       </div>
                       <div className="text-sm text-mineshaft-400">
-                        Configure specific buckets with their scopes and collections
+                        Configure specific buckets with their scopes and collections. Leave scopes
+                        empty for access to all scopes in a bucket.
                       </div>
                     </div>
                     <Button

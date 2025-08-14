@@ -363,13 +363,15 @@ export type TDynamicSecretProvider =
         projectId: string;
         clusterId: string;
         roles: string[];
-        buckets: string | Array<{
-          name: string;
-          scopes?: Array<{
-            name: string;
-            collections?: string[];
-          }>;
-        }>;
+        buckets:
+          | string
+          | Array<{
+              name: string;
+              scopes?: Array<{
+                name: string;
+                collections?: string[];
+              }>;
+            }>;
         passwordRequirements?: {
           length: number;
           required: {

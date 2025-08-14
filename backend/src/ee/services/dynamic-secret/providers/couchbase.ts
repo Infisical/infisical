@@ -51,6 +51,57 @@ const sanitizeCouchbaseUsername = (username: string): string => {
   return sanitized;
 };
 
+/**
+ * Normalizes bucket configuration to handle wildcard (*) access consistently.
+ *
+ * Key behaviors:
+ * - If "*" appears anywhere (string or array), grants access to ALL buckets, scopes, and collections
+ *
+ * @param buckets - Either a string or array of bucket configurations
+ * @returns Normalized bucket resources for Couchbase API
+ */
+const normalizeBucketConfiguration = (
+  buckets:
+    | string
+    | Array<{
+        name: string;
+        scopes?: Array<{
+          name: string;
+          collections?: string[];
+        }>;
+      }>
+) => {
+  if (typeof buckets === "string") {
+    // Simple string format - either "*" or comma-separated bucket names
+    const bucketNames = buckets
+      .split(",")
+      .map((bucket) => bucket.trim())
+      .filter((bucket) => bucket.length > 0);
+
+    // If "*" is present anywhere, grant access to all buckets, scopes, and collections
+    if (bucketNames.includes("*") || buckets === "*") {
+      return [{ name: "*" }];
+    }
+    return bucketNames.map((bucketName) => ({ name: bucketName }));
+  }
+
+  // Array of bucket objects with scopes and collections
+  // Check if any bucket is "*" - if so, grant access to all buckets, scopes, and collections
+  const hasWildcardBucket = buckets.some((bucket) => bucket.name === "*");
+
+  if (hasWildcardBucket) {
+    return [{ name: "*" }];
+  }
+
+  return buckets.map((bucket) => ({
+    name: bucket.name,
+    scopes: bucket.scopes?.map((scope) => ({
+      name: scope.name,
+      collections: scope.collections || []
+    }))
+  }));
+};
+
 const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(12);
   if (!usernameTemplate) return sanitizeCouchbaseUsername(randomUsername);
@@ -184,28 +235,7 @@ export const CouchbaseProvider = (): TDynamicProviderFns => {
 
     const createUserUrl = `${providerInputs.url}/v4/organizations/${providerInputs.orgId}/projects/${providerInputs.projectId}/clusters/${providerInputs.clusterId}/users`;
 
-    let bucketResources;
-
-    if (typeof providerInputs.buckets === "string") {
-      // Simple string format - either "*" or comma-separated bucket names
-      const bucketNames =
-        providerInputs.buckets === "*"
-          ? ["*"]
-          : providerInputs.buckets
-              .split(",")
-              .map((bucket) => bucket.trim())
-              .filter((bucket) => bucket.length > 0);
-      bucketResources = bucketNames.map((bucketName) => ({ name: bucketName }));
-    } else {
-      // Array of bucket objects with scopes and collections
-      bucketResources = providerInputs.buckets.map((bucket) => ({
-        name: bucket.name,
-        scopes: bucket.scopes?.map((scope) => ({
-          name: scope.name,
-          collections: scope.collections || []
-        }))
-      }));
-    }
+    const bucketResources = normalizeBucketConfiguration(providerInputs.buckets);
 
     const userData: TCreateCouchbaseUser = {
       name: username,
