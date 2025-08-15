@@ -80,23 +80,23 @@ export const OrgSSOSection = (): JSX.Element => {
 
   return (
     <div className="space-y-4">
-      <div>
-        <div className="flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">SAML</h2>
-          {!isPending && (
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Button onClick={addSSOBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
-                  Manage
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-xl font-semibold text-gray-200">SAML</p>
+          <p className="mb-2 text-gray-400">Manage SAML authentication configuration</p>
         </div>
-        <p className="text-sm text-mineshaft-300">Manage SAML authentication configuration</p>
+        {!isPending && (
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
+            {(isAllowed) => (
+              <Button onClick={addSSOBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
+                Manage
+              </Button>
+            )}
+          </OrgPermissionCan>
+        )}
       </div>
       <div>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between pt-4">
           <h2 className="text-md text-mineshaft-100">Enable SAML</h2>
           {!isPending && (
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>

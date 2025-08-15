@@ -23,10 +23,12 @@ enum EnforceAuthType {
 
 export const OrgGeneralAuthSection = ({
   isSamlConfigured,
-  isOidcConfigured
+  isOidcConfigured,
+  isGoogleConfigured
 }: {
   isSamlConfigured: boolean;
   isOidcConfigured: boolean;
+  isGoogleConfigured: boolean;
 }) => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
@@ -125,8 +127,14 @@ export const OrgGeneralAuthSection = ({
   };
 
   return (
-    <>
-      <div className="flex flex-col gap-2">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+      <div>
+        <p className="text-xl font-semibold text-gray-200">SSO Enforcement</p>
+        <p className="mb-2 mt-1 text-gray-400">
+          Manage strict enforcement of specific authentication methods for your organization.
+        </p>
+      </div>
+      <div className="flex flex-col gap-2 py-4">
         <div className={twMerge("mt-4", !isSamlConfigured && "hidden")}>
           <div className="mb-2 flex justify-between">
             <div className="flex items-center gap-1">
@@ -147,6 +155,8 @@ export const OrgGeneralAuthSection = ({
           </div>
           <p className="text-sm text-mineshaft-300">
             Enforce users to authenticate via SAML to access this organization.
+            <br />
+            When this is enabled your organization members will only be able to login with SAML.
           </p>
         </div>
 
@@ -169,11 +179,13 @@ export const OrgGeneralAuthSection = ({
             </OrgPermissionCan>
           </div>
           <p className="text-sm text-mineshaft-300">
-            <span>Enforce users to authenticate via OIDC to access this organization.</span>
+            Enforce users to authenticate via OIDC to access this organization.
+            <br />
+            When this is enabled your organization members will only be able to login with OIDC.
           </p>
         </div>
 
-        <div className="mt-2">
+        <div className={twMerge("mt-2", !isGoogleConfigured && "hidden")}>
           <div className="mb-2 flex justify-between">
             <div className="flex items-center gap-1">
               <span className="text-md text-mineshaft-100">Enforce Google SSO</span>
@@ -193,6 +205,8 @@ export const OrgGeneralAuthSection = ({
           </div>
           <p className="text-sm text-mineshaft-300">
             Enforce users to authenticate via Google to access this organization.
+            <br />
+            When this is enabled your organization members will only be able to login with Google.
           </p>
         </div>
       </div>
@@ -263,6 +277,6 @@ export const OrgGeneralAuthSection = ({
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can enforce SAML SSO if you switch to Infisical's Pro plan."
       />
-    </>
+    </div>
   );
 };

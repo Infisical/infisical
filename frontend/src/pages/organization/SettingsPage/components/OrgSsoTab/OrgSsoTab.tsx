@@ -61,6 +61,7 @@ export const OrgSsoTab = withPermission(
     const isSamlConfigured =
       samlConfig && (samlConfig.entryPoint || samlConfig.issuer || samlConfig.cert);
     const isLdapConfigured = ldapConfig && ldapConfig.url;
+    const isGoogleConfigured = shouldDisplaySection(LoginMethod.GOOGLE);
 
     const shouldShowCreateIdentityProviderView =
       !isOidcConfigured && !isSamlConfigured && !isLdapConfigured;
@@ -70,12 +71,14 @@ export const OrgSsoTab = withPermission(
       shouldDisplaySection(LoginMethod.OIDC) ||
       shouldDisplaySection(LoginMethod.LDAP) ? (
         <>
-          <div>
-            <p className="text-xl font-semibold text-gray-200">Connect an Identity Provider</p>
-            <p className="mb-2 mt-1 text-gray-400">
-              Connect your identity provider to simplify user management with options like SAML,
-              OIDC, and LDAP.
-            </p>
+          <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+            <div>
+              <p className="text-xl font-semibold text-gray-200">Connect an Identity Provider</p>
+              <p className="mb-2 mt-1 text-gray-400">
+                Connect your identity provider to simplify user management with options like SAML,
+                OIDC, and LDAP.
+              </p>
+            </div>
             {shouldDisplaySection(LoginMethod.SAML) && (
               <div
                 className={twMerge(
@@ -175,33 +178,27 @@ export const OrgSsoTab = withPermission(
 
     return (
       <>
-        {shouldShowCreateIdentityProviderView ? (
-          <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+        <div className="space-y-4">
+          {shouldDisplaySection([LoginMethod.SAML, LoginMethod.GOOGLE]) && (
             <OrgGeneralAuthSection
               isSamlConfigured={isSamlConfigured}
               isOidcConfigured={isOidcConfigured}
+              isGoogleConfigured={isGoogleConfigured}
             />
-            <hr className="border-mineshaft-600" />
-            {createIdentityProviderView}
-          </div>
-        ) : (
-          <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-            <div>
-              {/* {shouldDisplaySection([LoginMethod.SAML, LoginMethod.GOOGLE]) && ( */}
-              <OrgGeneralAuthSection
-                isSamlConfigured={isSamlConfigured}
-                isOidcConfigured={isOidcConfigured}
-              />
-              {/* )} */}
+          )}
+
+          {shouldShowCreateIdentityProviderView ? (
+            createIdentityProviderView
+          ) : (
+            <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+              <div>
+                {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}
+                {isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}
+                {isLdapConfigured && shouldDisplaySection(LoginMethod.LDAP) && <OrgLDAPSection />}
+              </div>
             </div>
-            <hr className="border-mineshaft-600" />
-            <div>
-              {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}
-              {isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}
-              {isLdapConfigured && shouldDisplaySection(LoginMethod.LDAP) && <OrgLDAPSection />}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

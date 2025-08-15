@@ -84,25 +84,22 @@ export const OrgOIDCSection = (): JSX.Element => {
   };
 
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">OIDC</h2>
-          {!isPending && (
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Button
-                  onClick={addOidcButtonClick}
-                  colorSchema="secondary"
-                  isDisabled={!isAllowed}
-                >
-                  Manage
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
+    <div className="mb-4 rounded-lg border-mineshaft-600 bg-mineshaft-900">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-xl font-semibold text-gray-200">OIDC</p>
+          <p className="mb-2 text-gray-400">Manage OIDC authentication configuration</p>
         </div>
-        <p className="text-sm text-mineshaft-300">Manage OIDC authentication configuration</p>
+
+        {!isPending && (
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
+            {(isAllowed) => (
+              <Button onClick={addOidcButtonClick} colorSchema="secondary" isDisabled={!isAllowed}>
+                Manage
+              </Button>
+            )}
+          </OrgPermissionCan>
+        )}
       </div>
       {data && (
         <div className="py-4">
