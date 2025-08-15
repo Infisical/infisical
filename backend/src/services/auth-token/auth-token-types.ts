@@ -14,6 +14,7 @@ export type TCreateTokenForUserDTO = {
   type: TokenType;
   userId: string;
   orgId?: string;
+  aliasId?: string;
 };
 
 export type TCreateOrgInviteTokenDTO = {
