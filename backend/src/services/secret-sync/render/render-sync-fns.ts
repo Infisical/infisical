@@ -46,11 +46,8 @@ async function getSecrets(input: { destination: TRenderSyncWithCredentials["dest
       const allSecrets: TRenderSecret[] = [];
       let cursor: string | undefined;
 
-      let ITERATIONS_LEFT = 10;
 
       do {
-        if (ITERATIONS_LEFT <= 0) break;
-
         // eslint-disable-next-line @typescript-eslint/no-loop-func
         const { data } = await makeRequestWithRetry(() =>
           request.request<
@@ -82,7 +79,6 @@ async function getSecrets(input: { destination: TRenderSyncWithCredentials["dest
           cursor = undefined;
         }
 
-        ITERATIONS_LEFT = ITERATIONS_LEFT - 1;
       } while (cursor);
 
       return allSecrets;
