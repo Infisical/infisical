@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/Infisical/infisical/k8-operator/internal/model"
 	"github.com/go-resty/resty/v2"
@@ -166,4 +168,66 @@ func CallGetProjectByIDv2(httpClient *resty.Client, request GetProjectByIDReques
 
 	return projectResponse, nil
 
+}
+
+func CallSubscribeProjectEvents(httpClient *resty.Client, projectId, secretsPath, envSlug, token string) (*http.Response, error) {
+	conditions := &SubscribeProjectEventsRequestCondition{
+		SecretPath:      secretsPath,
+		EnvironmentSlug: envSlug,
+	}
+
+	body, err := json.Marshal(&SubscribeProjectEventsRequest{
+		ProjectID: projectId,
+		Register: []SubscribeProjectEventsRequestRegister{
+			{
+				Event:      "secret:create",
+				Conditions: conditions,
+			},
+			{
+				Event:      "secret:update",
+				Conditions: conditions,
+			},
+			{
+				Event:      "secret:delete",
+				Conditions: conditions,
+			},
+			{
+				Event:      "secret:import-mutation",
+				Conditions: conditions,
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("CallSubscribeProjectEvents: Unable to marshal body [err=%s]", err)
+	}
+
+	response, err := httpClient.
+		R().
+		SetDoNotParseResponse(true).
+		SetHeader("User-Agent", USER_AGENT_NAME).
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Accept", "text/event-stream").
+		SetHeader("Connection", "keep-alive").
+		SetHeader("Authorization", fmt.Sprint("Bearer ", token)).
+		SetBody(body).
+		Post(fmt.Sprintf("%s/v1/events/subscribe/project-events", API_HOST_URL))
+
+	if err != nil {
+		return nil, fmt.Errorf("CallSubscribeProjectEvents: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		data := struct {
+			Message string `json:"message"`
+		}{}
+
+		if err := json.NewDecoder(response.RawBody()).Decode(&data); err != nil {
+			return nil, err
+		}
+
+		return nil, fmt.Errorf("CallSubscribeProjectEvents: Unsuccessful response: [message=%s]", data.Message)
+	}
+
+	return response.RawResponse, nil
 }

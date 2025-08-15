@@ -1,13 +1,23 @@
 package sse
 
 import (
+	"bufio"
 	"context"
-	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+// Event represents a Server-Sent Event
+type Event struct {
+	ID    string
+	Event string
+	Data  string
+	Retry int
+}
 
 // ConnectionMeta holds metadata about an SSE connection
 type ConnectionMeta struct {
@@ -39,13 +49,13 @@ func (c *ConnectionMeta) Cancel() {
 
 // ConnectionRegistry manages SSE connections with high performance
 type ConnectionRegistry struct {
-	client Client
-
 	mu   sync.RWMutex
 	conn *ConnectionMeta
 
 	monitorOnce sync.Once
 	monitorStop chan struct{}
+
+	onPing func() // Callback for ping events
 }
 
 // NewConnectionRegistry creates a new high-performance connection registry
@@ -54,17 +64,16 @@ func NewConnectionRegistry(ctx context.Context) *ConnectionRegistry {
 		monitorStop: make(chan struct{}),
 	}
 
-	// Configure client with ping handler
-	r.client = NewClient()
-	r.client.WithPingHandler(func() {
+	// Configure ping handler
+	r.onPing = func() {
 		r.UpdateLastPing()
-	})
+	}
 
 	return r
 }
 
 // Subscribe provides SSE events, creating a connection if needed
-func (r *ConnectionRegistry) Subscribe(buildRequest func() (*http.Request, error)) (<-chan Event, <-chan error, error) {
+func (r *ConnectionRegistry) Subscribe(request func() (*http.Response, error)) (<-chan Event, <-chan error, error) {
 	// Fast path: check if connection exists
 	if conn := r.getConnection(); conn != nil {
 		return conn.EventChan, conn.ErrorChan, nil
@@ -79,12 +88,12 @@ func (r *ConnectionRegistry) Subscribe(buildRequest func() (*http.Request, error
 		return r.conn.EventChan, r.conn.ErrorChan, nil
 	}
 
-	req, err := buildRequest()
+	res, err := request()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to build request: %w", err)
+		return nil, nil, err
 	}
 
-	conn, err := r.createConnection(req)
+	conn, err := r.createStream(res)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,14 +153,13 @@ func (r *ConnectionRegistry) getConnection() *ConnectionMeta {
 	return conn
 }
 
-// createConnection creates a new SSE connection
-func (r *ConnectionRegistry) createConnection(req *http.Request) (*ConnectionMeta, error) {
+func (r *ConnectionRegistry) createStream(res *http.Response) (*ConnectionMeta, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	eventChan, errorChan, err := r.client.Connect(ctx, req)
+	eventChan, errorChan, err := r.stream(ctx, res)
 	if err != nil {
 		cancel()
-		return nil, fmt.Errorf("failed to connect: %w", err)
+		return nil, err
 	}
 
 	meta := &ConnectionMeta{
@@ -162,6 +170,125 @@ func (r *ConnectionRegistry) createConnection(req *http.Request) (*ConnectionMet
 	meta.UpdateLastPing()
 
 	return meta, nil
+}
+
+// stream processes SSE data from an HTTP response
+func (r *ConnectionRegistry) stream(ctx context.Context, res *http.Response) (<-chan Event, <-chan error, error) {
+	eventChan := make(chan Event, 10)
+	errorChan := make(chan error, 1)
+
+	go r.processStream(ctx, res.Body, eventChan, errorChan)
+
+	return eventChan, errorChan, nil
+}
+
+// processStream reads and parses SSE events from the response body
+func (r *ConnectionRegistry) processStream(ctx context.Context, body io.ReadCloser, eventChan chan<- Event, errorChan chan<- error) {
+	defer body.Close()
+	defer close(eventChan)
+	defer close(errorChan)
+
+	scanner := bufio.NewScanner(body)
+
+	var currentEvent Event
+	var dataBuilder strings.Builder
+
+	for scanner.Scan() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		line := scanner.Text()
+
+		// Empty line indicates end of event
+		if len(line) == 0 {
+			if currentEvent.Data != "" || currentEvent.Event != "" {
+				// Finalize data
+				if dataBuilder.Len() > 0 {
+					currentEvent.Data = dataBuilder.String()
+					dataBuilder.Reset()
+				}
+
+				// Handle ping events
+				if r.isPingEvent(currentEvent) {
+					if r.onPing != nil {
+						r.onPing()
+					}
+				} else {
+					// Send non-ping events
+					select {
+					case eventChan <- currentEvent:
+					case <-ctx.Done():
+						return
+					}
+				}
+
+				// Reset for next event
+				currentEvent = Event{}
+			}
+			continue
+		}
+
+		// Parse line efficiently
+		r.parseLine(line, &currentEvent, &dataBuilder)
+	}
+
+	if err := scanner.Err(); err != nil {
+		select {
+		case errorChan <- err:
+		case <-ctx.Done():
+		}
+	}
+}
+
+// parseLine efficiently parses SSE protocol lines
+func (r *ConnectionRegistry) parseLine(line string, event *Event, dataBuilder *strings.Builder) {
+	colonIndex := strings.IndexByte(line, ':')
+	if colonIndex == -1 {
+		return // Invalid line format
+	}
+
+	field := line[:colonIndex]
+	value := line[colonIndex+1:]
+
+	// Trim leading space from value (SSE spec)
+	if len(value) > 0 && value[0] == ' ' {
+		value = value[1:]
+	}
+
+	switch field {
+	case "data":
+		if dataBuilder.Len() > 0 {
+			dataBuilder.WriteByte('\n')
+		}
+		dataBuilder.WriteString(value)
+	case "event":
+		event.Event = value
+	case "id":
+		event.ID = value
+	case "retry":
+		// Parse retry value if needed
+		// This could be used to configure reconnection delay
+	case "":
+		// Comment line, ignore
+	}
+}
+
+// isPingEvent checks if an event is a ping/keepalive
+func (r *ConnectionRegistry) isPingEvent(event Event) bool {
+	// Check for common ping patterns
+	if event.Event == "ping" {
+		return true
+	}
+
+	// Check for heartbeat data (common pattern is "1" or similar)
+	if event.Event == "" && strings.TrimSpace(event.Data) == "1" {
+		return true
+	}
+
+	return false
 }
 
 // monitorConnections checks connection health periodically

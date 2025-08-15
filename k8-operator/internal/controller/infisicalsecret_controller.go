@@ -199,14 +199,16 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	if infisicalSecretCRD.Spec.InstantUpdates {
-		logger.Info("Instant updates are enabled")
-
 		if err := handler.OpenInstantUpdatesStream(ctx, logger, &infisicalSecretCRD, infisicalSecretResourceVariablesMap, r.SourceCh); err != nil {
-			logger.Error(err, fmt.Sprintf("unable to ensure event stream. Will requeue after [requeueTime=%v]", requeueTime))
+			requeueTime = time.Second * 10
+			logger.Info(err.Error())
+			logger.Info(fmt.Sprintf("unable to ensure event stream. Will requeue after [requeueTime=%v]", requeueTime))
 			return ctrl.Result{
 				RequeueAfter: requeueTime,
 			}, nil
 		}
+
+		logger.Info("Instant updates are enabled")
 	} else {
 		handler.CloseInstantUpdatesStream(ctx, logger, &infisicalSecretCRD, infisicalSecretResourceVariablesMap)
 	}
@@ -223,7 +225,7 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		WatchesRawSource(
-			source.Channel[client.Object](r.SourceCh, &util.EnqueueDelayedEventHandler{Delay: time.Second * 3}),
+			source.Channel[client.Object](r.SourceCh, &util.EnqueueDelayedEventHandler{Delay: time.Second * 10}),
 		).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {

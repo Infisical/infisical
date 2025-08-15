@@ -3,7 +3,6 @@ package infisicalsecret
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,6 +18,7 @@ import (
 	"github.com/Infisical/infisical/k8-operator/internal/util"
 	"github.com/Infisical/infisical/k8-operator/internal/util/sse"
 	"github.com/go-logr/logr"
+	"github.com/go-resty/resty/v2"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -581,59 +581,24 @@ func (r *InfisicalSecretReconciler) OpenInstantUpdatesStream(ctx context.Context
 		secretsPath = fmt.Sprint(secretsPath, "**")
 	}
 
-	conditions := &api.SubscribeProjectEventsRequestCondition{
-		SecretPath:      secretsPath,
-		EnvironmentSlug: envSlug,
-	}
-
-	body, err := json.Marshal(api.SubscribeProjectEventsRequest{
-		ProjectID: project.ID,
-		Register: []api.SubscribeProjectEventsRequestRegister{
-			{
-				Event:      "secret:create",
-				Conditions: conditions,
-			},
-			{
-				Event:      "secret:update",
-				Conditions: conditions,
-			},
-			{
-				Event:      "secret:delete",
-				Conditions: conditions,
-			},
-			{
-				Event:      "secret:import-mutation",
-				Conditions: conditions,
-			},
-		},
-	})
-
 	if err != nil {
 		return fmt.Errorf("CallSubscribeProjectEvents: unable to marshal body [err=%s]", err)
 	}
 
-	events, errors, err := sseRegistry.Subscribe(func() (*http.Request, error) {
-		headers := map[string]string{
-			"User-Agent":    api.USER_AGENT_NAME,
-			"Authorization": fmt.Sprint("Bearer ", token),
-			"Content-Type":  "application/json",
-		}
+	events, errors, err := sseRegistry.Subscribe(func() (*http.Response, error) {
+		httpClient := resty.New()
 
-		req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/events/subscribe/project-events", api.API_HOST_URL), strings.NewReader(string(body)))
+		req, err := api.CallSubscribeProjectEvents(httpClient, project.ID, secretsPath, envSlug, token)
 
 		if err != nil {
 			return nil, err
-		}
-
-		for k, v := range headers {
-			req.Header.Set(k, v)
 		}
 
 		return req, nil
 	})
 
 	if err != nil {
-		return fmt.Errorf("unable to connect to SSE server [err=%s]", err)
+		return fmt.Errorf("unable to connect sse [err=%s]", err)
 	}
 
 	go func() {
