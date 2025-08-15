@@ -47,6 +47,7 @@ export type TFeatureSet = {
   auditLogStreamLimit: 3;
   githubOrgSync: false;
   samlSSO: false;
+  enforceGoogleSSO: false;
   hsm: false;
   oidcSSO: false;
   secretAccessInsights: false;

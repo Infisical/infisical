@@ -279,6 +279,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         name: GenericResourceNameSchema.optional(),
         slug: slugSchema({ max: 64 }).optional(),
         authEnforced: z.boolean().optional(),
+        googleSsoAuthEnforced: z.boolean().optional(),
         scimEnabled: z.boolean().optional(),
         defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),

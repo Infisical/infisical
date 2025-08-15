@@ -11,7 +11,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { useGetOIDCConfig, useLogoutUser, useUpdateOrg } from "@app/hooks/api";
+import { useGetOIDCConfig } from "@app/hooks/api";
 import { useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -23,9 +23,7 @@ export const OrgOIDCSection = (): JSX.Element => {
 
   const { data, isPending } = useGetOIDCConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateOIDCConfig();
-  const { mutateAsync: updateOrg } = useUpdateOrg();
 
-  const logout = useLogoutUser();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addOIDC",
     "upgradePlan"
@@ -47,56 +45,6 @@ export const OrgOIDCSection = (): JSX.Element => {
 
       createNotification({
         text: `Successfully ${value ? "enabled" : "disabled"} OIDC SSO`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleEnforceOrgAuthToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (!subscription?.oidcSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await updateOrg({
-        orgId: currentOrg?.id,
-        authEnforced: value
-      });
-
-      createNotification({
-        text: `Successfully ${value ? "enforced" : "un-enforced"} org-level auth`,
-        type: "success"
-      });
-
-      if (value) {
-        await logout.mutateAsync();
-        window.open(`/api/v1/sso/oidc/login?orgSlug=${currentOrg.slug}`);
-        window.close();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleEnableBypassOrgAuthToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (!subscription?.oidcSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await updateOrg({
-        orgId: currentOrg?.id,
-        bypassOrgAuthEnabled: value
-      });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} admin bypassing of org-level auth`,
         type: "success"
       });
     } catch (err) {
@@ -136,25 +84,22 @@ export const OrgOIDCSection = (): JSX.Element => {
   };
 
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">OIDC</h2>
-          {!isPending && (
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Button
-                  onClick={addOidcButtonClick}
-                  colorSchema="secondary"
-                  isDisabled={!isAllowed}
-                >
-                  Manage
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
+    <div className="mb-4 rounded-lg border-mineshaft-600 bg-mineshaft-900">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-xl font-semibold text-gray-200">OIDC</p>
+          <p className="mb-2 text-gray-400">Manage OIDC authentication configuration</p>
         </div>
-        <p className="text-sm text-mineshaft-300">Manage OIDC authentication configuration</p>
+
+        {!isPending && (
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
+            {(isAllowed) => (
+              <Button onClick={addOidcButtonClick} colorSchema="secondary" isDisabled={!isAllowed}>
+                Manage
+              </Button>
+            )}
+          </OrgPermissionCan>
+        )}
       </div>
       {data && (
         <div className="py-4">
@@ -175,88 +120,6 @@ export const OrgOIDCSection = (): JSX.Element => {
           </div>
           <p className="text-sm text-mineshaft-300">
             Allow members to authenticate into Infisical with OIDC
-          </p>
-        </div>
-      )}
-      <div className="py-4">
-        <div className="mb-2 flex justify-between">
-          <div className="flex items-center gap-1">
-            <span className="text-md text-mineshaft-100">Enforce OIDC SSO</span>
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-            {(isAllowed) => (
-              <Switch
-                id="enforce-org-auth"
-                isChecked={currentOrg?.authEnforced ?? false}
-                onCheckedChange={(value) => handleEnforceOrgAuthToggle(value)}
-                isDisabled={!isAllowed}
-              />
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          <span>Enforce users to authenticate via OIDC to access this organization.</span>
-        </p>
-      </div>
-      {currentOrg?.authEnforced && (
-        <div className="py-4">
-          <div className="mb-2 flex justify-between">
-            <div className="flex items-center gap-1">
-              <span className="text-md text-mineshaft-100">Enable Admin SSO Bypass</span>
-              <Tooltip
-                className="max-w-lg"
-                content={
-                  <div>
-                    <span>
-                      When this is enabled, we strongly recommend enforcing MFA at the organization
-                      level.
-                    </span>
-                    <p className="mt-4">
-                      In case of a lockout, admins can use the{" "}
-                      <a
-                        target="_blank"
-                        className="underline underline-offset-2 hover:text-mineshaft-300"
-                        href="https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal"
-                        rel="noreferrer"
-                      >
-                        Admin Login Portal
-                      </a>{" "}
-                      at{" "}
-                      <a
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline underline-offset-2 hover:text-mineshaft-300"
-                        href={`${window.location.origin}/login/admin`}
-                      >
-                        {window.location.origin}/login/admin
-                      </a>
-                    </p>
-                  </div>
-                }
-              >
-                <FontAwesomeIcon
-                  icon={faInfoCircle}
-                  size="sm"
-                  className="mt-0.5 inline-block text-mineshaft-400"
-                />
-              </Tooltip>
-            </div>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Switch
-                  id="allow-admin-bypass"
-                  isChecked={currentOrg?.bypassOrgAuthEnabled ?? false}
-                  onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
-                  isDisabled={!isAllowed}
-                />
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            <span>
-              Allow organization admins to bypass OIDC enforcement when SSO is unavailable,
-              misconfigured, or inaccessible.
-            </span>
           </p>
         </div>
       )}

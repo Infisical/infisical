@@ -121,6 +121,7 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
 function validateOrgSSO(
   actorAuthMethod: ActorAuthMethod,
   isOrgSsoEnforced: TOrganizations["authEnforced"],
+  isOrgGoogleSsoEnforced: TOrganizations["googleSsoAuthEnforced"],
   isOrgSsoBypassEnabled: TOrganizations["bypassOrgAuthEnabled"],
   orgRole: OrgMembershipRole
 ) {
@@ -128,10 +129,16 @@ function validateOrgSSO(
     throw new UnauthorizedError({ name: "No auth method defined" });
   }
 
-  if (isOrgSsoEnforced && isOrgSsoBypassEnabled && orgRole === OrgMembershipRole.Admin) {
+  if ((isOrgSsoEnforced || isOrgGoogleSsoEnforced) && isOrgSsoBypassEnabled && orgRole === OrgMembershipRole.Admin) {
     return;
   }
 
+  // case: google sso is enforced, but the actor is not using google sso
+  if (isOrgGoogleSsoEnforced && actorAuthMethod !== null && actorAuthMethod !== AuthMethod.GOOGLE) {
+    throw new ForbiddenRequestError({ name: "Org auth enforced. Cannot access org-scoped resource" });
+  }
+
+  // case: SAML SSO is enforced, but the actor is not using SAML SSO
   if (
     isOrgSsoEnforced &&
     actorAuthMethod !== null &&

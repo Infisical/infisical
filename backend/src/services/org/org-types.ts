@@ -74,6 +74,7 @@ export type TUpdateOrgDTO = {
     name: string;
     slug: string;
     authEnforced: boolean;
+    googleSsoAuthEnforced: boolean;
     scimEnabled: boolean;
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;

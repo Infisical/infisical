@@ -9,6 +9,7 @@ export type Organization = {
   createAt: string;
   updatedAt: string;
   authEnforced: boolean;
+  googleSsoAuthEnforced: boolean;
   bypassOrgAuthEnabled: boolean;
   orgAuthMethod: string;
   scimEnabled: boolean;
@@ -34,6 +35,7 @@ export type UpdateOrgDTO = {
   orgId: string;
   name?: string;
   authEnforced?: boolean;
+  googleSsoAuthEnforced?: boolean;
   scimEnabled?: boolean;
   slug?: string;
   defaultMembershipRoleSlug?: string;

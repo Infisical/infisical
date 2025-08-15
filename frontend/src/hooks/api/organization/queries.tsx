@@ -104,6 +104,7 @@ export const useUpdateOrg = () => {
     mutationFn: ({
       name,
       authEnforced,
+      googleSsoAuthEnforced,
       scimEnabled,
       slug,
       orgId,
@@ -125,6 +126,7 @@ export const useUpdateOrg = () => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
         authEnforced,
+        googleSsoAuthEnforced,
         scimEnabled,
         slug,
         defaultMembershipRoleSlug,
