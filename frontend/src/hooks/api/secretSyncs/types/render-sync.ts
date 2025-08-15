@@ -1,15 +1,13 @@
+import { z } from "zod";
+
+import { RenderSyncDestinationSchema } from "@app/components/secret-syncs/forms/schemas/render-sync-destination-schema";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { RootSyncOptions, TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 
 export type TRenderSync = TRootSecretSync & {
   destination: SecretSync.Render;
-  destinationConfig: {
-    scope: RenderSyncScope.Service;
-    type: RenderSyncType;
-    serviceId: string;
-    serviceName?: string;
-  };
+  destinationConfig: z.infer<typeof RenderSyncDestinationSchema>["destinationConfig"];
 
   connection: {
     app: AppConnection.Render;
@@ -23,7 +21,8 @@ export type TRenderSync = TRootSecretSync & {
 };
 
 export enum RenderSyncScope {
-  Service = "service"
+  Service = "service",
+  EnvironmentGroup = "environment-group"
 }
 
 export enum RenderSyncType {

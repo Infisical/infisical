@@ -33,3 +33,16 @@ export type TRawRenderService = {
     name: string;
   };
 };
+
+export type TRenderEnvironmentGroup = {
+  name: string;
+  id: string;
+};
+
+export type TRawRenderEnvironmentGroup = {
+  cursor: string;
+  envGroup: {
+    id: string;
+    name: string;
+  };
+};
