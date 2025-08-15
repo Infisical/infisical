@@ -20,6 +20,7 @@ export enum ApproverType {
 }
 
 export type Approver = {
+  isOrgMembershipActive: boolean;
   id: string;
   type: ApproverType;
 };
@@ -49,7 +50,7 @@ export type TCreateSecretPolicyDTO = {
   name?: string;
   environments: string[];
   secretPath: string;
-  approvers?: Approver[];
+  approvers?: Omit<Approver, "isOrgMembershipActive">[];
   bypassers?: Bypasser[];
   approvals?: number;
   enforcementLevel: EnforcementLevel;
@@ -59,7 +60,7 @@ export type TCreateSecretPolicyDTO = {
 export type TUpdateSecretPolicyDTO = {
   id: string;
   name?: string;
-  approvers?: Approver[];
+  approvers?: Omit<Approver, "isOrgMembershipActive">[];
   bypassers?: Bypasser[];
   secretPath?: string;
   approvals?: number;

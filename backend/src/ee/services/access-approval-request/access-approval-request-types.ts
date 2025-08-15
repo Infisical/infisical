@@ -87,6 +87,7 @@ export interface TAccessApprovalRequestServiceFactory {
               approvalsRequired: number | null | undefined;
               email: string | null | undefined;
               username: string;
+              isOrgMembershipActive: boolean;
             }
           | {
               userId: string;
@@ -94,6 +95,7 @@ export interface TAccessApprovalRequestServiceFactory {
               approvalsRequired: number | null | undefined;
               email: string | null | undefined;
               username: string;
+              isOrgMembershipActive: boolean;
             }
         )[];
         bypassers: string[];
@@ -145,6 +147,7 @@ export interface TAccessApprovalRequestServiceFactory {
       reviewers: {
         userId: string;
         status: string;
+        isOrgMembershipActive: boolean;
       }[];
       approvers: (
         | {
@@ -153,6 +156,7 @@ export interface TAccessApprovalRequestServiceFactory {
             approvalsRequired: number | null | undefined;
             email: string | null | undefined;
             username: string;
+            isOrgMembershipActive: boolean;
           }
         | {
             userId: string;
@@ -160,6 +164,7 @@ export interface TAccessApprovalRequestServiceFactory {
             approvalsRequired: number | null | undefined;
             email: string | null | undefined;
             username: string;
+            isOrgMembershipActive: boolean;
           }
       )[];
       bypassers: string[];

@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import {
   SecretApprovalRequestsSchema,
   TableName,
+  TOrgMemberships,
   TSecretApprovalRequests,
   TSecretApprovalRequestsSecrets,
   TUserGroupMembership,
@@ -107,11 +108,32 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalRequestReviewer}.reviewerUserId`,
         `secretApprovalReviewerUser.id`
       )
+
+      .leftJoin<TOrgMemberships>(
+        db(TableName.OrgMembership).as("approverOrgMembership"),
+        `${TableName.SecretApprovalPolicyApprover}.approverUserId`,
+        `approverOrgMembership.userId`
+      )
+
+      .leftJoin<TOrgMemberships>(
+        db(TableName.OrgMembership).as("approverGroupOrgMembership"),
+        `secretApprovalPolicyGroupApproverUser.id`,
+        `approverGroupOrgMembership.userId`
+      )
+
+      .leftJoin<TOrgMemberships>(
+        db(TableName.OrgMembership).as("reviewerOrgMembership"),
+        `${TableName.SecretApprovalRequestReviewer}.reviewerUserId`,
+        `reviewerOrgMembership.userId`
+      )
+
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
         tx.ref("userId").withSchema("approverUserGroupMembership").as("approverGroupUserId"),
         tx.ref("email").withSchema("secretApprovalPolicyApproverUser").as("approverEmail"),
+        tx.ref("isActive").withSchema("approverOrgMembership").as("approverIsOrgMembershipActive"),
+        tx.ref("isActive").withSchema("approverGroupOrgMembership").as("approverGroupIsOrgMembershipActive"),
         tx.ref("email").withSchema("secretApprovalPolicyGroupApproverUser").as("approverGroupEmail"),
         tx.ref("username").withSchema("secretApprovalPolicyApproverUser").as("approverUsername"),
         tx.ref("username").withSchema("secretApprovalPolicyGroupApproverUser").as("approverGroupUsername"),
@@ -148,6 +170,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("username").withSchema("secretApprovalReviewerUser").as("reviewerUsername"),
         tx.ref("firstName").withSchema("secretApprovalReviewerUser").as("reviewerFirstName"),
         tx.ref("lastName").withSchema("secretApprovalReviewerUser").as("reviewerLastName"),
+        tx.ref("isActive").withSchema("reviewerOrgMembership").as("reviewerIsOrgMembershipActive"),
         tx.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
         tx.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
         tx.ref("projectId").withSchema(TableName.Environment),
@@ -211,9 +234,21 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               reviewerLastName: lastName,
               reviewerUsername: username,
               reviewerFirstName: firstName,
-              reviewerComment: comment
+              reviewerComment: comment,
+              reviewerIsOrgMembershipActive: isOrgMembershipActive
             }) =>
-              userId ? { userId, status, email, firstName, lastName, username, comment: comment ?? "" } : undefined
+              userId
+                ? {
+                    userId,
+                    status,
+                    email,
+                    firstName,
+                    lastName,
+                    username,
+                    comment: comment ?? "",
+                    isOrgMembershipActive
+                  }
+                : undefined
           },
           {
             key: "approverUserId",
@@ -223,13 +258,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               approverEmail: email,
               approverUsername: username,
               approverLastName: lastName,
-              approverFirstName: firstName
+              approverFirstName: firstName,
+              approverIsOrgMembershipActive: isOrgMembershipActive
             }) => ({
               userId,
               email,
               firstName,
               lastName,
-              username
+              username,
+              isOrgMembershipActive
             })
           },
           {
@@ -240,13 +277,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               approverGroupEmail: email,
               approverGroupUsername: username,
               approverGroupLastName: lastName,
-              approverGroupFirstName: firstName
+              approverGroupFirstName: firstName,
+              approverGroupIsOrgMembershipActive: isOrgMembershipActive
             }) => ({
               userId,
               email,
               firstName,
               lastName,
-              username
+              username,
+              isOrgMembershipActive
             })
           },
           {

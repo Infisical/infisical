@@ -8,7 +8,8 @@ import {
   faCodeBranch,
   faComment,
   faFolder,
-  faHourglass
+  faHourglass,
+  faUserSlash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -85,6 +86,7 @@ const getReviewedStatusSymbol = (status?: ApprovalStatus) => {
     return <FontAwesomeIcon icon={faCheck} size="xs" className="text-green" />;
   if (status === ApprovalStatus.REJECTED)
     return <FontAwesomeIcon icon={faBan} size="xs" className="text-red" />;
+
   return <FontAwesomeIcon icon={faHourglass} size="xs" className="text-yellow" />;
 };
 
@@ -162,11 +164,15 @@ export const SecretApprovalRequestChanges = ({
     secretApprovalRequestDetails.policy.bypassers.some(({ userId }) => userId === userSession.id);
 
   const reviewedUsers = secretApprovalRequestDetails?.reviewers?.reduce<
-    Record<string, { status: ApprovalStatus; comment: string }>
+    Record<string, { status: ApprovalStatus; comment: string; isOrgMembershipActive: boolean }>
   >(
     (prev, curr) => ({
       ...prev,
-      [curr.userId]: { status: curr.status, comment: curr.comment }
+      [curr.userId]: {
+        status: curr.status,
+        comment: curr.comment,
+        isOrgMembershipActive: curr.isOrgMembershipActive
+      }
     }),
     {}
   );
@@ -533,26 +539,48 @@ export const SecretApprovalRequestChanges = ({
             )
             .map((requiredApprover) => {
               const reviewer = reviewedUsers?.[requiredApprover.userId];
+              const { isOrgMembershipActive } = requiredApprover;
+
               return (
                 <div
                   className="flex flex-nowrap items-center justify-between space-x-2 rounded border border-mineshaft-600 bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
-                  <Tooltip
-                    content={
-                      requiredApprover.firstName
-                        ? `${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""}`
-                        : undefined
-                    }
-                    position="left"
-                    sideOffset={10}
+                  <div
+                    className={twMerge(
+                      "flex items-center gap-1 text-sm",
+                      !isOrgMembershipActive && "opacity-40"
+                    )}
                   >
-                    <div className="flex text-sm">
-                      <div>{requiredApprover?.email}</div>
-                      <span className="text-red">*</span>
-                    </div>
-                  </Tooltip>
-                  <div>
+                    <Tooltip
+                      content={
+                        requiredApprover.firstName
+                          ? `${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""}`
+                          : undefined
+                      }
+                      position="left"
+                      sideOffset={10}
+                    >
+                      <div className="flex">
+                        <div>{requiredApprover?.email}</div>
+                        <span className="text-red">*</span>
+                      </div>
+                    </Tooltip>
+
+                    {!isOrgMembershipActive && (
+                      <Tooltip
+                        className="relative !z-[500]"
+                        content="This user has been deactivated and no longer has an active organization membership."
+                      >
+                        <FontAwesomeIcon
+                          icon={faUserSlash}
+                          size="xs"
+                          className="text-mineshaft-300"
+                        />
+                      </Tooltip>
+                    )}
+                  </div>
+                  <div className="flex items-center">
                     {reviewer?.comment && (
                       <Tooltip className="max-w-lg break-words" content={reviewer.comment}>
                         <FontAwesomeIcon
@@ -562,9 +590,21 @@ export const SecretApprovalRequestChanges = ({
                         />
                       </Tooltip>
                     )}
-                    <Tooltip content={`Status: ${reviewer?.status || ApprovalStatus.PENDING}`}>
-                      {getReviewedStatusSymbol(reviewer?.status)}
-                    </Tooltip>
+                    <div className="flex gap-2">
+                      <Tooltip
+                        className="relative !z-[500]"
+                        content={
+                          <span className="text-sm">
+                            Status:{" "}
+                            <span className="capitalize">
+                              {reviewer?.status || ApprovalStatus.PENDING}
+                            </span>
+                          </span>
+                        }
+                      >
+                        {getReviewedStatusSymbol(reviewer?.status)}
+                      </Tooltip>
+                    </div>
                   </div>
                 </div>
               );
@@ -578,20 +618,43 @@ export const SecretApprovalRequestChanges = ({
             )
             .map((reviewer) => {
               const status = reviewedUsers?.[reviewer.userId].status;
+              const { isOrgMembershipActive } = reviewer;
               return (
                 <div
-                  className="flex flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 px-2 py-1"
+                  className="flex flex-nowrap items-center justify-between space-x-2 rounded bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${reviewer.userId}`}
                 >
-                  <div className="flex-grow text-sm">
-                    <Tooltip content={`${reviewer.firstName || ""} ${reviewer.lastName || ""}`}>
-                      <span>{reviewer?.email} </span>
+                  <div
+                    className={twMerge(
+                      "flex items-center gap-1 text-sm",
+                      !isOrgMembershipActive && "opacity-40"
+                    )}
+                  >
+                    <Tooltip
+                      className="relative !z-[500]"
+                      content={`${reviewer.firstName || ""} ${reviewer.lastName || ""}`}
+                    >
+                      <div className="flex">
+                        <span>{reviewer?.email} </span>
+                      </div>
                     </Tooltip>
-                    <span className="text-red">*</span>
+                    {!isOrgMembershipActive && (
+                      <Tooltip
+                        className="relative !z-[500]"
+                        content="This user has been deactivated and no longer has an active organization membership."
+                      >
+                        <FontAwesomeIcon
+                          icon={faUserSlash}
+                          size="xs"
+                          className="text-mineshaft-300"
+                        />
+                      </Tooltip>
+                    )}
                   </div>
+
                   <div>
                     {reviewer.comment && (
-                      <Tooltip content={reviewer.comment}>
+                      <Tooltip className="relative !z-[500]" content={reviewer.comment}>
                         <FontAwesomeIcon
                           icon={faComment}
                           size="xs"
@@ -599,7 +662,15 @@ export const SecretApprovalRequestChanges = ({
                         />
                       </Tooltip>
                     )}
-                    <Tooltip content={status || ApprovalStatus.PENDING}>
+                    <Tooltip
+                      className="relative !z-[500]"
+                      content={
+                        <span className="text-sm">
+                          Status:{" "}
+                          <span className="capitalize">{status || ApprovalStatus.PENDING}</span>
+                        </span>
+                      }
+                    >
                       {getReviewedStatusSymbol(status)}
                     </Tooltip>
                   </div>

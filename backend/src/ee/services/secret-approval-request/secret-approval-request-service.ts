@@ -258,6 +258,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
+
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${id}' not found` });
 
