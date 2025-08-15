@@ -66,7 +66,7 @@ export const listRenderServices = async (appConnection: TRenderConnection): Prom
       cursor = res[res.length - 1].cursor;
     }
 
-    maxIterations = maxIterations - 1;
+    maxIterations -= 1;
   }
 
   return services;
@@ -138,7 +138,7 @@ export const listRenderEnvironmentGroups = async (
       cursor = res[res.length - 1].cursor;
     }
 
-    maxIterations = maxIterations - 1;
+    maxIterations -= 1;
   }
 
   return groups;
