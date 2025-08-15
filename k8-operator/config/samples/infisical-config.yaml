@@ -9,4 +9,4 @@ metadata:
   name: infisical-config
   namespace: infisical-operator-system
 data:
-  hostAPI: "http://example.com:8085/api"
+  hostAPI: "https://example.com/api"
