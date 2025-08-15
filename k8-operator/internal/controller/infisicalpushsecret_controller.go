@@ -231,7 +231,6 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 }
 
 func (r *InfisicalPushSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	// Custom predicate that allows both spec changes and deletions
 	specChangeOrDelete := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {

@@ -13,6 +13,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretEventActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -252,6 +253,16 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretScanningConfigs
   );
 
+  can(
+    [
+      ProjectPermissionSecretEventActions.SubscribeCreated,
+      ProjectPermissionSecretEventActions.SubscribeDeleted,
+      ProjectPermissionSecretEventActions.SubscribeUpdated,
+      ProjectPermissionSecretEventActions.SubscribeImportMutations
+    ],
+    ProjectPermissionSub.SecretEvents
+  );
+
   return rules;
 };
 
@@ -455,6 +466,16 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
 
+  can(
+    [
+      ProjectPermissionSecretEventActions.SubscribeCreated,
+      ProjectPermissionSecretEventActions.SubscribeDeleted,
+      ProjectPermissionSecretEventActions.SubscribeUpdated,
+      ProjectPermissionSecretEventActions.SubscribeImportMutations
+    ],
+    ProjectPermissionSub.SecretEvents
+  );
+
   return rules;
 };
 
@@ -504,6 +525,16 @@ const buildViewerPermissionRules = () => {
   can([ProjectPermissionSecretScanningFindingActions.Read], ProjectPermissionSub.SecretScanningFindings);
 
   can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
+
+  can(
+    [
+      ProjectPermissionSecretEventActions.SubscribeCreated,
+      ProjectPermissionSecretEventActions.SubscribeDeleted,
+      ProjectPermissionSecretEventActions.SubscribeUpdated,
+      ProjectPermissionSecretEventActions.SubscribeImportMutations
+    ],
+    ProjectPermissionSub.SecretEvents
+  );
 
   return rules;
 };

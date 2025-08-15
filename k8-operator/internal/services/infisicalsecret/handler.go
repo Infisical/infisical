@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/internal/api"
@@ -99,4 +100,23 @@ func (h *InfisicalSecretHandler) SetInfisicalAutoRedeploymentReady(ctx context.C
 		IsNamespaceScoped: h.IsNamespaceScoped,
 	}
 	reconciler.SetInfisicalAutoRedeploymentReady(ctx, logger, infisicalSecret, numDeployments, errorToConditionOn)
+}
+
+func (h *InfisicalSecretHandler) CloseInstantUpdatesStream(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, resourceVariablesMap map[string]util.ResourceVariables) error {
+	reconciler := &InfisicalSecretReconciler{
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		IsNamespaceScoped: h.IsNamespaceScoped,
+	}
+	return reconciler.CloseInstantUpdatesStream(ctx, logger, infisicalSecret, resourceVariablesMap)
+}
+
+// Ensures that SSE stream is open, incase if the stream is already opened - this is a noop
+func (h *InfisicalSecretHandler) OpenInstantUpdatesStream(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, resourceVariablesMap map[string]util.ResourceVariables, eventCh chan<- event.TypedGenericEvent[client.Object]) error {
+	reconciler := &InfisicalSecretReconciler{
+		Client:            h.Client,
+		Scheme:            h.Scheme,
+		IsNamespaceScoped: h.IsNamespaceScoped,
+	}
+	return reconciler.OpenInstantUpdatesStream(ctx, logger, infisicalSecret, resourceVariablesMap, eventCh)
 }
