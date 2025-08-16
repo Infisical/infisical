@@ -416,6 +416,9 @@
                 "pages": [
                   "documentation/platform/secrets-mgmt/project",
                   "documentation/platform/folder",
+                  "documentation/platform/secret-versioning",
+                  "documentation/platform/pit-recovery",
+                  "documentation/platform/secret-reference",
                   {
                     "group": "Secret Rotation",
                     "pages": [
@@ -459,7 +462,8 @@
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
-                  }
+                  },
+                  "documentation/platform/webhooks"
                 ]
               },
               {
