@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -84,6 +84,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
 ];
 
 const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
+  const [hovered, setHovered] = useState<string | null>(null);
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -209,8 +210,15 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
                         field.onChange(el.value);
                       }
                     }}
+                    onMouseEnter={() => setHovered(el.value)}
+                    onMouseLeave={() => setHovered(null)}
                   >
-                    <Lottie icon={getProjectLottieIcon(el.value)} className="h-8 w-8" />
+                    <Lottie
+                      key={`${hovered === el.value ? "playing" : "paused"}-${el.value}`}
+                      icon={getProjectLottieIcon(el.value)}
+                      className="h-8 w-8"
+                      isAutoPlay={hovered === el.value}
+                    />
                     <div className="text-center text-xs">{el.label}</div>
                   </div>
                 ))}

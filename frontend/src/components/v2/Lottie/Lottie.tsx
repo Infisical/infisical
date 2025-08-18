@@ -14,19 +14,14 @@ export const Lottie = forwardRef<HTMLDivElement, LottieProps>(
   ({ children, icon, iconMode, isAutoPlay, ...props }, ref): JSX.Element => {
     const iconRef = useRef<DotLottie | null>(null);
     return (
-      <div
-        onMouseEnter={() => iconRef.current?.play()}
-        onMouseLeave={() => iconRef.current?.stop()}
-        {...props}
-        ref={ref}
-      >
+      <div {...props} ref={ref}>
         <DotLottieReact
           dotLottieRefCallback={(el) => {
             iconRef.current = el;
           }}
           mode={iconMode}
           src={`/lotties/${icon}.json`}
-          loop
+          loop={false}
           autoplay={isAutoPlay}
           className="h-full w-full"
         />
