@@ -179,6 +179,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
           numberOfRetryOnFailure = 0; // reset
         } catch (error) {
           numberOfRetryOnFailure += 1;
+          deletedAuditLogIds = [];
           logger.error(error, "Failed to delete audit log on pruning");
         } finally {
           // eslint-disable-next-line no-await-in-loop
