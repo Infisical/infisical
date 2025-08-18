@@ -310,7 +310,8 @@
                   "self-hosting/guides/mongo-to-postgres",
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/automated-bootstrapping",
-                  "self-hosting/guides/production-hardening"
+                  "self-hosting/guides/production-hardening",
+                  "self-hosting/guides/monitoring-telemetry"
                 ]
               },
               {
