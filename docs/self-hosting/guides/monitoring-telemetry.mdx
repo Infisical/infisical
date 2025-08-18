@@ -1,0 +1,440 @@
+---
+title: "Monitoring and Telemetry Setup"
+description: "Learn how to set up monitoring and telemetry for your self-hosted Infisical instance using Grafana, Prometheus, and OpenTelemetry."
+---
+
+Infisical provides comprehensive monitoring and telemetry capabilities to help you monitor the health, performance, and usage of your self-hosted instance. This guide covers setting up monitoring using Grafana with two different telemetry collection approaches.
+
+## Overview
+
+Infisical exports metrics in **OpenTelemetry (OTEL) format**, which provides maximum flexibility for your monitoring infrastructure. While this guide focuses on Grafana, the OTEL format means you can easily integrate with:
+
+- **Cloud-native monitoring**: AWS CloudWatch, Google Cloud Monitoring, Azure Monitor
+- **Observability platforms**: Datadog, New Relic, Splunk, Dynatrace
+- **Custom backends**: Any system that supports OTEL ingestion
+- **Traditional monitoring**: Prometheus, Grafana (as covered in this guide)
+
+Infisical supports two telemetry collection methods:
+
+1. **Pull-based (Prometheus)**: Exposes metrics on a dedicated endpoint for Prometheus to scrape
+2. **Push-based (OTLP)**: Sends metrics to an OpenTelemetry Collector via OTLP protocol
+
+Both approaches provide the same metrics data in OTEL format, so you can choose the one that best fits your infrastructure and monitoring strategy.
+
+## Prerequisites
+
+- Self-hosted Infisical instance running
+- Access to deploy monitoring services (Prometheus, Grafana, etc.)
+- Basic understanding of Prometheus and Grafana
+
+## Environment Variables
+
+Configure the following environment variables in your Infisical backend:
+
+```bash
+# Enable telemetry collection
+OTEL_TELEMETRY_COLLECTION_ENABLED=true
+
+# Choose export type: "prometheus" or "otlp"
+OTEL_EXPORT_TYPE=prometheus
+
+# For OTLP push mode, also configure:
+# OTEL_EXPORT_OTLP_ENDPOINT=http://otel-collector:4318/v1/metrics
+# OTEL_COLLECTOR_BASIC_AUTH_USERNAME=your_collector_username
+# OTEL_COLLECTOR_BASIC_AUTH_PASSWORD=your_collector_password
+# OTEL_OTLP_PUSH_INTERVAL=30000
+```
+
+**Note**: The `OTEL_COLLECTOR_BASIC_AUTH_USERNAME` and `OTEL_COLLECTOR_BASIC_AUTH_PASSWORD` values must match the credentials configured in your OpenTelemetry Collector's `basicauth/server` extension. These are not hardcoded values - you configure them in your collector configuration file.
+
+## Option 1: Pull-based Monitoring (Prometheus)
+
+This approach exposes metrics on port 9464 at the `/metrics` endpoint, allowing Prometheus to scrape the data. The metrics are exposed in Prometheus format but originate from OpenTelemetry instrumentation.
+
+### Configuration
+
+1. **Enable Prometheus export in Infisical**:
+
+   ```bash
+   OTEL_TELEMETRY_COLLECTION_ENABLED=true
+   OTEL_EXPORT_TYPE=prometheus
+   ```
+
+2. **Expose the metrics port** in your Infisical backend:
+
+   - **Docker**: Expose port 9464
+   - **Kubernetes**: Create a service exposing port 9464
+   - **Other**: Ensure port 9464 is accessible to your monitoring stack
+
+3. **Create Prometheus configuration** (`prometheus.yml`):
+
+   ```yaml
+   global:
+     scrape_interval: 30s
+     evaluation_interval: 30s
+
+   scrape_configs:
+     - job_name: "infisical"
+       scrape_interval: 30s
+       static_configs:
+         - targets: ["infisical-backend:9464"] # Adjust hostname/port based on your deployment
+       metrics_path: "/metrics"
+   ```
+
+   **Note**: Replace `infisical-backend:9464` with the actual hostname and port where your Infisical backend is running. This could be:
+
+   - **Docker Compose**: `infisical-backend:9464` (service name)
+   - **Kubernetes**: `infisical-backend.default.svc.cluster.local:9464` (service name)
+   - **Bare Metal**: `192.168.1.100:9464` (actual IP address)
+   - **Cloud**: `your-infisical.example.com:9464` (domain name)
+
+### Deployment Options
+
+#### Docker Compose
+
+```yaml
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+```
+
+#### Kubernetes
+
+```yaml
+# prometheus-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+
+---
+# prometheus-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+  type: ClusterIP
+```
+
+#### Helm
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install prometheus prometheus-community/prometheus \
+  --set server.config.global.scrape_interval=30s \
+  --set server.config.scrape_configs[0].job_name=infisical \
+  --set server.config.scrape_configs[0].static_configs[0].targets[0]=infisical-backend:9464
+```
+
+## Option 2: Push-based Monitoring (OTLP)
+
+This approach sends metrics directly to an OpenTelemetry Collector via the OTLP protocol. This gives you the most flexibility as you can configure the collector to export to multiple backends simultaneously.
+
+### Configuration
+
+1. **Enable OTLP export in Infisical**:
+
+   ```bash
+   OTEL_TELEMETRY_COLLECTION_ENABLED=true
+   OTEL_EXPORT_TYPE=otlp
+   OTEL_EXPORT_OTLP_ENDPOINT=http://otel-collector:4318/v1/metrics
+   OTEL_COLLECTOR_BASIC_AUTH_USERNAME=infisical
+   OTEL_COLLECTOR_BASIC_AUTH_PASSWORD=infisical
+   OTEL_OTLP_PUSH_INTERVAL=30000
+   ```
+
+2. **Create OpenTelemetry Collector configuration** (`otel-collector-config.yaml`):
+
+   ```yaml
+   extensions:
+     health_check:
+     pprof:
+     zpages:
+     basicauth/server:
+       htpasswd:
+         inline: |
+           your_username:your_password
+
+   receivers:
+     otlp:
+       protocols:
+         http:
+           endpoint: 0.0.0.0:4318
+           auth:
+             authenticator: basicauth/server
+
+     prometheus:
+       config:
+         scrape_configs:
+           - job_name: otel-collector
+             scrape_interval: 30s
+             static_configs:
+               - targets: [infisical-backend:9464]
+             metric_relabel_configs:
+               - action: labeldrop
+                 regex: "service_instance_id|service_name"
+
+   processors:
+     batch:
+
+   exporters:
+     prometheus:
+       endpoint: "0.0.0.0:8889"
+       auth:
+         authenticator: basicauth/server
+       resource_to_telemetry_conversion:
+         enabled: true
+
+   service:
+     extensions: [basicauth/server, health_check, pprof, zpages]
+     pipelines:
+       metrics:
+         receivers: [otlp]
+         processors: [batch]
+         exporters: [prometheus]
+   ```
+
+   **Important**: Replace `your_username:your_password` with your chosen credentials. These must match the values you set in Infisical's `OTEL_COLLECTOR_BASIC_AUTH_USERNAME` and `OTEL_COLLECTOR_BASIC_AUTH_PASSWORD` environment variables.
+
+3. **Create Prometheus configuration** for the collector:
+
+   ```yaml
+   global:
+     scrape_interval: 30s
+     evaluation_interval: 30s
+
+   scrape_configs:
+     - job_name: "otel-collector"
+       scrape_interval: 30s
+       static_configs:
+         - targets: ["otel-collector:8889"] # Adjust hostname/port based on your deployment
+       metrics_path: "/metrics"
+   ```
+
+   **Note**: Replace `otel-collector:8889` with the actual hostname and port where your OpenTelemetry Collector is running. This could be:
+
+   - **Docker Compose**: `otel-collector:8889` (service name)
+   - **Kubernetes**: `otel-collector.default.svc.cluster.local:8889` (service name)
+   - **Bare Metal**: `192.168.1.100:8889` (actual IP address)
+   - **Cloud**: `your-collector.example.com:8889` (domain name)
+
+### Deployment Options
+
+#### Docker Compose
+
+```yaml
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    ports:
+      - 4318:4318 # OTLP http receiver
+      - 8889:8889 # Prometheus exporter metrics
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    command:
+      - "--config=/etc/otelcol-contrib/config.yaml"
+```
+
+#### Kubernetes
+
+```yaml
+# otel-collector-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:latest
+          ports:
+            - containerPort: 4318
+            - containerPort: 8889
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol-contrib
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+```
+
+#### Helm
+
+```bash
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm install otel-collector open-telemetry/opentelemetry-collector \
+  --set config.receivers.otlp.protocols.http.endpoint=0.0.0.0:4318 \
+  --set config.exporters.prometheus.endpoint=0.0.0.0:8889
+```
+
+## Alternative Backends
+
+Since Infisical exports in OpenTelemetry format, you can easily configure the collector to send metrics to other backends instead of (or in addition to) Prometheus:
+
+### Cloud-Native Examples
+
+```yaml
+# Add to your otel-collector-config.yaml exporters section
+exporters:
+  # AWS CloudWatch
+  awsemf:
+    region: us-west-2
+    log_group_name: /aws/emf/infisical
+    log_stream_name: metrics
+
+  # Google Cloud Monitoring
+  googlecloud:
+    project_id: your-project-id
+
+  # Azure Monitor
+  azuremonitor:
+    connection_string: "your-connection-string"
+
+  # Datadog
+  datadog:
+    api:
+      key: "your-api-key"
+      site: "datadoghq.com"
+
+  # New Relic
+  newrelic:
+    apikey: "your-api-key"
+    host_override: "otlp.nr-data.net"
+```
+
+### Multi-Backend Configuration
+
+```yaml
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus, awsemf, datadog] # Send to multiple backends
+```
+
+## Setting Up Grafana
+
+1. **Access Grafana**: Navigate to your Grafana instance
+2. **Login**: Use your configured credentials
+3. **Add Prometheus Data Source**:
+   - Go to Configuration → Data Sources
+   - Click "Add data source"
+   - Select "Prometheus"
+   - Set URL to your Prometheus endpoint
+   - Click "Save & Test"
+
+## Available Metrics
+
+Infisical exposes the following key metrics in OpenTelemetry format:
+
+### API Performance Metrics
+
+- `API_latency` - API request latency histogram in milliseconds
+
+  - **Labels**: `route`, `method`, `statusCode`
+  - **Example**: Monitor response times for specific endpoints
+
+- `API_errors` - API error count histogram
+  - **Labels**: `route`, `method`, `type`, `name`
+  - **Example**: Track error rates by endpoint and error type
+
+### Integration & Secret Sync Metrics
+
+- `integration_secret_sync_errors` - Integration secret sync error count
+
+  - **Labels**: `version`, `integration`, `integrationId`, `type`, `status`, `name`, `projectId`
+  - **Example**: Monitor integration sync failures across different services
+
+- `secret_sync_sync_secrets_errors` - Secret sync operation error count
+
+  - **Labels**: `version`, `destination`, `syncId`, `projectId`, `type`, `status`, `name`
+  - **Example**: Track secret sync failures to external systems
+
+- `secret_sync_import_secrets_errors` - Secret import operation error count
+
+  - **Labels**: `version`, `destination`, `syncId`, `projectId`, `type`, `status`, `name`
+  - **Example**: Monitor secret import failures
+
+- `secret_sync_remove_secrets_errors` - Secret removal operation error count
+  - **Labels**: `version`, `destination`, `syncId`, `projectId`, `type`, `status`, `name`
+  - **Example**: Track secret removal operation failures
+
+### System Metrics
+
+These metrics are automatically collected by OpenTelemetry's HTTP instrumentation:
+
+- `http_server_duration` - HTTP server request duration metrics (histogram buckets, count, sum)
+- `http_client_duration` - HTTP client request duration metrics (histogram buckets, count, sum)
+
+### Custom Business Metrics
+
+- `infisical_secret_operations_total` - Total secret operations
+- `infisical_secrets_processed_total` - Total secrets processed
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Metrics not appearing**:
+
+   - Check if `OTEL_TELEMETRY_COLLECTION_ENABLED=true`
+   - Verify the correct `OTEL_EXPORT_TYPE` is set
+   - Check network connectivity between services
+
+2. **Authentication errors**:
+
+   - Verify basic auth credentials in OTLP configuration
+   - Check if credentials match between Infisical and collector
