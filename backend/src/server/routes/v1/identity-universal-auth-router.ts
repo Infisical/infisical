@@ -137,7 +137,16 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             .min(0)
             .default(0)
             .describe(UNIVERSAL_AUTH.ATTACH.accessTokenNumUsesLimit),
-          accessTokenPeriod: z.number().int().min(0).default(0).describe(UNIVERSAL_AUTH.ATTACH.accessTokenPeriod)
+          accessTokenPeriod: z.number().int().min(0).default(0).describe(UNIVERSAL_AUTH.ATTACH.accessTokenPeriod),
+          lockoutEnabled: z.boolean().default(true).describe(UNIVERSAL_AUTH.ATTACH.lockoutEnabled),
+          lockoutThreshold: z.number().min(1).max(30).default(3).describe(UNIVERSAL_AUTH.ATTACH.lockoutThreshold),
+          lockoutDuration: z.number().min(30).max(86400).default(300).describe(UNIVERSAL_AUTH.ATTACH.lockoutDuration),
+          lockoutCounterReset: z
+            .number()
+            .min(5)
+            .max(3600)
+            .default(30)
+            .describe(UNIVERSAL_AUTH.ATTACH.lockoutCounterReset)
         })
         .refine(
           (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
@@ -171,7 +180,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             accessTokenMaxTTL: identityUniversalAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityUniversalAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
             clientSecretTrustedIps: identityUniversalAuth.clientSecretTrustedIps as TIdentityTrustedIp[],
-            accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit
+            accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit,
+            lockoutEnabled: identityUniversalAuth.lockoutEnabled,
+            lockoutThreshold: identityUniversalAuth.lockoutThreshold,
+            lockoutDuration: identityUniversalAuth.lockoutDuration,
+            lockoutCounterReset: identityUniversalAuth.lockoutCounterReset
           }
         }
       });
@@ -243,7 +256,16 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             .min(0)
             .max(315360000)
             .optional()
-            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenPeriod)
+            .describe(UNIVERSAL_AUTH.UPDATE.accessTokenPeriod),
+          lockoutEnabled: z.boolean().optional().describe(UNIVERSAL_AUTH.UPDATE.lockoutEnabled),
+          lockoutThreshold: z.number().min(1).max(30).optional().describe(UNIVERSAL_AUTH.UPDATE.lockoutThreshold),
+          lockoutDuration: z.number().min(30).max(86400).optional().describe(UNIVERSAL_AUTH.UPDATE.lockoutDuration),
+          lockoutCounterReset: z
+            .number()
+            .min(5)
+            .max(3600)
+            .optional()
+            .describe(UNIVERSAL_AUTH.UPDATE.lockoutCounterReset)
         })
         .refine(
           (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
@@ -276,7 +298,11 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             accessTokenMaxTTL: identityUniversalAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityUniversalAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
             clientSecretTrustedIps: identityUniversalAuth.clientSecretTrustedIps as TIdentityTrustedIp[],
-            accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit
+            accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit,
+            lockoutEnabled: identityUniversalAuth.lockoutEnabled,
+            lockoutThreshold: identityUniversalAuth.lockoutThreshold,
+            lockoutDuration: identityUniversalAuth.lockoutDuration,
+            lockoutCounterReset: identityUniversalAuth.lockoutCounterReset
           }
         }
       });
@@ -592,6 +618,55 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       });
 
       return { clientSecretData };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/universal-auth/identities/:identityId/clear-lockouts",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.UniversalAuth],
+      description: "Clear Universal Auth Lockouts for identity",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        identityId: z.string().describe(UNIVERSAL_AUTH.REVOKE_CLIENT_SECRET.identityId)
+      }),
+      response: {
+        200: z.object({
+          deleted: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const clearLockoutsData = await server.services.identityUa.clearUniversalAuthLockouts({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityId: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: clearLockoutsData.orgId,
+        event: {
+          type: EventType.CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS,
+          metadata: {
+            identityId: clearLockoutsData.identityId
+          }
+        }
+      });
+
+      return clearLockoutsData;
     }
   });
 };

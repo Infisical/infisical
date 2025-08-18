@@ -166,7 +166,11 @@ export const UNIVERSAL_AUTH = {
     accessTokenNumUsesLimit:
       "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
     accessTokenPeriod:
-      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0."
+      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0.",
+    lockoutEnabled: "Whether the lockout feature is enabled.",
+    lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
+    lockoutDuration: "How long an identity auth method lockout lasts.",
+    lockoutCounterReset: "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the auth method for."
@@ -181,7 +185,11 @@ export const UNIVERSAL_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
-    accessTokenPeriod: "The new period for an access token in seconds."
+    accessTokenPeriod: "The new period for an access token in seconds.",
+    lockoutEnabled: "Whether the lockout feature is enabled.",
+    lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
+    lockoutDuration: "How long an identity auth method lockout lasts.",
+    lockoutCounterReset: "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   CREATE_CLIENT_SECRET: {
     identityId: "The ID of the identity to create a client secret for.",

@@ -1,9 +1,10 @@
-import { faBan, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsRotate, faBan, faCheck, faCopy, faFire } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
+import { Button, EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import {
+  useClearIdentityUniversalAuthLockouts,
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets
 } from "@app/hooks/api";
@@ -13,21 +14,41 @@ import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { IdentityUniversalAuthClientSecretsTable } from "./IdentityUniversalAuthClientSecretsTable";
 import { ViewAuthMethodProps } from "./types";
 import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionCan } from "@app/components/permissions";
+import { createNotification } from "@app/components/notifications";
+import { useState } from "react";
 
 export const ViewIdentityUniversalAuthContent = ({
   identityId,
   handlePopUpToggle,
   handlePopUpOpen,
   onDelete,
-  popUp
+  popUp,
+  lockedOut
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets = [], isPending: clientSecretsPending } =
     useGetIdentityUniversalAuthClientSecrets(identityId);
+  const { mutateAsync: clearLockoutsFn, isPending: isClearLockoutsPending } =
+    useClearIdentityUniversalAuthLockouts();
+
+  const [lockedOutState, setLockedOutState] = useState(lockedOut);
 
   const [copyTextClientId, isCopyingClientId, setCopyTextClientId] = useTimedReset<string>({
     initialState: "Copy Client ID to clipboard"
   });
+
+  async function clearLockouts() {
+    const deleted = await clearLockoutsFn({ identityId });
+
+    createNotification({
+      text: `Successfully cleared ${deleted} lockout${deleted === 1 ? "" : "s"}`,
+      type: "success"
+    });
+
+    setLockedOutState(false);
+  }
 
   if (isPending || clientSecretsPending) {
     return (
@@ -84,6 +105,40 @@ export const ViewIdentityUniversalAuthContent = ({
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Client Secret Trusted IPs">
         {data.clientSecretTrustedIps.map((ip) => ip.ipAddress).join(", ")}
+      </IdentityAuthFieldDisplay>
+      <div className="col-span-2 mt-3 flex justify-between border-b border-mineshaft-500 pb-2">
+        <span className="text-bunker-300">Lockout Options</span>
+        <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed || !lockedOutState || isClearLockoutsPending}
+              size="xs"
+              onClick={clearLockouts}
+              leftIcon={
+                isClearLockoutsPending ? (
+                  <FontAwesomeIcon icon={faArrowsRotate} className="animate-spin" />
+                ) : (
+                  <FontAwesomeIcon icon={faFire} />
+                )
+              }
+              colorSchema="secondary"
+            >
+              Clear All Lockouts
+            </Button>
+          )}
+        </OrgPermissionCan>
+      </div>
+      <IdentityAuthFieldDisplay label="Lockout">
+        {data.lockoutEnabled ? "Enabled" : "Disabled"}
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Lockout Threshold">
+        {data.lockoutThreshold}
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Lockout Duration">
+        {data.lockoutDuration} seconds
+      </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Lockout Counter Reset">
+        {data.lockoutCounterReset} seconds
       </IdentityAuthFieldDisplay>
       <div className="col-span-2 my-3">
         <div className="mb-3 border-b border-mineshaft-500 pb-2">

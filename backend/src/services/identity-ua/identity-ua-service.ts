@@ -8,6 +8,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
@@ -22,6 +23,7 @@ import { TIdentityUaClientSecretDALFactory } from "./identity-ua-client-secret-d
 import { TIdentityUaDALFactory } from "./identity-ua-dal";
 import {
   TAttachUaDTO,
+  TClearUaLockoutsDTO,
   TCreateUaClientSecretDTO,
   TGetUaClientSecretsDTO,
   TGetUaDTO,
@@ -38,9 +40,15 @@ type TIdentityUaServiceFactoryDep = {
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems">;
 };
 
 export type TIdentityUaServiceFactory = ReturnType<typeof identityUaServiceFactory>;
+
+type LockoutObject = {
+  lockedOut: boolean;
+  failedAttempts: number;
+};
 
 export const identityUaServiceFactory = ({
   identityUaDAL,
@@ -48,20 +56,14 @@ export const identityUaServiceFactory = ({
   identityAccessTokenDAL,
   identityOrgMembershipDAL,
   permissionService,
-  licenseService
+  licenseService,
+  keyStore
 }: TIdentityUaServiceFactoryDep) => {
   const login = async (clientId: string, clientSecret: string, ip: string) => {
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
-      throw new NotFoundError({
-        message: "No identity with specified client ID was found"
-      });
-    }
-
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityUa.identityId });
-    if (!identityMembershipOrg) {
-      throw new NotFoundError({
-        message: "No identity with the org membership was found"
+      throw new UnauthorizedError({
+        message: "Invalid credentials"
       });
     }
 
@@ -69,69 +71,119 @@ export const identityUaServiceFactory = ({
       ipAddress: ip,
       trustedIps: identityUa.clientSecretTrustedIps as TIp[]
     });
-    const clientSecretPrefix = clientSecret.slice(0, 4);
-    const clientSecrtInfo = await identityUaClientSecretDAL.find({
-      identityUAId: identityUa.id,
-      isClientSecretRevoked: false,
-      clientSecretPrefix
-    });
 
-    let validClientSecretInfo: (typeof clientSecrtInfo)[0] | null = null;
-    for await (const info of clientSecrtInfo) {
-      const isMatch = await crypto.hashing().compareHash(clientSecret, info.clientSecretHash);
+    const LOCKOUT_KEY = `lockout:identity:${identityUa.identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:${clientId}`;
 
-      if (isMatch) {
-        validClientSecretInfo = info;
-        break;
-      }
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityUa.identityId });
+    if (!identityMembershipOrg) {
+      throw new UnauthorizedError({
+        message: "Invalid credentials"
+      });
     }
 
-    if (!validClientSecretInfo) throw new UnauthorizedError({ message: "Invalid credentials" });
+    const identityTx = await identityUaDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.IdentityLogin(identityUa.identityId, clientId)]);
 
-    const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
-    if (Number(clientSecretTTL) > 0) {
-      const clientSecretCreated = new Date(validClientSecretInfo.createdAt);
-      const ttlInMilliseconds = Number(clientSecretTTL) * 1000;
-      const currentDate = new Date();
-      const expirationTime = new Date(clientSecretCreated.getTime() + ttlInMilliseconds);
+      // Lockout Check
+      const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
 
-      if (currentDate > expirationTime) {
+      let lockout: LockoutObject | undefined;
+      if (lockoutRaw) {
+        lockout = JSON.parse(lockoutRaw) as LockoutObject;
+      }
+
+      if (lockout && lockout.lockedOut) {
+        throw new UnauthorizedError({
+          message: "This identity auth method is temporarily locked, please try again later"
+        });
+      }
+
+      const clientSecretPrefix = clientSecret.slice(0, 4);
+      const clientSecretInfo = await identityUaClientSecretDAL.find({
+        identityUAId: identityUa.id,
+        isClientSecretRevoked: false,
+        clientSecretPrefix
+      });
+
+      let validClientSecretInfo: (typeof clientSecretInfo)[0] | null = null;
+      for await (const info of clientSecretInfo) {
+        const isMatch = await crypto.hashing().compareHash(clientSecret, info.clientSecretHash);
+
+        if (isMatch) {
+          validClientSecretInfo = info;
+          break;
+        }
+      }
+
+      if (!validClientSecretInfo) {
+        if (identityUa.lockoutEnabled) {
+          if (!lockout) {
+            lockout = {
+              lockedOut: false,
+              failedAttempts: 0
+            };
+          }
+
+          lockout.failedAttempts += 1;
+          if (lockout.failedAttempts >= identityUa.lockoutThreshold) {
+            lockout.lockedOut = true;
+          }
+
+          await keyStore.setItemWithExpiry(
+            LOCKOUT_KEY,
+            lockout.lockedOut ? identityUa.lockoutDuration : identityUa.lockoutCounterReset,
+            JSON.stringify(lockout)
+          );
+        }
+
+        throw new UnauthorizedError({ message: "Invalid credentials" });
+      } else if (lockout) {
+        await keyStore.deleteItem(LOCKOUT_KEY);
+      }
+
+      const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
+      if (Number(clientSecretTTL) > 0) {
+        const clientSecretCreated = new Date(validClientSecretInfo.createdAt);
+        const ttlInMilliseconds = Number(clientSecretTTL) * 1000;
+        const currentDate = new Date();
+        const expirationTime = new Date(clientSecretCreated.getTime() + ttlInMilliseconds);
+
+        if (currentDate > expirationTime) {
+          await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
+            isClientSecretRevoked: true
+          });
+
+          throw new UnauthorizedError({
+            message: "Access denied due to expired client secret"
+          });
+        }
+      }
+
+      if (clientSecretNumUsesLimit > 0 && clientSecretNumUses === clientSecretNumUsesLimit) {
+        // number of times client secret can be used for
+        // a login operation reached
         await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
           isClientSecretRevoked: true
         });
-
         throw new UnauthorizedError({
-          message: "Access denied due to expired client secret"
+          message: "Access denied due to client secret usage limit reached"
         });
       }
-    }
 
-    if (clientSecretNumUsesLimit > 0 && clientSecretNumUses === clientSecretNumUsesLimit) {
-      // number of times client secret can be used for
-      // a login operation reached
-      await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
-        isClientSecretRevoked: true
-      });
-      throw new UnauthorizedError({
-        message: "Access denied due to client secret usage limit reached"
-      });
-    }
+      const accessTokenTTLParams =
+        Number(identityUa.accessTokenPeriod) === 0
+          ? {
+              accessTokenTTL: identityUa.accessTokenTTL,
+              accessTokenMaxTTL: identityUa.accessTokenMaxTTL
+            }
+          : {
+              accessTokenTTL: identityUa.accessTokenPeriod,
+              // We set a very large Max TTL for periodic tokens to ensure that clients (even outdated ones) can always renew their token
+              // without them having to update their SDKs, CLIs, etc. This workaround sets it to 30 years to emulate "forever"
+              accessTokenMaxTTL: 1000000000
+            };
 
-    const accessTokenTTLParams =
-      Number(identityUa.accessTokenPeriod) === 0
-        ? {
-            accessTokenTTL: identityUa.accessTokenTTL,
-            accessTokenMaxTTL: identityUa.accessTokenMaxTTL
-          }
-        : {
-            accessTokenTTL: identityUa.accessTokenPeriod,
-            // We set a very large Max TTL for periodic tokens to ensure that clients (even outdated ones) can always renew their token
-            // without them having to update their SDKs, CLIs, etc. This workaround sets it to 30 years to emulate "forever"
-            accessTokenMaxTTL: 1000000000
-          };
-
-    const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
-      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+      const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo.id, tx);
       await identityOrgMembershipDAL.updateById(
         identityMembershipOrg.id,
         {
@@ -154,33 +206,33 @@ export const identityUaServiceFactory = ({
         tx
       );
 
-      return newToken;
+      return { newToken, validClientSecretInfo, accessTokenTTLParams };
     });
 
     const appCfg = getConfig();
     const accessToken = crypto.jwt().sign(
       {
         identityId: identityUa.identityId,
-        clientSecretId: validClientSecretInfo.id,
-        identityAccessTokenId: identityAccessToken.id,
+        clientSecretId: identityTx.validClientSecretInfo.id,
+        identityAccessTokenId: identityTx.newToken.id,
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
       appCfg.AUTH_SECRET,
       // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0
+      Number(identityTx.newToken.accessTokenTTL) === 0
         ? undefined
         : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
+            expiresIn: Number(identityTx.newToken.accessTokenTTL)
           }
     );
 
     return {
       accessToken,
       identityUa,
-      validClientSecretInfo,
-      identityAccessToken,
+      validClientSecretInfo: identityTx.validClientSecretInfo,
+      identityAccessToken: identityTx.newToken,
       identityMembershipOrg,
-      ...accessTokenTTLParams
+      ...identityTx.accessTokenTTLParams
     };
   };
 
@@ -196,7 +248,11 @@ export const identityUaServiceFactory = ({
     actor,
     actorOrgId,
     isActorSuperAdmin,
-    accessTokenPeriod
+    accessTokenPeriod,
+    lockoutEnabled,
+    lockoutThreshold,
+    lockoutDuration,
+    lockoutCounterReset
   }: TAttachUaDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -266,7 +322,11 @@ export const identityUaServiceFactory = ({
           accessTokenTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
-          accessTokenPeriod
+          accessTokenPeriod,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDuration,
+          lockoutCounterReset
         },
         tx
       );
@@ -286,7 +346,11 @@ export const identityUaServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    lockoutEnabled,
+    lockoutThreshold,
+    lockoutDuration,
+    lockoutCounterReset
   }: TUpdateUaDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
@@ -362,7 +426,11 @@ export const identityUaServiceFactory = ({
       accessTokenPeriod,
       accessTokenTrustedIps: reformattedAccessTokenTrustedIps
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+        : undefined,
+      lockoutEnabled,
+      lockoutThreshold,
+      lockoutDuration,
+      lockoutCounterReset
     });
     return { ...updatedUaAuth, orgId: identityMembershipOrg.orgId };
   };
@@ -713,6 +781,38 @@ export const identityUaServiceFactory = ({
     return { ...updatedClientSecret, identityId, orgId: identityMembershipOrg.orgId };
   };
 
+  const clearUniversalAuthLockouts = async ({
+    identityId,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod
+  }: TClearUaLockoutsDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.UNIVERSAL_AUTH)) {
+      throw new BadRequestError({
+        message: "The identity does not have universal auth"
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+    const deleted = await keyStore.deleteItems({
+      pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:*`
+    });
+
+    return { deleted, identityId, orgId: identityMembershipOrg.orgId };
+  };
+
   return {
     login,
     attachUniversalAuth,
@@ -722,6 +822,7 @@ export const identityUaServiceFactory = ({
     createUniversalAuthClientSecret,
     getUniversalAuthClientSecrets,
     revokeUniversalAuthClientSecret,
-    getUniversalAuthClientSecretById
+    getUniversalAuthClientSecretById,
+    clearUniversalAuthLockouts
   };
 };
