@@ -843,8 +843,9 @@ export const appConnectionServiceFactory = ({
         }).success
       )
         throw new BadRequestError({
-          message: `Invalid credential format for ${APP_CONNECTION_NAME_MAP[app]
-            } Connection with method ${getAppConnectionMethodName(method)}`
+          message: `Invalid credential format for ${
+            APP_CONNECTION_NAME_MAP[app]
+          } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
       const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
@@ -1141,8 +1142,9 @@ export const appConnectionServiceFactory = ({
 
     if (appConnection.app !== app)
       throw new BadRequestError({
-        message: `${APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
-          } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
+        message: `${
+          APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
+        } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
       });
 
     const connectionProject = appConnection.projectId
