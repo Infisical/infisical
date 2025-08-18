@@ -28,27 +28,20 @@ export const RenderSyncOptionsReviewFields = () => {
 
 export const RenderSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Render }>();
-  const scope = watch("destinationConfig.scope");
-
-  if (scope === RenderSyncScope.Service) {
-    const name = watch("destinationConfig.serviceName");
-    const id = watch("destinationConfig.serviceId");
-
-    return (
-      <>
-        <GenericFieldLabel label="Scope">{scope}</GenericFieldLabel>
-        <GenericFieldLabel label="Service">{name ?? id}</GenericFieldLabel>
-      </>
-    );
-  }
-
-  const name = watch("destinationConfig.environmentGroupName");
-  const id = watch("destinationConfig.environmentGroupId");
+  const config = watch("destinationConfig");
 
   return (
     <>
-      <GenericFieldLabel label="Scope">{scope}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment Group">{name ?? id}</GenericFieldLabel>
+      <GenericFieldLabel label="Scope">{config.scope}</GenericFieldLabel>
+      {config.scope === RenderSyncScope.Service ? (
+        <GenericFieldLabel label="Service">
+          {config.serviceName ?? config.serviceId}
+        </GenericFieldLabel>
+      ) : (
+        <GenericFieldLabel label="Service">
+          {config.environmentGroupName ?? config.environmentGroupId}
+        </GenericFieldLabel>
+      )}
     </>
   );
 };

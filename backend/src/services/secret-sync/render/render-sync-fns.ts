@@ -321,7 +321,6 @@ export const RenderSyncFns = {
     const finalEnvVars: Array<{ key: string; value: string }> = [];
 
     for (const renderSecret of renderSecrets) {
-      console.log("Render secret: ", renderSecret);
       if (renderSecret.key in secretMap) {
         finalEnvVars.push({
           key: renderSecret.key,
