@@ -17,6 +17,14 @@ const RenderSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
     scope: z.literal(RenderSyncScope.Service).describe(SecretSyncs.DESTINATION_CONFIG.RENDER.scope),
     serviceId: z.string().min(1, "Service ID is required").describe(SecretSyncs.DESTINATION_CONFIG.RENDER.serviceId),
     type: z.nativeEnum(RenderSyncType).describe(SecretSyncs.DESTINATION_CONFIG.RENDER.type)
+  }),
+  z.object({
+    scope: z.literal(RenderSyncScope.EnvironmentGroup).describe(SecretSyncs.DESTINATION_CONFIG.RENDER.scope),
+    environmentGroupId: z
+      .string()
+      .min(1, "Environment Group ID is required")
+      .describe(SecretSyncs.DESTINATION_CONFIG.RENDER.environmentGroupId),
+    type: z.nativeEnum(RenderSyncType).describe(SecretSyncs.DESTINATION_CONFIG.RENDER.type)
   })
 ]);
 
