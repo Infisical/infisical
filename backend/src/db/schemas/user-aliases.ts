@@ -16,7 +16,8 @@ export const UserAliasesSchema = z.object({
   emails: z.string().array().nullable().optional(),
   orgId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isEmailVerified: z.boolean().default(false).nullable().optional()
 });
 
 export type TUserAliases = z.infer<typeof UserAliasesSchema>;

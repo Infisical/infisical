@@ -114,7 +114,16 @@ export const EmailConfirmationStep = ({
 
   const resendCode = async () => {
     try {
-      await sendEmailVerificationCode(username);
+      const queryParams = new URLSearchParams(window.location.search);
+      const token = queryParams.get("token");
+      if (!token) {
+        createNotification({
+          text: "Failed to resend code, no token found",
+          type: "error"
+        });
+        return;
+      }
+      await sendEmailVerificationCode(token);
       createNotification({
         text: "Successfully resent code",
         type: "success"
