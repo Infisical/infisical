@@ -31,7 +31,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
     path: string,
     index: number,
     arr: string[],
-    isIntermiditate: boolean
+    isIntermediate: boolean
   ) => {
     return (
       <div
@@ -48,11 +48,11 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
           position="top"
           className="max-w-sm p-2"
           content={path}
-          isDisabled={!(path.length > 40) || isIntermiditate}
+          isDisabled={!(path.length > 40) || isIntermediate}
         >
           <div>
-            {isIntermiditate ? path : path.substring(0, 40)}
-            {path.length > 40 && !isIntermiditate ? "..." : ""}
+            {isIntermediate ? path : path.substring(0, 40)}
+            {path.length > 40 && !isIntermediate ? "..." : ""}
           </div>
         </Tooltip>
       </div>
@@ -70,12 +70,12 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
   const lastFolders = folderPaths
     .slice(-2)
     .map((item) => getFolderPathArrowComponent(item.path, item.index, item.arr, false));
-  const intermidiateFolders = folderPaths.length > 2 ? folderPaths.slice(0, -2) : [];
-  const intermidiateFoldersComponent = (
+  const intermediateFolders = folderPaths.length > 2 ? folderPaths.slice(0, -2) : [];
+  const intermediateFoldersComponent = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <div
-          key="secret-path-intermidiate"
+          key="secret-path-intermediate"
           className="breadcrumb relative z-20 cursor-pointer border-solid border-mineshaft-600 py-1 pl-5 pr-2 text-sm text-mineshaft-200"
           role="button"
           tabIndex={0}
@@ -92,7 +92,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
       >
         <div className="data-[highlighted]:bg-bunker-800">
           <div className="flex w-max flex-row gap-2 pr-3">
-            {intermidiateFolders.map((item) =>
+            {intermediateFolders.map((item) =>
               getFolderPathArrowComponent(item.path, item.index, item.arr, true)
             )}
           </div>
@@ -102,7 +102,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
   );
 
   const filteredFolders =
-    folderPaths.length > 2 ? [intermidiateFoldersComponent].concat(lastFolders) : lastFolders;
+    folderPaths.length > 2 ? [intermediateFoldersComponent].concat(lastFolders) : lastFolders;
 
   return (
     <div className="flex items-center space-x-2">
