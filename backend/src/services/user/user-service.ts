@@ -123,6 +123,7 @@ export const userServiceFactory = ({
 
     if (token?.aliasId) {
       const userAlias = await userAliasDAL.findOne({ userId: user.id, id: token.aliasId });
+      if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${token.aliasId}' not found` });
       if (userAlias?.isEmailVerified)
         throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
 
