@@ -31,7 +31,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
     path: string,
     index: number,
     arr: string[],
-    isIntermiditate: boolean
+    isIntermediate: boolean
   ) => {
     return (
       <div
