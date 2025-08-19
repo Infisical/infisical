@@ -99,12 +99,8 @@ export const getObjectFromSeconds = (
     return { value: totalSeconds / SECONDS_IN_MINUTE, unit: "m" };
   }
 
-  if (isUnitActive("s") && totalSeconds >= 1) {
-    return { value: totalSeconds, unit: "s" };
-  }
-
   return {
-    value: 0,
+    value: totalSeconds,
     unit: "s"
   };
 };
