@@ -7,8 +7,8 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useUpdateOrg } from "@app/hooks/api";
 import { durationToSeconds, getObjectFromSeconds } from "@app/helpers/datetime";
+import { useUpdateOrg } from "@app/hooks/api";
 
 const MAX_SHARED_SECRET_LIFETIME_SECONDS = 30 * 24 * 60 * 60; // 30 days in seconds
 const MIN_SHARED_SECRET_LIFETIME_SECONDS = 5 * 60; // 5 minutes in seconds

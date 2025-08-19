@@ -20,6 +20,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { durationToSeconds, getObjectFromSeconds } from "@app/helpers/datetime";
 import {
   useAddIdentityUniversalAuth,
   useGetIdentityUniversalAuth,
@@ -29,7 +30,6 @@ import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
-import { durationToSeconds, getObjectFromSeconds } from "@app/helpers/datetime";
 
 const schema = z
   .object({
@@ -96,7 +96,7 @@ const schema = z
     let isAnyParseError = false;
 
     const parsedLockoutDuration = parseInt(lockoutDurationValue, 10);
-    if (isNaN(parsedLockoutDuration)) {
+    if (Number.isNaN(parsedLockoutDuration)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Lockout duration must be a number",
@@ -106,7 +106,7 @@ const schema = z
     }
 
     const parsedLockoutCounterReset = parseInt(lockoutCounterResetValue, 10);
-    if (isNaN(parsedLockoutCounterReset)) {
+    if (Number.isNaN(parsedLockoutCounterReset)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Lockout counter reset must be a number",
@@ -195,12 +195,12 @@ export const IdentityUniversalAuthForm = ({
 
   const accessTokenPeriodValue = Number(watch("accessTokenPeriod"));
 
-  const lockoutEnabled = watch("lockoutEnabled");
-  const lockoutThreshold = watch("lockoutThreshold");
-  const lockoutDurationValue = watch("lockoutDurationValue");
-  const lockoutDurationUnit = watch("lockoutDurationUnit");
-  const lockoutCounterResetValue = watch("lockoutCounterResetValue");
-  const lockoutCounterResetUnit = watch("lockoutCounterResetUnit");
+  const lockoutEnabledWatch = watch("lockoutEnabled");
+  const lockoutThresholdWatch = watch("lockoutThreshold");
+  const lockoutDurationValueWatch = watch("lockoutDurationValue");
+  const lockoutDurationUnitWatch = watch("lockoutDurationUnit");
+  const lockoutCounterResetValueWatch = watch("lockoutCounterResetValue");
+  const lockoutCounterResetUnitWatch = watch("lockoutCounterResetUnit");
 
   const {
     fields: clientSecretTrustedIpsFields,
@@ -341,20 +341,25 @@ export const IdentityUniversalAuthForm = ({
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
-        setTabValue(
-          ["accessTokenTrustedIps", "clientSecretTrustedIps"].includes(Object.keys(fields)[0])
-            ? IdentityFormTab.Advanced
-            : [
-                  "lockoutEnabled",
-                  "lockoutThreshold",
-                  "lockoutDurationValue",
-                  "lockoutDurationUnit",
-                  "lockoutCounterResetValue",
-                  "lockoutCounterResetUnit"
-                ].includes(Object.keys(fields)[0])
-              ? IdentityFormTab.Lockout
-              : IdentityFormTab.Configuration
-        );
+        const firstErrorField = Object.keys(fields)[0];
+        let tab = IdentityFormTab.Configuration;
+
+        if (["accessTokenTrustedIps", "clientSecretTrustedIps"].includes(firstErrorField)) {
+          tab = IdentityFormTab.Advanced;
+        } else if (
+          [
+            "lockoutEnabled",
+            "lockoutThreshold",
+            "lockoutDurationValue",
+            "lockoutDurationUnit",
+            "lockoutCounterResetValue",
+            "lockoutCounterResetUnit"
+          ].includes(firstErrorField)
+        ) {
+          tab = IdentityFormTab.Lockout;
+        }
+
+        setTabValue(tab);
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
@@ -435,11 +440,11 @@ export const IdentityUniversalAuthForm = ({
             <Controller
               control={control}
               name="lockoutEnabled"
-              defaultValue={true}
+              defaultValue
               render={({ field: { value, onChange }, fieldState: { error } }) => {
                 return (
                   <FormControl
-                    helperText={`The lockout feature will prevent login attempts for ${lockoutDurationValue}${lockoutDurationUnit} after ${lockoutThreshold} consecutive login failures. If ${lockoutCounterResetValue}${lockoutCounterResetUnit} pass after the most recent failure, the lockout counter resets.`}
+                    helperText={`The lockout feature will prevent login attempts for ${lockoutDurationValueWatch}${lockoutDurationUnitWatch} after ${lockoutThresholdWatch} consecutive login failures. If ${lockoutCounterResetValueWatch}${lockoutCounterResetUnitWatch} pass after the most recent failure, the lockout counter resets.`}
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
@@ -464,7 +469,7 @@ export const IdentityUniversalAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className={`mb-0 flex-grow ${lockoutEnabled ? "" : "opacity-70"}`}
+                      className={`mb-0 flex-grow ${lockoutEnabledWatch ? "" : "opacity-70"}`}
                       label="Lockout Threshold"
                       isError={Boolean(error)}
                       errorText={error?.message}
@@ -473,7 +478,7 @@ export const IdentityUniversalAuthForm = ({
                       <Input
                         {...field}
                         placeholder="Enter lockout threshold..."
-                        isDisabled={!lockoutEnabled}
+                        isDisabled={!lockoutEnabledWatch}
                       />
                     </FormControl>
                   );
@@ -486,7 +491,7 @@ export const IdentityUniversalAuthForm = ({
                   render={({ field, fieldState: { error } }) => {
                     return (
                       <FormControl
-                        className={`mb-0 flex-grow ${lockoutEnabled ? "" : "opacity-70"}`}
+                        className={`mb-0 flex-grow ${lockoutEnabledWatch ? "" : "opacity-70"}`}
                         label="Lockout Duration"
                         isError={Boolean(error)}
                         errorText={error?.message}
@@ -495,7 +500,7 @@ export const IdentityUniversalAuthForm = ({
                         <Input
                           {...field}
                           placeholder="Enter lockout duration..."
-                          isDisabled={!lockoutEnabled}
+                          isDisabled={!lockoutEnabledWatch}
                         />
                       </FormControl>
                     );
@@ -506,12 +511,12 @@ export const IdentityUniversalAuthForm = ({
                   name="lockoutDurationUnit"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      className={`mb-0 ${lockoutEnabled ? "" : "opacity-70"}`}
+                      className={`mb-0 ${lockoutEnabledWatch ? "" : "opacity-70"}`}
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
                       <Select
-                        isDisabled={!lockoutEnabled}
+                        isDisabled={!lockoutEnabledWatch}
                         value={field.value}
                         className="min-w-32 pr-2"
                         onValueChange={field.onChange}
@@ -553,7 +558,7 @@ export const IdentityUniversalAuthForm = ({
                   render={({ field, fieldState: { error } }) => {
                     return (
                       <FormControl
-                        className={`mb-0 flex-grow ${lockoutEnabled ? "" : "opacity-70"}`}
+                        className={`mb-0 flex-grow ${lockoutEnabledWatch ? "" : "opacity-70"}`}
                         label="Lockout Counter Reset"
                         isError={Boolean(error)}
                         errorText={error?.message}
@@ -562,7 +567,7 @@ export const IdentityUniversalAuthForm = ({
                         <Input
                           {...field}
                           placeholder="Enter lockout counter reset..."
-                          isDisabled={!lockoutEnabled}
+                          isDisabled={!lockoutEnabledWatch}
                         />
                       </FormControl>
                     );
@@ -573,12 +578,12 @@ export const IdentityUniversalAuthForm = ({
                   name="lockoutCounterResetUnit"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      className={`mb-0 ${lockoutEnabled ? "" : "opacity-70"}`}
+                      className={`mb-0 ${lockoutEnabledWatch ? "" : "opacity-70"}`}
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
                       <Select
-                        isDisabled={!lockoutEnabled}
+                        isDisabled={!lockoutEnabledWatch}
                         value={field.value}
                         className="min-w-32 pr-2"
                         onValueChange={field.onChange}

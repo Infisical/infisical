@@ -1,7 +1,11 @@
-import { faArrowsRotate, faBan, faCheck, faCopy, faFire } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
+import { faBan, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import {
   useClearIdentityUniversalAuthLockouts,
@@ -14,10 +18,6 @@ import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { IdentityUniversalAuthClientSecretsTable } from "./IdentityUniversalAuthClientSecretsTable";
 import { ViewAuthMethodProps } from "./types";
 import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
-import { OrgPermissionCan } from "@app/components/permissions";
-import { createNotification } from "@app/components/notifications";
-import { useState } from "react";
 
 export const ViewIdentityUniversalAuthContent = ({
   identityId,
@@ -119,7 +119,7 @@ export const ViewIdentityUniversalAuthContent = ({
             <Button
               isDisabled={!isAllowed || !lockedOutState || isClearLockoutsPending}
               size="xs"
-              onClick={clearLockouts}
+              onClick={() => clearLockouts()}
               isLoading={isClearLockoutsPending}
               colorSchema="secondary"
             >
