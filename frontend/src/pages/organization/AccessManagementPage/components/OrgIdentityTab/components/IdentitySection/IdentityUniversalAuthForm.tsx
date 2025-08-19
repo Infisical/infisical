@@ -390,6 +390,7 @@ export const IdentityUniversalAuthForm = ({
                     label="Lockout Threshold"
                     isError={Boolean(error)}
                     errorText={error?.message}
+                    tooltipText="The amount of times login must fail before locking the identity auth method"
                   >
                     <Input {...field} placeholder="3" isDisabled={!lockoutEnabled} />
                   </FormControl>
@@ -406,6 +407,7 @@ export const IdentityUniversalAuthForm = ({
                     label="Lockout Duration (seconds)"
                     isError={Boolean(error)}
                     errorText={error?.message}
+                    tooltipText="How long an identity auth method lockout lasts"
                   >
                     <Input {...field} placeholder="300" isDisabled={!lockoutEnabled} />
                   </FormControl>
@@ -422,6 +424,7 @@ export const IdentityUniversalAuthForm = ({
                     label="Lockout Counter Reset (seconds)"
                     isError={Boolean(error)}
                     errorText={error?.message}
+                    tooltipText="How long to wait from the most recent failed login until resetting the lockout counter"
                   >
                     <Input {...field} placeholder="30" isDisabled={!lockoutEnabled} />
                   </FormControl>
