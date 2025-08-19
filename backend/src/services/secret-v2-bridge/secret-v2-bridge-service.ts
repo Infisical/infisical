@@ -1065,24 +1065,31 @@ export const secretV2BridgeServiceFactory = ({
 
     let paths: { folderId: string; path: string }[] = [];
 
+    // Split paths if multiple paths are provided, separated by commas
+    const pathList = path.split(",").map((p) => p.trim());
     if (recursive) {
-      const deepPaths = await recursivelyGetSecretPaths({
-        folderDAL,
-        projectEnvDAL,
-        projectId,
-        environment,
-        currentPath: path
-      });
-
-      if (!deepPaths) return { secrets: [], imports: [] };
-
-      paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
+      for(const currentPath of pathList){
+        const deepPaths = await recursivelyGetSecretPaths({
+          folderDAL,
+          projectEnvDAL,
+          projectId,
+          environment,
+          currentPath
+        });
+        if (!deepPaths) continue;
+        // concatenate each array returned from deepPaths.map to paths to get the final array.
+        paths = paths.concat(deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p })));
+      }
     } else {
-      const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-      if (!folder) return { secrets: [], imports: [] };
-
-      paths = [{ folderId: folder.id, path }];
+      for(const currentPath of pathList){
+        const folder = await folderDAL.findBySecretPath(projectId, environment, currentPath);
+        if (!folder) continue;
+        // push each path to the paths
+        paths.push({ folderId: folder.id, path });
+      }
     }
+
+    if(paths?.length === 0) return { secrets: [], imports: [] };
 
     const groupedPaths = groupBy(paths, (p) => p.folderId);
 
