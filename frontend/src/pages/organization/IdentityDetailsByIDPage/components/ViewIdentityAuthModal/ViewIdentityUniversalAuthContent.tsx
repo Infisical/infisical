@@ -120,13 +120,7 @@ export const ViewIdentityUniversalAuthContent = ({
               isDisabled={!isAllowed || !lockedOutState || isClearLockoutsPending}
               size="xs"
               onClick={clearLockouts}
-              leftIcon={
-                isClearLockoutsPending ? (
-                  <FontAwesomeIcon icon={faArrowsRotate} className="animate-spin" />
-                ) : (
-                  <FontAwesomeIcon icon={faFire} />
-                )
-              }
+              isLoading={isClearLockoutsPending}
               colorSchema="secondary"
             >
               Clear All Lockouts

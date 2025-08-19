@@ -8,62 +8,10 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
+import { durationToSeconds, getObjectFromSeconds } from "@app/helpers/datetime";
 
 const MAX_SHARED_SECRET_LIFETIME_SECONDS = 30 * 24 * 60 * 60; // 30 days in seconds
 const MIN_SHARED_SECRET_LIFETIME_SECONDS = 5 * 60; // 5 minutes in seconds
-
-// Helper function to convert duration to seconds
-const durationToSeconds = (value: number, unit: "m" | "h" | "d"): number => {
-  switch (unit) {
-    case "m":
-      return value * 60;
-    case "h":
-      return value * 60 * 60;
-    case "d":
-      return value * 60 * 60 * 24;
-    default:
-      return 0;
-  }
-};
-
-// Helper function to convert seconds to form lifetime value and unit
-const getFormLifetimeFromSeconds = (
-  totalSeconds: number | null | undefined
-): { maxLifetimeValue: number; maxLifetimeUnit: "m" | "h" | "d" } => {
-  const DEFAULT_LIFETIME_VALUE = 30;
-  const DEFAULT_LIFETIME_UNIT = "d" as "m" | "h" | "d";
-
-  if (totalSeconds == null || totalSeconds <= 0) {
-    return {
-      maxLifetimeValue: DEFAULT_LIFETIME_VALUE,
-      maxLifetimeUnit: DEFAULT_LIFETIME_UNIT
-    };
-  }
-
-  const secondsInDay = 24 * 60 * 60;
-  const secondsInHour = 60 * 60;
-  const secondsInMinute = 60;
-
-  if (totalSeconds % secondsInDay === 0) {
-    const value = totalSeconds / secondsInDay;
-    if (value >= 1) return { maxLifetimeValue: value, maxLifetimeUnit: "d" };
-  }
-
-  if (totalSeconds % secondsInHour === 0) {
-    const value = totalSeconds / secondsInHour;
-    if (value >= 1) return { maxLifetimeValue: value, maxLifetimeUnit: "h" };
-  }
-
-  if (totalSeconds % secondsInMinute === 0) {
-    const value = totalSeconds / secondsInMinute;
-    if (value >= 1) return { maxLifetimeValue: value, maxLifetimeUnit: "m" };
-  }
-
-  return {
-    maxLifetimeValue: DEFAULT_LIFETIME_VALUE,
-    maxLifetimeUnit: DEFAULT_LIFETIME_UNIT
-  };
-};
 
 const formSchema = z
   .object({
@@ -79,32 +27,18 @@ const formSchema = z
 
     const durationInSeconds = durationToSeconds(maxLifetimeValue, maxLifetimeUnit);
 
-    // Check max limit
     if (durationInSeconds > MAX_SHARED_SECRET_LIFETIME_SECONDS) {
-      let message = "Duration exceeds maximum allowed limit";
-
-      if (maxLifetimeUnit === "m") {
-        message = `Maximum allowed minutes is ${MAX_SHARED_SECRET_LIFETIME_SECONDS / 60} (30 days)`;
-      } else if (maxLifetimeUnit === "h") {
-        message = `Maximum allowed hours is ${MAX_SHARED_SECRET_LIFETIME_SECONDS / (60 * 60)} (30 days)`;
-      } else if (maxLifetimeUnit === "d") {
-        message = `Maximum allowed days is ${MAX_SHARED_SECRET_LIFETIME_SECONDS / (24 * 60 * 60)}`;
-      }
-
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message,
+        message: "Duration exceeds a maximum of 30 days",
         path: ["maxLifetimeValue"]
       });
     }
 
-    // Check min limit
     if (durationInSeconds < MIN_SHARED_SECRET_LIFETIME_SECONDS) {
-      const message = `Duration must be at least ${MIN_SHARED_SECRET_LIFETIME_SECONDS / 60} minutes`; // 5 minutes
-
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message,
+        message: "Duration must be at least 5 minutes",
         path: ["maxLifetimeValue"]
       });
     }
@@ -122,10 +56,14 @@ export const OrgSecretShareLimitSection = () => {
   const { currentOrg } = useOrganization();
 
   const getDefaultFormValues = () => {
-    const initialLifetime = getFormLifetimeFromSeconds(currentOrg?.maxSharedSecretLifetime);
+    const initialLifetime = getObjectFromSeconds(currentOrg?.maxSharedSecretLifetime, [
+      "m",
+      "h",
+      "d"
+    ]);
     return {
-      maxLifetimeValue: initialLifetime.maxLifetimeValue,
-      maxLifetimeUnit: initialLifetime.maxLifetimeUnit,
+      maxLifetimeValue: initialLifetime.value,
+      maxLifetimeUnit: initialLifetime.unit as "m" | "h" | "d",
       maxViewLimit: currentOrg?.maxSharedSecretViewLimit?.toString() || "1",
       shouldLimitView: Boolean(currentOrg?.maxSharedSecretViewLimit)
     };
