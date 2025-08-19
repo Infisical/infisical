@@ -40,14 +40,20 @@ export const ViewIdentityUniversalAuthContent = ({
   });
 
   async function clearLockouts() {
-    const deleted = await clearLockoutsFn({ identityId });
-
-    createNotification({
-      text: `Successfully cleared ${deleted} lockout${deleted === 1 ? "" : "s"}`,
-      type: "success"
-    });
-
-    setLockedOutState(false);
+    try {
+      const deleted = await clearLockoutsFn({ identityId });
+      createNotification({
+        text: `Successfully cleared ${deleted} lockout${deleted === 1 ? "" : "s"}`,
+        type: "success"
+      });
+      setLockedOutState(false);
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to clear lockouts. Please try again.",
+        type: "error"
+      });
+    }
   }
 
   if (isPending || clientSecretsPending) {

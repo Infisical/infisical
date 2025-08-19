@@ -305,7 +305,7 @@ export const useClearIdentityUniversalAuthLockouts = () => {
     },
     onSuccess: (_, { identityId }) => {
       queryClient.invalidateQueries({
-        queryKey: identitiesKeys.clearIdentityUniversalAuthLockouts(identityId)
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
       });
     }
   });

@@ -49,9 +49,7 @@ export const identitiesKeys = {
   getIdentityTokensTokenAuth: (identityId: string) =>
     [{ identityId }, "identity-tokens-token-auth"] as const,
   getIdentityProjectMemberships: (identityId: string) =>
-    [{ identityId }, "identity-project-memberships"] as const,
-  clearIdentityUniversalAuthLockouts: (identityId: string) =>
-    [{ identityId }, "clear-identity-universal-auth-lockouts"] as const
+    [{ identityId }, "identity-project-memberships"] as const
 };
 
 export const useGetIdentityById = (identityId: string) => {

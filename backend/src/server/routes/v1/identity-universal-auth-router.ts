@@ -638,7 +638,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string().describe(UNIVERSAL_AUTH.REVOKE_CLIENT_SECRET.identityId)
+        identityId: z.string().describe(UNIVERSAL_AUTH.CLEAR_CLIENT_LOCKOUTS.identityId)
       }),
       response: {
         200: z.object({

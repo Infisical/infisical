@@ -209,6 +209,9 @@ export const UNIVERSAL_AUTH = {
     identityId: "The ID of the identity to revoke the client secret from.",
     clientSecretId: "The ID of the client secret to revoke."
   },
+  CLEAR_CLIENT_LOCKOUTS: {
+    identityId: "The ID of the identity to clear the client lockouts from."
+  },
   RENEW_ACCESS_TOKEN: {
     accessToken: "The access token to renew."
   },
