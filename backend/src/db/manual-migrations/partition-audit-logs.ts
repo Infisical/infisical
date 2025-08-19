@@ -84,6 +84,9 @@ const up = async (knex: Knex): Promise<void> => {
       t.index("expiresAt");
       t.index("orgId");
       t.index("projectId");
+      t.index("eventType");
+      t.index("userAgentType");
+      t.index("actor");
     });
 
     console.log("Adding GIN indices...");
@@ -119,8 +122,8 @@ const up = async (knex: Knex): Promise<void> => {
     console.log("Creating audit log partitions ahead of time... next date:", nextDateStr);
     await createAuditLogPartition(knex, nextDate, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1));
 
-    // create partitions 4 years ahead
-    const partitionMonths = 4 * 12;
+    // create partitions 20 years ahead
+    const partitionMonths = 20 * 12;
     const partitionPromises: Promise<void>[] = [];
     for (let x = 1; x <= partitionMonths; x += 1) {
       partitionPromises.push(
