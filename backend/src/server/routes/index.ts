@@ -142,6 +142,8 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { bridgeDALFactory } from "@app/services/bridge/bridge-dal";
+import { bridgeServiceFactory } from "@app/services/bridge/bridge-service";
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -315,8 +317,6 @@ import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
-import { bridgeDALFactory } from "@app/services/bridge/bridge-dal";
-import { bridgeServiceFactory } from "@app/services/bridge/bridge-service";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -1970,8 +1970,8 @@ export const registerRoutes = async (
     bridgeDAL,
     projectDAL
   });
-  // TODO(andrey): Remove Temp
-  const apiShieldService = apiShieldServiceFactory({ temp: undefined });
+
+  const apiShieldService = apiShieldServiceFactory({ auditLogService, bridgeService, projectRoleDAL });
 
   // setup the communication with license key server
   await licenseService.init();

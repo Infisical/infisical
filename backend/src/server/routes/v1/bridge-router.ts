@@ -1,8 +1,11 @@
 import { z } from "zod";
+
+import { BridgeSchema } from "@app/db/schemas";
+import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { readLimit } from "@app/server/config/rateLimiter";
-import { BridgeSchema } from "@app/db/schemas";
+import { ApiShieldRules } from "@app/services/api-shield/api-shield-types";
+import { ApiShieldRulesSchema } from "@app/services/api-shield/api-shield-schemas";
 
 const BridgeRuleSchema = z.object({
   field: z.string(),
@@ -52,7 +55,7 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
         baseUrl: req.body.baseUrl,
         openApiUrl: req.body.openApiUrl,
         slug: req.body.slug,
-        headers: req.body.headers,
+        headers: req.body.headers || [],
         ruleSet: req.body.ruleSet
       });
 
@@ -180,6 +183,69 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
       });
 
       return { bridge };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:bridgeId/generate-rules",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        bridgeId: z.string()
+      }),
+      body: z.object({
+        prompt: z.string()
+      }),
+      response: {
+        200: ApiShieldRulesSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const bridge = await server.services.bridge.getById({
+        id: req.params.bridgeId
+      });
+
+      const logs = server.services.apiShield.getRequestLogs(); // TODO(andrey): Fetch these from DB
+      const rules = await server.services.apiShield.generateRules({
+        prompt: req.body.prompt,
+        currentRules: (bridge.ruleSet || []) as ApiShieldRules,
+        logs,
+        projectId: bridge.projectId
+      });
+      return rules;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:bridgeId/run-daily-cron",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        bridgeId: z.string()
+      }),
+      response: {
+        200: ApiShieldRulesSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { bridgeId } = req.params;
+
+      const rules = await server.services.apiShield.runDailyCron({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        bridgeId
+      });
+      return rules;
     }
   });
 };

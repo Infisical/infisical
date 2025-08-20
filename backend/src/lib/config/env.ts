@@ -327,7 +327,10 @@ const envSchema = z
     ),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
-    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
+
+    /* AI ----------------------------------------------------------------------------- */
+    GEMINI_API_KEY: zpStr(z.string().optional())
   })
   // To ensure that basic encryption is always possible.
   .refine(

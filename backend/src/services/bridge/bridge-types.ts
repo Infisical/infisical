@@ -39,3 +39,8 @@ export type TListBridgeDTO = {
 export type TGetBridgeDTO = {
   id: string;
 };
+
+export type TGetBridgeBySlugDTO = {
+  projectId: string;
+  slug: string;
+};

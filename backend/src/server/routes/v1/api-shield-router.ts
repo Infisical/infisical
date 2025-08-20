@@ -6,49 +6,25 @@ import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApiShieldRulesSchema } from "@app/services/api-shield/api-shield-schemas";
+import { ApiShieldRules } from "@app/services/api-shield/api-shield-types";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ActionProjectType } from "@app/db/schemas";
 
 const allowedRequestMethods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"] as const;
 type TAllowedRequestMethods = (typeof allowedRequestMethods)[number];
 
 export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
   server.route({
-    method: "POST",
-    url: "/generate-rules",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      querystring: z.object({
-        url: z.string()
-      }),
-      body: z.object({
-        prompt: z.string()
-      }),
-      response: {
-        200: ApiShieldRulesSchema
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const currentRules = server.services.apiShield.getCurrentRules();
-      const logs = server.services.apiShield.getRequestLogs();
-      const rules = await server.services.apiShield.generateRules({
-        prompt: req.body.prompt,
-        currentRules,
-        logs
-      });
-      return rules;
-    }
-  });
-
-  server.route({
     method: [...allowedRequestMethods],
-    url: "/request/:slug",
+    url: "/request/:projectId/:slug",
     config: {
       rateLimit: writeLimit
     },
     schema: {
+      params: z.object({
+        projectId: z.string(),
+        slug: z.string()
+      }),
       querystring: z.object({
         uri: z.string()
       }),
@@ -59,17 +35,39 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       const { uri } = req.query;
+      const { slug, projectId } = req.params;
+
+      // TODO(andrey): Verify user is in project (and possibly add perm checks)
+
+      const bridge = await server.services.bridge.getBySlug({
+        projectId,
+        slug
+      });
 
       let targetUrlObj: URL;
       try {
         const decodedTargetUri = decodeURIComponent(uri);
-        targetUrlObj = new URL(decodedTargetUri, "https://whatsmyip.dev"); // TODO(andrey): Inject base URL from DB
+        targetUrlObj = new URL(decodedTargetUri, bridge.baseUrl);
       } catch (e) {
-        throw new Error(`Invalid URL slug provided: ${uri}. Error: ${e instanceof Error ? e.message : String(e)}`);
+        throw new Error(`Invalid bridge ID provided: ${uri}. Error: ${e instanceof Error ? e.message : String(e)}`);
       }
 
-      // TODO(andrey): Fetch rules from bridge via database (use slug)
-      const currentRules = server.services.apiShield.getCurrentRules();
+      if (!bridge.ruleSet) {
+        throw new UnauthorizedError();
+      }
+
+      const currentRules = bridge.ruleSet as ApiShieldRules;
+
+      const perm = await server.services.permission.getProjectPermission({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId,
+        actionProjectType: ActionProjectType.ApiShield
+      });
+
+      perm.
 
       // checkRequestPassesRules is synchronous, so no await is needed.
       const passed = server.services.apiShield.checkRequestPassesRules({
@@ -78,7 +76,8 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
         requestMethod: req.method,
         // TODO(andrey): Also support query params
         uriPath: targetUrlObj.pathname,
-        userAgent: req.headers["user-agent"] || ""
+        userAgent: req.headers["user-agent"] || "",
+        roles: perm.membership.roles.map((v) => v.role)
       });
 
       if (!passed) {
@@ -104,8 +103,9 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      // TODO(andrey): Inject auth header from bridge object in DB
-      headersToSend.Authorization = "Bearer FAKE_INTERNAL_API_SHIELD_TOKEN";
+      for (const header of bridge.headers) {
+        headersToSend[header.key] = header.value;
+      }
 
       const requestOptions: {
         method: TAllowedRequestMethods;
@@ -155,25 +155,6 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return axiosResponse.data;
-    }
-  });
-
-  // TODO(andrey): Remove -- Debug only
-  server.route({
-    method: "POST",
-    url: "/run-daily-cron",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      response: {
-        200: ApiShieldRulesSchema
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async () => {
-      const rules = await server.services.apiShield.runDailyCron();
-      return rules;
     }
   });
 };

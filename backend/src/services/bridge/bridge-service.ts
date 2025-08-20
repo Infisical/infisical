@@ -6,7 +6,14 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TBridgeDALFactory } from "./bridge-dal";
-import { TCreateBridgeDTO, TGetBridgeDTO, TListBridgeDTO, TUpdateBridgeDTO, TDeleteBridgeDTO } from "./bridge-types";
+import {
+  TCreateBridgeDTO,
+  TDeleteBridgeDTO,
+  TGetBridgeBySlugDTO,
+  TGetBridgeDTO,
+  TListBridgeDTO,
+  TUpdateBridgeDTO
+} from "./bridge-types";
 
 type TBridgeServiceFactoryDep = {
   bridgeDAL: TBridgeDALFactory;
@@ -165,11 +172,32 @@ export const bridgeServiceFactory = ({
     return { ...bridge, headers };
   };
 
+  const getBySlug = async ({ slug, projectId }: TGetBridgeBySlugDTO) => {
+    const bridge = await bridgeDAL.findOne({ projectId, slug });
+    if (!bridge) throw new NotFoundError({ message: `Bridge with slug '${slug}' not found in project '${projectId}'` });
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: bridge.projectId
+    });
+
+    const headers = bridge.encryptedHeaders
+      ? (JSON.parse(
+          secretManagerDecryptor({
+            cipherTextBlob: Buffer.from(bridge.encryptedHeaders)
+          }).toString()
+        ) as { key: string; value: string }[])
+      : [];
+
+    return { ...bridge, headers };
+  };
+
   return {
     create,
     updateById,
     deleteById,
     listByProjectId,
-    getById
+    getById,
+    getBySlug
   };
 };

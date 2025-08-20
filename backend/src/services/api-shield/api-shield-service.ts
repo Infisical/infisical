@@ -1,27 +1,34 @@
 import RE2 from "re2";
 
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { TBridgeServiceFactory } from "../bridge/bridge-service";
+import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { ApiShieldRuleFieldSchema, ApiShieldRuleOperatorSchema } from "./api-shield-schemas";
 import { ApiShieldRules } from "./api-shield-types";
 
-const GEMINI_API_KEY = "AIzaSyDZrBJas1HBuRx75IEdG4tmArupFGI2GQI"; // TODO(andrey): Move somewhere else
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 type TApiShieldServiceFactoryDep = {
-  temp: undefined; // TODO(andrey): Remove
+  auditLogService: Pick<TAuditLogServiceFactory, "listAuditLogs">;
+  bridgeService: Pick<TBridgeServiceFactory, "getById">;
+  projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
 };
 
 export type TApiShieldServiceFactory = ReturnType<typeof apiShieldServiceFactory>;
 
 export const apiShieldServiceFactory = ({
-  temp // TODO(andrey): Remove
+  auditLogService,
+  bridgeService,
+  projectRoleDAL
 }: TApiShieldServiceFactoryDep) => {
   const getCurrentRules = (): ApiShieldRules => {
-    // TODO(andrey): Fetch from DB
-
     return [
       [
         {
@@ -39,8 +46,6 @@ export const apiShieldServiceFactory = ({
   };
 
   const getRequestLogs = () => {
-    // TODO(andrey): Fetch from DB
-
     return [
       {
         method: "GET",
@@ -99,9 +104,12 @@ export const apiShieldServiceFactory = ({
   const generateRules = async ({
     prompt,
     currentRules,
-    logs
+    logs,
+    swaggerJson,
+    projectId
   }: {
     prompt: string;
+    swaggerJson?: object;
     currentRules?: ApiShieldRules;
     logs?: {
       method: string;
@@ -110,18 +118,21 @@ export const apiShieldServiceFactory = ({
       result?: string;
       body?: Record<string, string | undefined>;
     }[];
+    projectId: string;
   }) => {
-    const swaggerJson = {
-      "/api/users": ["get", "post"],
-      "/api/users/{id}": ["get", "put", "delete"],
-      "/api/posts": ["get", "post"]
-    }; // TODO(andrey): Fetch from DB
-    const projectRoles = ["Admin", "Dev", "Member"]; // TODO(andrey): Fetch from DB
+    const appCfg = getConfig();
+
+    if (!appCfg.GEMINI_API_KEY) {
+      throw new InternalServerError({ message: "GEMINI_API_KEY env variable not configured" });
+    }
+
+    const projectRoles = projectRoleDAL.find({
+      projectId
+    });
 
     const systemInstructionText = `You are an API security rule generator.
 ${currentRules ? `\nCURRENT RULES:\n${JSON.stringify(currentRules)}\n` : ""}
-API SCHEMA CONTEXT:
-${JSON.stringify(swaggerJson)}
+${swaggerJson ? `\nAPI SCHEMA CONTEXT:\n${JSON.stringify(swaggerJson)}\n` : ""}
 ${logs ? `\nRECENT REQUEST LOGS:\n${JSON.stringify(logs)}\n` : ""}
 ROLES:
 ${JSON.stringify(projectRoles)}
@@ -183,7 +194,7 @@ RULE GENERATION GUIDELINES:
         {
           headers: {
             "Content-Type": "application/json",
-            "x-goog-api-key": GEMINI_API_KEY
+            "x-goog-api-key": appCfg.GEMINI_API_KEY
           }
         }
       );
@@ -203,18 +214,46 @@ RULE GENERATION GUIDELINES:
     }
   };
 
-  const runDailyCron = async () => {
-    const logs = getRequestLogs(); // TODO(andrey): Get the most recent ~500 logs
+  const runDailyCron = async ({
+    actor,
+    actorAuthMethod,
+    actorId,
+    actorOrgId,
+    bridgeId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorOrgId: string;
+    actorAuthMethod: ActorAuthMethod;
+    bridgeId: string;
+  }) => {
+    const bridge = await bridgeService.getById({ id: bridgeId });
+
+    const logs = await auditLogService.listAuditLogs({
+      actor,
+      actorAuthMethod,
+      actorId,
+      actorOrgId,
+      filter: {
+        projectId: bridge.projectId,
+        limit: 500,
+        endDate: new Date().toISOString(),
+        startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString()
+      }
+    });
+
+    // TODO(andrey): Filter logs and strip them down to essentials
+
     const currentRules = getCurrentRules(); // TODO(andrey): Get most recent shadow rules
 
     const rules = await generateRules({
       prompt:
         "Adjust or expand the current rules to account for the provided logs in a way where any new requests that fall outside of the current rules or logs would not pass",
       currentRules,
-      logs: logs.map((v) => ({ method: v.method, url: v.url, headers: v.headers, body: v.body }))
+      logs
     });
 
-    // TODO(andrey): Update bridge rules in DB
+    // TODO(andrey): Update bridge shadow rules in DB
 
     return rules;
   };
@@ -224,13 +263,15 @@ RULE GENERATION GUIDELINES:
     uriPath,
     userAgent,
     ip,
-    rules
+    rules,
+    roles
   }: {
     requestMethod: string;
     uriPath: string;
     userAgent: string;
     ip: string;
     rules: ApiShieldRules;
+    roles: string[];
   }): boolean => {
     // If no rules are defined, the request does not pass
     if (rules.length === 0) return false;
@@ -260,7 +301,7 @@ RULE GENERATION GUIDELINES:
             requestValue = ip;
             break;
           case "role":
-            requestValue = "Admin"; // TODO(andrey): Get from request identity
+            requestValue = roles.find((v) => v === value);
             break;
           default:
             logger.warn(`checkRequestPassesRules: Unknown rule field encountered: ${field}`);
@@ -336,7 +377,6 @@ RULE GENERATION GUIDELINES:
   };
 
   return {
-    getCurrentRules,
     getRequestLogs,
     generateRules,
     runDailyCron,

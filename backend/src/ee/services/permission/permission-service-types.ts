@@ -175,6 +175,9 @@ export type TPermissionServiceFactory = {
           permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
           membership: {
             shouldUseNewPrivilegeSystem: boolean;
+            roles: Array<{
+              role: string;
+            }>;
           };
           hasRole: (arg: string) => boolean;
         }
