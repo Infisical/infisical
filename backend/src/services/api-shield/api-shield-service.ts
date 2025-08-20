@@ -13,6 +13,7 @@ import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { ApiShieldRuleFieldSchema, ApiShieldRuleOperatorSchema } from "./api-shield-schemas";
 import { ApiShieldRequestLog, ApiShieldRules } from "./api-shield-types";
 
+const DAILY_SHADOW_TRAINING_PERIOD = 5; // 5 seconds (for prod use ~7 days)
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -263,7 +264,11 @@ export const apiShieldServiceFactory = ({
   }) => {
     const bridge = await bridgeService.getById({ id: bridgeId });
 
-    // Shadow Rule Generator
+    let shadowRuleSet;
+    let dailyInsightText;
+    let dailySuggestionText;
+    let dailySuggestionRuleSet;
+
     const logs = await getRequestLogs({
       actor,
       actorAuthMethod,
@@ -274,21 +279,22 @@ export const apiShieldServiceFactory = ({
       bridgeId: bridge.id
     });
 
-    const res = await generateRules({
-      prompt:
-        "Adjust or expand the current rules to account for the provided logs in a way where any new requests that fall outside of the current rules or logs would not pass",
-      currentRules: bridge.shadowRuleSet as ApiShieldRules | undefined,
-      logs: logs.map((v) => ({
-        ...v,
-        suspicious: undefined,
-        result: undefined
-      })),
-      projectId: bridge.projectId
-    });
+    // Shadow Rule Generator
+    if (new Date().getTime() > new Date(bridge.createdAt).getTime() + DAILY_SHADOW_TRAINING_PERIOD * 1000) {
+      const res = await generateRules({
+        prompt:
+          "Adjust or expand the current rules to account for the provided logs in a way where any new requests that fall outside of the current rules or logs would not pass",
+        currentRules: bridge.shadowRuleSet as ApiShieldRules | undefined,
+        logs: logs.map((v) => ({
+          ...v,
+          suspicious: undefined,
+          result: undefined
+        })),
+        projectId: bridge.projectId
+      });
 
-    let dailyInsightText;
-    let dailySuggestionText;
-    let dailySuggestionRuleSet;
+      shadowRuleSet = JSON.stringify(res.rules);
+    }
 
     // Suggestion Generator
     if (bridge.dailySuggestionEnabled) {
@@ -305,7 +311,7 @@ export const apiShieldServiceFactory = ({
     }
 
     await bridgeDAL.updateById(bridge.id, {
-      shadowRuleSet: JSON.stringify(res.rules),
+      shadowRuleSet,
       dailyInsightText,
       dailySuggestionText,
       dailySuggestionRuleSet: dailySuggestionRuleSet ? JSON.stringify(dailySuggestionRuleSet) : undefined
