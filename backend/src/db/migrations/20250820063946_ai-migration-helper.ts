@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   const hasMigratingFromColumn = await knex.schema.hasColumn(TableName.Organization, "migratingFrom");
@@ -13,6 +14,8 @@ export async function up(knex: Knex): Promise<void> {
       table.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       table.string("organizationId").notNullable();
       table.string("userId").notNullable();
+
+      table.timestamps(true, true, true);
     });
   }
 
@@ -24,6 +27,8 @@ export async function up(knex: Knex): Promise<void> {
 
       table.uuid("conversationId").notNullable();
       table.foreign("conversationId").references("id").inTable(TableName.Conversation).onDelete("SET NULL");
+
+      table.timestamps(true, true, true);
     });
   }
 
@@ -32,6 +37,9 @@ export async function up(knex: Knex): Promise<void> {
       table.string("migratingFrom").nullable();
     });
   }
+
+  await createOnUpdateTrigger(knex, TableName.Conversation);
+  await createOnUpdateTrigger(knex, TableName.ConversationMessages);
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -43,6 +51,8 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
+  await dropOnUpdateTrigger(knex, TableName.Conversation);
+  await dropOnUpdateTrigger(knex, TableName.ConversationMessages);
   await knex.schema.dropTableIfExists(TableName.ConversationMessages);
   await knex.schema.dropTableIfExists(TableName.Conversation);
 }

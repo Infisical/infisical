@@ -11,7 +11,9 @@ export const ConversationMessagesSchema = z.object({
   id: z.string().uuid(),
   message: z.string(),
   senderType: z.string(),
-  conversationId: z.string().uuid()
+  conversationId: z.string().uuid(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TConversationMessages = z.infer<typeof ConversationMessagesSchema>;

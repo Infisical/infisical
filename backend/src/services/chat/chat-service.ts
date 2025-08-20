@@ -194,7 +194,9 @@ ${orgDetails.migratingFrom ? `- (IMPORTANT): The user has indicated that they ar
       ? respContent.annotations
           .filter((a) => a.type === "url_citation")
           .map((a) => ({
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             title: a.title,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             url: a.url.replace("?utm_source=openai", "")
           }))
       : [];
@@ -251,14 +253,52 @@ ${orgDetails.migratingFrom ? `- (IMPORTANT): The user has indicated that they ar
       conversationId: conversation.id,
       message: formattedMessage,
       citations: citations.filter(
-        (c: any, index: number, self: any[]) =>
-          index === self.findIndex((t: any) => t.url === c.url && t.title === c.title)
+        (c, index, self) => index === self.findIndex((t) => t.url === c.url && t.title === c.title)
       )
     };
   };
 
+  const analyzeAiQueries = async () => {
+    const aiQueries = await conversationDAL.find({});
+
+    const firstQueries = await conversationMessagesDAL.find(
+      {
+        $in: {
+          conversationId: aiQueries.map((q) => q.id)
+        },
+        senderType: "user"
+      },
+      {
+        sort: [["createdAt", "asc"]]
+      }
+    );
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `
+          You are a professional analyzer. The user will provide you with a list of all the questions that users have been asking about Infisical.
+
+          Your job is to analyze the questions and determine the most common questions that users are asking about Infisical, to determine which parts of Infisical needs a better developer experience or better documentation. 
+
+          If there isn't enough data to determine which parts of Infisical, you should still provide a response, but make it very clear that there isn't enough data to derive a conclusive answer.
+
+
+          Do not format the response. Just provide a very short and breif response as a human would write it. ZERO formatting, ZERO markdown, ZERO html, ZERO code blocks, ZERO lists, ZERO nothing. Just a plain text message.
+          `
+        },
+        { role: "user", content: firstQueries.map((q, i) => `Question ${i + 1}: ${q.message}`).join("\n\n") }
+      ]
+    });
+
+    return completion.choices[0].message?.content ?? "";
+  };
+
   return {
     createChat,
-    convertMdxToSimpleHtml
+    convertMdxToSimpleHtml,
+    analyzeAiQueries
   };
 };

@@ -48,4 +48,27 @@ export const registerChatRouter = async (server: FastifyZodProvider) => {
       return response;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/analyze",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          analysis: z.string().describe("The analysis of the questions")
+        })
+      }
+    },
+
+    handler: async () => {
+      const response = await server.services.chat.analyzeAiQueries();
+
+      return {
+        analysis: response
+      };
+    }
+  });
 };

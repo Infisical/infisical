@@ -10,7 +10,9 @@ import { TImmutableDBKeys } from "./models";
 export const ConversationsSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string(),
-  userId: z.string()
+  userId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TConversations = z.infer<typeof ConversationsSchema>;
