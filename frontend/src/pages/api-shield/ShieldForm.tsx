@@ -1,8 +1,7 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faSave, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -10,14 +9,21 @@ import { Button, FormControl, FormLabel, IconButton, Input } from "@app/componen
 import { useWorkspace } from "@app/context";
 import {
   useCreateBridge,
-  TBridgeHeader,
   bridgeQueryKeys,
-  useUpdateBridge
+  useUpdateBridge,
+  BridgeRuleOperator
 } from "@app/hooks/api/bridge";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 const formSchema = z.object({
-  slug: z.string().min(1, "Bridge name is required"),
+  slug: z
+    .string()
+    .min(1, "External API slug is required")
+    .regex(
+      /^[a-z0-9-]+$/,
+      "Slug must only contain lowercase letters, numbers, and hyphens, without spaces"
+    ),
   baseUrl: z.string().url("Base URL must be a valid URL"),
   openApiUrl: z.string().url("OpenAPI URL must be a valid URL"),
   headers: z
@@ -42,22 +48,27 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
   const isCreate = !id;
   const { currentWorkspace } = useWorkspace();
   const projectId = currentWorkspace?.id || "";
-  const { data: bridgeDetails, isPending } = useQuery({
+  const { data: bridgeDetails } = useQuery({
     ...bridgeQueryKeys.byId(id || ""),
     enabled: Boolean(id)
   });
 
   const form = useForm<TFormSchema>({
-    resolver: zodResolver(formSchema),
-    values: isCreate
-      ? {
-          slug: "",
-          baseUrl: "",
-          openApiUrl: "",
-          headers: []
-        }
-      : bridgeDetails
+    resolver: zodResolver(formSchema)
   });
+
+  useEffect(() => {
+    form.reset(
+      isCreate
+        ? {
+            slug: "",
+            baseUrl: "",
+            openApiUrl: "",
+            headers: []
+          }
+        : bridgeDetails
+    );
+  }, [bridgeDetails]);
 
   const {
     control,
@@ -86,7 +97,7 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
             [
               {
                 field: "uriPath",
-                operator: "wildcard",
+                operator: BridgeRuleOperator.WILDCARD,
                 value: "*"
               }
             ]
@@ -104,7 +115,7 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
 
       createNotification({
         type: "success",
-        text: "Bridge created successfully"
+        text: "External API created successfully"
       });
 
       onSuccess?.();
@@ -112,7 +123,7 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
       console.error(err);
       createNotification({
         type: "error",
-        text: "Failed to create Bridge"
+        text: "Failed to create External API"
       });
     }
   };
@@ -125,11 +136,11 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
           name="slug"
           render={({ field }) => (
             <FormControl
-              label="Bridge Name"
+              label="External API Slug"
               isError={Boolean(errors.slug)}
               errorText={errors.slug?.message}
             >
-              <Input {...field} placeholder="Enter bridge name" />
+              <Input {...field} placeholder="Enter external API slug" />
             </FormControl>
           )}
         />
@@ -222,13 +233,8 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
             Cancel
           </Button>
         )}
-        <Button
-          type="submit"
-          isDisabled={!isDirty || isSubmitting}
-          isLoading={isSubmitting}
-          leftIcon={<FontAwesomeIcon icon={faSave} />}
-        >
-          {isCreate ? "Create " : "Update "}Shield
+        <Button type="submit" isDisabled={!isDirty || isSubmitting} isLoading={isSubmitting}>
+          {isCreate ? "Create " : "Update "}External API
         </Button>
       </div>
     </form>

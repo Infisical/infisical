@@ -1,5 +1,13 @@
 import { Controller, useFieldArray, useForm, Control, FieldErrors } from "react-hook-form";
-import { faMagic, faPlus, faSave, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faMagic,
+  faMagicWandSparkles,
+  faPlus,
+  faRightFromBracket,
+  faSave,
+  faTrash,
+  faWandMagicSparkles
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
@@ -73,10 +81,19 @@ type RuleSetEditorProps = {
   control: Control<TFormSchema>;
   errors: FieldErrors<TFormSchema>;
   removeRuleSet: (index: number) => void;
+  totalRuleSets: number; // Added to know if it's the last OR block
+  defaultRule: TBridgeRule; // Added for resetting the last rule
 };
 
 // Component for managing individual rules within a rule set
-const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSetEditorProps) => {
+const RuleSetEditor = ({
+  ruleSetIndex,
+  control,
+  errors,
+  removeRuleSet,
+  totalRuleSets,
+  defaultRule
+}: RuleSetEditorProps) => {
   const {
     fields: ruleFields,
     append: appendRule,
@@ -94,39 +111,39 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
     });
   };
 
+  const handleRemoveRule = (index: number) => {
+    if (ruleFields.length === 1) {
+      // This is the last rule (AND array) in the current rule set (OR block)
+      if (totalRuleSets === 1) {
+        // This is the last rule in the last rule set (last AND array in the last OR block)
+        // Reset the rule to default instead of deleting the rule set
+        control.setValue(`ruleSets.${ruleSetIndex}.0`, defaultRule, { shouldDirty: true });
+        createNotification({
+          type: "info",
+          text: "Cannot delete the last rule in the last rule set. Resetting to default."
+        });
+      } else {
+        // This is the last rule in a rule set, but there are other rule sets.
+        // Delete the entire rule set (OR block).
+        removeRuleSet(ruleSetIndex);
+      }
+    } else {
+      // Not the last rule, just remove it
+      removeRule(index);
+    }
+  };
+
   return (
     <div className="space-y-2">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-medium text-mineshaft-100">Rule Set {ruleSetIndex + 1}</h3>
-        <div className="flex items-center space-x-2">
-          <Button
-            type="button"
-            size="xs"
-            variant="outline_bg"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={addRule}
-          >
-            AND
-          </Button>
-          <IconButton
-            ariaLabel="Remove rule set"
-            variant="plain"
-            colorSchema="danger"
-            onClick={() => removeRuleSet(ruleSetIndex)}
-          >
-            <FontAwesomeIcon icon={faTrash} />
-          </IconButton>
-        </div>
-      </div>
       {ruleFields.map((ruleField, ruleIndex) => (
         <div key={ruleField.id}>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-end space-x-2">
             <Controller
               control={control}
               name={`ruleSets.${ruleSetIndex}.${ruleIndex}.field`}
               render={({ field }) => (
                 <FormControl
-                  label={ruleIndex === 0 ? "Field" : undefined}
+                  label={ruleSetIndex === 0 && ruleIndex === 0 ? "Field" : undefined}
                   className={twMerge("w-40", "my-0")}
                   isError={Boolean(errors.ruleSets?.[ruleSetIndex]?.[ruleIndex]?.field)}
                   errorText={errors.ruleSets?.[ruleSetIndex]?.[ruleIndex]?.field?.message}
@@ -147,7 +164,7 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
               name={`ruleSets.${ruleSetIndex}.${ruleIndex}.operator`}
               render={({ field }) => (
                 <FormControl
-                  label={ruleIndex === 0 ? "Operator" : undefined}
+                  label={ruleSetIndex === 0 && ruleIndex === 0 ? "Operator" : undefined}
                   className={twMerge("w-40", "my-0")}
                   isError={Boolean(errors.ruleSets?.[ruleSetIndex]?.[ruleIndex]?.operator)}
                   errorText={errors.ruleSets?.[ruleSetIndex]?.[ruleIndex]?.operator?.message}
@@ -168,7 +185,7 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
               name={`ruleSets.${ruleSetIndex}.${ruleIndex}.value`}
               render={({ field }) => (
                 <FormControl
-                  label={ruleIndex === 0 ? "Value" : undefined}
+                  label={ruleSetIndex === 0 && ruleIndex === 0 ? "Value" : undefined}
                   className={twMerge("flex-1", "my-0")}
                   isError={Boolean(errors.ruleSets?.[ruleSetIndex]?.[ruleIndex]?.value)}
                   errorText={errors.ruleSets?.[ruleSetIndex]?.[ruleIndex]?.value?.message}
@@ -177,31 +194,34 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
                 </FormControl>
               )}
             />
+            <Button
+              type="button"
+              size="xs"
+              className="m-0 h-9 px-3"
+              variant="outline_bg"
+              onClick={addRule}
+            >
+              And
+            </Button>
             <IconButton
               ariaLabel="Remove rule"
               variant="plain"
               colorSchema="danger"
-              onClick={() => removeRule(ruleIndex)}
-              className={ruleIndex === 0 ? "relative top-2 mb-0" : "mb-0"}
+              onClick={() => handleRemoveRule(ruleIndex)} // Changed to use handleRemoveRule
+              className="m-0 h-9 pl-2"
             >
               <FontAwesomeIcon icon={faTrash} />
             </IconButton>
           </div>
           {ruleIndex + 1 !== ruleFields.length && (
-            <div className="relative mt-2 w-min border border-mineshaft-600 px-2 py-1">
-              <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
-              AND
-              <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+            <div className="relative ml-2 mt-2 w-min rounded bg-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300">
+              <div className="absolute -top-2 right-1/2 h-2 w-1 translate-x-1/2 bg-mineshaft-600" />
+              And
+              <div className="absolute -bottom-2 right-1/2 h-2 w-1 translate-x-1/2 bg-mineshaft-600" />
             </div>
           )}
         </div>
       ))}
-
-      {ruleFields.length === 0 && (
-        <div className="py-4 text-center text-sm text-mineshaft-400">
-          No rules in this set. Add a rule to get started.
-        </div>
-      )}
     </div>
   );
 };
@@ -304,28 +324,25 @@ const PromptMode = ({ onApplyRules, bridgeId }: PromptModeProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-        <FormLabel label="Describe your API filtering requirements" />
-        <div className="mt-2 space-y-4">
-          <TextArea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Example: Block all POST requests to admin endpoints and filter out bot traffic..."
-            rows={4}
-            className="w-full resize-none"
-          />
+      <div className="mt-2 space-y-4">
+        <TextArea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Only allow POST requests from admins..."
+          rows={4}
+          className="w-full resize-none"
+        />
 
-          <div className="flex items-center justify-end">
-            <Button
-              type="button"
-              onClick={generateRules}
-              isLoading={isGenerating}
-              isDisabled={!prompt.trim() || isGenerating}
-              leftIcon={<FontAwesomeIcon icon={faMagic} />}
-            >
-              {isGenerating ? "Generating Rules..." : "Generate Rules"}
-            </Button>
-          </div>
+        <div className="flex items-center justify-end">
+          <Button
+            type="button"
+            onClick={generateRules}
+            isLoading={isGenerating}
+            isDisabled={!prompt.trim() || isGenerating}
+            leftIcon={<FontAwesomeIcon icon={faMagicWandSparkles} />}
+          >
+            {isGenerating ? "Generating Rules..." : "Generate Rules"}
+          </Button>
         </div>
       </div>
 
@@ -385,13 +402,27 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
 
   const [isPromptMode, setIsPromptMode] = useToggle();
 
+  const DEFAULT_RULE = {
+    field: "uriPath",
+    operator: BridgeRuleOperator.EQ,
+    value: ""
+  };
+  const DEFAULT_RULE_SET: TBridgeRule[] = [DEFAULT_RULE];
+
   const form = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    values: bridgeDetails
-      ? {
-          ruleSets: bridgeDetails.ruleSet || []
-        }
-      : { ruleSets: [] }
+    values: (() => {
+      const initialRuleSets = bridgeDetails?.ruleSet;
+      // Ensure there's always at least one rule set with one default rule
+      if (!initialRuleSets || initialRuleSets.length === 0) {
+        return { ruleSets: [DEFAULT_RULE_SET] };
+      }
+      // Ensure all initial rule sets have at least one rule
+      const validatedInitialRuleSets = initialRuleSets.map((ruleSet) =>
+        ruleSet.length > 0 ? ruleSet : DEFAULT_RULE_SET
+      );
+      return { ruleSets: validatedInitialRuleSets };
+    })()
   });
 
   const {
@@ -413,9 +444,14 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
 
   const onSubmit = async (data: TFormSchema) => {
     try {
+      // Filter out any potentially empty rule sets before sending (though our logic should prevent this)
+      const cleanedRuleSets = data.ruleSets.filter((ruleSet) => ruleSet.length > 0);
+      // Ensure at least one rule set is always sent, even if filtered to empty
+      const finalRuleSets = cleanedRuleSets.length > 0 ? cleanedRuleSets : [DEFAULT_RULE_SET];
+
       await updateBridge({
         id: bridgeId,
-        ruleSet: data.ruleSets
+        ruleSet: finalRuleSets
       });
 
       createNotification({
@@ -434,23 +470,26 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
   };
 
   const addRuleSet = () => {
-    appendRuleSet([
-      {
-        field: "",
-        operator: BridgeRuleOperator.EQ,
-        value: ""
-      }
-    ]);
+    // When an OR block is created, populate it with a default AND array (one rule)
+    // Changed to explicitly use DEFAULT_RULE_SET for clarity, though [DEFAULT_RULE] is functionally identical
+    appendRuleSet([DEFAULT_RULE_SET]);
   };
 
   const handleApplyRules = (rules: TBridgeRule[][], action: "replace" | "add") => {
     if (action === "replace") {
-      // Replace all existing rules with generated ones
-      form.setValue("ruleSets", rules, { shouldDirty: true });
+      // Replace all existing rules with generated ones, ensuring at least one rule set and each rule set has at least one rule
+      const newRules =
+        rules.length > 0
+          ? rules.map((rs) => (rs.length > 0 ? rs : DEFAULT_RULE_SET))
+          : [DEFAULT_RULE_SET];
+      form.setValue("ruleSets", newRules, {
+        shouldDirty: true
+      });
     } else {
-      // Add generated rules to existing ones
+      // Add generated rules to existing ones, ensuring each new rule set has at least one rule
       const currentRules = form.getValues("ruleSets");
-      form.setValue("ruleSets", [...currentRules, ...rules], { shouldDirty: true });
+      const newRulesToAdd = rules.map((rs) => (rs.length > 0 ? rs : DEFAULT_RULE_SET));
+      form.setValue("ruleSets", [...currentRules, ...newRulesToAdd], { shouldDirty: true });
     }
 
     // Exit prompt mode after applying rules
@@ -469,14 +508,20 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-3">
       <div className="flex items-center justify-between">
-        <FormLabel label="When incoming request match..." />
+        <FormLabel
+          label={
+            isPromptMode
+              ? "Allow incoming requests that match the following query"
+              : "Allow incoming requests that match..."
+          }
+        />
         <div className="flex items-center space-x-2">
           {isPromptMode ? (
             <Button
               type="button"
               size="xs"
               variant="outline_bg"
-              leftIcon={<FontAwesomeIcon icon={faMagic} />}
+              leftIcon={<FontAwesomeIcon icon={faRightFromBracket} />}
               onClick={() => setIsPromptMode.off()}
             >
               Exit Prompt Mode
@@ -487,19 +532,19 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
                 type="button"
                 size="xs"
                 variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                className="px-3"
                 onClick={addRuleSet}
               >
-                OR
+                Or
               </Button>
               <Button
                 type="button"
                 size="xs"
                 variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faMagic} />}
+                leftIcon={<FontAwesomeIcon icon={faWandMagicSparkles} />}
                 onClick={() => setIsPromptMode.on()}
               >
-                Prompt Mode
+                Generate With Prompt
               </Button>
             </>
           )}
@@ -512,28 +557,23 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
           <div className="space-y-2">
             {ruleSetFields.map((ruleSetField, ruleSetIndex) => (
               <div key={ruleSetField.id}>
-                <div className="mb-2 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
+                <div className="mb-2">
                   <RuleSetEditor
                     ruleSetIndex={ruleSetIndex}
                     control={control}
                     errors={errors}
                     removeRuleSet={removeRuleSet}
+                    totalRuleSets={ruleSetFields.length} // Pass the total number of OR blocks
+                    defaultRule={DEFAULT_RULE} // Pass the default rule for resetting
                   />
                 </div>
                 {ruleSetIndex + 1 !== ruleSetFields.length && (
-                  <div className="relative w-min border border-mineshaft-600 px-2 py-1">
-                    <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
-                    OR
-                    <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+                  <div className="relative ml-2 mt-2 w-min rounded bg-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300">
+                    Or
                   </div>
                 )}
               </div>
             ))}
-            {ruleSetFields.length === 0 && (
-              <div className="rounded-lg border border-dashed border-mineshaft-600 py-8 text-center text-sm text-mineshaft-400">
-                No rule sets configured. Add a rule set to get started.
-              </div>
-            )}
           </div>
           <div className="flex items-center justify-end space-x-4 border-t border-mineshaft-600 pt-6">
             <Button
