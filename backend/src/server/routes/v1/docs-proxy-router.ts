@@ -7,7 +7,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const cachedDocs: Record<string, string> = {
-  "/organization/projects": "",
+  "/documentation/platform/project": "",
   "/integrations/secret-syncs/overview": ""
 };
 
@@ -58,7 +58,7 @@ export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
       }
 
       let mdxContent = "";
-      if (url === "/organization/projects") {
+      if (url === "/documentation/platform/project") {
         mdxContent = fs.readFileSync(path.join(__dirname, "./docs/project.mdx"), "utf8");
       } else if (url === "/integrations/app-connections/aws") {
         mdxContent = fs.readFileSync(path.join(__dirname, "./docs/aws-app-connection.mdx"), "utf8");
