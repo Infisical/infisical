@@ -118,7 +118,7 @@ export const chatServiceFactory = ({
 
     const orgDetails = await orgDAL.analyzeOrganizationResources(actorOrgId);
 
-    const stream = await openai.chat.completions.create({
+    const messageResponse = await openai.chat.completions.create({
       model: "gpt-4o-search-preview",
 
       messages: [
@@ -148,12 +148,15 @@ export const chatServiceFactory = ({
 
         The user is NEVER asking about anything non-technical. You will only answer technical questions, and you will ALWAYS read the documentation link before answering.
 
+
         IMPORTANT:
 
-        REQUIRED DOCUMENTATION LINK: ${documentationLink}
-        ALWAYS SEARCH THE ONE ABOVE DOCUMENTATION LINK (${documentationLink}), NO EXCEPTIONS, AS ALL QUESTIONS WILL BE RELATED TO THIS LINK.
+        KEEP THE MESSAGE SHORT(!!!) 3-4 sentences max.
 
-        ${orgDetails.migratingFrom ? `The user has indicated that they have migrated TO Infisical FROM ${orgDetails.migratingFrom}. If they ask questions about ${orgDetails.migratingFrom}, you should help them figure out what Infisical features would work best for their usecase. You should also mention "You have indicated that you have migrated from ${orgDetails.migratingFrom}" in your response, if their question is even remotely related to ${orgDetails.migratingFrom}.` : ""}
+        REQUIRED DOCUMENTATION LINK: ${documentationLink} (!!!!)
+        ALWAYS SEARCH THE ONE ABOVE DOCUMENTATION LINK (${documentationLink}), NO EXCEPTIONS, AS ALL QUESTIONS WILL BE RELATED TO THIS LINK. (!!!!)
+
+        ${orgDetails.migratingFrom ? `The user has indicated that they have migrated TO Infisical FROM ${orgDetails.migratingFrom}. If they ask questions about ${orgDetails.migratingFrom}, you should help them figure out what Infisical features would work best for their usecase. You should also mention "You have indicated that you have migrated from ${orgDetails.migratingFrom}" in your response, if their question is even remotely related to ${orgDetails.migratingFrom}.` : ""} (!!!!)
         `
         },
         ...formattedMessages,
@@ -164,7 +167,7 @@ export const chatServiceFactory = ({
       ]
     });
 
-    const resp = stream.choices[0].message;
+    const resp = messageResponse.choices[0].message;
 
     if (!resp.content) {
       throw new BadRequestError({
@@ -183,6 +186,40 @@ export const chatServiceFactory = ({
 
     const messageContent = resp.content.replaceAll("?utm_source=openai", "");
 
+    const formattedResponse = await openai.chat.completions.create({
+      model: "gpt-5-nano-2025-08-07",
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional writer whos job is to format messages
+
+        Writing style:
+        You write like you're sending a text message to the user. No markdown, no html, no code blocks, no lists, no nothing. Just a plain text message. KEEP THE MESSAGE SHORT.
+
+        The message you are given must be formatted to the following rules:
+        - No markdown, no html, no code blocks, no lists, no nothing. Just a plain text message
+        - DO NOT TRY TO EMBED ANY LINKS OF ANY SORT, IN YOUR RESPONSE, OKAY?
+        - The message must be formatted to the following rules:
+          - No markdown, no html, no code blocks, no lists, no nothing. Just a plain text message
+          - Remove any links from the message.
+          - Do not modify the message in any way, your job is to format the existing message into a more readable format. Do not output ANYTHING except the formatted message.
+          `
+        },
+        {
+          role: "user",
+          content: messageContent
+        }
+      ]
+    });
+
+    const formattedMessage = formattedResponse.choices[0].message?.content?.trim() ?? "";
+
+    if (!formattedMessage) {
+      throw new BadRequestError({
+        message: "No response was formed from the chat"
+      });
+    }
+
     await conversationMessagesDAL.create({
       conversationId: conversation.id,
       message,
@@ -191,13 +228,13 @@ export const chatServiceFactory = ({
 
     await conversationMessagesDAL.create({
       conversationId: conversation.id,
-      message: messageContent,
+      message: formattedMessage,
       senderType: "assistant"
     });
 
     return {
       conversationId: conversation.id,
-      message: messageContent,
+      message: formattedMessage,
       citations: citations.filter(
         (c, index, self) => index === self.findIndex((t) => t.url === c.url && t.title === c.title)
       )

@@ -14,6 +14,7 @@ export const registerChatRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         message: z.string().describe("The message to send to the chat"),
+        conversationId: z.string().optional().describe("The id of the conversation"),
         documentationLink: z.string().describe("The documentation link to use for the chat")
       }),
       response: {
@@ -40,7 +41,8 @@ export const registerChatRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         message: req.body.message,
-        documentationLink: req.body.documentationLink
+        documentationLink: req.body.documentationLink,
+        conversationId: req.body.conversationId
       });
 
       return response;

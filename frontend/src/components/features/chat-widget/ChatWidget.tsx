@@ -78,7 +78,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
       {/* Floating Chat Button */}
       <motion.button
         onClick={handleToggle}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition-all duration-200 hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-300"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-black shadow-lg transition-all duration-200 hover:bg-primary-600 focus:outline-none focus:ring-4 focus:ring-primary/30"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
         initial={{ opacity: 0, y: 20 }}
@@ -92,7 +92,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -100,7 +100,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
           >
             <motion.div
               ref={widgetRef}
-              className={`relative overflow-hidden rounded-lg bg-white shadow-2xl ${
+              className={`relative overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 shadow-2xl ${
                 isFullscreen
                   ? "h-screen w-screen"
                   : isMinimized
@@ -113,15 +113,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
               transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 30 }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-4">
+              <div className="flex items-center justify-between border-b border-mineshaft-600 bg-mineshaft-700 px-6 py-4">
                 <div className="flex items-center space-x-3">
-                  <FontAwesomeIcon icon={faComments} className="h-5 w-5 text-primary-600" />
-                  <h2 className="text-lg font-semibold text-gray-900">Help & Support</h2>
+                  <FontAwesomeIcon icon={faComments} className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-gray-200">Help & Support</h2>
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleMinimize}
-                    className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                    className="rounded-md p-2 text-bunker-400 transition-colors hover:bg-mineshaft-600 hover:text-bunker-200"
                     title={isMinimized ? "Expand" : "Minimize"}
                   >
                     <FontAwesomeIcon
@@ -131,7 +131,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                   </button>
                   <button
                     onClick={handleFullscreen}
-                    className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                    className="rounded-md p-2 text-bunker-400 transition-colors hover:bg-mineshaft-600 hover:text-bunker-200"
                     title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                   >
                     <FontAwesomeIcon
@@ -141,7 +141,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
                   </button>
                   <button
                     onClick={handleClose}
-                    className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                    className="rounded-md p-2 text-bunker-400 transition-colors hover:bg-mineshaft-600 hover:text-bunker-200"
                     title="Close"
                   >
                     <FontAwesomeIcon icon={faTimes} className="h-4 w-4" />
@@ -152,7 +152,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({
               {/* Content */}
               <div className="flex h-full">
                 {/* Documentation Panel */}
-                <div className={`${isMinimized ? "hidden" : "flex-1"} border-r border-gray-200`}>
+                <div
+                  className={`${isMinimized ? "hidden" : "flex-1"} border-r border-mineshaft-600`}
+                >
                   <DocumentationPanel url={documentationUrl} content={documentationContent} />
                 </div>
 

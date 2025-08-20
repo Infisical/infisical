@@ -13,6 +13,41 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
   const [htmlSource, setHtmlSource] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  // Simulate realistic loading progress
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingProgress(0);
+      return;
+    }
+
+    const totalDuration = 50000 + Math.random() * 20000; // 50-70 seconds
+    const startTime = Date.now();
+
+    const updateProgress = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min((elapsed / totalDuration) * 100, 99); // Cap at 99% until actual load completes
+
+      // Add some realistic variance - slow down in middle, speed up at end
+      let adjustedProgress = progress;
+      if (progress < 30) {
+        adjustedProgress = progress * 0.8; // Slower start
+      } else if (progress > 70) {
+        adjustedProgress = progress * 1.2; // Faster finish
+      }
+
+      setLoadingProgress(Math.min(adjustedProgress, 99));
+
+      if (progress < 99) {
+        // Use more consistent intervals to prevent glitching
+        const interval = 200 + Math.random() * 100; // 200-300ms intervals
+        setTimeout(updateProgress, interval);
+      }
+    };
+
+    updateProgress();
+  }, [isLoading]);
 
   // Fetch simple HTML content from proxy endpoint
   const fetchProxyContent = useCallback(async (targetUrl?: string) => {
@@ -28,6 +63,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
 
       const htmlContent = await response.text();
       setHtmlSource(htmlContent);
+      setLoadingProgress(100); // Complete the progress bar
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
       setError(errorMessage);
@@ -54,6 +90,29 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
     if (url) window.open(url, "_blank");
   };
 
+  const LoadingBar = () => (
+    <div className="w-full max-w-md">
+      <div className="mb-2 flex justify-between text-xs text-gray-400">
+        <span>Loading documentation...</span>
+        <span>{Math.round(loadingProgress)}%</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-mineshaft-600">
+        <div
+          className="h-full bg-primary transition-all duration-300 ease-out"
+          style={{ width: `${loadingProgress}%` }}
+        />
+      </div>
+      <div className="mt-2 text-xs text-gray-400">
+        {loadingProgress < 25 && "Initializing..."}
+        {loadingProgress >= 25 && loadingProgress < 50 && "Fetching content..."}
+        {loadingProgress >= 50 && loadingProgress < 75 && "Processing data..."}
+        {loadingProgress >= 75 && loadingProgress < 95 && "Rendering content..."}
+        {loadingProgress >= 95 && loadingProgress < 99 && "Finalizing..."}
+        {loadingProgress >= 99 && "Finalizing..."}
+      </div>
+    </div>
+  );
+
   const mainView = (
     <>
       {htmlSource ? (
@@ -61,19 +120,18 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
           {isLoading ? (
             <div className="flex h-full items-center justify-center">
               <div className="p-4 text-center">
-                <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600" />
-                <p className="text-gray-600">Loading documentation...</p>
+                <LoadingBar />
               </div>
             </div>
           ) : error ? (
             <div className="flex h-full items-center justify-center">
               <div className="p-4 text-center">
-                <div className="mx-auto mb-4 h-12 w-12 text-red-500">⚠️</div>
-                <p className="text-red-600">Failed to load documentation</p>
-                <p className="mt-2 text-sm text-gray-500">{error}</p>
+                <div className="mx-auto mb-4 h-12 w-12 text-red-400">⚠️</div>
+                <p className="text-red-400">Failed to load documentation</p>
+                <p className="mt-2 text-sm text-gray-400">{error}</p>
                 <button
                   onClick={handleRefresh}
-                  className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                  className="mt-4 rounded-md bg-primary px-4 py-2 text-black hover:bg-primary-600"
                 >
                   Try Again
                 </button>
@@ -82,7 +140,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
           ) : (
             <div className="h-full overflow-y-auto p-4">
               <div
-                className="prose-sm prose max-w-none"
+                className="prose-sm prose-invert prose max-w-none"
                 dangerouslySetInnerHTML={{ __html: htmlSource }}
               />
             </div>
@@ -92,9 +150,9 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
         // No content or URL provided
         <div className="flex h-full items-center justify-center">
           <div className="p-4 text-center">
-            <FontAwesomeIcon icon={faFileAlt} className="mb-4 h-12 w-12 text-gray-400" />
-            <p className="text-gray-600">No documentation content available</p>
-            <p className="mt-2 text-sm text-gray-500">
+            <FontAwesomeIcon icon={faFileAlt} className="mb-4 h-12 w-12 text-gray-500" />
+            <p className="text-gray-300">No documentation content available</p>
+            <p className="mt-2 text-sm text-gray-400">
               Provide a URL or content to display documentation
             </p>
           </div>
@@ -105,15 +163,15 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-mineshaft-600 bg-mineshaft-700 px-4 py-3">
         <div className="flex items-center space-x-2">
-          <FontAwesomeIcon icon={faFileAlt} className="h-4 w-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Documentation</span>
+          <FontAwesomeIcon icon={faFileAlt} className="h-4 w-4 text-gray-300" />
+          <span className="text-sm font-medium text-gray-200">Documentation</span>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={handleRefresh}
-            className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            className="rounded-md p-2 text-bunker-400 transition-colors hover:bg-mineshaft-600 hover:text-bunker-200"
             title="Refresh"
           >
             <FontAwesomeIcon icon={faRefresh} className="h-4 w-4" />
@@ -121,7 +179,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
           {url && (
             <button
               onClick={openInNewTab}
-              className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              className="rounded-md p-2 text-bunker-400 transition-colors hover:bg-mineshaft-600 hover:text-bunker-200"
               title="Open in new tab"
             >
               <FontAwesomeIcon icon={faExternalLinkAlt} className="h-4 w-4" />
@@ -135,8 +193,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <div className="p-4 text-center">
-              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600" />
-              <p className="text-gray-600">Loading documentation...</p>
+              <LoadingBar />
             </div>
           </div>
         ) : (
