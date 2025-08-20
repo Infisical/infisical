@@ -134,7 +134,9 @@ export const MainPage = () => {
                             <Tooltip content="Edit Shield">
                               <IconButton
                                 className="mr-2 py-2"
-                                onClick={() => {
+                                onClick={(evt) => {
+                                  evt.stopPropagation();
+                                  evt.preventDefault();
                                   handlePopUpOpen("addShield", {
                                     id: bridge.id
                                   });
@@ -149,7 +151,9 @@ export const MainPage = () => {
                             <Tooltip content="Update rules">
                               <IconButton
                                 className="py-2"
-                                onClick={() => {
+                                onClick={(evt) => {
+                                  evt.stopPropagation();
+                                  evt.preventDefault();
                                   handlePopUpOpen("updateRuleSet", {
                                     id: bridge.id
                                   });
