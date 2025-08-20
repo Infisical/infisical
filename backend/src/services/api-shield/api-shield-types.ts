@@ -26,4 +26,5 @@ export type ApiShieldRequestLog = {
   result?: string;
   suspicious?: boolean;
   bridgeId: string;
+  suspicious?: boolean;
 };

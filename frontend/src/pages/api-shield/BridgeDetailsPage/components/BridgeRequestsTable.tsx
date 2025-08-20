@@ -30,42 +30,51 @@ export const BridgeRequestsTable = ({ bridgeRequests, isLoading, timezone }: Pro
   const isEmpty = !isLoading && !bridgeRequests?.length;
 
   return (
-    <div>
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-24">
-                <Spinner size="xs" className={twMerge(isLoading ? "opacity-100" : "opacity-0")} />
-              </Th>
-              <Th className="w-64">Timestamp</Th>
-              <Th>Request Details</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {!isLoading &&
-              bridgeRequests?.map((request, index) => (
-                <BridgeRequestsTableRow
-                  rowNumber={index + 1}
-                  request={request}
-                  key={`bridge-request-${request.id}`}
-                  timezone={timezone}
-                />
-              ))}
-            {isLoading && (
-              <TableSkeleton innerKey="bridge-requests-table" columns={3} key="requests-loading" />
-            )}
-            {isEmpty && (
+    <div className="mb-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <h3 className="text-lg font-semibold text-mineshaft-100">Session Log</h3>
+      </div>
+
+      <div className="py-4">
+        <TableContainer>
+          <Table>
+            <THead>
               <Tr>
-                <Td colSpan={3}>
-                  <EmptyState title="No bridge requests on file" icon={faFile} />
-                </Td>
+                <Th className="w-24">
+                  <Spinner size="xs" className={twMerge(isLoading ? "opacity-100" : "opacity-0")} />
+                </Th>
+                <Th className="w-64">Timestamp</Th>
+                <Th>Request Details</Th>
               </Tr>
-            )}
-          </TBody>
-        </Table>
-      </TableContainer>
+            </THead>
+            <TBody>
+              {!isLoading &&
+                bridgeRequests?.map((request, index) => (
+                  <BridgeRequestsTableRow
+                    rowNumber={index + 1}
+                    request={request}
+                    key={`bridge-request-${request.id}`}
+                    timezone={timezone}
+                  />
+                ))}
+              {isLoading && (
+                <TableSkeleton
+                  innerKey="bridge-requests-table"
+                  columns={3}
+                  key="requests-loading"
+                />
+              )}
+              {isEmpty && (
+                <Tr>
+                  <Td colSpan={3}>
+                    <EmptyState title="No bridge requests on file" icon={faFile} />
+                  </Td>
+                </Tr>
+              )}
+            </TBody>
+          </Table>
+        </TableContainer>
+      </div>
     </div>
   );
 };
-

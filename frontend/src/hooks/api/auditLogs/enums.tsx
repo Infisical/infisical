@@ -7,6 +7,15 @@ export enum ActorType {
   UNKNOWN_USER = "unknownUser"
 }
 
+export type ApiShieldRequestLog = {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body?: unknown;
+  result?: string;
+  bridgeId: string;
+};
+
 export enum UserAgentType {
   WEB = "web",
   CLI = "cli",
@@ -27,6 +36,7 @@ export enum EventType {
   UPDATE_SECRET = "update-secret",
   DELETE_SECRET = "delete-secret",
   GET_WORKSPACE_KEY = "get-workspace-key",
+  API_SHIELD_REQUEST = "api-shield-request",
   AUTHORIZE_INTEGRATION = "authorize-integration",
   UPDATE_INTEGRATION_AUTH = "update-integration-auth",
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",

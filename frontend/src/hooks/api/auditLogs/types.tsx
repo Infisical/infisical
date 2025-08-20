@@ -866,6 +866,11 @@ interface IntegrationSyncedEvent {
   };
 }
 
+export interface ApiShieldRequestEvent {
+  type: EventType.API_SHIELD_REQUEST;
+  metadata: ApiShieldRequestLog;
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -910,6 +915,7 @@ export type Event =
   | DeleteSecretImportEvent
   | UpdateUserRole
   | UpdateUserDeniedPermissions
+  | ApiShieldRequestEvent
   | CreateCa
   | GetCa
   | UpdateCa

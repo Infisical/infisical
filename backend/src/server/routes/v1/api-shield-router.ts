@@ -134,7 +134,9 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
       });
 
       if (!passed) {
-        throw new UnauthorizedError();
+        throw new UnauthorizedError({
+          message: "You request has been blocked by API Shield"
+        });
       }
 
       // If the request passes, call the correct endpoint using request

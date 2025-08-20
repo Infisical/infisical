@@ -1,11 +1,17 @@
-import { faCaretDown, faCaretRight } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBan,
+  faCaretDown,
+  faCaretRight,
+  faCheck,
+  faExclamationCircle
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Td, Tr } from "@app/components/v2";
+import { Badge, Td, Tr } from "@app/components/v2";
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
 import { useToggle } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
-import { AuditLog } from "@app/hooks/api/auditLogs/types";
+import { ApiShieldRequestEvent, AuditLog } from "@app/hooks/api/auditLogs/types";
 
 type Props = {
   request: AuditLog;
@@ -51,13 +57,32 @@ export const BridgeRequestsTableRow = ({ request, rowNumber, timezone }: Props) 
         <Td className="align-top">{formatDateTime({ timestamp: request.createdAt, timezone })}</Td>
         <Td>
           <div className="flex flex-wrap gap-4 text-sm">
-            <Tag label="event" value={request.event.type} />
             <Tag label="actor" value={request.actor.type} />
             {request.actor.type === ActorType.USER && (
               <Tag label="user_email" value={request.actor.metadata.email} />
             )}
             {request.actor.type === ActorType.IDENTITY && (
               <Tag label="identity_name" value={request.actor.metadata.name} />
+            )}
+            {(request.event as ApiShieldRequestEvent).metadata?.result === "PASSED" ? (
+              <Badge
+                variant="success"
+                className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+              >
+                <FontAwesomeIcon icon={faCheck} />
+                <span>Pass</span>
+              </Badge>
+            ) : (
+              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-red-400/50 text-red-300">
+                <FontAwesomeIcon icon={faBan} />
+                <span>Blocked</span>
+              </Badge>
+            )}
+            {(request.event as ApiShieldRequestEvent).metadata?.suspicious && (
+              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-yellow-400/50 text-yellow-300">
+                <FontAwesomeIcon icon={faExclamationCircle} />
+                <span>Suspicious</span>
+              </Badge>
             )}
           </div>
         </Td>
@@ -74,4 +99,3 @@ export const BridgeRequestsTableRow = ({ request, rowNumber, timezone }: Props) 
     </>
   );
 };
-
