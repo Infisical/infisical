@@ -88,7 +88,7 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
 
   const addRule = () => {
     appendRule({
-      field: "url",
+      field: "requestMethod",
       operator: BridgeRuleOperator.EQ,
       value: ""
     });
@@ -190,7 +190,7 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
           {ruleIndex + 1 !== ruleFields.length && (
             <div className="relative mt-2 w-min border border-mineshaft-600 px-2 py-1">
               <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
-              OR
+              AND
               <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
             </div>
           )}
