@@ -89,6 +89,7 @@
     "react-markdown": "^10.0.1",
     "react-select": "^5.9.0",
     "react-toastify": "^10.0.6",
+    "recharts": "^3.1.2",
     "redaxios": "^0.5.1",
     "rehype-raw": "^7.0.0",
     "tailwind-merge": "^2.5.5",

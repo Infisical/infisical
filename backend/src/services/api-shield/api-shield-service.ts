@@ -420,6 +420,7 @@ export const apiShieldServiceFactory = ({
           }
         } else if (["role", "queryString"].includes(field)) {
           const valuesToCheck = field === "role" ? roles : queryString;
+          const finalValue = field === "role" ? value.toLowerCase() : value;
 
           if (valuesToCheck.length === 0) {
             conditionMet = false;
@@ -427,28 +428,28 @@ export const apiShieldServiceFactory = ({
             const checkItemCondition = (itemValue: string): boolean => {
               switch (operator) {
                 case "eq":
-                  return itemValue === value;
+                  return itemValue === finalValue;
                 case "ne":
-                  return itemValue !== value;
+                  return itemValue !== finalValue;
                 case "contains":
-                  return itemValue.includes(value);
+                  return itemValue.includes(finalValue);
                 case "not_contains":
-                  return !itemValue.includes(value);
+                  return !itemValue.includes(finalValue);
                 case "in":
-                  return value
+                  return finalValue
                     .split(",")
                     .map((el) => el.trim())
                     .includes(itemValue);
                 case "starts_with":
-                  return itemValue.startsWith(value);
+                  return itemValue.startsWith(finalValue);
                 case "not_starts_with":
-                  return !itemValue.startsWith(value);
+                  return !itemValue.startsWith(finalValue);
                 case "ends_with":
-                  return itemValue.endsWith(value);
+                  return itemValue.endsWith(finalValue);
                 case "not_ends_with":
-                  return !itemValue.endsWith(value);
+                  return !itemValue.endsWith(finalValue);
                 case "wildcard": {
-                  const regexPattern = value.replace(/\*/g, ".*");
+                  const regexPattern = finalValue.replace(/\*/g, ".*");
                   try {
                     return new RE2(regexPattern).test(itemValue);
                   } catch (e) {

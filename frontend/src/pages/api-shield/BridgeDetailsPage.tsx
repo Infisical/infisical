@@ -16,6 +16,7 @@ import {
 } from "@app/hooks/api/bridge";
 
 import { BridgeRequestsTable } from "./BridgeDetailsPage/components/BridgeRequestsTable";
+import { ReactChart } from "./BridgeDetailsPage/components/RequestChart";
 
 const FIELD_OPTIONS = [
   { label: "Request Method", value: "requestMethod" },
@@ -94,7 +95,7 @@ export const BridgeDetailsPage = () => {
     select: (el) => el.bridgeId
   });
 
-  const { data: bridgeDetails, isPending } = useQuery({
+  const { data: bridgeDetails } = useQuery({
     ...bridgeQueryKeys.byId(bridgeId),
     enabled: Boolean(bridgeId)
   });
@@ -265,6 +266,11 @@ export const BridgeDetailsPage = () => {
                       <EmptyState title="No daily insight" icon={faWandSparkles} />
                     )}
                   </div>
+                  {bridgeRequests && (
+                    <div className="mt-6 h-[300px] w-full">
+                      <ReactChart logs={bridgeRequests} />
+                    </div>
+                  )}
                 </div>
                 <BridgeRequestsTable
                   bridgeRequests={bridgeRequests || []}
