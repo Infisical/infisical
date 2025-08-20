@@ -44,6 +44,18 @@ const organizationRoutes = route("/organization", [
   route("/gateways", [index("organization/Gateways/GatewayListPage/route.tsx")])
 ]);
 
+const apiShieldRoutes = route("/projects/api-shield/$projectId", [
+  layout("api-shield-layout", "api-shield/layout.tsx", [
+    route("/overview", "api-shield/MainPage.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-api-shield.tsx"),
+    route("/access-management", "project/AccessControlPage/route-api-shield.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-api-shield.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-api-shield.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-api-shield.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-api-shield.tsx")
+  ])
+]);
+
 const secretManagerRoutes = route("/projects/secret-management/$projectId", [
   layout("secret-manager-layout", "secret-manager/layout.tsx", [
     route("/overview", "secret-manager/OverviewPage/route.tsx"),
@@ -414,6 +426,7 @@ export const routes = rootRoute("root.tsx", [
         certManagerRoutes,
         kmsRoutes,
         sshRoutes,
+        apiShieldRoutes,
         secretScanningRoutes
       ])
     ])

@@ -11,13 +11,15 @@ export type TCreateBridgeDTO = {
   projectId: string;
   baseUrl: string;
   openApiUrl: string;
-  ruleSet: TBridgeRule[][];
+  ruleSet?: TBridgeRule[][];
+  slug: string;
   headers: { key: string; value: string }[];
 };
 
 export type TUpdateBridgeDTO = {
   projectPermission: OrgServiceActor;
   baseUrl?: string;
+  slug?: string;
   openApiUrl?: string;
   ruleSet?: TBridgeRule[][];
   headers?: { key: string; value: string }[];

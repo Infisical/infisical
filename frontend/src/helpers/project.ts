@@ -91,7 +91,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.KMS]: "Key Management",
     [ProjectType.CertificateManager]: "Cert Management",
     [ProjectType.SSH]: "SSH",
-    [ProjectType.SecretScanning]: "Secret Scanning"
+    [ProjectType.SecretScanning]: "Secret Scanning",
+    [ProjectType.ApiShield]: "API Shield"
   };
   return titleConvert[type];
 };
@@ -102,7 +103,8 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.KMS]: "unlock",
     [ProjectType.CertificateManager]: "note",
     [ProjectType.SSH]: "terminal",
-    [ProjectType.SecretScanning]: "secret-scan"
+    [ProjectType.SecretScanning]: "secret-scan",
+    [ProjectType.ApiShield]: "unlock"
   };
   return titleConvert[type];
 };

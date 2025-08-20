@@ -19,6 +19,7 @@ import { registerIdentityAccessTokenRouter } from "./identity-access-token-route
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
 import { registerIdentityAzureAuthRouter } from "./identity-azure-auth-router";
+import { registerBridgeRouter } from "./bridge-router";
 import { registerIdentityGcpAuthRouter } from "./identity-gcp-auth-router";
 import { registerIdentityJwtAuthRouter } from "./identity-jwt-auth-router";
 import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-router";
@@ -162,6 +163,9 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     { prefix: "/app-connections" }
   );
 
+  await server.register(registerBridgeRouter, {
+    prefix: "/bridge"
+  });
   await server.register(
     async (secretSyncRouter) => {
       // register generic secret sync endpoints

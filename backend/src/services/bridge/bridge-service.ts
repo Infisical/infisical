@@ -23,7 +23,15 @@ export const bridgeServiceFactory = ({
   projectDAL,
   kmsService
 }: TBridgeServiceFactoryDep) => {
-  const create = async ({ baseUrl, headers, ruleSet, openApiUrl, projectPermission, projectId }: TCreateBridgeDTO) => {
+  const create = async ({
+    baseUrl,
+    headers,
+    ruleSet,
+    slug,
+    openApiUrl,
+    projectPermission,
+    projectId
+  }: TCreateBridgeDTO) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with id '${projectId}' not found` });
 
@@ -46,14 +54,23 @@ export const bridgeServiceFactory = ({
     const bridge = await bridgeDAL.create({
       baseUrl,
       projectId,
-      ruleSet,
+      slug,
+      ruleSet: ruleSet ? JSON.stringify(ruleSet) : undefined,
       openApiUrl,
       encryptedHeaders
     });
 
     return bridge;
   };
-  const updateById = async ({ id, baseUrl, headers, ruleSet, openApiUrl, projectPermission }: TUpdateBridgeDTO) => {
+  const updateById = async ({
+    id,
+    baseUrl,
+    headers,
+    ruleSet,
+    openApiUrl,
+    projectPermission,
+    slug
+  }: TUpdateBridgeDTO) => {
     const bridge = await bridgeDAL.findById(id);
     if (!bridge) throw new NotFoundError({ message: `Bridge with id '${id}' not found` });
 
@@ -73,8 +90,9 @@ export const bridgeServiceFactory = ({
     const updateData: Record<string, any> = {};
 
     if (baseUrl !== undefined) updateData.baseUrl = baseUrl;
-    if (ruleSet !== undefined) updateData.ruleSet = ruleSet;
+    if (ruleSet !== undefined) updateData.ruleSet = JSON.stringify(ruleSet);
     if (openApiUrl !== undefined) updateData.openApiUrl = openApiUrl;
+    if (slug !== undefined) updateData.slug = slug;
 
     if (headers !== undefined) {
       const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({

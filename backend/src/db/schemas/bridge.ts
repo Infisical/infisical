@@ -13,7 +13,7 @@ export const BridgeSchema = z.object({
   id: z.string().uuid(),
   baseUrl: z.string(),
   openApiUrl: z.string(),
-  slug: z.string().nullable().optional(),
+  slug: z.string(),
   projectId: z.string(),
   ruleSet: z.unknown().nullable().optional(),
   encryptedHeaders: zodBuffer.nullable().optional(),

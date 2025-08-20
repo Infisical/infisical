@@ -28,6 +28,7 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
         projectId: z.string(),
         baseUrl: z.string(),
         openApiUrl: z.string(),
+        slug: z.string(),
         ruleSet: BridgeRuleSchema.array().array(),
         headers: z
           .object({
@@ -35,6 +36,7 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
             value: z.string()
           })
           .array()
+          .optional()
       }),
       response: {
         200: z.object({
@@ -49,6 +51,7 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
         projectId: req.body.projectId,
         baseUrl: req.body.baseUrl,
         openApiUrl: req.body.openApiUrl,
+        slug: req.body.slug,
         headers: req.body.headers,
         ruleSet: req.body.ruleSet
       });

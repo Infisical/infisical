@@ -13,6 +13,7 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SSH = "ssh",
+  ApiShield = "api-shield",
   SecretScanning = "secret-scanning"
 }
 
