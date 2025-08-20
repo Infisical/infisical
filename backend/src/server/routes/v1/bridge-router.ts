@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { request } from "@app/lib/config/request";
 
-import { BridgeSchema } from "@app/db/schemas";
+import { AuditLogsSchema, BridgeSchema } from "@app/db/schemas";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -217,16 +217,71 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         limit: 50,
-        projectId: bridge.projectId
+        projectId: bridge.projectId,
+        bridgeId: bridge.id
       });
+
       const rules = await server.services.apiShield.generateRules({
         prompt: req.body.prompt,
         currentRules: (bridge.ruleSet || []) as ApiShieldRules,
-        logs,
-        projectId: bridge.projectId,
-        openApiUrl: bridge.openApiUrl
+        logs
       });
+
       return rules;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:bridgeId/requests",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        bridgeId: z.string()
+      }),
+      response: {
+        200: z.object({
+          requests: AuditLogsSchema.omit({
+            eventMetadata: true,
+            eventType: true,
+            actor: true,
+            actorMetadata: true
+          })
+            .merge(
+              z.object({
+                event: z.object({
+                  type: z.string(),
+                  metadata: z.any()
+                }),
+                actor: z.object({
+                  type: z.string(),
+                  metadata: z.any()
+                })
+              })
+            )
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const bridge = await server.services.bridge.getById({
+        id: req.params.bridgeId
+      });
+
+      const requests = await server.services.apiShield.getBridgeRequests({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        limit: 50,
+        projectId: bridge.projectId,
+        bridgeId: bridge.id
+      });
+
+      return { requests };
     }
   });
 

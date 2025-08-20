@@ -1,5 +1,4 @@
 import RE2 from "re2";
-import axios from "axios";
 
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
@@ -52,7 +51,8 @@ export const apiShieldServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     projectId,
-    limit = 50
+    limit = 50,
+    bridgeId
   }: {
     actor: ActorType;
     actorId: string;
@@ -60,6 +60,7 @@ export const apiShieldServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     projectId: string;
     limit: number;
+    bridgeId: string;
   }) => {
     const logs = await auditLogService.listAuditLogs({
       actor,
@@ -71,13 +72,53 @@ export const apiShieldServiceFactory = ({
         limit,
         endDate: new Date().toISOString(),
         startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString(),
-        eventType: [EventType.API_SHIELD_REQUEST]
+        eventType: [EventType.API_SHIELD_REQUEST],
+        eventMetadata: {
+          bridgeId
+        }
       }
     });
 
     const logsParsed = logs.map((v) => v.event.metadata as ApiShieldRequestLog);
 
     return logsParsed;
+  };
+
+  const getBridgeRequests = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    limit = 50,
+    bridgeId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorOrgId: string;
+    actorAuthMethod: ActorAuthMethod;
+    projectId: string;
+    limit: number;
+    bridgeId: string;
+  }) => {
+    const logs = await auditLogService.listAuditLogs({
+      actor,
+      actorAuthMethod,
+      actorId,
+      actorOrgId,
+      filter: {
+        projectId,
+        limit,
+        endDate: new Date().toISOString(),
+        startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString(),
+        eventType: [EventType.API_SHIELD_REQUEST],
+        eventMetadata: {
+          bridgeId
+        }
+      }
+    });
+
+    return logs;
   };
 
   const generateRules = async ({
@@ -207,7 +248,8 @@ RULE GENERATION GUIDELINES:
       actorId,
       actorOrgId,
       limit: 500,
-      projectId: bridge.projectId
+      projectId: bridge.projectId,
+      bridgeId: bridge.id
     });
 
     const currentRules = getCurrentRules(); // TODO(andrey): Get most recent shadow rules
@@ -347,6 +389,7 @@ RULE GENERATION GUIDELINES:
     getRequestLogs,
     generateRules,
     runDailyCron,
-    checkRequestPassesRules
+    checkRequestPassesRules,
+    getBridgeRequests
   };
 };

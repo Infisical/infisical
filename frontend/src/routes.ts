@@ -47,6 +47,7 @@ const organizationRoutes = route("/organization", [
 const apiShieldRoutes = route("/projects/api-shield/$projectId", [
   layout("api-shield-layout", "api-shield/layout.tsx", [
     route("/overview", "api-shield/MainPage.tsx"),
+    route("/bridge/$bridgeId", "api-shield/BridgeDetailsPage.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-api-shield.tsx"),
     route("/access-management", "project/AccessControlPage/route-api-shield.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-api-shield.tsx"),

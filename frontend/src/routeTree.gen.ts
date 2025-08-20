@@ -138,6 +138,7 @@ import { Route as projectRoleDetailsBySlugPageRouteApiShieldImport } from './pag
 import { Route as projectMemberDetailsByIDPageRouteApiShieldImport } from './pages/project/MemberDetailsByIDPage/route-api-shield'
 import { Route as projectIdentityDetailsByIDPageRouteApiShieldImport } from './pages/project/IdentityDetailsByIDPage/route-api-shield'
 import { Route as projectGroupDetailsByIDPageRouteApiShieldImport } from './pages/project/GroupDetailsByIDPage/route-api-shield'
+import { Route as apiShieldBridgeDetailsPageImport } from './pages/api-shield/BridgeDetailsPage'
 import { Route as sshSshHostGroupDetailsByIDPageRouteImport } from './pages/ssh/SshHostGroupDetailsByIDPage/route'
 import { Route as sshSshCaByIDPageRouteImport } from './pages/ssh/SshCaByIDPage/route'
 import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/secret-manager/SecretDashboardPage/route'
@@ -1350,6 +1351,14 @@ const projectGroupDetailsByIDPageRouteApiShieldRoute =
     path: '/groups/$groupId',
     getParentRoute: () => apiShieldLayoutRoute,
   } as any)
+
+const apiShieldBridgeDetailsPageRoute = apiShieldBridgeDetailsPageImport.update(
+  {
+    id: '/bridge/$bridgeId',
+    path: '/bridge/$bridgeId',
+    getParentRoute: () => apiShieldLayoutRoute,
+  } as any,
+)
 
 const sshSshHostGroupDetailsByIDPageRouteRoute =
   sshSshHostGroupDetailsByIDPageRouteImport.update({
@@ -3021,6 +3030,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof sshSshHostGroupDetailsByIDPageRouteImport
       parentRoute: typeof sshLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/bridge/$bridgeId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/bridge/$bridgeId'
+      path: '/bridge/$bridgeId'
+      fullPath: '/projects/api-shield/$projectId/bridge/$bridgeId'
+      preLoaderRoute: typeof apiShieldBridgeDetailsPageImport
+      parentRoute: typeof apiShieldLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/groups/$groupId': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/groups/$groupId'
       path: '/groups/$groupId'
@@ -3938,6 +3954,7 @@ interface apiShieldLayoutRouteChildren {
   projectAccessControlPageRouteApiShieldRoute: typeof projectAccessControlPageRouteApiShieldRoute
   projectAuditLogsPageRouteApiShieldRoute: typeof projectAuditLogsPageRouteApiShieldRoute
   apiShieldMainPageRoute: typeof apiShieldMainPageRoute
+  apiShieldBridgeDetailsPageRoute: typeof apiShieldBridgeDetailsPageRoute
   projectGroupDetailsByIDPageRouteApiShieldRoute: typeof projectGroupDetailsByIDPageRouteApiShieldRoute
   projectIdentityDetailsByIDPageRouteApiShieldRoute: typeof projectIdentityDetailsByIDPageRouteApiShieldRoute
   projectMemberDetailsByIDPageRouteApiShieldRoute: typeof projectMemberDetailsByIDPageRouteApiShieldRoute
@@ -3950,6 +3967,7 @@ const apiShieldLayoutRouteChildren: apiShieldLayoutRouteChildren = {
   projectAuditLogsPageRouteApiShieldRoute:
     projectAuditLogsPageRouteApiShieldRoute,
   apiShieldMainPageRoute: apiShieldMainPageRoute,
+  apiShieldBridgeDetailsPageRoute: apiShieldBridgeDetailsPageRoute,
   projectGroupDetailsByIDPageRouteApiShieldRoute:
     projectGroupDetailsByIDPageRouteApiShieldRoute,
   projectIdentityDetailsByIDPageRouteApiShieldRoute:
@@ -4921,6 +4939,7 @@ export interface FileRoutesByFullPath {
   '/projects/secret-management/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/projects/ssh/$projectId/ca/$caId': typeof sshSshCaByIDPageRouteRoute
   '/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId': typeof sshSshHostGroupDetailsByIDPageRouteRoute
+  '/projects/api-shield/$projectId/bridge/$bridgeId': typeof apiShieldBridgeDetailsPageRoute
   '/projects/api-shield/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteApiShieldRoute
   '/projects/api-shield/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteApiShieldRoute
   '/projects/api-shield/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteApiShieldRoute
@@ -5139,6 +5158,7 @@ export interface FileRoutesByTo {
   '/projects/secret-management/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/projects/ssh/$projectId/ca/$caId': typeof sshSshCaByIDPageRouteRoute
   '/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId': typeof sshSshHostGroupDetailsByIDPageRouteRoute
+  '/projects/api-shield/$projectId/bridge/$bridgeId': typeof apiShieldBridgeDetailsPageRoute
   '/projects/api-shield/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteApiShieldRoute
   '/projects/api-shield/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteApiShieldRoute
   '/projects/api-shield/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteApiShieldRoute
@@ -5379,6 +5399,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/ca/$caId': typeof sshSshCaByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId': typeof sshSshHostGroupDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/bridge/$bridgeId': typeof apiShieldBridgeDetailsPageRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/groups/$groupId': typeof projectGroupDetailsByIDPageRouteApiShieldRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteApiShieldRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteApiShieldRoute
@@ -5611,6 +5632,7 @@ export interface FileRouteTypes {
     | '/projects/secret-management/$projectId/secrets/$envSlug'
     | '/projects/ssh/$projectId/ca/$caId'
     | '/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId'
+    | '/projects/api-shield/$projectId/bridge/$bridgeId'
     | '/projects/api-shield/$projectId/groups/$groupId'
     | '/projects/api-shield/$projectId/identities/$identityId'
     | '/projects/api-shield/$projectId/members/$membershipId'
@@ -5828,6 +5850,7 @@ export interface FileRouteTypes {
     | '/projects/secret-management/$projectId/secrets/$envSlug'
     | '/projects/ssh/$projectId/ca/$caId'
     | '/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId'
+    | '/projects/api-shield/$projectId/bridge/$bridgeId'
     | '/projects/api-shield/$projectId/groups/$groupId'
     | '/projects/api-shield/$projectId/identities/$identityId'
     | '/projects/api-shield/$projectId/members/$membershipId'
@@ -6066,6 +6089,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug'
     | '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/ca/$caId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId'
+    | '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/bridge/$bridgeId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/groups/$groupId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/members/$membershipId'
@@ -6658,6 +6682,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/access-management",
         "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/overview",
+        "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/bridge/$bridgeId",
         "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/members/$membershipId",
@@ -7030,6 +7055,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId": {
       "filePath": "ssh/SshHostGroupDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/bridge/$bridgeId": {
+      "filePath": "api-shield/BridgeDetailsPage.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/api-shield/$projectId/_api-shield-layout/groups/$groupId": {
       "filePath": "project/GroupDetailsByIDPage/route-api-shield.tsx",

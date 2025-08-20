@@ -23,7 +23,7 @@ import { bridgeQueryKeys, useDeleteBridge } from "@app/hooks/api/bridge";
 import { faPencil, faPlus, faRuler, faShield } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ShieldForm } from "./ShieldForm";
 import { RuleSetManagementForm } from "./RuleSetManagementForm";
@@ -33,6 +33,7 @@ export const MainPage = () => {
   const { data: bridges, isPending: isBridgeLoading } = useQuery(
     bridgeQueryKeys.list(currentWorkspace.id)
   );
+  const navigate = useNavigate();
   const { mutateAsync: removeShield } = useDeleteBridge();
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -115,6 +116,15 @@ export const MainPage = () => {
                         className="group w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                         role="button"
                         tabIndex={0}
+                        onClick={() => {
+                          navigate({
+                            to: "/projects/api-shield/$projectId/bridge/$bridgeId",
+                            params: {
+                              bridgeId: bridge.id,
+                              projectId: bridge.projectId
+                            }
+                          });
+                        }}
                       >
                         <Td>{bridge.slug}</Td>
                         <Td>{bridge.baseUrl}</Td>

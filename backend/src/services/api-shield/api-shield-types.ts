@@ -21,4 +21,5 @@ export type ApiShieldRequestLog = {
   headers: Record<string, string>;
   body?: unknown;
   result?: string;
+  bridgeId: string;
 };

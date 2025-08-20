@@ -84,6 +84,7 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
             method: req.method,
             result: passed ? "PASSED" : "BLOCKED",
             url: targetUrlObj.toString(),
+            bridgeId: bridge.id,
             headers: Object.fromEntries(
               Object.entries(req.headers)
                 .filter(([, value]) => value !== undefined)
