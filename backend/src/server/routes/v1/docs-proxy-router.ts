@@ -1,9 +1,13 @@
-import { z } from "zod";
-
 import fs from "fs";
 import path from "path";
+import { z } from "zod";
 
 import { readLimit } from "@app/server/config/rateLimiter";
+
+const cachedDocs: Record<string, string> = {
+  "/organization/projects": "",
+  "/integrations/secret-syncs/overview": ""
+};
 
 export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -30,6 +34,11 @@ export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const { url } = req.query;
+
+      if (cachedDocs[url]) {
+        return cachedDocs[url];
+      }
+
       let mdxContent = "";
       if (url === "/organization/projects") {
         mdxContent = fs.readFileSync(path.join(__dirname, "./docs/project.mdx"), "utf8");
@@ -42,7 +51,7 @@ export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
       if (!mdxContent) return res.status(400).send({ error: "No MDX content found for the provided url" });
 
       const simpleHtml = await server.services.chat.convertMdxToSimpleHtml(rewriteMdxLinks(mdxContent));
-
+      cachedDocs[url] = simpleHtml;
       return simpleHtml;
     }
   });
