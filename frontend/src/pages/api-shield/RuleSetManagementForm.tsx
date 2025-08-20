@@ -1,5 +1,5 @@
 import { Controller, useFieldArray, useForm, Control, FieldErrors } from "react-hook-form";
-import { faPlus, faSave, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faMagic, faPlus, faSave, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
@@ -13,10 +13,18 @@ import {
   IconButton,
   Input,
   Select,
-  SelectItem
+  SelectItem,
+  TextArea
 } from "@app/components/v2";
-import { BridgeRuleOperator, bridgeQueryKeys, useUpdateBridge } from "@app/hooks/api/bridge";
+import {
+  BridgeRuleOperator,
+  TBridgeRule,
+  bridgeQueryKeys,
+  useUpdateBridge
+} from "@app/hooks/api/bridge";
 import { useQuery } from "@tanstack/react-query";
+import { useToggle } from "@app/hooks";
+import { useState } from "react";
 
 const ruleSchema = z.object({
   field: z.string().min(1, "Field is required"),
@@ -35,7 +43,6 @@ type TFormSchema = z.infer<typeof formSchema>;
 type Props = {
   bridgeId: string;
   onSuccess?: () => void;
-  onCancel?: () => void;
 };
 
 const FIELD_OPTIONS = [
@@ -44,7 +51,6 @@ const FIELD_OPTIONS = [
   { label: "User Agent", value: "userAgent" },
   { label: "IP", value: "ip" },
   { label: "Query String", value: "queryString" },
-  { label: "URL", value: "uriPath" },
   { label: "Role", value: "role" }
 ];
 
@@ -111,7 +117,6 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
           </IconButton>
         </div>
       </div>
-
       {ruleFields.map((ruleField, ruleIndex) => (
         <div key={ruleField.id}>
           <div className="flex items-center space-x-2">
@@ -200,11 +205,208 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
   );
 };
 
-export const RuleSetManagementForm = ({ bridgeId, onSuccess, onCancel }: Props) => {
+type PromptModeProps = {
+  onApplyRules: (rules: TBridgeRule[][], action: "replace" | "add") => void;
+};
+
+const PreviewRuleSetEditor = ({
+  ruleSetIndex,
+  rules
+}: {
+  ruleSetIndex: number;
+  rules: TBridgeRule[];
+}) => (
+  <div className="space-y-2 opacity-75">
+    <div className="mb-4 flex items-center justify-between">
+      <h3 className="text-lg font-medium text-mineshaft-100">Rule Set {ruleSetIndex + 1}</h3>
+      <div className="text-xs text-mineshaft-400">Preview (Generated from AI)</div>
+    </div>
+    {rules.map((rule, ruleIndex) => (
+      <div key={`preview-rule-${ruleIndex + 1}`}>
+        <div className="flex items-center space-x-2">
+          <FormControl
+            label={ruleIndex === 0 ? "Field" : undefined}
+            className={twMerge("w-40", "my-0")}
+          >
+            <Input
+              value={FIELD_OPTIONS.find((op) => op.value === rule.field)?.label || rule.field}
+              disabled
+              className="bg-mineshaft-700 text-mineshaft-300"
+            />
+          </FormControl>
+          <FormControl
+            label={ruleIndex === 0 ? "Operator" : undefined}
+            className={twMerge("w-40", "my-0")}
+          >
+            <Input
+              value={
+                OPERATOR_OPTIONS.find((op) => op.value === rule.operator)?.label || rule.operator
+              }
+              disabled
+              className="bg-mineshaft-700 text-mineshaft-300"
+            />
+          </FormControl>
+          <FormControl
+            label={ruleIndex === 0 ? "Value" : undefined}
+            className={twMerge("flex-1", "my-0")}
+          >
+            <Input value={rule.value} disabled className="bg-mineshaft-700 text-mineshaft-300" />
+          </FormControl>
+        </div>
+        {ruleIndex + 1 !== rules.length && (
+          <div className="relative mt-2 w-min border border-mineshaft-600 px-2 py-1 text-mineshaft-400">
+            <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+            AND
+            <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+);
+
+// Component for AI-powered rule generation from natural language prompts
+const PromptMode = ({ onApplyRules }: PromptModeProps) => {
+  const [prompt, setPrompt] = useState("");
+  const [generatedRules, setGeneratedRules] = useState<TBridgeRule[][]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
+
+  const generateRules = async () => {
+    if (!prompt.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      // TODO: Replace with actual API call to generate rules from prompt
+      // const response = await apiRequest.post("/api/v1/bridge/generate-rules", { prompt });
+      // setGeneratedRules(response.data.rules);
+
+      // Mock response for now
+      await new Promise((resolve) => {
+        setTimeout(resolve, 2000);
+      }); // Simulate API call
+      const mockRules: TBridgeRule[][] = [
+        [
+          {
+            field: "uriPath",
+            operator: BridgeRuleOperator.STARTS_WITH,
+            value: "/api/admin"
+          },
+          {
+            field: "requestMethod",
+            operator: BridgeRuleOperator.EQ,
+            value: "POST"
+          }
+        ],
+        [
+          {
+            field: "userAgent",
+            operator: BridgeRuleOperator.CONTAINS,
+            value: "bot"
+          }
+        ]
+      ];
+
+      setGeneratedRules(mockRules);
+      setHasGenerated(true);
+
+      createNotification({
+        type: "success",
+        text: "Rules generated successfully from prompt!"
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        type: "error",
+        text: "Failed to generate rules from prompt"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
+        <FormLabel label="Describe your API filtering requirements" />
+        <div className="mt-2 space-y-4">
+          <TextArea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Example: Block all POST requests to admin endpoints and filter out bot traffic..."
+            rows={4}
+            className="w-full resize-none"
+          />
+
+          <div className="flex items-center justify-end">
+            <Button
+              type="button"
+              onClick={generateRules}
+              isLoading={isGenerating}
+              isDisabled={!prompt.trim() || isGenerating}
+              leftIcon={<FontAwesomeIcon icon={faMagic} />}
+            >
+              {isGenerating ? "Generating Rules..." : "Generate Rules"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {hasGenerated && generatedRules.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-mineshaft-100">Generated Rules Preview</h3>
+            <div className="text-sm text-mineshaft-400">
+              {generatedRules.length} rule set{generatedRules.length > 1 ? "s" : ""} generated
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {generatedRules.map((ruleSet, ruleSetIndex) => (
+              <div key={`gen-rule-${ruleSetIndex + 1}`}>
+                <div className="mb-2 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+                  <PreviewRuleSetEditor ruleSetIndex={ruleSetIndex} rules={ruleSet} />
+                </div>
+                {ruleSetIndex + 1 !== generatedRules.length && (
+                  <div className="relative w-min border border-mineshaft-600 px-2 py-1 text-mineshaft-400">
+                    <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+                    OR
+                    <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-center space-x-4 border-t border-mineshaft-600 pt-6">
+            <Button
+              type="button"
+              variant="outline_bg"
+              onClick={() => onApplyRules(generatedRules, "replace")}
+            >
+              Replace Existing Rules
+            </Button>
+            <Button
+              type="button"
+              variant="outline_bg"
+              onClick={() => onApplyRules(generatedRules, "add")}
+            >
+              Add to Existing Rules
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
   const { data: bridgeDetails, isPending } = useQuery({
     ...bridgeQueryKeys.byId(bridgeId),
     enabled: Boolean(bridgeId)
   });
+
+  const [isPromptMode, setIsPromptMode] = useToggle();
 
   const form = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
@@ -264,68 +466,113 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess, onCancel }: Props) 
     ]);
   };
 
+  const handleApplyRules = (rules: TBridgeRule[][], action: "replace" | "add") => {
+    console.log(rules);
+    if (action === "replace") {
+      // Replace all existing rules with generated ones
+      form.setValue("ruleSets", rules, { shouldDirty: true });
+    } else {
+      // Add generated rules to existing ones
+      const currentRules = form.getValues("ruleSets");
+      form.setValue("ruleSets", [...currentRules, ...rules], { shouldDirty: true });
+    }
+
+    // Exit prompt mode after applying rules
+    setIsPromptMode.off();
+
+    createNotification({
+      type: "success",
+      text: `Rules ${action === "replace" ? "replaced" : "added"} successfully!`
+    });
+  };
+
   if (isPending) {
     return <div>Loading...</div>;
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <FormLabel label="When incoming request match..." />
-          <Button
-            type="button"
-            size="xs"
-            variant="outline_bg"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={addRuleSet}
-          >
-            OR
-          </Button>
-        </div>
-        {ruleSetFields.map((ruleSetField, ruleSetIndex) => (
-          <div key={ruleSetField.id}>
-            <div className="mb-2 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-              <RuleSetEditor
-                ruleSetIndex={ruleSetIndex}
-                control={control}
-                errors={errors}
-                removeRuleSet={removeRuleSet}
-              />
-            </div>
-            {ruleSetIndex + 1 !== ruleSetFields.length && (
-              <div className="relative w-min border border-mineshaft-600 px-2 py-1">
-                <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+    <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-3">
+      <div className="flex items-center justify-between">
+        <FormLabel label="When incoming request match..." />
+        <div className="flex items-center space-x-2">
+          {isPromptMode ? (
+            <Button
+              type="button"
+              size="xs"
+              variant="outline_bg"
+              leftIcon={<FontAwesomeIcon icon={faMagic} />}
+              onClick={() => setIsPromptMode.off()}
+            >
+              Exit Prompt Mode
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline_bg"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={addRuleSet}
+              >
                 OR
-                <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline_bg"
+                leftIcon={<FontAwesomeIcon icon={faMagic} />}
+                onClick={() => setIsPromptMode.on()}
+              >
+                Prompt Mode
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+      {isPromptMode ? (
+        <PromptMode onApplyRules={handleApplyRules} />
+      ) : (
+        <>
+          <div className="space-y-2">
+            {ruleSetFields.map((ruleSetField, ruleSetIndex) => (
+              <div key={ruleSetField.id}>
+                <div className="mb-2 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
+                  <RuleSetEditor
+                    ruleSetIndex={ruleSetIndex}
+                    control={control}
+                    errors={errors}
+                    removeRuleSet={removeRuleSet}
+                  />
+                </div>
+                {ruleSetIndex + 1 !== ruleSetFields.length && (
+                  <div className="relative w-min border border-mineshaft-600 px-2 py-1">
+                    <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+                    OR
+                    <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {ruleSetFields.length === 0 && (
+              <div className="rounded-lg border border-dashed border-mineshaft-600 py-8 text-center text-sm text-mineshaft-400">
+                No rule sets configured. Add a rule set to get started.
               </div>
             )}
           </div>
-        ))}
-        {ruleSetFields.length === 0 && (
-          <div className="rounded-lg border border-dashed border-mineshaft-600 py-8 text-center text-sm text-mineshaft-400">
-            No rule sets configured. Add a rule set to get started.
+          <div className="flex items-center justify-end space-x-4 border-t border-mineshaft-600 pt-6">
+            <Button
+              type="submit"
+              variant="outline_bg"
+              className={twMerge("border border-primary", isDirty && "bg-primary text-black")}
+              isDisabled={!isDirty || isSubmitting}
+              isLoading={isSubmitting}
+              leftIcon={<FontAwesomeIcon icon={faSave} />}
+            >
+              Update Rules
+            </Button>
           </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-end space-x-4 border-t border-mineshaft-600 pt-6">
-        {onCancel && (
-          <Button type="button" variant="plain" onClick={onCancel} isDisabled={isSubmitting}>
-            Cancel
-          </Button>
-        )}
-        <Button
-          type="submit"
-          variant="outline_bg"
-          className={twMerge("border border-primary", isDirty && "bg-primary text-black")}
-          isDisabled={!isDirty || isSubmitting}
-          isLoading={isSubmitting}
-          leftIcon={<FontAwesomeIcon icon={faSave} />}
-        >
-          Update Rules
-        </Button>
-      </div>
+        </>
+      )}
     </form>
   );
 };
