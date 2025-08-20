@@ -16,10 +16,14 @@ export type ApiShieldRule = z.infer<typeof ApiShieldRuleSchema>;
 export type ApiShieldRules = z.infer<typeof ApiShieldRulesSchema>;
 
 export type ApiShieldRequestLog = {
-  method: string;
-  url: string;
+  requestMethod: string;
+  ip: string;
+  uriPath: string;
+  userAgent: string;
+  queryString?: string[];
   headers: Record<string, string>;
   body?: unknown;
   result?: string;
+  suspicious?: boolean;
   bridgeId: string;
 };

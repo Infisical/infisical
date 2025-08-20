@@ -67,9 +67,7 @@ export const apiShieldServiceFactory = ({
 
     const logsParsed = logs.map((v) => ({
       ...(v.event.metadata as ApiShieldRequestLog),
-      createdAt: v.createdAt.toISOString(),
-      ipAddress: v.ipAddress || undefined,
-      userAgent: v.userAgent || undefined
+      createdAt: v.createdAt.toISOString()
     }));
     return logsParsed;
   };
@@ -122,7 +120,7 @@ export const apiShieldServiceFactory = ({
     prompt: string;
     openApiUrl?: string;
     currentRules?: ApiShieldRules;
-    logs?: (ApiShieldRequestLog & { createdAt: string; ipAddress?: string; userAgent?: string })[];
+    logs?: (Omit<ApiShieldRequestLog, "bridgeId"> & { createdAt: string })[];
     projectId: string;
     describeRuleChanges?: boolean;
   }) => {
@@ -281,13 +279,9 @@ export const apiShieldServiceFactory = ({
         "Adjust or expand the current rules to account for the provided logs in a way where any new requests that fall outside of the current rules or logs would not pass",
       currentRules: bridge.shadowRuleSet as ApiShieldRules | undefined,
       logs: logs.map((v) => ({
-        method: v.method,
-        url: v.url,
-        headers: v.headers,
-        body: v.body,
-        createdAt: v.createdAt,
-        ipAddress: v.ipAddress,
-        userAgent: v.userAgent
+        ...v,
+        suspicious: undefined,
+        result: undefined
       })),
       projectId: bridge.projectId
     });
@@ -324,7 +318,8 @@ export const apiShieldServiceFactory = ({
     userAgent,
     ip,
     rules,
-    roles
+    roles,
+    queryString
   }: {
     requestMethod: string;
     uriPath: string;
@@ -332,6 +327,7 @@ export const apiShieldServiceFactory = ({
     ip: string;
     rules: ApiShieldRules;
     roles: string[];
+    queryString: string[]; // "key=value"[]
   }): boolean => {
     // If no rules are defined, the request does not pass
     if (rules.length === 0) return false;
@@ -344,81 +340,154 @@ export const apiShieldServiceFactory = ({
       for (const rule of ruleGroup) {
         const { field, operator, value } = rule;
         let conditionMet = false;
-        let requestValue: string | undefined;
 
         // Map the rule field to the corresponding request input
-        switch (field) {
-          case "requestMethod":
-            requestValue = requestMethod;
-            break;
-          case "uriPath":
-            requestValue = uriPath;
-            break;
-          case "userAgent":
-            requestValue = userAgent;
-            break;
-          case "ip":
-            requestValue = ip;
-            break;
-          case "role":
-            requestValue = roles.find((v) => v === value);
-            break;
-          default:
-            logger.warn(`checkRequestPassesRules: Unknown rule field encountered: ${field}`);
-            requestValue = undefined;
-            break;
-        }
-
-        if (requestValue === undefined) {
-          groupMatches = false;
-          break;
-        }
-
-        switch (operator) {
-          case "eq":
-            conditionMet = requestValue === value;
-            break;
-          case "ne":
-            conditionMet = requestValue !== value;
-            break;
-          case "contains":
-            conditionMet = requestValue.includes(value);
-            break;
-          case "not_contains":
-            conditionMet = !requestValue.includes(value);
-            break;
-          case "in":
-            conditionMet = !requestValue
-              .split(",")
-              .map((el) => el.trim())
-              .some((el) => el === value);
-            break;
-          case "starts_with":
-            conditionMet = requestValue.startsWith(value);
-            break;
-          case "not_starts_with":
-            conditionMet = !requestValue.startsWith(value);
-            break;
-          case "ends_with":
-            conditionMet = requestValue.endsWith(value);
-            break;
-          case "not_ends_with":
-            conditionMet = !requestValue.endsWith(value);
-            break;
-          case "wildcard": {
-            const regexPattern = value.replace(/\*/g, ".*");
-            try {
-              conditionMet = new RE2(regexPattern).test(requestValue);
-            } catch (e) {
-              logger.error(e, `checkRequestPassesRules: Invalid RE2 wildcard pattern: ${regexPattern}`);
-              conditionMet = false;
-            }
-            break;
+        if (["requestMethod", "uriPath", "userAgent", "ip"].includes(field)) {
+          let requestValue: string | undefined;
+          switch (field) {
+            case "requestMethod":
+              requestValue = requestMethod;
+              break;
+            case "uriPath":
+              requestValue = uriPath;
+              break;
+            case "userAgent":
+              requestValue = userAgent;
+              break;
+            case "ip":
+              requestValue = ip;
+              break;
+            default:
+              logger.warn(`checkRequestPassesRules: Unknown scalar rule field encountered: ${field as string}`);
+              break;
           }
-          default:
-            logger.warn(`checkRequestPassesRules: Unknown rule operator encountered: ${operator as string}`);
+
+          if (requestValue === undefined) {
             conditionMet = false;
-            break;
+          } else {
+            switch (operator) {
+              case "eq":
+                conditionMet = requestValue === value;
+                break;
+              case "ne":
+                conditionMet = requestValue !== value;
+                break;
+              case "contains":
+                conditionMet = requestValue.includes(value);
+                break;
+              case "not_contains":
+                conditionMet = !requestValue.includes(value);
+                break;
+              case "in":
+                conditionMet = value
+                  .split(",")
+                  .map((el) => el.trim())
+                  .includes(requestValue);
+                break;
+              case "starts_with":
+                conditionMet = requestValue.startsWith(value);
+                break;
+              case "not_starts_with":
+                conditionMet = !requestValue.startsWith(value);
+                break;
+              case "ends_with":
+                conditionMet = requestValue.endsWith(value);
+                break;
+              case "not_ends_with":
+                conditionMet = !requestValue.endsWith(value);
+                break;
+              case "wildcard": {
+                const regexPattern = value.replace(/\*/g, ".*");
+                try {
+                  conditionMet = new RE2(regexPattern).test(requestValue);
+                } catch (e) {
+                  logger.error(e, `checkRequestPassesRules: Invalid RE2 wildcard pattern: ${regexPattern}`);
+                  conditionMet = false;
+                }
+                break;
+              }
+              default:
+                logger.warn(`checkRequestPassesRules: Unknown rule operator encountered: ${operator as string}`);
+                conditionMet = false;
+                break;
+            }
+          }
+        } else if (["role", "queryString"].includes(field)) {
+          const valuesToCheck = field === "role" ? roles : queryString;
+
+          if (valuesToCheck.length === 0) {
+            conditionMet = false;
+          } else {
+            const checkItemCondition = (itemValue: string): boolean => {
+              switch (operator) {
+                case "eq":
+                  return itemValue === value;
+                case "ne":
+                  return itemValue !== value;
+                case "contains":
+                  return itemValue.includes(value);
+                case "not_contains":
+                  return !itemValue.includes(value);
+                case "in":
+                  return value
+                    .split(",")
+                    .map((el) => el.trim())
+                    .includes(itemValue);
+                case "starts_with":
+                  return itemValue.startsWith(value);
+                case "not_starts_with":
+                  return !itemValue.startsWith(value);
+                case "ends_with":
+                  return itemValue.endsWith(value);
+                case "not_ends_with":
+                  return !itemValue.endsWith(value);
+                case "wildcard": {
+                  const regexPattern = value.replace(/\*/g, ".*");
+                  try {
+                    return new RE2(regexPattern).test(itemValue);
+                  } catch (e) {
+                    logger.error(
+                      e,
+                      `checkRequestPassesRules: Invalid RE2 wildcard pattern for array field: ${regexPattern}`
+                    );
+                    return false;
+                  }
+                }
+                default:
+                  logger.warn(
+                    `checkRequestPassesRules: Unknown rule operator encountered for array field: ${operator as string}`
+                  );
+                  return false;
+              }
+            };
+
+            // Determine conditionMet based on operator type and array contents
+            switch (operator) {
+              case "eq":
+              case "contains":
+              case "starts_with":
+              case "ends_with":
+              case "wildcard":
+              case "in":
+                conditionMet = valuesToCheck.some(checkItemCondition);
+                break;
+              case "ne":
+              case "not_contains":
+              case "not_starts_with":
+              case "not_ends_with":
+                conditionMet = valuesToCheck.every(checkItemCondition);
+                break;
+              default:
+                logger.warn(
+                  `checkRequestPassesRules: Unknown rule operator for array field, final determination: ${operator as string}`
+                );
+                conditionMet = false;
+                break;
+            }
+          }
+        } else {
+          logger.warn(`checkRequestPassesRules: Unknown rule field encountered: ${field as string}`);
+          conditionMet = false;
         }
 
         if (!conditionMet) {

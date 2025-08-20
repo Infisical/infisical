@@ -54,8 +54,6 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
         throw new UnauthorizedError();
       }
 
-      const currentRules = bridge.ruleSet as ApiShieldRules;
-
       const perm = await server.services.permission.getProjectPermission({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -65,15 +63,38 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
         actionProjectType: ActionProjectType.ApiShield
       });
 
+      const roles = perm.membership.roles.map((v) => v.role);
+
+      const params = new URLSearchParams(targetUrlObj.search);
+      const queryString: string[] = [];
+      for (const [key, value] of params.entries()) {
+        queryString.push(`${key}=${value}`);
+      }
+
       // checkRequestPassesRules is synchronous, so no await is needed.
       const passed = server.services.apiShield.checkRequestPassesRules({
-        rules: currentRules,
+        rules: bridge.ruleSet as ApiShieldRules,
         ip: req.ip,
         requestMethod: req.method,
         uriPath: targetUrlObj.pathname,
+        queryString,
         userAgent: req.headers["user-agent"] || "",
-        roles: perm.membership.roles.map((v) => v.role)
+        roles
       });
+
+      let suspicious = false;
+      if (bridge.shadowRuleSet) {
+        const passedShadowRules = server.services.apiShield.checkRequestPassesRules({
+          rules: bridge.shadowRuleSet as ApiShieldRules,
+          ip: req.ip,
+          requestMethod: req.method,
+          uriPath: targetUrlObj.pathname,
+          queryString,
+          userAgent: req.headers["user-agent"] || "",
+          roles
+        });
+        suspicious = !passedShadowRules;
+      }
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -82,9 +103,13 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.API_SHIELD_REQUEST,
           metadata: {
-            method: req.method,
             result: passed ? "PASSED" : "BLOCKED",
-            url: targetUrlObj.toString(),
+            suspicious,
+            ip: req.ip,
+            requestMethod: req.method,
+            uriPath: targetUrlObj.pathname,
+            queryString: queryString.length > 0 ? queryString : undefined,
+            userAgent: req.headers["user-agent"] || "",
             bridgeId: bridge.id,
             headers: Object.fromEntries(
               Object.entries(req.headers)

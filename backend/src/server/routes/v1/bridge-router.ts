@@ -3,9 +3,9 @@ import { z } from "zod";
 import { AuditLogsSchema, BridgeSchema } from "@app/db/schemas";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
-import { ApiShieldRules } from "@app/services/api-shield/api-shield-types";
 import { ApiShieldRulesSchema } from "@app/services/api-shield/api-shield-schemas";
+import { ApiShieldRules } from "@app/services/api-shield/api-shield-types";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 const BridgeRuleSchema = z.object({
   field: z.string(),
