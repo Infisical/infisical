@@ -120,10 +120,11 @@ export const chatServiceFactory = ({
 
     const orgDetails = await orgDAL.analyzeOrganizationResources(actorOrgId);
 
-    const messageResponse = await openai.chat.completions.create({
-      model: "gpt-4o-search-preview",
-
-      messages: [
+    // Use GPT-5 with web search
+    const messageResponse = await openai.responses.create({
+      model: "gpt-4o-mini",
+      tools: [{ type: "web_search_preview" }],
+      input: [
         {
           role: "system",
           content: `
@@ -155,7 +156,7 @@ export const chatServiceFactory = ({
 
         KEEP THE MESSAGE SHORT(!!!) 3-4 sentences max.
 
-        REQUIRED DOCUMENTATION LINK: ${documentationLink} (!!!!)
+        REQUIRED DOCUMENTATION LINK: ${documentationLink} (!!!!) YOU MUST ALWAYS SEARCH THIS DOCUMENTATAION LINK! YOU HAVE THE ABILITY TO SEARCH THE WEB, YOU MUST DO IT OR YOU HAVE FAILED TO ANSWER THE USER'S QUESTION.
         ALWAYS SEARCH THE ONE ABOVE DOCUMENTATION LINK (${documentationLink}), NO EXCEPTIONS, AS ALL QUESTIONS WILL BE RELATED TO THIS LINK. (!!!!)
 
         ${orgDetails.migratingFrom ? `The user has indicated that they have migrated TO Infisical FROM ${orgDetails.migratingFrom}. If they ask questions about ${orgDetails.migratingFrom}, you should help them figure out what Infisical features would work best for their usecase. You should also mention "You have indicated that you have migrated from ${orgDetails.migratingFrom}" in your response, if their question is even remotely related to ${orgDetails.migratingFrom}.` : ""} (!!!!)
@@ -169,24 +170,34 @@ export const chatServiceFactory = ({
       ]
     });
 
-    const resp = messageResponse.choices[0].message;
+    console.log(JSON.stringify(messageResponse, null, 2));
 
-    if (!resp.content) {
+    const resp = messageResponse.output?.find((o) => o.type === "message");
+
+    if (!resp) {
       throw new BadRequestError({
         message: "No response was formed from the chat"
       });
     }
 
-    const citations = resp.annotations
-      ? resp.annotations
+    const respContent = resp?.content?.find((c) => c.type === "output_text") as OpenAI.Responses.ResponseOutputText;
+
+    if (!respContent) {
+      throw new BadRequestError({
+        message: "No response was formed from the chat"
+      });
+    }
+
+    const citations = respContent.annotations
+      ? respContent.annotations
           .filter((a) => a.type === "url_citation")
           .map((a) => ({
-            title: a.url_citation.title,
-            url: a.url_citation.url.replace("?utm_source=openai", "")
+            title: a.title,
+            url: a.url.replace("?utm_source=openai", "")
           }))
       : [];
 
-    const messageContent = resp.content.replaceAll("?utm_source=openai", "");
+    const messageContent = respContent.text.replaceAll("?utm_source=openai", "");
 
     const formattedResponse = await openai.chat.completions.create({
       model: "gpt-5-nano-2025-08-07",
@@ -238,7 +249,8 @@ export const chatServiceFactory = ({
       conversationId: conversation.id,
       message: formattedMessage,
       citations: citations.filter(
-        (c, index, self) => index === self.findIndex((t) => t.url === c.url && t.title === c.title)
+        (c: any, index: number, self: any[]) =>
+          index === self.findIndex((t: any) => t.url === c.url && t.title === c.title)
       )
     };
   };
