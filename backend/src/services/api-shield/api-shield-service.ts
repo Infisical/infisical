@@ -84,11 +84,11 @@ export const apiShieldServiceFactory = ({
     prompt,
     currentRules,
     logs,
-    swaggerJson,
+    openApiUrl,
     projectId
   }: {
     prompt: string;
-    swaggerJson?: object;
+    openApiUrl?: string;
     currentRules?: ApiShieldRules;
     logs?: ApiShieldRequestLog[];
     projectId: string;
@@ -103,9 +103,8 @@ export const apiShieldServiceFactory = ({
       projectId
     });
 
-    const systemInstructionText = `You are an API security rule generator.
+    const systemInstructionText = `You are an API security rule generator.${openApiUrl ? ` Fetch the OpenAPI Schema for context from here: ${openApiUrl}` : ""}
 ${currentRules ? `\nCURRENT RULES:\n${JSON.stringify(currentRules)}\n` : ""}
-${swaggerJson ? `\nAPI SCHEMA CONTEXT:\n${JSON.stringify(swaggerJson)}\n` : ""}
 ${logs ? `\nRECENT REQUEST LOGS:\n${JSON.stringify(logs)}\n` : ""}
 ROLES:
 ${JSON.stringify(projectRoles)}

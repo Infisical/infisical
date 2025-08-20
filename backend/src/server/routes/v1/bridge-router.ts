@@ -211,7 +211,6 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
         id: req.params.bridgeId
       });
 
-      const { data: swaggerJson } = await request.get(bridge.openApiUrl);
       const logs = await server.services.apiShield.getRequestLogs({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -225,7 +224,7 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
         currentRules: (bridge.ruleSet || []) as ApiShieldRules,
         logs,
         projectId: bridge.projectId,
-        swaggerJson
+        openApiUrl: bridge.openApiUrl
       });
       return rules;
     }
