@@ -32,6 +32,9 @@ export type TBridge = {
   headers?: TBridgeHeader[];
   createdAt: string;
   updatedAt: string;
+  dailyInsightText?: string;
+  dailySuggestionText?: string;
+  dailySuggestionRuleSet?: TBridgeRule[][];
 };
 
 export type TGenerateBridgeRulesDTO = {

@@ -34,7 +34,6 @@ export const BridgeRequestsTable = ({ bridgeRequests, isLoading, timezone }: Pro
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Session Log</h3>
       </div>
-
       <div className="py-4">
         <TableContainer>
           <Table>

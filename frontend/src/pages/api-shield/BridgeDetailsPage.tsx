@@ -1,10 +1,12 @@
 import { Helmet } from "react-helmet";
-
-import { PageHeader } from "@app/components/v2";
-import { createFileRoute, useParams } from "@tanstack/react-router";
+import { faWandSparkles } from "@fortawesome/free-solid-svg-icons";
 import { useQuery } from "@tanstack/react-query";
-import { bridgeQueryKeys } from "@app/hooks/api/bridge";
+import { createFileRoute, useParams } from "@tanstack/react-router";
+
+import { EmptyState, PageHeader } from "@app/components/v2";
 import { Timezone } from "@app/helpers/datetime";
+import { bridgeQueryKeys } from "@app/hooks/api/bridge";
+
 import { BridgeRequestsTable } from "./BridgeDetailsPage/components/BridgeRequestsTable";
 
 export const BridgeDetailsPage = () => {
@@ -32,12 +34,12 @@ export const BridgeDetailsPage = () => {
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-7xl px-6">
           <PageHeader
-            title={`Bridge: ${bridgeDetails?.slug}`}
+            title="Bridge Details Page"
             description="Detail insights into your projects"
           />
           <div className="mt-6">
             <div className="flex gap-2">
-              <div className="h-min max-w-sm rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+              <div className="h-min max-w-xs flex-shrink-0 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
                 <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
                   <h3 className="text-lg font-semibold text-mineshaft-100">Bridge Details</h3>
                 </div>
@@ -51,18 +53,34 @@ export const BridgeDetailsPage = () => {
                 </div>
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-mineshaft-300">Base URL</p>
-                  <p className="text-sm text-mineshaft-300">{bridgeDetails?.baseUrl}</p>
+                  <p className="truncate text-sm text-mineshaft-300">{bridgeDetails?.baseUrl}</p>
                 </div>
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-mineshaft-300">OpenAPI URL</p>
-                  <p className="text-sm text-mineshaft-300">{bridgeDetails?.openApiUrl}</p>
+                  <p className="truncate text-sm text-mineshaft-300">{bridgeDetails?.openApiUrl}</p>
                 </div>
               </div>
-              <BridgeRequestsTable
-                bridgeRequests={bridgeRequests || []}
-                isLoading={isRequestsLoading}
-                timezone={Timezone.UTC}
-              />
+              <div className="flex-grow">
+                <div className="mb-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+                  <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+                    <h3 className="text-lg font-semibold text-mineshaft-100">Daily Insights</h3>
+                  </div>
+                  <div className="pt-2">
+                    {bridgeDetails?.dailyInsightText ? (
+                      <div className="thin-scrollbar my-1 max-h-96 overflow-auto whitespace-pre-wrap rounded border border-mineshaft-600 bg-bunker-800 p-2 font-mono text-sm leading-6">
+                        {bridgeDetails?.dailyInsightText}
+                      </div>
+                    ) : (
+                      <EmptyState title="No daily insight" icon={faWandSparkles} />
+                    )}
+                  </div>
+                </div>
+                <BridgeRequestsTable
+                  bridgeRequests={bridgeRequests || []}
+                  isLoading={isRequestsLoading}
+                  timezone={Timezone.UTC}
+                />
+              </div>
             </div>
           </div>
         </div>
