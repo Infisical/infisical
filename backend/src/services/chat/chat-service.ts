@@ -39,7 +39,7 @@ export const chatServiceFactory = ({
     const orgDetails = await orgDAL.analyzeOrganizationResources(actorOrgId);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-nano-2025-08-07",
+      model: "gpt-5",
       temperature: 1,
       messages: [
         {
@@ -58,6 +58,7 @@ export const chatServiceFactory = ({
 - For <img>, preserve src and alt; remove other attributes.
 - Do not try to parse mermaid diagrams of some sort, you can just ignore them.
 - Ensure the result is a well-formed HTML fragment.
+${orgDetails.migratingFrom ? `- (IMPORTANT): The user has indicated that they are migrating from ${orgDetails.migratingFrom}. You HAVE to add custom parts to the html that explains differences between ${orgDetails.migratingFrom} and Infisical. You MUST do this, and you MUST do it across EVERY relevant part of the HTLML. ALWAYS DO THIS!!! DO IT ALWAYS TOO MUCH RATHER THAN NOT ENOUGH. You need to emphasize the the conceptual differences between the two products. VERY VERY VERY IMPORTANT. ` : ""}
 `
         },
         { role: "user", content: mdx }

@@ -1,6 +1,6 @@
 /* eslint-disable react/button-has-type */
 /* eslint-disable no-nested-ternary */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { faExternalLinkAlt, faFileAlt, faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { apiRequest } from "@app/config/request";
@@ -15,6 +15,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const isLoadingRef = useRef(false);
 
   // Simulate realistic loading progress
   useEffect(() => {
@@ -52,7 +53,9 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
 
   // Fetch simple HTML content from proxy endpoint
   const fetchProxyContent = useCallback(async (targetUrl?: string) => {
+    if (isLoadingRef.current) return;
     if (!targetUrl) return; // do nothing if no URL provided
+    isLoadingRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -66,6 +69,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
       setError(errorMessage);
     } finally {
+      isLoadingRef.current = false;
       setIsLoading(false);
     }
   }, []);
