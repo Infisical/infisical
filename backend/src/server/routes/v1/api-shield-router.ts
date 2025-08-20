@@ -16,13 +16,13 @@ type TAllowedRequestMethods = (typeof allowedRequestMethods)[number];
 export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: [...allowedRequestMethods],
-    url: "/request/:projectId/:slug",
+    url: "/request/:projectSlug/:slug",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        projectId: z.string(),
+        projectSlug: z.string(),
         slug: z.string()
       }),
       querystring: z.object({
@@ -35,7 +35,15 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
       const { uri } = req.query;
-      const { slug, projectId } = req.params;
+      const { slug, projectSlug } = req.params;
+
+      const projectId = await server.services.project.extractProjectIdFromSlug({
+        projectSlug,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
 
       const bridge = await server.services.bridge.getBySlug({
         projectId,
