@@ -14,18 +14,11 @@ export const registerChatRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         message: z.string().describe("The message to send to the chat"),
-        messageHistory: z
-          .array(
-            z.object({
-              role: z.enum(["user", "assistant"]),
-              content: z.string().describe("The content of the message")
-            })
-          )
-          .describe("The message history"),
         documentationLink: z.string().describe("The documentation link to use for the chat")
       }),
       response: {
         200: z.object({
+          conversationId: z.string().describe("The id of the conversation"),
           message: z.string().describe("The response from the chat"),
           citations: z
             .array(
@@ -47,7 +40,6 @@ export const registerChatRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         message: req.body.message,
-        messageHistory: req.body.messageHistory,
         documentationLink: req.body.documentationLink
       });
 

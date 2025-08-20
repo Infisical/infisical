@@ -52,7 +52,9 @@ export const OrgNameChangeSection = (): JSX.Element => {
       reset({
         name: currentOrg.name,
         slug: currentOrg.slug,
-        migratingFrom: currentOrg.migratingFrom || MigratingFrom.None,
+        migratingFrom: currentOrg.migratingFrom
+          ? (currentOrg.migratingFrom as MigratingFrom)
+          : MigratingFrom.None,
         ...(canReadOrgRoles &&
           roles?.length && {
             // will always be present, can't remove role if default
