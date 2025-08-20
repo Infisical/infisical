@@ -3,7 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { bridgeQueryKeys } from "./queries";
-import { TCreateBridgeDTO, TDeleteBridgeDTO, TUpdateBridgeDTO } from "./types";
+import {
+  TBridgeRule,
+  TCreateBridgeDTO,
+  TDeleteBridgeDTO,
+  TGenerateBridgeRulesDTO,
+  TUpdateBridgeDTO
+} from "./types";
 
 export const useCreateBridge = () => {
   const queryClient = useQueryClient();
@@ -20,6 +26,16 @@ export const useCreateBridge = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: bridgeQueryKeys.listKey(projectId) });
+    }
+  });
+};
+
+export const useGenerateBridgeRules = () => {
+  return useMutation({
+    mutationFn: ({ prompt, bridgeId }: TGenerateBridgeRulesDTO) => {
+      return apiRequest.post<TBridgeRule[][]>(`/api/v1/bridge/${bridgeId}/generate-rules`, {
+        prompt
+      });
     }
   });
 };
@@ -48,4 +64,3 @@ export const useDeleteBridge = () => {
     }
   });
 };
-

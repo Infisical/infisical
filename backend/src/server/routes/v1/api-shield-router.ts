@@ -67,8 +67,6 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
         actionProjectType: ActionProjectType.ApiShield
       });
 
-      perm.
-
       // checkRequestPassesRules is synchronous, so no await is needed.
       const passed = server.services.apiShield.checkRequestPassesRules({
         rules: currentRules,

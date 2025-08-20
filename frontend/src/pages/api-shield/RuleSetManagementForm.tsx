@@ -25,6 +25,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useToggle } from "@app/hooks";
 import { useState } from "react";
+import { useGenerateBridgeRules } from "@app/hooks/api/bridge/mutation";
 
 const ruleSchema = z.object({
   field: z.string().min(1, "Field is required"),
@@ -207,6 +208,7 @@ const RuleSetEditor = ({ ruleSetIndex, control, errors, removeRuleSet }: RuleSet
 
 type PromptModeProps = {
   onApplyRules: (rules: TBridgeRule[][], action: "replace" | "add") => void;
+  bridgeId: string;
 };
 
 const PreviewRuleSetEditor = ({
@@ -266,48 +268,23 @@ const PreviewRuleSetEditor = ({
 );
 
 // Component for AI-powered rule generation from natural language prompts
-const PromptMode = ({ onApplyRules }: PromptModeProps) => {
+const PromptMode = ({ onApplyRules, bridgeId }: PromptModeProps) => {
   const [prompt, setPrompt] = useState("");
   const [generatedRules, setGeneratedRules] = useState<TBridgeRule[][]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const { mutateAsync: generateRulesByPrompt } = useGenerateBridgeRules();
 
   const generateRules = async () => {
     if (!prompt.trim()) return;
 
     setIsGenerating(true);
     try {
-      // TODO: Replace with actual API call to generate rules from prompt
-      // const response = await apiRequest.post("/api/v1/bridge/generate-rules", { prompt });
-      // setGeneratedRules(response.data.rules);
-
-      // Mock response for now
-      await new Promise((resolve) => {
-        setTimeout(resolve, 2000);
-      }); // Simulate API call
-      const mockRules: TBridgeRule[][] = [
-        [
-          {
-            field: "uriPath",
-            operator: BridgeRuleOperator.STARTS_WITH,
-            value: "/api/admin"
-          },
-          {
-            field: "requestMethod",
-            operator: BridgeRuleOperator.EQ,
-            value: "POST"
-          }
-        ],
-        [
-          {
-            field: "userAgent",
-            operator: BridgeRuleOperator.CONTAINS,
-            value: "bot"
-          }
-        ]
-      ];
-
-      setGeneratedRules(mockRules);
+      const data = await generateRulesByPrompt({
+        prompt,
+        bridgeId
+      });
+      setGeneratedRules(data.data);
       setHasGenerated(true);
 
       createNotification({
@@ -467,7 +444,6 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
   };
 
   const handleApplyRules = (rules: TBridgeRule[][], action: "replace" | "add") => {
-    console.log(rules);
     if (action === "replace") {
       // Replace all existing rules with generated ones
       form.setValue("ruleSets", rules, { shouldDirty: true });
@@ -530,7 +506,7 @@ export const RuleSetManagementForm = ({ bridgeId, onSuccess }: Props) => {
         </div>
       </div>
       {isPromptMode ? (
-        <PromptMode onApplyRules={handleApplyRules} />
+        <PromptMode bridgeId={bridgeId} onApplyRules={handleApplyRules} />
       ) : (
         <>
           <div className="space-y-2">

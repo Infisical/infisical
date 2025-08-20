@@ -1,4 +1,5 @@
 import RE2 from "re2";
+import axios from "axios";
 
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
@@ -186,7 +187,6 @@ RULE GENERATION GUIDELINES:
         }
       }
     };
-
     try {
       const { data } = await request.post<{ candidates: { content: { parts: { text: string }[] } }[] }>(
         GEMINI_API_URL,
@@ -209,6 +209,7 @@ RULE GENERATION GUIDELINES:
       }
       return [];
     } catch (err) {
+      logger.info(err?.response?.data);
       logger.error(err, "Failed to send request to Gemini API");
       throw err;
     }

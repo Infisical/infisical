@@ -34,6 +34,11 @@ export type TBridge = {
   updatedAt: string;
 };
 
+export type TGenerateBridgeRulesDTO = {
+  bridgeId: string;
+  prompt: string;
+};
+
 export type TCreateBridgeDTO = {
   projectId: string;
   baseUrl: string;
