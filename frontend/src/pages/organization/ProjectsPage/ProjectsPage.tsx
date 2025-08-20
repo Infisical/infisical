@@ -33,7 +33,7 @@ export const ProjectsPage = () => {
   const { setDocumentationUrl } = useChatWidgetActions();
 
   useEffect(() => {
-    setDocumentationUrl("/organization/projects");
+    setDocumentationUrl("/documentation/platform/project");
   }, []);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
