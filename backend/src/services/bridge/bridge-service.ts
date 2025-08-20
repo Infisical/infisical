@@ -97,7 +97,11 @@ export const bridgeServiceFactory = ({
     const updateData: Record<string, any> = {};
 
     if (baseUrl !== undefined) updateData.baseUrl = baseUrl;
-    if (ruleSet !== undefined) updateData.ruleSet = JSON.stringify(ruleSet);
+    if (ruleSet !== undefined) {
+      updateData.ruleSet = JSON.stringify(ruleSet);
+      updateData.dailySuggestionText = null;
+      updateData.dailySuggestionRuleSet = null;
+    }
     if (openApiUrl !== undefined) updateData.openApiUrl = openApiUrl;
     if (slug !== undefined) updateData.slug = slug;
 
