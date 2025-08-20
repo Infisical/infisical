@@ -178,7 +178,8 @@ export enum TableName {
   SecretScanningConfig = "secret_scanning_configs",
   // reminders
   Reminder = "reminders",
-  ReminderRecipient = "reminders_recipients"
+  ReminderRecipient = "reminders_recipients",
+  Bridge = "bridge"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -270,7 +271,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SSH = "ssh",
-  SecretScanning = "secret-scanning"
+  SecretScanning = "secret-scanning",
+  ApiShield = "api-shield"
 }
 
 export enum ActionProjectType {
@@ -279,6 +281,7 @@ export enum ActionProjectType {
   KMS = ProjectType.KMS,
   SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
+  ApiShield = "api-shield",
   // project operations that happen on all types
   Any = "any"
 }

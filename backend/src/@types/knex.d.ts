@@ -38,6 +38,9 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TBridge,
+  TBridgeInsert,
+  TBridgeUpdate,
   TCertificateAuthorities,
   TCertificateAuthoritiesInsert,
   TCertificateAuthoritiesUpdate,
@@ -1249,6 +1252,7 @@ declare module "knex/types/tables" {
       TSecretScanningConfigsUpdate
     >;
     [TableName.Reminder]: KnexOriginal.CompositeTableType<TReminders, TRemindersInsert, TRemindersUpdate>;
+    [TableName.Bridge]: KnexOriginal.CompositeTableType<TBridge, TBridgeInsert, TBridgeUpdate>;
     [TableName.ReminderRecipient]: KnexOriginal.CompositeTableType<
       TRemindersRecipients,
       TRemindersRecipientsInsert,

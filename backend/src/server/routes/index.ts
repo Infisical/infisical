@@ -314,6 +314,8 @@ import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { bridgeDALFactory } from "@app/services/bridge/bridge-dal";
+import { bridgeServiceFactory } from "@app/services/bridge/bridge-service";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -1960,6 +1962,13 @@ export const registerRoutes = async (
     appConnectionDAL
   });
 
+  const bridgeDAL = bridgeDALFactory(db);
+  const bridgeService = bridgeServiceFactory({
+    permissionService,
+    kmsService,
+    bridgeDAL,
+    projectDAL
+  });
   // setup the communication with license key server
   await licenseService.init();
 
@@ -1985,6 +1994,7 @@ export const registerRoutes = async (
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
+    bridge: bridgeService,
     login: loginService,
     password: passwordService,
     signup: signupService,
