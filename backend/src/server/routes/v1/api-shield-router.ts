@@ -1,14 +1,14 @@
 import { z } from "zod";
 
+import { ActionProjectType } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ApiShieldRulesSchema } from "@app/services/api-shield/api-shield-schemas";
 import { ApiShieldRules } from "@app/services/api-shield/api-shield-types";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ActionProjectType } from "@app/db/schemas";
 
 const allowedRequestMethods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"] as const;
 type TAllowedRequestMethods = (typeof allowedRequestMethods)[number];
@@ -36,8 +36,6 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
     handler: async (req, reply) => {
       const { uri } = req.query;
       const { slug, projectId } = req.params;
-
-      // TODO(andrey): Verify user is in project (and possibly add perm checks)
 
       const bridge = await server.services.bridge.getBySlug({
         projectId,
@@ -72,10 +70,40 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
         rules: currentRules,
         ip: req.ip,
         requestMethod: req.method,
-        // TODO(andrey): Also support query params
         uriPath: targetUrlObj.pathname,
         userAgent: req.headers["user-agent"] || "",
         roles: perm.membership.roles.map((v) => v.role)
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.API_SHIELD_REQUEST,
+          metadata: {
+            method: req.method,
+            result: passed ? "PASSED" : "BLOCKED",
+            url: targetUrlObj.toString(),
+            headers: Object.fromEntries(
+              Object.entries(req.headers)
+                .filter(([, value]) => value !== undefined)
+                .map(([key, value]) => {
+                  let stringValue: string;
+                  if (Array.isArray(value)) {
+                    stringValue = value.join(", ");
+                  } else {
+                    stringValue = value as string;
+                  }
+
+                  if (key.toLowerCase() === "authorization") {
+                    return [key, "[redacted]"];
+                  }
+                  return [key, stringValue];
+                })
+            ),
+            body: req.body
+          }
+        }
       });
 
       if (!passed) {

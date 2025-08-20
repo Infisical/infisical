@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import axios from "axios";
 
-import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { InternalServerError } from "@app/lib/errors";
@@ -11,7 +11,7 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TBridgeServiceFactory } from "../bridge/bridge-service";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { ApiShieldRuleFieldSchema, ApiShieldRuleOperatorSchema } from "./api-shield-schemas";
-import { ApiShieldRules } from "./api-shield-types";
+import { ApiShieldRequestLog, ApiShieldRules } from "./api-shield-types";
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -46,60 +46,38 @@ export const apiShieldServiceFactory = ({
     ];
   };
 
-  const getRequestLogs = () => {
-    return [
-      {
-        method: "GET",
-        url: "/api/users",
-        headers: { Authorization: "Bearer token123" },
-        result: "PASSED"
-      },
-      {
-        method: "POST",
-        url: "/api/users",
-        headers: { "Content-Type": "application/json" },
-        body: { name: "John" },
-        result: "BLOCKED"
-      },
-      {
-        method: "GET",
-        url: "/api/users/123",
-        headers: { Authorization: "Bearer token456" },
-        result: "PASSED"
-      },
-      {
-        method: "PUT",
-        url: "/api/users/123",
-        headers: { "Content-Type": "application/json" },
-        body: { name: "Jane" },
-        result: "BLOCKED"
-      },
-      {
-        method: "DELETE",
-        url: "/api/posts/456",
-        headers: { Authorization: "Bearer token789" },
-        result: "BLOCKED"
-      },
-      {
-        method: "GET",
-        url: "/api/posts?limit=10&offset=0",
-        headers: { Authorization: "Bearer token101" },
-        result: "PASSED"
-      },
-      {
-        method: "GET",
-        url: "/api/admin/stats",
-        headers: { Authorization: "Bearer admin_token" },
-        result: "BLOCKED"
-      },
-      {
-        method: "POST",
-        url: "/api/posts",
-        headers: { "Content-Type": "application/json" },
-        body: { title: "New Post" },
-        result: "BLOCKED"
+  const getRequestLogs = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    limit = 50
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorOrgId: string;
+    actorAuthMethod: ActorAuthMethod;
+    projectId: string;
+    limit: number;
+  }) => {
+    const logs = await auditLogService.listAuditLogs({
+      actor,
+      actorAuthMethod,
+      actorId,
+      actorOrgId,
+      filter: {
+        projectId,
+        limit,
+        endDate: new Date().toISOString(),
+        startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString(),
+        eventType: [EventType.API_SHIELD_REQUEST]
       }
-    ];
+    });
+
+    const logsParsed = logs.map((v) => v.event.metadata as ApiShieldRequestLog);
+
+    return logsParsed;
   };
 
   const generateRules = async ({
@@ -112,13 +90,7 @@ export const apiShieldServiceFactory = ({
     prompt: string;
     swaggerJson?: object;
     currentRules?: ApiShieldRules;
-    logs?: {
-      method: string;
-      url: string;
-      headers: Record<string, string | undefined>;
-      result?: string;
-      body?: Record<string, string | undefined>;
-    }[];
+    logs?: ApiShieldRequestLog[];
     projectId: string;
   }) => {
     const appCfg = getConfig();
@@ -230,20 +202,14 @@ RULE GENERATION GUIDELINES:
   }) => {
     const bridge = await bridgeService.getById({ id: bridgeId });
 
-    const logs = await auditLogService.listAuditLogs({
+    const logs = await getRequestLogs({
       actor,
       actorAuthMethod,
       actorId,
       actorOrgId,
-      filter: {
-        projectId: bridge.projectId,
-        limit: 500,
-        endDate: new Date().toISOString(),
-        startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString()
-      }
+      limit: 500,
+      projectId: bridge.projectId
     });
-
-    // TODO(andrey): Filter logs and strip them down to essentials
 
     const currentRules = getCurrentRules(); // TODO(andrey): Get most recent shadow rules
 
@@ -251,7 +217,8 @@ RULE GENERATION GUIDELINES:
       prompt:
         "Adjust or expand the current rules to account for the provided logs in a way where any new requests that fall outside of the current rules or logs would not pass",
       currentRules,
-      logs
+      logs: logs.map((v) => ({ method: v.method, url: v.url, headers: v.headers, body: v.body })),
+      projectId: bridge.projectId
     });
 
     // TODO(andrey): Update bridge shadow rules in DB

@@ -49,6 +49,7 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import { ApiShieldRequestLog } from "@app/services/api-shield/api-shield-types";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -475,7 +476,9 @@ export enum EventType {
 
   CREATE_SECRET_REMINDER = "create-secret-reminder",
   GET_SECRET_REMINDER = "get-secret-reminder",
-  DELETE_SECRET_REMINDER = "delete-secret-reminder"
+  DELETE_SECRET_REMINDER = "delete-secret-reminder",
+
+  API_SHIELD_REQUEST = "api-shield-request"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -3442,6 +3445,11 @@ interface ProjectDeleteEvent {
   };
 }
 
+interface ApiShieldRequestEvent {
+  type: EventType.API_SHIELD_REQUEST;
+  metadata: ApiShieldRequestLog;
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3753,4 +3761,5 @@ export type Event =
   | ProjectDeleteEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
-  | SecretReminderDeleteEvent;
+  | SecretReminderDeleteEvent
+  | ApiShieldRequestEvent;

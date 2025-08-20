@@ -212,7 +212,14 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
       });
 
       const { data: swaggerJson } = await request.get(bridge.openApiUrl);
-      const logs = server.services.apiShield.getRequestLogs(); // TODO(andrey): Fetch these from DB
+      const logs = await server.services.apiShield.getRequestLogs({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        limit: 50,
+        projectId: bridge.projectId
+      });
       const rules = await server.services.apiShield.generateRules({
         prompt: req.body.prompt,
         currentRules: (bridge.ruleSet || []) as ApiShieldRules,

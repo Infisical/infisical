@@ -14,3 +14,11 @@ export type ApiShieldRuleOperator = z.infer<typeof ApiShieldRuleOperatorSchema>;
 export type ApiShieldRule = z.infer<typeof ApiShieldRuleSchema>;
 
 export type ApiShieldRules = z.infer<typeof ApiShieldRulesSchema>;
+
+export type ApiShieldRequestLog = {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body?: unknown;
+  result?: string;
+};
