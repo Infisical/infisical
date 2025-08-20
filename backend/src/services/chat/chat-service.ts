@@ -35,7 +35,9 @@ export const chatServiceFactory = ({
   const config = getConfig();
   const openai = new OpenAI({ apiKey: config.OPENAI_API_KEY });
 
-  const convertMdxToSimpleHtml = async (mdx: string) => {
+  const convertMdxToSimpleHtml = async (actorOrgId: string, mdx: string) => {
+    const orgDetails = await orgDAL.analyzeOrganizationResources(actorOrgId);
+
     const completion = await openai.chat.completions.create({
       model: "gpt-5-nano-2025-08-07",
       temperature: 1,
@@ -55,7 +57,7 @@ export const chatServiceFactory = ({
 - For <a>, preserve href and text; add rel="noopener noreferrer" and target="_blank" for absolute http(s) links.
 - For <img>, preserve src and alt; remove other attributes.
 - Do not try to parse mermaid diagrams of some sort, you can just ignore them.
-- Ensure the result is a well-formed HTML fragment.`
+- Ensure the result is a well-formed HTML fragment.
         },
         { role: "user", content: mdx }
       ]

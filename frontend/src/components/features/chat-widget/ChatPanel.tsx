@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { faPaperPlane, faRobot, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { useCreateChat } from "@app/hooks/api/chat";
+import { useChatWidgetState } from "@app/hooks/ui/chat-widget";
 
 interface Message {
   id: string;
@@ -21,6 +23,7 @@ const ChatPanel: React.FC = () => {
     }
   ]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const { data: state } = useChatWidgetState();
 
   const { mutateAsync: createChat, isPending: isLoading } = useCreateChat();
 
@@ -54,7 +57,7 @@ const ChatPanel: React.FC = () => {
     const response = await createChat({
       message: userMessage.text,
       conversationId: conversationId ?? undefined,
-      documentationLink: "https://infisical.com/docs/documentation/platform/project"
+      documentationLink: `https://infisical.com/docs${state?.documentationUrl}`
     });
 
     setConversationId(response.conversationId);

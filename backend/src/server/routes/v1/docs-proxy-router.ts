@@ -3,11 +3,28 @@ import path from "path";
 import { z } from "zod";
 
 import { readLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 const cachedDocs: Record<string, string> = {
   "/organization/projects": "",
   "/integrations/secret-syncs/overview": ""
 };
+
+// Add rewrite function above to avoid no-use-before-define lint issue
+function rewriteMdxLinks(mdx: string): string {
+  const s3Base = "https://mintlify.s3.us-west-1.amazonaws.com/infisical";
+  const docsBase = "https://infisical.com/docs";
+
+  // Use a prefix capture to preserve preceding char while safely inserting @absolute
+  const imagePathPattern = /(\(|\s|["']|^)(\/images\/[^^\s)\]"'>]+)/g;
+  const docsPathPattern = /(\(|\s|["']|^)(\/(?:documentation|integrations)\/[^^\s)\]"'>]+)/g;
+
+  let output = mdx.replace(imagePathPattern, (_m: string, prefix: string, p: string) => `${prefix}${s3Base}${p}`);
+  output = output.replace(docsPathPattern, (_m: string, prefix: string, p: string) => `${prefix}${docsBase}${p}`);
+
+  return output;
+}
 
 export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -16,6 +33,7 @@ export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: true, // Hide from API docs since this is internal
       tags: ["Documentation Proxy"],
@@ -50,28 +68,11 @@ export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
 
       if (!mdxContent) return res.status(400).send({ error: "No MDX content found for the provided url" });
 
-      const simpleHtml = await server.services.chat.convertMdxToSimpleHtml(rewriteMdxLinks(mdxContent));
+      const simpleHtml = String(
+        await server.services.chat.convertMdxToSimpleHtml(req.permission.orgId, rewriteMdxLinks(mdxContent))
+      );
       cachedDocs[url] = simpleHtml;
       return simpleHtml;
     }
   });
 };
-
-/**
- * Rewrite MDX content by converting:
- *  - image paths like /images/... to @https://mintlify.s3.us-west-1.amazonaws.com/infisical/images/...
- *  - docs paths like /documentation/... to @https://infisical.com/docs/documentation/...
- */
-function rewriteMdxLinks(mdx: string): string {
-  const s3Base = "https://mintlify.s3.us-west-1.amazonaws.com/infisical";
-  const docsBase = "https://infisical.com/docs";
-
-  // Use a prefix capture to preserve preceding char while safely inserting @absolute
-  const imagePathPattern = /(\(|\s|["']|^)(\/images\/[^^\s)\]"'>]+)/g;
-  const docsPathPattern = /(\(|\s|["']|^)(\/documentation\/[^^\s)\]"'>]+)/g;
-
-  let output = mdx.replace(imagePathPattern, (_m: string, prefix: string, p: string) => `${prefix}${s3Base}${p}`);
-  output = output.replace(docsPathPattern, (_m: string, prefix: string, p: string) => `${prefix}${docsBase}${p}`);
-
-  return output;
-}

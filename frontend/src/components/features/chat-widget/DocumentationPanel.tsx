@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { faExternalLinkAlt, faFileAlt, faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { apiRequest } from "@app/config/request";
 
 interface DocumentationPanelProps {
   url?: string;
@@ -57,12 +58,9 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
 
     try {
       const proxyUrl = `/api/v1/proxy-docs?url=${encodeURIComponent(targetUrl)}`;
+      const response = await apiRequest.get<string>(proxyUrl);
 
-      const response = await fetch(proxyUrl, { headers: { Accept: "text/html,*/*" } });
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-
-      const htmlContent = await response.text();
-      setHtmlSource(htmlContent);
+      setHtmlSource(response.data);
       setLoadingProgress(100); // Complete the progress bar
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
@@ -87,7 +85,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({ url, content })
 
   // Open documentation in new tab
   const openInNewTab = () => {
-    if (url) window.open(url, "_blank");
+    if (url) window.open(`https://infisical.com/docs${url}`, "_blank");
   };
 
   const LoadingBar = () => (
