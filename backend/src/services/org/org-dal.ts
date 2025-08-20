@@ -135,6 +135,170 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const analyzeOrganizationResources = async (orgId: string) => {
+    const docs = await db
+      .replicaNode()(TableName.Organization)
+      .where({ [`${TableName.Organization}.id` as "id"]: orgId })
+      .leftJoin(TableName.Project, `${TableName.Organization}.id`, `${TableName.Project}.orgId`) // the projects of the org
+      .leftJoin(TableName.OrgMembership, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`) // the members of the org
+      .leftJoin(TableName.AppConnection, `${TableName.Organization}.id`, `${TableName.AppConnection}.orgId`) // the app connections of the org
+      .leftJoin(TableName.SecretSync, `${TableName.AppConnection}.id`, `${TableName.SecretSync}.connectionId`) // the secret syncs in the org's projects
+
+      .leftJoin(
+        TableName.IdentityOrgMembership,
+        `${TableName.Organization}.id`,
+        `${TableName.IdentityOrgMembership}.orgId`
+      ) // the identity memberships of the org
+      .leftJoin(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`) // the identities that have membership to the org
+      .leftJoin(
+        TableName.IdentityAliCloudAuth,
+        `${TableName.Identity}.id`,
+        `${TableName.IdentityAliCloudAuth}.identityId`
+      ) // the ali cloud auths of the identities
+      .leftJoin(TableName.IdentityAwsAuth, `${TableName.Identity}.id`, `${TableName.IdentityAwsAuth}.identityId`) // the aws auths of the identities
+      .leftJoin(TableName.IdentityAzureAuth, `${TableName.Identity}.id`, `${TableName.IdentityAzureAuth}.identityId`) // the azure auths of the identities
+      .leftJoin(TableName.IdentityGcpAuth, `${TableName.Identity}.id`, `${TableName.IdentityGcpAuth}.identityId`) // the gcp auths of the identities
+      .leftJoin(TableName.IdentityJwtAuth, `${TableName.Identity}.id`, `${TableName.IdentityJwtAuth}.identityId`) // the jwt auths of the identities
+      .leftJoin(
+        TableName.IdentityKubernetesAuth,
+        `${TableName.Identity}.id`,
+        `${TableName.IdentityKubernetesAuth}.identityId`
+      ) // the kubernetes auths of the identities
+      .leftJoin(TableName.IdentityLdapAuth, `${TableName.Identity}.id`, `${TableName.IdentityLdapAuth}.identityId`) // the ldap auths of the identities
+      .leftJoin(TableName.IdentityOciAuth, `${TableName.Identity}.id`, `${TableName.IdentityOciAuth}.identityId`) // the oci auths of the identities
+      .leftJoin(TableName.IdentityOidcAuth, `${TableName.Identity}.id`, `${TableName.IdentityOidcAuth}.identityId`) // the oidc auths of the identities
+      .leftJoin(
+        TableName.IdentityTlsCertAuth,
+        `${TableName.Identity}.id`,
+        `${TableName.IdentityTlsCertAuth}.identityId`
+      ) // the tls cert auths of the identities
+      .leftJoin(TableName.IdentityTokenAuth, `${TableName.Identity}.id`, `${TableName.IdentityTokenAuth}.identityId`) // the token auths of the identities
+      .leftJoin(
+        TableName.IdentityUniversalAuth,
+        `${TableName.Identity}.id`,
+        `${TableName.IdentityUniversalAuth}.identityId`
+      ) // the universal auths of the identities
+
+      .select(selectAllTableCols(TableName.Organization))
+      .select(db.ref("name").withSchema(TableName.Project).as("projectName"))
+      .select(db.ref("id").withSchema(TableName.Project).as("projectId"))
+      .select(db.ref("type").withSchema(TableName.Project).as("projectType"))
+
+      .select(db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"))
+      .select(db.ref("role").withSchema(TableName.OrgMembership).as("orgMembershipRole"))
+      .select(db.ref("userId").withSchema(TableName.OrgMembership).as("orgMembershipUserId"))
+
+      .select(db.ref("id").withSchema(TableName.AppConnection).as("appConnectionId"))
+      .select(db.ref("name").withSchema(TableName.AppConnection).as("appConnectionName"))
+      .select(db.ref("app").withSchema(TableName.AppConnection).as("appConnectionApp"))
+
+      .select(db.ref("id").withSchema(TableName.SecretSync).as("secretSyncId"))
+      .select(db.ref("name").withSchema(TableName.SecretSync).as("secretSyncName"))
+      .select(db.ref("projectId").withSchema(TableName.SecretSync).as("secretSyncProjectId"))
+      .select(db.ref("connectionId").withSchema(TableName.SecretSync).as("secretSyncConnectionId"))
+      .select(db.ref("projectId").withSchema(TableName.SecretSync).as("secretSyncProjectId"))
+
+      .select(db.ref("id").withSchema(TableName.Identity).as("identityId"))
+      .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
+
+      .select(db.ref("id").withSchema(TableName.IdentityAliCloudAuth).as("identityAliCloudAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityAwsAuth).as("identityAwsAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityAzureAuth).as("identityAzureAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityGcpAuth).as("identityGcpAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityJwtAuth).as("identityJwtAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityKubernetesAuth).as("identityKubernetesAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityLdapAuth).as("identityLdapAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityOciAuth).as("identityOciAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityOidcAuth).as("identityOidcAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityTlsCertAuth).as("identityTlsCertAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityTokenAuth).as("identityTokenAuthId"))
+      .select(db.ref("id").withSchema(TableName.IdentityUniversalAuth).as("identityUniversalAuthId"));
+
+    const formattedDocs = sqlNestRelationships({
+      data: docs,
+      key: "id",
+      parentMapper: (data) => OrganizationsSchema.parse(data),
+      childrenMapper: [
+        {
+          key: "projectId",
+          label: "projects" as const,
+          mapper: ({ projectId, projectName, projectType }) => ({
+            id: projectId,
+            name: projectName,
+            type: projectType
+          })
+        },
+        {
+          key: "orgMembershipId",
+          label: "members" as const,
+          mapper: ({ orgMembershipId, orgMembershipRole, orgMembershipUserId }) => ({
+            id: orgMembershipId,
+            role: orgMembershipRole,
+            userId: orgMembershipUserId
+          })
+        },
+        {
+          key: "appConnectionId",
+          label: "appConnections" as const,
+          mapper: ({ appConnectionId, appConnectionName, appConnectionApp }) => ({
+            id: appConnectionId,
+            name: appConnectionName,
+            app: appConnectionApp
+          })
+        },
+        {
+          key: "secretSyncId",
+          label: "secretSyncs" as const,
+          mapper: ({ secretSyncId, secretSyncName, secretSyncProjectId, secretSyncConnectionId }) => ({
+            id: secretSyncId,
+            name: secretSyncName,
+            projectId: secretSyncProjectId,
+            connectionId: secretSyncConnectionId
+          })
+        },
+        {
+          key: "identityId",
+          label: "identities" as const,
+          mapper: ({
+            identityId,
+            identityName,
+            identityAliCloudAuthId,
+            identityAwsAuthId,
+            identityAzureAuthId,
+            identityGcpAuthId,
+            identityJwtAuthId,
+            identityKubernetesAuthId,
+            identityLdapAuthId,
+            identityOciAuthId,
+            identityOidcAuthId,
+            identityTlsCertAuthId,
+            identityTokenAuthId,
+            identityUniversalAuthId
+          }) => ({
+            id: identityId,
+            name: identityName,
+            enabledAuthMethods: [
+              identityAliCloudAuthId ? "aliCloud" : null,
+              identityAwsAuthId ? "aws" : null,
+              identityAzureAuthId ? "azure" : null,
+              identityGcpAuthId ? "gcp" : null,
+              identityJwtAuthId ? "jwt" : null,
+              identityKubernetesAuthId ? "kubernetes" : null,
+              identityLdapAuthId ? "ldap" : null,
+              identityOciAuthId ? "oci" : null,
+              identityOidcAuthId ? "oidc" : null,
+              identityTlsCertAuthId ? "tlsCert" : null,
+              identityTokenAuthId ? "token" : null,
+              identityUniversalAuthId ? "universal" : null
+            ]
+          })
+        }
+      ]
+    });
+
+    return formattedDocs[0];
+  };
+
   const findOrgById = async (orgId: string) => {
     try {
       const org = (await db
@@ -672,6 +836,7 @@ export const orgDALFactory = (db: TDbClient) => {
     deleteMembershipById,
     deleteMembershipsById,
     updateMembership,
-    findIdentityOrganization
+    findIdentityOrganization,
+    analyzeOrganizationResources
   });
 };

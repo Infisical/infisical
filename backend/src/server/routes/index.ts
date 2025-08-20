@@ -158,6 +158,8 @@ import { certificateTemplateDALFactory } from "@app/services/certificate-templat
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { chatServiceFactory } from "@app/services/chat/chat-service";
+import { conversationMessagesDALFactory } from "@app/services/chat/conversation-messages-dal";
+import { conversationDALFactory } from "@app/services/chat/conversations-dal";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
@@ -500,6 +502,9 @@ export const registerRoutes = async (
   const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
   const projectMicrosoftTeamsConfigDAL = projectMicrosoftTeamsConfigDALFactory(db);
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
+
+  const conversationDAL = conversationDALFactory(db);
+  const conversationMessagesDAL = conversationMessagesDALFactory(db);
 
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
@@ -1962,7 +1967,10 @@ export const registerRoutes = async (
   });
 
   const chatService = chatServiceFactory({
-    permissionService
+    permissionService,
+    conversationDAL,
+    orgDAL,
+    conversationMessagesDAL
   });
 
   // setup the communication with license key server

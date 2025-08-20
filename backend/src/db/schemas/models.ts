@@ -178,7 +178,9 @@ export enum TableName {
   SecretScanningConfig = "secret_scanning_configs",
   // reminders
   Reminder = "reminders",
-  ReminderRecipient = "reminders_recipients"
+  ReminderRecipient = "reminders_recipients",
+  ConversationMessages = "conversation_messages",
+  Conversation = "conversations"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

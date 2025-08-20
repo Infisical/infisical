@@ -495,6 +495,12 @@ import {
   TAccessApprovalPoliciesEnvironmentsUpdate
 } from "@app/db/schemas/access-approval-policies-environments";
 import {
+  TConversationMessages,
+  TConversationMessagesInsert,
+  TConversationMessagesUpdate
+} from "@app/db/schemas/conversation-messages";
+import { TConversations, TConversationsInsert, TConversationsUpdate } from "@app/db/schemas/conversations";
+import {
   TIdentityAuthTemplates,
   TIdentityAuthTemplatesInsert,
   TIdentityAuthTemplatesUpdate
@@ -1253,6 +1259,16 @@ declare module "knex/types/tables" {
       TRemindersRecipients,
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate
+    >;
+    [TableName.Conversation]: KnexOriginal.CompositeTableType<
+      TConversations,
+      TConversationsInsert,
+      TConversationsUpdate
+    >;
+    [TableName.ConversationMessages]: KnexOriginal.CompositeTableType<
+      TConversationMessages,
+      TConversationMessagesInsert,
+      TConversationMessagesUpdate
     >;
   }
 }
