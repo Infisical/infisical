@@ -58,6 +58,7 @@ import { TCertificateServiceFactory } from "@app/services/certificate/certificat
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { TChatServiceFactory } from "@app/services/chat/chat-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
@@ -302,6 +303,7 @@ declare module "fastify" {
       bus: TEventBusService;
       sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
+      chat: TChatServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

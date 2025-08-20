@@ -216,6 +216,7 @@
     "nodemailer": "^6.9.9",
     "oci-sdk": "^2.108.0",
     "odbc": "^2.4.9",
+    "openai": "^5.13.1",
     "openid-client": "^5.6.5",
     "ora": "^7.0.1",
     "oracledb": "^6.4.0",

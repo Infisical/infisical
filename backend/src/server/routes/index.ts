@@ -157,6 +157,7 @@ import { internalCertificateAuthorityServiceFactory } from "@app/services/certif
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { chatServiceFactory } from "@app/services/chat/chat-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
@@ -1960,6 +1961,10 @@ export const registerRoutes = async (
     appConnectionDAL
   });
 
+  const chatService = chatServiceFactory({
+    permissionService
+  });
+
   // setup the communication with license key server
   await licenseService.init();
 
@@ -2091,7 +2096,8 @@ export const registerRoutes = async (
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
     bus: eventBusService,
-    sse: sseService
+    sse: sseService,
+    chat: chatService
   });
 
   const cronJobs: CronJob[] = [];

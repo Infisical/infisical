@@ -53,6 +53,7 @@ const envSchema = z
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
     ),
+    OPENAI_API_KEY: zpStr(z.string().optional()),
     AUDIT_LOGS_DB_CONNECTION_URI: zpStr(
       z.string().describe("Postgres database connection string for Audit logs").optional()
     ),
