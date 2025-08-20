@@ -58,6 +58,7 @@ export const chatServiceFactory = ({
 - For <img>, preserve src and alt; remove other attributes.
 - Do not try to parse mermaid diagrams of some sort, you can just ignore them.
 - Ensure the result is a well-formed HTML fragment.
+`
         },
         { role: "user", content: mdx }
       ]
