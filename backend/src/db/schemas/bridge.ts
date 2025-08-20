@@ -16,6 +16,11 @@ export const BridgeSchema = z.object({
   slug: z.string(),
   projectId: z.string(),
   ruleSet: z.unknown().nullable().optional(),
+  shadowRuleSet: z.unknown().nullable().optional(),
+  dailySuggestionEnabled: z.boolean().default(true),
+  dailySuggestionRuleSet: z.unknown().nullable().optional(),
+  dailySuggestionText: z.string().nullable().optional(),
+  dailyInsightText: z.string().nullable().optional(),
   encryptedHeaders: zodBuffer.nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { request } from "@app/lib/config/request";
-
 import { AuditLogsSchema, BridgeSchema } from "@app/db/schemas";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -221,13 +219,15 @@ export const registerBridgeRouter = async (server: FastifyZodProvider) => {
         bridgeId: bridge.id
       });
 
-      const rules = await server.services.apiShield.generateRules({
+      const res = await server.services.apiShield.generateRules({
         prompt: req.body.prompt,
         currentRules: (bridge.ruleSet || []) as ApiShieldRules,
-        logs
+        logs,
+        projectId: bridge.projectId,
+        openApiUrl: bridge.openApiUrl
       });
 
-      return rules;
+      return res.rules;
     }
   });
 

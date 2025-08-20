@@ -1971,7 +1971,7 @@ export const registerRoutes = async (
     projectDAL
   });
 
-  const apiShieldService = apiShieldServiceFactory({ auditLogService, bridgeService, projectRoleDAL });
+  const apiShieldService = apiShieldServiceFactory({ auditLogService, bridgeService, projectRoleDAL, bridgeDAL });
 
   // setup the communication with license key server
   await licenseService.init();

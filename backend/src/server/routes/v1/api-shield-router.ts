@@ -78,6 +78,7 @@ export const registerApiShieldRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: bridge.projectId,
         event: {
           type: EventType.API_SHIELD_REQUEST,
           metadata: {

@@ -13,6 +13,11 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.jsonb("ruleSet").nullable();
+      t.jsonb("shadowRuleSet").nullable();
+      t.boolean("dailySuggestionEnabled").notNullable().defaultTo(true);
+      t.jsonb("dailySuggestionRuleSet").nullable();
+      t.text("dailySuggestionText").nullable();
+      t.text("dailyInsightText").nullable();
       t.binary("encryptedHeaders").nullable();
       t.timestamps(true, true, true);
       t.unique(["slug", "projectId"]);

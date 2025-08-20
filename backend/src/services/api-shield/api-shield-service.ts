@@ -7,6 +7,7 @@ import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { TBridgeDALFactory } from "../bridge/bridge-dal";
 import { TBridgeServiceFactory } from "../bridge/bridge-service";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { ApiShieldRuleFieldSchema, ApiShieldRuleOperatorSchema } from "./api-shield-schemas";
@@ -19,6 +20,7 @@ type TApiShieldServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "listAuditLogs">;
   bridgeService: Pick<TBridgeServiceFactory, "getById">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
+  bridgeDAL: Pick<TBridgeDALFactory, "updateById">;
 };
 
 export type TApiShieldServiceFactory = ReturnType<typeof apiShieldServiceFactory>;
@@ -26,25 +28,9 @@ export type TApiShieldServiceFactory = ReturnType<typeof apiShieldServiceFactory
 export const apiShieldServiceFactory = ({
   auditLogService,
   bridgeService,
-  projectRoleDAL
+  projectRoleDAL,
+  bridgeDAL
 }: TApiShieldServiceFactoryDep) => {
-  const getCurrentRules = (): ApiShieldRules => {
-    return [
-      [
-        {
-          field: "requestMethod",
-          operator: "eq",
-          value: "GET"
-        },
-        {
-          field: "role",
-          operator: "eq",
-          value: "Admin"
-        }
-      ]
-    ];
-  };
-
   const getRequestLogs = async ({
     actor,
     actorId,
@@ -79,8 +65,12 @@ export const apiShieldServiceFactory = ({
       }
     });
 
-    const logsParsed = logs.map((v) => v.event.metadata as ApiShieldRequestLog);
-
+    const logsParsed = logs.map((v) => ({
+      ...(v.event.metadata as ApiShieldRequestLog),
+      createdAt: v.createdAt.toISOString(),
+      ipAddress: v.ipAddress || undefined,
+      userAgent: v.userAgent || undefined
+    }));
     return logsParsed;
   };
 
@@ -126,13 +116,15 @@ export const apiShieldServiceFactory = ({
     currentRules,
     logs,
     openApiUrl,
-    projectId
+    projectId,
+    describeRuleChanges = false
   }: {
     prompt: string;
     openApiUrl?: string;
     currentRules?: ApiShieldRules;
-    logs?: ApiShieldRequestLog[];
+    logs?: (ApiShieldRequestLog & { createdAt: string; ipAddress?: string; userAgent?: string })[];
     projectId: string;
+    describeRuleChanges?: boolean;
   }) => {
     const appCfg = getConfig();
 
@@ -144,16 +136,60 @@ export const apiShieldServiceFactory = ({
       projectId
     });
 
-    const systemInstructionText = `You are an API security rule generator.${openApiUrl ? ` Fetch the OpenAPI Schema for context from here: ${openApiUrl}` : ""}
-${currentRules ? `\nCURRENT RULES:\n${JSON.stringify(currentRules)}\n` : ""}
-${logs ? `\nRECENT REQUEST LOGS:\n${JSON.stringify(logs)}\n` : ""}
-ROLES:
-${JSON.stringify(projectRoles)}
+    const apiShieldRuleSchema = {
+      type: "OBJECT",
+      properties: {
+        field: {
+          type: "STRING",
+          enum: ApiShieldRuleFieldSchema.options
+        },
+        operator: {
+          type: "STRING",
+          enum: ApiShieldRuleOperatorSchema.options
+        },
+        value: {
+          type: "STRING"
+        }
+      },
+      required: ["field", "operator", "value"]
+    };
 
-RULE GENERATION GUIDELINES:
-- Top-level array elements use OR logic (any rule group can match)
-- Within each rule group (inner array), conditions use AND logic (all must match)
-- Consider the API schema structure when creating URL patterns`;
+    let finalResponseSchema: object = {
+      type: "ARRAY",
+      items: {
+        type: "ARRAY",
+        items: apiShieldRuleSchema
+      }
+    };
+
+    const systemInstructionText = `You are an API security rule generator.${openApiUrl ? ` Fetch the OpenAPI Schema for context from here: ${openApiUrl}` : ""}
+    ${currentRules ? `\nCURRENT RULES:\n${JSON.stringify(currentRules)}\n` : ""}
+    ${logs ? `\nRECENT REQUEST LOGS:\n${JSON.stringify(logs)}\n` : ""}
+    ROLES:
+    ${JSON.stringify(projectRoles)}
+
+    RULE GENERATION GUIDELINES:
+    - Top-level array elements use OR logic (any rule group can match)
+    - Within each rule group (inner array), conditions use AND logic (all must match)
+    - Consider the API schema structure when creating URL patterns
+    ${describeRuleChanges ? `- IMPORTANT: Since 'describeRuleChanges' is enabled, your JSON response MUST be an object with three properties: 'rules' (containing the generated API Shield Rules as an array of arrays), 'description' (a short and concise markdown text explaining the changes/additions made to the rules and their purpose spoken as if you suggest those changes), and 'insight' (a short and concise markdown text which notifies the user of notable patters from within the provided request logs such as consecutive blocked requests).` : ""}
+    `;
+
+    if (describeRuleChanges) {
+      finalResponseSchema = {
+        type: "OBJECT",
+        properties: {
+          rules: { ...finalResponseSchema },
+          description: {
+            type: "STRING"
+          },
+          insight: {
+            type: "STRING"
+          }
+        },
+        required: ["rules", "description", "insight"]
+      };
+    }
 
     const requestBody = {
       contents: [
@@ -174,31 +210,10 @@ RULE GENERATION GUIDELINES:
       },
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: "ARRAY",
-          items: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                field: {
-                  type: "STRING",
-                  enum: ApiShieldRuleFieldSchema.options
-                },
-                operator: {
-                  type: "STRING",
-                  enum: ApiShieldRuleOperatorSchema.options
-                },
-                value: {
-                  type: "STRING"
-                }
-              },
-              required: ["field", "operator", "value"]
-            }
-          }
-        }
+        responseSchema: finalResponseSchema
       }
     };
+
     try {
       const { data } = await request.post<{ candidates: { content: { parts: { text: string }[] } }[] }>(
         GEMINI_API_URL,
@@ -214,14 +229,22 @@ RULE GENERATION GUIDELINES:
       const generatedText = data.candidates[0].content.parts[0].text;
       if (generatedText) {
         try {
-          return JSON.parse(generatedText) as ApiShieldRules;
+          const parsedResponse = JSON.parse(generatedText) as
+            | ApiShieldRules
+            | { rules: ApiShieldRules; description: string; insight: string };
+
+          if (describeRuleChanges) {
+            return parsedResponse as { rules: ApiShieldRules; description: string; insight: string };
+          }
+
+          return { rules: parsedResponse as ApiShieldRules };
         } catch (e) {
           logger.error(e, "Failed to parse generated JSON from Gemini response");
+          return { rules: [] };
         }
       }
-      return [];
+      return { rules: [] };
     } catch (err) {
-      logger.info(err?.response?.data);
       logger.error(err, "Failed to send request to Gemini API");
       throw err;
     }
@@ -242,6 +265,7 @@ RULE GENERATION GUIDELINES:
   }) => {
     const bridge = await bridgeService.getById({ id: bridgeId });
 
+    // Shadow Rule Generator
     const logs = await getRequestLogs({
       actor,
       actorAuthMethod,
@@ -252,19 +276,46 @@ RULE GENERATION GUIDELINES:
       bridgeId: bridge.id
     });
 
-    const currentRules = getCurrentRules(); // TODO(andrey): Get most recent shadow rules
-
-    const rules = await generateRules({
+    const res = await generateRules({
       prompt:
         "Adjust or expand the current rules to account for the provided logs in a way where any new requests that fall outside of the current rules or logs would not pass",
-      currentRules,
-      logs: logs.map((v) => ({ method: v.method, url: v.url, headers: v.headers, body: v.body })),
+      currentRules: bridge.shadowRuleSet as ApiShieldRules | undefined,
+      logs: logs.map((v) => ({
+        method: v.method,
+        url: v.url,
+        headers: v.headers,
+        body: v.body,
+        createdAt: v.createdAt,
+        ipAddress: v.ipAddress,
+        userAgent: v.userAgent
+      })),
       projectId: bridge.projectId
     });
 
-    // TODO(andrey): Update bridge shadow rules in DB
+    let dailyInsightText;
+    let dailySuggestionText;
+    let dailySuggestionRuleSet;
 
-    return rules;
+    // Suggestion Generator
+    if (bridge.dailySuggestionEnabled) {
+      const suggestedRules = (await generateRules({
+        prompt: "Create a rule change suggestion which aims to optimize for the most recent batch of request logs",
+        currentRules: bridge.ruleSet as ApiShieldRules | undefined,
+        logs,
+        projectId: bridge.projectId,
+        describeRuleChanges: true
+      })) as { rules: ApiShieldRules; description: string; insight: string };
+      dailyInsightText = suggestedRules.insight.trim();
+      dailySuggestionText = suggestedRules.description.trim();
+      dailySuggestionRuleSet = suggestedRules.rules;
+    }
+
+    await bridgeDAL.updateById(bridge.id, {
+      shadowRuleSet: JSON.stringify(res.rules),
+      dailyInsightText,
+      dailySuggestionText,
+      dailySuggestionRuleSet: dailySuggestionRuleSet ? JSON.stringify(dailySuggestionRuleSet) : undefined
+    });
   };
 
   const checkRequestPassesRules = ({
