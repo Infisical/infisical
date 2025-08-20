@@ -82,7 +82,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.SecretScanning
   },
   {
-    label: "API Shield",
+    label: "API Sheld",
     value: ProjectType.ApiShield
   }
 ];

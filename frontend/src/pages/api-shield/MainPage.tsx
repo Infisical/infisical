@@ -67,19 +67,19 @@ export const MainPage = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
-          title="API Shield"
+          title="Bridges"
           description="Manage your APIs and agentic interation to them in one place"
         />
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xl font-semibold text-mineshaft-100">API Shields</p>
+            <p className="text-xl font-semibold text-mineshaft-100">Bridges</p>
             <Button
               colorSchema="secondary"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handlePopUpOpen("addShield")}
             >
-              Add Shield
+              Add Bridge
             </Button>
           </div>
           <TableContainer className="mt-4">
@@ -100,7 +100,7 @@ export const MainPage = () => {
                 {!isBridgeLoading && !bridges?.length && (
                   <Tr>
                     <Td colSpan={3}>
-                      <EmptyState title="No shield found" icon={faShield} />
+                      <EmptyState title="No bridges found" icon={faShield} />
                     </Td>
                   </Tr>
                 )}
@@ -160,7 +160,7 @@ export const MainPage = () => {
             onOpenChange={(isOpen) => handlePopUpToggle("addShield", isOpen)}
           >
             <ModalContent
-              title="Create API Shield"
+              title="Create Bridge"
               subTitle="Configure API protection for your application endpoints"
             >
               <ShieldForm

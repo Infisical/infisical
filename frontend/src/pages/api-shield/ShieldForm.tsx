@@ -17,7 +17,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 const formSchema = z.object({
-  slug: z.string().min(1, "Shield name is required"),
+  slug: z.string().min(1, "Bridge name is required"),
   baseUrl: z.string().url("Base URL must be a valid URL"),
   openApiUrl: z.string().url("OpenAPI URL must be a valid URL"),
   headers: z
@@ -96,7 +96,7 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
 
       createNotification({
         type: "success",
-        text: "API Shield created successfully"
+        text: "Bridge created successfully"
       });
 
       onSuccess?.();
@@ -104,7 +104,7 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
       console.error(err);
       createNotification({
         type: "error",
-        text: "Failed to create API Shield"
+        text: "Failed to create Bridge"
       });
     }
   };
@@ -117,11 +117,11 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
           name="slug"
           render={({ field }) => (
             <FormControl
-              label="Shield Name"
+              label="Bridge Name"
               isError={Boolean(errors.slug)}
               errorText={errors.slug?.message}
             >
-              <Input {...field} placeholder="Enter shield name" />
+              <Input {...field} placeholder="Enter bridge name" />
             </FormControl>
           )}
         />
@@ -226,4 +226,3 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
     </form>
   );
 };
-
