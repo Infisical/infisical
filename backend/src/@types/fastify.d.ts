@@ -48,6 +48,7 @@ import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
+import { TApiShieldServiceFactory } from "@app/services/api-shield/api-shield-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
@@ -305,6 +306,7 @@ declare module "fastify" {
       sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       bridge: TBridgeServiceFactory;
+      apiShield: TApiShieldServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

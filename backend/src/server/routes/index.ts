@@ -133,6 +133,7 @@ import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-sca
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
+import { apiShieldServiceFactory } from "@app/services/api-shield/api-shield-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
@@ -1969,6 +1970,9 @@ export const registerRoutes = async (
     bridgeDAL,
     projectDAL
   });
+  // TODO(andrey): Remove Temp
+  const apiShieldService = apiShieldServiceFactory({ temp: undefined });
+
   // setup the communication with license key server
   await licenseService.init();
 
@@ -2101,7 +2105,8 @@ export const registerRoutes = async (
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
     bus: eventBusService,
-    sse: sseService
+    sse: sseService,
+    apiShield: apiShieldService
   });
 
   const cronJobs: CronJob[] = [];

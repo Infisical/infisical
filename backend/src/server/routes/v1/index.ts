@@ -7,6 +7,7 @@ import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router"
 import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
 
 import { registerAdminRouter } from "./admin-router";
+import { registerApiShieldRouter } from "./api-shield-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
@@ -88,6 +89,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
   await server.register(registerSecretFolderRouter, { prefix: "/folders" });
+  await server.register(registerApiShieldRouter, { prefix: "/api-shield" });
 
   await server.register(
     async (workflowIntegrationRouter) => {
