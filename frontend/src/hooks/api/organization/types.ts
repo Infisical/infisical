@@ -28,6 +28,7 @@ export type Organization = {
   shareSecretsProductEnabled: boolean;
   maxSharedSecretLifetime: number;
   maxSharedSecretViewLimit: number | null;
+  migratingFrom?: string | null;
 };
 
 export type UpdateOrgDTO = {
@@ -50,6 +51,7 @@ export type UpdateOrgDTO = {
   shareSecretsProductEnabled?: boolean;
   maxSharedSecretViewLimit?: number | null;
   maxSharedSecretLifetime?: number;
+  migratingFrom?: string | null;
 };
 
 export type BillingDetails = {

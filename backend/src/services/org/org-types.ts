@@ -89,6 +89,7 @@ export type TUpdateOrgDTO = {
     shareSecretsProductEnabled: boolean;
     maxSharedSecretLifetime: number;
     maxSharedSecretViewLimit: number | null;
+    migratingFrom?: string | null;
   }>;
 } & TOrgPermission;
 

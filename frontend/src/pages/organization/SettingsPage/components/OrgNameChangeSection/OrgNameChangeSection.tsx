@@ -16,12 +16,19 @@ import { isCustomOrgRole } from "@app/helpers/roles";
 import { useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
+enum MigratingFrom {
+  None = "none",
+  Vault = "vault",
+  CyberArk = "cyberark"
+}
+
 const formSchema = z.object({
   name: GenericResourceNameSchema,
   slug: z
     .string()
     .regex(/^[a-zA-Z0-9-]+$/, "Name must only contain alphanumeric characters or hyphens"),
-  defaultMembershipRole: z.string()
+  defaultMembershipRole: z.string(),
+  migratingFrom: z.nativeEnum(MigratingFrom)
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -45,6 +52,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
       reset({
         name: currentOrg.name,
         slug: currentOrg.slug,
+        migratingFrom: currentOrg.migratingFrom || MigratingFrom.None,
         ...(canReadOrgRoles &&
           roles?.length && {
             // will always be present, can't remove role if default
@@ -57,7 +65,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
     }
   }, [currentOrg, roles]);
 
-  const onFormSubmit = async ({ name, slug, defaultMembershipRole }: FormData) => {
+  const onFormSubmit = async ({ name, slug, defaultMembershipRole, migratingFrom }: FormData) => {
     try {
       if (!currentOrg?.id || !roles?.length) return;
 
@@ -65,7 +73,8 @@ export const OrgNameChangeSection = (): JSX.Element => {
         orgId: currentOrg?.id,
         name,
         slug,
-        defaultMembershipRoleSlug: defaultMembershipRole
+        defaultMembershipRoleSlug: defaultMembershipRole,
+        migratingFrom: migratingFrom === MigratingFrom.None ? null : migratingFrom
       });
 
       createNotification({
@@ -157,6 +166,40 @@ export const OrgNameChangeSection = (): JSX.Element => {
           />
         </div>
       )}
+
+      <div className="pb-4">
+        <h2 className="text-md mb-2 text-mineshaft-100">Migration Source</h2>
+        <p className="text-mineshaft-400" />
+        <Controller
+          control={control}
+          defaultValue={MigratingFrom.None}
+          name="migratingFrom"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              helperText="Select which platform you were using prior to switching to Infisical. This will help our systems understand your migration needs and provide you with the best possible migration experience."
+              isError={Boolean(error)}
+              errorText={error?.message}
+              className="max-w-md"
+            >
+              <Select
+                isDisabled={isRolesLoading}
+                className="w-full capitalize"
+                value={value}
+                onValueChange={!roles?.length ? undefined : onChange}
+              >
+                {Object.values(MigratingFrom).map((migratingFrom) => {
+                  return (
+                    <SelectItem key={migratingFrom} value={migratingFrom}>
+                      <span className="capitalize">{migratingFrom}</span>
+                    </SelectItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          )}
+        />
+      </div>
+
       <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
         {(isAllowed) => (
           <Button

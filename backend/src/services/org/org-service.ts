@@ -378,7 +378,8 @@ export const orgServiceFactory = ({
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
-      maxSharedSecretViewLimit
+      maxSharedSecretViewLimit,
+      migratingFrom
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -488,7 +489,8 @@ export const orgServiceFactory = ({
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
-      maxSharedSecretViewLimit
+      maxSharedSecretViewLimit,
+      migratingFrom
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;

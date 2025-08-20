@@ -26,5 +26,6 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   scannerProductEnabled: true,
   shareSecretsProductEnabled: true,
   maxSharedSecretLifetime: true,
-  maxSharedSecretViewLimit: true
+  maxSharedSecretViewLimit: true,
+  migratingFrom: true
 });

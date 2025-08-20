@@ -120,7 +120,8 @@ export const useUpdateOrg = () => {
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
-      maxSharedSecretViewLimit
+      maxSharedSecretViewLimit,
+      migratingFrom
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -140,7 +141,8 @@ export const useUpdateOrg = () => {
         scannerProductEnabled,
         shareSecretsProductEnabled,
         maxSharedSecretLifetime,
-        maxSharedSecretViewLimit
+        maxSharedSecretViewLimit,
+        migratingFrom
       });
     },
     onSuccess: () => {
