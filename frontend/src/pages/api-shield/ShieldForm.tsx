@@ -82,7 +82,15 @@ export const ShieldForm = ({ onSuccess, onCancel, id }: Props) => {
           baseUrl: data.baseUrl,
           openApiUrl: data.openApiUrl,
           headers: data.headers,
-          ruleSet: [] // Empty for now, can be extended later
+          ruleSet: [
+            [
+              {
+                field: "uriPath",
+                operator: "wildcard",
+                value: "*"
+              }
+            ]
+          ] // Empty for now, can be extended later
         });
       } else {
         await updateBridge({
