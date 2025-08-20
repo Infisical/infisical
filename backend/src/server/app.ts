@@ -68,7 +68,7 @@ export const main = async ({
     genReqId: () => `req-${alphaNumericNanoId(14)}`,
     trustProxy: true,
 
-    connectionTimeout: appCfg.isHsmConfigured ? 90_000 : 30_000,
+    connectionTimeout: 90_000,
     ignoreTrailingSlash: true,
     pluginTimeout: 40_000
   }).withTypeProvider<ZodTypeProvider>();

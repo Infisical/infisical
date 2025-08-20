@@ -12,12 +12,44 @@ type TChatServiceFactoryDep = {
 
 export type TChatServiceFactory = ReturnType<typeof chatServiceFactory>;
 
+// URL citation annotation shape returned by certain OpenAI models
+interface UrlCitationAnnotation {
+  type: "url_citation";
+  url_citation: { title: string; url: string };
+}
+
 export const chatServiceFactory = ({ permissionService }: TChatServiceFactoryDep) => {
   const config = getConfig();
+  const openai = new OpenAI({ apiKey: config.OPENAI_API_KEY });
 
-  const openai = new OpenAI({
-    apiKey: config.OPENAI_API_KEY
-  });
+  const convertMdxToSimpleHtml = async (mdx: string) => {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5-nano-2025-08-07",
+      temperature: 1,
+      messages: [
+        {
+          role: "system",
+          content: `You are a converter that transforms MDX documentation into a minimal HTML fragment safe to embed with dangerouslySetInnerHTML.
+- Input is MDX/Markdown and may contain MDX components; render their textual content as plain HTML where possible.
+- Output ONLY HTML, no Markdown and no explanations.
+- Do not include <html>, <head>, or <body> tags.
+- Convert MDX/Markdown to HTML.
+- Remove all <script>, <style>, <noscript>, <iframe>, <object>, <embed>, and any form-related elements.
+- Apply subtle readability improvements using inline CSS: improve spacing (e.g., line-height ~1.6 and margin-bottom on paragraphs, lists, and headings; small padding for code/pre) and use a clearer link color for better contrast (e.g., color: #0ea5e9). Keep styles minimal. Note that it is on light-mode so bg color is primarily white
+- Make the title text black!
+- Attribute policy: remove all inline event handlers (on*), id/class attributes, and non-essential attributes. Allow a style attribute ONLY on h1,h2,h3,h4,h5,h6,p,a,ul,ol,li,pre,code,blockquote. Allowed CSS properties: margin, margin-top, margin-bottom, padding, padding-top, padding-bottom, line-height, color, text-decoration.
+- Keep only: h1,h2,h3,h4,h5,h6,p,a,ul,ol,li,pre,code,blockquote,strong,em,table,thead,tbody,tr,th,td,img,hr.
+- For <a>, preserve href and text; add rel="noopener noreferrer" and target="_blank" for absolute http(s) links.
+- For <img>, preserve src and alt; remove other attributes.
+- Ensure the result is a well-formed HTML fragment.`
+        },
+        { role: "user", content: mdx }
+      ]
+    });
+
+    const simple = completion.choices?.[0]?.message?.content?.trim() ?? "";
+    return simple;
+  };
 
   const createChat = async ({
     actorId,
@@ -71,8 +103,6 @@ export const chatServiceFactory = ({ permissionService }: TChatServiceFactoryDep
       ]
     });
 
-    console.log(stream.choices[0]);
-
     const resp = stream.choices[0].message;
 
     if (!resp.content) {
@@ -81,12 +111,12 @@ export const chatServiceFactory = ({ permissionService }: TChatServiceFactoryDep
       });
     }
 
-    console.log(resp.annotations);
+    const annotations = (resp as unknown as { annotations?: UrlCitationAnnotation[] }).annotations;
 
-    const citations = resp.annotations
-      ? resp.annotations
-          .filter((a) => a.type === "url_citation")
-          .map((a) => ({
+    const citations = annotations
+      ? annotations
+          .filter((a: UrlCitationAnnotation) => a.type === "url_citation")
+          .map((a: UrlCitationAnnotation) => ({
             title: a.url_citation.title,
             url: a.url_citation.url.replace("?utm_source=openai", "")
           }))
@@ -101,6 +131,7 @@ export const chatServiceFactory = ({ permissionService }: TChatServiceFactoryDep
   };
 
   return {
-    createChat
+    createChat,
+    convertMdxToSimpleHtml
   };
 };

@@ -1,0 +1,64 @@
+import { z } from "zod";
+
+import fs from "fs";
+import path from "path";
+
+import { readLimit } from "@app/server/config/rateLimiter";
+
+export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/proxy-docs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true, // Hide from API docs since this is internal
+      tags: ["Documentation Proxy"],
+      querystring: z.object({
+        url: z.string()
+      }),
+      response: {
+        200: z.string(),
+        400: z.object({
+          error: z.string()
+        }),
+        500: z.object({
+          error: z.string()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      const { url } = req.query;
+      let mdxContent = "";
+      if (url === "/organization/projects") {
+        mdxContent = fs.readFileSync(path.join(__dirname, "./docs/project.mdx"), "utf8");
+      }
+
+      if (!mdxContent) return res.status(400).send({ error: "No MDX content found for the provided url" });
+
+      const simpleHtml = await server.services.chat.convertMdxToSimpleHtml(rewriteMdxLinks(mdxContent));
+
+      return simpleHtml;
+    }
+  });
+};
+
+/**
+ * Rewrite MDX content by converting:
+ *  - image paths like /images/... to @https://mintlify.s3.us-west-1.amazonaws.com/infisical/images/...
+ *  - docs paths like /documentation/... to @https://infisical.com/docs/documentation/...
+ */
+function rewriteMdxLinks(mdx: string): string {
+  const s3Base = "https://mintlify.s3.us-west-1.amazonaws.com/infisical";
+  const docsBase = "https://infisical.com/docs";
+
+  // Use a prefix capture to preserve preceding char while safely inserting @absolute
+  const imagePathPattern = /(\(|\s|["']|^)(\/images\/[^^\s)\]"'>]+)/g;
+  const docsPathPattern = /(\(|\s|["']|^)(\/documentation\/[^^\s)\]"'>]+)/g;
+
+  let output = mdx.replace(imagePathPattern, (_m: string, prefix: string, p: string) => `${prefix}${s3Base}${p}`);
+  output = output.replace(docsPathPattern, (_m: string, prefix: string, p: string) => `${prefix}${docsBase}${p}`);
+
+  return output;
+}

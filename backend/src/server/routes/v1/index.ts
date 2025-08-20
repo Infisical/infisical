@@ -14,6 +14,7 @@ import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authori
 import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
 import { registerChatRouter } from "./chat-router";
+import { registerDocsProxyRouter } from "./docs-proxy-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
@@ -188,4 +189,5 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(registerEventRouter, { prefix: "/events" });
   await server.register(registerChatRouter, { prefix: "/chat" });
+  await server.register(registerDocsProxyRouter);
 };

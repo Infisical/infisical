@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 
+import { ChatWidget } from "@app/components/features/chat-widget";
 import { NotificationContainer } from "@app/components/notifications";
 import { TooltipProvider } from "@app/components/v2";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
@@ -13,11 +15,18 @@ type TRouterContext = {
 };
 
 const RootPage = () => {
+  const [isChatWidgetOpen, setIsChatWidgetOpen] = useState(false);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Outlet />
         <NotificationContainer />
+        <ChatWidget
+          documentationUrl="/organization/projects"
+          isOpen={isChatWidgetOpen}
+          onToggle={setIsChatWidgetOpen}
+        />
       </TooltipProvider>
     </QueryClientProvider>
   );
