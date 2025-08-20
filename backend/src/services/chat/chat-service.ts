@@ -26,12 +26,6 @@ const DOC_LINKS = {
   Identities: "https://infisical.com/docs/documentation/platform/identities/overview"
 };
 
-// URL citation annotation shape returned by certain OpenAI models
-interface UrlCitationAnnotation {
-  type: "url_citation";
-  url_citation: { title: string; url: string };
-}
-
 export const chatServiceFactory = ({
   permissionService,
   conversationDAL,
@@ -54,12 +48,13 @@ export const chatServiceFactory = ({
 - Do not include <html>, <head>, or <body> tags.
 - Convert MDX/Markdown to HTML.
 - Remove all <script>, <style>, <noscript>, <iframe>, <object>, <embed>, and any form-related elements.
-- Apply subtle readability improvements using inline CSS: improve spacing (e.g., line-height ~1.6 and margin-bottom on paragraphs, lists, and headings; small padding for code/pre) and use a clearer link color for better contrast (e.g., color: #0ea5e9). Keep styles minimal. Note that it is on light-mode so bg color is primarily white
-- Make the title text black!
+- Apply subtle readability improvements using inline CSS: improve spacing (e.g., line-height ~1.6 and margin-bottom on paragraphs, lists, and headings; small padding for code/pre) and use a clearer link color for better contrast (e.g., color: #0ea5e9). Keep styles minimal. Note that it is on dark-mode so bg color is primarily black/dark
+- Make the text white please!!! Don't use any colors that do not contrast with black background. Please do not use <strong>
 - Attribute policy: remove all inline event handlers (on*), id/class attributes, and non-essential attributes. Allow a style attribute ONLY on h1,h2,h3,h4,h5,h6,p,a,ul,ol,li,pre,code,blockquote. Allowed CSS properties: margin, margin-top, margin-bottom, padding, padding-top, padding-bottom, line-height, color, text-decoration.
 - Keep only: h1,h2,h3,h4,h5,h6,p,a,ul,ol,li,pre,code,blockquote,strong,em,table,thead,tbody,tr,th,td,img,hr.
 - For <a>, preserve href and text; add rel="noopener noreferrer" and target="_blank" for absolute http(s) links.
 - For <img>, preserve src and alt; remove other attributes.
+- Do not try to parse mermaid diagrams of some sort, you can just ignore them.
 - Ensure the result is a well-formed HTML fragment.`
         },
         { role: "user", content: mdx }

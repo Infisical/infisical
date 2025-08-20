@@ -11,6 +11,7 @@ import { ProjectPermissionSub, useWorkspace } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretSyncs } from "@app/hooks/api/secretSyncs";
+import { useChatWidgetActions } from "@app/hooks/ui/chat-widget";
 
 import { SecretSyncsTable } from "./SecretSyncTable";
 
@@ -20,6 +21,12 @@ export const SecretSyncsTab = () => {
   const { addSync, ...search } = useSearch({
     from: ROUTE_PATHS.SecretManager.IntegrationsListPage.id
   });
+
+  const { setDocumentationUrl } = useChatWidgetActions();
+
+  useEffect(() => {
+    setDocumentationUrl("/integrations/secret-syncs/overview");
+  }, []);
 
   const navigate = useNavigate();
 

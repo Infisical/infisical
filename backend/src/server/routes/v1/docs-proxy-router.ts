@@ -33,6 +33,10 @@ export const registerDocsProxyRouter = async (server: FastifyZodProvider) => {
       let mdxContent = "";
       if (url === "/organization/projects") {
         mdxContent = fs.readFileSync(path.join(__dirname, "./docs/project.mdx"), "utf8");
+      } else if (url === "/integrations/app-connections/aws") {
+        mdxContent = fs.readFileSync(path.join(__dirname, "./docs/aws-app-connection.mdx"), "utf8");
+      } else if (url === "/integrations/secret-syncs/overview") {
+        mdxContent = fs.readFileSync(path.join(__dirname, "./docs/secret-syncs.mdx"), "utf8");
       }
 
       if (!mdxContent) return res.status(400).send({ error: "No MDX content found for the provided url" });

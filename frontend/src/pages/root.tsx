@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 
@@ -8,25 +7,39 @@ import { TooltipProvider } from "@app/components/v2";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
 import { queryClient } from "@app/hooks/api/reactQuery";
+import {
+  useChatWidgetActions,
+  useChatWidgetContent,
+  useChatWidgetState
+} from "@app/hooks/ui/chat-widget";
 
 type TRouterContext = {
   serverConfig: TServerConfig | null;
   queryClient: QueryClient;
 };
 
-const RootPage = () => {
-  const [isChatWidgetOpen, setIsChatWidgetOpen] = useState(false);
+const ChatWidgetContainer = () => {
+  const { data: state } = useChatWidgetState();
+  const { data: cachedContent } = useChatWidgetContent(state?.documentationUrl);
+  const { setOpen } = useChatWidgetActions();
 
+  return (
+    <ChatWidget
+      documentationUrl={state?.documentationUrl}
+      documentationContent={cachedContent || undefined}
+      isOpen={state?.isOpen ?? false}
+      onToggle={setOpen}
+    />
+  );
+};
+
+const RootPage = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Outlet />
         <NotificationContainer />
-        <ChatWidget
-          documentationUrl="/organization/projects"
-          isOpen={isChatWidgetOpen}
-          onToggle={setIsChatWidgetOpen}
-        />
+        <ChatWidgetContainer />
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -9,6 +9,7 @@ import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useAppConnectionOptions } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useChatWidgetActions } from "@app/hooks/ui/chat-widget";
 
 type Props = {
   onSelect: (app: AppConnection) => void;
@@ -16,6 +17,7 @@ type Props = {
 
 export const AppConnectionsSelect = ({ onSelect }: Props) => {
   const { subscription } = useSubscription();
+  const { open: openChatWidget, setDocumentationUrl } = useChatWidgetActions();
   const { isPending, data: appConnectionOptions } = useAppConnectionOptions();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
@@ -71,11 +73,17 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
           return (
             <button
               type="button"
-              onClick={() =>
-                enterprise && !subscription.enterpriseAppConnections
-                  ? handlePopUpOpen("upgradePlan")
-                  : onSelect(option.app)
-              }
+              onClick={() => {
+                if (enterprise && !subscription.enterpriseAppConnections) {
+                  handlePopUpOpen("upgradePlan");
+                } else {
+                  if (option.app === AppConnection.AWS) {
+                    setDocumentationUrl("/integrations/app-connections/aws");
+                    openChatWidget();
+                  }
+                  onSelect(option.app);
+                }
+              }}
               className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
             >
               <div className="relative">

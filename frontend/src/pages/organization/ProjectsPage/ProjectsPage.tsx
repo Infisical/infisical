@@ -1,5 +1,5 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
@@ -7,6 +7,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
 import { useSubscription } from "@app/context";
+import { useChatWidgetActions } from "@app/hooks/ui/chat-widget";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
@@ -29,6 +30,11 @@ export const ProjectsPage = () => {
   const { t } = useTranslation();
 
   const [projectListView, setProjectListView] = useState(ProjectListView.MyProjects);
+  const { setDocumentationUrl } = useChatWidgetActions();
+
+  useEffect(() => {
+    setDocumentationUrl("/organization/projects");
+  }, []);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
