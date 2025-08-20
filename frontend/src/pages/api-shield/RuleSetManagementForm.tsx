@@ -39,15 +39,26 @@ type Props = {
 };
 
 const FIELD_OPTIONS = [
-  { label: "Request Method", value: "method" },
-  { label: "URL", value: "url" }
+  { label: "Request Method", value: "requestMethod" },
+  { label: "URL", value: "uriPath" },
+  { label: "User Agent", value: "userAgent" },
+  { label: "IP", value: "ip" },
+  { label: "Query String", value: "queryString" },
+  { label: "URL", value: "uriPath" },
+  { label: "Role", value: "role" }
 ];
 
 const OPERATOR_OPTIONS = [
-  { label: "Equals ($eq)", value: BridgeRuleOperator.EQ },
-  { label: "Not Equals ($neq)", value: BridgeRuleOperator.NEQ },
-  { label: "In ($in)", value: BridgeRuleOperator.IN },
-  { label: "Glob ($glob)", value: BridgeRuleOperator.GLOB }
+  { label: "Equal", value: BridgeRuleOperator.EQ },
+  { label: "Not Equals", value: BridgeRuleOperator.NEQ },
+  { label: "Contains", value: BridgeRuleOperator.CONTAINS },
+  { label: "Not Contains", value: BridgeRuleOperator.NOT_CONTAINS },
+  { label: "Ends With", value: BridgeRuleOperator.ENDS_WITH },
+  { label: "Not Ends With", value: BridgeRuleOperator.NOT_ENDS_WITH },
+  { label: "Starts With", value: BridgeRuleOperator.STARTS_WITH },
+  { label: "Not Starts With", value: BridgeRuleOperator.NOT_STARTS_WITH },
+  { label: "Is In", value: BridgeRuleOperator.IN },
+  { label: "Wildcard", value: BridgeRuleOperator.WILDCARD }
 ];
 
 type RuleSetEditorProps = {

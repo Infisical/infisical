@@ -21,7 +21,8 @@ export const ApiShieldRuleOperatorSchema = z.enum([
   "not_starts_with",
   "ends_with",
   "not_ends_with",
-  "wildcard"
+  "wildcard",
+  "in"
 ]);
 
 export const ApiShieldRuleSchema = z.object({

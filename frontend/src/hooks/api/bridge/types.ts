@@ -1,8 +1,14 @@
 export enum BridgeRuleOperator {
-  EQ = "$eq",
-  NEQ = "$neq", 
-  IN = "$in",
-  GLOB = "$glob"
+  EQ = "eq",
+  NEQ = "ne",
+  CONTAINS = "contains",
+  NOT_CONTAINS = "not_contains",
+  STARTS_WITH = "starts_with",
+  NOT_STARTS_WITH = "not_starts_with",
+  ENDS_WITH = "ends_with",
+  NOT_ENDS_WITH = "not_ends_with",
+  WILDCARD = "wildcard",
+  IN = "in"
 }
 
 export type TBridgeRule = {

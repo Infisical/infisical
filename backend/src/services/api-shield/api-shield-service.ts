@@ -286,6 +286,12 @@ RULE GENERATION GUIDELINES:
           case "not_contains":
             conditionMet = !requestValue.includes(value);
             break;
+          case "in":
+            conditionMet = !requestValue
+              .split(",")
+              .map((el) => el.trim())
+              .some((el) => el === value);
+            break;
           case "starts_with":
             conditionMet = requestValue.startsWith(value);
             break;

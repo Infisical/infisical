@@ -90,6 +90,9 @@ export const MainPage = () => {
                     <div className="flex items-center">Name</div>
                   </Th>
                   <Th>
+                    <div className="flex items-center">Base URL</div>
+                  </Th>
+                  <Th>
                     <div className="flex items-center">Updated At</div>
                   </Th>
                   <Th className="w-5" />
@@ -114,6 +117,7 @@ export const MainPage = () => {
                         tabIndex={0}
                       >
                         <Td>{bridge.slug}</Td>
+                        <Td>{bridge.baseUrl}</Td>
                         <Td>{format(new Date(bridge.updatedAt), "yyyy-MM-dd | HH:mm:ss")}</Td>
                         <Td>
                           <div className="flex gap-2">
