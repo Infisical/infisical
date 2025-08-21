@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { faFile } from "@fortawesome/free-solid-svg-icons";
+import { faFile, faMagicWandSparkles } from "@fortawesome/free-solid-svg-icons";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -16,24 +16,50 @@ import {
   Tr
 } from "@app/components/v2";
 import { Timezone } from "@app/helpers/datetime";
-import { AuditLog } from "@app/hooks/api/auditLogs/types";
+import { BridgeRequestLog } from "@app/hooks/api/auditLogs/types";
 
 import { BridgeRequestsTableRow } from "./BridgeRequestsTableRow";
+import { ReactChart } from "./RequestChart";
+import { TBridge } from "@app/hooks/api/bridge";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import ReactMarkdown from "react-markdown";
 
 type Props = {
-  bridgeRequests: AuditLog[];
+  bridgeRequests: BridgeRequestLog[];
   isLoading?: boolean;
   timezone: Timezone;
+  bridgeDetails?: TBridge;
 };
 
-export const BridgeRequestsTable = ({ bridgeRequests, isLoading, timezone }: Props) => {
+export const BridgeRequestsTable = ({
+  bridgeRequests,
+  isLoading,
+  timezone,
+  bridgeDetails
+}: Props) => {
   const isEmpty = !isLoading && !bridgeRequests?.length;
 
   return (
     <div className="mb-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Session Log</h3>
+        <h3 className="text-lg font-semibold text-mineshaft-100">Request Logs</h3>
       </div>
+      {!isEmpty && (
+        <div className="mt-6 h-[300px] w-full">
+          <ReactChart logs={bridgeRequests} />
+        </div>
+      )}
+      {bridgeDetails?.dailyInsightText && (
+        <div className="flex flex-col gap-1 rounded border border-yellow-600 bg-yellow-900/20 px-3 py-2">
+          <div className="flex items-center gap-1 font-medium">
+            <FontAwesomeIcon icon={faMagicWandSparkles} className="text-yellow-400" />
+            <span>AI Insight</span>
+          </div>
+          <span className="whitespace-pre-wrap text-sm text-mineshaft-100">
+            <ReactMarkdown>{bridgeDetails.dailyInsightText}</ReactMarkdown>
+          </span>
+        </div>
+      )}
       <div className="py-4">
         <TableContainer>
           <Table>
@@ -42,7 +68,7 @@ export const BridgeRequestsTable = ({ bridgeRequests, isLoading, timezone }: Pro
                 <Th className="w-24">
                   <Spinner size="xs" className={twMerge(isLoading ? "opacity-100" : "opacity-0")} />
                 </Th>
-                <Th className="w-64">Timestamp</Th>
+                <Th className="w-42">Timestamp</Th>
                 <Th>Request Details</Th>
               </Tr>
             </THead>

@@ -7,7 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Badge, Td, Tr } from "@app/components/v2";
+import { Badge, Td, Tooltip, Tr } from "@app/components/v2";
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
 import { useToggle } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -65,24 +65,36 @@ export const BridgeRequestsTableRow = ({ request, rowNumber, timezone }: Props) 
               <Tag label="identity_name" value={request.actor.metadata.name} />
             )}
             {(request.event as ApiShieldRequestEvent).metadata?.result === "PASSED" ? (
-              <Badge
-                variant="success"
-                className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-              >
-                <FontAwesomeIcon icon={faCheck} />
-                <span>Pass</span>
-              </Badge>
+              <Tooltip content="The request passed your ruleset">
+                <Badge
+                  variant="success"
+                  className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+                >
+                  <FontAwesomeIcon icon={faCheck} />
+                  <span>Passed</span>
+                </Badge>
+              </Tooltip>
             ) : (
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-red-400/50 text-red-300">
-                <FontAwesomeIcon icon={faBan} />
-                <span>Blocked</span>
-              </Badge>
+              <Tooltip content="The request did not pass your ruleset">
+                <Badge
+                  variant="danger"
+                  className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+                >
+                  <FontAwesomeIcon icon={faBan} />
+                  <span>Blocked</span>
+                </Badge>
+              </Tooltip>
             )}
             {(request.event as ApiShieldRequestEvent).metadata?.suspicious && (
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-yellow-400/50 text-yellow-300">
-                <FontAwesomeIcon icon={faExclamationCircle} />
-                <span>Suspicious</span>
-              </Badge>
+              <Tooltip content="The request stands out from the usual request pattern">
+                <Badge
+                  variant="primary"
+                  className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+                >
+                  <FontAwesomeIcon icon={faExclamationCircle} />
+                  <span>Suspicious</span>
+                </Badge>
+              </Tooltip>
             )}
           </div>
         </Td>

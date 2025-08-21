@@ -971,3 +971,18 @@ export type AuditLog = {
   projectName?: string;
   projectId?: string;
 };
+
+export type BridgeRequestLog = {
+  id: string;
+  actor: Actor;
+  organization: string;
+  workspace: string;
+  ipAddress: string;
+  event: ApiShieldRequestEvent;
+  userAgent: string;
+  userAgentType: UserAgentType;
+  createdAt: string;
+  updatedAt: string;
+  projectName?: string;
+  projectId?: string;
+};

@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { faWandSparkles, faLightbulb, faTimes } from "@fortawesome/free-solid-svg-icons";
+import {
+  faWandSparkles,
+  faLightbulb,
+  faTimes,
+  faWandMagicSparkles
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useParams } from "@tanstack/react-router";
@@ -17,6 +22,7 @@ import {
 
 import { BridgeRequestsTable } from "./BridgeDetailsPage/components/BridgeRequestsTable";
 import { ReactChart } from "./BridgeDetailsPage/components/RequestChart";
+import ReactMarkdown from "react-markdown";
 
 const FIELD_OPTIONS = [
   { label: "Request Method", value: "requestMethod" },
@@ -48,21 +54,23 @@ const PreviewRuleSetEditor = ({
   rules: TBridgeRule[];
 }) => (
   <div className="space-y-2 opacity-75">
-    <div className="mb-4 flex items-center justify-between">
-      <h3 className="text-lg font-medium text-mineshaft-100">Rule Set {ruleSetIndex + 1}</h3>
-      <div className="text-xs text-mineshaft-400">Preview (AI Suggested)</div>
-    </div>
     {rules.map((rule, ruleIndex) => (
       <div key={`preview-rule-${ruleIndex + 1}`}>
         <div className="flex items-center space-x-2">
-          <FormControl label={ruleIndex === 0 ? "Field" : undefined} className="my-0 w-40">
+          <FormControl
+            label={ruleIndex === 0 && ruleSetIndex == 0 ? "Field" : undefined}
+            className="my-0 w-40"
+          >
             <Input
               value={FIELD_OPTIONS.find((op) => op.value === rule.field)?.label || rule.field}
               disabled
               className="bg-mineshaft-700 text-mineshaft-300"
             />
           </FormControl>
-          <FormControl label={ruleIndex === 0 ? "Operator" : undefined} className="my-0 w-40">
+          <FormControl
+            label={ruleIndex === 0 && ruleSetIndex == 0 ? "Operator" : undefined}
+            className="my-0 w-40"
+          >
             <Input
               value={
                 OPERATOR_OPTIONS.find((op) => op.value === rule.operator)?.label || rule.operator
@@ -71,15 +79,18 @@ const PreviewRuleSetEditor = ({
               className="bg-mineshaft-700 text-mineshaft-300"
             />
           </FormControl>
-          <FormControl label={ruleIndex === 0 ? "Value" : undefined} className="my-0 flex-1">
+          <FormControl
+            label={ruleIndex === 0 && ruleSetIndex == 0 ? "Value" : undefined}
+            className="my-0 flex-1"
+          >
             <Input value={rule.value} disabled className="bg-mineshaft-700 text-mineshaft-300" />
           </FormControl>
         </div>
         {ruleIndex + 1 !== rules.length && (
-          <div className="relative mt-2 w-min border border-mineshaft-600 px-2 py-1 text-mineshaft-400">
-            <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
-            AND
-            <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+          <div className="relative ml-2 mt-2 w-min rounded bg-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300">
+            <div className="absolute -top-2 right-1/2 h-2 w-1 translate-x-1/2 bg-mineshaft-600" />
+            And
+            <div className="absolute -bottom-2 right-1/2 h-2 w-1 translate-x-1/2 bg-mineshaft-600" />
           </div>
         )}
       </div>
@@ -134,94 +145,76 @@ export const BridgeDetailsPage = () => {
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
-        <title>Bridge Details</title>
+        <title>External API Details</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-7xl px-6">
-          <PageHeader
-            title="Bridge Details Page"
-            description="Detail insights into your projects"
-          />
+          <PageHeader title={bridgeDetails?.slug || "External API Details"} />
 
           {bridgeDetails?.dailySuggestionText && !showSuggestion && (
             <div className="mt-4 rounded-lg border border-yellow-600 bg-yellow-900/20 p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <FontAwesomeIcon icon={faLightbulb} className="text-yellow-400" />
+                <div className="flex gap-3">
+                  <FontAwesomeIcon icon={faWandMagicSparkles} className="mt-1 text-yellow-400" />
                   <div>
-                    <h4 className="font-semibold text-yellow-100">New Suggestion Available</h4>
-                    <p className="text-sm text-yellow-200">
-                      We have generated new rule suggestions based on recent traffic patterns.
-                    </p>
+                    <h4 className="font-semibold text-yellow-100">AI Rule Suggestion</h4>
+                    <span className="text-sm text-yellow-200">
+                      <ReactMarkdown>{bridgeDetails.dailySuggestionText}</ReactMarkdown>
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline_bg" onClick={() => setShowSuggestion(true)}>
-                    View Suggestion
-                  </Button>
-                </div>
+
+                <Button size="sm" onClick={() => setShowSuggestion(true)} className="ml-3">
+                  View Suggestion
+                </Button>
               </div>
             </div>
           )}
           {showSuggestion && bridgeDetails?.dailySuggestionText && (
-            <div className="mt-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-mineshaft-100">AI Rule Suggestion</h3>
-                <Button
-                  size="sm"
-                  variant="outline_bg"
-                  onClick={() => setShowSuggestion(false)}
-                  leftIcon={<FontAwesomeIcon icon={faTimes} />}
-                >
-                  Close
-                </Button>
-              </div>
-              <div className="rounded border border-mineshaft-600 bg-mineshaft-900 p-4">
-                <h4 className="mb-2 text-sm font-semibold text-mineshaft-300">
-                  Suggestion Details
-                </h4>
-                <div className="whitespace-pre-wrap text-sm text-mineshaft-100">
-                  {bridgeDetails.dailySuggestionText}
+            <div className="mt-4 flex flex-col gap-2 rounded-lg border border-yellow-600 bg-yellow-900/20 p-4">
+              <div className="flex items-center">
+                <div className="flex gap-3">
+                  <FontAwesomeIcon icon={faWandMagicSparkles} className="mt-1 text-yellow-400" />
+                  <h3 className="text-lg font-medium text-mineshaft-100">AI Rule Suggestion</h3>
                 </div>
               </div>
+
+              <span className="text-sm text-yellow-200">
+                <ReactMarkdown>{bridgeDetails.dailySuggestionText}</ReactMarkdown>
+              </span>
 
               {bridgeDetails.dailySuggestionRuleSet &&
                 bridgeDetails.dailySuggestionRuleSet.length > 0 && (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-lg font-medium text-mineshaft-100">
-                        Suggested Rules Preview
-                      </h4>
-                      <div className="text-sm text-mineshaft-400">
-                        {bridgeDetails.dailySuggestionRuleSet.length} rule set
-                        {bridgeDetails.dailySuggestionRuleSet.length > 1 ? "s" : ""} suggested
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
+                    <div className="space-y-2 rounded border border-mineshaft-500 bg-mineshaft-800 p-4">
                       {bridgeDetails.dailySuggestionRuleSet.map((ruleSet, ruleSetIndex) => (
                         <div key={`suggested-rule-${ruleSetIndex + 1}`}>
-                          <div className="mb-2 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+                          <div className="mb-2">
                             <PreviewRuleSetEditor ruleSetIndex={ruleSetIndex} rules={ruleSet} />
                           </div>
                           {ruleSetIndex + 1 !== bridgeDetails.dailySuggestionRuleSet!.length && (
-                            <div className="relative w-min border border-mineshaft-600 px-2 py-1 text-mineshaft-400">
-                              <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
-                              OR
-                              <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+                            <div className="relative ml-2 mt-2 w-min rounded bg-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300">
+                              Or
                             </div>
                           )}
                         </div>
                       ))}
                     </div>
-
-                    <div className="flex items-center justify-center border-t border-mineshaft-600 pt-6">
+                    <div className="flex items-center justify-end gap-3">
+                      <Button
+                        size="sm"
+                        variant="outline_bg"
+                        onClick={() => setShowSuggestion(false)}
+                      >
+                        Cancel
+                      </Button>
                       <Button
                         onClick={handleApplyRules}
                         className="bg-primary text-black hover:bg-primary/90"
+                        leftIcon={<FontAwesomeIcon icon={faWandMagicSparkles} />}
                       >
-                        Apply Suggested Rules
+                        Apply Rules
                       </Button>
                     </div>
                   </div>
@@ -230,14 +223,14 @@ export const BridgeDetailsPage = () => {
           )}
 
           <div className="mt-6">
-            <div className="flex gap-2">
+            <div className="flex gap-4">
               <div className="h-min max-w-xs flex-shrink-0 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
                 <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-                  <h3 className="text-lg font-semibold text-mineshaft-100">Bridge Details</h3>
+                  <h3 className="text-lg font-semibold text-mineshaft-100">External API Details</h3>
                 </div>
                 <div className="pt-4">
                   <div className="mb-4">
-                    <p className="text-sm font-semibold text-mineshaft-300">Bridge Slug</p>
+                    <p className="text-sm font-semibold text-mineshaft-300">External API Slug</p>
                     <div className="group flex align-top">
                       <p className="text-sm text-mineshaft-300">{bridgeDetails?.slug}</p>
                     </div>
@@ -253,26 +246,8 @@ export const BridgeDetailsPage = () => {
                 </div>
               </div>
               <div className="flex-grow">
-                <div className="mb-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-                  <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-                    <h3 className="text-lg font-semibold text-mineshaft-100">Daily Insights</h3>
-                  </div>
-                  <div className="pt-2">
-                    {bridgeDetails?.dailyInsightText ? (
-                      <div className="whitespace-pre-wrap text-sm text-mineshaft-100">
-                        {bridgeDetails.dailyInsightText}
-                      </div>
-                    ) : (
-                      <EmptyState title="No daily insight" icon={faWandSparkles} />
-                    )}
-                  </div>
-                  {bridgeRequests && (
-                    <div className="mt-6 h-[300px] w-full">
-                      <ReactChart logs={bridgeRequests} />
-                    </div>
-                  )}
-                </div>
                 <BridgeRequestsTable
+                  bridgeDetails={bridgeDetails}
                   bridgeRequests={bridgeRequests || []}
                   isLoading={isRequestsLoading}
                   timezone={Timezone.UTC}

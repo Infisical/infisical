@@ -3,7 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { TBridge } from "./types";
-import { AuditLog } from "../auditLogs/types";
+import { BridgeRequestLog } from "../auditLogs/types";
 
 export const bridgeQueryKeys = {
   allKey: () => ["bridges"],
@@ -24,7 +24,7 @@ export const bridgeQueryKeys = {
     queryOptions({
       queryKey: bridgeQueryKeys.listLogByBridgeId(bridgeId),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ requests: AuditLog[] }>(
+        const { data } = await apiRequest.get<{ requests: BridgeRequestLog[] }>(
           `/api/v1/bridge/${bridgeId}/requests`
         );
         return data.requests;

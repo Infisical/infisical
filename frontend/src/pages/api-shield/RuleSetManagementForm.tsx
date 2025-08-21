@@ -239,15 +239,11 @@ const PreviewRuleSetEditor = ({
   rules: TBridgeRule[];
 }) => (
   <div className="space-y-2 opacity-75">
-    <div className="mb-4 flex items-center justify-between">
-      <h3 className="text-lg font-medium text-mineshaft-100">Rule Set {ruleSetIndex + 1}</h3>
-      <div className="text-xs text-mineshaft-400">Preview (Generated from AI)</div>
-    </div>
     {rules.map((rule, ruleIndex) => (
       <div key={`preview-rule-${ruleIndex + 1}`}>
         <div className="flex items-center space-x-2">
           <FormControl
-            label={ruleIndex === 0 ? "Field" : undefined}
+            label={ruleIndex === 0 && ruleSetIndex == 0 ? "Field" : undefined}
             className={twMerge("w-40", "my-0")}
           >
             <Input
@@ -257,7 +253,7 @@ const PreviewRuleSetEditor = ({
             />
           </FormControl>
           <FormControl
-            label={ruleIndex === 0 ? "Operator" : undefined}
+            label={ruleIndex === 0 && ruleSetIndex == 0 ? "Operator" : undefined}
             className={twMerge("w-40", "my-0")}
           >
             <Input
@@ -269,17 +265,17 @@ const PreviewRuleSetEditor = ({
             />
           </FormControl>
           <FormControl
-            label={ruleIndex === 0 ? "Value" : undefined}
+            label={ruleIndex === 0 && ruleSetIndex == 0 ? "Value" : undefined}
             className={twMerge("flex-1", "my-0")}
           >
             <Input value={rule.value} disabled className="bg-mineshaft-700 text-mineshaft-300" />
           </FormControl>
         </div>
         {ruleIndex + 1 !== rules.length && (
-          <div className="relative mt-2 w-min border border-mineshaft-600 px-2 py-1 text-mineshaft-400">
-            <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
-            AND
-            <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+          <div className="relative ml-2 mt-2 w-min rounded bg-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300">
+            <div className="absolute -top-2 right-1/2 h-2 w-1 translate-x-1/2 bg-mineshaft-600" />
+            And
+            <div className="absolute -bottom-2 right-1/2 h-2 w-1 translate-x-1/2 bg-mineshaft-600" />
           </div>
         )}
       </div>
@@ -358,21 +354,19 @@ const PromptMode = ({ onApplyRules, bridgeId }: PromptModeProps) => {
           <div className="space-y-2">
             {generatedRules.map((ruleSet, ruleSetIndex) => (
               <div key={`gen-rule-${ruleSetIndex + 1}`}>
-                <div className="mb-2 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+                <div className="mb-2">
                   <PreviewRuleSetEditor ruleSetIndex={ruleSetIndex} rules={ruleSet} />
                 </div>
                 {ruleSetIndex + 1 !== generatedRules.length && (
-                  <div className="relative w-min border border-mineshaft-600 px-2 py-1 text-mineshaft-400">
-                    <div className="absolute -top-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
-                    OR
-                    <div className="absolute -bottom-2 left-1/2 h-2 w-1 bg-mineshaft-600" />
+                  <div className="relative ml-2 mt-2 w-min rounded bg-mineshaft-600 px-2 py-1 text-xs text-mineshaft-300">
+                    Or
                   </div>
                 )}
               </div>
             ))}
           </div>
 
-          <div className="flex items-center justify-center space-x-4 border-t border-mineshaft-600 pt-6">
+          <div className="flex items-center justify-center space-x-4 pt-2">
             <Button
               type="button"
               variant="outline_bg"

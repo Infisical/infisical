@@ -8,7 +8,11 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-export const ReactChart = ({ logs }: { logs: { createdAt: string }[] }) => {
+export const ReactChart = ({
+  logs
+}: {
+  logs: { createdAt: string; event: { metadata: { result: string } } }[];
+}) => {
   const HOURS_TO_DISPLAY = 24;
 
   const now = new Date();
@@ -21,16 +25,21 @@ export const ReactChart = ({ logs }: { logs: { createdAt: string }[] }) => {
   const startOfChartPeriodMs = startOfChartPeriod.getTime();
   const endOfChartPeriodMs = now.getTime();
 
-  const hourlyCounts = new Map<number, number>();
+  // New maps to store counts for PASSED and BLOCKED results
+  const hourlyCountsPassed = new Map<number, number>();
+  const hourlyCountsBlocked = new Map<number, number>();
 
-  const chartData: { time: string; count: number }[] = [];
+  const chartData: { time: string; passed: number; blocked: number }[] = [];
   for (let i = 0; i < HOURS_TO_DISPLAY; i++) {
     const currentHourMs = startOfChartPeriodMs + i * 60 * 60 * 1000;
 
-    hourlyCounts.set(currentHourMs, 0);
+    hourlyCountsPassed.set(currentHourMs, 0);
+    hourlyCountsBlocked.set(currentHourMs, 0);
+
     chartData.push({
       time: new Date(currentHourMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      count: 0
+      passed: 0,
+      blocked: 0
     });
   }
 
@@ -51,20 +60,27 @@ export const ReactChart = ({ logs }: { logs: { createdAt: string }[] }) => {
     const logHourStartMs = logHourStart.getTime();
 
     if (logHourStartMs >= startOfChartPeriodMs && logHourStartMs <= endOfChartPeriodMs) {
-      if (hourlyCounts.has(logHourStartMs)) {
-        hourlyCounts.set(logHourStartMs, hourlyCounts.get(logHourStartMs)! + 1);
+      if (log.event.metadata.result === "PASSED") {
+        if (hourlyCountsPassed.has(logHourStartMs)) {
+          hourlyCountsPassed.set(logHourStartMs, hourlyCountsPassed.get(logHourStartMs)! + 1);
+        }
+      } else if (log.event.metadata.result === "BLOCKED") {
+        if (hourlyCountsBlocked.has(logHourStartMs)) {
+          hourlyCountsBlocked.set(logHourStartMs, hourlyCountsBlocked.get(logHourStartMs)! + 1);
+        }
       }
     }
   }
 
   for (let i = 0; i < chartData.length; i++) {
     const currentHourMs = startOfChartPeriodMs + i * 60 * 60 * 1000;
-    chartData[i].count = hourlyCounts.get(currentHourMs) || 0;
+    chartData[i].passed = hourlyCountsPassed.get(currentHourMs) || 0;
+    chartData[i].blocked = hourlyCountsBlocked.get(currentHourMs) || 0;
   }
 
   return (
     <ResponsiveContainer>
-      <LineChart data={chartData} margin={{ left: -20 }}>
+      <LineChart data={chartData} margin={{ top: 5, left: -20 }}>
         <CartesianGrid className="bg-mineshaft-400 stroke-mineshaft-700" />
         <XAxis dataKey="time" tick={{ className: "text-xs" }} interval={1} />
         <YAxis
@@ -89,11 +105,19 @@ export const ReactChart = ({ logs }: { logs: { createdAt: string }[] }) => {
             padding: "6px 8px 4px 8px"
           }}
           isAnimationActive={false}
+          cursor={{ stroke: "#707174" }}
         />
         <Line
-          dataKey="count"
-          stroke="#e0ed34"
-          name="Requests"
+          dataKey="passed"
+          stroke="#4CAF50"
+          name="Passed"
+          dot={false}
+          activeDot={{ fill: "#323439" }}
+        />
+        <Line
+          dataKey="blocked"
+          stroke="#F44336"
+          name="Blocked"
           dot={false}
           activeDot={{ fill: "#323439" }}
         />

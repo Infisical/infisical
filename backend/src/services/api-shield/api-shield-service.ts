@@ -171,7 +171,7 @@ export const apiShieldServiceFactory = ({
     - Top-level array elements use OR logic (any rule group can match)
     - Within each rule group (inner array), conditions use AND logic (all must match)
     - Consider the API schema structure when creating URL patterns
-    ${describeRuleChanges ? `- IMPORTANT: Since 'describeRuleChanges' is enabled, your JSON response MUST be an object with three properties: 'rules' (containing the generated API Shield Rules as an array of arrays), 'description' (a short and concise markdown text explaining the changes/additions made to the rules and their purpose spoken as if you suggest those changes), and 'insight' (a short and concise markdown text which notifies the user of notable patters from within the provided request logs such as consecutive blocked requests).` : ""}
+    ${describeRuleChanges ? `- IMPORTANT: Since 'describeRuleChanges' is enabled, your JSON response MUST be an object with three properties: 'rules' (containing the generated API Shield Rules as an array of arrays), 'description' (a short and concise markdown text explaining the changes/additions made to the rules and their purpose spoken as if you suggest those changes), and 'insight' (a short and concise markdown text which notifies the user of notable patters from within the provided request logs such as consecutive blocked requests. Do not reference the rules you proposed in the insights, solely focus on the logs).` : ""}
     `;
 
     if (describeRuleChanges) {
