@@ -56,7 +56,7 @@ infisical:
     name: null
 
   # -- Override for the full name of Infisical resources in this deployment
-  fullnameOverride: ""
+  fullnameOverride: "infisical"
   # -- Custom annotations for Infisical pods
   podAnnotations: {}
   # -- Custom annotations for Infisical deployment
@@ -68,7 +68,7 @@ infisical:
     # -- Image repository for the Infisical service
     repository: infisical/infisical
     # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
-    tag: "v0.93.1-postgres"
+    tag: "v0.133.0-postgres"
     # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
     # -- Secret references for pulling the image, if needed
@@ -132,7 +132,7 @@ postgresql:
   # -- PostgreSQL resource name
   name: "postgresql"
   # -- Full name override for PostgreSQL resources
-  fullnameOverride: "postgresql"
+  fullnameOverride: "infisical-postgresql"
 
   auth:
     # -- Database username for PostgreSQL
@@ -141,6 +141,14 @@ postgresql:
     password: root
     # -- Database name for Infisical
     database: infisicalDB
+
+    # -- Overrides password if not null or not empty
+    existingSecret: ""
+
+    # -- Keys for the passwords in the existingsecret
+    secretKeys:
+      adminPasswordKey: ""
+      userPasswordKey: ""
 
   useExistingPostgresSecret:
     # -- Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string
@@ -157,7 +165,7 @@ redis:
   # -- Redis resource name
   name: "redis"
   # -- Full name override for Redis resources
-  fullnameOverride: "redis"
+  fullnameOverride: "infisical-redis"
 
   cluster:
     # -- Clustered Redis deployment
@@ -169,6 +177,10 @@ redis:
   auth:
     # -- Redis password
     password: "mysecretpassword"
+    # -- Overrides password if not null or not empty
+    existingSecret: ""
+    # -- Key for the password in the existingsecret
+    existingSecretPasswordKey: ""
 
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
