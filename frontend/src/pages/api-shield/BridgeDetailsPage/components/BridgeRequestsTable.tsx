@@ -51,11 +51,11 @@ export const BridgeRequestsTable = ({
       )}
       {bridgeDetails?.dailyInsightText && (
         <div className="flex flex-col gap-1 rounded border border-yellow-600 bg-yellow-900/20 px-3 py-2">
-          <div className="flex items-center gap-1 font-medium">
+          <div className="flex items-center gap-1.5 font-medium">
             <FontAwesomeIcon icon={faMagicWandSparkles} className="text-yellow-400" />
-            <span>AI Insight</span>
+            <span>AI Log Insight</span>
           </div>
-          <span className="whitespace-pre-wrap text-sm text-mineshaft-100">
+          <span className="whitespace-pre-wrap text-sm text-yellow-200">
             <ReactMarkdown>{bridgeDetails.dailyInsightText}</ReactMarkdown>
           </span>
         </div>
