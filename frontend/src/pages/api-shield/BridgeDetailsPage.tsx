@@ -27,7 +27,7 @@ import { useWorkspace } from "@app/context";
 
 const FIELD_OPTIONS = [
   { label: "Request Method", value: "requestMethod" },
-  { label: "URL", value: "uriPath" },
+  { label: "URI Path", value: "uriPath" },
   { label: "User Agent", value: "userAgent" },
   { label: "IP", value: "ip" },
   { label: "Query String", value: "queryString" },
