@@ -23,6 +23,7 @@ import {
 import { BridgeRequestsTable } from "./BridgeDetailsPage/components/BridgeRequestsTable";
 import { ReactChart } from "./BridgeDetailsPage/components/RequestChart";
 import ReactMarkdown from "react-markdown";
+import { useWorkspace } from "@app/context";
 
 const FIELD_OPTIONS = [
   { label: "Request Method", value: "requestMethod" },
@@ -99,6 +100,7 @@ const PreviewRuleSetEditor = ({
 );
 
 export const BridgeDetailsPage = () => {
+  const { currentWorkspace } = useWorkspace();
   const [showSuggestion, setShowSuggestion] = useState(false);
 
   const bridgeId = useParams({
@@ -235,6 +237,10 @@ export const BridgeDetailsPage = () => {
                       <p className="text-sm text-mineshaft-300">{bridgeDetails?.slug}</p>
                     </div>
                   </div>
+                </div>
+                <div className="mb-4">
+                  <p className="text-sm font-semibold text-mineshaft-300">Project Slug</p>
+                  <p className="truncate text-sm text-mineshaft-300">{currentWorkspace.slug}</p>
                 </div>
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-mineshaft-300">Base URL</p>
