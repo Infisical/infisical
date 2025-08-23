@@ -1,575 +1,486 @@
 ---
 title: "Infisical Java SDK"
 sidebarTitle: "Java"
-url: "https://github.com/Infisical/java-sdk?tab=readme-ov-file#infisical-java-sdk"
 icon: "/images/sdks/languages/java.svg"
 ---
 
-{
-/*
-If you're working with Java, the official [Infisical Java SDK](https://github.com/Infisical/sdk/tree/main/languages/java) package is the easiest way to fetch and work with secrets for your application.
+The Infisical SDK provides a convenient way to interact with the Infisical API. 
 
-- [Maven Package](https://github.com/Infisical/sdk/packages/2019741)
-- [Github Repository](https://github.com/Infisical/sdk/tree/main/languages/java)
+## Installation
 
-## Basic Usage
+Replace `{version}` with the version of the SDK you wish to use. This documentation covers version >=3.0.0.
+
+### Maven
+
+```xml
+<dependency>
+    <groupId>com.infisical</groupId>
+    <artifactId>sdk</artifactId>
+    <version>{version}</version>
+</dependency>
+```
+
+### Gradle
+```gradle
+  implementation group: 'com.infisical', name: 'sdk', version: '{version}'
+```
+
+
+### Others
+For other build tools, please check our [package snippets](https://central.sonatype.com/artifact/com.infisical/sdk), and select the build tool you're using for your project.
+
+
+
+## Getting Started
 
 ```java
-package com.example.app;
+package com.example.example;
 
-import com.infisical.sdk.InfisicalClient;
-import com.infisical.sdk.schema.*;
+import com.infisical.sdk.InfisicalSdk;
 
 public class Example {
-    public static void main(String[] args) {
-       
-        // Create the authentication settings for the client
-        ClientSettings settings = new ClientSettings();
-        AuthenticationOptions authOptions = new AuthenticationOptions();
-        UniversalAuthMethod authMethod = new UniversalAuthMethod();
 
-        authMethod.setClientID("YOUR_IDENTITY_ID");
-        authMethod.setClientSecret("YOUR_CLIENT_SECRET");
+  public static void main(String[] args) {
+    var sdk = new InfisicalSdk(
+      new SdkConfig.Builder()
+        // Optional, will default to https://app.infisical.com
+        .withSiteUrl("https://your-infisical-instance.com")
+        .build()
+    );
 
-        authOptions.setUniversalAuth(authMethod);
-        settings.setAuth(authOptions);
+    sdk.Auth().UniversalAuthLogin(
+      "CLIENT_ID",
+      "CLIENT_SECRET"
+    );
 
-        // Create a new Infisical Client
-        InfisicalClient client = new InfisicalClient(settings);
+    var secret = sdk.Secrets().GetSecret(
+      "<secret-name>",
+      "<project-id>",
+      "<env-slug>",
+      "<secret-path>",
+      null, // Expand Secret References (boolean, optional)
+      null, // Include Imports (boolean, optional)
+      null  // Secret Type (shared/personal, defaults to shared, optional)
+      );
 
-        // Create the options for fetching the secret
-        GetSecretOptions options = new GetSecretOptions();
-        options.setSecretName("TEST");
-        options.setEnvironment("dev");
-        options.setProjectID("PROJECT_ID");
 
-        // Fetch the sercret with the provided options
-        GetSecretResponseSecret secret = client.getSecret(options);
-
-        // Print the value
-        System.out.println(secret.getSecretValue());
-
-        // Important to avoid memory leaks!
-        // If you intend to use the client throughout your entire application, you can omit this line.
-        client.close();
-    }
+    System.out.println(secret);
+  }
 }
 ```
 
-This example demonstrates how to use the Infisical Java SDK in a Java application. The application retrieves a secret named `TEST` from the `dev` environment of the `PROJECT_ID` project.
+## Core Methods
 
-<Warning>
-    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
-</Warning>
+The SDK methods are organized into the following high-level categories:
 
-# Installation
+1. `Auth()`: Handles authentication methods.
+2. `Secrets()`: Manages CRUD operations for secrets.
 
-The Infisical Java SDK is hosted on the GitHub Packages Apache Maven registry. Because of this you need to configure your environment properly so it's able to pull dependencies from the GitHub registry. Please check [this guide from GitHub](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-apache-maven-registry) on how to achieve this.
+### `Auth`
 
-Our package is [located here](https://github.com/Infisical/sdk/packages/2019741). Please follow the installation guide on the page.
+The `Auth` component provides methods for authentication:
 
-# Configuration
+### Universal Auth
 
-Import the SDK and create a client instance with your [Machine Identity](/platform/identities/universal-auth).
+#### Authenticating
 
 ```java
-import com.infisical.sdk.InfisicalClient;
-import com.infisical.sdk.schema.*;
-
-public class App {
-    public static void main(String[] args) {
-        // Create the authentication settings for the client
-        ClientSettings settings = new ClientSettings();
-        AuthenticationOptions authOptions = new AuthenticationOptions();
-        UniversalAuthMethod authMethod = new UniversalAuthMethod();
-
-        authMethod.setClientID("YOUR_IDENTITY_ID");
-        authMethod.setClientSecret("YOUR_CLIENT_SECRET");
-
-        authOptions.setUniversalAuth(authMethod);
-        settings.setAuth(authOptions);
-
-        // Create a new Infisical Client
-        InfisicalClient client = new InfisicalClient(settings); // Your client!
-    }
-}
+public void UniversalAuthLogin(
+  String clientId,
+  String clientSecret
+)
+throws InfisicalException
 ```
 
-### ClientSettings methods
-
-<ParamField query="options" type="object">
-    <Expandable title="properties">
-        <ParamField query="setClientID()" type="string" deprecated optional>
-            Your machine identity client ID.
-
-            **This field is deprecated and will be removed in future versions.** Please use the `setAuth()` method on the client settings instead.
-        </ParamField>
-          <ParamField query="setClientSecret()" deprecated type="string" optional>
-            Your machine identity client secret.
-
-            **This field is deprecated and will be removed in future versions.** Please use the `setAuth()` method on the client settings instead.
-        </ParamField>
-
-         <ParamField query="setAccessToken()" deprecatedtype="string" optional>
-            An access token obtained from the machine identity login endpoint.
-
-            **This field is deprecated and will be removed in future versions.** Please use the `setAuth()` method on the client settings instead.
-        </ParamField>
-
-        <ParamField query="setCacheTTL()" type="number" default="300" optional>
-            Time-to-live (in seconds) for refreshing cached secrets.
-            If manually set to 0, caching will be disabled, this is not recommended.
-        </ParamField>
-
-        <ParamField query="setSiteURL()" type="string" default="https://app.infisical.com" optional>
-            Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
-        </ParamField>
-
-        <ParamField query="setSSLCertificatePath()">
-          Optionally provide a path to a custom SSL certificate file. This can be substituted by setting the `INFISICAL_SSL_CERTIFICATE` environment variable to the contents of the certificate.
-        </ParamField>
-
-        <ParamField query="setAuth()" type="AuthenticationOptions">
-          The authentication object to use for the client. This is required unless you're using environment variables.
-      </ParamField>
-    </Expandable>
-
-</ParamField>
-
-### Authentication
-
-The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
-
-#### Universal Auth
-
-**Using environment variables**
-- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
-- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
-
-**Using the SDK directly**
 ```java
-  ClientSettings settings = new ClientSettings();
-  AuthenticationOptions authOptions = new AuthenticationOptions();
-  UniversalAuthMethod authMethod = new UniversalAuthMethod();
-
-  authMethod.setClientID("YOUR_IDENTITY_ID");
-  authMethod.setClientSecret("YOUR_CLIENT_SECRET");
-
-  authOptions.setUniversalAuth(authMethod);
-  settings.setAuth(authOptions);
-
-  InfisicalClient client = new InfisicalClient(settings);
-```
-
-#### GCP ID Token Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
-  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-```java
-  ClientSettings settings = new ClientSettings();
-  AuthenticationOptions authOptions = new AuthenticationOptions();
-  GCPIDTokenAuthMethod authMethod = new GCPIDTokenAuthMethod();
-
-  authMethod.setIdentityID("YOUR_MACHINE_IDENTITY_ID");
-
-  authOptions.setGcpIDToken(authMethod);
-  settings.setAuth(authOptions);
-
-  InfisicalClient client = new InfisicalClient(settings);
-```
-
-#### GCP IAM Auth
-
-**Using environment variables**
-- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
-
-**Using the SDK directly**
-```java
-  ClientSettings settings = new ClientSettings();
-  AuthenticationOptions authOptions = new AuthenticationOptions();
-  GCPIamAuthMethod authMethod = new GCPIamAuthMethod();
-
-  authMethod.setIdentityID("YOUR_MACHINE_IDENTITY_ID");
-  authMethod.setServiceAccountKeyFilePath("./path/to/your/service-account-key.json");
-
-  authOptions.setGcpIam(authMethod);
-  settings.setAuth(authOptions);
-
-  InfisicalClient client = new InfisicalClient(settings);
-```
-
-#### AWS IAM Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on AWS.
-  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-```java
-  ClientSettings settings = new ClientSettings();
-  AuthenticationOptions authOptions = new AuthenticationOptions();
-  AWSIamAuthMethod authMethod = new AWSIamAuthMethod();
-
-  authMethod.setIdentityID("YOUR_MACHINE_IDENTITY_ID");
-
-  authOptions.setAwsIam(authMethod);
-  settings.setAuth(authOptions);
-
-  InfisicalClient client = new InfisicalClient(settings);
-```
-
-#### Azure Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Azure.
-  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-```java
-  ClientSettings settings = new ClientSettings();
-  AuthenticationOptions authOptions = new AuthenticationOptions();
-  AzureAuthMethod authMethod = new AzureAuthMethod();
-  
-  authMethod.setIdentityID("YOUR_IDENTITY_ID");
-
-  authOptions.setAzure(authMethod);
-  settings.setAuth(authOptions);
-
-  InfisicalClient client = new InfisicalClient(settings);
-```
-
-#### Kubernetes Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Kubernetes.
-  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
-- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
-
-**Using the SDK directly**
-```java
-  ClientSettings settings = new ClientSettings();
-  AuthenticationOptions authOptions = new AuthenticationOptions();
-  KubernetesAuthMethod authMethod = new KubernetesAuthMethod();
-
-  authMethod.setIdentityID("YOUR_IDENTITY_ID");
-  authMethod.setServiceAccountTokenPath("/var/run/secrets/kubernetes.io/serviceaccount/token"); // Optional
-
-  authOptions.setKubernetes(authMethod);
-  settings.setAuth(authOptions);
-
-  InfisicalClient client = new InfisicalClient(settings);
+sdk.Auth().UniversalAuthLogin(
+  "CLIENT_ID",
+  "CLIENT_SECRET"
+);
 ```
 
 
-### Caching
+**Parameters:**
+- `clientId` (string): The client ID of your Machine Identity.
+- `clientSecret` (string): The client secret of your Machine Identity.
 
-To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cacheTTL" option when creating the client.
-
-## Working with Secrets
-
-### client.listSecrets(options)
+### LDAP Auth
 
 ```java
-ListSecretsOptions options = new ListSecretsOptions();
-options.setEnvironment("dev");
-options.setProjectID("PROJECT_ID");
-options.setPath("/foo/bar");
-options.setIncludeImports(false);
-options.setRecursive(false);
-options.setExpandSecretReferences(true);
-
-SecretElement[] secrets = client.listSecrets(options);
+public void LdapAuthLogin(
+  LdapAuthLoginInput input
+)
+throws InfisicalException
 ```
-
-Retrieve all secrets within the Infisical project and environment that client is connected to
-
-#### Methods
-
-<ParamField query="Parameters" type="object">
-    <Expandable title="properties">
-        <ParamField query="setEnvironment()" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-
-        <ParamField query="setProjectID()" type="string">
-            The project ID where the secret lives in.
-        </ParamField>
-
-         <ParamField query="setPath()" type="string" optional>
-            The path from where secrets should be fetched from.
-        </ParamField>
-
-        <ParamField query="setAttachToProcessEnv()" type="boolean" default="false" optional>
-             Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `System.getenv("SECRET_NAME")`.
-        </ParamField>
-
-        <ParamField query="setIncludeImports()" type="boolean" default="false" optional>
-             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
-        </ParamField>
-
-         <ParamField query="setRecursive()" type="boolean" default="false" optional>
-            Whether or not to fetch secrets recursively from the specified path. Please note that there's a 20-depth limit for recursive fetching.
-        </ParamField>
-
-        <ParamField query="setExpandSecretReferences()" type="boolean" default="true" optional>
-            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
-        </ParamField>
-    </Expandable>
-
-</ParamField>
-
-### client.getSecret(options)
 
 ```java
-GetSecretOptions options = new GetSecretOptions();
-options.setSecretName("TEST");
-options.setEnvironment("dev");
-options.setProjectID("PROJECT_ID");
+var input = LdapAuthLoginInput
+  .builder()
+  .identityId("<machine-identity-id>")
+  .username("<ldap-username>")
+  .password("<ldap-password>")
+  .build();
 
-GetSecretResponseSecret secret = client.getSecret(options);
-
-String secretValue = secret.getSecretValue();
+sdk.Auth().LdapAuthLogin(input);
 ```
 
-Retrieve a secret from Infisical.
+**Parameters:**
+- `input` (LdapAuthLoginInput): The input for authenticating with LDAP.
+  - `identityId` (String): The ID of the machine identity to authenticate with.
+  - `username` (String): The LDAP username.
+  - `password` (String): The LDAP password.
 
-By default, `getSecret()` fetches and returns a shared secret.
+### Access Token Auth
 
-#### Methods
-
-<ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="setSecretName()" type="string" required>
-            The key of the secret to retrieve.
-        </ParamField>
-        <ParamField query="setProjectID()" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="setEnvironment()" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="setPath()" type="string" optional>
-            The path from where secret should be fetched from.
-        </ParamField>
-        <ParamField query="setType()" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-        <ParamField query="setIncludeImports()" type="boolean" optional>
-          Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
-        </ParamField>
-        <ParamField query="setExpandSecretReferences()" type="boolean" default="true" optional>
-          Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
-        </ParamField>
-    </Expandable>
-</ParamField>
-
-### client.createSecret(options)
+#### Authenticating
 
 ```java
-CreateSecretOptions createOptions = new CreateSecretOptions();
-createOptions.setSecretName("NEW_SECRET");
-createOptions.setEnvironment("dev");
-createOptions.setProjectID("PROJECT_ID");
-createOptions.setSecretValue("SOME SECRET VALUE");
-createOptions.setPath("/"); // Default
-createOptions.setType("shared"); // Default
-
-CreateSecretResponseSecret newSecret = client.createSecret(createOptions);
+public void SetAccessToken(
+  String accessToken
+)
+throws InfisicalException
 ```
-
-Create a new secret in Infisical.
-
-#### Methods
-
-<ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="setSecretName()" type="string" required>
-            The key of the secret to create.
-        </ParamField>
-        <ParamField query="setSecretValue()" type="string" required>
-            The value of the secret.
-        </ParamField>
-        <ParamField query="setProjectID()" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="setEnvironment()" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="setPath()" type="string" optional>
-            The path from where secret should be created.
-        </ParamField>
-        <ParamField query="setType()" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
-</ParamField>
-
-### client.updateSecret(options)
 
 ```java
-UpdateSecretOptions options = new UpdateSecretOptions();
-
-options.setSecretName("SECRET_TO_UPDATE");
-options.setSecretValue("NEW SECRET VALUE");
-options.setEnvironment("dev");
-options.setProjectID("PROJECT_ID");
-options.setPath("/"); // Default
-options.setType("shared"); // Default
-
-UpdateSecretResponseSecret updatedSecret = client.updateSecret(options);
+sdk.Auth().SetAccessToken("ACCESS_TOKEN");
 ```
 
-Update an existing secret in Infisical.
+**Parameters:**
+- `accessToken` (string): The access token you want to use for authentication.
 
-#### Methods
+### `Secrets`
 
-<ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="setSecretName()" type="string" required>
-            The key of the secret to update.
-        </ParamField>
-        <ParamField query="setSecretValue()" type="string" required>
-            The new value of the secret.
-        </ParamField>
-        <ParamField query="setProjectID()" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="setEnvironment()" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="setPath()" type="string" optional>
-            The path from where secret should be updated.
-        </ParamField>
-        <ParamField query="setType()" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
-</ParamField>
+This sub-class handles operations related to secrets:
 
-### client.deleteSecret(options)
+#### List Secrets
 
 ```java
-DeleteSecretOptions options = new DeleteSecretOptions();
+public List<Secret> ListSecrets(
+    String projectId,
+    String environmentSlug,
+    String secretPath,
+    Boolean expandSecretReferences,
+    Boolean recursive,
+    Boolean includeImports,
+    Boolean setSecretsOnSystemProperties
+)
 
-options.setSecretName("SECRET_TO_DELETE");
-options.setEnvironment("dev");
-options.setProjectID("PROJECT_ID");
-options.setPath("/"); // Default
-options.setType("shared"); // Default
-
-DeleteSecretResponseSecret deletedSecret = client.deleteSecret(options);
+throws InfisicalException
 ```
-
-Delete a secret in Infisical.
-
-#### Methods
-
-<ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="setSecretName()" type="string">
-            The key of the secret to update.
-        </ParamField>
-        <ParamField query="setProjectID()" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="setEnvironment()" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="setPath()" type="string" optional>
-            The path from where secret should be deleted.
-        </ParamField>
-        <ParamField query="setType()" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
-</ParamField>
-
-## Cryptography
-
-### Create a symmetric key
-
-Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
 
 ```java
-String key = client.createSymmetricKey();
+List<Secret> secrets = await sdk.Secrets().ListSecrets(
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+  false, // Should expand secret references
+  false, // Should get secrets recursively from sub folders
+  false, // Should include imports
+  false // Should set the fetched secrets as key/value pairs on the system properties. Makes the secrets accessible as System.getProperty("<secret-key>")
+);
 ```
 
-#### Returns (string)
-`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
+**Parameters:**
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to list secrets (e.g., "dev").
+- `secretPath` (string): The path to the secrets.
+- `expandSecretReferences` (boolean): Whether to expand secret references.
+- `recursive` (boolean): Whether to list secrets recursively.
+- `includeImports` (boolean): Whether to include imported secrets.
+- `setSecretsOnSystemProperties` (boolean): Set the retrieved secrets as key/value pairs on the system properties, making them accessible through `System.getProperty("<secret-key>")`
 
-### Encrypt symmetric
+**Returns:**
+- `List<Secret>`: The response containing the list of secrets.
+
+#### Create Secret
+
+
 ```java
-EncryptSymmetricOptions options = new EncryptSymmetricOptions();
-options.setKey(key);
-options.setPlaintext("Infisical is awesome!");
-
-EncryptSymmetricResponse encryptedData = client.encryptSymmetric(options);
+public Secret CreateSecret(
+    String secretName,
+    String secretValue,
+    String projectId,
+    String environmentSlug,
+    String secretPath
+)
+throws InfisicalException
 ```
 
-#### Methods
-
-<ParamField query="Parameters" type="object" required>
-    <Expandable title="properties">
-        <ParamField query="setPlaintext()" type="string">
-            The plaintext you want to encrypt.
-        </ParamField>
-        <ParamField query="setKey()" type="string" required>
-            The symmetric key to use for encryption.
-        </ParamField>
-    </Expandable>
-</ParamField>
-
-#### Returns (object)
-`tag (getTag())` (string): A base64-encoded, 128-bit authentication tag.
-`iv (getIv())` (string): A base64-encoded, 96-bit initialization vector.
-`ciphertext (getCipherText())` (string): A base64-encoded, encrypted ciphertext.
-
-
-### Decrypt symmetric
 ```java
-DecryptSymmetricOptions decryptOptions = new DecryptSymmetricOptions();
-decryptOptions.setKey(key);
-decryptOptions.setCiphertext(encryptedData.getCiphertext());
-decryptOptions.setIv(encryptedData.getIv());
-decryptOptions.setTag(encryptedData.getTag());
-
-String decryptedString = client.decryptSymmetric(decryptOptions);
+Secret newSecret = sdk.Secrets().CreateSecret(
+  "NEW_SECRET_NAME",
+  "secret-value",
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+);
 ```
 
-#### Methods
-<ParamField query="Parameters" type="object" required>
-    <Expandable title="properties">
-        <ParamField query="setCiphertext()" type="string">
-            The ciphertext you want to decrypt.
-        </ParamField>
-        <ParamField query="setKey()" type="string" required>
-            The symmetric key to use for encryption.
-        </ParamField>
-        <ParamField query="setIv()" type="string" required>
-            The initialization vector to use for decryption.
-        </ParamField>
-        <ParamField query="setTag()" type="string" required>
-            The authentication tag to use for decryption.
-        </ParamField>
-    </Expandable>
-</ParamField>
+**Parameters:**
+- `secretName` (string): The name of the secret to create
+- `secretValue` (string): The value of the secret.
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to create the secret.
+- `secretPath` (string, optional): The path to the secret.
 
-#### Returns (string)
-`Plaintext` (string): The decrypted plaintext.
-*/}
+**Returns:**
+- `Secret`: The created secret.
+
+#### Update Secret
+
+```java
+public Secret UpdateSecret(
+    String secretName,
+    String projectId,
+    String environmentSlug,
+    String secretPath,
+    String newSecretValue,
+    String newSecretName
+  )
+    
+throws InfisicalException
+```
+
+
+```java
+Secret updatedSecret = sdk.Secrets().UpdateSecret(
+  "SECRET_NAME",
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+  "NEW_SECRET_VALUE", // nullable
+  "NEW_SECRET_NAME" // nullable
+);
+```
+
+**Parameters:**
+- `secretName` (string): The name of the secret to update.`
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to update the secret.
+- `secretPath` (string): The path to the secret.
+- `newSecretValue` (string, nullable): The new value of the secret.
+- `newSecretName` (string, nullable): A new name for the secret.
+
+**Returns:**
+- `Secret`: The updated secret.
+
+#### Get Secret by Name
+
+```java
+public Secret GetSecret(
+    String secretName,
+    String projectId,
+    String environmentSlug,
+    String secretPath,
+    Boolean expandSecretReferences,
+    Boolean includeImports,
+    String secretType
+  )
+throws InfisicalException
+```
+
+```java
+Secret secret = sdk.Secrets().GetSecret(
+  "SECRET_NAME",
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+  false, // Should expand secret references
+  false, // Should get secrets recursively from sub folders
+  false, // Should include imports
+  "shared" // Optional Secret Type (defaults to "shared")
+);
+```
+
+**Parameters:**
+- `secretName` (string): The name of the secret to get`
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to retrieve the secret.
+- `secretPath` (string): The path to the secret.
+- `expandSecretReferences` (boolean, optional): Whether to expand secret references.
+- `includeImports` (boolean, optional): Whether to include imported secrets.
+- `secretType` (personal | shared, optional): The type of secret to fetch.
+
+
+**Returns:**
+- `Secret`: The fetched secret.
+
+#### Delete Secret by Name
+
+```java
+public Secret DeleteSecret(
+    String secretName,
+    String projectId,
+    String environmentSlug,
+    String secretPath
+  )
+throws InfisicalException
+```
+
+```java
+Secret deletedSecret = sdk.Secrets().DeleteSecret(
+  "SECRET_NAME", 
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+);
+```
+
+**Parameters:**
+- `secretName` (string): The name of the secret to delete.
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to delete the secret.
+- `secretPath` (string, optional): The path to the secret.
+
+**Returns:**
+- `Secret`: The deleted secret.
+
+
+### `Folders`
+
+#### Get Folder By Name 
+
+```java
+public Folder Get(
+  String folderId
+);
+throws InfisicalException
+```
+
+```java
+Folder folder = sdk.Folders().Get("<folder-id>");
+```
+
+**Parameters:**
+- `folderId` (String): The ID of the folder to retrieve.
+
+**Returns:**
+- `Folder`: The retrieved folder.
+
+#### List Folders
+
+```java
+public List<Folder> List(
+  ListFoldersInput input
+)
+throws InfisicalException
+```
+
+```java
+ListFoldersInput input = ListFoldersInput
+  .builder()
+  .projectId("<your-project-id>")
+  .environmentSlug("<env-slug>")
+  .folderPath("/")
+  .recursive(false)
+  .build();
+
+List<Folder> folders = sdk.Folders().List(input);
+```
+
+
+**Parameters:**
+- `input` (ListFoldersInput): The input for listing folders.
+  - `projectId` (String): The ID of the project to list folders from.
+  - `environmentSlug` (String): The slug of the environment to list folders from.
+  - `folderPath` (String): The path to list folders from. Defaults to `/`.
+  - `recursive` (Boolean): Whether or not to list sub-folders recursively from the specified folder path and downwards. Defaults to `false`.
+
+**Returns:**
+- `List<Folder>`: The retrieved folders.
+
+#### Create Folder
+
+```java
+public Folder Create(
+  CreateFolderInput input
+)
+throws InfisicalException
+```
+
+```java
+var input = CreateFolderInput
+  .builder()
+  .projectId("<your-project-id>")
+  .environmentSlug("<env-slug>")
+  .folderName("<folder-name>")
+  .folderPath("/")
+  .description("Optional folder description")
+  .build();
+
+Folder createdFolder = sdk.Folders().Create(input);
+```
+
+**Parameters:**
+- `input` (CreateFolderInput): The input for creating a folder.
+  - `projectId` (String): The ID of the project to create the folder in.
+  - `environmentSlug` (String): The slug of the environment to create the folder in.
+  - `folderPath` (String): The path to create the folder in. Defaults to `/`.
+  - `folderName` (String): The name of the folder to create.
+  - `description` (String): The description of the folder to create. This is optional.
+
+**Returns:**
+- `Folder`: The created folder.
+
+#### Update Folder
+
+```java
+public Folder Update(
+  UpdateFolderInput input
+)
+throws InfisicalException
+```
+
+```java
+var input = UpdateFolderInput
+  .builder()
+  .projectId("<your-project-id>")
+  .environmentSlug("<env-slug>")
+  .folderId("<id-of-folder-to-update>")
+  .newFolderName("<the-new-folder-name>")
+  .folderPath("/")
+  .build();
+
+Folder updatedFolder = sdk.Folders().Update(input);
+```
+
+**Parameters:**
+- `input` (UpdateFolderInput): The input for updating a folder.
+  - `projectId` (String): The ID of the project where the folder exists.
+  - `environmentSlug` (String): The slug of the environment where the folder exists.
+  - `folderPath` (String): The path of the folder to update.
+  - `folderId` (String): The ID of the folder to update.
+  - `newFolderName` (String): The new folder name.
+
+**Returns:**
+- `Folder`: The updated folder.
+
+#### Delete Folder
+
+```java
+public Folder Delete(
+  DeleteFolderInput input
+)
+throws InfisicalException
+```
+
+```java
+var input = DeleteFolderInput
+  .builder()
+  .folderId("<the-folder-id>")
+  .environmentSlug("<env-slug>")
+  .projectId("<your-project-id>")
+  .build();
+
+Folder deletedFolder = sdk.Folders().Delete(input);
+```
+
+
+**Parameters:**
+- `input` (DeleteFolderInput): The input for deleting a folder.
+  - `projectId` (String): The ID of the project where the folder exists.
+  - `environmentSlug` (String): The slug of the environment where the folder exists.
+  - `folderId` (String): The ID of the folder to delete.
+
+**Returns:**
+- `Folder`: The deleted folder.

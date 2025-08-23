@@ -1,558 +1,558 @@
 ---
 title: "Infisical Node.js SDK"
 sidebarTitle: "Node.js"
-url: "https://github.com/Infisical/node-sdk-v2?tab=readme-ov-file#infisical-nodejs-sdk"
 icon: "/images/sdks/languages/node.svg"
 ---
 
-{/*
-If you're working with Node.js, the official [Infisical Node SDK](https://github.com/Infisical/sdk/tree/main/languages/node) package is the easiest way to fetch and work with secrets for your application.
+The Infisical SDK provides a convenient way to interact with the Infisical API. 
 
-- [NPM Package](https://www.npmjs.com/package/@infisical/sdk)
-- [Github Repository](https://github.com/Infisical/sdk/tree/main/languages/node)
+## Deprecation Notice
 
-## Basic Usage
-
-```js
-import express from "express";
-
-import { InfisicalClient } from "@infisical/sdk";
-
-const app = express();
-
-const PORT = 3000;
-
-const client = new InfisicalClient({
-    siteUrl: "https://app.infisical.com", // Optional, defaults to https://app.infisical.com
-    auth: {
-      universalAuth: {
-        clientId: "YOUR_CLIENT_ID",
-        clientSecret: "YOUR_CLIENT_SECRET"
-      }
-    }
-});
-
-app.get("/", async (req, res) => {
-  // Access the secret
-  
-    const name = await client.getSecret({
-        environment: "dev",
-        projectId: "PROJECT_ID",
-        path: "/",
-        type: "shared",
-        secretName: "NAME"
-    });
-
-    res.send(`Hello! My name is: ${name.secretValue}`);
-});
-
-app.listen(PORT, async () => {
-    // initialize client
-
-    console.log(`App listening on port ${PORT}`);
-});
-```
-
-This example demonstrates how to use the Infisical Node SDK with an Express application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
-
-<Warning>
-    We do not recommend hardcoding your [Machine Identity Tokens](/documentation/platform/identities/overview). Setting it as an environment variable
-    would be best.
-</Warning>
+Please be aware that all versions prior to `4.0.0` are officially fully unsupported.
+Please upgrade to version 4.0.0 or newer in order to recieve the latest updates. 
 
 ## Installation
 
-Run `npm` to add `@infisical/sdk` to your project.
-
-```console
-$ npm install @infisical/sdk
+```bash
+npm install @infisical/sdk
 ```
 
-## Configuration
+## Getting Started
 
-Import the SDK and create a client instance with your [Machine Identity](/documentation/platform/identities/overview).
+```typescript
+import { InfisicalSDK } from '@infisical/sdk'
 
-<Tabs>
-  <Tab title="ES6">
-    ```js
-    import { InfisicalClient, LogLevel } from "@infisical/sdk";
+const client = new InfisicalSDK({
+  siteUrl: "your-infisical-instance.com" // Optional, defaults to https://app.infisical.com
+});
 
-    const client = new InfisicalClient({
-        auth: {
-          universalAuth: {
-            clientId: "YOUR_CLIENT_ID",
-            clientSecret: "YOUR_CLIENT_SECRET"
-          }
-        },
-        logLevel: LogLevel.Error
-    });
-    ```
+// Authenticate with Infisical
+await client.auth().universalAuth.login({
+  clientId: "<machine-identity-client-id>",
+  clientSecret: "<machine-identity-client-secret>"
+});
 
-  </Tab>
-  <Tab title="ES5">
-    ```js
-    const { InfisicalClient } = require("@infisical/sdk");
+const allSecrets = await client.secrets().listSecrets({
+  environment: "dev", // stg, dev, prod, or custom environment slugs
+  projectId: "<your-project-id>"
+});
 
-    const client = new InfisicalClient({
-        auth: {
-          universalAuth: {
-            clientId: "YOUR_CLIENT_ID",
-            clientSecret: "YOUR_CLIENT_SECRET"
-          }
-        },
-    });
-    ```
+console.log("Fetched secrets", allSecrets)
+```
 
-  </Tab>
-</Tabs>
+## Core Methods
 
-### Parameters
+The SDK methods are organized into the following high-level categories:
 
-<ParamField query="options" type="object">
-    <Expandable title="properties">
-        <ParamField query="clientId" deprecated type="string" optional>
-            Your machine identity client ID.
-            
-            **This field is deprecated and will be removed in future versions.** Please use the `auth.universalAuth.clientId` field instead.
-        </ParamField>
-          <ParamField query="clientSecret" deprecated type="string" optional>
-            Your machine identity client secret.
-            
-            **This field is deprecated and will be removed in future versions.** Please use the `auth.universalAuth.clientSecret` field instead.
-        </ParamField>
+1. `auth`: Handles authentication methods.
+2. `secrets`: Manages CRUD operations for secrets.
+3. `dynamicSecrets`: Manages dynamic secrets and leases.
+4. `projects`: Creates and manages projects.
+5. `environments`: Creates and manages environments.
+6. `folders`: Creates and manages folders.
 
-         <ParamField query="accessToken" deprecated type="string" optional>
-            An access token obtained from the machine identity login endpoint.
-            
-            **This field is deprecated and will be removed in future versions.** Please use the `auth.accessToken` field instead.
-        </ParamField>
+### `auth`
 
-        <ParamField query="cacheTtl" type="number" default="300" optional>
-            Time-to-live (in seconds) for refreshing cached secrets.
-            If manually set to 0, caching will be disabled, this is not recommended.
-        </ParamField>
-
-        <ParamField query="siteUrl" type="string" default="https://app.infisical.com" optional>
-            Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
-        </ParamField>
-        <ParamField query="logLevel" type="enum" default="Error" optional>
-            The level of logs you wish to log The logs are derived from Rust, as we have written our base SDK in Rust.
-        </ParamField>
-
-        <ParamField query="sslCertificatePath" optional>
-            Optionally provide a path to a custom SSL certificate file. This can be substituted by setting the `INFISICAL_SSL_CERTIFICATE` environment variable to the contents of the certificate.
-        </ParamField>
-
-        <ParamField query="auth" type="AuthenticationOptions">
-            The authentication object to use for the client. This is required unless you're using environment variables.
-        </ParamField>
-    </Expandable>
-
-</ParamField>
-
-
-### Authentication
-
-The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
+The `Auth` component provides methods for authentication:
 
 #### Universal Auth
 
-**Using environment variables**
-- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
-- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
-
-**Using the SDK directly**
-```js
-const client = new InfisicalClient({
-    auth: {
-      universalAuth: {
-        clientId: "YOUR_CLIENT_ID",
-        clientSecret: "YOUR_CLIENT_SECRET"
-      }
-    }
+#### Authenticating
+```typescript
+await client.auth().universalAuth.login({
+  clientId: "<machine-identity-client-id>",
+  clientSecret: "<machine-identity-client-secret>"
 });
 ```
 
-#### GCP ID Token Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
-  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
-</Info>
+**Parameters:**
+- `options` (object):
+  - `clientId` (string): The client ID of your Machine Identity.
+  - `clientSecret` (string): The client secret of your Machine Identity.
 
-**Using environment variables**
-- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-```js
-const client = new InfisicalClient({
-    auth: {
-      gcpIdToken: {
-        identityId: "YOUR_IDENTITY_ID"
-      }
-    }
-});
+#### Renewing
+You can renew the authentication token that is currently set by using the `renew()` method.
+```typescript
+await client.auth().universalAuth.renew();
 ```
 
-#### GCP IAM Auth
+#### Manually set access token
+By default, when you run a successful `.login()` method call, the access token returned will be auto set for the client instance. However, if you wish to set the access token manually, you may use this method.
 
-**Using environment variables**
-- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
-
-**Using the SDK directly**
-```js
-const client = new InfisicalClient({
-    auth: {
-      gcpIam: {
-        identityId: "YOUR_IDENTITY_ID",
-        serviceAccountKeyFilePath: "./path/to/your/service-account-key.json"
-      }
-    }
-});
+```typescript
+client.auth().accessToken("<your-access-token>")
 ```
 
-#### AWS IAM Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on AWS.
-  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-```js
-const client = new InfisicalClient({
-    auth: {
-      awsIam: {
-        identityId: "YOUR_IDENTITY_ID"
-      }
-    }
-});
-```
-
-#### Azure Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Azure.
-  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-```js
-const client = new InfisicalClient({
-  auth: {
-    azure: {
-      identityId: "YOUR_IDENTITY_ID"
-    }
-  }
-});
-```
+**Parameters:**
+- `accessToken` (string): The access token to be used for authentication. _This should not include "Bearer"._
 
 
-#### Kubernetes Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Kubernetes.
-  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
-</Info>
+#### AWS IAM
 
-**Using environment variables**
-- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
-- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+> [!NOTE]   
+> AWS IAM auth only works when the SDK is being used from within an AWS service, such as Lambda, EC2, etc.
 
-**Using the SDK directly**
-```js
-const client = new InfisicalClient({
-  auth: {
-    kubernetes: {
-      identityId: "YOUR_IDENTITY_ID",
-      serviceAccountTokenPathEnvName: "/var/run/secrets/kubernetes.io/serviceaccount/token" // Optional
-    }
-  }
-});
-```
-
-### Caching
-
-To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cacheTtl" option when creating the client.
-
-## Working with Secrets
-
-### client.listSecrets(options)
-
-```js
-const secrets = await client.listSecrets({
-    environment: "dev",
-    projectId: "PROJECT_ID",
-    path: "/foo/bar/",
-    includeImports: false
-});
-```
-
-Retrieve all secrets within the Infisical project and environment that client is connected to
-
-#### Parameters
-
-<ParamField query="Parameters" type="object">
-    <Expandable title="properties">
-        <ParamField query="environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-          <ParamField query="projectId" type="string" required>
-            The project ID where the secret lives in. 
-        </ParamField>
-
-         <ParamField query="path" type="string" optional>
-            The path from where secrets should be fetched from.
-        </ParamField>
-
-        <ParamField query="attachToProcessEnv" type="boolean" default="false" optional>
-            Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `process.env["SECRET_NAME"]`.
-        </ParamField>
-
-        <ParamField query="recursive" type="boolean" default="false" optional>
-            Whether or not to fetch secrets recursively from the specified path. Please note that there's a 20-depth limit for recursive fetching.
-        </ParamField>
-
-        <ParamField query="expandSecretReferences" type="boolean" default="true" optional>
-            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
-        </ParamField>
-
-        <ParamField query="includeImports" type="false" default="boolean" optional>
-             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
-        </ParamField>
-    </Expandable>
-
-</ParamField>
-
-### client.getSecret(options)
-
-```js
-const secret = await client.getSecret({
-    environment: "dev",
-    projectId: "PROJECT_ID",
-    secretName: "API_KEY",
-    path: "/",
-    type: "shared"
-});
-```
-
-Retrieve a secret from Infisical.
-
-By default, `getSecret()` fetches and returns a shared secret.
-
-#### Parameters
-
-<ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="secretName" type="string" required>
-            The key of the secret to retrieve.
-        </ParamField>
-        <ParamField query="projectId" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="path" type="string" optional>
-            The path from where secret should be fetched from.
-        </ParamField>
-        <ParamField query="type" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-        <ParamField query="includeImports" type="boolean" optional>
-          Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
-        </ParamField>
-        <ParamField query="expandSecretReferences" type="boolean" default="true" optional>
-            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
-        </ParamField>
-    </Expandable>
-</ParamField>
-
-### client.createSecret(options)
-
-```js
-const newApiKey = await client.createSecret({
-    projectId: "PROJECT_ID",
-    environment: "dev",
-    secretName: "API_KEY",
-    secretValue: "SECRET VALUE",
-    path: "/",
-    type: "shared"
-});
-```
-
-Create a new secret in Infisical.
-
-<ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="secretName" type="string" required>
-            The key of the secret to create.
-        </ParamField>
-        <ParamField query="secretValue" type="string" required>
-            The value of the secret.
-        </ParamField>
-        <ParamField query="projectId" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="path" type="string" optional>
-            The path from where secret should be created.
-        </ParamField>
-        <ParamField query="type" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
-</ParamField>
-
-### client.updateSecret(options)
-
-```js
-const updatedApiKey = await client.updateSecret({
-    secretName: "API_KEY",
-    secretValue: "NEW SECRET VALUE",
-    projectId: "PROJECT_ID",
-    environment: "dev",
-    path: "/",
-    type: "shared"
-});
-```
-
-Update an existing secret in Infisical.
-
-#### Parameters
-
-<ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="secretName" type="string" required>
-            The key of the secret to update.
-        </ParamField>
-        <ParamField query="secretValue" type="string" required>
-            The new value of the secret.
-        </ParamField>
-        <ParamField query="projectId" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="path" type="string" optional>
-            The path from where secret should be updated.
-        </ParamField>
-        <ParamField query="type" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
-</ParamField>
-
-### client.deleteSecret(options)
-
-```js
-const deletedSecret = await client.deleteSecret({
-    secretName: "API_KEY",
-
-    environment: "dev",
-    projectId: "PROJECT_ID",
-    path: "/",
-
-    type: "shared"
-});
-```
-
-Delete a secret in Infisical.
-
-<ParamField query="Parameters" type="object" optional>
-    <Expandable title="properties">
-        <ParamField query="secretName" type="string">
-            The key of the secret to update.
-        </ParamField>
-        <ParamField query="projectId" type="string" required>
-            The project ID where the secret lives in.
-        </ParamField>
-        <ParamField query="environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-        <ParamField query="path" type="string" optional>
-            The path from where secret should be deleted.
-        </ParamField>
-        <ParamField query="type" type="string" optional>
-            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-        </ParamField>
-    </Expandable>
-</ParamField>
-
-## Cryptography
-
-### Create a symmetric key
-
-Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
-
-```js
-const key = client.createSymmetricKey();
-```
-
-#### Returns (string)
-`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
-
-### Encrypt symmetric
-```js
-const { iv, tag, ciphertext } = await client.encryptSymmetric({
-    key: key,
-    plaintext: "Infisical is awesome!",
+#### Authenticating
+```typescript
+await client.auth().awsIamAuth.login({
+  identityId: "<your-identity-id>"
 })
 ```
 
-#### Parameters
+**Parameters:**
+- `options` (object):
+  - `identityId` (string): The ID of your identity
 
-<ParamField query="Parameters" type="object" required>
-    <Expandable title="properties">
-        <ParamField query="plaintext" type="string">
-            The plaintext you want to encrypt.
-        </ParamField>
-        <ParamField query="key" type="string" required>
-            The symmetric key to use for encryption.
-        </ParamField>
-    </Expandable>
-</ParamField>
+#### Renewing
+You can renew the authentication token that is currently set by using the `renew()` method.
+```typescript
+await client.auth().awsIamAuth.renew();
+```
 
-#### Returns (object)
-`tag` (string): A base64-encoded, 128-bit authentication tag.
-`iv` (string): A base64-encoded, 96-bit initialization vector.
-`ciphertext` (string): A base64-encoded, encrypted ciphertext.
 
-### Decrypt symmetric
-```js
-const decryptedString = await client.decryptSymmetric({
-    key: key,
-    iv: iv,
-    tag: tag,
-    ciphertext: ciphertext,
+### `secrets`
+
+This sub-class handles operations related to secrets:
+
+#### List Secrets
+
+```typescript
+const allSecrets = await client.secrets().listSecrets({
+  environment: "dev",
+  projectId: "<your-project-id>",
+  expandSecretReferences: true,
+  viewSecretValue: true,
+  includeImports: false,
+  recursive: false,
+  secretPath: "/foo/bar",
 });
 ```
 
-#### Parameters
-<ParamField query="Parameters" type="object" required>
-    <Expandable title="properties">
-        <ParamField query="ciphertext" type="string">
-            The ciphertext you want to decrypt.
-        </ParamField>
-        <ParamField query="key" type="string" required>
-            The symmetric key to use for encryption.
-        </ParamField>
-        <ParamField query="iv" type="string" required>
-            The initialization vector to use for decryption.
-        </ParamField>
-        <ParamField query="tag" type="string" required>
-            The authentication tag to use for decryption.
-        </ParamField>
-    </Expandable>
-</ParamField>
+**Parameters:**
+- `projectId` (string): The ID of your project.
+- `environment` (string): The environment in which to list secrets (e.g., "dev").
+- `secretPath` (str): The path to the secrets.
+- `expandSecretReferences` (bool, optional): Whether to expand secret references.
+- `viewSecretValue` (bool, optional): Whether or not to reveal the secret value of the secrets. If set to `false`, the `secretValue` is masked with `<hidden-by-infisical>`. Defaults to `true`.
+- `recursive` (bool, optional): Whether to list secrets recursively.
+- `includeImports` (bool, optional): Whether to include imported secrets.
+- `tagFilters` (string[], optional): Tags to filter secrets.
 
-#### Returns (string)
-`plaintext` (string): The decrypted plaintext.
+**Returns:**
+- `ListSecretsResponse`: The response containing the list of secrets.
 
-*/}
+#### List secrets with imports
+
+The `listSecretsWithImports` method makes it easier to get all your secrets at once. The imported secrets will automatically be added to the secrets returned. The secrets in the selected environment will take precedence over the imported secrets. This means if you have secrets with conflicting names, the secret from the environment the import was imported into, will take precedence. 
+
+```typescript
+const allSecrets = await client.secrets().listSecretsWithImports({
+  environment: "dev",
+  projectId: "<your-project-id>",
+  expandSecretReferences: true,
+  viewSecretValue: true,
+  recursive: false,
+  secretPath: "/foo/bar"
+});
+```
+
+**Parameters:**
+- `projectId` (string): The ID of your project.
+- `environment` (string): The environment in which to list secrets (e.g., "dev").
+- `secretPath` (str): The path to the secrets.
+- `expandSecretReferences` (bool, optional): Whether to expand secret references.
+- `viewSecretValue` (bool, optional): Whether or not to reveal the secret value of the secrets. If set to `false`, the `secretValue` is masked with `<hidden-by-infisical>`. Defaults to `true`.
+- `recursive` (bool, optional): Whether to list secrets recursively.
+- `tagFilters` (string[], optional): Tags to filter secrets.
+
+**Returns:**
+- `Secret[]`: Returns the list of secrets objects, with imports.
+
+
+
+#### Create Secret
+
+```typescript
+	const newSecret = await client.secrets().createSecret("SECRET_NAME", {
+		environment: "dev",
+		projectId: "<your-project-id>",
+		secretValue: "SECRET_VALUE",
+		secretComment: "This is a new secret",          // Optional
+		secretPath: "/foo/bar",                         // Optional
+		secretReminderNote: "This is a reminder note",  // Optional
+		secretReminderRepeatDays: 7,                    // Optional
+		skipMultilineEncoding: false,                   // Optional
+		tagIds: ["tagId1", "tagId2"],                   // Optional
+		type: "personal"                                // Optional
+	});
+```
+
+**Parameters:**
+- `secretName` (string): The name of the secret to create
+- `options` (object):
+  - `projectId` (string): The ID of your project.
+  - `environment` (str): The environment in which to create the secret.
+  - `secretValue` (str): The value of the secret.
+  - `secretPath` (string, optional): The path to the secret.
+  - `secretComment` (str, optional): A comment associated with the secret.
+  - `skipMultilineEncoding` (bool, optional): Whether to skip encoding for multiline secrets.
+  - `secretReminderNote` (string, optional): A note for the secret reminder.
+  - `secretReminderRepeatDays` (number, optional): Number of days after which to repeat secret reminders.
+  - `tagIds` (string[], optional): Array of tags to assign to the new secret.
+  - `type` (personal | shared, optional): Which type of secret to create.
+
+**Returns:**
+- `CreateSecretResponse`: The response after creating the secret.
+
+#### Update Secret
+
+```typescript
+const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
+  environment: "dev",                                     
+  projectId: "<your-project-id>",                                  
+  secretValue: "UPDATED_SECRET_VALUE",                    
+  newSecretName: "NEW_SECRET_NAME2",                      // Optional
+  secretComment: "This is an updated secret",             // Optional
+  secretPath: "/foo/bar",                                 // Optional
+  secretReminderNote: "This is an updated reminder note", // Optional
+  secretReminderRepeatDays: 14,                           // Optional
+  skipMultilineEncoding: false,                           // Optional
+  tagIds: ["tagId1", "tagId2"],                           // Optional
+  type: "personal",                                       // Optional
+  metadata: {                                             // Optional
+    extra: "metadata"
+  }
+});
+```
+
+**Parameters:**
+- `secretName` (string): The name of the secret to update.`
+- `options` (object):
+  - `environment` (str): The environment in which to update the secret.
+  - `projectId` (str): The ID of your project.
+  - `secretValue` (str, optional): The new value of the secret.
+  - `newSecretName` (str, optional): A new name for the secret.
+  - `secretComment` (str, optional): An updated comment associated with the secret.
+  - `secretPath` (str): The path to the secret.
+  - `secretReminderNote` (str, optional): An updated note for the secret reminder.
+  - `secretReminderRepeatDays` (number, optional): Updated number of days after which to repeat secret reminders.
+  - `skipMultilineEncoding` (bool, optional): Whether to skip encoding for multiline secrets.
+  - `tagIds` (string[], optional): Array of tags to assign to the secret.
+  - `type` (personal | shared, optional): Which type of secret to create.
+  - `metadata` (object, optional): Assign additional details to the secret, accessible through the API.
+
+**Returns:**
+- `UpdateSecretResponse`: The response after updating the secret.
+
+#### Get Secret by Name
+
+```typescript
+	const singleSecret = await client.secrets().getSecret({
+    environment: "dev",
+		projectId: "<your-project-id>",
+		secretName: "DATABASE_URL",
+		expandSecretReferences: true, // Optional
+    viewSecretValue: true,        // Optional
+		includeImports: true,         // Optional
+		secretPath: "/foo/bar",       // Optional
+		type: "shared",               // Optional
+		version: 1                    // Optional
+	});
+```
+
+**Parameters:**
+- `environment` (str): The environment in which to retrieve the secret.
+- `projectId` (str): The ID of your project.
+- `secretName` (str): The name of the secret.
+- `secretPath` (str, optional): The path to the secret.
+- `expandSecretReferences` (bool, optional): Whether to expand secret references.
+- `viewSecretValue` (bool, optional): Whether or not to reveal the secret value of the secret. If set to `false`, the `secretValue` is masked with `<hidden-by-infisical>`. Defaults to `true`.
+- `includeImports` (bool): Whether to include imported secrets.
+- `version` (str, optional): The version of the secret to retrieve. Fetches the latest by default.
+- `type` (personal | shared, optional): The type of secret to fetch.
+
+
+**Returns:**
+- `Secret`: Returns the secret object.
+
+#### Delete Secret by Name
+
+```typescript
+const deletedSecret = await client.secrets().deleteSecret("SECRET_TO_DELETE", {
+  environment: "dev",
+  projectId: "<your-project-id>",
+  secretPath: "/foo/bar", // Optional
+  type: "personal"        // Optional
+});
+```
+
+**Parameters:**
+- `secretName` (string): The name of the secret to delete.
+- `options` (object): 
+  - `projectId` (str): The ID of your project.
+  - `environment` (str): The environment in which to delete the secret.
+  - `secret_path` (str, optional): The path to the secret.
+  - `type` (personal | shared, optional): The type of secret to delete.
+
+**Returns:**
+- `DeleteSecretResponse`: The response after deleting the secret.
+
+
+
+
+### `dynamicSecrets`
+
+
+#### Create a new dynamic secret
+
+Creating a new dynamic secret can be done by using the `.dynamicSecrets().create({})` function. More details below.
+
+
+The input for creating new dynamic secret varies greatly between secret types.
+For a more in-depth description of each input type for each dynamic secret type, please refer to [our API documentation](https://infisical.com/docs/api-reference/endpoints/dynamic-secrets/create)
+
+
+##### Example for creating a new Redis dynamic secret
+
+```typescript
+import { InfisicalSDK, DynamicSecretProviders } from "@infisical/sdk";
+	const client = new InfisicalSDK();
+
+	await client.auth().universalAuth.login({
+		// For localhost
+		clientId: "CLIENT_ID",
+		clientSecret: "CLIENT_SECRET"
+	});
+const dynamicSecret = await client.dynamicSecrets().create({
+  provider: {
+    type: DynamicSecretProviders.Redis,
+    inputs: {
+      host: "<redis-host>",
+      port: 6479,
+      username: "<redis-username>",
+      password: "<redis-password>", // Only required if your Redis instance uses authentication (recommended)
+      creationStatement: "ACL SETUSER {{username}} on >{{password}} ~* &* +@all",
+      revocationStatement: "ACL DELUSER {{username}}"
+    }
+  },
+  defaultTTL: "1h",
+  maxTTL: "24h",
+  name: "dynamic-secret-name",
+  projectSlug: "project-slug",
+  environmentSlug: "dev"
+});
+console.log(dynamicSecret);
+```
+
+**Returns:**
+- `DynamicSecret`: The created dynamic secret.
+
+
+#### Delete a dynamic secret
+
+Note: Deleting a dynamic secret will also delete it's associated leases.
+
+```typescript
+const deletedDynamicSecret = await client.dynamicSecrets().delete("dynamic-secret-name", {
+  environmentSlug: "dev",
+  projectSlug: "project-slug"
+});
+```
+
+**Parameters:**
+- `secretName` (string): The ID of the dynamic secret to delete
+- `options` (object):
+  - `projectSlug` (str): The ID of your project.
+  - `environment` (str): The environment in which to delete the secret.
+
+**Returns:**
+- `DynamicSecret`: The deleted dynamic secret.
+
+### `dynamicSecrets.leases`
+In this section you'll learn how to work with dynamic secret leases
+
+
+#### Create a new lease
+
+```typescript
+const lease = await client.dynamicSecrets().leases.create({
+  dynamicSecretName: "dynamic-secret-name",
+  environmentSlug: "dev",
+  projectSlug: "your-project-slug",
+  path: "/foo/bar",
+  ttl: "5m" // Optional
+});
+
+console.log(lease);
+```
+
+**Your dynamic secret credentials will be contained user `lease.data` in this example.**
+
+**Parameters:**
+- `dynamicSecretName` (string): The name of the dynamic secret you wish to create a lease for.
+- `projectSlug` (string): The slug of the project where the secret is located.
+- `environmentSlug` (string): The environment where the dynamic secret is located.
+- `path` (string, optional): The path of where the dynamic secret is located. 
+- `ttl` (string, optional): A [vercel/ms](https://github.com/vercel/ms) encoded string representation of how long the lease credentials should be valid for. This will default to the dynamic secret's default TTL if not specified.
+
+**Returns:**
+- `CreateLeaseResponse`: The dynamic secret lease result.
+
+
+#### Delete a lease
+```typescript
+const deletedLease = await client.dynamicSecrets().leases.delete(newLease.lease.id, {
+  environmentSlug: "dev",
+  projectSlug: "test-zb-3a",
+  path: "/foo/bar",
+  isForced: false // Wether or not to forcefully delete the lease. This can't guarantee that the lease will be deleted from the external provider.
+});
+```
+
+**Parameters:**
+- `leaseId` (string): The ID of the lease you want to delete.
+- options:
+  - `projectSlug` (string): The slug of the project where the secret is located.
+  - `environmentSlug` (string): The environment where the dynamic secret is located.
+  - `path` (string, optional): The path of where the dynamic secret is located. 
+  - `isForced` (bool, optional): Wether or not to forcefully delete the lease. This can't guarantee that the lease will be deleted from the external provider, and is potentially unsafe for sensitive dynamic secrets.
+
+**Returns:**
+- `DeleteLeaseResponse`: The deleted lease result.
+
+#### Renew a lease
+
+Please note that renewals must happen **before** the lease has fully expired. After renewing the lease, you won't be given new credentials. Instead the existing credentials will continue to live for the specified TTL
+
+```typescript
+const renewedLease = await client.dynamicSecrets().leases.renew(newLease.lease.id, {
+		environmentSlug: "dev",
+		projectSlug: "project-slug",
+		path: "/foo/bar", // Optional
+		ttl: "10m" // Optional
+	});
+```
+
+**Parameters:**
+- `leaseId` (string): The ID of the lease you want to delete.
+- `options` (object):
+  - `projectSlug` (string): The slug of the project where the secret is located.
+  - `environmentSlug` (string): The environment where the dynamic secret is located.
+  - `path` (string, optional): The path of where the dynamic secret is located. 
+  - `ttl` (string, optional): A [vercel/ms](https://github.com/vercel/ms) encoded string representation of how long the lease credentials should be valid for. This will default to the dynamic secret's default TTL if not specified.
+
+**Returns:**
+- `RenewLeaseResponse`: The renewed lease response _(doesn't contain new credentials)_.
+
+### `projects`
+
+#### Create a new project
+
+```typescript
+const project = await client.projects().create({
+  projectName: "<name-of-project>",
+  type: "secret-manager", // cert-manager, secret-manager, kms, ssh
+  projectDescription: "<project-description>", // Optional
+  slug: "<slug-of-project-to-create>", // Optional
+  template: "<project-template-name>", // Optional
+  kmsKeyId: "kms-key-id" // Optional
+});
+```
+
+**Parameters:**
+- `projectName` (string): The name of the project to create.
+- `type` (string): The type of project to create. Valid options are `secret-manager`, `cert-manager`, `kms`, `ssh`
+- `projectDescription` (string): An optional description of the project to create.
+- `slug` (string): An optional slug for the project to create. If not provided, one will be generated automatically.
+- `template` (string): Optionally provide a project template name to use for creating this project.
+- `kmsKeyId` (string): The ID of the KMS key to use for the project. Will use the Infisical KMS by default.
+
+**Returns:**
+- `Project`: The project that was created.
+
+
+#### Invite members to a project
+
+When inviting members to projects, you must either specify the `emails` or `usernames`. If neither are specified, the SDK will throw an error.
+
+```typescript
+const memberships = await client.projects().inviteMembers({
+  projectId: project.id,
+  emails: ["test1@example.com", "test2@example.com"], // Optional
+  usernames: ["example-user3", "example-user4"] // Optional 
+  roleSlugs: ["member"] // Optional
+});
+```
+
+**Parameters:**
+- `projectId`: (string): The ID of the project to invite members to
+- `emails`: (string[]): An array of emails of the users to invite to the project.
+- `usernames`: (string[]) An array of usernames of the users to invite to the project.
+- `roleSlugs`: (string[]): An array of role slugs to assign to the members. If not specified, this will default to `member`.
+
+**Returns:**
+- `Membership[]`: An array of the created project memberships.
+
+### `environments`
+
+#### Create a new environment
+
+```typescript
+const environment = await client.environments().create({
+  name: "<environment-name>",
+  projectId: "<your-project-id>",
+  slug: "<environment-slug>",
+  position: 1 // Optional
+});
+```
+
+**Parameters:**
+- `name` (string): The name of the environment to be created.
+- `projectId` (string): The ID of the project to create the environment within.
+- `slug`: (string): The slug of the environment to be created.
+- `position` (number): An optional position of the environment to be created. The position is used in the Infisical UI to display environments in order. Environments with the lowest position come first.
+
+**Returns:**
+- `Environment`: The environment that was created.
+
+#### Create a new folder
+
+```typescript
+const folder = await client.folders().create({
+  name: "<folder-name>",
+  path: "<folder-path>",
+  projectId: "<your-project-id>",
+  environment: "<environment-slug>",
+  description: "<folder-description>" // Optional
+});
+```
+
+**Parameters:**
+- `name` (string): The name of the folder to create.
+- `path` (string): The path where of where to create the folder. Defaults to `/`, which is the root folder.
+- `projectId` (string): The ID of the project to create the folder within.
+- `environment` (string): The slug of the environment to create the folder within.
+- `description` (string): An optional folder description.
+
+**Returns:**
+- `Folder`: The folder that was created.
+
+#### List folders
+
+```typescript
+const folders = await client.folders().listFolders({
+  environment: "dev",
+  projectId: "<your-project-id>",
+  path: "/foo/bar", // Optional
+  recursive: false // Optional
+});
+```
+
+**Parameters:**
+- `environment` (string): The slug of the environment to list folders within.
+- `projectId` (string): The ID of the project to list folders within.
+- `path` (string): The path to list folders within. Defaults to `/`, which is the root folder.
+- `recursive` (boolean): An optional flag to list folders recursively. Defaults to `false`.
+
+**Returns:**
+- `Folder[]`: An array of folders.

@@ -1,533 +1,403 @@
 ---
 title: "Infisical Python SDK"
 sidebarTitle: "Python"
-url: "https://github.com/Infisical/python-sdk-official?tab=readme-ov-file#infisical-python-sdk"
 icon: "/images/sdks/languages/python.svg"
 ---
 
-{/* If you're working with Python, the official [infisical-python](https://github.com/Infisical/sdk/edit/main/crates/infisical-py) package is the easiest way to fetch and work with secrets for your application.
+The Infisical SDK provides a convenient way to interact with the Infisical API. 
 
--   [PyPi Package](https://pypi.org/project/infisical-python/)
--   [Github Repository](https://github.com/Infisical/sdk/edit/main/crates/infisical-py)
+### Migrating to version 1.0.3 or above
 
-## Basic Usage
+We have recently rolled out our first stable version of the SDK, version `1.0.3` and above.
 
-```py
-from flask import Flask
-from infisical_client import ClientSettings, InfisicalClient, GetSecretOptions, AuthenticationOptions, UniversalAuthMethod
+The 1.0.3 version comes with a few key changes that may change how you're using the SDK.
+1. **Removal of `rest`**: The SDK no longer exposes the entire Infisical API. This was nessecary as we have moved away from using an OpenAPI generator approach. We aim to add support for more API resources in the near future. If you have any specific requests, please [open an issue](https://github.com/Infisical/python-sdk-official/issues).
 
-app = Flask(__name__)
+2. **New response types**: The 1.0.3 release uses return types that differ from the older versions. The new return types such as `BaseSecret`, are all exported from the Infisical SDK.
 
-client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-      universal_auth=UniversalAuthMethod(
-        client_id="CLIENT_ID",
-        client_secret="CLIENT_SECRET",
-      )
-    )
-))
+3. **Property renaming**: Some properties on the responses have been slightly renamed. An example of this would be that the `secret_key` property on the `get_secret_by_name()` method, that has been renamed to `secretKey`.
 
-@app.route("/")
-def hello_world():
-    # access value
+With this in mind, you're ready to upgrade your SDK version to `1.0.3` or above. 
 
-    name = client.getSecret(options=GetSecretOptions(
-       environment="dev",
-       project_id="PROJECT_ID",
-       secret_name="NAME"
-    ))
+You can refer to our [legacy documentation](https://github.com/Infisical/python-sdk-official/tree/9b0403938ee5ae599d42c5f1fdf9158671a15606?tab=readme-ov-file#infisical-python-sdk) if need be.
 
-    return f"Hello! My name is: {name.secret_value}"
-```
+## Requirements
 
-This example demonstrates how to use the Infisical Python SDK with a Flask application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
-
-<Warning>
-  We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
-</Warning>
+Python 3.7+
 
 ## Installation
 
-Run `pip` to add `infisical-python` to your project
-
-```console
-$ pip install infisical-python
+```bash
+pip install infisicalsdk
 ```
 
-Note: You need Python 3.7+.
+## Getting Started
 
-## Configuration
+```python
+from infisical_sdk import InfisicalSDKClient
 
-Import the SDK and create a client instance with your [Machine Identity](/api-reference/overview/authentication).
+# Initialize the client
+client = InfisicalSDKClient(host="https://app.infisical.com")
 
-```py
-from infisical_client import ClientSettings, InfisicalClient, AuthenticationOptions, UniversalAuthMethod
+# Authenticate (example using Universal Auth)
+client.auth.universal_auth.login(
+    client_id="<machine-identity-client-id>", 
+    client_secret="<machine-identity-client-secret>"
+)
 
-client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-      universal_auth=UniversalAuthMethod(
-        client_id="CLIENT_ID",
-        client_secret="CLIENT_SECRET",
-      )
-    )
-))
+# Use the SDK to interact with Infisical
+secrets = client.secrets.list_secrets(project_id="<project-id>", environment_slug="dev", secret_path="/")
 ```
 
-#### Parameters
+## InfisicalSDKClient Parameters
 
-<ParamField query="options" type="object">
-    <Expandable title="properties">
-        <ParamField query="client_id" type="string" deprecated optional>
-            Your Infisical Client ID.
+The `InfisicalSDKClient` takes the following parameters, which are used as a global configuration for the lifetime of the SDK instance.
 
-            **This field is deprecated and will be removed in future versions.** Please use the `auth` field instead.
-        </ParamField>
-        <ParamField query="client_secret" type="string" deprecated optional>
-            Your Infisical Client Secret.
+- **host** (`str`, _Optional_): The host URL for your Infisical instance. Defaults to `https://app.infisical.com`.
+- **token** (`str`, _Optional_): Specify an authentication token to use for all requests. If provided, you will not need to call any of the `auth` methods. Defaults to `None`
+- **cache_ttl** (`int`, _Optional_): The SDK has built-in client-side caching for secrets, greatly improving response times. By default, secrets are cached for 1 minute (60 seconds). You can disable caching by setting `cache_ttl` to `None`, or adjust the duration in seconds as needed.
 
-          **This field is deprecated and will be removed in future versions.** Please use the `auth` field instead.
-        </ParamField>
-        <ParamField query="access_token" type="string" deprecated optional>
-            If you want to directly pass an access token obtained from the authentication endpoints, you can do so.
+```python
+client = InfisicalSDKClient(
+  host="https://app.infisical.com", # Defaults to https://app.infisical.com
+  token="<optional-auth-token>", # If not set, use the client.auth() methods.
+  cache_ttl = 300 # `None` to disable caching
+)
+```
 
-            **This field is deprecated and will be removed in future versions.** Please use the `auth` field instead.
-        </ParamField>
+## Core Methods
 
-        <ParamField query="cache_ttl" type="number" default="300" optional>
-            Time-to-live (in seconds) for refreshing cached secrets.
-            If manually set to 0, caching will be disabled, this is not recommended.
-        </ParamField>
+The SDK methods are organized into the following high-level categories:
 
-        <ParamField query="site_url" type="string" default="https://app.infisical.com" optional>
-          Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
-        </ParamField>
+1. `auth`: Handles authentication methods.
+2. `secrets`: Manages CRUD operations for secrets.
+3. `kms`: Perform cryptographic operations with Infisical KMS.
 
-        <ParamField query="ssl_certificate_path" optional>
-          Optionally provide a path to a custom SSL certificate file. This can be substituted by setting the `INFISICAL_SSL_CERTIFICATE` environment variable to the contents of the certificate.
-        </ParamField>
+### `auth`
 
-        <ParamField query="auth" type="AuthenticationOptions">
-          The authentication object to use for the client. This is required unless you're using environment variables.
-      </ParamField>
-    </Expandable>
-
-</ParamField>
-
-### Authentication
-
-The SDK supports a variety of authentication methods. The most common authentication method is Universal Auth, which uses a client ID and client secret to authenticate.
+The `Auth` component provides methods for authentication:
 
 #### Universal Auth
 
-**Using environment variables**
-- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` - Your machine identity client ID.
-- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` - Your machine identity client secret.
-
-**Using the SDK directly**
-```python3
-from infisical_client import ClientSettings, InfisicalClient, AuthenticationOptions, UniversalAuthMethod
-
-client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-      universal_auth=UniversalAuthMethod(
-        client_id="CLIENT_ID",
-        client_secret="CLIENT_SECRET",
-      )
-    )
-))
-```
-
-#### GCP ID Token Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Google Cloud Platform.
-  Please [read more](/documentation/platform/identities/gcp-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_GCP_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-```py
-from infisical_client import ClientSettings, InfisicalClient, AuthenticationOptions, GCPIDTokenAuthMethod
-
-client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-        gcp_id_token=GCPIDTokenAuthMethod(
-            identity_id="MACHINE_IDENTITY_ID",
-        )
-    )
-))
-```
-
-#### GCP IAM Auth
-
-**Using environment variables**
-- `INFISICAL_GCP_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-- `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` - The path to your GCP service account key file.
-
-**Using the SDK directly**
-```py
-from infisical_client import ClientSettings, InfisicalClient, AuthenticationOptions, GCPIamAuthMethod
-
-
-client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-        gcp_iam=GCPIamAuthMethod(
-            identity_id="MACHINE_IDENTITY_ID",
-            service_account_key_file_path="./path/to/service_account_key.json"
-        )
-    )
-))
-```
-
-#### AWS IAM Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on AWS.
-  Please [read more](/documentation/platform/identities/aws-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_AWS_IAM_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
-```py
-from infisical_client import ClientSettings, InfisicalClient, AuthenticationOptions, AWSIamAuthMethod
-
-client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-        aws_iam=AWSIamAuthMethod(identity_id="MACHINE_IDENTITY_ID")
-    )
-))
-```
-
-#### Azure Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Azure.
-  Please [read more](/documentation/platform/identities/azure-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_AZURE_AUTH_IDENTITY_ID` - Your Infisical Machine Identity ID.
-
-**Using the SDK directly**
 ```python
-from infisical_client import InfisicalClient, ClientSettings, AuthenticationOptions, AzureAuthMethod
-
-kubernetes_client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-        azure=AzureAuthMethod(
-            identity_id="YOUR_IDENTITY_ID",
-        )
-    )
-))
+response = client.auth.universal_auth.login(
+    client_id="<machine-identity-client-id>", 
+    client_secret="<machine-identity-client-secret>"
+)
 ```
 
+#### AWS Auth
 
-#### Kubernetes Auth
-<Info>
-  Please note that this authentication method will only work if you're running your application on Kubernetes.
-  Please [read more](/documentation/platform/identities/kubernetes-auth) about this authentication method.
-</Info>
-
-**Using environment variables**
-- `INFISICAL_KUBERNETES_IDENTITY_ID` - Your Infisical Machine Identity ID.
-- `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH_ENV_NAME` - The environment variable name that contains the path to the service account token. This is optional and will default to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
-
-**Using the SDK directly**
 ```python
-from infisical_client import InfisicalClient, ClientSettings, AuthenticationOptions, KubernetesAuthMethod
-
-kubernetes_client = InfisicalClient(ClientSettings(
-    auth=AuthenticationOptions(
-        kubernetes=KubernetesAuthMethod(
-            identity_id="YOUR_IDENTITY_ID",
-            service_account_token_path="/var/run/secrets/kubernetes.io/serviceaccount/token" # Optional
-        )
-    )
-))
+response = client.auth.aws_auth.login(identity_id="<machine-identity-id>")
 ```
 
-### Caching
+### `secrets`
 
-To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cache_ttl" option when creating the client.
+This sub-class handles operations related to secrets:
 
-## Working with Secrets
+#### List Secrets
 
-### client.listSecrets(options)
-
-```py
-client.listSecrets(options=ListSecretsOptions(
-    environment="dev",
-    project_id="PROJECT_ID"
-))
-```
-
-Retrieve all secrets within the Infisical project and environment that client is connected to
-
-#### Parameters
-
-<ParamField query="Parameters" type="object">
-    <Expandable title="properties">
-        <ParamField query="environment" type="string" required>
-            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-        </ParamField>
-          <ParamField query="project_id" type="string" required>
-            The project ID where the secret lives in. 
-        </ParamField>
-
-         <ParamField query="path" type="string" optional>
-            The path from where secrets should be fetched from.
-        </ParamField>
-
-        <ParamField query="attach_to_process_env" type="boolean" default="false" optional>
-            Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `process.env["SECRET_NAME"]`.
-        </ParamField>
-
-        <ParamField query="recursive" type="boolean" default="false" optional>
-            Whether or not to fetch secrets recursively from the specified path. Please note that there's a 20-depth limit for recursive fetching.
-        </ParamField>
-
-        <ParamField query="expand_secret_references" type="boolean" default="true" optional>
-            Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
-        </ParamField>
-
-        <ParamField query="include_imports" type="boolean" default="false" optional>
-             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
-        </ParamField>
-    </Expandable>
-
-</ParamField>
-
-### client.getSecret(options)
-
-```py
-secret = client.getSecret(options=GetSecretOptions(
-    environment="dev",
-    project_id="PROJECT_ID",
-    secret_name="API_KEY"
-))
-value = secret.secret_value # get its value
-```
-
-By default, `getSecret()` fetches and returns a shared secret. If not found, it returns a personal secret.
-
-#### Parameters
-
-<ParamField query="Parameters" type="object" optional>
-  <Expandable title="properties">
-    <ParamField query="secret_name" type="string" required>
-      The key of the secret to retrieve
-    </ParamField>
-    <ParamField query="include_imports" type="boolean">
-          Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
-    </ParamField>
-    <ParamField query="environment" type="string" required>
-      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-    </ParamField>
-    <ParamField query="project_id" type="string" required>
-      The project ID where the secret lives in.
-    </ParamField>
-    <ParamField query="path" type="string" optional>
-      The path from where secret should be fetched from.
-    </ParamField>
-    <ParamField query="type" type="string" optional>
-      The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "personal".
-    </ParamField>
-    <ParamField query="include_imports" type="boolean" default="false" optional>
-      Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
-    </ParamField>
-    <ParamField query="expand_secret_references" type="boolean" default="true" optional>
-      Whether or not to expand secret references in the fetched secrets. Read about [secret reference](/documentation/platform/secret-reference)
-    </ParamField>
-  </Expandable>
-</ParamField>
-
-### client.createSecret(options)
-
-```py
-api_key = client.createSecret(options=CreateSecretOptions(
-    secret_name="API_KEY",
-    secret_value="Some API Key",
-    environment="dev",
-    project_id="PROJECT_ID"
-))
-```
-
-Create a new secret in Infisical.
-
-#### Parameters
-
-<ParamField query="Parameters" type="object" optional>
-  <Expandable title="properties">
-    <ParamField query="secret_name" type="string" required>
-      The key of the secret to create.
-    </ParamField>
-    <ParamField query="secret_value" type="string" required>
-      The value of the secret.
-    </ParamField>
-    <ParamField query="project_id" type="string" required>
-      The project ID where the secret lives in.
-    </ParamField>
-    <ParamField query="environment" type="string" required>
-      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-    </ParamField>
-    <ParamField query="path" type="string" optional>
-      The path from where secret should be created.
-    </ParamField>
-    <ParamField query="type" type="string" optional>
-      The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-    </ParamField>
-  </Expandable>
-</ParamField>
-
-### client.updateSecret(options)
-
-```py
-client.updateSecret(options=UpdateSecretOptions(
-    secret_name="API_KEY",
-    secret_value="NEW_VALUE",
-    environment="dev",
-    project_id="PROJECT_ID"
-))
-```
-
-Update an existing secret in Infisical.
-
-#### Parameters
-
-<ParamField query="Parameters" type="object" optional>
-  <Expandable title="properties">
-    <ParamField query="secret_name" type="string" required>
-      The key of the secret to update.
-    </ParamField>
-    <ParamField query="secret_value" type="string" required>
-      The new value of the secret.
-    </ParamField>
-    <ParamField query="project_id" type="string" required>
-      The project ID where the secret lives in.
-    </ParamField>
-    <ParamField query="environment" type="string" required>
-      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-    </ParamField>
-    <ParamField query="path" type="string" optional>
-      The path from where secret should be updated.
-    </ParamField>
-    <ParamField query="type" type="string" optional>
-      The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-    </ParamField>
-  </Expandable>
-</ParamField>
-
-### client.deleteSecret(options)
-
-```py
-client.deleteSecret(options=DeleteSecretOptions(
-    environment="dev",
-    project_id="PROJECT_ID",
-    secret_name="API_KEY"
-))
-```
-
-Delete a secret in Infisical.
-
-#### Parameters
-
-<ParamField query="Parameters" type="object" optional>
-  <Expandable title="properties">
-    <ParamField query="secret_name" type="string">
-      The key of the secret to update.
-    </ParamField>
-    <ParamField query="project_id" type="string" required>
-      The project ID where the secret lives in.
-    </ParamField>
-    <ParamField query="environment" type="string" required>
-      The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
-    </ParamField>
-    <ParamField query="path" type="string" optional>
-      The path from where secret should be deleted.
-    </ParamField>
-    <ParamField query="type" type="string" optional>
-      The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
-    </ParamField>
-  </Expandable>
-</ParamField>
-
-## Cryptography
-
-### Create a symmetric key
-
-Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
-
-```py
-key = client.createSymmetricKey()
-```
-
-#### Returns (string)
-
-`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
-
-### Encrypt symmetric
-
-```py
-encryptOptions = EncryptSymmetricOptions(
-    key=key,
-    plaintext="Infisical is awesome!"
+```python
+secrets = client.secrets.list_secrets(
+    project_id="<project-id>",
+    environment_slug="dev",
+    secret_path="/",
+    expand_secret_references=True, # Optional
+    view_secret_value=True, # Optional 
+    recursive=False, # Optional
+    include_imports=True, # Optional
+    tag_filters=[] # Optional
 )
-
-encryptedData = client.encryptSymmetric(encryptOptions)
 ```
 
-#### Parameters
+**Parameters:**
+- `project_id` (str): The ID of your project.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to list secrets (e.g., "dev").
+- `secret_path` (str): The path to the secrets.
+- `expand_secret_references` (bool): Whether to expand secret references.
+- `view_secret_value` (bool): Whether or not to include the secret value in the response. If set to false, the `secretValue` will be masked with `<hidden-by-infisical>`. Defaults to true.
+- `recursive` (bool): Whether to list secrets recursively.
+- `include_imports` (bool): Whether to include imported secrets.
+- `tag_filters` (List[str]): Tags to filter secrets.
 
-<ParamField query="Parameters" type="object" required>
-  <Expandable title="properties">
-    <ParamField query="plaintext" type="string">
-      The plaintext you want to encrypt.
-    </ParamField>
-    <ParamField query="key" type="string" required>
-      The symmetric key to use for encryption.
-    </ParamField>
-  </Expandable>
-</ParamField>
+**Note:** Exactly one of `project_id` or `project_slug` is required. If both are provided, `project_id` takes precedence.
 
-#### Returns (object)
+**Returns:**
+- `ListSecretsResponse`: The response containing the list of secrets.
 
-`tag` (string): A base64-encoded, 128-bit authentication tag. `iv` (string): A base64-encoded, 96-bit initialization vector. `ciphertext` (string): A base64-encoded, encrypted ciphertext.
+#### Create Secret
 
-### Decrypt symmetric
-
-```py
-decryptOptions = DecryptSymmetricOptions(
-    ciphertext=encryptedData.ciphertext,
-    iv=encryptedData.iv,
-    tag=encryptedData.tag,
-    key=key
+```python
+new_secret = client.secrets.create_secret_by_name(
+    secret_name="NEW_SECRET",
+    project_id="<project-id>",
+    secret_path="/",
+    environment_slug="dev",
+    secret_value="secret_value",
+    secret_comment="Optional comment",
+    skip_multiline_encoding=False,
+    secret_reminder_repeat_days=30,  # Optional
+    secret_reminder_note="Remember to update this secret"  # Optional
+    secret_metadata=[{"key": "metadata_key", "value": "metadata_value"}], # Optional
+    tags_ids=["tag_id_1", "tag_id_2"] # Optional
 )
-
-decryptedString = client.decryptSymmetric(decryptOptions)
-
-
 ```
 
-#### Parameters
+**Parameters:**
+- `secret_name` (str): The name of the secret.
+- `project_id` (str): The ID of your project.
+- `project_slug` (str): The slug of your project.
+- `secret_path` (str): The path to the secret.
+- `environment_slug` (str): The environment in which to create the secret.
+- `secret_value` (str): The value of the secret.
+- `secret_comment` (str, optional): A comment associated with the secret.
+- `skip_multiline_encoding` (bool, optional): Whether to skip encoding for multiline secrets.
+- `secret_reminder_repeat_days` (Union[float, int], optional): Number of days after which to repeat secret reminders.
+- `secret_reminder_note` (str, optional): A note for the secret reminder.
+- `secret_metadata` (List[Dict[str, Any]], optional): Metadata associated with the secret.
+- `tags_ids` (List[str], optional): IDs of tags to associate with the secret.
 
-<ParamField query="Parameters" type="object" required>
-  <Expandable title="properties">
-    <ParamField query="ciphertext" type="string">
-      The ciphertext you want to decrypt.
-    </ParamField>
-    <ParamField query="key" type="string" required>
-      The symmetric key to use for encryption.
-    </ParamField>
-    <ParamField query="iv" type="string" required>
-      The initialization vector to use for decryption.
-    </ParamField>
-    <ParamField query="tag" type="string" required>
-      The authentication tag to use for decryption.
-    </ParamField>
-  </Expandable>
-</ParamField>
+**Note:** Exactly one of `project_id` or `project_slug` is required. If both are provided, `project_id` takes precedence.
 
-#### Returns (string)
+**Returns:**
+- `BaseSecret`: The response after creating the secret.
 
-`plaintext` (string): The decrypted plaintext. */}
+#### Update Secret
+
+```python
+updated_secret = client.secrets.update_secret_by_name(
+    current_secret_name="EXISTING_SECRET",
+    project_id="<project-id>",
+    project_slug="<project-slug>",
+    secret_path="/",
+    environment_slug="dev",
+    secret_value="new_secret_value",
+    secret_comment="Updated comment",  # Optional
+    skip_multiline_encoding=False,
+    secret_reminder_repeat_days=30,  # Optional
+    secret_reminder_note="Updated reminder note",  # Optional
+    new_secret_name="NEW_NAME"  # Optional
+    secret_metadata=[{"key": "metadata_key", "value": "metadata_value"}], # Optional
+    tags_ids=["tag_id_1", "tag_id_2"] # Optional
+)
+```
+
+**Parameters:**
+- `current_secret_name` (str): The current name of the secret.
+- `project_id` (str): The ID of your project.
+- `project_slug` (str): The slug of your project.
+- `secret_path` (str): The path to the secret.
+- `environment_slug` (str): The environment in which to update the secret.
+- `secret_value` (str, optional): The new value of the secret.
+- `secret_comment` (str, optional): An updated comment associated with the secret.
+- `skip_multiline_encoding` (bool, optional): Whether to skip encoding for multiline secrets.
+- `secret_reminder_repeat_days` (Union[float, int], optional): Updated number of days after which to repeat secret reminders.
+- `secret_reminder_note` (str, optional): An updated note for the secret reminder.
+- `new_secret_name` (str, optional): A new name for the secret.
+- `secret_metadata` (List[Dict[str, Any]], optional): Metadata associated with the secret.
+- `tags_ids` (List[str], optional): IDs of tags to associate with the secret.
+
+**Note:** Exactly one of `project_id` or `project_slug` is required. If both are provided, `project_id` takes precedence.
+
+**Returns:**
+- `BaseSecret`: The response after updating the secret.
+
+#### Get Secret by Name
+
+```python
+secret = client.secrets.get_secret_by_name(
+    secret_name="EXISTING_SECRET",
+    project_id="<project-id>",
+    environment_slug="dev",
+    secret_path="/",
+    expand_secret_references=True, # Optional
+    view_secret_value=True, # Optional
+    include_imports=True, # Optional
+    version=None # Optional
+)
+```
+
+**Parameters:**
+- `secret_name` (str): The name of the secret.
+- `project_id` (str): The ID of your project.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to retrieve the secret.
+- `secret_path` (str): The path to the secret.
+- `expand_secret_references` (bool): Whether to expand secret references.
+- `view_secret_value` (bool): Whether or not to include the secret value in the response. If set to false, the `secretValue` will be masked with `<hidden-by-infisical>`. Defaults to true.
+- `include_imports` (bool): Whether to include imported secrets.
+- `version` (str, optional): The version of the secret to retrieve. Fetches the latest by default.
+
+**Note:** Exactly one of `project_id` or `project_slug` is required. If both are provided, `project_id` takes precedence.
+
+**Returns:**
+- `BaseSecret`: The response containing the secret.
+
+#### Delete Secret by Name
+
+```python
+deleted_secret = client.secrets.delete_secret_by_name(
+    secret_name="EXISTING_SECRET",
+    project_id="<project-id>",
+    environment_slug="dev",
+    secret_path="/"
+)
+```
+
+**Parameters:**
+- `secret_name` (str): The name of the secret to delete.
+- `project_id` (str): The ID of your project.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to delete the secret.
+- `secret_path` (str): The path to the secret.
+
+**Note:** Exactly one of `project_id` or `project_slug` is required. If both are provided, `project_id` takes precedence.
+
+**Returns:**
+- `BaseSecret`: The response after deleting the secret.
+
+### `kms`
+
+This sub-class handles KMS related operations:
+
+#### List KMS Keys
+
+```python
+kms_keys = client.kms.list_keys(
+    project_id="<project-id>",
+    offset=0, # Optional
+    limit=100, # Optional
+    order_by=KmsKeysOrderBy.NAME, # Optional
+    order_direction=OrderDirection.ASC, # Optional
+    search=None # Optional
+)
+```
+
+**Parameters:**
+- `project_id` (str): The ID of your project.
+- `offset` (int, optional): The offset to paginate from.
+- `limit` (int, optional): The page size for paginating.
+- `order_by` (KmsKeysOrderBy, optional): The key property to order the list response by.
+- `order_direction` (OrderDirection, optional): The direction to order the list response in.
+- `search` (str, optional): The text value to filter key names by.
+
+**Returns:**
+- `ListKmsKeysResponse`: The response containing the list of KMS keys.
+
+#### Get KMS Key by ID
+
+```python
+kms_key = client.kms.get_key_by_id(
+    key_id="<key-id>"
+)
+```
+
+**Parameters:**
+- `key_id` (str): The ID of the key to retrieve.
+
+**Returns:**
+- `KmsKey`: The specified key.
+
+#### Get KMS Key by Name
+
+```python
+kms_key = client.kms.get_key_by_name(
+    key_name="my-key",
+    project_id="<project-id>"
+)
+```
+
+**Parameters:**
+- `key_name` (str): The name of the key to retrieve.
+- `project_id` (str): The ID of your project.
+
+**Returns:**
+- `KmsKey`: The specified key.
+
+#### Create KMS Key
+
+```python
+kms_key = client.kms.create_key(
+    name="my-key",
+    project_id="<project-id>",
+    encryption_algorithm=SymmetricEncryption.AES_GCM_256,
+    description=None # Optional
+)
+```
+
+**Parameters:**
+- `name` (str): The name of the key (must be slug-friendly).
+- `project_id` (str): The ID of your project.
+- `encryption_algorithm` (SymmetricEncryption): The encryption alogrithm this key should use.
+- `description` (str, optional): A description of your key.
+
+**Returns:**
+- `KmsKey`: The newly created key.
+
+#### Update KMS Key
+
+```python
+updated_key = client.kms.update_key(
+    key_id="<key-id>",
+    name="my-updated-key", # Optional
+    description="Updated description", # Optional
+    is_disabled=True # Optional
+)
+```
+
+**Parameters:**
+- `key_id` (str): The ID of the key to be updated.
+- `name` (str, optional): The updated name of the key (must be slug-friendly).
+- `description` (str): The updated description of the key.
+- `is_disabled` (str): The flag to disable operations with this key.
+
+**Returns:**
+- `KmsKey`: The updated key.
+
+#### Delete KMS Key
+
+```python
+deleted_key = client.kms.delete_key(
+    key_id="<key-id>"
+)
+```
+
+**Parameters:**
+- `key_id` (str): The ID of the key to be deleted.
+
+**Returns:**
+- `KmsKey`: The deleted key.
+
+#### Encrypt Data with KMS Key
+
+```python
+encrypted_data = client.kms.encrypt_data(
+    key_id="<key-id>",
+    base64EncodedPlaintext="TXkgc2VjcmV0IG1lc3NhZ2U=" # must be base64 encoded
+)
+```
+
+**Parameters:**
+- `key_id` (str): The ID of the key to encrypt the data with.
+- `base64EncodedPlaintext` (str): The plaintext data to encrypt (must be base64 encoded).
+
+**Returns:**
+- `str`: The encrypted ciphertext.
+
+#### Decrypte Data with KMS Key
+
+```python
+decrypted_data = client.kms.decrypt_data(
+    key_id="<key-id>",
+    ciphertext="Aq96Ry7sMH3k/ogaIB5MiSfH+LblQRBu69lcJe0GfIvI48ZvbWY+9JulyoQYdjAx"
+)
+```
+
+**Parameters:**
+- `key_id` (str): The ID of the key to decrypt the data with.
+- `ciphertext` (str): The ciphertext returned from the encrypt operation.
+
+**Returns:**
+- `str`: The base64 encoded plaintext.
