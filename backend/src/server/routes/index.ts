@@ -1455,7 +1455,8 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     identityProjectDAL,
     licenseService,
-    identityMetadataDAL
+    identityMetadataDAL,
+    keyStore
   });
 
   const identityAuthTemplateService = identityAuthTemplateServiceFactory({
@@ -1509,7 +1510,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     identityUaClientSecretDAL,
     identityUaDAL,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({

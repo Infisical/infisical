@@ -204,7 +204,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {leftIcon && (
           <div
             className={twMerge(
-              "inline-flex shrink-0 cursor-pointer items-center justify-center transition-all",
+              "pointer-events-none inline-flex shrink-0 items-center justify-center transition-all",
               loadingToggleClass,
               size === "xs" ? "mr-1" : "mr-2"
             )}

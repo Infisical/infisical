@@ -115,7 +115,8 @@ const Page = () => {
       <ViewIdentityAuthModal
         isOpen={popUp.viewAuthMethod.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("viewAuthMethod", isOpen)}
-        authMethod={popUp.viewAuthMethod.data}
+        authMethod={popUp.viewAuthMethod.data?.authMethod}
+        lockedOut={popUp.viewAuthMethod.data?.lockedOut || false}
         identityId={identityId}
       />
     </div>

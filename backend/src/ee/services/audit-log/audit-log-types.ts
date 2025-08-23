@@ -198,6 +198,7 @@ export enum EventType {
 
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
+  CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS = "clear-identity-universal-auth-lockouts",
 
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
@@ -866,6 +867,10 @@ interface AddIdentityUniversalAuthEvent {
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
     accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+    lockoutEnabled: boolean;
+    lockoutThreshold: number;
+    lockoutDuration: number;
+    lockoutCounterReset: number;
   };
 }
 
@@ -878,6 +883,10 @@ interface UpdateIdentityUniversalAuthEvent {
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+    lockoutEnabled?: boolean;
+    lockoutThreshold?: number;
+    lockoutDuration?: number;
+    lockoutCounterReset?: number;
   };
 }
 
@@ -1034,6 +1043,13 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   metadata: {
     identityId: string;
     clientSecretId: string;
+  };
+}
+
+interface ClearIdentityUniversalAuthLockoutsEvent {
+  type: EventType.CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
   };
 }
 
@@ -3491,6 +3507,7 @@ export type Event =
   | GetIdentityUniversalAuthClientSecretsEvent
   | GetIdentityUniversalAuthClientSecretByIdEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | ClearIdentityUniversalAuthLockoutsEvent
   | LoginIdentityGcpAuthEvent
   | AddIdentityGcpAuthEvent
   | DeleteIdentityGcpAuthEvent

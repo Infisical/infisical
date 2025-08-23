@@ -326,6 +326,14 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   };
 }
 
+interface ClearIdentityUniversalAuthLockoutsEvent {
+  type: EventType.CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
+    clientSecretId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -892,6 +900,7 @@ export type Event =
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | ClearIdentityUniversalAuthLockoutsEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

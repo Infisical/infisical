@@ -37,6 +37,7 @@ import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthCon
 type Props = {
   identityId: string;
   authMethod?: IdentityAuthMethod;
+  lockedOut: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onDeleteAuthMethod: () => void;
@@ -50,8 +51,9 @@ type TRevokeOptions = {
 export const Content = ({
   identityId,
   authMethod,
+  lockedOut,
   onDeleteAuthMethod
-}: Pick<Props, "authMethod" | "identityId" | "onDeleteAuthMethod">) => {
+}: Pick<Props, "authMethod" | "lockedOut" | "identityId" | "onDeleteAuthMethod">) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -162,6 +164,7 @@ export const Content = ({
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
+        lockedOut={lockedOut}
       />
       <DeleteActionModal
         isOpen={popUp?.revokeAuthMethod?.isOpen}
@@ -184,7 +187,8 @@ export const ViewIdentityAuthModal = ({
   isOpen,
   onOpenChange,
   authMethod,
-  identityId
+  identityId,
+  lockedOut
 }: Omit<Props, "onDeleteAuthMethod">) => {
   if (!identityId || !authMethod) return null;
 
@@ -194,6 +198,7 @@ export const ViewIdentityAuthModal = ({
         <Content
           identityId={identityId}
           authMethod={authMethod}
+          lockedOut={lockedOut}
           onDeleteAuthMethod={() => onOpenChange(false)}
         />
       </ModalContent>
