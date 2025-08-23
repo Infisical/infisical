@@ -1447,6 +1447,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const commits: Omit<TSecretApprovalRequestsSecretsV2Insert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};
+    const existingTagIds: Record<string, string[]> = {};
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -1512,6 +1513,11 @@ export const secretApprovalRequestServiceFactory = ({
           type: SecretType.Shared
         }))
       );
+
+      secretsToUpdateStoredInDB.forEach((el) => {
+        if (el.tags?.length) existingTagIds[el.key] = el.tags.map((i) => i.id);
+      });
+
       if (secretsToUpdateStoredInDB.length !== secretsToUpdate.length)
         throw new NotFoundError({
           message: `Secret does not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
@@ -1555,7 +1561,10 @@ export const secretApprovalRequestServiceFactory = ({
             secretMetadata
           }) => {
             const secretId = updatingSecretsGroupByKey[secretKey][0].id;
-            if (tagIds?.length) commitTagIds[newSecretName ?? secretKey] = tagIds;
+            if (tagIds?.length || existingTagIds[secretKey]?.length) {
+              commitTagIds[newSecretName ?? secretKey] = tagIds || existingTagIds[secretKey];
+            }
+
             return {
               ...latestSecretVersions[secretId],
               secretMetadata,
