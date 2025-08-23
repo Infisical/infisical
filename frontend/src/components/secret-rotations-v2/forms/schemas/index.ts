@@ -10,6 +10,7 @@ import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotati
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 
+import { AzureCertificateRotationSchema } from "./azure-certificate-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 
@@ -25,7 +26,8 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         OracleDBCredentialsRotationSchema,
         LdapPasswordRotationSchema,
         AwsIamUserSecretRotationSchema,
-        OktaClientSecretRotationSchema
+        OktaClientSecretRotationSchema,
+        AzureCertificateRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )

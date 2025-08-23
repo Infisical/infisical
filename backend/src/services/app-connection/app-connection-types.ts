@@ -40,6 +40,12 @@ import {
   TValidateAzureAppConfigurationConnectionCredentialsSchema
 } from "./azure-app-configuration";
 import {
+  TAzureCertificateConnection,
+  TAzureCertificateConnectionConfig,
+  TAzureCertificateConnectionInput,
+  TValidateAzureCertificateConnectionCredentialsSchema
+} from "./azure-certificate";
+import {
   TAzureClientSecretsConnection,
   TAzureClientSecretsConnectionConfig,
   TAzureClientSecretsConnectionInput,
@@ -253,6 +259,7 @@ export type TAppConnection = { id: string } & (
   | TDigitalOceanConnection
   | TNetlifyConnection
   | TOktaConnection
+  | TAzureCertificateConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -297,6 +304,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDigitalOceanConnectionInput
   | TNetlifyConnectionInput
   | TOktaConnectionInput
+  | TAzureCertificateConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -348,7 +356,8 @@ export type TAppConnectionConfig =
   | TSupabaseConnectionConfig
   | TDigitalOceanConnectionConfig
   | TNetlifyConnectionConfig
-  | TOktaConnectionConfig;
+  | TOktaConnectionConfig
+  | TAzureCertificateConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -387,7 +396,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSupabaseConnectionCredentialsSchema
   | TValidateDigitalOceanCredentialsSchema
   | TValidateNetlifyConnectionCredentialsSchema
-  | TValidateOktaConnectionCredentialsSchema;
+  | TValidateOktaConnectionCredentialsSchema
+  | TValidateAzureCertificateConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

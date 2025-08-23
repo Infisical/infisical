@@ -46,6 +46,8 @@ import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
+import { ValidateAzureCertificateConnectionCredentialsSchema } from "./azure-certificate";
+import { azureCertificateConnectionService } from "./azure-certificate/azure-certificate-service";
 import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-client-secrets";
 import { azureClientSecretsConnectionService } from "./azure-client-secrets/azure-client-secrets-service";
 import { ValidateAzureDevOpsConnectionCredentialsSchema } from "./azure-devops/azure-devops-schemas";
@@ -151,7 +153,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
   [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
   [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
-  [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema
+  [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
+  [AppConnection.AzureCertificate]: ValidateAzureCertificateConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -615,6 +618,7 @@ export const appConnectionServiceFactory = ({
     supabase: supabaseConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
-    okta: oktaConnectionService(connectAppConnectionById)
+    okta: oktaConnectionService(connectAppConnectionById),
+    azureCertificate: azureCertificateConnectionService(connectAppConnectionById, appConnectionDAL, kmsService)
   };
 };
