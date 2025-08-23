@@ -9,7 +9,7 @@ The Infisical SDK provides a convenient way to interact with the Infisical API.
 ## Deprecation Notice
 
 Please be aware that all versions prior to `4.0.0` are officially fully unsupported.
-Please upgrade to version 4.0.0 or newer in order to recieve the latest updates. 
+Please upgrade to version 4.0.0 or newer in order to receive the latest updates.
 
 ## Installation
 
@@ -405,7 +405,7 @@ const deletedLease = await client.dynamicSecrets().leases.delete(newLease.lease.
   environmentSlug: "dev",
   projectSlug: "test-zb-3a",
   path: "/foo/bar",
-  isForced: false // Wether or not to forcefully delete the lease. This can't guarantee that the lease will be deleted from the external provider.
+  isForced: false // Whether or not to forcefully delete the lease. This can't guarantee that the lease will be deleted from the external provider.
 });
 ```
 
@@ -415,7 +415,7 @@ const deletedLease = await client.dynamicSecrets().leases.delete(newLease.lease.
   - `projectSlug` (string): The slug of the project where the secret is located.
   - `environmentSlug` (string): The environment where the dynamic secret is located.
   - `path` (string, optional): The path of where the dynamic secret is located. 
-  - `isForced` (bool, optional): Wether or not to forcefully delete the lease. This can't guarantee that the lease will be deleted from the external provider, and is potentially unsafe for sensitive dynamic secrets.
+  - `isForced` (bool, optional): Whether or not to forcefully delete the lease. This can't guarantee that the lease will be deleted from the external provider, and is potentially unsafe for sensitive dynamic secrets.
 
 **Returns:**
 - `DeleteLeaseResponse`: The deleted lease result.

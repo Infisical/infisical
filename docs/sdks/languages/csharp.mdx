@@ -194,7 +194,7 @@ Task<Secret> newSecret = await sdk.Secrets().CreateAsync(options);
 - `SecretComment` (string, optional): Attach a secret comment to the secret.
 - `SecretReminderNote` (string, optional): Attach a secret reminder note to the secret.
 - `SecretReminderRepeatDays` (int, optional): Set the reminder repeat days on the secret.
-- `SkipMultilineEncoding` (bool, optional): Weather or not to skip multiline encoding for the secret's value. Defaults to `false`.
+- `SkipMultilineEncoding` (bool, optional): Whether or not to skip multiline encoding for the secret's value. Defaults to `false`.
 
 **Returns:**
 - `Task<Secret>`: The created secret.
@@ -221,7 +221,7 @@ var updateSecretOptions = new UpdateSecretOptions
 };
 
 
-Task<Secret> updatedSecret = await sdk.Secrets().UpdateAsync(options);
+Task<Secret> updatedSecret = await sdk.Secrets().UpdateAsync(updateSecretOptions);
 ```
 
 **Parameters:**
@@ -239,7 +239,7 @@ Task<Secret> updatedSecret = await sdk.Secrets().UpdateAsync(options);
 #### Get Secret by Name
 
 ```cs
-public Secret GetAsync(GetSecretOptions options);
+public Task<Secret> GetAsync(GetSecretOptions options);
 
 throws InfisicalException
 ```
@@ -254,7 +254,7 @@ var getSecretOptions = new GetSecretOptions
   ProjectId = "<project-id>",
 };
 
-Secret secret = await sdk.Secrets().GetAsync(options);
+Secret secret = await sdk.Secrets().GetAsync(getSecretOptions);
 ```
 
 **Parameters:**
@@ -309,7 +309,7 @@ The `Pki().Subscribers()` sub-class is used to programmatically interact with th
 #### Issue a new certificate
 
 ```cs
-public async Task<SubscriberIssuedCertificate> IssueCertificateAsync(RetrieveLatestCertificateBundleOptions options);
+public async Task<SubscriberIssuedCertificate> IssueCertificateAsync(IssueCertificateOptions options);
 
 throws InfisicalException
 ```
@@ -318,7 +318,7 @@ throws InfisicalException
 
 var options = new IssueCertificateOptions
 {
-  SubscriberName = "<subscriber-name>"
+  SubscriberName = "<subscriber-name>",
   ProjectId = "<your-project-id>",
 };
 

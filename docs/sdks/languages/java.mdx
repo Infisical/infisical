@@ -37,6 +37,7 @@ For other build tools, please check our [package snippets](https://central.sonat
 package com.example.example;
 
 import com.infisical.sdk.InfisicalSdk;
+import com.infisical.sdk.SdkConfig;
 
 public class Example {
 
@@ -169,7 +170,7 @@ throws InfisicalException
 ```
 
 ```java
-List<Secret> secrets = await sdk.Secrets().ListSecrets(
+List<Secret> secrets = sdk.Secrets().ListSecrets(
   "<project-id>",
   "<env-slug>", // dev, prod, staging, etc.
   "/secret/path", // `/` is the root folder
@@ -254,7 +255,7 @@ Secret updatedSecret = sdk.Secrets().UpdateSecret(
 ```
 
 **Parameters:**
-- `secretName` (string): The name of the secret to update.`
+- `secretName` (string): The name of the secret to update.
 - `projectId` (string): The ID of your project.
 - `environmentSlug` (string): The environment in which to update the secret.
 - `secretPath` (string): The path to the secret.

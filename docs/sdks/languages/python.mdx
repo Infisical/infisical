@@ -139,7 +139,7 @@ new_secret = client.secrets.create_secret_by_name(
     secret_comment="Optional comment",
     skip_multiline_encoding=False,
     secret_reminder_repeat_days=30,  # Optional
-    secret_reminder_note="Remember to update this secret"  # Optional
+    secret_reminder_note="Remember to update this secret",  # Optional
     secret_metadata=[{"key": "metadata_key", "value": "metadata_value"}], # Optional
     tags_ids=["tag_id_1", "tag_id_2"] # Optional
 )
@@ -178,7 +178,7 @@ updated_secret = client.secrets.update_secret_by_name(
     skip_multiline_encoding=False,
     secret_reminder_repeat_days=30,  # Optional
     secret_reminder_note="Updated reminder note",  # Optional
-    new_secret_name="NEW_NAME"  # Optional
+    new_secret_name="NEW_NAME",  # Optional
     secret_metadata=[{"key": "metadata_key", "value": "metadata_value"}], # Optional
     tags_ids=["tag_id_1", "tag_id_2"] # Optional
 )
@@ -330,7 +330,7 @@ kms_key = client.kms.create_key(
 **Parameters:**
 - `name` (str): The name of the key (must be slug-friendly).
 - `project_id` (str): The ID of your project.
-- `encryption_algorithm` (SymmetricEncryption): The encryption alogrithm this key should use.
+- `encryption_algorithm` (SymmetricEncryption): The encryption algorithm this key should use.
 - `description` (str, optional): A description of your key.
 
 **Returns:**
@@ -386,7 +386,7 @@ encrypted_data = client.kms.encrypt_data(
 **Returns:**
 - `str`: The encrypted ciphertext.
 
-#### Decrypte Data with KMS Key
+#### Decrypt Data with KMS Key
 
 ```python
 decrypted_data = client.kms.decrypt_data(
