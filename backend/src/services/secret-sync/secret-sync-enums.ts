@@ -28,7 +28,8 @@ export enum SecretSync {
   Checkly = "checkly",
   DigitalOceanAppPlatform = "digital-ocean-app-platform",
   Netlify = "netlify",
-  Bitbucket = "bitbucket"
+  Bitbucket = "bitbucket",
+  Coolify = "coolify"
 }
 
 export enum SecretSyncInitialSyncBehavior {

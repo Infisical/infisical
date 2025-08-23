@@ -20,6 +20,7 @@ import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
+import { CoolifyConnectionForm } from "./CoolifyConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
@@ -158,6 +159,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <NetlifyConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Coolify:
+      return <CoolifyConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -268,6 +271,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <DigitalOceanConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Coolify:
+      return <CoolifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

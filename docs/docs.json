@@ -33,7 +33,9 @@
               },
               {
                 "group": "Guides",
-                "pages": ["documentation/guides/organization-structure"]
+                "pages": [
+                  "documentation/guides/organization-structure"
+                ]
               }
             ]
           },
@@ -113,6 +115,7 @@
                       "integrations/app-connections/camunda",
                       "integrations/app-connections/checkly",
                       "integrations/app-connections/cloudflare",
+                      "integrations/app-connections/coolify",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/flyio",
@@ -373,7 +376,9 @@
               },
               {
                 "group": "Contributing to SDK",
-                "pages": ["contributing/sdk/developing"]
+                "pages": [
+                  "contributing/sdk/developing"
+                ]
               }
             ]
           }
@@ -523,6 +528,7 @@
                       "integrations/secret-syncs/checkly",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
+                      "integrations/secret-syncs/coolify",
                       "integrations/secret-syncs/databricks",
                       "integrations/secret-syncs/digital-ocean-app-platform",
                       "integrations/secret-syncs/flyio",
@@ -644,11 +650,15 @@
               },
               {
                 "group": "Build Tool Integrations",
-                "pages": ["integrations/build-tools/gradle"]
+                "pages": [
+                  "integrations/build-tools/gradle"
+                ]
               },
               {
                 "group": "Others",
-                "pages": ["integrations/external/backstage"]
+                "pages": [
+                  "integrations/external/backstage"
+                ]
               }
             ]
           },
@@ -795,7 +805,9 @@
               "api-reference/overview/authentication",
               {
                 "group": "Examples",
-                "pages": ["api-reference/overview/examples/integration"]
+                "pages": [
+                  "api-reference/overview/examples/integration"
+                ]
               }
             ]
           },
@@ -804,11 +816,15 @@
             "pages": [
               {
                 "group": "Admin",
-                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+                "pages": [
+                  "api-reference/endpoints/admin/bootstrap-instance"
+                ]
               },
               {
                 "group": "Events",
-                "pages": ["api-reference/endpoints/events/project-events"]
+                "pages": [
+                  "api-reference/endpoints/events/project-events"
+                ]
               },
               {
                 "group": "Identities",
@@ -1492,6 +1508,19 @@
                     ]
                   },
                   {
+                    "group": "Coolify",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/coolify/list",
+                      "api-reference/endpoints/app-connections/coolify/available",
+                      "api-reference/endpoints/app-connections/coolify/get-by-id",
+                      "api-reference/endpoints/app-connections/coolify/get-by-name",
+                      "api-reference/endpoints/app-connections/coolify/get-appliccations",
+                      "api-reference/endpoints/app-connections/coolify/create",
+                      "api-reference/endpoints/app-connections/coolify/update",
+                      "api-reference/endpoints/app-connections/coolify/delete"
+                    ]
+                  },
+                  {
                     "group": "Databricks",
                     "pages": [
                       "api-reference/endpoints/app-connections/databricks/list",
@@ -1961,6 +1990,19 @@
                     ]
                   },
                   {
+                    "group": "Coolify",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/coolify/list",
+                      "api-reference/endpoints/secret-syncs/coolify/get-by-id",
+                      "api-reference/endpoints/secret-syncs/coolify/get-by-name",
+                      "api-reference/endpoints/secret-syncs/coolify/create",
+                      "api-reference/endpoints/secret-syncs/coolify/update",
+                      "api-reference/endpoints/secret-syncs/coolify/delete",
+                      "api-reference/endpoints/secret-syncs/coolify/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/coolify/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Databricks",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/databricks/list",
@@ -2234,11 +2276,15 @@
               },
               {
                 "group": "Service Tokens",
-                "pages": ["api-reference/endpoints/service-tokens/get"]
+                "pages": [
+                  "api-reference/endpoints/service-tokens/get"
+                ]
               },
               {
                 "group": "Audit Logs",
-                "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+                "pages": [
+                  "api-reference/endpoints/audit-logs/export-audit-log"
+                ]
               }
             ]
           },
@@ -2445,7 +2491,9 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": ["sdks/overview"]
+            "pages": [
+              "sdks/overview"
+            ]
           },
           {
             "group": "SDK's",
@@ -2467,7 +2515,9 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": ["changelog/overview"]
+            "pages": [
+              "changelog/overview"
+            ]
           }
         ]
       }
@@ -2481,7 +2531,9 @@
   "api": {
     "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://app.infisical.com"]
+      "server": [
+        "https://app.infisical.com"
+      ]
     }
   },
   "appearance": {

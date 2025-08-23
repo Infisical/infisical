@@ -11,6 +11,7 @@ import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
+import { TCoolifyConnection } from "./coolify-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TFlyioConnection } from "./flyio-connection";
@@ -49,6 +50,7 @@ export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./checkly-connection";
 export * from "./cloudflare-connection";
+export * from "./coolify-connection";
 export * from "./databricks-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
@@ -111,7 +113,8 @@ export type TAppConnection =
   | TSupabaseConnection
   | TDigitalOceanConnection
   | TNetlifyConnection
-  | TOktaConnection;
+  | TOktaConnection
+  | TCoolifyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -185,4 +188,5 @@ export type TAppConnectionMap = {
   [AppConnection.DigitalOcean]: TDigitalOceanConnection;
   [AppConnection.Netlify]: TNetlifyConnection;
   [AppConnection.Okta]: TOktaConnection;
+  [AppConnection.Coolify]: TCoolifyConnection;
 };
