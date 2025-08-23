@@ -72,7 +72,7 @@ export default function EnterEmailStep({
         </p>
         <div className="m-auto mt-8 flex w-1/4 min-w-[20rem] flex-col items-center justify-center rounded-lg lg:w-1/6">
           <Input
-            placeholder="Enter your email address..."
+            placeholder={t("signup.step1-enter-you-email")??"Enter your email address..."}
             onChange={(e) => setEmail(e.target.value)}
             value={email}
             isRequired
@@ -81,7 +81,7 @@ export default function EnterEmailStep({
           />
           {emailError && (
             <p className="ml-1.5 mt-1.5 w-full text-left text-xs text-red-600">
-              Please enter a valid email.
+              {t("signup.step1-enter-valid-email")??"Please enter a valid email."}
             </p>
           )}
         </div>
