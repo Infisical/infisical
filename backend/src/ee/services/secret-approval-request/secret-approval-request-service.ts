@@ -281,19 +281,21 @@ export const secretApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
     const getHasSecretReadAccess = (
-      implicitReadAllowed: boolean | null | undefined,
+      secretReadAccessCompat: boolean | null | undefined,
       environment: string,
       tags: { slug: string }[],
       secretPath?: string
     ) => {
-      if (implicitReadAllowed) return true;
+      if (secretReadAccessCompat) {
+        const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment,
+          secretPath: secretPath || "/",
+          secretTags: tags.map((i) => i.slug)
+        });
+        return canRead;
+      }
 
-      const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment,
-        secretPath: secretPath || "/",
-        secretTags: tags.map((i) => i.slug)
-      });
-      return canRead;
+      return true
     };
 
     let secrets;
@@ -316,13 +318,13 @@ export const secretApprovalRequestServiceFactory = ({
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
         secretValueHidden: !getHasSecretReadAccess(
-          secretApprovalRequest.policy.implicitSecretReadAccess,
+          secretApprovalRequest.policy.secretReadAccessCompat,
           secretApprovalRequest.environment,
           el.tags,
           secretPath?.[0]?.path
         ),
         secretValue: !getHasSecretReadAccess(
-          secretApprovalRequest.policy.implicitSecretReadAccess,
+          secretApprovalRequest.policy.secretReadAccessCompat,
           secretApprovalRequest.environment,
           el.tags,
           secretPath?.[0]?.path
@@ -342,13 +344,13 @@ export const secretApprovalRequestServiceFactory = ({
               id: el.secret.id,
               version: el.secret.version,
               secretValueHidden: !getHasSecretReadAccess(
-                secretApprovalRequest.policy.implicitSecretReadAccess,
+                secretApprovalRequest.policy.secretReadAccessCompat,
                 secretApprovalRequest.environment,
                 el.tags,
                 secretPath?.[0]?.path
               ),
               secretValue: !getHasSecretReadAccess(
-                secretApprovalRequest.policy.implicitSecretReadAccess,
+                secretApprovalRequest.policy.secretReadAccessCompat,
                 secretApprovalRequest.environment,
                 el.tags,
                 secretPath?.[0]?.path
@@ -368,13 +370,13 @@ export const secretApprovalRequestServiceFactory = ({
               id: el.secretVersion.id,
               version: el.secretVersion.version,
               secretValueHidden: !getHasSecretReadAccess(
-                secretApprovalRequest.policy.implicitSecretReadAccess,
+                secretApprovalRequest.policy.secretReadAccessCompat,
                 secretApprovalRequest.environment,
                 el.tags,
                 secretPath?.[0]?.path
               ),
               secretValue: !getHasSecretReadAccess(
-                secretApprovalRequest.policy.implicitSecretReadAccess,
+                secretApprovalRequest.policy.secretReadAccessCompat,
                 secretApprovalRequest.environment,
                 el.tags,
                 secretPath?.[0]?.path
@@ -397,7 +399,7 @@ export const secretApprovalRequestServiceFactory = ({
       secrets = encryptedSecrets.map((el) => ({
         ...el,
         secretValueHidden: !getHasSecretReadAccess(
-          secretApprovalRequest.policy.implicitSecretReadAccess,
+          secretApprovalRequest.policy.secretReadAccessCompat,
           secretApprovalRequest.environment,
           el.tags,
           secretPath?.[0]?.path

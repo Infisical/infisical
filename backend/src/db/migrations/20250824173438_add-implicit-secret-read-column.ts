@@ -2,17 +2,17 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "implicitSecretReadAccess"))) {
+  if (!(await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "secretReadAccessCompat"))) {
     await knex.schema.alterTable(TableName.SecretApprovalPolicy, (t) => {
-      t.boolean("implicitSecretReadAccess").nullable();
+      t.boolean("secretReadAccessCompat").nullable();
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "implicitSecretReadAccess")) {
+  if (await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "secretReadAccessCompat")) {
     await knex.schema.alterTable(TableName.SecretApprovalPolicy, (t) => {
-      t.dropColumn("implicitSecretReadAccess");
+      t.dropColumn("secretReadAccessCompat");
     });
   }
 }
