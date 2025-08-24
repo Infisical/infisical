@@ -199,7 +199,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             envId: el.policyEnvId,
             deletedAt: el.policyDeletedAt,
             allowedSelfApprovals: el.policyAllowedSelfApprovals,
-            secretReadAccessCompat: el.policySecretReadAccessCompat,
+            secretReadAccessCompat: el.policySecretReadAccessCompat
           }
         }),
         childrenMapper: [

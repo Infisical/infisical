@@ -295,7 +295,7 @@ export const secretApprovalRequestServiceFactory = ({
         return canRead;
       }
 
-      return true
+      return true;
     };
 
     let secrets;

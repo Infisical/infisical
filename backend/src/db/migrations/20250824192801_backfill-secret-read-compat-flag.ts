@@ -1,6 +1,8 @@
 import { Knex } from "knex";
-import { TableName } from "../schemas";
+
 import { selectAllTableCols } from "@app/lib/knex";
+
+import { TableName } from "../schemas";
 
 const BATCH_SIZE = 100;
 
@@ -24,4 +26,4 @@ export async function up(knex: Knex): Promise<void> {
   }
 }
 
-export async function down(knex: Knex): Promise<void> {}
+export async function down(): Promise<void> {}
