@@ -280,7 +280,14 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
-    const getHasSecretReadAccess = (environment: string, tags: { slug: string }[], secretPath?: string) => {
+    const getHasSecretReadAccess = (
+      implicitReadAllowed: boolean | null | undefined,
+      environment: string,
+      tags: { slug: string }[],
+      secretPath?: string
+    ) => {
+      if (implicitReadAllowed) return true;
+
       const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
         environment,
         secretPath: secretPath || "/",
@@ -308,8 +315,18 @@ export const secretApprovalRequestServiceFactory = ({
         version: el.version,
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
-        secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
-        secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
+        secretValueHidden: !getHasSecretReadAccess(
+          secretApprovalRequest.policy.implicitSecretReadAccess,
+          secretApprovalRequest.environment,
+          el.tags,
+          secretPath?.[0]?.path
+        ),
+        secretValue: !getHasSecretReadAccess(
+          secretApprovalRequest.policy.implicitSecretReadAccess,
+          secretApprovalRequest.environment,
+          el.tags,
+          secretPath?.[0]?.path
+        )
           ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
           : el.secret && el.secret.isRotatedSecret
             ? undefined
@@ -325,11 +342,17 @@ export const secretApprovalRequestServiceFactory = ({
               id: el.secret.id,
               version: el.secret.version,
               secretValueHidden: !getHasSecretReadAccess(
+                secretApprovalRequest.policy.implicitSecretReadAccess,
                 secretApprovalRequest.environment,
                 el.tags,
                 secretPath?.[0]?.path
               ),
-              secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
+              secretValue: !getHasSecretReadAccess(
+                secretApprovalRequest.policy.implicitSecretReadAccess,
+                secretApprovalRequest.environment,
+                el.tags,
+                secretPath?.[0]?.path
+              )
                 ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secret.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
@@ -345,11 +368,17 @@ export const secretApprovalRequestServiceFactory = ({
               id: el.secretVersion.id,
               version: el.secretVersion.version,
               secretValueHidden: !getHasSecretReadAccess(
+                secretApprovalRequest.policy.implicitSecretReadAccess,
                 secretApprovalRequest.environment,
                 el.tags,
                 secretPath?.[0]?.path
               ),
-              secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
+              secretValue: !getHasSecretReadAccess(
+                secretApprovalRequest.policy.implicitSecretReadAccess,
+                secretApprovalRequest.environment,
+                el.tags,
+                secretPath?.[0]?.path
+              )
                 ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secretVersion.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
@@ -367,7 +396,12 @@ export const secretApprovalRequestServiceFactory = ({
       const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
       secrets = encryptedSecrets.map((el) => ({
         ...el,
-        secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
+        secretValueHidden: !getHasSecretReadAccess(
+          secretApprovalRequest.policy.implicitSecretReadAccess,
+          secretApprovalRequest.environment,
+          el.tags,
+          secretPath?.[0]?.path
+        ),
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
           ? {
