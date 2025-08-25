@@ -157,7 +157,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
         tx.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),
         tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
-        tx.ref("deletedAt").withSchema(TableName.SecretApprovalPolicy).as("policyDeletedAt")
+        tx.ref("deletedAt").withSchema(TableName.SecretApprovalPolicy).as("policyDeletedAt"),
+        tx.ref("secretReadAccessCompat").withSchema(TableName.SecretApprovalPolicy).as("policySecretReadAccessCompat")
       );
 
   const findById = async (id: string, tx?: Knex) => {
@@ -197,7 +198,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             enforcementLevel: el.policyEnforcementLevel,
             envId: el.policyEnvId,
             deletedAt: el.policyDeletedAt,
-            allowedSelfApprovals: el.policyAllowedSelfApprovals
+            allowedSelfApprovals: el.policyAllowedSelfApprovals,
+            secretReadAccessCompat: el.policySecretReadAccessCompat
           }
         }),
         childrenMapper: [
