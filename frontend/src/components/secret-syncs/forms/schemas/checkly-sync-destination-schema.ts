@@ -8,7 +8,9 @@ export const ChecklySyncDestinationSchema = BaseSecretSyncSchema().merge(
     destination: z.literal(SecretSync.Checkly),
     destinationConfig: z.object({
       accountId: z.string(),
-      accountName: z.string()
+      accountName: z.string(),
+      groupId: z.string().optional(),
+      groupName: z.string().optional()
     })
   })
 );

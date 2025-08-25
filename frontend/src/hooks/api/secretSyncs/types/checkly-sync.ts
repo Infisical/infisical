@@ -9,19 +9,12 @@ export enum ChecklySyncScope {
 }
 export type TChecklySync = TRootSecretSync & {
   destination: SecretSync.Checkly;
-  destinationConfig:
-    | {
-        scope: ChecklySyncScope.Global;
-        accountId: string;
-        accountName: string;
-      }
-    | {
-        scope: ChecklySyncScope.Group;
-        accountId: string;
-        accountName: string;
-        groupId: string;
-        groupName: string;
-      };
+  destinationConfig: {
+    accountId: string;
+    accountName: string;
+    groupId?: string;
+    groupName?: string;
+  };
   connection: {
     app: AppConnection.Checkly;
     name: string;

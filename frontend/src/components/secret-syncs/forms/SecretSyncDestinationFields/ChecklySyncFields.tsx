@@ -31,6 +31,8 @@ export const ChecklySyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.accountId", "");
           setValue("destinationConfig.accountName", "");
+          setValue("destinationConfig.groupId", "");
+          setValue("destinationConfig.groupName", "");
         }}
       />
       <Controller
@@ -54,6 +56,34 @@ export const ChecklySyncFields = () => {
               }}
               options={accounts}
               placeholder="Select an account..."
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.id}
+            />
+          </FormControl>
+        )}
+      />
+
+      <Controller
+        name="destinationConfig.groupId"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            isError={Boolean(error)}
+            errorText={error?.message}
+            label="Select a group"
+            tooltipClassName="max-w-md"
+          >
+            <FilterableSelect
+              isLoading={isAccountsLoading && Boolean(connectionId)}
+              isDisabled={!connectionId}
+              value={accounts.find((p) => p.id === value) ?? null}
+              onChange={(option) => {
+                const v = option as SingleValue<TChecklyAccount>;
+                onChange(v?.id ?? null);
+                setValue("destinationConfig.groupName", v?.name ?? "");
+              }}
+              options={accounts}
+              placeholder="Select a group..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />
