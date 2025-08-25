@@ -1124,7 +1124,7 @@ export const OverviewPage = () => {
                       <FontAwesomeIcon icon={faAngleDown} />
                     </IconButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" sideOffset={4}>
                     <div className="flex flex-col space-y-1 p-1.5">
                       <ProjectPermissionCan
                         I={ProjectPermissionActions.Create}
