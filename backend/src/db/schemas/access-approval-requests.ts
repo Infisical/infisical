@@ -20,7 +20,9 @@ export const AccessApprovalRequestsSchema = z.object({
   requestedByUserId: z.string().uuid(),
   note: z.string().nullable().optional(),
   privilegeDeletedAt: z.date().nullable().optional(),
-  status: z.string().default("pending")
+  status: z.string().default("pending"),
+  editedByUserId: z.string().uuid().nullable().optional(),
+  editNote: z.string().nullable().optional()
 });
 
 export type TAccessApprovalRequests = z.infer<typeof AccessApprovalRequestsSchema>;

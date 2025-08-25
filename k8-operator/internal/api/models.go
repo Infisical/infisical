@@ -206,3 +206,20 @@ type GetProjectByIDRequest struct {
 type GetProjectByIDResponse struct {
 	Project model.Project `json:"workspace"`
 }
+
+type SubscribeProjectEventsRequestRegister struct {
+	Event      string                                  `json:"event"`
+	Conditions *SubscribeProjectEventsRequestCondition `json:"conditions"`
+}
+
+type SubscribeProjectEventsRequestCondition struct {
+	EnvironmentSlug string `json:"environmentSlug"`
+	SecretPath      string `json:"secretPath"`
+}
+
+type SubscribeProjectEventsRequest struct {
+	ProjectID string                                  `json:"projectId"`
+	Register  []SubscribeProjectEventsRequestRegister `json:"register"`
+}
+
+type SubscribeProjectEventsResponse struct{}

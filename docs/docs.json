@@ -310,7 +310,8 @@
                   "self-hosting/guides/mongo-to-postgres",
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/automated-bootstrapping",
-                  "self-hosting/guides/production-hardening"
+                  "self-hosting/guides/production-hardening",
+                  "self-hosting/guides/monitoring-telemetry"
                 ]
               },
               {
@@ -416,6 +417,9 @@
                 "pages": [
                   "documentation/platform/secrets-mgmt/project",
                   "documentation/platform/folder",
+                  "documentation/platform/secret-versioning",
+                  "documentation/platform/pit-recovery",
+                  "documentation/platform/secret-reference",
                   {
                     "group": "Secret Rotation",
                     "pages": [
@@ -439,6 +443,7 @@
                       "documentation/platform/dynamic-secrets/aws-iam",
                       "documentation/platform/dynamic-secrets/azure-entra-id",
                       "documentation/platform/dynamic-secrets/cassandra",
+                      "documentation/platform/dynamic-secrets/couchbase",
                       "documentation/platform/dynamic-secrets/elastic-search",
                       "documentation/platform/dynamic-secrets/gcp-iam",
                       "documentation/platform/dynamic-secrets/github",
@@ -458,7 +463,8 @@
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/vertica"
                     ]
-                  }
+                  },
+                  "documentation/platform/webhooks"
                 ]
               },
               {
@@ -995,6 +1001,7 @@
               {
                 "group": "Projects",
                 "pages": [
+                  "api-reference/endpoints/workspaces/get-workspace-by-slug",
                   "api-reference/endpoints/workspaces/create-workspace",
                   "api-reference/endpoints/workspaces/delete-workspace",
                   "api-reference/endpoints/workspaces/get-workspace",

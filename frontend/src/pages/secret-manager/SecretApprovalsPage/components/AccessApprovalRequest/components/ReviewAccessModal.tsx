@@ -2,6 +2,7 @@ import { ReactNode, useCallback, useMemo, useState } from "react";
 import {
   faBan,
   faCheck,
+  faEdit,
   faHourglass,
   faQuestionCircle,
   faTriangleExclamation,
@@ -18,6 +19,7 @@ import {
   Checkbox,
   FormControl,
   GenericFieldLabel,
+  IconButton,
   Input,
   Modal,
   ModalContent,
@@ -25,6 +27,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import { ProjectPermissionActions, useUser, useWorkspace } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { useListWorkspaceGroups, useReviewAccessRequest } from "@app/hooks/api";
 import {
   Approver,
@@ -35,6 +38,7 @@ import {
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { groupBy } from "@app/lib/fn/array";
+import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/EditAccessRequestModal";
 
 const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
   if (status === ApprovalStatus.APPROVED)
@@ -75,7 +79,8 @@ export const ReviewAccessRequestModal = ({
   selectedEnvSlug,
   canBypass,
   policies = [],
-  members = []
+  members = [],
+  onUpdate
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -91,6 +96,7 @@ export const ReviewAccessRequestModal = ({
   canBypass: boolean;
   policies: TAccessApprovalPolicy[];
   members: TWorkspaceUser[];
+  onUpdate: (request: TAccessApprovalRequest) => void;
 }) => {
   const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
@@ -99,6 +105,8 @@ export const ReviewAccessRequestModal = ({
   const { currentWorkspace } = useWorkspace();
   const { data: groupMemberships = [] } = useListWorkspaceGroups(currentWorkspace?.id || "");
   const { user } = useUser();
+
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["editRequest"] as const);
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
 
@@ -135,16 +143,9 @@ export const ReviewAccessRequestModal = ({
     if (!accessDetails.temporaryAccess.isTemporary || !accessDetails.temporaryAccess.temporaryRange)
       return "Permanent";
 
-    // convert the range to human readable format
-    ms(ms(accessDetails.temporaryAccess.temporaryRange), { long: true });
-
-    return (
-      <Badge>
-        {`Valid for ${ms(ms(accessDetails.temporaryAccess.temporaryRange), {
-          long: true
-        })} after approval`}
-      </Badge>
-    );
+    return `Valid for ${ms(ms(accessDetails.temporaryAccess.temporaryRange), {
+      long: true
+    })} after approval`;
   };
 
   const reviewAccessRequest = useReviewAccessRequest();
@@ -303,7 +304,33 @@ export const ReviewAccessRequestModal = ({
               <GenericFieldLabel truncate label="Secret Path">
                 {accessDetails.secretPath}
               </GenericFieldLabel>
-              <GenericFieldLabel label="Access Type">{getAccessLabel()}</GenericFieldLabel>
+              <GenericFieldLabel label="Access Duration">
+                <div className="flex h-min gap-1">
+                  {getAccessLabel()}
+                  {request.isApprover && request.status === ApprovalStatus.PENDING && (
+                    <>
+                      <EditAccessRequestModal
+                        isOpen={popUp.editRequest.isOpen}
+                        onOpenChange={(open) => handlePopUpToggle("editRequest", open)}
+                        accessRequest={request}
+                        onComplete={onUpdate}
+                        projectSlug={projectSlug}
+                      />
+                      <Tooltip content="Edit Access Duration">
+                        <IconButton
+                          onClick={() => handlePopUpOpen("editRequest")}
+                          variant="plain"
+                          size="xs"
+                          tabIndex={-1}
+                          ariaLabel="Edit access duration"
+                        >
+                          <FontAwesomeIcon icon={faEdit} />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
+                </div>
+              </GenericFieldLabel>
               <GenericFieldLabel label="Permission">{requestedAccess}</GenericFieldLabel>
               {request.note && (
                 <GenericFieldLabel className="col-span-full" label="Note">

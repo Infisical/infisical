@@ -79,25 +79,24 @@ export const OrgSSOSection = (): JSX.Element => {
   };
 
   return (
-    <>
-      <hr className="border-mineshaft-600" />
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">SAML</h2>
-          {!isPending && (
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
-              {(isAllowed) => (
-                <Button onClick={addSSOBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
-                  Manage
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
+    <div className="space-y-4">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-xl font-semibold text-gray-200">SAML</p>
+          <p className="mb-2 text-gray-400">Manage SAML authentication configuration</p>
         </div>
-        <p className="text-sm text-mineshaft-300">Manage SAML authentication configuration</p>
+        {!isPending && (
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
+            {(isAllowed) => (
+              <Button onClick={addSSOBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
+                Manage
+              </Button>
+            )}
+          </OrgPermissionCan>
+        )}
       </div>
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
+      <div>
+        <div className="mb-2 flex items-center justify-between pt-4">
           <h2 className="text-md text-mineshaft-100">Enable SAML</h2>
           {!isPending && (
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
@@ -126,6 +125,6 @@ export const OrgSSOSection = (): JSX.Element => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can use SAML SSO if you switch to Infisical's Pro plan."
       />
-    </>
+    </div>
   );
 };

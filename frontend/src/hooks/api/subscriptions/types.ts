@@ -48,6 +48,7 @@ export type SubscriptionPlan = {
   externalKms: boolean;
   pkiEst: boolean;
   enforceMfa: boolean;
+  enforceGoogleSSO: boolean;
   projectTemplates: boolean;
   kmip: boolean;
   secretScanning: boolean;

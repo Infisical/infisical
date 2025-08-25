@@ -21,6 +21,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretEventActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -186,6 +187,13 @@ const PkiTemplatePolicyActionSchema = z.object({
   [ProjectPermissionPkiTemplateActions.Delete]: z.boolean().optional(),
   [ProjectPermissionPkiTemplateActions.IssueCert]: z.boolean().optional(),
   [ProjectPermissionPkiTemplateActions.ListCerts]: z.boolean().optional()
+});
+
+const SecretEventsPolicyActionSchema = z.object({
+  [ProjectPermissionSecretEventActions.SubscribeCreated]: z.boolean().optional(),
+  [ProjectPermissionSecretEventActions.SubscribeUpdated]: z.boolean().optional(),
+  [ProjectPermissionSecretEventActions.SubscribeDeleted]: z.boolean().optional(),
+  [ProjectPermissionSecretEventActions.SubscribeImportMutations]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -356,7 +364,12 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.SecretScanningFindings]:
         SecretScanningFindingPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretScanningConfigs]:
-        SecretScanningConfigPolicyActionSchema.array().default([])
+        SecretScanningConfigPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretEvents]: SecretEventsPolicyActionSchema.extend({
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([])
     })
     .partial()
     .optional()
@@ -374,7 +387,8 @@ type TConditionalFields =
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity
-  | ProjectPermissionSub.SecretSyncs;
+  | ProjectPermissionSub.SecretSyncs
+  | ProjectPermissionSub.SecretEvents;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -388,7 +402,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretRotation ||
   subject === ProjectPermissionSub.PkiSubscribers ||
   subject === ProjectPermissionSub.CertificateTemplates ||
-  subject === ProjectPermissionSub.SecretSyncs;
+  subject === ProjectPermissionSub.SecretSyncs ||
+  subject === ProjectPermissionSub.SecretEvents;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -494,7 +509,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SshCertificateAuthorities,
         ProjectPermissionSub.SshCertificates,
         ProjectPermissionSub.SshHostGroups,
-        ProjectPermissionSub.SecretSyncs
+        ProjectPermissionSub.SecretSyncs,
+        ProjectPermissionSub.SecretEvents
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -602,6 +618,32 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             subscribe: canSubscribe,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
+          });
+
+          return;
+        }
+
+        if (subject === ProjectPermissionSub.SecretEvents) {
+          const canSubscribeCreate = action.includes(
+            ProjectPermissionSecretEventActions.SubscribeCreated
+          );
+          const canSubscribeUpdate = action.includes(
+            ProjectPermissionSecretEventActions.SubscribeUpdated
+          );
+          const canSubscribeDelete = action.includes(
+            ProjectPermissionSecretEventActions.SubscribeDeleted
+          );
+          const canSubscribeImportMutations = action.includes(
+            ProjectPermissionSecretEventActions.SubscribeImportMutations
+          );
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            "subscribe-on-created": canSubscribeCreate,
+            "subscribe-on-deleted": canSubscribeDelete,
+            "subscribe-on-updated": canSubscribeUpdate,
+            "subscribe-on-import-mutations": canSubscribeImportMutations,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : []
           });
 
           return;
@@ -1114,8 +1156,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Read Value", value: ProjectPermissionSecretActions.ReadValue },
       { label: "Modify", value: ProjectPermissionSecretActions.Edit },
       { label: "Remove", value: ProjectPermissionSecretActions.Delete },
-      { label: "Create", value: ProjectPermissionSecretActions.Create },
-      { label: "Subscribe", value: ProjectPermissionSecretActions.Subscribe }
+      { label: "Create", value: ProjectPermissionSecretActions.Create }
     ]
   },
   [ProjectPermissionSub.SecretFolders]: {
@@ -1535,6 +1576,27 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         value: ProjectPermissionSecretScanningConfigActions.Update
       }
     ]
+  },
+  [ProjectPermissionSub.SecretEvents]: {
+    title: "Secret Events",
+    actions: [
+      {
+        label: "Subscribe on Created",
+        value: ProjectPermissionSecretEventActions.SubscribeCreated
+      },
+      {
+        label: "Subscribe on Deleted",
+        value: ProjectPermissionSecretEventActions.SubscribeDeleted
+      },
+      {
+        label: "Subscribe on Updated",
+        value: ProjectPermissionSecretEventActions.SubscribeUpdated
+      },
+      {
+        label: "Subscribe on Import Mutations",
+        value: ProjectPermissionSecretEventActions.SubscribeImportMutations
+      }
+    ]
   }
 };
 
@@ -1564,7 +1626,8 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRollback]: enabled,
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
-  [ProjectPermissionSub.Commits]: enabled
+  [ProjectPermissionSub.Commits]: enabled,
+  [ProjectPermissionSub.SecretEvents]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({
