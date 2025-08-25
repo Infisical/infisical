@@ -1,5 +1,3 @@
-import { createAppAuth } from "@octokit/auth-app";
-import { request } from "@octokit/request";
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
@@ -8,6 +6,7 @@ import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { getConfig } from "@app/lib/config/env";
 import { request as httpRequest } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
@@ -114,7 +113,10 @@ export const requestWithGitHubGateway = async <T>(
   );
 };
 
-export const getGitHubAppAuthToken = async (appConnection: TGitHubConnection) => {
+export const getGitHubAppAuthToken = async (
+  appConnection: TGitHubConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
   const appCfg = getConfig();
   const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
   const appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
@@ -129,17 +131,33 @@ export const getGitHubAppAuthToken = async (appConnection: TGitHubConnection) =>
     throw new InternalServerError({ message: "Cannot generate GitHub App token for non-app connection" });
   }
 
-  const appAuth = createAppAuth({
-    appId,
-    privateKey: appPrivateKey,
-    installationId: appConnection.credentials.installationId,
-    request: request.defaults({
-      baseUrl: `https://${await getGitHubInstanceApiUrl(appConnection)}`
-    })
-  });
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iat: now,
+    exp: now + 5 * 60,
+    iss: appId
+  };
 
-  const { token } = await appAuth({ type: "installation" });
-  return token;
+  const appJwt = crypto.jwt().sign(payload, appPrivateKey, { algorithm: "RS256" });
+
+  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  const { installationId } = appConnection.credentials;
+
+  const response = await requestWithGitHubGateway<{ token: string; expires_at: string }>(
+    appConnection,
+    gatewayService,
+    {
+      url: `https://${apiBaseUrl}/app/installations/${installationId}/access_tokens`,
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${appJwt}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    }
+  );
+
+  return response.data.token;
 };
 
 const parseGitHubLinkHeader = (linkHeader: string | undefined): Record<string, string> => {
@@ -174,7 +192,9 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   const { credentials, method } = appConnection;
 
   const token =
-    method === GitHubConnectionMethod.OAuth ? credentials.accessToken : await getGitHubAppAuthToken(appConnection);
+    method === GitHubConnectionMethod.OAuth
+      ? credentials.accessToken
+      : await getGitHubAppAuthToken(appConnection, gatewayService);
 
   const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
   const initialUrlObj = new URL(baseUrl);
