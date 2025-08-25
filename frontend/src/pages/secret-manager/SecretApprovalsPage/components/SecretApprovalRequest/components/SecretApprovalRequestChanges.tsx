@@ -629,6 +629,7 @@ export const SecretApprovalRequestChanges = ({
                     <Tooltip
                       className="relative !z-[500]"
                       content={
+                        // eslint-disable-next-line no-nested-ternary
                         !isOrgMembershipActive
                           ? "This user has been deactivated and no longer has an active organization membership."
                           : `${reviewer.firstName || ""} ${reviewer.lastName || ""}`

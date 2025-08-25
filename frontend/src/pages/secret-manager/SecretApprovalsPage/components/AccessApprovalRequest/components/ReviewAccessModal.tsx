@@ -432,14 +432,14 @@ export const ReviewAccessRequestModal = ({
                       <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
                         {Boolean(approver.user.length) && (
                           <div className="flex flex-row flex-wrap gap-2">
-                            {approver?.user?.map((el, index) => {
+                            {approver?.user?.map((el, idx) => {
                               const member = approverSequence?.membersGroupById?.[el.id]?.[0];
                               if (!member) return null;
 
                               return member.user.isOrgMembershipActive ? (
                                 <div className="flex items-center" key={member.user.id}>
                                   <span>{member.user.username}</span>
-                                  {index < approver.user.length - 1 && ","}
+                                  {idx < approver.user.length - 1 && ","}
                                 </div>
                               ) : (
                                 <div className="flex items-center" key={member.user.id}>
@@ -456,7 +456,7 @@ export const ReviewAccessRequestModal = ({
                                       </Tooltip>
                                     </span>
                                   </span>
-                                  {index < approver.user.length - 1 && ","}
+                                  {idx < approver.user.length - 1 && ","}
                                 </div>
                               );
                             })}

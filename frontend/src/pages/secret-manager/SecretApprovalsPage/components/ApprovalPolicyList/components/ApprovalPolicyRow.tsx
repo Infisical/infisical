@@ -215,11 +215,11 @@ export const ApprovalPolicyRow = ({
                     <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
                       {Boolean(el.users.length) && (
                         <div className="flex flex-row flex-wrap gap-2">
-                          {el.users.map((u, index) => {
+                          {el.users.map((u, idx) => {
                             return u.user.isOrgMembershipActive ? (
                               <div className="flex items-center" key={u.id}>
                                 <span>{getMemberLabel(u)}</span>
-                                {index < el.users.length - 1 && ","}
+                                {idx < el.users.length - 1 && ","}
                               </div>
                             ) : (
                               <div className="flex items-center" key={u.id}>
@@ -236,7 +236,7 @@ export const ApprovalPolicyRow = ({
                                     </Tooltip>
                                   </span>
                                 </span>
-                                {index < el.users.length - 1 && ","}
+                                {idx < el.users.length - 1 && ","}
                               </div>
                             );
                           })}
