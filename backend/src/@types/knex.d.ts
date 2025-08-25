@@ -179,6 +179,9 @@ import {
   TIncidentContacts,
   TIncidentContactsInsert,
   TIncidentContactsUpdate,
+  TInstanceProxyConfig,
+  TInstanceProxyConfigInsert,
+  TInstanceProxyConfigUpdate,
   TIntegrationAuths,
   TIntegrationAuthsInsert,
   TIntegrationAuthsUpdate,
@@ -233,6 +236,9 @@ import {
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
+  TOrgProxyConfig,
+  TOrgProxyConfigInsert,
+  TOrgProxyConfigUpdate,
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
@@ -1253,6 +1259,16 @@ declare module "knex/types/tables" {
       TRemindersRecipients,
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate
+    >;
+    [TableName.InstanceProxyConfig]: KnexOriginal.CompositeTableType<
+      TInstanceProxyConfig,
+      TInstanceProxyConfigInsert,
+      TInstanceProxyConfigUpdate
+    >;
+    [TableName.OrgProxyConfig]: KnexOriginal.CompositeTableType<
+      TOrgProxyConfig,
+      TOrgProxyConfigInsert,
+      TOrgProxyConfigUpdate
     >;
   }
 }

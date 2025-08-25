@@ -70,6 +70,9 @@ import { projectTemplateDALFactory } from "@app/ee/services/project-template/pro
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
+import { instanceProxyConfigDalFactory } from "@app/ee/services/proxy/instance-proxy-config-dal";
+import { orgProxyConfigDalFactory } from "@app/ee/services/proxy/org-proxy-config-dal";
+import { proxyServiceFactory } from "@app/ee/services/proxy/proxy-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
 import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
@@ -938,6 +941,9 @@ export const registerRoutes = async (
   const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
   const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
   const pkiTemplatesDAL = pkiTemplatesDALFactory(db);
+
+  const instanceProxyConfigDAL = instanceProxyConfigDalFactory(db);
+  const orgProxyConfigDAL = orgProxyConfigDalFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
@@ -1960,6 +1966,12 @@ export const registerRoutes = async (
     appConnectionDAL
   });
 
+  const proxyService = proxyServiceFactory({
+    instanceProxyConfigDAL,
+    orgProxyConfigDAL,
+    kmsService
+  });
+
   // setup the communication with license key server
   await licenseService.init();
 
@@ -2091,7 +2103,8 @@ export const registerRoutes = async (
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
     bus: eventBusService,
-    sse: sseService
+    sse: sseService,
+    proxy: proxyService
   });
 
   const cronJobs: CronJob[] = [];

@@ -31,6 +31,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-types";
+import { TProxyServiceFactory } from "@app/ee/services/proxy/proxy-service";
 import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-types";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
@@ -303,6 +304,7 @@ declare module "fastify" {
       bus: TEventBusService;
       sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
+      proxy: TProxyServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

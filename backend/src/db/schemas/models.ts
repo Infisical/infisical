@@ -178,7 +178,11 @@ export enum TableName {
   SecretScanningConfig = "secret_scanning_configs",
   // reminders
   Reminder = "reminders",
-  ReminderRecipient = "reminders_recipients"
+  ReminderRecipient = "reminders_recipients",
+
+  // gateway v2
+  InstanceProxyConfig = "instance_proxy_config",
+  OrgProxyConfig = "org_proxy_config"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
