@@ -8,7 +8,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SecretSyncError } from "../secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { TSecretMap } from "../secret-sync-types";
-import { ChecklySyncScope, TChecklySyncWithCredentials } from "./checkly-sync-types";
+import { TChecklySyncWithCredentials } from "./checkly-sync-types";
 
 export const ChecklySyncFns = {
   async getSecrets(secretSync: TChecklySyncWithCredentials) {
@@ -23,7 +23,7 @@ export const ChecklySyncFns = {
 
     const config = secretSync.destinationConfig;
 
-    if (config.scope === ChecklySyncScope.Group) {
+    if (config.groupId) {
       // Handle group environment variables
       const groupVars = await ChecklyPublicAPI.getCheckGroupEnvironmentVariables(
         secretSync.connection,
@@ -142,7 +142,7 @@ export const ChecklySyncFns = {
   async removeSecrets(secretSync: TChecklySyncWithCredentials, secretMap: TSecretMap) {
     const config = secretSync.destinationConfig;
 
-    if (config.scope === ChecklySyncScope.Group) {
+    if (config.groupId) {
       // Handle group environment variables
       const groupVars = await ChecklyPublicAPI.getCheckGroupEnvironmentVariables(
         secretSync.connection,
@@ -154,8 +154,8 @@ export const ChecklySyncFns = {
 
       // Filter out the secrets to remove
       const remainingVariables = Object.keys(checklyGroupSecrets)
-        .filter(key => !(key in secretMap))
-        .map(key => checklyGroupSecrets[key]);
+        .filter((key) => !(key in secretMap))
+        .map((key) => checklyGroupSecrets[key]);
 
       try {
         await ChecklyPublicAPI.updateCheckGroupEnvironmentVariables(
