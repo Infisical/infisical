@@ -53,4 +53,36 @@ export const registerChecklyConnectionRouter = async (server: FastifyZodProvider
       return { accounts };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/groups`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          accounts: z
+            .object({
+              name: z.string(),
+              id: z.string(),
+              runtimeId: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const groups = await server.services.appConnection.checkly.listGroups(connectionId, req.permission);
+
+      return { groups };
+    }
+  });
 };
