@@ -396,9 +396,11 @@ export const CreateReminderForm = ({
                         open: isDatePickerOpen,
                         onOpenChange: setIsDatePickerOpen
                       }}
-                      popUpContentProps={{}}
+                      popUpContentProps={{
+                        align: "end"
+                      }}
                       hideTime
-                      hidden={{ before: new Date(Date.now() + ONE_DAY_IN_MILLIS) }}
+                      disabled={{ before: new Date(Date.now() + ONE_DAY_IN_MILLIS) }}
                     />
                   </FormControl>
                 )}
@@ -426,9 +428,11 @@ export const CreateReminderForm = ({
                         open: isDatePickerOpen,
                         onOpenChange: setIsDatePickerOpen
                       }}
-                      popUpContentProps={{}}
+                      popUpContentProps={{
+                        align: "start"
+                      }}
                       hideTime
-                      hidden={{ before: new Date(Date.now() + ONE_DAY_IN_MILLIS) }}
+                      disabled={{ before: new Date(Date.now() + ONE_DAY_IN_MILLIS) }}
                     />
                   </FormControl>
                 </div>
@@ -479,15 +483,15 @@ export const CreateReminderForm = ({
           />
 
           {/* Action Buttons */}
-          <div className="flex items-center space-x-4 pt-4">
+          <div className="flex items-center space-x-4">
             <Button
               isDisabled={isSubmitting}
               isLoading={isSubmitting}
-              className=""
+              variant="outline_bg"
               leftIcon={<FontAwesomeIcon icon={faClock} />}
               type="submit"
             >
-              {isEditMode ? "Update" : "Create"} reminder
+              {isEditMode ? "Update" : "Create"} Reminder
             </Button>
 
             {isEditMode && (
@@ -499,7 +503,7 @@ export const CreateReminderForm = ({
                 type="button"
                 isDisabled={isSubmitting}
               >
-                Delete reminder
+                Delete Reminder
               </Button>
             )}
 
