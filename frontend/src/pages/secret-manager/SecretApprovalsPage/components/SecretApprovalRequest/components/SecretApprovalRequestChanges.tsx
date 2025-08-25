@@ -554,31 +554,27 @@ export const SecretApprovalRequestChanges = ({
                   >
                     <Tooltip
                       content={
-                        requiredApprover.firstName
-                          ? `${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""}`
-                          : undefined
+                        !isOrgMembershipActive
+                          ? "This user has been deactivated and no longer has an active organization membership."
+                          : requiredApprover.firstName
+                            ? `${requiredApprover.firstName || ""} ${requiredApprover.lastName || ""}`
+                            : undefined
                       }
                       position="left"
                       sideOffset={10}
                     >
-                      <div className="flex">
+                      <div className="flex items-center">
                         <div>{requiredApprover?.email}</div>
                         <span className="text-red">*</span>
+                        {!isOrgMembershipActive && (
+                          <FontAwesomeIcon
+                            icon={faUserSlash}
+                            size="xs"
+                            className="ml-1 text-mineshaft-300"
+                          />
+                        )}
                       </div>
                     </Tooltip>
-
-                    {!isOrgMembershipActive && (
-                      <Tooltip
-                        className="relative !z-[500]"
-                        content="This user has been deactivated and no longer has an active organization membership."
-                      >
-                        <FontAwesomeIcon
-                          icon={faUserSlash}
-                          size="xs"
-                          className="text-mineshaft-300"
-                        />
-                      </Tooltip>
-                    )}
                   </div>
                   <div className="flex items-center">
                     {reviewer?.comment && (
@@ -632,24 +628,23 @@ export const SecretApprovalRequestChanges = ({
                   >
                     <Tooltip
                       className="relative !z-[500]"
-                      content={`${reviewer.firstName || ""} ${reviewer.lastName || ""}`}
+                      content={
+                        !isOrgMembershipActive
+                          ? "This user has been deactivated and no longer has an active organization membership."
+                          : `${reviewer.firstName || ""} ${reviewer.lastName || ""}`
+                      }
                     >
-                      <div className="flex">
+                      <div className="flex items-center">
                         <span>{reviewer?.email} </span>
+                        {!isOrgMembershipActive && (
+                          <FontAwesomeIcon
+                            icon={faUserSlash}
+                            size="xs"
+                            className="ml-1 text-mineshaft-300"
+                          />
+                        )}
                       </div>
                     </Tooltip>
-                    {!isOrgMembershipActive && (
-                      <Tooltip
-                        className="relative !z-[500]"
-                        content="This user has been deactivated and no longer has an active organization membership."
-                      >
-                        <FontAwesomeIcon
-                          icon={faUserSlash}
-                          size="xs"
-                          className="text-mineshaft-300"
-                        />
-                      </Tooltip>
-                    )}
                   </div>
 
                   <div>

@@ -44,7 +44,6 @@ import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { PolicyMemberOption } from "./PolicyMemberOption";
-import { PolicyBypasserMemberOption } from "./PolicyBypasserMemberOption";
 
 type Props = {
   isOpen?: boolean;
@@ -144,7 +143,7 @@ const Form = ({
     handleSubmit,
     watch,
     resetField,
-    formState: { isSubmitting, errors }
+    formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
     values: editValues
@@ -414,8 +413,6 @@ const Form = ({
     setDraggedItem(null);
     setDragOverItem(null);
   };
-
-  console.log("error", errors);
 
   return (
     <div className="flex flex-col space-y-3">
@@ -812,7 +809,7 @@ const Form = ({
                       menuPlacement="top"
                       isMulti
                       placeholder="Select members..."
-                      components={{ Option: PolicyBypasserMemberOption }}
+                      components={{ Option: PolicyMemberOption }}
                       options={bypasserMemberOptions}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => {

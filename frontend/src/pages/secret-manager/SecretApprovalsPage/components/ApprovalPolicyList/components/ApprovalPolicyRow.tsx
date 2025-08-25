@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import {
+  faBan,
   faClipboardCheck,
   faEdit,
   faEllipsisV,
-  faQuestionCircle,
   faTrash,
   faUser,
   faUserGroup
@@ -215,21 +215,29 @@ export const ApprovalPolicyRow = ({
                     <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
                       {Boolean(el.users.length) && (
                         <div className="flex flex-row flex-wrap gap-2">
-                          {el.users.map((u) => {
+                          {el.users.map((u, index) => {
                             return u.user.isOrgMembershipActive ? (
-                              <span key={u.id}>{getMemberLabel(u)}</span>
+                              <div className="flex items-center" key={u.id}>
+                                <span>{getMemberLabel(u)}</span>
+                                {index < el.users.length - 1 && ","}
+                              </div>
                             ) : (
-                              <span className="opacity-40" key={u.id}>
-                                {getMemberLabel(u)}{" "}
-                                <span className="text-xs">
-                                  <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
-                                    <div>
-                                      (Inactive){" "}
-                                      <FontAwesomeIcon size="xs" icon={faQuestionCircle} />
-                                    </div>
-                                  </Tooltip>
+                              <div className="flex items-center" key={u.id}>
+                                <span className="flex items-center opacity-40">
+                                  {getMemberLabel(u)}
+                                  <span className="text-xs">
+                                    <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
+                                      <div>
+                                        <Badge className="pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                                          <FontAwesomeIcon icon={faBan} />
+                                          Inactive
+                                        </Badge>
+                                      </div>
+                                    </Tooltip>
+                                  </span>
                                 </span>
-                              </span>
+                                {index < el.users.length - 1 && ","}
+                              </div>
                             );
                           })}
                         </div>

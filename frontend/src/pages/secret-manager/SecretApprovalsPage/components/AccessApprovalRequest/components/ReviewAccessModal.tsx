@@ -4,7 +4,6 @@ import {
   faCheck,
   faEdit,
   faHourglass,
-  faQuestionCircle,
   faTriangleExclamation,
   faUser,
   faUserSlash
@@ -58,8 +57,9 @@ const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?
     return (
       // Can't do a tooltip here because nested tooltips doesn't work properly as of yet.
       // TODO(daniel): Fix nested tooltips in the future.
-      <Badge variant="danger" className="flex h-4 items-center justify-center">
-        <FontAwesomeIcon icon={faUserSlash} size="xs" />
+
+      <Badge className="flex h-4 items-center justify-center bg-mineshaft-400/50 text-bunker-300">
+        <FontAwesomeIcon size="xs" icon={faUserSlash} />
       </Badge>
     );
   }
@@ -206,6 +206,7 @@ export const ReviewAccessRequestModal = ({
       (acc, curr) => {
         if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
           acc[acc.length - 1][curr.type]?.push(curr);
+
           return acc;
         }
 
@@ -217,6 +218,7 @@ export const ReviewAccessRequestModal = ({
             ? { user: [curr], group: [], sequence, approvals }
             : { group: [curr], user: [], sequence, approvals }
         );
+
         return acc;
       },
       [] as {
@@ -430,24 +432,32 @@ export const ReviewAccessRequestModal = ({
                       <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
                         {Boolean(approver.user.length) && (
                           <div className="flex flex-row flex-wrap gap-2">
-                            {approver?.user?.map((el) => {
+                            {approver?.user?.map((el, index) => {
                               const member = approverSequence?.membersGroupById?.[el.id]?.[0];
                               if (!member) return null;
 
                               return member.user.isOrgMembershipActive ? (
-                                <span key={el.id}>{member.user.username}</span>
+                                <div className="flex items-center" key={member.user.id}>
+                                  <span>{member.user.username}</span>
+                                  {index < approver.user.length - 1 && ","}
+                                </div>
                               ) : (
-                                <span className="opacity-40" key={el.id}>
-                                  {member.user.username}{" "}
-                                  <span className="text-xs">
-                                    <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
-                                      <div>
-                                        (Inactive){" "}
-                                        <FontAwesomeIcon size="xs" icon={faQuestionCircle} />
-                                      </div>
-                                    </Tooltip>
+                                <div className="flex items-center" key={member.user.id}>
+                                  <span className="flex items-center opacity-40">
+                                    {member.user.username}
+                                    <span className="text-xs">
+                                      <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
+                                        <div>
+                                          <Badge className="pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                                            <FontAwesomeIcon icon={faBan} />
+                                            Inactive
+                                          </Badge>
+                                        </div>
+                                      </Tooltip>
+                                    </span>
                                   </span>
-                                </span>
+                                  {index < approver.user.length - 1 && ","}
+                                </div>
                               );
                             })}
                           </div>

@@ -5,7 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { Badge } from "@app/components/v2";
-import { ApproverType } from "@app/hooks/api/accessApproval/types";
+import { BypasserType } from "@app/hooks/api/accessApproval/types";
+import { ApproverType } from "@app/hooks/api/secretApproval/types";
 
 export const PolicyMemberOption = ({
   isSelected,
@@ -13,8 +14,8 @@ export const PolicyMemberOption = ({
   ...props
 }: OptionProps<{
   id: string;
+  type: BypasserType | ApproverType;
   isOrgMembershipActive?: boolean;
-  type: ApproverType;
 }>) => {
   return (
     <components.Option isSelected={isSelected} {...props}>
