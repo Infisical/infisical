@@ -21,3 +21,8 @@ export type TChecklyVariablesGraphResponse = {
     variables: Record<string, string>;
   };
 };
+
+export enum ChecklySyncScope {
+  Global = "global",
+  Group = "group"
+}
