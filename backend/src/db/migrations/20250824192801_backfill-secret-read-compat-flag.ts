@@ -8,7 +8,7 @@ const BATCH_SIZE = 100;
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "secretReadAccessCompat")) {
-    // find all rows where kubernetesHost is null
+    // find all existing SecretApprovalPolicy rows to backfill secretReadAccessCompat flag
     const rows = await knex(TableName.SecretApprovalPolicy).select(selectAllTableCols(TableName.SecretApprovalPolicy));
 
     if (rows.length > 0) {
