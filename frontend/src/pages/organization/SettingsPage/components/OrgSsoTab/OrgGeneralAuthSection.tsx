@@ -1,5 +1,6 @@
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -13,7 +14,6 @@ import {
 } from "@app/context";
 import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { twMerge } from "tailwind-merge";
 
 enum EnforceAuthType {
   SAML = "saml",
