@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -11,9 +13,10 @@ type InfisicalPushSecretDestination struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Immutable
 	EnvironmentSlug string `json:"environmentSlug"`
-	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Immutable
-	ProjectID string `json:"projectId"`
+	ProjectID string `json:"projectId,omitempty"`
+	// +kubebuilder:validation:Immutable
+	ProjectSlug string `json:"projectSlug,omitempty"`
 }
 
 type InfisicalPushSecretSecretSource struct {
@@ -108,6 +111,17 @@ type InfisicalPushSecretList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []InfisicalPushSecret `json:"items"`
+}
+
+// ValidateDestination validates that either ProjectID or ProjectSlug is provided, but not both
+func (d *InfisicalPushSecretDestination) ValidateDestination() error {
+	if d.ProjectID == "" && d.ProjectSlug == "" {
+		return fmt.Errorf("either projectId or projectSlug must be specified")
+	}
+	if d.ProjectID != "" && d.ProjectSlug != "" {
+		return fmt.Errorf("projectId and projectSlug cannot both be specified")
+	}
+	return nil
 }
 
 func init() {
