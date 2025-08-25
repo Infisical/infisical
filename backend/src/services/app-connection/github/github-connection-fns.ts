@@ -119,13 +119,18 @@ export const getGitHubAppAuthToken = async (
 ) => {
   const appCfg = getConfig();
   const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
-  const appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
+  let appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
 
   if (!appId || !appPrivateKey) {
     throw new InternalServerError({
       message: `GitHub App keys are not configured.`
     });
   }
+
+  appPrivateKey = appPrivateKey
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
 
   if (appConnection.method !== GitHubConnectionMethod.App) {
     throw new InternalServerError({ message: "Cannot generate GitHub App token for non-app connection" });
