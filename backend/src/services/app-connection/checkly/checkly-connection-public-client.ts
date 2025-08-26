@@ -182,38 +182,49 @@ class ChecklyPublicClient {
     return res;
   }
 
-  async getCheckGroups(connection: TChecklyConnectionConfig, accountId: string, limit: number = 50, page: number = 1) {
-    const res = await this.send<{ id: string; name: string }[]>(connection, {
+  async getCheckGroups(connection: TChecklyConnectionConfig, accountId: string, limit = 50, page = 1) {
+    const res = await this.send<{ id: number; name: string }[]>(connection, {
       accountId,
       method: "GET",
       url: `/v1/check-groups`,
-      params: {
-        limit,
-        page
-      }
+      params: { limit, page }
     });
 
-    return res;
+    return res?.map((group) => ({
+      id: group.id.toString(),
+      name: group.name
+    }));
   }
 
   async getCheckGroup(connection: TChecklyConnectionConfig, accountId: string, groupId: string) {
     try {
-      const res = await this.send<{
-        id: string;
+      type ChecklyGroupResponse = {
+        id: number;
         name: string;
-        environmentVariables: Array<{ key: string; value: string; locked: boolean }>;
-      }>(connection, {
+        environmentVariables: Array<{
+          key: string;
+          value: string;
+          locked: boolean;
+        }>;
+      };
+
+      const res = await this.send<ChecklyGroupResponse>(connection, {
         accountId,
         method: "GET",
         url: `/v1/check-groups/${groupId}`
       });
 
-      return res;
+      if (!res) return null;
+
+      return {
+        id: res.id.toString(),
+        name: res.name,
+        environmentVariables: res.environmentVariables
+      };
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === HttpStatusCode.NotFound) {
         return null;
       }
-
       throw error;
     }
   }
@@ -224,20 +235,23 @@ class ChecklyPublicClient {
     groupId: string,
     environmentVariables: Array<{ key: string; value: string; locked?: boolean }>
   ) {
-    const res = await this.send<{
-      id: string;
-      name: string;
-      environmentVariables: Array<{ key: string; value: string; locked: boolean }>;
-    }>(connection, {
+    const apiVariables = environmentVariables.map((v) => ({
+      key: v.key,
+      value: v.value,
+      locked: v.locked ?? false,
+      secret: true
+    }));
+
+    const group = await this.getCheckGroup(connection, accountId, groupId);
+
+    await this.send(connection, {
       accountId,
       method: "PUT",
       url: `/v2/check-groups/${groupId}`,
-      data: {
-        environmentVariables
-      }
+      data: { name: group?.name, environmentVariables: apiVariables }
     });
 
-    return res;
+    return this.getCheckGroup(connection, accountId, groupId);
   }
 
   async getCheckGroupEnvironmentVariables(connection: TChecklyConnectionConfig, accountId: string, groupId: string) {
@@ -251,26 +265,18 @@ class ChecklyPublicClient {
     groupId: string,
     variables: Array<{ key: string; value: string; locked?: boolean }>
   ) {
-    // Get existing environment variables
     const existingVars = await this.getCheckGroupEnvironmentVariables(connection, accountId, groupId);
-    
-    // Create a map of existing variables for easy lookup
-    const existingVarMap = new Map(existingVars.map(v => [v.key, v]));
-    
-    // Merge new variables with existing ones
-    variables.forEach(newVar => {
-      existingVarMap.set(newVar.key, {
+    const varMap = new Map(existingVars.map((v) => [v.key, v]));
+
+    for (const newVar of variables) {
+      varMap.set(newVar.key, {
         key: newVar.key,
         value: newVar.value,
         locked: newVar.locked ?? false
       });
-    });
-    
-    // Convert back to array
-    const mergedVariables = Array.from(existingVarMap.values());
-    
-    // Update the group with merged variables
-    return this.updateCheckGroupEnvironmentVariables(connection, accountId, groupId, mergedVariables);
+    }
+
+    return this.updateCheckGroupEnvironmentVariables(connection, accountId, groupId, Array.from(varMap.values()));
   }
 
   async deleteCheckGroupEnvironmentVariable(
@@ -279,13 +285,9 @@ class ChecklyPublicClient {
     groupId: string,
     variableKey: string
   ) {
-    // Get existing environment variables
     const existingVars = await this.getCheckGroupEnvironmentVariables(connection, accountId, groupId);
-    
-    // Filter out the variable to delete
-    const filteredVars = existingVars.filter(v => v.key !== variableKey);
-    
-    // Update the group with filtered variables
+    const filteredVars = existingVars.filter((v) => v.key !== variableKey);
+
     return this.updateCheckGroupEnvironmentVariables(connection, accountId, groupId, filteredVars);
   }
 }

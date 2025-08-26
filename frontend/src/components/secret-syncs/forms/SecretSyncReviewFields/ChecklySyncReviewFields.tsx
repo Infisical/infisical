@@ -6,7 +6,16 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const ChecklySyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Checkly }>();
-  const accountName = watch("destinationConfig.accountName");
+  const config = watch("destinationConfig");
 
-  return <GenericFieldLabel label="Account">{accountName}</GenericFieldLabel>;
+  return (
+    <>
+      <GenericFieldLabel label="Account">
+        {config.accountName ?? config.accountId}
+      </GenericFieldLabel>
+      {config.groupId && (
+        <GenericFieldLabel label="Group">{config.groupName ?? config.groupId}</GenericFieldLabel>
+      )}
+    </>
+  );
 };

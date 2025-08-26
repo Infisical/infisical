@@ -9,8 +9,8 @@ const checklyConnectionKeys = {
   all: [...appConnectionKeys.all, "checkly"] as const,
   listAccounts: (connectionId: string) =>
     [...checklyConnectionKeys.all, "workspace-scopes", connectionId] as const,
-  listGroups: (connectionId: string) =>
-    [...checklyConnectionKeys.all, "groups", connectionId] as const
+  listGroups: (connectionId: string, accountId: string) =>
+    [...checklyConnectionKeys.all, "groups", connectionId, accountId] as const
 };
 
 export const useChecklyConnectionListAccounts = (
@@ -40,6 +40,7 @@ export const useChecklyConnectionListAccounts = (
 
 export const useChecklyConnectionListGroups = (
   connectionId: string,
+  accountId: string,
   options?: Omit<
     UseQueryOptions<
       TChecklyAccount[],
@@ -51,10 +52,10 @@ export const useChecklyConnectionListGroups = (
   >
 ) => {
   return useQuery({
-    queryKey: checklyConnectionKeys.listGroups(connectionId),
+    queryKey: checklyConnectionKeys.listGroups(connectionId, accountId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ groups: TChecklyAccount[] }>(
-        `/api/v1/app-connections/checkly/${connectionId}/groups`
+        `/api/v1/app-connections/checkly/${connectionId}/accounts/${accountId}/groups`
       );
 
       return data.groups;
