@@ -14,7 +14,9 @@ export const PgSqlLock = {
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
   SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`),
-  InstanceProxyConfigInit: () => pgAdvisoryLockHashText("instance-proxy-config-init")
+  InstanceProxyConfigInit: () => pgAdvisoryLockHashText("instance-proxy-config-init"),
+  OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
+  OrgProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-proxy-config-init:${orgId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict

@@ -233,6 +233,9 @@ import {
   TOrgGatewayConfig,
   TOrgGatewayConfigInsert,
   TOrgGatewayConfigUpdate,
+  TOrgGatewayConfigV2,
+  TOrgGatewayConfigV2Insert,
+  TOrgGatewayConfigV2Update,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
@@ -293,6 +296,9 @@ import {
   TProjectUserMembershipRoles,
   TProjectUserMembershipRolesInsert,
   TProjectUserMembershipRolesUpdate,
+  TProxies,
+  TProxiesInsert,
+  TProxiesUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -1270,5 +1276,11 @@ declare module "knex/types/tables" {
       TOrgProxyConfigInsert,
       TOrgProxyConfigUpdate
     >;
+    [TableName.OrgGatewayConfigV2]: KnexOriginal.CompositeTableType<
+      TOrgGatewayConfigV2,
+      TOrgGatewayConfigV2Insert,
+      TOrgGatewayConfigV2Update
+    >;
+    [TableName.Proxy]: KnexOriginal.CompositeTableType<TProxies, TProxiesInsert, TProxiesUpdate>;
   }
 }

@@ -147,6 +147,8 @@ import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service
 import { certificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { certificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { certificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import { gatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { orgGatewayConfigV2DalFactory } from "@app/ee/services/gateway-v2/org-gateway-config-v2-dal";
 import { certificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -317,6 +319,7 @@ import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { proxyDalFactory } from "@app/ee/services/proxy/proxy-dal";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -944,6 +947,9 @@ export const registerRoutes = async (
 
   const instanceProxyConfigDAL = instanceProxyConfigDalFactory(db);
   const orgProxyConfigDAL = orgProxyConfigDalFactory(db);
+  const proxyDAL = proxyDalFactory(db);
+
+  const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
@@ -1969,7 +1975,14 @@ export const registerRoutes = async (
   const proxyService = proxyServiceFactory({
     instanceProxyConfigDAL,
     orgProxyConfigDAL,
+    proxyDAL,
     kmsService
+  });
+
+  const gatewayV2Service = gatewayV2ServiceFactory({
+    kmsService,
+    proxyService,
+    orgGatewayConfigV2DAL
   });
 
   // setup the communication with license key server
@@ -2104,7 +2117,8 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     sse: sseService,
-    proxy: proxyService
+    proxy: proxyService,
+    gatewayV2: gatewayV2Service
   });
 
   const cronJobs: CronJob[] = [];

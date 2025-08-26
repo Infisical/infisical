@@ -67,6 +67,43 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.OrgProxyConfig);
   }
+
+  if (!(await knex.schema.hasTable(TableName.OrgGatewayConfigV2))) {
+    await knex.schema.createTable(TableName.OrgGatewayConfigV2, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("orgId").notNullable().unique();
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+      t.binary("encryptedRootGatewayCaPrivateKey").notNullable();
+      t.binary("encryptedRootGatewayCaCertificate").notNullable();
+      t.binary("encryptedGatewayServerCaPrivateKey").notNullable();
+      t.binary("encryptedGatewayServerCaCertificate").notNullable();
+      t.binary("encryptedGatewayServerCaCertificateChain").notNullable();
+      t.binary("encryptedGatewayClientCaPrivateKey").notNullable();
+      t.binary("encryptedGatewayClientCaCertificate").notNullable();
+      t.binary("encryptedGatewayClientCaCertificateChain").notNullable();
+    });
+
+    await createOnUpdateTrigger(knex, TableName.OrgGatewayConfigV2);
+  }
+
+  if (!(await knex.schema.hasTable(TableName.Proxy))) {
+    await knex.schema.createTable(TableName.Proxy, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+
+      t.uuid("orgId");
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+
+      t.uuid("identityId");
+      t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
+
+      t.string("name").notNullable().unique();
+      t.string("ip").notNullable();
+    });
+
+    await createOnUpdateTrigger(knex, TableName.Proxy);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -75,4 +112,10 @@ export async function down(knex: Knex): Promise<void> {
 
   await dropOnUpdateTrigger(knex, TableName.InstanceProxyConfig);
   await knex.schema.dropTableIfExists(TableName.InstanceProxyConfig);
+
+  await dropOnUpdateTrigger(knex, TableName.OrgGatewayConfigV2);
+  await knex.schema.dropTableIfExists(TableName.OrgGatewayConfigV2);
+
+  await dropOnUpdateTrigger(knex, TableName.Proxy);
+  await knex.schema.dropTableIfExists(TableName.Proxy);
 }
