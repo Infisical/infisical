@@ -27,7 +27,6 @@ export const LockoutTab = ({
         <Controller
           control={control}
           name="lockoutEnabled"
-          defaultValue
           render={({ field: { value, onChange }, fieldState: { error } }) => {
             return (
               <FormControl

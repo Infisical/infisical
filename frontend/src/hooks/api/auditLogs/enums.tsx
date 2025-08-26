@@ -54,7 +54,7 @@ export enum EventType {
   UPDATE_IDENTITY_LDAP_AUTH = "update-identity-ldap-auth",
   GET_IDENTITY_LDAP_AUTH = "get-identity-ldap-auth",
   REVOKE_IDENTITY_LDAP_AUTH = "revoke-identity-ldap-auth",
-  CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS = "clear-ldap-auth-lockouts",
+  CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS = "clear-identity-ldap-auth-lockouts",
 
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
