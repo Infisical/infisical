@@ -19,6 +19,7 @@ import {
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
+  CoolifyConnectionMethod,
   DatabricksConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
@@ -110,7 +111,8 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
-  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
+  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
+  [AppConnection.Coolify]: { name: "Coolify", image: "Coolify.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -146,6 +148,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

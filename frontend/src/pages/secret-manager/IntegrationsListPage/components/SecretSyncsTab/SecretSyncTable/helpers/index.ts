@@ -194,6 +194,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.workspaceSlug;
       secondaryText = destinationConfig.repositorySlug;
       break;
+    case SecretSync.Coolify:
+      primaryText = destinationConfig.appId;
+      secondaryText = "Application ID";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

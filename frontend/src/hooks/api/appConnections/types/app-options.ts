@@ -164,6 +164,10 @@ export type TOktaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Okta;
 };
 
+export type TCoolifyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Coolify;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -198,7 +202,8 @@ export type TAppConnectionOption =
   | TChecklyConnectionOption
   | TDigitalOceanConnectionOption
   | TNetlifyConnectionOption
-  | TOktaConnectionOption;
+  | TOktaConnectionOption
+  | TCoolifyConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -238,4 +243,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
   [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
+  [AppConnection.Coolify]: TCoolifyConnectionOption;
 };

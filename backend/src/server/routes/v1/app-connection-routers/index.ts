@@ -13,6 +13,7 @@ import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
+import { registerCoolifyConnectionRouter } from "./coolify-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
@@ -78,5 +79,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Supabase]: registerSupabaseConnectionRouter,
     [AppConnection.DigitalOcean]: registerDigitalOceanConnectionRouter,
     [AppConnection.Netlify]: registerNetlifyConnectionRouter,
-    [AppConnection.Okta]: registerOktaConnectionRouter
+    [AppConnection.Okta]: registerOktaConnectionRouter,
+    [AppConnection.Coolify]: registerCoolifyConnectionRouter
   };

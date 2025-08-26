@@ -31,7 +31,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Checkly]: "Checkly",
   [SecretSync.DigitalOceanAppPlatform]: "Digital Ocean App Platform",
   [SecretSync.Netlify]: "Netlify",
-  [SecretSync.Bitbucket]: "Bitbucket"
+  [SecretSync.Bitbucket]: "Bitbucket",
+  [SecretSync.Coolify]: "Coolify"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -64,7 +65,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Checkly]: AppConnection.Checkly,
   [SecretSync.DigitalOceanAppPlatform]: AppConnection.DigitalOcean,
   [SecretSync.Netlify]: AppConnection.Netlify,
-  [SecretSync.Bitbucket]: AppConnection.Bitbucket
+  [SecretSync.Bitbucket]: AppConnection.Bitbucket,
+  [SecretSync.Coolify]: AppConnection.Coolify
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -97,5 +99,6 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Checkly]: SecretSyncPlanType.Regular,
   [SecretSync.DigitalOceanAppPlatform]: SecretSyncPlanType.Regular,
   [SecretSync.Netlify]: SecretSyncPlanType.Regular,
-  [SecretSync.Bitbucket]: SecretSyncPlanType.Regular
+  [SecretSync.Bitbucket]: SecretSyncPlanType.Regular,
+  [SecretSync.Coolify]: SecretSyncPlanType.Regular
 };
