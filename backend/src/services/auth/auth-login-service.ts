@@ -453,6 +453,13 @@ export const authLoginServiceFactory = ({
 
     const selectedOrg = await orgDAL.findById(organizationId);
 
+    // Check if authEnforced is true, if that's the case, throw an error
+    if (selectedOrg.authEnforced) {
+      throw new BadRequestError({
+        message: "Authentication is required by your organization before you can log in."
+      });
+    }
+
     if (!selectedOrgMembership) {
       throw new ForbiddenRequestError({
         message: `User does not have access to the organization named ${selectedOrg?.name}`

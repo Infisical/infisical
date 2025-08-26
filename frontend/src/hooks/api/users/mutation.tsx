@@ -26,16 +26,16 @@ export const useAddUserToWsNonE2EE = () => {
   });
 };
 
-export const sendEmailVerificationCode = async (username: string) => {
+export const sendEmailVerificationCode = async (token: string) => {
   return apiRequest.post("/api/v2/users/me/emails/code", {
-    username
+    token
   });
 };
 
 export const useSendEmailVerificationCode = () => {
   return useMutation({
-    mutationFn: async (username: string) => {
-      await sendEmailVerificationCode(username);
+    mutationFn: async (token: string) => {
+      await sendEmailVerificationCode(token);
       return {};
     }
   });
