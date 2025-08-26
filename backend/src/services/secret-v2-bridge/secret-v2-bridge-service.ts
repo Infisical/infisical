@@ -64,8 +64,7 @@ import {
   generatePaths,
   getAllSecretReferences,
   recursivelyGetSecretPaths,
-  reshapeBridgeSecret,
-  validateSecretPath
+  reshapeBridgeSecret
 } from "./secret-v2-bridge-fns";
 import {
   SecretOperations,
@@ -1041,15 +1040,6 @@ export const secretV2BridgeServiceFactory = ({
         projectId
       });
 
-    await validateSecretPath(
-      {
-        projectId,
-        environment,
-        secretPath: path
-      },
-      folderDAL
-    );
-
     const encryptedCachedSecrets = await keyStore.getItem(cacheKey);
     if (encryptedCachedSecrets) {
       try {
@@ -1084,12 +1074,22 @@ export const secretV2BridgeServiceFactory = ({
         currentPath: path
       });
 
-      if (!deepPaths) return { secrets: [], imports: [] };
+      if (!deepPaths?.length) {
+        throw new NotFoundError({
+          message: `Folder with path '${path}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
+          name: "SecretPathNotFound"
+        });
+      }
 
       paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
     } else {
       const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-      if (!folder) return { secrets: [], imports: [] };
+      if (!folder) {
+        throw new NotFoundError({
+          message: `Folder with path '${path}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
+          name: "SecretPathNotFound"
+        });
+      }
 
       paths = [{ folderId: folder.id, path }];
     }
