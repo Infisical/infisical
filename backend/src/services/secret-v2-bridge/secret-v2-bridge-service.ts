@@ -64,7 +64,8 @@ import {
   generatePaths,
   getAllSecretReferences,
   recursivelyGetSecretPaths,
-  reshapeBridgeSecret
+  reshapeBridgeSecret,
+  validateSecretPath
 } from "./secret-v2-bridge-fns";
 import {
   SecretOperations,
@@ -1039,6 +1040,15 @@ export const secretV2BridgeServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
+
+    await validateSecretPath(
+      {
+        projectId,
+        environment,
+        secretPath: path
+      },
+      folderDAL
+    );
 
     const encryptedCachedSecrets = await keyStore.getItem(cacheKey);
     if (encryptedCachedSecrets) {

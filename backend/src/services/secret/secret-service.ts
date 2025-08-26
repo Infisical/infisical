@@ -97,6 +97,7 @@ import {
 } from "./secret-types";
 import { TSecretVersionDALFactory } from "./secret-version-dal";
 import { TSecretVersionTagDALFactory } from "./secret-version-tag-dal";
+import { validateSecretPath } from "../secret-v2-bridge/secret-v2-bridge-fns";
 
 type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
@@ -615,6 +616,15 @@ export const secretServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    await validateSecretPath(
+      {
+        projectId,
+        environment,
+        secretPath: path
+      },
+      folderDAL
+    );
 
     let paths: { folderId: string; path: string }[] = [];
 

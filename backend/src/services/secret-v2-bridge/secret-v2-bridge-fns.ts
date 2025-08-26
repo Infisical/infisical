@@ -22,6 +22,26 @@ const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
 
+export const validateSecretPath = async (
+  data: {
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  },
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">
+) => {
+  const { projectId, environment, secretPath } = data;
+
+  const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+
+  if (!folder) {
+    throw new NotFoundError({
+      message: `Folder with path '${secretPath}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
+      name: "SecretPathNotFound"
+    });
+  }
+};
+
 /**
  * Grabs and processes nested secret references from a string
  *
