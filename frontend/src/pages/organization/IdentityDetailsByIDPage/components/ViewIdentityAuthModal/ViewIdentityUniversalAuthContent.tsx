@@ -1,11 +1,7 @@
-import { useState } from "react";
 import { faBan, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
+import { EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import {
   useClearIdentityUniversalAuthLockouts,
@@ -15,6 +11,7 @@ import {
 import { IdentityUniversalAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
+import { LockoutFields } from "./IdentityAuthLockoutFields";
 import { IdentityUniversalAuthClientSecretsTable } from "./IdentityUniversalAuthClientSecretsTable";
 import { ViewAuthMethodProps } from "./types";
 import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
@@ -30,31 +27,11 @@ export const ViewIdentityUniversalAuthContent = ({
   const { data, isPending } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets = [], isPending: clientSecretsPending } =
     useGetIdentityUniversalAuthClientSecrets(identityId);
-  const { mutateAsync: clearLockoutsFn, isPending: isClearLockoutsPending } =
-    useClearIdentityUniversalAuthLockouts();
-
-  const [lockedOutState, setLockedOutState] = useState(lockedOut);
+  const clearLockoutsResult = useClearIdentityUniversalAuthLockouts();
 
   const [copyTextClientId, isCopyingClientId, setCopyTextClientId] = useTimedReset<string>({
     initialState: "Copy Client ID to clipboard"
   });
-
-  async function clearLockouts() {
-    try {
-      const deleted = await clearLockoutsFn({ identityId });
-      createNotification({
-        text: `Successfully cleared ${deleted} lockout${deleted === 1 ? "" : "s"}`,
-        type: "success"
-      });
-      setLockedOutState(false);
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to clear lockouts. Please try again.",
-        type: "error"
-      });
-    }
-  }
 
   if (isPending || clientSecretsPending) {
     return (
@@ -112,34 +89,12 @@ export const ViewIdentityUniversalAuthContent = ({
       <IdentityAuthFieldDisplay label="Client Secret Trusted IPs">
         {data.clientSecretTrustedIps.map((ip) => ip.ipAddress).join(", ")}
       </IdentityAuthFieldDisplay>
-      <div className="col-span-2 mt-3 flex justify-between border-b border-mineshaft-500 pb-2">
-        <span className="text-bunker-300">Lockout Options</span>
-        <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed || !lockedOutState || isClearLockoutsPending}
-              size="xs"
-              onClick={() => clearLockouts()}
-              isLoading={isClearLockoutsPending}
-              colorSchema="secondary"
-            >
-              Clear All Lockouts
-            </Button>
-          )}
-        </OrgPermissionCan>
-      </div>
-      <IdentityAuthFieldDisplay label="Lockout">
-        {data.lockoutEnabled ? "Enabled" : "Disabled"}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Lockout Threshold">
-        {data.lockoutThreshold}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Lockout Duration">
-        {data.lockoutDuration} seconds
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Lockout Counter Reset">
-        {data.lockoutCounterReset} seconds
-      </IdentityAuthFieldDisplay>
+      <LockoutFields
+        identityId={identityId}
+        lockedOut={lockedOut}
+        clearLockoutsResult={clearLockoutsResult}
+        data={data}
+      />
       <div className="col-span-2 my-3">
         <div className="mb-3 border-b border-mineshaft-500 pb-2">
           <span className="text-bunker-300">Client ID</span>

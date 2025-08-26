@@ -2,11 +2,12 @@ import { faBan, faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Badge, EmptyState, Spinner, Tooltip } from "@app/components/v2";
-import { useGetIdentityLdapAuth } from "@app/hooks/api";
+import { useClearIdentityLdapAuthLockouts, useGetIdentityLdapAuth } from "@app/hooks/api";
 import { IdentityLdapAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityLdapAuthForm";
 import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityContentWrapper";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
+import { LockoutFields } from "./IdentityAuthLockoutFields";
 import { ViewAuthMethodProps } from "./types";
 
 export const ViewIdentityLdapAuthContent = ({
@@ -14,9 +15,11 @@ export const ViewIdentityLdapAuthContent = ({
   handlePopUpToggle,
   handlePopUpOpen,
   onDelete,
-  popUp
+  popUp,
+  lockedOut
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityLdapAuth(identityId);
+  const clearLockoutsResult = useClearIdentityLdapAuthLockouts();
 
   if (isPending) {
     return (
@@ -98,6 +101,12 @@ export const ViewIdentityLdapAuthContent = ({
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
+      <LockoutFields
+        identityId={identityId}
+        lockedOut={lockedOut}
+        clearLockoutsResult={clearLockoutsResult}
+        data={data}
+      />
     </ViewIdentityContentWrapper>
   );
 };

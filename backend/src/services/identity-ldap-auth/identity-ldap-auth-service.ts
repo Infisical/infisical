@@ -15,9 +15,10 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -32,8 +33,12 @@ import { TIdentityLdapAuthDALFactory } from "./identity-ldap-auth-dal";
 import {
   AllowedFieldsSchema,
   TAttachLdapAuthDTO,
+  TCheckLdapAuthLockoutDTO,
+  TClearLdapAuthLockoutsDTO,
   TGetLdapAuthDTO,
+  TIncrementLdapAuthLockoutDTO,
   TLoginLdapAuthDTO,
+  TResetLdapAuthLockoutCounterDTO,
   TRevokeLdapAuthDTO,
   TUpdateLdapAuthDTO
 } from "./identity-ldap-auth-types";
@@ -50,9 +55,15 @@ type TIdentityLdapAuthServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   identityDAL: TIdentityDALFactory;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems">;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
+
+type LockoutObject = {
+  lockedOut: boolean;
+  failedAttempts: number;
+};
 
 export const identityLdapAuthServiceFactory = ({
   identityAccessTokenDAL,
@@ -62,7 +73,8 @@ export const identityLdapAuthServiceFactory = ({
   licenseService,
   permissionService,
   kmsService,
-  identityAuthTemplateDAL
+  identityAuthTemplateDAL,
+  keyStore
 }: TIdentityLdapAuthServiceFactoryDep) => {
   const getLdapConfig = async (identityId: string) => {
     const identity = await identityDAL.findOne({ id: identityId });
@@ -126,13 +138,17 @@ export const identityLdapAuthServiceFactory = ({
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
 
     if (!identityMembershipOrg) {
-      throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+      throw new UnauthorizedError({
+        message: "Invalid credentials"
+      });
     }
 
     const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
 
     if (!identityLdapAuth) {
-      throw new NotFoundError({ message: `Failed to find LDAP auth for identity with ID ${identityId}` });
+      throw new UnauthorizedError({
+        message: "Invalid credentials"
+      });
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
@@ -204,7 +220,11 @@ export const identityLdapAuthServiceFactory = ({
     actor,
     actorOrgId,
     isActorSuperAdmin,
-    allowedFields
+    allowedFields,
+    lockoutEnabled,
+    lockoutThreshold,
+    lockoutDuration,
+    lockoutCounterReset
   }: TAttachLdapAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -337,7 +357,11 @@ export const identityLdapAuthServiceFactory = ({
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
-          templateId
+          templateId,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDuration,
+          lockoutCounterReset
         },
         tx
       );
@@ -363,7 +387,11 @@ export const identityLdapAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    lockoutEnabled,
+    lockoutThreshold,
+    lockoutDuration,
+    lockoutCounterReset
   }: TUpdateLdapAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
@@ -511,7 +539,11 @@ export const identityLdapAuthServiceFactory = ({
       accessTokenNumUsesLimit,
       accessTokenTrustedIps: reformattedAccessTokenTrustedIps
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+        : undefined,
+      lockoutEnabled,
+      lockoutThreshold,
+      lockoutDuration,
+      lockoutCounterReset
     });
 
     return { ...updatedLdapAuth, orgId: identityMembershipOrg.orgId };
@@ -611,12 +643,104 @@ export const identityLdapAuthServiceFactory = ({
     return revokedIdentityLdapAuth;
   };
 
+  const checkLdapLockout = async ({ identityId, username }: TCheckLdapAuthLockoutDTO) => {
+    const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${username.trim().toLowerCase()}`;
+
+    const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+
+    if (lockoutRaw) {
+      const lockout = JSON.parse(lockoutRaw) as LockoutObject;
+
+      if (lockout.lockedOut) {
+        throw new UnauthorizedError({
+          message: "This identity auth method is temporarily locked, please try again later"
+        });
+      }
+    }
+  };
+
+  const incrementLdapLockout = async ({ identityId, username }: TIncrementLdapAuthLockoutDTO) => {
+    const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
+    if (!identityLdapAuth) {
+      throw new UnauthorizedError({
+        message: "Invalid credentials"
+      });
+    }
+
+    if (identityLdapAuth.lockoutEnabled) {
+      const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${username.trim().toLowerCase()}`;
+
+      let lockout: LockoutObject = {
+        lockedOut: false,
+        failedAttempts: 0
+      };
+
+      const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+      if (lockoutRaw) {
+        lockout = JSON.parse(lockoutRaw) as LockoutObject;
+      }
+
+      lockout.failedAttempts += 1;
+      if (lockout.failedAttempts >= identityLdapAuth.lockoutThreshold) {
+        lockout.lockedOut = true;
+      }
+
+      await keyStore.setItemWithExpiry(
+        LOCKOUT_KEY,
+        lockout.lockedOut ? identityLdapAuth.lockoutDuration : identityLdapAuth.lockoutCounterReset,
+        JSON.stringify(lockout)
+      );
+    }
+  };
+
+  const resetLdapLockoutCounter = async ({ identityId, username }: TResetLdapAuthLockoutCounterDTO) => {
+    await keyStore.deleteItem(
+      `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${username.trim().toLowerCase()}`
+    );
+  };
+
+  const clearLdapAuthLockouts = async ({
+    identityId,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod
+  }: TClearLdapAuthLockoutsDTO) => {
+    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.LDAP_AUTH)) {
+      throw new BadRequestError({
+        message: "The identity does not have ldap auth"
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      identityMembershipOrg.orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+    const deleted = await keyStore.deleteItems({
+      pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:*`
+    });
+
+    return { deleted, identityId, orgId: identityMembershipOrg.orgId };
+  };
+
   return {
     attachLdapAuth,
     getLdapConfig,
     updateLdapAuth,
     login,
     revokeIdentityLdapAuth,
-    getLdapAuth
+    getLdapAuth,
+    checkLdapLockout,
+    incrementLdapLockout,
+    resetLdapLockoutCounter,
+    clearLdapAuthLockouts
   };
 };

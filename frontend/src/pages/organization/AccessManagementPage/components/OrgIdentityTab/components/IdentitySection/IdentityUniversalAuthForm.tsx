@@ -11,9 +11,6 @@ import {
   FormControl,
   IconButton,
   Input,
-  Select,
-  SelectItem,
-  Switch,
   Tab,
   TabList,
   TabPanel,
@@ -29,6 +26,8 @@ import {
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { LockoutTab } from "./lockout/LockoutTab";
+import { superRefineLockout } from "./lockout/super-refine";
 import { IdentityFormTab } from "./types";
 
 const schema = z
@@ -82,63 +81,7 @@ const schema = z
     })
   })
   .required()
-  .superRefine((data, ctx) => {
-    const {
-      lockoutDurationValue,
-      lockoutCounterResetValue,
-      lockoutDurationUnit,
-      lockoutCounterResetUnit,
-      lockoutEnabled
-    } = data;
-
-    if (!lockoutEnabled) return;
-
-    let isAnyParseError = false;
-
-    const parsedLockoutDuration = parseInt(lockoutDurationValue, 10);
-    if (Number.isNaN(parsedLockoutDuration)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Lockout duration must be a number",
-        path: ["lockoutDurationValue"]
-      });
-      isAnyParseError = true;
-    }
-
-    const parsedLockoutCounterReset = parseInt(lockoutCounterResetValue, 10);
-    if (Number.isNaN(parsedLockoutCounterReset)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Lockout counter reset must be a number",
-        path: ["lockoutCounterResetValue"]
-      });
-      isAnyParseError = true;
-    }
-
-    if (isAnyParseError) return;
-
-    const lockoutDurationInSeconds = durationToSeconds(parsedLockoutDuration, lockoutDurationUnit);
-    const lockoutCounterResetInSeconds = durationToSeconds(
-      parsedLockoutCounterReset,
-      lockoutCounterResetUnit
-    );
-
-    if (lockoutDurationInSeconds > 86400 || lockoutDurationInSeconds < 30) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Lockout duration must be between 30 seconds and 1 day",
-        path: ["lockoutDurationValue"]
-      });
-    }
-
-    if (lockoutCounterResetInSeconds > 3600 || lockoutCounterResetInSeconds < 5) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Lockout counter reset must be between 5 seconds and 1 hour",
-        path: ["lockoutCounterResetValue"]
-      });
-    }
-  });
+  .superRefine(superRefineLockout);
 
 export type FormData = z.infer<typeof schema>;
 
@@ -315,8 +258,8 @@ export const IdentityUniversalAuthForm = ({
           accessTokenPeriod: Number(accessTokenPeriod),
           lockoutEnabled,
           lockoutThreshold: Number(lockoutThreshold),
-          lockoutDuration: Number(lockoutDuration),
-          lockoutCounterReset: Number(lockoutCounterReset)
+          lockoutDuration,
+          lockoutCounterReset
         });
       }
 
@@ -435,187 +378,15 @@ export const IdentityUniversalAuthForm = ({
             )}
           />
         </TabPanel>
-        <TabPanel value={IdentityFormTab.Lockout}>
-          <div className="mb-3 flex flex-col">
-            <Controller
-              control={control}
-              name="lockoutEnabled"
-              defaultValue
-              render={({ field: { value, onChange }, fieldState: { error } }) => {
-                return (
-                  <FormControl
-                    helperText={`The lockout feature will prevent login attempts for ${lockoutDurationValueWatch}${lockoutDurationUnitWatch} after ${lockoutThresholdWatch} consecutive login failures. If ${lockoutCounterResetValueWatch}${lockoutCounterResetUnitWatch} pass after the most recent failure, the lockout counter resets.`}
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Switch
-                      className="ml-0 mr-3 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                      containerClassName="flex-row-reverse w-fit"
-                      id="lockout-enabled"
-                      thumbClassName="bg-mineshaft-800"
-                      onCheckedChange={onChange}
-                      isChecked={value}
-                    >
-                      Lockout {value ? "Enabled" : "Disabled"}
-                    </Switch>
-                  </FormControl>
-                );
-              }}
-            />
-            <div className="flex flex-col gap-2">
-              <Controller
-                control={control}
-                name="lockoutThreshold"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className={`mb-0 flex-grow ${lockoutEnabledWatch ? "" : "opacity-70"}`}
-                      label="Lockout Threshold"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      tooltipText="The amount of times login must fail before locking the identity auth method"
-                    >
-                      <Input
-                        {...field}
-                        placeholder="Enter lockout threshold..."
-                        isDisabled={!lockoutEnabledWatch}
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <div className="flex items-end gap-2">
-                <Controller
-                  control={control}
-                  name="lockoutDurationValue"
-                  render={({ field, fieldState: { error } }) => {
-                    return (
-                      <FormControl
-                        className={`mb-0 flex-grow ${lockoutEnabledWatch ? "" : "opacity-70"}`}
-                        label="Lockout Duration"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                        tooltipText="How long an identity auth method lockout lasts"
-                      >
-                        <Input
-                          {...field}
-                          placeholder="Enter lockout duration..."
-                          isDisabled={!lockoutEnabledWatch}
-                        />
-                      </FormControl>
-                    );
-                  }}
-                />
-                <Controller
-                  control={control}
-                  name="lockoutDurationUnit"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      className={`mb-0 ${lockoutEnabledWatch ? "" : "opacity-70"}`}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Select
-                        isDisabled={!lockoutEnabledWatch}
-                        value={field.value}
-                        className="min-w-32 pr-2"
-                        onValueChange={field.onChange}
-                        position="popper"
-                      >
-                        <SelectItem
-                          value="s"
-                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
-                        >
-                          <div className="ml-3 font-medium">Seconds</div>
-                        </SelectItem>
-                        <SelectItem
-                          value="m"
-                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
-                        >
-                          <div className="ml-3 font-medium">Minutes</div>
-                        </SelectItem>
-                        <SelectItem
-                          value="h"
-                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
-                        >
-                          <div className="ml-3 font-medium">Hours</div>
-                        </SelectItem>
-                        <SelectItem
-                          value="d"
-                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
-                        >
-                          <div className="ml-3 font-medium">Days</div>
-                        </SelectItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </div>
-              <div className="flex items-end gap-2">
-                <Controller
-                  control={control}
-                  name="lockoutCounterResetValue"
-                  render={({ field, fieldState: { error } }) => {
-                    return (
-                      <FormControl
-                        className={`mb-0 flex-grow ${lockoutEnabledWatch ? "" : "opacity-70"}`}
-                        label="Lockout Counter Reset"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                        tooltipText="How long to wait from the most recent failed login until resetting the lockout counter"
-                      >
-                        <Input
-                          {...field}
-                          placeholder="Enter lockout counter reset..."
-                          isDisabled={!lockoutEnabledWatch}
-                        />
-                      </FormControl>
-                    );
-                  }}
-                />
-                <Controller
-                  control={control}
-                  name="lockoutCounterResetUnit"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      className={`mb-0 ${lockoutEnabledWatch ? "" : "opacity-70"}`}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Select
-                        isDisabled={!lockoutEnabledWatch}
-                        value={field.value}
-                        className="min-w-32 pr-2"
-                        onValueChange={field.onChange}
-                        position="popper"
-                      >
-                        <SelectItem
-                          value="s"
-                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
-                        >
-                          <div className="ml-3 font-medium">Seconds</div>
-                        </SelectItem>
-                        <SelectItem
-                          value="m"
-                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
-                        >
-                          <div className="ml-3 font-medium">Minutes</div>
-                        </SelectItem>
-                        <SelectItem
-                          value="h"
-                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
-                        >
-                          <div className="ml-3 font-medium">Hours</div>
-                        </SelectItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </div>
-            </div>
-          </div>
-        </TabPanel>
-
+        <LockoutTab
+          control={control}
+          lockoutEnabled={lockoutEnabledWatch}
+          lockoutThreshold={lockoutThresholdWatch}
+          lockoutDurationValue={lockoutDurationValueWatch}
+          lockoutDurationUnit={lockoutDurationUnitWatch}
+          lockoutCounterResetValue={lockoutCounterResetValueWatch}
+          lockoutCounterResetUnit={lockoutCounterResetUnitWatch}
+        />
         <TabPanel value={IdentityFormTab.Advanced}>
           {clientSecretTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>

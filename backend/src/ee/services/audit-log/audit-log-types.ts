@@ -199,6 +199,7 @@ export enum EventType {
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS = "clear-identity-universal-auth-lockouts",
+  CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS = "clear-identity-ldap-lockouts",
 
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
@@ -1369,6 +1370,10 @@ interface AddIdentityLdapAuthEvent {
     allowedFields?: TAllowedFields[];
     url: string;
     templateId?: string | null;
+    lockoutEnabled: boolean;
+    lockoutThreshold: number;
+    lockoutDuration: number;
+    lockoutCounterReset: number;
   };
 }
 
@@ -1383,6 +1388,10 @@ interface UpdateIdentityLdapAuthEvent {
     allowedFields?: TAllowedFields[];
     url?: string;
     templateId?: string | null;
+    lockoutEnabled?: boolean;
+    lockoutThreshold?: number;
+    lockoutDuration?: number;
+    lockoutCounterReset?: number;
   };
 }
 
@@ -1395,6 +1404,13 @@ interface GetIdentityLdapAuthEvent {
 
 interface RevokeIdentityLdapAuthEvent {
   type: EventType.REVOKE_IDENTITY_LDAP_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface ClearIdentityLdapAuthLockoutsEvent {
+  type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
   metadata: {
     identityId: string;
   };
@@ -3553,6 +3569,7 @@ export type Event =
   | UpdateIdentityLdapAuthEvent
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
+  | ClearIdentityLdapAuthLockoutsEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent
