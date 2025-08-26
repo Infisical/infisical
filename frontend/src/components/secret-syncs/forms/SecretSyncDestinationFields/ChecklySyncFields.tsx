@@ -42,8 +42,8 @@ export const ChecklySyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.accountId", "");
           setValue("destinationConfig.accountName", "");
-          setValue("destinationConfig.groupId", "");
-          setValue("destinationConfig.groupName", "");
+          setValue("destinationConfig.groupId", undefined);
+          setValue("destinationConfig.groupName", undefined);
         }}
       />
       <Controller
@@ -89,10 +89,11 @@ export const ChecklySyncFields = () => {
             <FilterableSelect
               isLoading={isGroupsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
+              isClearable
               value={groups.find((p) => p.id === value) ?? null}
               onChange={(option) => {
                 const v = option as SingleValue<TChecklyAccount>;
-                onChange(v?.id ?? null);
+                onChange(v?.id ?? undefined);
                 setValue("destinationConfig.groupName", v?.name ?? "");
               }}
               options={groups}

@@ -235,6 +235,10 @@ class ChecklyPublicClient {
     groupId: string,
     environmentVariables: Array<{ key: string; value: string; locked?: boolean }>
   ) {
+    if (environmentVariables.length > 50) {
+      throw new Error(`Checkly does not support syncing more than 50 variables to Check Group`);
+    }
+
     const apiVariables = environmentVariables.map((v) => ({
       key: v.key,
       value: v.value,
