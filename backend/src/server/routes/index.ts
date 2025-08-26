@@ -560,8 +560,7 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL,
-    eventBusService
+    auditLogStreamDAL
   });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
@@ -1122,7 +1121,9 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     secretSyncQueue,
-    reminderService
+    reminderService,
+    eventBusService,
+    licenseService
   });
 
   const projectService = projectServiceFactory({
@@ -1973,7 +1974,7 @@ export const registerRoutes = async (
 
   await telemetryQueue.startTelemetryCheck();
   await telemetryQueue.startAggregatedEventsJob();
-  await dailyResourceCleanUp.startCleanUp();
+  await dailyResourceCleanUp.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();

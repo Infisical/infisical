@@ -5,8 +5,8 @@ import { z } from "zod";
 
 import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { getServerSentEventsHeaders } from "@app/ee/services/event/event-sse-stream";
-import { EventRegisterSchema } from "@app/ee/services/event/types";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { EventRegisterSchema, Mappings } from "@app/ee/services/event/types";
+import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, EventSubscriptions } from "@app/lib/api-docs";
 import { BadRequestError, ForbiddenRequestError, RateLimitError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -82,21 +82,19 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
             req.body.register.forEach((r) => {
               const fields = {
                 environment: r.conditions?.environmentSlug ?? "",
-                secretPath: r.conditions?.secretPath ?? "/",
-                eventType: r.event
+                secretPath: r.conditions?.secretPath ?? "/"
               };
 
-              const allowed = info.permission.can(
-                ProjectPermissionSecretActions.Subscribe,
-                subject(ProjectPermissionSub.Secrets, fields)
-              );
+              const action = Mappings.BusEventToAction(r.event);
+
+              const allowed = info.permission.can(action, subject(ProjectPermissionSub.SecretEvents, fields));
 
               if (!allowed) {
                 throw new ForbiddenRequestError({
                   name: "PermissionDenied",
-                  message: `You are not allowed to subscribe on secrets`,
+                  message: `You are not allowed to subscribe on ${ProjectPermissionSub.SecretEvents}`,
                   details: {
-                    event: fields.eventType,
+                    action,
                     environmentSlug: fields.environment,
                     secretPath: fields.secretPath
                   }

@@ -328,12 +328,12 @@ const Page = () => {
       createNotification({
         text: isProtectedBranch
           ? "Requested changes have been sent for review"
-          : "Changes committed successfully",
+          : "Changes saved successfully",
         type: "success"
       });
     } catch (error) {
       createNotification({
-        text: "Failed to commit changes",
+        text: "Failed to save changes",
         type: "error"
       });
       console.error(error);

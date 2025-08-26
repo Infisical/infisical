@@ -67,7 +67,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: () => ({ message: "Authenticated" as const })
   });
 

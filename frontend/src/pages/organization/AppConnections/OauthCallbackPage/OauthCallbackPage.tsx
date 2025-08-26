@@ -36,7 +36,8 @@ type GithubFormData = BaseFormData &
 type GithubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
 
-type GitLabFormData = BaseFormData & Pick<TGitLabConnection, "name" | "method" | "description">;
+type GitLabFormData = BaseFormData &
+  Pick<TGitLabConnection, "name" | "method" | "description" | "credentials">;
 
 type AzureKeyVaultFormData = BaseFormData &
   Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
@@ -147,7 +148,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitLab);
 
-    const { connectionId, name, description, returnUrl, isUpdate } = formData;
+    const { connectionId, name, description, returnUrl, isUpdate, credentials } = formData;
 
     try {
       if (isUpdate && connectionId) {
@@ -155,7 +156,8 @@ export const OAuthCallbackPage = () => {
           app: AppConnection.GitLab,
           connectionId,
           credentials: {
-            code: code as string
+            code: code as string,
+            instanceUrl: credentials.instanceUrl as string
           }
         });
       } else {
@@ -165,7 +167,8 @@ export const OAuthCallbackPage = () => {
           description,
           method: GitLabConnectionMethod.OAuth,
           credentials: {
-            code: code as string
+            code: code as string,
+            instanceUrl: credentials.instanceUrl as string
           }
         });
       }

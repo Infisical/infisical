@@ -2,7 +2,9 @@ name: Release standalone docker image
 on:
     push:
         tags:
-            - "infisical/v*.*.*-postgres"
+            - "v*.*.*"
+            - "v*.*.*-nightly-*"
+            - "v*.*.*-nightly-*.*"
 
 jobs:
     infisical-tests:
@@ -17,7 +19,7 @@ jobs:
         steps:
             - name: Extract version from tag
               id: extract_version
-              run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
+              run: echo "::set-output name=version::${GITHUB_REF_NAME}"
             - name: ☁️ Checkout source
               uses: actions/checkout@v3
               with:
@@ -53,7 +55,7 @@ jobs:
                   push: true
                   context: .
                   tags: |
-                      infisical/infisical:latest-postgres
+                      infisical/infisical:latest
                       infisical/infisical:${{ steps.commit.outputs.short }}
                       infisical/infisical:${{ steps.extract_version.outputs.version }}
                   platforms: linux/amd64,linux/arm64
@@ -69,7 +71,7 @@ jobs:
         steps:
             - name: Extract version from tag
               id: extract_version
-              run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
+              run: echo "::set-output name=version::${GITHUB_REF_NAME}"
             - name: ☁️ Checkout source
               uses: actions/checkout@v3
               with:
@@ -105,7 +107,7 @@ jobs:
                   push: true
                   context: .
                   tags: |
-                      infisical/infisical-fips:latest-postgres
+                      infisical/infisical-fips:latest
                       infisical/infisical-fips:${{ steps.commit.outputs.short }}
                       infisical/infisical-fips:${{ steps.extract_version.outputs.version }}
                   platforms: linux/amd64,linux/arm64

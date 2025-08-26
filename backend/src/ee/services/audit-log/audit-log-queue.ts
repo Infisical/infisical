@@ -1,8 +1,6 @@
 import { AxiosError, RawAxiosRequestHeaders } from "axios";
 
-import { ProjectType, SecretKeyEncoding } from "@app/db/schemas";
-import { TEventBusService } from "@app/ee/services/event/event-bus-service";
-import { TopicName, toPublishableEvent } from "@app/ee/services/event/types";
+import { SecretKeyEncoding } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
@@ -22,7 +20,6 @@ type TAuditLogQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  eventBusService: TEventBusService;
 };
 
 export type TAuditLogQueueServiceFactory = {
@@ -38,8 +35,7 @@ export const auditLogQueueServiceFactory = async ({
   queueService,
   projectDAL,
   licenseService,
-  auditLogStreamDAL,
-  eventBusService
+  auditLogStreamDAL
 }: TAuditLogQueueServiceFactoryDep): Promise<TAuditLogQueueServiceFactory> => {
   const pushToLog = async (data: TCreateAuditLogDTO) => {
     await queueService.queue<QueueName.AuditLog>(QueueName.AuditLog, QueueJobs.AuditLog, data, {
@@ -144,16 +140,6 @@ export const auditLogQueueServiceFactory = async ({
           }
         )
       );
-    }
-
-    const publishable = toPublishableEvent(event);
-
-    if (publishable) {
-      await eventBusService.publish(TopicName.CoreServers, {
-        type: ProjectType.SecretManager,
-        source: "infiscal",
-        data: publishable.data
-      });
     }
   });
 

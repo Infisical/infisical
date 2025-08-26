@@ -181,7 +181,13 @@ export const secretImportServiceFactory = ({
         projectId,
         environmentSlug: environment,
         actorId,
-        actor
+        actor,
+        event: {
+          importMutation: {
+            secretPath,
+            environment
+          }
+        }
       });
     }
 
@@ -356,7 +362,13 @@ export const secretImportServiceFactory = ({
       projectId,
       environmentSlug: environment,
       actor,
-      actorId
+      actorId,
+      event: {
+        importMutation: {
+          secretPath,
+          environment
+        }
+      }
     });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);

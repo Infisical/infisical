@@ -4,6 +4,7 @@ import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Badge } from "@app/components/v2";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 export const RenderSyncOptionsReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Render }>();
@@ -27,13 +28,20 @@ export const RenderSyncOptionsReviewFields = () => {
 
 export const RenderSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Render }>();
-  const serviceName = watch("destinationConfig.serviceName");
-  const scope = watch("destinationConfig.scope");
+  const config = watch("destinationConfig");
 
   return (
     <>
-      <GenericFieldLabel label="Scope">{scope}</GenericFieldLabel>
-      <GenericFieldLabel label="Service">{serviceName}</GenericFieldLabel>
+      <GenericFieldLabel label="Scope">{config.scope}</GenericFieldLabel>
+      {config.scope === RenderSyncScope.Service ? (
+        <GenericFieldLabel label="Service">
+          {config.serviceName ?? config.serviceId}
+        </GenericFieldLabel>
+      ) : (
+        <GenericFieldLabel label="Service">
+          {config.environmentGroupName ?? config.environmentGroupId}
+        </GenericFieldLabel>
+      )}
     </>
   );
 };

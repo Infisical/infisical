@@ -1,7 +1,14 @@
-import { ChangeEvent, DragEvent } from "react";
+import { ChangeEvent, Dispatch, DragEvent, SetStateAction, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { faPlus, faUpload } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowRight,
+  faAsterisk,
+  faComment,
+  faKey,
+  faPlus,
+  faUpload
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
@@ -9,8 +16,22 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
-import { parseDotEnv, parseJson, parseYaml } from "@app/components/utilities/parseSecrets";
-import { Button, Lottie, Modal, ModalContent } from "@app/components/v2";
+import {
+  parseCsvToMatrix,
+  parseDotEnv,
+  parseJson,
+  parseYaml
+} from "@app/components/utilities/parseSecrets";
+import {
+  Badge,
+  Button,
+  FormLabel,
+  Lottie,
+  Modal,
+  ModalContent,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
@@ -38,6 +59,84 @@ type Props = {
   isProtectedBranch?: boolean;
 };
 
+type SecretMatrixMap = {
+  key: number;
+  value: number | null;
+  comment: number | null;
+};
+
+const popupKeys = ["importSecEnv", "confirmUpload", "pasteSecEnv", "importMatrixMap"] as const;
+
+const MatrixImportModalTableRow = ({
+  importSecretMatrixMap,
+  setImportSecretMatrixMap,
+  headers,
+  mapKey
+}: {
+  importSecretMatrixMap: SecretMatrixMap;
+  setImportSecretMatrixMap: Dispatch<SetStateAction<SecretMatrixMap>>;
+  headers: string[];
+  mapKey: keyof SecretMatrixMap;
+}) => {
+  return (
+    <tr>
+      <td className="w-full">
+        <Select
+          value={importSecretMatrixMap[mapKey]?.toString() || (null as unknown as string)}
+          onValueChange={(v) =>
+            setImportSecretMatrixMap((ism) => ({
+              ...ism,
+              [mapKey]: v ? parseInt(v, 10) : null
+            }))
+          }
+          className="w-full border border-mineshaft-500"
+          position="popper"
+          placeholder="Select an option..."
+          dropdownContainerClassName="max-w-none"
+        >
+          {mapKey !== "key" && <SelectItem value={null as unknown as string}>None</SelectItem>}
+          {headers.map((header, col) => {
+            return (
+              <SelectItem value={col.toString()} key={`${mapKey}-${header}`}>
+                {header}
+              </SelectItem>
+            );
+          })}
+        </Select>
+      </td>
+      <td className="whitespace-nowrap pl-5 pr-5">
+        <div className="flex items-center justify-center">
+          <FontAwesomeIcon className="text-mineshaft-400" icon={faArrowRight} />
+        </div>
+      </td>
+      <td className="whitespace-nowrap">
+        <div className="flex h-full items-start justify-center">
+          <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 whitespace-nowrap border border-mineshaft-600 bg-mineshaft-600 text-bunker-200">
+            {mapKey === "key" && (
+              <>
+                <FontAwesomeIcon icon={faKey} />
+                <span>Secret Key</span>
+              </>
+            )}
+            {mapKey === "value" && (
+              <>
+                <FontAwesomeIcon icon={faAsterisk} />
+                <span>Secret Value</span>
+              </>
+            )}
+            {mapKey === "comment" && (
+              <>
+                <FontAwesomeIcon icon={faComment} />
+                <span>Comment</span>
+              </>
+            )}
+          </Badge>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
 export const SecretDropzone = ({
   isSmaller,
   environments = [],
@@ -50,11 +149,14 @@ export const SecretDropzone = ({
   const [isDragActive, setDragActive] = useToggle();
   const [isLoading, setIsLoading] = useToggle();
 
-  const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    "importSecEnv",
-    "confirmUpload",
-    "pasteSecEnv"
-  ] as const);
+  // Maps matrix columns to parts of a secret
+  const [importSecretMatrixMap, setImportSecretMatrixMap] = useState<SecretMatrixMap>({
+    key: 0,
+    value: null,
+    comment: null
+  });
+
+  const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp(popupKeys);
   const queryClient = useQueryClient();
   const { openPopUp } = usePopUpAction();
 
@@ -136,10 +238,17 @@ export const SecretDropzone = ({
       });
       return;
     }
-    // const fileType = file.name.split('.')[1];
+
     setIsLoading.on();
     reader.onload = (event) => {
-      if (!event?.target?.result) return;
+      if (!event?.target?.result) {
+        createNotification({
+          type: "error",
+          text: "Invalid file contents."
+        });
+        setIsLoading.off();
+        return;
+      }
 
       let env: TParsedEnv;
 
@@ -154,7 +263,22 @@ export const SecretDropzone = ({
         case "application/yaml":
           env = parseYaml(src);
           break;
-
+        case "text/csv": {
+          const fullMatrix = parseCsvToMatrix(src);
+          if (!fullMatrix.length) {
+            createNotification({
+              type: "error",
+              text: "Failed to find secrets in CSV file. File might be empty."
+            });
+            setIsLoading.off();
+            return;
+          }
+          const headers = fullMatrix[0];
+          const matrix = fullMatrix.slice(1);
+          handlePopUpOpen("importMatrixMap", { headers, matrix });
+          setIsLoading.off();
+          return;
+        }
         default:
           env = parseDotEnv(src);
           break;
@@ -169,6 +293,22 @@ export const SecretDropzone = ({
     } catch (error) {
       console.log(error);
     }
+  };
+
+  const finishMappedMatrixImport = (matrix: string[][]) => {
+    const env: TParsedEnv = {};
+    matrix.forEach((row) => {
+      const key = row[importSecretMatrixMap.key];
+      if (key) {
+        env[key] = {
+          value: importSecretMatrixMap.value ? row[importSecretMatrixMap.value] : "",
+          comments: importSecretMatrixMap.comment ? [row[importSecretMatrixMap.comment]] : []
+        };
+      }
+    });
+    handlePopUpClose("importMatrixMap");
+    setImportSecretMatrixMap({ key: 0, value: null, comment: null });
+    handleParsedEnv(env);
   };
 
   const handleDrop = (e: DragEvent) => {
@@ -293,7 +433,7 @@ export const SecretDropzone = ({
                   disabled={!isAllowed}
                   type="file"
                   className="absolute h-full w-full cursor-pointer opacity-0"
-                  accept=".txt,.env,.yml,.yaml,.json"
+                  accept=".txt,.env,.yml,.yaml,.json,.csv"
                   onChange={handleFileUpload}
                 />
               )}
@@ -405,6 +545,75 @@ export const SecretDropzone = ({
               </div>
             </div>
           )}
+        </ModalContent>
+      </Modal>
+
+      {/* Matrix Import Modal */}
+      <Modal
+        isOpen={popUp?.importMatrixMap?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("importMatrixMap", open)}
+      >
+        <ModalContent
+          title="Import Column Mapping"
+          subTitle="Map your data columns to different parts of the secret"
+        >
+          <div className="w-full overflow-hidden">
+            <table className="w-full table-auto">
+              <thead>
+                <tr className="text-left">
+                  <th>
+                    <FormLabel tooltipClassName="max-w-sm" label="Import Column" />
+                  </th>
+                  <th />
+                  <th className="whitespace-nowrap">
+                    <FormLabel label="Resulting Import" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Key */}
+                <MatrixImportModalTableRow
+                  importSecretMatrixMap={importSecretMatrixMap}
+                  setImportSecretMatrixMap={setImportSecretMatrixMap}
+                  headers={popUp?.importMatrixMap.data?.headers || []}
+                  mapKey="key"
+                />
+
+                {/* Value */}
+                <MatrixImportModalTableRow
+                  importSecretMatrixMap={importSecretMatrixMap}
+                  setImportSecretMatrixMap={setImportSecretMatrixMap}
+                  headers={popUp?.importMatrixMap.data?.headers || []}
+                  mapKey="value"
+                />
+
+                {/* Comment */}
+                <MatrixImportModalTableRow
+                  importSecretMatrixMap={importSecretMatrixMap}
+                  setImportSecretMatrixMap={setImportSecretMatrixMap}
+                  headers={popUp?.importMatrixMap.data?.headers || []}
+                  mapKey="comment"
+                />
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
+            <Button
+              onClick={() =>
+                popUp.importMatrixMap.data?.matrix
+                  ? finishMappedMatrixImport(popUp.importMatrixMap.data?.matrix)
+                  : createNotification({
+                      text: "Invalid secret matrix.",
+                      type: "error"
+                    })
+              }
+              isFullWidth
+              variant="outline_bg"
+            >
+              Import Secrets
+            </Button>
+          </div>
         </ModalContent>
       </Modal>
     </div>

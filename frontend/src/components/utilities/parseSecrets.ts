@@ -165,3 +165,61 @@ export function parseYaml(src: ArrayBuffer | string) {
 
   return result;
 }
+
+function detectSeparator(csvContent: string): string {
+  const firstLine = csvContent.split("\n")[0];
+  const separators = [",", ";", "\t", "|"];
+
+  const counts = separators.map((sep) => ({
+    separator: sep,
+    count: (firstLine.match(new RegExp(`\\${sep}`, "g")) || []).length
+  }));
+
+  const detected = counts.reduce((max, curr) => (curr.count > max.count ? curr : max));
+
+  return detected.count > 0 ? detected.separator : ",";
+}
+
+export function parseCsvToMatrix(src: ArrayBuffer | string): string[][] {
+  let csvContent: string;
+  if (typeof src === "string") {
+    csvContent = src;
+  } else {
+    csvContent = new TextDecoder("utf-8").decode(src);
+  }
+
+  const separator = detectSeparator(csvContent);
+  const lines = csvContent.replace(/\r\n?/g, "\n").split("\n");
+  const matrix: string[][] = [];
+
+  lines.forEach((line) => {
+    if (line.trim() !== "") {
+      const cells: string[] = [];
+      let currentCell = "";
+      let inQuote = false;
+
+      for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+
+        if (char === '"') {
+          if (inQuote && nextChar === '"') {
+            currentCell += '"';
+            i += 1;
+          } else {
+            inQuote = !inQuote;
+          }
+        } else if (char === separator && !inQuote) {
+          cells.push(currentCell.trim());
+          currentCell = "";
+        } else {
+          currentCell += char;
+        }
+      }
+      cells.push(currentCell.trim());
+      matrix.push(cells);
+    }
+  });
+
+  return matrix;
+}

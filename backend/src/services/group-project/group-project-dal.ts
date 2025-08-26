@@ -156,6 +156,7 @@ export const groupProjectDALFactory = (db: TDbClient) => {
         `${TableName.GroupProjectMembershipRole}.customRoleId`,
         `${TableName.ProjectRoles}.id`
       )
+      .join(TableName.OrgMembership, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
       .select(
         db.ref("id").withSchema(TableName.UserGroupMembership),
         db.ref("createdAt").withSchema(TableName.UserGroupMembership),
@@ -176,7 +177,8 @@ export const groupProjectDALFactory = (db: TDbClient) => {
         db.ref("temporaryRange").withSchema(TableName.GroupProjectMembershipRole),
         db.ref("temporaryAccessStartTime").withSchema(TableName.GroupProjectMembershipRole),
         db.ref("temporaryAccessEndTime").withSchema(TableName.GroupProjectMembershipRole),
-        db.ref("name").as("projectName").withSchema(TableName.Project)
+        db.ref("name").as("projectName").withSchema(TableName.Project),
+        db.ref("isActive").withSchema(TableName.OrgMembership)
       )
       .where({ isGhost: false });
 
@@ -192,7 +194,8 @@ export const groupProjectDALFactory = (db: TDbClient) => {
         id,
         userId,
         projectName,
-        createdAt
+        createdAt,
+        isActive
       }) => ({
         isGroupMember: true,
         id,
@@ -202,7 +205,7 @@ export const groupProjectDALFactory = (db: TDbClient) => {
           id: projectId,
           name: projectName
         },
-        user: { email, username, firstName, lastName, id: userId, publicKey, isGhost },
+        user: { email, username, firstName, lastName, id: userId, publicKey, isGhost, isOrgMembershipActive: isActive },
         createdAt
       }),
       key: "id",

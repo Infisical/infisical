@@ -20,7 +20,10 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
     const slackConfig = await projectSlackConfigDAL.getIntegrationDetailsByProject(projectId);
 
     if (slackConfig) {
-      if (notification.type === TriggerFeature.ACCESS_REQUEST) {
+      if (
+        notification.type === TriggerFeature.ACCESS_REQUEST ||
+        notification.type === TriggerFeature.ACCESS_REQUEST_UPDATED
+      ) {
         const targetChannelIds = slackConfig.accessRequestChannels?.split(", ") || [];
         if (targetChannelIds.length && slackConfig.isAccessRequestNotificationEnabled) {
           await sendSlackNotification({
@@ -50,7 +53,10 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
     }
 
     if (microsoftTeamsConfig) {
-      if (notification.type === TriggerFeature.ACCESS_REQUEST) {
+      if (
+        notification.type === TriggerFeature.ACCESS_REQUEST ||
+        notification.type === TriggerFeature.ACCESS_REQUEST_UPDATED
+      ) {
         if (microsoftTeamsConfig.isAccessRequestNotificationEnabled && microsoftTeamsConfig.accessRequestChannels) {
           const { success, data } = validateMicrosoftTeamsChannelsSchema.safeParse(
             microsoftTeamsConfig.accessRequestChannels

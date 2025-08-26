@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { logger } from "@app/lib/logger";
 
-import { EventSchema, TopicName } from "./types";
+import { BusEventSchema, TopicName } from "./types";
 
 export const eventBusFactory = (redis: Redis) => {
   const publisher = redis.duplicate();
@@ -28,7 +28,7 @@ export const eventBusFactory = (redis: Redis) => {
    * @param topic - The topic to publish the event to.
    * @param event - The event data to publish.
    */
-  const publish = async <T extends z.input<typeof EventSchema>>(topic: TopicName, event: T) => {
+  const publish = async <T extends z.input<typeof BusEventSchema>>(topic: TopicName, event: T) => {
     const json = JSON.stringify(event);
 
     return publisher.publish(topic, json, (err) => {
@@ -44,7 +44,7 @@ export const eventBusFactory = (redis: Redis) => {
    * @template T - The type of the event data, which should match the schema defined in EventSchema.
    * @returns A function that can be called to unsubscribe from the event bus.
    */
-  const subscribe = <T extends z.infer<typeof EventSchema>>(fn: (data: T) => Promise<void> | void) => {
+  const subscribe = <T extends z.infer<typeof BusEventSchema>>(fn: (data: T) => Promise<void> | void) => {
     // Not using async await cause redis client's `on` method does not expect async listeners.
     const listener = (channel: string, message: string) => {
       try {

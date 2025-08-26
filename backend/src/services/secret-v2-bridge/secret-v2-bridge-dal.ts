@@ -684,9 +684,9 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
               throw new BadRequestError({ message: "Missing personal user id" });
             }
             void bd.orWhere({
-              key: el.key,
-              type: el.type,
-              userId: el.type === SecretType.Personal ? el.userId : null
+              [`${TableName.SecretV2}.key` as "key"]: el.key,
+              [`${TableName.SecretV2}.type` as "type"]: el.type,
+              [`${TableName.SecretV2}.userId` as "userId"]: el.type === SecretType.Personal ? el.userId : null
             });
           });
         })
@@ -695,12 +695,60 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
-      return secrets.map((secret) => ({
-        ...secret,
-        isRotatedSecret: Boolean(secret.rotationId)
-      }));
+
+      const docs = sqlNestRelationships({
+        data: secrets,
+        key: "id",
+        parentMapper: (secret) => ({
+          ...secret,
+          isRotatedSecret: Boolean(secret.rotationId)
+        }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+              id,
+              color,
+              slug,
+              name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
+          }
+        ]
+      });
+
+      return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "find by secret keys" });
     }
