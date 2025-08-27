@@ -1,4 +1,7 @@
-/* eslint-disable no-case-declarations, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-var-requires, no-await-in-loop, no-continue */
+/* eslint-disable no-case-declarations, @typescript-eslint/no-unsafe-assignment, no-await-in-loop, no-continue */
+// @ts-expect-error: No types available for httpntlm
+import * as httpntlm from "httpntlm";
+
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
@@ -9,8 +12,6 @@ import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
 import { AzureADCSConnectionMethod } from "./azure-adcs-connection-enums";
 import { TAzureADCSConnectionConfig } from "./azure-adcs-connection-types";
-
-const httpntlm = require("httpntlm");
 
 // Type definitions for httpntlm module
 interface HttpNtlmRequestOptions {
