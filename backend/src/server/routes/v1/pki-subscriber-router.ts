@@ -112,7 +112,19 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           .transform((arr) => Array.from(new Set(arr)))
           .describe(PKI_SUBSCRIBERS.CREATE.extendedKeyUsages),
         enableAutoRenewal: z.boolean().optional().describe(PKI_SUBSCRIBERS.CREATE.enableAutoRenewal),
-        autoRenewalPeriodInDays: z.number().min(1).optional().describe(PKI_SUBSCRIBERS.CREATE.autoRenewalPeriodInDays)
+        autoRenewalPeriodInDays: z.number().min(1).optional().describe(PKI_SUBSCRIBERS.CREATE.autoRenewalPeriodInDays),
+        properties: z
+          .object({
+            azureTemplateType: z.string().optional().describe("Azure ADCS Certificate Template Type"),
+            organization: z.string().optional().describe("Organization (O)"),
+            organizationalUnit: z.string().optional().describe("Organizational Unit (OU)"),
+            country: z.string().length(2).optional().describe("Country (C) - Two letter country code"),
+            state: z.string().optional().describe("State/Province (ST)"),
+            locality: z.string().optional().describe("Locality (L)"),
+            emailAddress: z.string().email().optional().describe("Email Address")
+          })
+          .optional()
+          .describe("Additional subscriber properties and subject fields")
       }),
       response: {
         200: sanitizedPkiSubscriber
@@ -199,7 +211,19 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           .optional()
           .describe(PKI_SUBSCRIBERS.UPDATE.extendedKeyUsages),
         enableAutoRenewal: z.boolean().optional().describe(PKI_SUBSCRIBERS.UPDATE.enableAutoRenewal),
-        autoRenewalPeriodInDays: z.number().min(1).optional().describe(PKI_SUBSCRIBERS.UPDATE.autoRenewalPeriodInDays)
+        autoRenewalPeriodInDays: z.number().min(1).optional().describe(PKI_SUBSCRIBERS.UPDATE.autoRenewalPeriodInDays),
+        properties: z
+          .object({
+            azureTemplateType: z.string().optional().describe("Azure ADCS Certificate Template Type"),
+            organization: z.string().optional().describe("Organization (O)"),
+            organizationalUnit: z.string().optional().describe("Organizational Unit (OU)"),
+            country: z.string().length(2).optional().describe("Country (C) - Two letter country code"),
+            state: z.string().optional().describe("State/Province (ST)"),
+            locality: z.string().optional().describe("Locality (L)"),
+            emailAddress: z.string().email().optional().describe("Email Address")
+          })
+          .optional()
+          .describe("Additional subscriber properties and subject fields")
       }),
       response: {
         200: sanitizedPkiSubscriber

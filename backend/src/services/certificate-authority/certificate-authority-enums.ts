@@ -1,6 +1,7 @@
 export enum CaType {
   INTERNAL = "internal",
-  ACME = "acme"
+  ACME = "acme",
+  AZURE_AD_CS = "azure-ad-cs"
 }
 
 export enum InternalCaType {
@@ -16,4 +17,10 @@ export enum CaStatus {
 
 export enum CaRenewalType {
   EXISTING = "existing"
+}
+
+export enum CaCapability {
+  ISSUE_CERTIFICATES = "issue-certificates",
+  REVOKE_CERTIFICATES = "revoke-certificates",
+  RENEW_CERTIFICATES = "renew-certificates"
 }

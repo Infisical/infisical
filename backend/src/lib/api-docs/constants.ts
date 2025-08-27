@@ -2312,6 +2312,11 @@ export const AppConnections = {
     OKTA: {
       instanceUrl: "The URL used to access your Okta organization.",
       apiToken: "The API token used to authenticate with Okta."
+    },
+    AZURE_ADCS: {
+      adcsUrl: "The URL of the Azure ADCS instance to connect with.",
+      username: "The username used to access Azure ADCS.",
+      password: "The password used to access Azure ADCS."
     }
   }
 };

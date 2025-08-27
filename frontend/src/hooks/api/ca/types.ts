@@ -1,5 +1,13 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
-import { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
+import {
+  AcmeDnsProvider,
+  AzureAdCsAuthMethod,
+  AzureAdCsTemplateType,
+  CaRenewalType,
+  CaStatus,
+  CaType,
+  InternalCaType
+} from "./enums";
 
 export type TAcmeCertificateAuthority = {
   id: string;
@@ -16,6 +24,20 @@ export type TAcmeCertificateAuthority = {
     };
     directoryUrl: string;
     accountEmail: string;
+  };
+};
+
+export type TAzureAdCsCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.AZURE_AD_CS;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    azureAdcsConnectionId: string;
+    templateName: AzureAdCsTemplateType;
+    authMethod: AzureAdCsAuthMethod;
   };
 };
 
@@ -48,6 +70,7 @@ export type TInternalCertificateAuthority = {
 
 export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
+  | TAzureAdCsCertificateAuthority
   | TInternalCertificateAuthority;
 
 export type TCreateCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;

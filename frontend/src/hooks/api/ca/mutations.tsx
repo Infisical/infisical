@@ -39,6 +39,10 @@ export const useUpdateCa = () => {
       queryClient.invalidateQueries({
         queryKey: caKeys.getCaByNameAndProjectId(caName, projectId)
       });
+      // Invalidate external CAs list
+      queryClient.invalidateQueries({
+        queryKey: [`external-cas-${projectId}`]
+      });
     }
   });
 };
@@ -56,6 +60,10 @@ export const useCreateCa = () => {
     onSuccess: (_, { type, projectId }) => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
+      // Invalidate external CAs list
+      queryClient.invalidateQueries({
+        queryKey: [`external-cas-${projectId}`]
       });
     }
   });
@@ -78,6 +86,10 @@ export const useDeleteCa = () => {
     onSuccess: (_, { type, projectId }) => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
+      });
+      // Invalidate external CAs list
+      queryClient.invalidateQueries({
+        queryKey: [`external-cas-${projectId}`]
       });
     }
   });

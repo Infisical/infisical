@@ -27,7 +27,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { CaStatus, CaType, useListCasByTypeAndProjectId } from "@app/hooks/api";
+import { CaStatus, CaType, useListExternalCasByProjectId } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -45,7 +45,7 @@ type Props = {
 
 export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useListCasByTypeAndProjectId(CaType.ACME, currentWorkspace.id);
+  const { data, isPending } = useListExternalCasByProjectId(currentWorkspace.id);
 
   return (
     <div>

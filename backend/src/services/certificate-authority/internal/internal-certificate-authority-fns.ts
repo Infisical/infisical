@@ -8,6 +8,8 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -19,9 +21,12 @@ import {
   TAltNameMapping
 } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
+import { TPkiSubscriberProperties } from "@app/services/pki-subscriber/pki-subscriber-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { AzureAdCsCertificateAuthorityFns } from "../azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus } from "../certificate-authority-enums";
@@ -33,18 +38,102 @@ import {
 } from "../certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
 import { validateAndMapAltNameType } from "../certificate-authority-validators";
+import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { TIssueCertWithTemplateDTO } from "./internal-certificate-authority-types";
 
 type TInternalCertificateAuthorityFnsDeps = {
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa" | "findById">;
+  certificateAuthorityDAL: Pick<
+    TCertificateAuthorityDALFactory,
+    "findByIdWithAssociatedCa" | "findById" | "create" | "transaction" | "updateById" | "findWithAssociatedCa"
+  >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "transaction" | "findOne" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey"
+  >;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
+  appConnectionDAL?: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+  appConnectionService?: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  externalCertificateAuthorityDAL?: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  pkiSubscriberDAL?: Pick<TPkiSubscriberDALFactory, "findById">;
+};
+
+const buildSubjectDN = (commonName: string, properties?: TPkiSubscriberProperties): string => {
+  // Validate and sanitize common name - it's required and cannot be empty
+  if (!commonName || !commonName.trim()) {
+    throw new BadRequestError({ message: "Common Name is required and cannot be empty" });
+  }
+
+  const sanitizedCN = commonName.trim().replace(/[,=+<>#;\\]/g, ""); // Remove problematic characters
+  if (!sanitizedCN) {
+    throw new BadRequestError({ message: "Common Name contains only invalid characters" });
+  }
+
+  let subject = `CN=${sanitizedCN}`;
+
+  // Helper function to validate and sanitize DN component values
+  const sanitizeComponent = (value: string | undefined): string | null => {
+    if (!value || typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    // Remove problematic characters for DN components
+    const sanitized = trimmed.replace(/[,=+<>#;\\"/\r\n\t]/g, "").trim();
+
+    // Additional validation to prevent empty components
+    if (sanitized.length === 0) return null;
+
+    // Ensure the component doesn't start or end with spaces or problematic chars
+    const finalSanitized = sanitized.replace(/^[\s-_.]+|[\s-_.]+$/g, "");
+
+    return finalSanitized.length > 0 ? finalSanitized : null;
+  };
+
+  // Build DN components in proper X.500 ordering
+  const emailAddress = sanitizeComponent(properties?.emailAddress);
+  if (emailAddress) {
+    // Enhanced email validation for DN usage
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (emailRegex.test(emailAddress) && emailAddress.length > 5 && emailAddress.length < 64) {
+      subject += `,E=${emailAddress}`;
+    }
+  }
+
+  const organizationalUnit = sanitizeComponent(properties?.organizationalUnit);
+  if (organizationalUnit && organizationalUnit.length <= 64) {
+    subject += `,OU=${organizationalUnit}`;
+  }
+
+  const organization = sanitizeComponent(properties?.organization);
+  if (organization && organization.length <= 64) {
+    subject += `,O=${organization}`;
+  }
+
+  const locality = sanitizeComponent(properties?.locality);
+  if (locality && locality.length <= 64) {
+    subject += `,L=${locality}`;
+  }
+
+  const state = sanitizeComponent(properties?.state);
+  if (state && state.length <= 64) {
+    subject += `,ST=${state}`;
+  }
+
+  const country = sanitizeComponent(properties?.country);
+  if (country) {
+    // Country code must be exactly 2 uppercase letters
+    const countryCode = country.toUpperCase().replace(/[^A-Z]/g, "");
+    if (countryCode.length === 2) {
+      subject += `,C=${countryCode}`;
+    }
+  }
+
+  return subject;
 };
 
 export const InternalCertificateAuthorityFns = ({
@@ -56,7 +145,11 @@ export const InternalCertificateAuthorityFns = ({
   certificateAuthorityCrlDAL,
   certificateDAL,
   certificateBodyDAL,
-  certificateSecretDAL
+  certificateSecretDAL,
+  appConnectionDAL,
+  appConnectionService,
+  externalCertificateAuthorityDAL,
+  pkiSubscriberDAL
 }: TInternalCertificateAuthorityFnsDeps) => {
   const issueCertificate = async (
     subscriber: TPkiSubscribers,
@@ -102,7 +195,7 @@ export const InternalCertificateAuthorityFns = ({
     const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: `CN=${subscriber.commonName}`,
+      name: buildSubjectDN(subscriber.commonName, subscriber.properties as TPkiSubscriberProperties | undefined),
       keys: leafKeys,
       signingAlgorithm: alg,
       extensions: [
@@ -518,8 +611,30 @@ export const InternalCertificateAuthorityFns = ({
     };
   };
 
+  const issueCertificateWithAzureAdCs = async (subscriberId: string) => {
+    if (!appConnectionDAL || !appConnectionService || !externalCertificateAuthorityDAL || !pkiSubscriberDAL) {
+      throw new BadRequestError({ message: "Azure AD CS dependencies not available" });
+    }
+
+    const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
+      appConnectionDAL,
+      appConnectionService,
+      certificateAuthorityDAL,
+      externalCertificateAuthorityDAL,
+      certificateDAL,
+      certificateBodyDAL,
+      certificateSecretDAL,
+      kmsService,
+      projectDAL,
+      pkiSubscriberDAL
+    });
+
+    return azureAdCsFns.orderSubscriberCertificate(subscriberId);
+  };
+
   return {
     issueCertificate,
-    issueCertificateWithTemplate
+    issueCertificateWithTemplate,
+    issueCertificateWithAzureAdCs
   };
 };

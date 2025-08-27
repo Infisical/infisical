@@ -1,0 +1,42 @@
+---
+title: "Azure ADCS Connection"
+description: "Learn how to configure an Azure ADCS Connection for Infisical certificate management."
+---
+
+Connect Infisical to Microsoft Active Directory Certificate Services (ADCS) for automated certificate issuance and management.
+
+## Prerequisites
+
+- Microsoft Active Directory Certificate Services (ADCS) server running and accessible
+- Domain administrator account with certificate management permissions
+- Network connectivity from Infisical to the ADCS server
+- ADCS web enrollment enabled on your server
+
+## Connection Setup
+
+<Steps>
+    <Step title="Navigate to App Connections">
+      Navigate to the **App Connections** tab on the **Organization Settings** page.
+      ![App Connections Tab](/images/app-connections/general/add-connection.png)
+    </Step>
+    <Step title="Add Connection">
+      Select the **Azure ADCS Connection** option from the connection options modal.
+      ![Select Azure ADCS Connection](/images/app-connections/azure-adcs/azure-adcs-select-connection.png)
+    </Step>
+    <Step title="Configure Connection Details">
+    Fill in the following information:
+    - **Name**: Friendly name for this ADCS connection (e.g., "Production ADCS")
+    - **ADCS URL**: Your ADCS web enrollment URL (e.g., `https://adcs.yourdomain.com/certsrv`)
+    - **Username**: Domain administrator username (format: `DOMAIN\username` or `username@domain.com`)
+    - **Password**: Password for the domain administrator account
+
+    And click **Connect to ADCS** to establish the connection. 
+    ![Connect to ADCS](/images/app-connections/azure-adcs/azure-adcs-app-connection-form.png)
+  </Step>
+  <Step title="Connection Created">
+    Your **Azure ADCS Connection** is now available for use in your Infisical
+    projects. ![Azure ADCS Connection
+    Created](/images/app-connections/azure-adcs/azure-adcs-app-connection-created.png)
+  </Step>
+</Steps>
+

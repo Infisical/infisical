@@ -1,7 +1,15 @@
 import { AppConnection } from "../appConnections/enums";
 import { SshCaStatus } from "../sshCa";
 import { SshCertTemplateStatus } from "../sshCertificateTemplates";
-import { AcmeDnsProvider, CaStatus, InternalCaType } from "./enums";
+import {
+  AcmeDnsProvider,
+  AzureAdCsAuthMethod,
+  AzureAdCsTemplateType,
+  CaCapability,
+  CaStatus,
+  CaType,
+  InternalCaType
+} from "./enums";
 
 export const caTypeToNameMap: { [K in InternalCaType]: string } = {
   [InternalCaType.ROOT]: "Root",
@@ -22,6 +30,45 @@ export const ACME_DNS_PROVIDER_NAME_MAP: Record<AcmeDnsProvider, string> = {
 export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
   [AcmeDnsProvider.ROUTE53]: AppConnection.AWS,
   [AcmeDnsProvider.Cloudflare]: AppConnection.Cloudflare
+};
+
+export const AZURE_AD_CS_TEMPLATE_NAME_MAP: Record<AzureAdCsTemplateType, string> = {
+  [AzureAdCsTemplateType.WEB_SERVER]: "Web Server",
+  [AzureAdCsTemplateType.COMPUTER]: "Computer",
+  [AzureAdCsTemplateType.USER]: "User",
+  [AzureAdCsTemplateType.DOMAIN_CONTROLLER]: "Domain Controller",
+  [AzureAdCsTemplateType.SUBORDINATE_CA]: "Subordinate CA"
+};
+
+export const AZURE_AD_CS_AUTH_METHOD_NAME_MAP: Record<AzureAdCsAuthMethod, string> = {
+  [AzureAdCsAuthMethod.CLIENT_CERTIFICATE]: "Client Certificate",
+  [AzureAdCsAuthMethod.KERBEROS]: "Kerberos"
+};
+
+export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
+  [CaType.INTERNAL]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.REVOKE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES
+  ],
+  [CaType.ACME]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.REVOKE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES
+  ],
+  [CaType.AZURE_AD_CS]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES
+    // Note: REVOKE_CERTIFICATES intentionally omitted - not supported by ADCS connector
+  ]
+};
+
+/**
+ * Check if a certificate authority type supports a specific capability
+ */
+export const caSupportsCapability = (caType: CaType, capability: CaCapability): boolean => {
+  const capabilities = CA_TYPE_CAPABILITIES_MAP[caType] || [];
+  return capabilities.includes(capability);
 };
 
 export const getCaStatusBadgeVariant = (status: CaStatus | SshCaStatus | SshCertTemplateStatus) => {

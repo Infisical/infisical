@@ -26,6 +26,7 @@ import { useWorkspace } from "@app/context";
 import {
   CaType,
   useCreatePkiSubscriber,
+  useGetAzureAdcsTemplates,
   useGetPkiSubscriber,
   useListCasByProjectId,
   useListWorkspacePkiSubscribers,
@@ -77,7 +78,15 @@ const schema = z
     }),
     enableAutoRenewal: z.boolean().optional().default(false),
     renewalBefore: z.number().min(1).optional(),
-    renewalUnit: z.nativeEnum(TimeUnit).optional()
+    renewalUnit: z.nativeEnum(TimeUnit).optional(),
+    // Properties for Azure ADCS and additional subject fields
+    azureTemplateType: z.string().optional(),
+    organization: z.string().optional(),
+    organizationalUnit: z.string().optional(),
+    country: z.string().length(2).optional().or(z.literal("")),
+    state: z.string().optional(),
+    locality: z.string().optional(),
+    emailAddress: z.string().email().optional().or(z.literal(""))
   })
   .required();
 
@@ -121,7 +130,14 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
       extendedKeyUsages: {},
       enableAutoRenewal: false,
       renewalBefore: 7,
-      renewalUnit: TimeUnit.DAY
+      renewalUnit: TimeUnit.DAY,
+      azureTemplateType: "",
+      organization: "",
+      organizationalUnit: "",
+      country: "",
+      state: "",
+      locality: "",
+      emailAddress: ""
     }
   });
 
@@ -129,46 +145,54 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const selectedCa = cas?.find((ca) => ca.id === selectedCaId);
   const selectedAutoRenewalState = watch("enableAutoRenewal");
 
+  // Fetch Azure ADCS templates when Azure CA is selected
+  const { data: azureTemplates } = useGetAzureAdcsTemplates({
+    caId: selectedCa?.type === CaType.AZURE_AD_CS ? selectedCaId : "",
+    projectId
+  });
+
+  console.log(pkiSubscriber);
+
+  // Initialize form with ALL subscriber data including template
   useEffect(() => {
     if (pkiSubscriber) {
-      reset({
-        name: pkiSubscriber.name,
-        caId: pkiSubscriber.caId || "",
-        commonName: pkiSubscriber.commonName,
-        subjectAlternativeNames: pkiSubscriber.subjectAlternativeNames.join(", ") || "",
-        ttl: pkiSubscriber.ttl || "",
-        keyUsages: Object.fromEntries((pkiSubscriber.keyUsages || []).map((name) => [name, true])),
-        extendedKeyUsages: Object.fromEntries(
-          (pkiSubscriber.extendedKeyUsages || []).map((name) => [name, true])
-        ),
-        enableAutoRenewal: pkiSubscriber.enableAutoRenewal || false,
-        renewalBefore: pkiSubscriber.autoRenewalPeriodInDays || 7,
-        renewalUnit: TimeUnit.DAY
-      });
-    } else {
-      reset({
-        name: "",
-        caId: "",
-        commonName: "",
-        subjectAlternativeNames: "",
-        ttl: "",
-        keyUsages: {
-          [CertKeyUsage.DIGITAL_SIGNATURE]: true,
-          [CertKeyUsage.KEY_ENCIPHERMENT]: true
-        },
-        extendedKeyUsages: {},
-        enableAutoRenewal: false,
-        renewalBefore: 7,
-        renewalUnit: TimeUnit.DAY
-      });
+      // Set all values directly and immediately
+      setValue("name", pkiSubscriber.name);
+      setValue("caId", pkiSubscriber.caId || "");
+      setValue("commonName", pkiSubscriber.commonName);
+      setValue("subjectAlternativeNames", pkiSubscriber.subjectAlternativeNames.join(", "));
+      setValue("ttl", pkiSubscriber.ttl || "");
+      setValue(
+        "keyUsages",
+        Object.fromEntries((pkiSubscriber.keyUsages || []).map((name) => [name, true]))
+      );
+      setValue(
+        "extendedKeyUsages",
+        Object.fromEntries((pkiSubscriber.extendedKeyUsages || []).map((name) => [name, true]))
+      );
+      setValue("enableAutoRenewal", pkiSubscriber.enableAutoRenewal || false);
+      setValue("renewalBefore", pkiSubscriber.autoRenewalPeriodInDays || 7);
+      setValue("renewalUnit", TimeUnit.DAY);
+
+      // Set Azure template immediately
+      setValue("azureTemplateType", pkiSubscriber.properties?.azureTemplateType || "");
+
+      // Set all Additional Subject Fields immediately
+      setValue("organization", pkiSubscriber.properties?.organization || "");
+      setValue("organizationalUnit", pkiSubscriber.properties?.organizationalUnit || "");
+      setValue("country", pkiSubscriber.properties?.country || "");
+      setValue("state", pkiSubscriber.properties?.state || "");
+      setValue("locality", pkiSubscriber.properties?.locality || "");
+      setValue("emailAddress", pkiSubscriber.properties?.emailAddress || "");
     }
-  }, [pkiSubscriber, reset]);
+  }, [pkiSubscriber, setValue]);
 
   useEffect(() => {
-    if (cas?.length) {
+    if (cas?.length && !pkiSubscriber) {
+      // Only auto-select first CA when creating new subscriber, not when updating
       setValue("caId", cas[0].id);
     }
-  }, [cas, setValue]);
+  }, [cas, setValue, pkiSubscriber]);
 
   const onFormSubmit = async ({
     name,
@@ -180,7 +204,14 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     extendedKeyUsages,
     enableAutoRenewal,
     renewalBefore,
-    renewalUnit
+    renewalUnit,
+    azureTemplateType,
+    organization,
+    organizationalUnit,
+    country,
+    state,
+    locality,
+    emailAddress
   }: FormData) => {
     try {
       if (!projectId) return;
@@ -205,13 +236,28 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         return;
       }
 
-      const keyUsagesList = Object.entries(keyUsages)
-        .filter(([, value]) => value)
-        .map(([key]) => key as CertKeyUsage);
+      // Validate Azure template for Azure ADCS CA
+      if (selectedCa?.type === CaType.AZURE_AD_CS && !azureTemplateType) {
+        createNotification({
+          text: "Please select an Azure certificate template",
+          type: "error"
+        });
+        return;
+      }
 
-      const extendedKeyUsagesList = Object.entries(extendedKeyUsages)
-        .filter(([, value]) => value)
-        .map(([key]) => key as CertExtendedKeyUsage);
+      const keyUsagesList =
+        selectedCa?.type === CaType.AZURE_AD_CS
+          ? []
+          : Object.entries(keyUsages)
+              .filter(([, value]) => value)
+              .map(([key]) => key as CertKeyUsage);
+
+      const extendedKeyUsagesList =
+        selectedCa?.type === CaType.AZURE_AD_CS
+          ? []
+          : Object.entries(extendedKeyUsages)
+              .filter(([, value]) => value)
+              .map(([key]) => key as CertExtendedKeyUsage);
 
       const subjectAlternativeNamesList = subjectAlternativeNames
         .split(",")
@@ -221,6 +267,17 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
       const autoRenewalPeriodInDays = enableAutoRenewal
         ? convertTimeUnitValueToDays(renewalUnit, renewalBefore)
         : undefined;
+
+      // Build properties object
+      const properties = {
+        ...(selectedCa?.type === CaType.AZURE_AD_CS && azureTemplateType && { azureTemplateType }),
+        ...(organization && { organization }),
+        ...(organizationalUnit && { organizationalUnit }),
+        ...(country && { country }),
+        ...(state && { state }),
+        ...(locality && { locality }),
+        ...(emailAddress && { emailAddress })
+      };
 
       if (pkiSubscriber) {
         await updateMutateAsync({
@@ -234,7 +291,8 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
           keyUsages: keyUsagesList,
           extendedKeyUsages: extendedKeyUsagesList,
           enableAutoRenewal,
-          autoRenewalPeriodInDays
+          autoRenewalPeriodInDays,
+          properties: Object.keys(properties).length > 0 ? properties : undefined
         });
       } else {
         await createMutateAsync({
@@ -247,7 +305,8 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
           keyUsages: keyUsagesList,
           extendedKeyUsages: extendedKeyUsagesList,
           enableAutoRenewal,
-          autoRenewalPeriodInDays
+          autoRenewalPeriodInDays,
+          properties: Object.keys(properties).length > 0 ? properties : undefined
         });
       }
 
@@ -276,17 +335,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <ModalContent title={`${pkiSubscriber ? "Update" : "Add"} PKI Subscriber`}>
-        <form
-          onSubmit={handleSubmit(onFormSubmit, (fields) => {
-            setTabValue(
-              ["name", "caId", "commonName", "subjectAlternativeNames", "ttl"].includes(
-                Object.keys(fields)[0]
-              )
-                ? FormTab.Configuration
-                : FormTab.Advanced
-            );
-          })}
-        >
+        <form key={pkiSubscriber?.id || "new"} onSubmit={handleSubmit(onFormSubmit)}>
           <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as FormTab)}>
             <TabList>
               <Tab value={FormTab.Configuration}>Configuration</Tab>
@@ -323,8 +372,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isRequired
                   >
                     <Select
-                      defaultValue={field.value}
-                      {...field}
+                      value={field.value}
                       onValueChange={(e) => onChange(e)}
                       className="w-full"
                     >
@@ -342,6 +390,34 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   </FormControl>
                 )}
               />
+              {selectedCa?.type === CaType.AZURE_AD_CS && (
+                <Controller
+                  control={control}
+                  name="azureTemplateType"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Certificate Template"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      isRequired
+                    >
+                      <Select
+                        value={field.value}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full"
+                      >
+                        {(azureTemplates?.templates || []).map(
+                          (template: { id: string; name: string }) => (
+                            <SelectItem value={template.id} key={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          )
+                        )}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              )}
               <Controller
                 control={control}
                 name="commonName"
@@ -369,6 +445,102 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   </FormControl>
                 )}
               />
+
+              {/* Additional Subject Fields - Available for all CA types */}
+              <Accordion type="single" collapsible className="mb-4 w-full">
+                <AccordionItem value="subject-fields" className="data-[state=open]:border-none">
+                  <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                    <div className="order-1 ml-3">Additional Subject Fields</div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-1 gap-4">
+                      <Controller
+                        control={control}
+                        name="organization"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Organization (O)"
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                          >
+                            <Input {...field} placeholder="Example Corp" />
+                          </FormControl>
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="organizationalUnit"
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label="Organizational Unit (OU)"
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                          >
+                            <Input {...field} placeholder="IT Department" />
+                          </FormControl>
+                        )}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Controller
+                          control={control}
+                          name="country"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Country (C)"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                            >
+                              <Input {...field} placeholder="US" maxLength={2} />
+                            </FormControl>
+                          )}
+                        />
+                        <Controller
+                          control={control}
+                          name="state"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="State/Province (ST)"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                            >
+                              <Input {...field} placeholder="California" />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Controller
+                          control={control}
+                          name="locality"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Locality (L)"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                            >
+                              <Input {...field} placeholder="San Francisco" />
+                            </FormControl>
+                          )}
+                        />
+                        <Controller
+                          control={control}
+                          name="emailAddress"
+                          render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                              label="Email Address"
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                            >
+                              <Input {...field} type="email" placeholder="admin@example.com" />
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
               {selectedCa?.type !== CaType.ACME && (
                 <Controller
                   control={control}
@@ -385,7 +557,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                   )}
                 />
               )}
-              {selectedCa?.type !== CaType.ACME && (
+              {selectedCa?.type !== CaType.ACME && selectedCa?.type !== CaType.AZURE_AD_CS && (
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="key-usages" className="data-[state=open]:border-none">
                     <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
@@ -517,8 +689,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                         isError={Boolean(error)}
                       >
                         <Select
-                          defaultValue={field.value}
-                          {...field}
+                          value={field.value}
                           onValueChange={(e) => onChange(e)}
                           className="w-48"
                         >

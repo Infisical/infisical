@@ -1,0 +1,159 @@
+---
+title: "Certificates with Azure ADCS"
+description: "Learn how to issue and manage certificates using Microsoft Active Directory Certificate Services (ADCS) with Infisical."
+---
+
+Issue and manage certificates using Microsoft Active Directory Certificate Services (ADCS) for enterprise-grade certificate management integrated with your existing Windows infrastructure.
+
+## Prerequisites
+
+Before setting up ADCS integration, ensure you have:
+
+- Microsoft Active Directory Certificate Services (ADCS) server running and accessible
+- Domain administrator account with certificate management permissions  
+- ADCS web enrollment enabled on your server
+- Network connectivity from Infisical to the ADCS server
+- Azure ADCS app connection configured (see [Azure ADCS Connection](/integrations/app-connections/azure-adcs))
+
+## Complete Workflow: From Setup to Certificate Issuance
+
+This section walks you through the complete end-to-end process of setting up Azure ADCS integration and issuing your first certificate.
+
+<Steps>
+  <Step title="Navigate to External Certificate Authorities">
+    In your Infisical project, go to your **Certificate Project** → **Certificate Authority** to access the external CAs page.
+    
+    ![External CA Page](/images/platform/pki/azure-adcs/azure-adcs-external-ca-page.png)
+  </Step>
+  
+  <Step title="Create New Azure ADCS Certificate Service CA">
+    Click **Create CA** and configure:
+    - **Type**: Choose **Azure AD Certificate Service**
+    - **Name**: Friendly name for this CA (e.g., "Production ADCS CA")
+    - **App Connection**: Choose your ADCS connection from the dropdown
+    
+    ![External CA Form](/images/platform/pki/azure-adcs/azure-adcs-external-ca-form.png)
+  </Step>
+  
+  <Step title="Certificate Authority Created">
+    Once created, your Azure ADCS Certificate Authority will appear in the list and be ready for use.
+    
+    ![External CA Created](/images/platform/pki/azure-adcs/azure-adcs-external-ca-created.png)
+  </Step>
+  
+  <Step title="Navigate to Subscribers">
+    Go to **Subscribers** to access the subscribers page.
+    
+    ![Subscribers Page](/images/platform/pki/azure-adcs/azure-adcs-subscribers-page.png)
+  </Step>
+  
+  <Step title="Create New Subscriber">
+    Click **Add Subscriber** and configure:
+    - **Name**: Unique subscriber name (e.g., "web-server-certs")
+    - **Certificate Authority**: Select your ADCS CA
+    - **Common Name**: Certificate CN (e.g., "api.example.com")
+    - **Certificate Template**: Select from dynamically loaded ADCS templates
+    - **Subject Alternative Names**: DNS names, IP addresses, or email addresses
+    - **TTL**: Certificate validity period (e.g., "1y" for 1 year)
+    - **Additional Subject Fields**: Organization, OU, locality, state, country, email (if required by template)
+    
+    ![Subscribers Form](/images/platform/pki/azure-adcs/azure-adcs-subscribers-form.png)
+  </Step>
+  
+  <Step title="Subscriber Created">
+    Your subscriber is now created and ready to issue certificates.
+    
+    ![Subscriber Created](/images/platform/pki/azure-adcs/azure-adcs-subscribers-created.png)
+  </Step>
+  
+  <Step title="Issue New Certificate">
+    Click into your subscriber and click **Order Certificate** to generate a new certificate using your ADCS template.
+    
+    ![Issue New Certificate](/images/platform/pki/azure-adcs/azure-adcs-subscriber-issue-new-certificate.png)
+  </Step>
+  
+  <Step title="Certificate Created">
+    Your certificate has been successfully issued by the ADCS server and is ready for use.
+    
+    ![Certificate Created](/images/platform/pki/azure-adcs/azure-adcs-certificate-created.png)
+  </Step>
+  
+  <Step title="View Certificate Details">
+    Navigate to **Certificates** to view detailed information about all issued certificates, including expiration dates, serial numbers, and certificate chains.
+    
+    ![Certificates Page](/images/platform/pki/azure-adcs/azure-adcs-certificates-page.png)
+  </Step>
+</Steps>
+
+## Certificate Templates
+
+Infisical automatically retrieves available certificate templates from your ADCS server, ensuring you can only select templates that are properly configured and accessible. The system dynamically discovers templates during the certificate authority setup and certificate issuance process.
+
+### Common Template Types
+
+ADCS templates you might see include:
+- **Web Server**: For SSL/TLS certificates with server authentication
+- **Computer**: For machine authentication certificates
+- **User**: For client authentication certificates
+- **Basic EFS**: For Encrypting File System certificates
+- **EFS Recovery Agent**: For EFS data recovery
+- **Administrator**: For administrative certificates
+- **Subordinate Certification Authority**: For issuing CA certificates
+
+### Template Requirements
+
+Ensure your ADCS templates are configured with:
+- **Enroll permissions** for your connection account
+- **Auto-enroll permissions** if using automated workflows
+- **Subject name requirements** matching your certificate requests
+- **Key usage extensions** appropriate for your use case
+
+<Info>
+**Dynamic Template Discovery**: Infisical queries your ADCS server in real-time to populate available templates. Only templates you have permission to use will be displayed during certificate issuance.
+</Info>
+
+### Certificate Revocation
+
+<Warning>
+Certificate revocation is **not supported** by the Azure ADCS connector due to security and complexity considerations.
+</Warning>
+
+## Advanced Configuration
+
+### Custom Validity Periods
+
+Enable custom certificate validity periods on your ADCS server:
+
+```cmd
+# Run on ADCS server as Administrator
+certutil -setreg policy\EditFlags +EDITF_ATTRIBUTEENDDATE
+net stop certsvc
+net start certsvc
+```
+
+This allows Infisical to control certificate expiration dates directly.
+
+## Troubleshooting
+
+### Common Issues
+
+**Certificate Request Denied**
+- Verify ADCS template permissions for your connection account
+- Check template subject name requirements
+- Ensure template allows the requested key algorithm and size
+
+**Revocation Service Unavailable**
+- Verify IIS is running and the revocation endpoint is accessible
+- Check IIS application pool permissions
+- Test endpoint connectivity from Infisical
+
+**Template Not Found**
+- Verify template exists on ADCS server and is published
+- Check that your connection account has enrollment permissions for the template
+- Ensure the template is properly configured and available in the ADCS web enrollment interface
+- Templates are dynamically loaded - refresh the PKI Subscriber form if templates don't appear
+
+**Authentication Failures**
+- Verify ADCS connection credentials
+- Check domain account permissions
+- Ensure network connectivity to ADCS server

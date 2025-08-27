@@ -1,4 +1,12 @@
-export { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
+export {
+  AcmeDnsProvider,
+  AzureAdCsAuthMethod,
+  AzureAdCsTemplateType,
+  CaRenewalType,
+  CaStatus,
+  CaType,
+  InternalCaType
+} from "./enums";
 export {
   useCreateCa,
   useCreateCertificate,
@@ -9,6 +17,7 @@ export {
   useUpdateCa
 } from "./mutations";
 export {
+  useGetAzureAdcsTemplates,
   useGetCa,
   useGetCaById,
   useGetCaCert,
@@ -17,5 +26,6 @@ export {
   useGetCaCrls,
   useGetCaCsr,
   useListCasByProjectId,
-  useListCasByTypeAndProjectId
+  useListCasByTypeAndProjectId,
+  useListExternalCasByProjectId
 } from "./queries";

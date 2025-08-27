@@ -18,7 +18,8 @@ export const sanitizedPkiSubscriber = PkiSubscribersSchema.pick({
   lastOperationAt: true,
   enableAutoRenewal: true,
   autoRenewalPeriodInDays: true,
-  lastAutoRenewAt: true
+  lastAutoRenewAt: true,
+  properties: true
 }).extend({
   supportsImmediateCertIssuance: z.boolean().optional()
 });
