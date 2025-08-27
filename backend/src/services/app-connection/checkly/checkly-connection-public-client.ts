@@ -4,6 +4,7 @@ import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode, isAxi
 
 import { createRequestClient } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 
 import { ChecklyConnectionMethod } from "./checkly-connection-constants";
 import { TChecklyAccount, TChecklyConnectionConfig, TChecklyVariable } from "./checkly-connection-types";
@@ -236,7 +237,10 @@ class ChecklyPublicClient {
     environmentVariables: Array<{ key: string; value: string; locked?: boolean }>
   ) {
     if (environmentVariables.length > 50) {
-      throw new Error(`Checkly does not support syncing more than 50 variables to Check Group`);
+      throw new SecretSyncError({
+        message: "Checkly does not support syncing more than 50 variables to Check Group",
+        shouldRetry: false
+      });
     }
 
     const apiVariables = environmentVariables.map((v) => ({

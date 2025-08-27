@@ -90,11 +90,11 @@ export const ChecklySyncFields = () => {
               isLoading={isGroupsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
               isClearable
-              value={groups.find((p) => p.id === value) ?? null}
+              value={groups.find((p) => p.id === value) ?? undefined}
               onChange={(option) => {
                 const v = option as SingleValue<TChecklyAccount>;
                 onChange(v?.id ?? undefined);
-                setValue("destinationConfig.groupName", v?.name ?? "");
+                setValue("destinationConfig.groupName", v?.name ?? undefined);
               }}
               options={groups}
               placeholder="Select a group..."

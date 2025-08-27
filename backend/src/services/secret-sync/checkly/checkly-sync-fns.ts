@@ -77,6 +77,8 @@ export const ChecklySyncFns = {
           Object.values(updatedVariables)
         );
       } catch (error) {
+        if (error instanceof SecretSyncError) throw error;
+
         throw new SecretSyncError({
           error,
           secretKey: "group_update"
