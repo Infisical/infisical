@@ -21,8 +21,8 @@ export const IdentityUniversalAuthsSchema = z.object({
   accessTokenPeriod: z.coerce.number().default(0),
   lockoutEnabled: z.boolean().default(true),
   lockoutThreshold: z.number().default(3),
-  lockoutDuration: z.number().default(300),
-  lockoutCounterReset: z.number().default(30)
+  lockoutDurationSeconds: z.number().default(300),
+  lockoutCounterResetSeconds: z.number().default(30)
 });
 
 export type TIdentityUniversalAuths = z.infer<typeof IdentityUniversalAuthsSchema>;

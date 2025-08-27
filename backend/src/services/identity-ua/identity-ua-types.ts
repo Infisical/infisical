@@ -11,8 +11,8 @@ export type TAttachUaDTO = {
   isActorSuperAdmin?: boolean;
   lockoutEnabled: boolean;
   lockoutThreshold: number;
-  lockoutDuration: number;
-  lockoutCounterReset: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateUaDTO = {
@@ -25,8 +25,8 @@ export type TUpdateUaDTO = {
   accessTokenTrustedIps?: { ipAddress: string }[];
   lockoutEnabled?: boolean;
   lockoutThreshold?: number;
-  lockoutDuration?: number;
-  lockoutCounterReset?: number;
+  lockoutDurationSeconds?: number;
+  lockoutCounterResetSeconds?: number;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUaDTO = {

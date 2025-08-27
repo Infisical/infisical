@@ -116,8 +116,8 @@ export type IdentityUniversalAuth = {
   accessTokenPeriod: number;
   lockoutEnabled: boolean;
   lockoutThreshold: number;
-  lockoutDuration: number;
-  lockoutCounterReset: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 };
 
 export type AddIdentityUniversalAuthDTO = {
@@ -135,8 +135,8 @@ export type AddIdentityUniversalAuthDTO = {
   }[];
   lockoutEnabled: boolean;
   lockoutThreshold: number;
-  lockoutDuration: number;
-  lockoutCounterReset: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 };
 
 export type UpdateIdentityUniversalAuthDTO = {
@@ -154,8 +154,8 @@ export type UpdateIdentityUniversalAuthDTO = {
   }[];
   lockoutEnabled?: boolean;
   lockoutThreshold?: number;
-  lockoutDuration?: number;
-  lockoutCounterReset?: number;
+  lockoutDurationSeconds?: number;
+  lockoutCounterResetSeconds?: number;
 };
 
 export type DeleteIdentityUniversalAuthDTO = {

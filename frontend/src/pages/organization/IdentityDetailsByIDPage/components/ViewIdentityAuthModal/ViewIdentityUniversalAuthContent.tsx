@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { faBan, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -135,10 +136,10 @@ export const ViewIdentityUniversalAuthContent = ({
         {data.lockoutThreshold}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Lockout Duration">
-        {data.lockoutDuration} seconds
+        {ms(data.lockoutDurationSeconds * 1000, { long: true })}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Lockout Counter Reset">
-        {data.lockoutCounterReset} seconds
+        {ms(data.lockoutCounterResetSeconds * 1000, { long: true })}
       </IdentityAuthFieldDisplay>
       <div className="col-span-2 my-3">
         <div className="mb-3 border-b border-mineshaft-500 pb-2">

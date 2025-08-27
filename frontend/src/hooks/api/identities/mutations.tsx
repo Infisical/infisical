@@ -152,8 +152,8 @@ export const useAddIdentityUniversalAuth = () => {
       accessTokenTrustedIps,
       lockoutEnabled,
       lockoutThreshold,
-      lockoutDuration,
-      lockoutCounterReset
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     }) => {
       const {
         data: { identityUniversalAuth }
@@ -165,8 +165,8 @@ export const useAddIdentityUniversalAuth = () => {
         accessTokenTrustedIps,
         lockoutEnabled,
         lockoutThreshold,
-        lockoutDuration,
-        lockoutCounterReset
+        lockoutDurationSeconds,
+        lockoutCounterResetSeconds
       });
       return identityUniversalAuth;
     },
@@ -195,8 +195,8 @@ export const useUpdateIdentityUniversalAuth = () => {
       accessTokenPeriod,
       lockoutEnabled,
       lockoutThreshold,
-      lockoutDuration,
-      lockoutCounterReset
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     }) => {
       const {
         data: { identityUniversalAuth }
@@ -209,8 +209,8 @@ export const useUpdateIdentityUniversalAuth = () => {
         accessTokenPeriod,
         lockoutEnabled,
         lockoutThreshold,
-        lockoutDuration,
-        lockoutCounterReset
+        lockoutDurationSeconds,
+        lockoutCounterResetSeconds
       });
       return identityUniversalAuth;
     },
