@@ -140,13 +140,18 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           accessTokenPeriod: z.number().int().min(0).default(0).describe(UNIVERSAL_AUTH.ATTACH.accessTokenPeriod),
           lockoutEnabled: z.boolean().default(true).describe(UNIVERSAL_AUTH.ATTACH.lockoutEnabled),
           lockoutThreshold: z.number().min(1).max(30).default(3).describe(UNIVERSAL_AUTH.ATTACH.lockoutThreshold),
-          lockoutDuration: z.number().min(30).max(86400).default(300).describe(UNIVERSAL_AUTH.ATTACH.lockoutDuration),
-          lockoutCounterReset: z
+          lockoutDurationSeconds: z
+            .number()
+            .min(30)
+            .max(86400)
+            .default(300)
+            .describe(UNIVERSAL_AUTH.ATTACH.lockoutDurationSeconds),
+          lockoutCounterResetSeconds: z
             .number()
             .min(5)
             .max(3600)
             .default(30)
-            .describe(UNIVERSAL_AUTH.ATTACH.lockoutCounterReset)
+            .describe(UNIVERSAL_AUTH.ATTACH.lockoutCounterResetSeconds)
         })
         .refine(
           (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
@@ -183,8 +188,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit,
             lockoutEnabled: identityUniversalAuth.lockoutEnabled,
             lockoutThreshold: identityUniversalAuth.lockoutThreshold,
-            lockoutDuration: identityUniversalAuth.lockoutDuration,
-            lockoutCounterReset: identityUniversalAuth.lockoutCounterReset
+            lockoutDurationSeconds: identityUniversalAuth.lockoutDurationSeconds,
+            lockoutCounterResetSeconds: identityUniversalAuth.lockoutCounterResetSeconds
           }
         }
       });
@@ -259,13 +264,18 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             .describe(UNIVERSAL_AUTH.UPDATE.accessTokenPeriod),
           lockoutEnabled: z.boolean().optional().describe(UNIVERSAL_AUTH.UPDATE.lockoutEnabled),
           lockoutThreshold: z.number().min(1).max(30).optional().describe(UNIVERSAL_AUTH.UPDATE.lockoutThreshold),
-          lockoutDuration: z.number().min(30).max(86400).optional().describe(UNIVERSAL_AUTH.UPDATE.lockoutDuration),
-          lockoutCounterReset: z
+          lockoutDurationSeconds: z
+            .number()
+            .min(30)
+            .max(86400)
+            .optional()
+            .describe(UNIVERSAL_AUTH.UPDATE.lockoutDurationSeconds),
+          lockoutCounterResetSeconds: z
             .number()
             .min(5)
             .max(3600)
             .optional()
-            .describe(UNIVERSAL_AUTH.UPDATE.lockoutCounterReset)
+            .describe(UNIVERSAL_AUTH.UPDATE.lockoutCounterResetSeconds)
         })
         .refine(
           (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
@@ -301,8 +311,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
             accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit,
             lockoutEnabled: identityUniversalAuth.lockoutEnabled,
             lockoutThreshold: identityUniversalAuth.lockoutThreshold,
-            lockoutDuration: identityUniversalAuth.lockoutDuration,
-            lockoutCounterReset: identityUniversalAuth.lockoutCounterReset
+            lockoutDurationSeconds: identityUniversalAuth.lockoutDurationSeconds,
+            lockoutCounterResetSeconds: identityUniversalAuth.lockoutCounterResetSeconds
           }
         }
       });

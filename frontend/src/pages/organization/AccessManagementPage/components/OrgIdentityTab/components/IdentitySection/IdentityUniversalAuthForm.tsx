@@ -158,8 +158,8 @@ export const IdentityUniversalAuthForm = ({
 
   useEffect(() => {
     if (data) {
-      const lockoutDurationObj = getObjectFromSeconds(data.lockoutDuration);
-      const lockoutCounterResetObj = getObjectFromSeconds(data.lockoutCounterReset);
+      const lockoutDurationObj = getObjectFromSeconds(data.lockoutDurationSeconds);
+      const lockoutCounterResetObj = getObjectFromSeconds(data.lockoutCounterResetSeconds);
 
       reset({
         accessTokenTTL: String(data.accessTokenTTL),
@@ -222,8 +222,11 @@ export const IdentityUniversalAuthForm = ({
     try {
       if (!identityId) return;
 
-      const lockoutDuration = durationToSeconds(Number(lockoutDurationValue), lockoutDurationUnit);
-      const lockoutCounterReset = durationToSeconds(
+      const lockoutDurationSeconds = durationToSeconds(
+        Number(lockoutDurationValue),
+        lockoutDurationUnit
+      );
+      const lockoutCounterResetSeconds = durationToSeconds(
         Number(lockoutCounterResetValue),
         lockoutCounterResetUnit
       );
@@ -241,8 +244,8 @@ export const IdentityUniversalAuthForm = ({
           accessTokenPeriod: Number(accessTokenPeriod),
           lockoutEnabled,
           lockoutThreshold: Number(lockoutThreshold),
-          lockoutDuration,
-          lockoutCounterReset
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
         });
       } else {
         // create new universal auth configuration
@@ -258,8 +261,8 @@ export const IdentityUniversalAuthForm = ({
           accessTokenPeriod: Number(accessTokenPeriod),
           lockoutEnabled,
           lockoutThreshold: Number(lockoutThreshold),
-          lockoutDuration,
-          lockoutCounterReset
+          lockoutDurationSeconds: Number(lockoutDurationSeconds),
+          lockoutCounterResetSeconds: Number(lockoutCounterResetSeconds)
         });
       }
 

@@ -131,7 +131,7 @@ export const identityUaServiceFactory = ({
 
           await keyStore.setItemWithExpiry(
             LOCKOUT_KEY,
-            lockout.lockedOut ? identityUa.lockoutDuration : identityUa.lockoutCounterReset,
+            lockout.lockedOut ? identityUa.lockoutDurationSeconds : identityUa.lockoutCounterResetSeconds,
             JSON.stringify(lockout)
           );
         }
@@ -251,8 +251,8 @@ export const identityUaServiceFactory = ({
     accessTokenPeriod,
     lockoutEnabled,
     lockoutThreshold,
-    lockoutDuration,
-    lockoutCounterReset
+    lockoutDurationSeconds,
+    lockoutCounterResetSeconds
   }: TAttachUaDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -325,8 +325,8 @@ export const identityUaServiceFactory = ({
           accessTokenPeriod,
           lockoutEnabled,
           lockoutThreshold,
-          lockoutDuration,
-          lockoutCounterReset
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
         },
         tx
       );
@@ -349,8 +349,8 @@ export const identityUaServiceFactory = ({
     actorOrgId,
     lockoutEnabled,
     lockoutThreshold,
-    lockoutDuration,
-    lockoutCounterReset
+    lockoutDurationSeconds,
+    lockoutCounterResetSeconds
   }: TUpdateUaDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
@@ -429,8 +429,8 @@ export const identityUaServiceFactory = ({
         : undefined,
       lockoutEnabled,
       lockoutThreshold,
-      lockoutDuration,
-      lockoutCounterReset
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     });
     return { ...updatedUaAuth, orgId: identityMembershipOrg.orgId };
   };

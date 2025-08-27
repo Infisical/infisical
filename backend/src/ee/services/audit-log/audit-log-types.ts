@@ -870,8 +870,8 @@ interface AddIdentityUniversalAuthEvent {
     accessTokenTrustedIps: Array<TIdentityTrustedIp>;
     lockoutEnabled: boolean;
     lockoutThreshold: number;
-    lockoutDuration: number;
-    lockoutCounterReset: number;
+    lockoutDurationSeconds: number;
+    lockoutCounterResetSeconds: number;
   };
 }
 
@@ -886,8 +886,8 @@ interface UpdateIdentityUniversalAuthEvent {
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
     lockoutEnabled?: boolean;
     lockoutThreshold?: number;
-    lockoutDuration?: number;
-    lockoutCounterReset?: number;
+    lockoutDurationSeconds?: number;
+    lockoutCounterResetSeconds?: number;
   };
 }
 

@@ -151,8 +151,8 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           accessTokenPeriod: 0,
           lockoutEnabled: true,
           lockoutThreshold: 3,
-          lockoutDuration: 300,
-          lockoutCounterReset: 30
+          lockoutDurationSeconds: 300,
+          lockoutCounterResetSeconds: 30
         });
 
         handlePopUpToggle("identity", false);
