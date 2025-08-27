@@ -55,6 +55,120 @@ Your Audit Logs are now ready to be streamed.
 		</Step>
 </Steps>
 
+### Azure Log Analytics (for Microsoft Sentinel)
+
+<Warning>
+    After setting up all of the Azure resources it may take 10 - 20 minutes for logs to start streaming due to the nature of Azure's platform.
+</Warning>
+
+<Steps>
+    <Step title="Create a Data Collection Endpoint">
+        Navigate to [Data Collection Endpoints](https://portal.azure.com/#view/HubsExtension/BrowseResource.ReactView/resourceType/microsoft.insights%2Fdatacollectionendpoints) and click **Create**.
+
+        ![azure create dce](/images/platform/audit-log-streams/azure-create-dce.png)
+
+        Configure your Data Collection Endpoint by providing an **Endpoint Name**, **Subscription**, and a **Resource group**. Then click **Review + Create**.
+
+        ![azure configure dce](/images/platform/audit-log-streams/azure-configure-dce.png)
+
+        After you create a Data Collection Endpoint it may take a few minutes to show up in the list. Once it does, click on it and copy the **Logs Ingestion** URL. Save this URL for later steps.
+
+        ![azure dce url](/images/platform/audit-log-streams/azure-dce-url.png)
+    </Step>
+    <Step title="Create a Log Analytics Workspace">
+        <Info>
+            If you already have a Log Analytics Workspace you may skip this step.
+        </Info>
+
+        Navigate to [Log Analytics Workspaces](https://portal.azure.com/#browse/Microsoft.OperationalInsights%2Fworkspaces) and click **Create**.
+
+        ![azure create law](/images/platform/audit-log-streams/azure-create-law.png)
+
+        Configure your Log Analytics Workspace by providing a **Subscription**, **Resource group**, and a **Name**. Then click **Review + Create**.
+
+        ![azure configure law](/images/platform/audit-log-streams/azure-configure-law.png)
+
+        After you create a workspace and wait for it to finish deploying, you'll see a screen similar to the one in the image below. Click on **Go to resource** to enter your Log Analytics Workspace.
+
+        ![azure go to resource](/images/platform/audit-log-streams/azure-go-to-resource.png)
+		</Step>
+    <Step title="Create a Custom Log Table">
+        In your Log Analytics Workspace, navigate to **Tables** and click **Create**. From the dropdown select **New custom log (DCR-based)**.
+
+        ![azure new table](/images/platform/audit-log-streams/azure-new-table.png)
+
+        Configure your Custom Log Table by providing a **Table name** (recommended: `InfisicalLogs`) and the **Data collection endpoint** created in Step 1. Also create a new **Data collection rule** as shown in the image below. Then click **Next**.
+
+        ![azure configure table](/images/platform/audit-log-streams/azure-configure-table.png)
+
+        On the **Schema and transformation** page you'll be asked to upload a **Log Sample**. Use the following sample (inside of a .json file):
+
+        ```json
+        {
+          "id": "00000000-0000-0000-0000-000000000000",
+          "actor": "user",
+          "actorMetadata": {
+            "email": "user@example.com",
+            "userId": "00000000-0000-0000-0000-000000000000",
+            "username": "user@example.com"
+          },
+          "ipAddress": "0.0.0.0",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "userAgentType": "web",
+          "eventType": "get-secrets",
+          "eventMetadata": {},
+          "projectName": "MyProject",
+          "orgId": "00000000-0000-0000-0000-000000000000",
+          "projectId": "00000000-0000-0000-0000-000000000000",
+          "TimeGenerated": "2025-01-01T00:00:00.000Z"
+        }
+        ```
+
+        You may optionally add **Transformations** to further destructure the data. Here's an example transformation that de-structures actor email and userId:
+
+        ```
+        source
+        | extend
+            ActorEmail = tostring(actorMetadata.email),
+            ActorUserId = tostring(actorMetadata.userId)
+        ```
+
+        On the final step click **Create**.
+
+        <Warning>
+            It may take a few minutes for your Custom Log Table to be created and shown as part of Tables.
+        </Warning>
+		</Step>
+    <Step title="Obtain Data Collection Rule Immutable ID">
+        Now that you've created a Data Collection Rule alongside your Custom Log Table, you need it's **Immutable ID**.
+
+        Navigate to [Data collection rules](https://portal.azure.com/#view/HubsExtension/BrowseResource.ReactView/resourceType/microsoft.insights%2Fdatacollectionrules) and click on your new DCR. Copy the **Immutable ID** for the next step.
+
+        ![azure dcr](/images/platform/audit-log-streams/azure-dcr.png)
+		</Step>
+    <Step title="Provide Audit Log Stream Inputs">
+        Back on Infisical, create a new **Audit Log Stream** with the following inputs:
+
+        **Endpoint URL:**
+        ```
+        <data-collection-endpoint-url>/dataCollectionRules/<data-collection-rule-id>/streams/Custom-<custom-log-table-name>_CL?api-version=2023-01-01
+        ```
+
+        - **data-collection-endpoint-url:** Obtained from Step 1
+        - **data-collection-rule-id:** Obtained from Step 4
+        - **custom-log-table-name:** Defined in Step 3
+
+        **Headers:**
+        - **Authorization:** `Bearer <azure-iam-jwt>`
+
+        ![azure create als](/images/platform/audit-log-streams/azure-create-als.png)
+
+        <Warning>
+            The token used in the authorization header must have the **Monitoring Metrics Publisher** role assigned on the **Data Collection Rule** created in Step 3. [See Microsoft Guide](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/tutorial-logs-ingestion-portal#assign-permissions-to-the-dcr).
+        </Warning>
+		</Step>
+</Steps>
+
 ### Datadog
 
 <Steps>

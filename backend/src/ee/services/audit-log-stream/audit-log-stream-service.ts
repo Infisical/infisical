@@ -72,17 +72,13 @@ export const auditLogStreamServiceFactory = ({
       });
 
     await request
-      .post(
-        url,
-        { ...providerSpecificPayload(url), ping: "ok" },
-        {
-          headers: streamHeaders,
-          // request timeout
-          timeout: AUDIT_LOG_STREAM_TIMEOUT,
-          // connection timeout
-          signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-        }
-      )
+      .post(url, providerSpecificPayload(url, { ping: "ok" }), {
+        headers: streamHeaders,
+        // request timeout
+        timeout: AUDIT_LOG_STREAM_TIMEOUT,
+        // connection timeout
+        signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+      })
       .catch((err) => {
         throw new BadRequestError({ message: `Failed to connect with upstream source: ${(err as Error)?.message}` });
       });
@@ -140,17 +136,13 @@ export const auditLogStreamServiceFactory = ({
       });
 
     await request
-      .post(
-        url || logStream.url,
-        { ...providerSpecificPayload(url || logStream.url), ping: "ok" },
-        {
-          headers: streamHeaders,
-          // request timeout
-          timeout: AUDIT_LOG_STREAM_TIMEOUT,
-          // connection timeout
-          signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-        }
-      )
+      .post(url || logStream.url, providerSpecificPayload(url || logStream.url, { ping: "ok" }), {
+        headers: streamHeaders,
+        // request timeout
+        timeout: AUDIT_LOG_STREAM_TIMEOUT,
+        // connection timeout
+        signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+      })
       .catch((err) => {
         throw new Error(`Failed to connect with the source ${(err as Error)?.message}`);
       });
