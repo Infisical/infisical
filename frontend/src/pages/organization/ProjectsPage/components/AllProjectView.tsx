@@ -48,7 +48,7 @@ import {
   useRequestProjectAccess,
   useSearchProjects
 } from "@app/hooks/api";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace, WorkspaceEnv } from "@app/hooks/api/workspace/types";
 
 type Props = {
   onAddNewProject: () => void;
@@ -144,13 +144,17 @@ export const AllProjectView = ({
     type: projectTypeFilter
   });
 
-  const handleAccessProject = async (type: ProjectType, projectId: string) => {
+  const handleAccessProject = async (
+    type: ProjectType,
+    projectId: string,
+    environments: WorkspaceEnv[]
+  ) => {
     try {
       await orgAdminAccessProject.mutateAsync({
         projectId
       });
       await navigate({
-        to: getProjectHomePage(type),
+        to: getProjectHomePage(type, environments),
         params: {
           projectId
         }
@@ -307,7 +311,7 @@ export const AllProjectView = ({
               onKeyDown={(evt) => {
                 if (evt.key === "Enter" && workspace.isMember) {
                   navigate({
-                    to: getProjectHomePage(workspace.type),
+                    to: getProjectHomePage(workspace.type, workspace.environments),
                     params: {
                       projectId: workspace.id
                     }
@@ -317,7 +321,7 @@ export const AllProjectView = ({
               onClick={() => {
                 if (workspace.isMember) {
                   navigate({
-                    to: getProjectHomePage(workspace.type),
+                    to: getProjectHomePage(workspace.type, workspace.environments),
                     params: {
                       projectId: workspace.id
                     }
@@ -363,7 +367,7 @@ export const AllProjectView = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
-                          handleAccessProject(workspace.type, workspace.id);
+                          handleAccessProject(workspace.type, workspace.id, workspace.environments);
                         }}
                         disabled={
                           orgAdminAccessProject.variables?.projectId === workspace.id &&

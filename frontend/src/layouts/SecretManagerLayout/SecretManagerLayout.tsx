@@ -71,9 +71,16 @@ export const SecretManagerLayout = () => {
                 <Menu>
                   <MenuGroup title="Resources">
                     <Link
-                      to="/projects/secret-management/$projectId/overview"
+                      to={
+                        currentWorkspace.environments.length
+                          ? "/projects/secret-management/$projectId/secrets/$envSlug"
+                          : "/projects/secret-management/$projectId/overview"
+                      }
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentWorkspace.id,
+                        ...(currentWorkspace.environments.length
+                          ? { envSlug: currentWorkspace.environments[0]?.slug }
+                          : {})
                       }}
                     >
                       {({ isActive }) => (

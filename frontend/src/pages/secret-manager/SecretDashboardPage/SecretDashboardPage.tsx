@@ -52,6 +52,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import { useResizableColWidth } from "@app/hooks/useResizableColWidth";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
@@ -64,6 +65,7 @@ import { ActionBar } from "./components/ActionBar";
 import { CommitForm } from "./components/CommitForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { DynamicSecretListView } from "./components/DynamicSecretListView";
+import { EnvironmentTabs } from "./components/EnvironmentTabs";
 import { FolderListView } from "./components/FolderListView";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
@@ -710,12 +712,18 @@ const Page = () => {
 
   const mergedSecrets = getMergedSecretsWithPending();
   const mergedFolders = getMergedFoldersWithPending();
+
+  if (!(currentWorkspace?.version === ProjectVersion.V3))
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+        <SecretV2MigrationSection />
+      </div>
+    );
+
   return (
     <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:[color-scheme:dark]">
       <PageHeader
-        title={
-          currentWorkspace.environments.find((env) => env.slug === environment)?.name ?? environment
-        }
+        title="Secrets Management"
         description={
           <p className="text-md text-bunker-300">
             Inject your secrets using
@@ -759,6 +767,7 @@ const Page = () => {
         }
       />
       <SecretV2MigrationSection />
+      <EnvironmentTabs secretPath={secretPath} />
       {!isRollbackMode ? (
         <>
           <ActionBar
