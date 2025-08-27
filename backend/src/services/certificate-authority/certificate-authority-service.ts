@@ -514,8 +514,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
     );
 
     return azureAdCsFns.getTemplates({
