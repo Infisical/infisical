@@ -8,6 +8,7 @@ import { EditDynamicSecretAwsElastiCacheProviderForm } from "./EditDynamicSecret
 import { EditDynamicSecretAwsIamForm } from "./EditDynamicSecretAwsIamForm";
 import { EditDynamicSecretAzureEntraIdForm } from "./EditDynamicSecretAzureEntraIdForm";
 import { EditDynamicSecretCassandraForm } from "./EditDynamicSecretCassandraForm";
+import { EditDynamicSecretCouchbaseForm } from "./EditDynamicSecretCouchbaseForm";
 import { EditDynamicSecretElasticSearchForm } from "./EditDynamicSecretElasticSearchForm";
 import { EditDynamicSecretGcpIamForm } from "./EditDynamicSecretGcpIamForm";
 import { EditDynamicSecretGithubForm } from "./EditDynamicSecretGithubForm";
@@ -376,6 +377,23 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretGithubForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Couchbase && (
+        <motion.div
+          key="couchbase-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretCouchbaseForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

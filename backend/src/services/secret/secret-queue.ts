@@ -5,6 +5,7 @@ import { Knex } from "knex";
 
 import {
   ProjectMembershipRole,
+  ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
   SecretType,
@@ -12,6 +13,9 @@ import {
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TEventBusService } from "@app/ee/services/event/event-bus-service";
+import { BusEventName, PublishableEvent, TopicName } from "@app/ee/services/event/types";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
@@ -111,6 +115,8 @@ type TSecretQueueFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   reminderService: Pick<TReminderServiceFactory, "createReminderInternal" | "deleteReminderBySecretId">;
+  eventBusService: TEventBusService;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TGetSecrets = {
@@ -172,7 +178,9 @@ export const secretQueueFactory = ({
   resourceMetadataDAL,
   secretSyncQueue,
   folderCommitService,
-  reminderService
+  reminderService,
+  eventBusService,
+  licenseService
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -534,16 +542,69 @@ export const secretQueueFactory = ({
     });
   };
 
+  const publishEvents = async (event: PublishableEvent) => {
+    if (event.created) {
+      await eventBusService.publish(TopicName.CoreServers, {
+        type: ProjectType.SecretManager,
+        source: "infiscal",
+        data: {
+          event: BusEventName.CreateSecret,
+          payload: event.created
+        }
+      });
+    }
+
+    if (event.updated) {
+      await eventBusService.publish(TopicName.CoreServers, {
+        type: ProjectType.SecretManager,
+        source: "infiscal",
+        data: {
+          event: BusEventName.UpdateSecret,
+          payload: event.updated
+        }
+      });
+    }
+
+    if (event.deleted) {
+      await eventBusService.publish(TopicName.CoreServers, {
+        type: ProjectType.SecretManager,
+        source: "infiscal",
+        data: {
+          event: BusEventName.DeleteSecret,
+          payload: event.deleted
+        }
+      });
+    }
+
+    if (event.importMutation) {
+      await eventBusService.publish(TopicName.CoreServers, {
+        type: ProjectType.SecretManager,
+        source: "infiscal",
+        data: {
+          event: BusEventName.ImportMutation,
+          payload: event.importMutation
+        }
+      });
+    }
+  };
+
   const syncSecrets = async <T extends boolean = false>({
     // seperate de-dupe queue for integration sync and replication sync
     _deDupeQueue: deDupeQueue = {},
     _depth: depth = 0,
     _deDupeReplicationQueue: deDupeReplicationQueue = {},
+    event,
     ...dto
-  }: TSyncSecretsDTO<T>) => {
+  }: TSyncSecretsDTO<T> & { event?: PublishableEvent }) => {
     logger.info(
       `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
     );
+
+    const plan = await licenseService.getPlan(dto.orgId);
+
+    if (event && plan.eventSubscriptions) {
+      await publishEvents(event);
+    }
 
     const deDuplicationKey = uniqueSecretQueueKey(dto.environmentSlug, dto.secretPath);
     if (
@@ -565,7 +626,7 @@ export const secretQueueFactory = ({
         _deDupeQueue: deDupeQueue,
         _deDupeReplicationQueue: deDupeReplicationQueue,
         _depth: depth
-      } as TSyncSecretsDTO,
+      } as unknown as TSyncSecretsDTO,
       {
         removeOnFail: true,
         removeOnComplete: true,
@@ -689,6 +750,7 @@ export const secretQueueFactory = ({
         isManual,
         projectId,
         secretPath,
+
         depth = 1,
         deDupeQueue = {}
       } = job.data as TIntegrationSyncPayload;
@@ -738,7 +800,13 @@ export const secretQueueFactory = ({
                 environmentSlug: foldersGroupedById[folderId][0]?.environmentSlug as string,
                 _deDupeQueue: deDupeQueue,
                 _depth: depth + 1,
-                excludeReplication: true
+                excludeReplication: true,
+                event: {
+                  importMutation: {
+                    secretPath: foldersGroupedById[folderId][0]?.path as string,
+                    environment: foldersGroupedById[folderId][0]?.environmentSlug as string
+                  }
+                }
               })
             )
         );
@@ -791,7 +859,13 @@ export const secretQueueFactory = ({
                 environmentSlug: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string,
                 _deDupeQueue: deDupeQueue,
                 _depth: depth + 1,
-                excludeReplication: true
+                excludeReplication: true,
+                event: {
+                  importMutation: {
+                    secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
+                    environment: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string
+                  }
+                }
               })
             )
         );

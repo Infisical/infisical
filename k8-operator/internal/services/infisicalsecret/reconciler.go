@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	tpl "text/template"
 
@@ -15,11 +16,14 @@ import (
 	"github.com/Infisical/infisical/k8-operator/internal/model"
 	"github.com/Infisical/infisical/k8-operator/internal/template"
 	"github.com/Infisical/infisical/k8-operator/internal/util"
+	"github.com/Infisical/infisical/k8-operator/internal/util/sse"
 	"github.com/go-logr/logr"
+	"github.com/go-resty/resty/v2"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	infisicalSdk "github.com/infisical/go-sdk"
 	corev1 "k8s.io/api/core/v1"
@@ -409,9 +413,10 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 		})
 
 		resourceVariablesMap[string(infisicalSecret.UID)] = util.ResourceVariables{
-			InfisicalClient: client,
-			CancelCtx:       cancel,
-			AuthDetails:     util.AuthenticationDetails{},
+			InfisicalClient:  client,
+			CancelCtx:        cancel,
+			AuthDetails:      util.AuthenticationDetails{},
+			ServerSentEvents: sse.NewConnectionRegistry(ctx),
 		}
 
 		resourceVariables = resourceVariablesMap[string(infisicalSecret.UID)]
@@ -421,7 +426,6 @@ func (r *InfisicalSecretReconciler) getResourceVariables(infisicalSecret v1alpha
 	}
 
 	return resourceVariables
-
 }
 
 func (r *InfisicalSecretReconciler) updateResourceVariables(infisicalSecret v1alpha1.InfisicalSecret, resourceVariables util.ResourceVariables, resourceVariablesMap map[string]util.ResourceVariables) {
@@ -454,9 +458,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		}
 
 		r.updateResourceVariables(*infisicalSecret, util.ResourceVariables{
-			InfisicalClient: infisicalClient,
-			CancelCtx:       cancelCtx,
-			AuthDetails:     authDetails,
+			InfisicalClient:  infisicalClient,
+			CancelCtx:        cancelCtx,
+			AuthDetails:      authDetails,
+			ServerSentEvents: sse.NewConnectionRegistry(ctx),
 		}, resourceVariablesMap)
 	}
 
@@ -524,4 +529,95 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	}
 
 	return secretsCount, nil
+}
+
+func (r *InfisicalSecretReconciler) CloseInstantUpdatesStream(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, resourceVariablesMap map[string]util.ResourceVariables) error {
+	if infisicalSecret == nil {
+		return fmt.Errorf("infisicalSecret is nil")
+	}
+
+	variables := r.getResourceVariables(*infisicalSecret, resourceVariablesMap)
+
+	if !variables.AuthDetails.IsMachineIdentityAuth {
+		return fmt.Errorf("only machine identity is supported for subscriptions")
+	}
+
+	conn := variables.ServerSentEvents
+
+	if _, ok := conn.Get(); ok {
+		conn.Close()
+	}
+
+	return nil
+}
+
+func (r *InfisicalSecretReconciler) OpenInstantUpdatesStream(ctx context.Context, logger logr.Logger, infisicalSecret *v1alpha1.InfisicalSecret, resourceVariablesMap map[string]util.ResourceVariables, eventCh chan<- event.TypedGenericEvent[client.Object]) error {
+	if infisicalSecret == nil {
+		return fmt.Errorf("infisicalSecret is nil")
+	}
+
+	variables := r.getResourceVariables(*infisicalSecret, resourceVariablesMap)
+
+	if !variables.AuthDetails.IsMachineIdentityAuth {
+		return fmt.Errorf("only machine identity is supported for subscriptions")
+	}
+
+	projectSlug := variables.AuthDetails.MachineIdentityScope.ProjectSlug
+	secretsPath := variables.AuthDetails.MachineIdentityScope.SecretsPath
+	envSlug := variables.AuthDetails.MachineIdentityScope.EnvSlug
+
+	infiscalClient := variables.InfisicalClient
+	sseRegistry := variables.ServerSentEvents
+
+	token := infiscalClient.Auth().GetAccessToken()
+
+	project, err := util.GetProjectBySlug(token, projectSlug)
+
+	if err != nil {
+		return fmt.Errorf("failed to get project [err=%s]", err)
+	}
+
+	if variables.AuthDetails.MachineIdentityScope.Recursive {
+		secretsPath = fmt.Sprint(secretsPath, "**")
+	}
+
+	if err != nil {
+		return fmt.Errorf("CallSubscribeProjectEvents: unable to marshal body [err=%s]", err)
+	}
+
+	events, errors, err := sseRegistry.Subscribe(func() (*http.Response, error) {
+		httpClient := resty.New()
+
+		req, err := api.CallSubscribeProjectEvents(httpClient, project.ID, secretsPath, envSlug, token)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return req, nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("unable to connect sse [err=%s]", err)
+	}
+
+	go func() {
+	outer:
+		for {
+			select {
+			case ev := <-events:
+				logger.Info("Received SSE Event", "event", ev)
+				eventCh <- event.TypedGenericEvent[client.Object]{
+					Object: infisicalSecret,
+				}
+			case err := <-errors:
+				logger.Error(err, "Error occurred")
+				break outer
+			case <-ctx.Done():
+				break outer
+			}
+		}
+	}()
+
+	return nil
 }

@@ -35,6 +35,7 @@ export interface TPermissionDALFactory {
       projectFavorites?: string[] | null | undefined;
       customRoleSlug?: string | null | undefined;
       orgAuthEnforced?: boolean | null | undefined;
+      orgGoogleSsoAuthEnforced: boolean;
     } & {
       groups: {
         id: string;
@@ -87,6 +88,7 @@ export interface TPermissionDALFactory {
         }[];
         orgId: string;
         orgAuthEnforced: boolean | null | undefined;
+        orgGoogleSsoAuthEnforced: boolean;
         orgRole: OrgMembershipRole;
         userId: string;
         projectId: string;
@@ -350,6 +352,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("slug").withSchema(TableName.OrgRoles).withSchema(TableName.OrgRoles).as("customRoleSlug"),
           db.ref("permissions").withSchema(TableName.OrgRoles),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
+          db.ref("googleSsoAuthEnforced").withSchema(TableName.Organization).as("orgGoogleSsoAuthEnforced"),
           db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
           db.ref("groupId").withSchema("userGroups"),
           db.ref("groupOrgId").withSchema("userGroups"),
@@ -369,6 +372,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           OrgMembershipsSchema.extend({
             permissions: z.unknown(),
             orgAuthEnforced: z.boolean().optional().nullable(),
+            orgGoogleSsoAuthEnforced: z.boolean(),
             bypassOrgAuthEnabled: z.boolean(),
             customRoleSlug: z.string().optional().nullable(),
             shouldUseNewPrivilegeSystem: z.boolean()
@@ -988,6 +992,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
+          db.ref("googleSsoAuthEnforced").withSchema(TableName.Organization).as("orgGoogleSsoAuthEnforced"),
           db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
           db.ref("role").withSchema(TableName.OrgMembership).as("orgRole"),
           db.ref("orgId").withSchema(TableName.Project),
@@ -1003,6 +1008,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           orgId,
           username,
           orgAuthEnforced,
+          orgGoogleSsoAuthEnforced,
           orgRole,
           membershipId,
           groupMembershipId,
@@ -1016,6 +1022,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         }) => ({
           orgId,
           orgAuthEnforced,
+          orgGoogleSsoAuthEnforced,
           orgRole: orgRole as OrgMembershipRole,
           userId,
           projectId,

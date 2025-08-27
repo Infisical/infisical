@@ -97,7 +97,6 @@ export const projectMembershipServiceFactory = ({
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId, { roles });
 
-    // projectMembers[0].project
     if (includeGroupMembers) {
       const groupMembers = await groupProjectDAL.findAllProjectGroupMembers(projectId);
       const allMembers = [

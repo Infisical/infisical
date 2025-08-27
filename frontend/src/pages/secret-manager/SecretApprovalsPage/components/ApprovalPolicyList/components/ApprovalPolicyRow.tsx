@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import {
+  faBan,
   faClipboardCheck,
   faEdit,
   faEllipsisV,
@@ -19,6 +20,7 @@ import {
   GenericFieldLabel,
   IconButton,
   Td,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
@@ -86,10 +88,9 @@ export const ApprovalPolicyRow = ({
     return entityInSameSequence?.map((el) => {
       return {
         sequence: el.sequence || policy.approvals,
-        userLabels: members
-          ?.filter((member) => el.user.find((i) => i.id === member.user.id))
-          .map((member) => getMemberLabel(member))
-          .join(", "),
+
+        users: members.filter((member) => el.user.find((i) => i.id === member.user.id)),
+
         groupLabels: groups
           ?.filter(({ group }) => el.group.find((i) => i.id === group.id))
           .map(({ group }) => group.name)
@@ -212,7 +213,35 @@ export const ApprovalPolicyRow = ({
                   )}
                   <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
                     <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
-                      {el.userLabels}
+                      {Boolean(el.users.length) && (
+                        <div className="flex flex-row flex-wrap gap-2">
+                          {el.users.map((u, idx) => {
+                            return u.user.isOrgMembershipActive ? (
+                              <div className="flex items-center" key={u.id}>
+                                <span>{getMemberLabel(u)}</span>
+                                {idx < el.users.length - 1 && ","}
+                              </div>
+                            ) : (
+                              <div className="flex items-center" key={u.id}>
+                                <span className="flex items-center opacity-40">
+                                  {getMemberLabel(u)}
+                                  <span className="text-xs">
+                                    <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
+                                      <div>
+                                        <Badge className="pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                                          <FontAwesomeIcon icon={faBan} />
+                                          Inactive
+                                        </Badge>
+                                      </div>
+                                    </Tooltip>
+                                  </span>
+                                </span>
+                                {idx < el.users.length - 1 && ","}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </GenericFieldLabel>
                     <GenericFieldLabel className="col-span-2" icon={faUserGroup} label="Groups">
                       {el.groupLabels}

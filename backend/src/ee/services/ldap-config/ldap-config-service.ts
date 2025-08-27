@@ -400,15 +400,13 @@ export const ldapConfigServiceFactory = ({
 
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
-        if (serverCfg.trustLdapEmails) {
-          newUser = await userDAL.findOne(
-            {
-              email: email.toLowerCase(),
-              isEmailVerified: true
-            },
-            tx
-          );
-        }
+        newUser = await userDAL.findOne(
+          {
+            email: email.toLowerCase(),
+            isEmailVerified: true
+          },
+          tx
+        );
 
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(username, userDAL);
@@ -433,7 +431,8 @@ export const ldapConfigServiceFactory = ({
             aliasType: UserAliasType.LDAP,
             externalId,
             emails: [email],
-            orgId
+            orgId,
+            isEmailVerified: serverCfg.trustLdapEmails
           },
           tx
         );
@@ -556,15 +555,14 @@ export const ldapConfigServiceFactory = ({
       return newUser;
     });
 
-    const isUserCompleted = Boolean(user.isAccepted);
-
+    const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
         hasExchangedPrivateKey: true,
-        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
+        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,
@@ -572,6 +570,7 @@ export const ldapConfigServiceFactory = ({
         organizationSlug: organization.slug,
         authMethod: AuthMethod.LDAP,
         authType: UserAliasType.LDAP,
+        aliasId: userAlias.id,
         isUserCompleted,
         ...(relayState
           ? {
@@ -585,10 +584,11 @@ export const ldapConfigServiceFactory = ({
       }
     );
 
-    if (user.email && !user.isEmailVerified) {
+    if (user.email && !userAlias.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
-        userId: user.id
+        userId: user.id,
+        aliasId: userAlias.id
       });
 
       await smtpService.sendMail({

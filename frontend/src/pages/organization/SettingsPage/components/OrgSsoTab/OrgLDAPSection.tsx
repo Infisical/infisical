@@ -95,43 +95,25 @@ export const OrgLDAPSection = (): JSX.Element => {
   };
 
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+    <div className="mb-4">
       <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">LDAP</h2>
-          <div className="flex">
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
-              {(isAllowed) => (
-                <Button onClick={addLDAPBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
-                  Manage
-                </Button>
-              )}
-            </OrgPermissionCan>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xl font-semibold text-gray-200">LDAP</p>
+            <p className="mb-2 text-gray-400">Manage LDAP authentication configuration</p>
           </div>
-        </div>
-        <p className="text-sm text-mineshaft-300">Manage LDAP authentication configuration</p>
-      </div>
-      <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">LDAP Group Mappings</h2>
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
             {(isAllowed) => (
-              <Button
-                onClick={openLDAPGroupMapModal}
-                colorSchema="secondary"
-                isDisabled={!isAllowed}
-              >
+              <Button onClick={addLDAPBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
                 Manage
               </Button>
             )}
           </OrgPermissionCan>
         </div>
-        <p className="text-sm text-mineshaft-300">
-          Manage how LDAP groups are mapped to internal groups in Infisical
-        </p>
       </div>
+
       {data && (
-        <div className="py-4">
+        <div className="pt-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-md text-mineshaft-100">Enable LDAP</h2>
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Ldap}>
@@ -152,6 +134,27 @@ export const OrgLDAPSection = (): JSX.Element => {
           </p>
         </div>
       )}
+
+      <div className="py-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-md text-mineshaft-100">LDAP Group Mappings</h2>
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
+            {(isAllowed) => (
+              <Button
+                onClick={openLDAPGroupMapModal}
+                colorSchema="secondary"
+                isDisabled={!isAllowed}
+              >
+                Configure
+              </Button>
+            )}
+          </OrgPermissionCan>
+        </div>
+        <p className="text-sm text-mineshaft-300">
+          Manage how LDAP groups are mapped to internal groups in Infisical
+        </p>
+      </div>
+
       <LDAPModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

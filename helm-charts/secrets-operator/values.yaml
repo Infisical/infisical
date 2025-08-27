@@ -12,7 +12,7 @@ controllerManager:
       readOnlyRootFilesystem: true
     image:
       repository: infisical/kubernetes-operator
-      tag: v0.10.1
+      tag: v0.10.2
     resources:
       limits:
         cpu: 500m

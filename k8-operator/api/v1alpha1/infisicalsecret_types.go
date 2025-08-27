@@ -160,6 +160,9 @@ type InfisicalSecretSpec struct {
 
 	// +kubebuilder:validation:Optional
 	TLS TLSConfig `json:"tls"`
+
+	// +kubebuilder:validation:Optional
+	InstantUpdates bool `json:"instantUpdates"`
 }
 
 // InfisicalSecretStatus defines the observed state of InfisicalSecret

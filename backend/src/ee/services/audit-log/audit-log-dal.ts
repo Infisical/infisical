@@ -14,7 +14,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { EventType, filterableSecretEvents } from "./audit-log-types";
 
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
-  pruneAuditLog: (tx?: knex.Knex) => Promise<void>;
+  pruneAuditLog: () => Promise<void>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -40,6 +40,10 @@ type TFindQuery = {
   limit?: number;
   offset?: number;
 };
+
+const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
+const MAX_RETRY_ON_FAILURE = 3;
 
 export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
@@ -151,20 +155,20 @@ export const auditLogDALFactory = (db: TDbClient) => {
   };
 
   // delete all audit log that have expired
-  const pruneAuditLog: TAuditLogDALFactory["pruneAuditLog"] = async (tx) => {
-    const runPrune = async (dbClient: knex.Knex) => {
-      const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
-      const MAX_RETRY_ON_FAILURE = 3;
+  const pruneAuditLog: TAuditLogDALFactory["pruneAuditLog"] = async () => {
+    const today = new Date();
+    let deletedAuditLogIds: { id: string }[] = [];
+    let numberOfRetryOnFailure = 0;
+    let isRetrying = false;
 
-      const today = new Date();
-      let deletedAuditLogIds: { id: string }[] = [];
-      let numberOfRetryOnFailure = 0;
-      let isRetrying = false;
+    logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
+    do {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        deletedAuditLogIds = await db.transaction(async (trx) => {
+          await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
 
-      logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
-      do {
-        try {
-          const findExpiredLogSubQuery = dbClient(TableName.AuditLog)
+          const findExpiredLogSubQuery = trx(TableName.AuditLog)
             .where("expiresAt", "<", today)
             .where("createdAt", "<", today) // to use audit log partition
             .orderBy(`${TableName.AuditLog}.createdAt`, "desc")
@@ -172,34 +176,25 @@ export const auditLogDALFactory = (db: TDbClient) => {
             .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
 
           // eslint-disable-next-line no-await-in-loop
-          deletedAuditLogIds = await dbClient(TableName.AuditLog)
-            .whereIn("id", findExpiredLogSubQuery)
-            .del()
-            .returning("id");
-          numberOfRetryOnFailure = 0; // reset
-        } catch (error) {
-          numberOfRetryOnFailure += 1;
-          logger.error(error, "Failed to delete audit log on pruning");
-        } finally {
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((resolve) => {
-            setTimeout(resolve, 10); // time to breathe for db
-          });
-        }
-        isRetrying = numberOfRetryOnFailure > 0;
-      } while (deletedAuditLogIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
-      logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
-    };
+          const results = await trx(TableName.AuditLog).whereIn("id", findExpiredLogSubQuery).del().returning("id");
 
-    if (tx) {
-      await runPrune(tx);
-    } else {
-      const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-      await db.transaction(async (trx) => {
-        await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
-        await runPrune(trx);
-      });
-    }
+          return results;
+        });
+
+        numberOfRetryOnFailure = 0; // reset
+      } catch (error) {
+        numberOfRetryOnFailure += 1;
+        deletedAuditLogIds = [];
+        logger.error(error, "Failed to delete audit log on pruning");
+      } finally {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, 10); // time to breathe for db
+        });
+      }
+      isRetrying = numberOfRetryOnFailure > 0;
+    } while (deletedAuditLogIds.length > 0 || (isRetrying && numberOfRetryOnFailure < MAX_RETRY_ON_FAILURE));
+    logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
   };
 
   const create: TAuditLogDALFactory["create"] = async (tx) => {

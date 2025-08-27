@@ -258,6 +258,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
+
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${id}' not found` });
 
@@ -952,13 +953,39 @@ export const secretApprovalRequestServiceFactory = ({
     if (!folder) {
       throw new NotFoundError({ message: `Folder with ID '${folderId}' not found in project with ID '${projectId}'` });
     }
+
+    const { secrets } = mergeStatus;
+
     await secretQueueService.syncSecrets({
       projectId,
       orgId: actorOrgId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
       actorId,
-      actor
+      actor,
+      event: {
+        created: secrets.created.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        })),
+        updated: secrets.updated.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        })),
+        deleted: secrets.deleted.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        }))
+      }
     });
 
     if (isSoftEnforcement) {
@@ -1421,6 +1448,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const commits: Omit<TSecretApprovalRequestsSecretsV2Insert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};
+    const existingTagIds: Record<string, string[]> = {};
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -1486,6 +1514,11 @@ export const secretApprovalRequestServiceFactory = ({
           type: SecretType.Shared
         }))
       );
+
+      secretsToUpdateStoredInDB.forEach((el) => {
+        if (el.tags?.length) existingTagIds[el.key] = el.tags.map((i) => i.id);
+      });
+
       if (secretsToUpdateStoredInDB.length !== secretsToUpdate.length)
         throw new NotFoundError({
           message: `Secret does not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
@@ -1529,7 +1562,10 @@ export const secretApprovalRequestServiceFactory = ({
             secretMetadata
           }) => {
             const secretId = updatingSecretsGroupByKey[secretKey][0].id;
-            if (tagIds?.length) commitTagIds[newSecretName ?? secretKey] = tagIds;
+            if (tagIds?.length || existingTagIds[secretKey]?.length) {
+              commitTagIds[newSecretName ?? secretKey] = tagIds || existingTagIds[secretKey];
+            }
+
             return {
               ...latestSecretVersions[secretId],
               secretMetadata,

@@ -177,6 +177,18 @@ export const projectEnvServiceFactory = ({
         }
       }
 
+      const envs = await projectEnvDAL.find({ projectId });
+      const project = await projectDAL.findById(projectId);
+      const plan = await licenseService.getPlan(project.orgId);
+      if (plan.environmentLimit !== null && envs.length > plan.environmentLimit) {
+        // case: limit imposed on number of environments allowed
+        // case: number of environments used exceeds the number of environments allowed
+        throw new BadRequestError({
+          message:
+            "Failed to update environment due to environment limit exceeded. To update an environment, please upgrade your plan or remove unused environments."
+        });
+      }
+
       const env = await projectEnvDAL.transaction(async (tx) => {
         if (position) {
           const existingEnvWithPosition = await projectEnvDAL.findOne({ projectId, position }, tx);
