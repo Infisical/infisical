@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       "lockoutCounterResetSeconds"
     );
 
-    await knex.schema.alterTable(TableName.IdentityUniversalAuth, async (t) => {
+    await knex.schema.alterTable(TableName.IdentityUniversalAuth, (t) => {
       if (!hasLockoutEnabled) {
         t.boolean("lockoutEnabled").notNullable().defaultTo(true);
       }
