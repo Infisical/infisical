@@ -266,8 +266,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
               .describe(LDAP_AUTH.ATTACH.accessTokenNumUsesLimit),
             lockoutEnabled: z.boolean().default(true).describe(LDAP_AUTH.ATTACH.lockoutEnabled),
             lockoutThreshold: z.number().min(1).max(30).default(3).describe(LDAP_AUTH.ATTACH.lockoutThreshold),
-            lockoutDuration: z.number().min(30).max(86400).default(300).describe(LDAP_AUTH.ATTACH.lockoutDuration),
-            lockoutCounterReset: z.number().min(5).max(3600).default(30).describe(LDAP_AUTH.ATTACH.lockoutCounterReset)
+            lockoutDurationSeconds: z
+              .number()
+              .min(30)
+              .max(86400)
+              .default(300)
+              .describe(LDAP_AUTH.ATTACH.lockoutDurationSeconds),
+            lockoutCounterResetSeconds: z
+              .number()
+              .min(5)
+              .max(3600)
+              .default(30)
+              .describe(LDAP_AUTH.ATTACH.lockoutCounterResetSeconds)
           })
           .refine(
             (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
@@ -320,8 +330,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
               .describe(LDAP_AUTH.ATTACH.accessTokenNumUsesLimit),
             lockoutEnabled: z.boolean().default(true).describe(LDAP_AUTH.ATTACH.lockoutEnabled),
             lockoutThreshold: z.number().min(1).max(30).default(3).describe(LDAP_AUTH.ATTACH.lockoutThreshold),
-            lockoutDuration: z.number().min(30).max(86400).default(300).describe(LDAP_AUTH.ATTACH.lockoutDuration),
-            lockoutCounterReset: z.number().min(5).max(3600).default(30).describe(LDAP_AUTH.ATTACH.lockoutCounterReset)
+            lockoutDurationSeconds: z
+              .number()
+              .min(30)
+              .max(86400)
+              .default(300)
+              .describe(LDAP_AUTH.ATTACH.lockoutDurationSeconds),
+            lockoutCounterResetSeconds: z
+              .number()
+              .min(5)
+              .max(3600)
+              .default(30)
+              .describe(LDAP_AUTH.ATTACH.lockoutCounterResetSeconds)
           })
           .refine(
             (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
@@ -364,8 +384,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             templateId: identityLdapAuth.templateId,
             lockoutEnabled: identityLdapAuth.lockoutEnabled,
             lockoutThreshold: identityLdapAuth.lockoutThreshold,
-            lockoutDuration: identityLdapAuth.lockoutDuration,
-            lockoutCounterReset: identityLdapAuth.lockoutCounterReset
+            lockoutDurationSeconds: identityLdapAuth.lockoutDurationSeconds,
+            lockoutCounterResetSeconds: identityLdapAuth.lockoutCounterResetSeconds
           }
         }
       });
@@ -432,8 +452,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             .describe(LDAP_AUTH.UPDATE.accessTokenMaxTTL),
           lockoutEnabled: z.boolean().optional().describe(LDAP_AUTH.UPDATE.lockoutEnabled),
           lockoutThreshold: z.number().min(1).max(30).optional().describe(LDAP_AUTH.UPDATE.lockoutThreshold),
-          lockoutDuration: z.number().min(30).max(86400).optional().describe(LDAP_AUTH.UPDATE.lockoutDuration),
-          lockoutCounterReset: z.number().min(5).max(3600).optional().describe(LDAP_AUTH.UPDATE.lockoutCounterReset)
+          lockoutDurationSeconds: z
+            .number()
+            .min(30)
+            .max(86400)
+            .optional()
+            .describe(LDAP_AUTH.UPDATE.lockoutDurationSeconds),
+          lockoutCounterResetSeconds: z
+            .number()
+            .min(5)
+            .max(3600)
+            .optional()
+            .describe(LDAP_AUTH.UPDATE.lockoutCounterResetSeconds)
         })
         .refine(
           (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
@@ -475,8 +505,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             templateId: identityLdapAuth.templateId,
             lockoutEnabled: identityLdapAuth.lockoutEnabled,
             lockoutThreshold: identityLdapAuth.lockoutThreshold,
-            lockoutDuration: identityLdapAuth.lockoutDuration,
-            lockoutCounterReset: identityLdapAuth.lockoutCounterReset
+            lockoutDurationSeconds: identityLdapAuth.lockoutDurationSeconds,
+            lockoutCounterResetSeconds: identityLdapAuth.lockoutCounterResetSeconds
           }
         }
       });

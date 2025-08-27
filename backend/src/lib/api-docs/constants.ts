@@ -245,8 +245,9 @@ export const LDAP_AUTH = {
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     lockoutEnabled: "Whether the lockout feature is enabled.",
     lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
-    lockoutDuration: "How long an identity auth method lockout lasts.",
-    lockoutCounterReset: "How long to wait from the most recent failed login until resetting the lockout counter."
+    lockoutDurationSeconds: "How long an identity auth method lockout lasts.",
+    lockoutCounterResetSeconds:
+      "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   UPDATE: {
     identityId: "The ID of the identity to update the configuration for.",
@@ -264,8 +265,9 @@ export const LDAP_AUTH = {
     templateId: "The ID of the identity auth template to update the configuration to.",
     lockoutEnabled: "Whether the lockout feature is enabled.",
     lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
-    lockoutDuration: "How long an identity auth method lockout lasts.",
-    lockoutCounterReset: "How long to wait from the most recent failed login until resetting the lockout counter."
+    lockoutDurationSeconds: "How long an identity auth method lockout lasts.",
+    lockoutCounterResetSeconds:
+      "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the configuration for."

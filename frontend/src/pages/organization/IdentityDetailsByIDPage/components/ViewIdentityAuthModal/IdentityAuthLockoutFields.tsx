@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { UseMutationResult } from "@tanstack/react-query";
+import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -20,8 +21,8 @@ export const LockoutFields = ({
   data: {
     lockoutEnabled: boolean;
     lockoutThreshold: number;
-    lockoutDuration: number;
-    lockoutCounterReset: number;
+    lockoutDurationSeconds: number;
+    lockoutCounterResetSeconds: number;
   };
 }) => {
   const { mutateAsync, isPending } = clearLockoutsResult;
@@ -70,10 +71,10 @@ export const LockoutFields = ({
         {data.lockoutThreshold}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Lockout Duration">
-        {data.lockoutDuration} seconds
+        {ms(data.lockoutDurationSeconds * 1000, { long: true })}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Lockout Counter Reset">
-        {data.lockoutCounterReset} seconds
+        {ms(data.lockoutCounterResetSeconds * 1000, { long: true })}
       </IdentityAuthFieldDisplay>
     </>
   );

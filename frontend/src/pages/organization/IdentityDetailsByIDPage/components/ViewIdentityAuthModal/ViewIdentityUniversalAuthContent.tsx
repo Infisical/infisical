@@ -1,6 +1,5 @@
 import { faBan, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import ms from "ms";
 
 import { EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";

@@ -1436,8 +1436,8 @@ export const useAddIdentityLdapAuth = () => {
       accessTokenTrustedIps,
       lockoutEnabled,
       lockoutThreshold,
-      lockoutDuration,
-      lockoutCounterReset
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     }) => {
       const { data } = await apiRequest.post<{ identityLdapAuth: IdentityLdapAuth }>(
         `/api/v1/auth/ldap-auth/identities/${identityId}`,
@@ -1456,8 +1456,8 @@ export const useAddIdentityLdapAuth = () => {
           accessTokenTrustedIps,
           lockoutEnabled,
           lockoutThreshold,
-          lockoutDuration,
-          lockoutCounterReset
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
         }
       );
       return data.identityLdapAuth;
@@ -1493,8 +1493,8 @@ export const useUpdateIdentityLdapAuth = () => {
       accessTokenTrustedIps,
       lockoutEnabled,
       lockoutThreshold,
-      lockoutDuration,
-      lockoutCounterReset
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     }) => {
       const { data } = await apiRequest.patch<{ identityLdapAuth: IdentityLdapAuth }>(
         `/api/v1/auth/ldap-auth/identities/${identityId}`,
@@ -1513,8 +1513,8 @@ export const useUpdateIdentityLdapAuth = () => {
           accessTokenTrustedIps,
           lockoutEnabled,
           lockoutThreshold,
-          lockoutDuration,
-          lockoutCounterReset
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
         }
       );
       return data.identityLdapAuth;

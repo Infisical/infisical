@@ -606,8 +606,8 @@ export type AddIdentityLdapAuthDTO = {
 
   lockoutEnabled: boolean;
   lockoutThreshold: number;
-  lockoutDuration: number;
-  lockoutCounterReset: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 };
 
 export type UpdateIdentityLdapAuthDTO = {
@@ -633,8 +633,8 @@ export type UpdateIdentityLdapAuthDTO = {
 
   lockoutEnabled?: boolean;
   lockoutThreshold?: number;
-  lockoutDuration?: number;
-  lockoutCounterReset?: number;
+  lockoutDurationSeconds?: number;
+  lockoutCounterResetSeconds?: number;
 };
 
 export type DeleteIdentityLdapAuthDTO = {
@@ -663,8 +663,8 @@ export type IdentityLdapAuth = {
 
   lockoutEnabled: boolean;
   lockoutThreshold: number;
-  lockoutDuration: number;
-  lockoutCounterReset: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 };
 
 export type ClearIdentityLdapAuthLockoutsDTO = {

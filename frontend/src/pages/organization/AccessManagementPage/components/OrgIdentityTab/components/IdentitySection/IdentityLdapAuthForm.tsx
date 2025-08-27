@@ -245,8 +245,8 @@ export const IdentityLdapAuthForm = ({
     if (data) {
       const detectedScope = determineScope(data);
 
-      const lockoutDurationObj = getObjectFromSeconds(data.lockoutDuration);
-      const lockoutCounterResetObj = getObjectFromSeconds(data.lockoutCounterReset);
+      const lockoutDurationObj = getObjectFromSeconds(data.lockoutDurationSeconds);
+      const lockoutCounterResetObj = getObjectFromSeconds(data.lockoutCounterResetSeconds);
 
       reset({
         scope: detectedScope,
@@ -334,8 +334,11 @@ export const IdentityLdapAuthForm = ({
         lockoutCounterResetUnit
       } = formData;
 
-      const lockoutDuration = durationToSeconds(Number(lockoutDurationValue), lockoutDurationUnit);
-      const lockoutCounterReset = durationToSeconds(
+      const lockoutDurationSeconds = durationToSeconds(
+        Number(lockoutDurationValue),
+        lockoutDurationUnit
+      );
+      const lockoutCounterResetSeconds = durationToSeconds(
         Number(lockoutCounterResetValue),
         lockoutCounterResetUnit
       );
@@ -352,8 +355,8 @@ export const IdentityLdapAuthForm = ({
         accessTokenTrustedIps,
         lockoutEnabled,
         lockoutThreshold: Number(lockoutThreshold),
-        lockoutDuration,
-        lockoutCounterReset
+        lockoutDurationSeconds,
+        lockoutCounterResetSeconds
       };
 
       // Add scope-specific fields

@@ -1372,8 +1372,8 @@ interface AddIdentityLdapAuthEvent {
     templateId?: string | null;
     lockoutEnabled: boolean;
     lockoutThreshold: number;
-    lockoutDuration: number;
-    lockoutCounterReset: number;
+    lockoutDurationSeconds: number;
+    lockoutCounterResetSeconds: number;
   };
 }
 
@@ -1390,8 +1390,8 @@ interface UpdateIdentityLdapAuthEvent {
     templateId?: string | null;
     lockoutEnabled?: boolean;
     lockoutThreshold?: number;
-    lockoutDuration?: number;
-    lockoutCounterReset?: number;
+    lockoutDurationSeconds?: number;
+    lockoutCounterResetSeconds?: number;
   };
 }
 

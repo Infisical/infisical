@@ -223,8 +223,8 @@ export const identityLdapAuthServiceFactory = ({
     allowedFields,
     lockoutEnabled,
     lockoutThreshold,
-    lockoutDuration,
-    lockoutCounterReset
+    lockoutDurationSeconds,
+    lockoutCounterResetSeconds
   }: TAttachLdapAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -360,8 +360,8 @@ export const identityLdapAuthServiceFactory = ({
           templateId,
           lockoutEnabled,
           lockoutThreshold,
-          lockoutDuration,
-          lockoutCounterReset
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
         },
         tx
       );
@@ -390,8 +390,8 @@ export const identityLdapAuthServiceFactory = ({
     actorOrgId,
     lockoutEnabled,
     lockoutThreshold,
-    lockoutDuration,
-    lockoutCounterReset
+    lockoutDurationSeconds,
+    lockoutCounterResetSeconds
   }: TUpdateLdapAuthDTO) => {
     const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
@@ -542,8 +542,8 @@ export const identityLdapAuthServiceFactory = ({
         : undefined,
       lockoutEnabled,
       lockoutThreshold,
-      lockoutDuration,
-      lockoutCounterReset
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     });
 
     return { ...updatedLdapAuth, orgId: identityMembershipOrg.orgId };
@@ -687,7 +687,7 @@ export const identityLdapAuthServiceFactory = ({
 
       await keyStore.setItemWithExpiry(
         LOCKOUT_KEY,
-        lockout.lockedOut ? identityLdapAuth.lockoutDuration : identityLdapAuth.lockoutCounterReset,
+        lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
         JSON.stringify(lockout)
       );
     }
