@@ -175,8 +175,9 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {/* Only show revoke button if CA supports revocation */}
                         {(() => {
                           const caType = caCapabilityMap[certificate.caId];
+                          // If caId not found in map, assume CA supports revocation to avoid hiding revoke option
                           const supportsRevocation =
-                            caType &&
+                            !caType ||
                             caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
 
                           if (!supportsRevocation) {

@@ -41,7 +41,7 @@ export const useUpdateCa = () => {
       });
       // Invalidate external CAs list
       queryClient.invalidateQueries({
-        queryKey: [`external-cas-${projectId}`]
+        queryKey: caKeys.listExternalCasByProjectId(projectId)
       });
     }
   });
@@ -63,7 +63,7 @@ export const useCreateCa = () => {
       });
       // Invalidate external CAs list
       queryClient.invalidateQueries({
-        queryKey: [`external-cas-${projectId}`]
+        queryKey: caKeys.listExternalCasByProjectId(projectId)
       });
     }
   });
@@ -89,7 +89,7 @@ export const useDeleteCa = () => {
       });
       // Invalidate external CAs list
       queryClient.invalidateQueries({
-        queryKey: [`external-cas-${projectId}`]
+        queryKey: caKeys.listExternalCasByProjectId(projectId)
       });
     }
   });

@@ -17,9 +17,5 @@ export type TCreateAzureADCSConnection = z.infer<typeof CreateAzureADCSConnectio
 
 export type TAzureADCSConnection = TRootAppConnection & { app: AppConnection.AzureADCS } & {
   method: AzureADCSConnectionMethod.UsernamePassword;
-  credentials: {
-    username: string;
-    password: string;
-    adcsUrl: string;
-  };
+  credentials: TCreateAzureADCSConnection;
 };

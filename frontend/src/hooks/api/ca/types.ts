@@ -137,6 +137,12 @@ export type TSignIntermediateResponse = {
   serialNumber: string;
 };
 
+export type TAzureAdCsTemplate = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
 export type TImportCaCertificateDTO = {
   caId: string;
   projectSlug: string;

@@ -98,7 +98,7 @@ const buildSubjectDN = (commonName: string, properties?: TPkiSubscriberPropertie
   const emailAddress = sanitizeComponent(properties?.emailAddress);
   if (emailAddress) {
     // Enhanced email validation for DN usage
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = new RE2(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
     if (emailRegex.test(emailAddress) && emailAddress.length > 5 && emailAddress.length < 64) {
       subject += `,E=${emailAddress}`;
     }

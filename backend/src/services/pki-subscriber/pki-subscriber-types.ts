@@ -80,4 +80,4 @@ export type TPkiSubscriberProperties = {
   state?: string;
   locality?: string;
   emailAddress?: string;
-}
+};

@@ -205,7 +205,8 @@ export type TAppConnectionOption =
   | TSupabaseConnectionOption
   | TDigitalOceanConnectionOption
   | TNetlifyConnectionOption
-  | TOktaConnectionOption;
+  | TOktaConnectionOption
+  | TAzureAdCsConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;

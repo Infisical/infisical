@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -57,6 +58,18 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.GET_AZURE_AD_TEMPLATES,
+          metadata: {
+            caId: req.params.caId,
+            amount: templates.length
+          }
+        }
       });
 
       return { templates };

@@ -1,5 +1,7 @@
 /* eslint-disable no-case-declarations, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-var-requires, no-await-in-loop, no-continue */
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -145,7 +147,7 @@ const testAdcsConnection = async (
         password,
         domain: credentials.domain,
         workstation: "",
-        rejectUnauthorized: false
+        rejectUnauthorized: !getConfig().isDevelopmentMode // Only allow unauthorized SSL in development
       });
 
       // Check if we got a successful response
@@ -232,7 +234,7 @@ const createNtlmClient = (username: string, password: string, baseUrl: string) =
         password,
         domain: parsedCredentials.domain,
         workstation: "",
-        rejectUnauthorized: false,
+        rejectUnauthorized: !getConfig().isDevelopmentMode, // Only allow unauthorized SSL in development,
         ...additionalOptions
       });
     },
@@ -244,7 +246,7 @@ const createNtlmClient = (username: string, password: string, baseUrl: string) =
         password,
         domain: parsedCredentials.domain,
         workstation: "",
-        rejectUnauthorized: false,
+        rejectUnauthorized: !getConfig().isDevelopmentMode, // Only allow unauthorized SSL in development,
         body,
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -301,6 +303,9 @@ export const validateAzureADCSConnectionCredentials = async (appConnection: TAzu
     // Parse and validate credentials
     const parsedCredentials = parseCredentials(credentials.username);
     const normalizedUrl = normalizeAdcsUrl(credentials.adcsUrl);
+
+    // Validate URL to prevent DNS manipulation attacks and SSRF
+    await blockLocalAndPrivateIpAddresses(normalizedUrl);
 
     // Test the connection using NTLM
     await testAdcsConnection(parsedCredentials, credentials.password, normalizedUrl);

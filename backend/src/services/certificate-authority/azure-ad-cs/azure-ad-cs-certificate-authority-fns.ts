@@ -110,7 +110,7 @@ const buildSubjectDN = (commonName: string, properties?: TPkiSubscriberPropertie
   const emailAddress = sanitizeComponent(properties?.emailAddress);
   if (emailAddress) {
     // Enhanced email validation for DN usage
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = new RE2(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
     if (emailRegex.test(emailAddress) && emailAddress.length > 5 && emailAddress.length < 64) {
       subject += `,E=${emailAddress}`;
     }
@@ -247,7 +247,7 @@ const submitCertificateRequest = async (
     }
 
     // Check for immediate certificate issuance
-    const certMatch = responseText.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/);
+    const certMatch = responseText.match(new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----"));
     if (certMatch) {
       // Clean up the certificate format
       certificate = certMatch[0].replace(new RE2("\\\\r\\\\n", "g"), "\n").replace(new RE2("\\\\r", "g"), "\n").trim();
@@ -325,15 +325,15 @@ const submitCertificateRequest = async (
       // General error extraction
       else {
         const errorPatterns = [
-          /The disposition message is "([^"]*)/i,
-          /Denied by Policy Module[^"]*"([^"]*)/i,
-          /<p[^>]*class[^>]*error[^>]*>(.*?)<\/p>/i,
-          /<div[^>]*class[^>]*error[^>]*>(.*?)<\/div>/i,
-          /<span[^>]*class[^>]*error[^>]*>(.*?)<\/span>/i,
-          /error[^<]*:([^<]*)/i,
-          /denied[^<]*:([^<]*)/i,
-          /The\s+request\s+contains\s+no\s+certificate\s+template\s+information/i,
-          /The\s+template\s+is\s+missing/i
+          new RE2('The disposition message is "([^"]*)"', "i"),
+          new RE2('Denied by Policy Module[^"]*"([^"]*)"', "i"),
+          new RE2("<p[^>]*class[^>]*error[^>]*>(.*?)<\\/p>", "i"),
+          new RE2("<div[^>]*class[^>]*error[^>]*>(.*?)<\\/div>", "i"),
+          new RE2("<span[^>]*class[^>]*error[^>]*>(.*?)<\\/span>", "i"),
+          new RE2("error[^<]*:([^<]*)", "i"),
+          new RE2("denied[^<]*:([^<]*)", "i"),
+          new RE2("The\\s+request\\s+contains\\s+no\\s+certificate\\s+template\\s+information", "i"),
+          new RE2("The\\s+template\\s+is\\s+missing", "i")
         ];
 
         // Try each pattern to find the error message

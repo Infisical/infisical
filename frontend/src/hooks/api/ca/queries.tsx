@@ -4,13 +4,14 @@ import { apiRequest } from "@app/config/request";
 
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { CaType } from "./enums";
-import { TCertificateAuthority, TUnifiedCertificateAuthority } from "./types";
+import { TAzureAdCsTemplate, TCertificateAuthority, TUnifiedCertificateAuthority } from "./types";
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
   getCaByNameAndProjectId: (caName: string, projectId: string) => [{ caName, projectId }, "ca"],
   listCasByTypeAndProjectId: (type: CaType, projectId: string) => [{ type, projectId }, "cas"],
   listCasByProjectId: (projectId: string) => [{ projectId }, "cas"],
+  listExternalCasByProjectId: (projectId: string) => [{ projectId }, "external-cas"],
   getCaCerts: (caId: string) => [{ caId }, "ca-cert"],
   getCaCrls: (caId: string) => [{ caId }, "ca-crls"],
   getCaCert: (caId: string) => [{ caId }, "ca-cert"],
@@ -73,7 +74,7 @@ export const useListCasByProjectId = (projectId: string) => {
 
 export const useListExternalCasByProjectId = (projectId: string) => {
   return useQuery({
-    queryKey: [`external-cas-${projectId}`],
+    queryKey: caKeys.listExternalCasByProjectId(projectId),
     queryFn: async () => {
       const [acmeResponse, azureAdCsResponse] = await Promise.allSettled([
         apiRequest.get<TUnifiedCertificateAuthority[]>(
@@ -200,7 +201,7 @@ export const useGetAzureAdcsTemplates = ({
     queryKey: caKeys.getAzureAdcsTemplates(caId, projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        templates: { id: string; name: string; description?: string }[];
+        templates: TAzureAdCsTemplate[];
       }>(`/api/v1/pki/ca/azure-ad-cs/${caId}/templates?projectId=${projectId}`);
       return data;
     },

@@ -274,6 +274,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         configPayload = {
           azureAdcsConnectionId: formConfiguration.azureAdcsConnection.id
         };
+      } else {
+        throw new Error("Invalid certificate authority configuration");
       }
 
       if (ca) {

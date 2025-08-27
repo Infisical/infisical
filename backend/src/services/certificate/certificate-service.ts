@@ -10,7 +10,6 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -52,7 +51,6 @@ type TCertificateServiceFactoryDep = {
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -70,7 +68,6 @@ export const certificateServiceFactory = ({
   pkiCollectionDAL,
   pkiCollectionItemDAL,
   projectDAL,
-  appConnectionDAL,
   kmsService,
   permissionService
 }: TCertificateServiceFactoryDep) => {

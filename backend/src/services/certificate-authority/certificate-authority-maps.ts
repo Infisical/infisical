@@ -12,11 +12,7 @@ export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapabili
     CaCapability.REVOKE_CERTIFICATES,
     CaCapability.RENEW_CERTIFICATES
   ],
-  [CaType.ACME]: [
-    CaCapability.ISSUE_CERTIFICATES,
-    CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
-  ],
+  [CaType.ACME]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.REVOKE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
   [CaType.AZURE_AD_CS]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.RENEW_CERTIFICATES

@@ -8,8 +8,6 @@ import {
 
 export type TAzureAdCsCertificateAuthority = z.infer<typeof AzureAdCsCertificateAuthoritySchema>;
 
-export type TAzureAdCsCertificateAuthorityInput = z.infer<typeof CreateAzureAdCsCertificateAuthoritySchema>;
-
 export type TCreateAzureAdCsCertificateAuthorityDTO = z.infer<typeof CreateAzureAdCsCertificateAuthoritySchema>;
 
 export type TUpdateAzureAdCsCertificateAuthorityDTO = z.infer<typeof UpdateAzureAdCsCertificateAuthoritySchema>;

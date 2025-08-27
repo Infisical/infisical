@@ -151,8 +151,6 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     projectId
   });
 
-  console.log(pkiSubscriber);
-
   // Initialize form with ALL subscriber data including template
   useEffect(() => {
     if (pkiSubscriber) {

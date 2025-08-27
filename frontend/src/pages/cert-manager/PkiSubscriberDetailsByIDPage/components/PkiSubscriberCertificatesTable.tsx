@@ -64,7 +64,7 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
   );
 
   // Fetch CA data to determine capabilities
-  const { data: caData } = useListCasByProjectId(currentWorkspace?.id ?? "");
+  const { data: caData } = useListCasByProjectId(currentWorkspace.id);
 
   // Create mapping from caId to CA type for capability checking
   const caCapabilityMap = useMemo(() => {
