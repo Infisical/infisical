@@ -7,8 +7,8 @@ import { TableName } from "../schemas";
 const BATCH_SIZE = 100;
 
 export async function up(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "secretReadAccessCompat")) {
-    // find all existing SecretApprovalPolicy rows to backfill secretReadAccessCompat flag
+  if (await knex.schema.hasColumn(TableName.SecretApprovalPolicy, "shouldCheckSecretPermission")) {
+    // find all existing SecretApprovalPolicy rows to backfill shouldCheckSecretPermission flag
     const rows = await knex(TableName.SecretApprovalPolicy).select(selectAllTableCols(TableName.SecretApprovalPolicy));
 
     if (rows.length > 0) {
@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
             "id",
             batch.map((row) => row.id)
           )
-          .update({ secretReadAccessCompat: true });
+          .update({ shouldCheckSecretPermission: true });
       }
     }
   }
