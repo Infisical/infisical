@@ -1,4 +1,4 @@
-/* eslint-disable no-case-declarations, @typescript-eslint/no-unsafe-assignment, no-await-in-loop, no-continue */
+/* eslint-disable no-case-declarations, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-var-requires, no-await-in-loop, no-continue */
 // @ts-expect-error: No types available for httpntlm
 import * as httpntlm from "httpntlm";
 
