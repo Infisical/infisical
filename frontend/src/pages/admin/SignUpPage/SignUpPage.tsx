@@ -12,7 +12,6 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
-import { generateUserPassKey } from "@app/lib/crypto";
 
 const formSchema = z
   .object({
@@ -48,17 +47,11 @@ export const SignUpPage = () => {
     // avoid multi submission
     if (isSubmitting) return;
     try {
-      const { privateKey, ...userPass } = await generateUserPassKey(
-        email,
-        password,
-        config.fipsEnabled
-      );
       const res = await createAdminUser({
         email,
         password,
         firstName,
-        lastName,
-        ...userPass
+        lastName
       });
 
       SecurityClient.setToken(res.token);

@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -25,7 +26,7 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { durationToSeconds, getObjectFromSeconds } from "@app/helpers/datetime";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
 import {
   MachineIdentityAuthMethod,
   useAddIdentityLdapAuth,
@@ -334,14 +335,9 @@ export const IdentityLdapAuthForm = ({
         lockoutCounterResetUnit
       } = formData;
 
-      const lockoutDurationSeconds = durationToSeconds(
-        Number(lockoutDurationValue),
-        lockoutDurationUnit
-      );
-      const lockoutCounterResetSeconds = durationToSeconds(
-        Number(lockoutCounterResetValue),
-        lockoutCounterResetUnit
-      );
+      const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
+      const lockoutCounterResetSeconds =
+        ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
       const basePayload = {
         organizationId: orgId,

@@ -2,8 +2,11 @@ import { ReactNode, useCallback, useMemo, useState } from "react";
 import {
   faBan,
   faCheck,
+  faEdit,
   faHourglass,
-  faTriangleExclamation
+  faTriangleExclamation,
+  faUser,
+  faUserSlash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
@@ -15,6 +18,7 @@ import {
   Checkbox,
   FormControl,
   GenericFieldLabel,
+  IconButton,
   Input,
   Modal,
   ModalContent,
@@ -22,6 +26,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import { ProjectPermissionActions, useUser, useWorkspace } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { useListWorkspaceGroups, useReviewAccessRequest } from "@app/hooks/api";
 import {
   Approver,
@@ -32,8 +37,9 @@ import {
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { groupBy } from "@app/lib/fn/array";
+import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/EditAccessRequestModal";
 
-const getReviewedStatusSymbol = (status?: ApprovalStatus) => {
+const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
   if (status === ApprovalStatus.APPROVED)
     return (
       <Badge variant="success" className="flex h-4 items-center justify-center">
@@ -46,6 +52,17 @@ const getReviewedStatusSymbol = (status?: ApprovalStatus) => {
         <FontAwesomeIcon icon={faBan} size="xs" />
       </Badge>
     );
+
+  if (!isOrgMembershipActive) {
+    return (
+      // Can't do a tooltip here because nested tooltips doesn't work properly as of yet.
+      // TODO(daniel): Fix nested tooltips in the future.
+
+      <Badge className="flex h-4 items-center justify-center bg-mineshaft-400/50 text-bunker-300">
+        <FontAwesomeIcon size="xs" icon={faUserSlash} />
+      </Badge>
+    );
+  }
   return (
     <Badge variant="primary" className="flex h-4 items-center justify-center">
       <FontAwesomeIcon icon={faHourglass} size="xs" />
@@ -62,7 +79,8 @@ export const ReviewAccessRequestModal = ({
   selectedEnvSlug,
   canBypass,
   policies = [],
-  members = []
+  members = [],
+  onUpdate
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -78,13 +96,17 @@ export const ReviewAccessRequestModal = ({
   canBypass: boolean;
   policies: TAccessApprovalPolicy[];
   members: TWorkspaceUser[];
+  onUpdate: (request: TAccessApprovalRequest) => void;
 }) => {
   const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
+
   const [bypassReason, setBypassReason] = useState("");
   const { currentWorkspace } = useWorkspace();
   const { data: groupMemberships = [] } = useListWorkspaceGroups(currentWorkspace?.id || "");
   const { user } = useUser();
+
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["editRequest"] as const);
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
 
@@ -121,16 +143,9 @@ export const ReviewAccessRequestModal = ({
     if (!accessDetails.temporaryAccess.isTemporary || !accessDetails.temporaryAccess.temporaryRange)
       return "Permanent";
 
-    // convert the range to human readable format
-    ms(ms(accessDetails.temporaryAccess.temporaryRange), { long: true });
-
-    return (
-      <Badge>
-        {`Valid for ${ms(ms(accessDetails.temporaryAccess.temporaryRange), {
-          long: true
-        })} after approval`}
-      </Badge>
-    );
+    return `Valid for ${ms(ms(accessDetails.temporaryAccess.temporaryRange), {
+      long: true
+    })} after approval`;
   };
 
   const reviewAccessRequest = useReviewAccessRequest();
@@ -191,6 +206,7 @@ export const ReviewAccessRequestModal = ({
       (acc, curr) => {
         if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
           acc[acc.length - 1][curr.type]?.push(curr);
+
           return acc;
         }
 
@@ -202,6 +218,7 @@ export const ReviewAccessRequestModal = ({
             ? { user: [curr], group: [], sequence, approvals }
             : { group: [curr], user: [], sequence, approvals }
         );
+
         return acc;
       },
       [] as {
@@ -215,7 +232,10 @@ export const ReviewAccessRequestModal = ({
     const approvers = approversBySequence?.map((approverChain) => {
       const reviewers = request.policy.approvers
         .filter((el) => (el.sequence || 1) === approverChain.sequence)
-        .map((el) => ({ ...el, status: reviewesGroupById?.[el.userId]?.[0]?.status }));
+        .map((el) => ({
+          ...el,
+          status: reviewesGroupById?.[el.userId]?.[0]?.status
+        }));
       const hasApproved =
         reviewers.filter((el) => el.status === "approved").length >=
         (approverChain?.approvals || 1);
@@ -286,7 +306,33 @@ export const ReviewAccessRequestModal = ({
               <GenericFieldLabel truncate label="Secret Path">
                 {accessDetails.secretPath}
               </GenericFieldLabel>
-              <GenericFieldLabel label="Access Type">{getAccessLabel()}</GenericFieldLabel>
+              <GenericFieldLabel label="Access Duration">
+                <div className="flex h-min gap-1">
+                  {getAccessLabel()}
+                  {request.isApprover && request.status === ApprovalStatus.PENDING && (
+                    <>
+                      <EditAccessRequestModal
+                        isOpen={popUp.editRequest.isOpen}
+                        onOpenChange={(open) => handlePopUpToggle("editRequest", open)}
+                        accessRequest={request}
+                        onComplete={onUpdate}
+                        projectSlug={projectSlug}
+                      />
+                      <Tooltip content="Edit Access Duration">
+                        <IconButton
+                          onClick={() => handlePopUpOpen("editRequest")}
+                          variant="plain"
+                          size="xs"
+                          tabIndex={-1}
+                          ariaLabel="Edit access duration"
+                        >
+                          <FontAwesomeIcon icon={faEdit} />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
+                </div>
+              </GenericFieldLabel>
               <GenericFieldLabel label="Permission">{requestedAccess}</GenericFieldLabel>
               {request.note && (
                 <GenericFieldLabel className="col-span-full" label="Note">
@@ -383,12 +429,39 @@ export const ReviewAccessRequestModal = ({
                       </div>
                     )}
                     <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
-                      <GenericFieldLabel className="col-span-2" label="Users">
-                        {approver?.user
-                          ?.map(
-                            (el) => approverSequence?.membersGroupById?.[el.id]?.[0]?.user?.username
-                          )
-                          .join(", ")}
+                      <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
+                        {Boolean(approver.user.length) && (
+                          <div className="flex flex-row flex-wrap gap-2">
+                            {approver?.user?.map((el, idx) => {
+                              const member = approverSequence?.membersGroupById?.[el.id]?.[0];
+                              if (!member) return null;
+
+                              return member.user.isOrgMembershipActive ? (
+                                <div className="flex items-center" key={member.user.id}>
+                                  <span>{member.user.username}</span>
+                                  {idx < approver.user.length - 1 && ","}
+                                </div>
+                              ) : (
+                                <div className="flex items-center" key={member.user.id}>
+                                  <span className="flex items-center opacity-40">
+                                    {member.user.username}
+                                    <span className="text-xs">
+                                      <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
+                                        <div>
+                                          <Badge className="pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                                            <FontAwesomeIcon icon={faBan} />
+                                            Inactive
+                                          </Badge>
+                                        </div>
+                                      </Tooltip>
+                                    </span>
+                                  </span>
+                                  {idx < approver.user.length - 1 && ","}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </GenericFieldLabel>
                       <GenericFieldLabel className="col-span-2" label="Groups">
                         {approver?.group
@@ -413,8 +486,18 @@ export const ReviewAccessRequestModal = ({
                                         key={`reviewer-${idx + 1}`}
                                         className="flex items-center gap-2 px-2 py-2 text-sm"
                                       >
-                                        <div className="flex-1">{el.username}</div>
-                                        {getReviewedStatusSymbol(el?.status as ApprovalStatus)}
+                                        <div
+                                          className={twMerge(
+                                            "flex-1",
+                                            !el.isOrgMembershipActive && "opacity-40"
+                                          )}
+                                        >
+                                          {el.username}
+                                        </div>
+                                        {getReviewedStatusSymbol(
+                                          el?.status as ApprovalStatus,
+                                          el.isOrgMembershipActive
+                                        )}
                                       </div>
                                     ))}
                                   </div>

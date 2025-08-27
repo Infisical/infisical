@@ -8,6 +8,7 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   createdAt: true,
   updatedAt: true,
   authEnforced: true,
+  googleSsoAuthEnforced: true,
   scimEnabled: true,
   kmsDefaultKeyId: true,
   defaultMembershipRole: true,

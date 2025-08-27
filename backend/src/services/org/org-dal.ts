@@ -630,6 +630,25 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findIdentityOrganization = async (
+    identityId: string
+  ): Promise<{ id: string; name: string; slug: string; role: string }> => {
+    try {
+      const org = await db
+        .replicaNode()(TableName.IdentityOrgMembership)
+        .where({ identityId })
+        .join(TableName.Organization, `${TableName.IdentityOrgMembership}.orgId`, `${TableName.Organization}.id`)
+        .select(db.ref("id").withSchema(TableName.Organization).as("id"))
+        .select(db.ref("name").withSchema(TableName.Organization).as("name"))
+        .select(db.ref("slug").withSchema(TableName.Organization).as("slug"))
+        .select(db.ref("role").withSchema(TableName.IdentityOrgMembership).as("role"));
+
+      return org?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find identity organization" });
+    }
+  };
+
   return withTransaction(db, {
     ...orgOrm,
     findOrgByProjectId,
@@ -652,6 +671,7 @@ export const orgDALFactory = (db: TDbClient) => {
     updateMembershipById,
     deleteMembershipById,
     deleteMembershipsById,
-    updateMembership
+    updateMembership,
+    findIdentityOrganization
   });
 };

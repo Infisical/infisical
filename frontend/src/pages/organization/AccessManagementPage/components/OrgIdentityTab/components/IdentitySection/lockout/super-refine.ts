@@ -1,6 +1,5 @@
+import ms from "ms";
 import { z } from "zod";
-
-import { durationToSeconds } from "@app/helpers/datetime";
 
 export function superRefineLockout(
   data: {
@@ -44,14 +43,9 @@ export function superRefineLockout(
     }
 
     if (!isAnyParseError) {
-      const lockoutDurationInSeconds = durationToSeconds(
-        parsedLockoutDuration,
-        lockoutDurationUnit
-      );
-      const lockoutCounterResetInSeconds = durationToSeconds(
-        parsedLockoutCounterReset,
-        lockoutCounterResetUnit
-      );
+      const lockoutDurationInSeconds = ms(`${parsedLockoutDuration}${lockoutDurationUnit}`) / 1000;
+      const lockoutCounterResetInSeconds =
+        ms(`${parsedLockoutCounterReset}${lockoutCounterResetUnit}`) / 1000;
 
       if (lockoutDurationInSeconds > 86400 || lockoutDurationInSeconds < 30) {
         ctx.addIssue({

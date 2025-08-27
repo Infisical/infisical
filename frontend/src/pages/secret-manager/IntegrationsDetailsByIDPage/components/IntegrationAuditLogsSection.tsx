@@ -24,7 +24,7 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <p className="text-lg font-semibold text-gray-200">Integration Logs</p>
         <p className="text-xs text-gray-400">
-          Displaying audit logs from the last {auditLogsRetentionDays} days
+          Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
         </p>
       </div>
       <LogsSection
@@ -32,7 +32,9 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
         showFilters={false}
         presets={{
           eventMetadata: { integrationId: integration.id },
-          startDate: new Date(new Date().setDate(new Date().getDate() - auditLogsRetentionDays)),
+          startDate: new Date(
+            new Date().setDate(new Date().getDate() - Math.min(auditLogsRetentionDays, 60))
+          ),
           eventType: INTEGRATION_EVENTS
         }}
       />

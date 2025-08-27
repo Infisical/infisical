@@ -16,7 +16,8 @@ export const ViewIdentityLdapAuthContent = ({
   handlePopUpOpen,
   onDelete,
   popUp,
-  lockedOut
+  lockedOut,
+  onResetAllLockouts
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityLdapAuth(identityId);
   const clearLockoutsResult = useClearIdentityLdapAuthLockouts();
@@ -106,6 +107,7 @@ export const ViewIdentityLdapAuthContent = ({
         lockedOut={lockedOut}
         clearLockoutsResult={clearLockoutsResult}
         data={data}
+        onResetAllLockouts={onResetAllLockouts}
       />
     </ViewIdentityContentWrapper>
   );

@@ -212,5 +212,9 @@ export const RENDER_SYNC_SCOPES: Record<RenderSyncScope, { name: string; descrip
   [RenderSyncScope.Service]: {
     name: "Service",
     description: "Infisical will sync secrets to the specified Render service."
+  },
+  [RenderSyncScope.EnvironmentGroup]: {
+    name: "EnvironmentGroup",
+    description: "Infisical will sync secrets to the specified Render environment group."
   }
 };

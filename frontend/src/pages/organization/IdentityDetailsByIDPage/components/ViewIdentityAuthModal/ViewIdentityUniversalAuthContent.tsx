@@ -22,7 +22,8 @@ export const ViewIdentityUniversalAuthContent = ({
   handlePopUpOpen,
   onDelete,
   popUp,
-  lockedOut
+  lockedOut,
+  onResetAllLockouts
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets = [], isPending: clientSecretsPending } =
@@ -94,6 +95,7 @@ export const ViewIdentityUniversalAuthContent = ({
         lockedOut={lockedOut}
         clearLockoutsResult={clearLockoutsResult}
         data={data}
+        onResetAllLockouts={onResetAllLockouts}
       />
       <div className="col-span-2 my-3">
         <div className="mb-3 border-b border-mineshaft-500 pb-2">

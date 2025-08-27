@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,7 +18,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
-import { durationToSeconds, getObjectFromSeconds } from "@app/helpers/datetime";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
 import {
   useAddIdentityUniversalAuth,
   useGetIdentityUniversalAuth,
@@ -222,14 +223,9 @@ export const IdentityUniversalAuthForm = ({
     try {
       if (!identityId) return;
 
-      const lockoutDurationSeconds = durationToSeconds(
-        Number(lockoutDurationValue),
-        lockoutDurationUnit
-      );
-      const lockoutCounterResetSeconds = durationToSeconds(
-        Number(lockoutCounterResetValue),
-        lockoutCounterResetUnit
-      );
+      const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
+      const lockoutCounterResetSeconds =
+        ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
       if (data) {
         // update universal auth configuration

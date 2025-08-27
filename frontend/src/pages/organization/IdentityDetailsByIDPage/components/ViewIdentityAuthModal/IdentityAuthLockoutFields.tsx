@@ -13,7 +13,8 @@ export const LockoutFields = ({
   clearLockoutsResult,
   lockedOut,
   identityId,
-  data
+  data,
+  onResetAllLockouts
 }: {
   clearLockoutsResult: UseMutationResult<number, object, { identityId: string }, unknown>;
   lockedOut: boolean;
@@ -24,6 +25,7 @@ export const LockoutFields = ({
     lockoutDurationSeconds: number;
     lockoutCounterResetSeconds: number;
   };
+  onResetAllLockouts: () => void;
 }) => {
   const { mutateAsync, isPending } = clearLockoutsResult;
 
@@ -37,6 +39,7 @@ export const LockoutFields = ({
         type: "success"
       });
       setLockedOutState(false);
+      onResetAllLockouts();
     } catch (error) {
       console.error(error);
       createNotification({
@@ -59,7 +62,7 @@ export const LockoutFields = ({
               isLoading={isPending}
               colorSchema="secondary"
             >
-              Clear All Lockouts
+              Reset All Lockouts
             </Button>
           )}
         </OrgPermissionCan>

@@ -1,5 +1,3 @@
-import { createAppAuth } from "@octokit/auth-app";
-import { request } from "@octokit/request";
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
@@ -8,6 +6,7 @@ import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { getConfig } from "@app/lib/config/env";
 import { request as httpRequest } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
@@ -114,10 +113,13 @@ export const requestWithGitHubGateway = async <T>(
   );
 };
 
-export const getGitHubAppAuthToken = async (appConnection: TGitHubConnection) => {
+export const getGitHubAppAuthToken = async (
+  appConnection: TGitHubConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
   const appCfg = getConfig();
   const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
-  const appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
+  let appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
 
   if (!appId || !appPrivateKey) {
     throw new InternalServerError({
@@ -125,33 +127,65 @@ export const getGitHubAppAuthToken = async (appConnection: TGitHubConnection) =>
     });
   }
 
+  appPrivateKey = appPrivateKey
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
+
   if (appConnection.method !== GitHubConnectionMethod.App) {
     throw new InternalServerError({ message: "Cannot generate GitHub App token for non-app connection" });
   }
 
-  const appAuth = createAppAuth({
-    appId,
-    privateKey: appPrivateKey,
-    installationId: appConnection.credentials.installationId,
-    request: request.defaults({
-      baseUrl: `https://${await getGitHubInstanceApiUrl(appConnection)}`
-    })
-  });
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iat: now,
+    exp: now + 5 * 60,
+    iss: appId
+  };
 
-  const { token } = await appAuth({ type: "installation" });
-  return token;
+  const appJwt = crypto.jwt().sign(payload, appPrivateKey, { algorithm: "RS256" });
+
+  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  const { installationId } = appConnection.credentials;
+
+  const response = await requestWithGitHubGateway<{ token: string; expires_at: string }>(
+    appConnection,
+    gatewayService,
+    {
+      url: `https://${apiBaseUrl}/app/installations/${installationId}/access_tokens`,
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${appJwt}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    }
+  );
+
+  return response.data.token;
+};
+
+const parseGitHubLinkHeader = (linkHeader: string | undefined): Record<string, string> => {
+  if (!linkHeader) return {};
+
+  const links: Record<string, string> = {};
+  const segments = linkHeader.split(",");
+  const re = new RE2(/<([^>]+)>;\s*rel="([^"]+)"/);
+
+  for (const segment of segments) {
+    const match = re.exec(segment.trim());
+    if (match) {
+      const url = match[1];
+      const rel = match[2];
+      links[rel] = url;
+    }
+  }
+  return links;
 };
 
 function extractNextPageUrl(linkHeader: string | undefined): string | null {
-  if (!linkHeader) return null;
-
-  const links = linkHeader.split(",");
-  const nextLink = links.find((link) => link.includes('rel="next"'));
-
-  if (!nextLink) return null;
-
-  const match = new RE2(/<([^>]+)>/).exec(nextLink);
-  return match ? match[1] : null;
+  const links = parseGitHubLinkHeader(linkHeader);
+  return links.next || null;
 }
 
 export const makePaginatedGitHubRequest = async <T, R = T[]>(
@@ -163,28 +197,86 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   const { credentials, method } = appConnection;
 
   const token =
-    method === GitHubConnectionMethod.OAuth ? credentials.accessToken : await getGitHubAppAuthToken(appConnection);
-  let url: string | null = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
+    method === GitHubConnectionMethod.OAuth
+      ? credentials.accessToken
+      : await getGitHubAppAuthToken(appConnection, gatewayService);
+
+  const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
+  const initialUrlObj = new URL(baseUrl);
+  initialUrlObj.searchParams.set("per_page", "100");
+
   let results: T[] = [];
-  let i = 0;
+  const maxIterations = 1000;
 
-  while (url && i < 1000) {
-    // eslint-disable-next-line no-await-in-loop
-    const response: AxiosResponse<R> = await requestWithGitHubGateway<R>(appConnection, gatewayService, {
-      url,
-      method: "GET",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28"
-      }
-    });
+  // Make initial request to get link header
+  const firstResponse: AxiosResponse<R> = await requestWithGitHubGateway<R>(appConnection, gatewayService, {
+    url: initialUrlObj.toString(),
+    method: "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
 
-    const items = dataMapper ? dataMapper(response.data) : (response.data as unknown as T[]);
-    results = results.concat(items);
+  const firstPageItems = dataMapper ? dataMapper(firstResponse.data) : (firstResponse.data as unknown as T[]);
+  results = results.concat(firstPageItems);
 
-    url = extractNextPageUrl(response.headers.link as string | undefined);
-    i += 1;
+  const linkHeader = parseGitHubLinkHeader(firstResponse.headers.link as string | undefined);
+  const lastPageUrl = linkHeader.last;
+
+  // If there's a last page URL, get its page number and concurrently fetch every page starting from 2 to last
+  if (lastPageUrl) {
+    const lastPageParam = new URL(lastPageUrl).searchParams.get("page");
+    const totalPages = lastPageParam ? parseInt(lastPageParam, 10) : 1;
+
+    const pageRequests: Promise<AxiosResponse<R>>[] = [];
+
+    for (let pageNum = 2; pageNum <= totalPages && pageNum - 1 < maxIterations; pageNum += 1) {
+      const pageUrlObj = new URL(initialUrlObj.toString());
+      pageUrlObj.searchParams.set("page", pageNum.toString());
+
+      pageRequests.push(
+        requestWithGitHubGateway<R>(appConnection, gatewayService, {
+          url: pageUrlObj.toString(),
+          method: "GET",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "X-GitHub-Api-Version": "2022-11-28"
+          }
+        })
+      );
+    }
+    const responses = await Promise.all(pageRequests);
+
+    for (const response of responses) {
+      const items = dataMapper ? dataMapper(response.data) : (response.data as unknown as T[]);
+      results = results.concat(items);
+    }
+  } else {
+    // Fallback in case last link isn't present
+    let url: string | null = extractNextPageUrl(firstResponse.headers.link as string | undefined);
+    let i = 1;
+
+    while (url && i < maxIterations) {
+      // eslint-disable-next-line no-await-in-loop
+      const response: AxiosResponse<R> = await requestWithGitHubGateway<R>(appConnection, gatewayService, {
+        url,
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      });
+
+      const items = dataMapper ? dataMapper(response.data) : (response.data as unknown as T[]);
+      results = results.concat(items);
+
+      url = extractNextPageUrl(response.headers.link as string | undefined);
+      i += 1;
+    }
   }
 
   return results;

@@ -74,15 +74,6 @@ export type TCreateAdminUserDTO = {
   password: string;
   firstName: string;
   lastName?: string;
-  protectedKey: string;
-  protectedKeyTag: string;
-  protectedKeyIV: string;
-  encryptedPrivateKey: string;
-  encryptedPrivateKeyIV: string;
-  encryptedPrivateKeyTag: string;
-  publicKey: string;
-  verifier: string;
-  salt: string;
 };
 
 export type AdminGetOrganizationsFilters = {

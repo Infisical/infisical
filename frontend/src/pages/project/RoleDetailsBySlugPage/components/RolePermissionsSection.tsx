@@ -32,6 +32,7 @@ import {
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
+import { SecretEventPermissionConditions } from "./SecretEventPermissionConditions";
 import { SecretPermissionConditions } from "./SecretPermissionConditions";
 import { SecretSyncPermissionConditions } from "./SecretSyncPermissionConditions";
 import { SshHostPermissionConditions } from "./SshHostPermissionConditions";
@@ -70,6 +71,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.SecretSyncs) {
       return <SecretSyncPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.SecretEvents) {
+      return <SecretEventPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

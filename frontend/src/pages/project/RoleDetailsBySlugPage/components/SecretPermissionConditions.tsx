@@ -17,8 +17,7 @@ export const SecretPermissionConditions = ({ position = 0, isDisabled }: Props) 
         { value: "environment", label: "Environment Slug" },
         { value: "secretPath", label: "Secret Path" },
         { value: "secretName", label: "Secret Name" },
-        { value: "secretTags", label: "Secret Tags" },
-        { value: "eventType", label: "Event Type" }
+        { value: "secretTags", label: "Secret Tags" }
       ]}
     />
   );

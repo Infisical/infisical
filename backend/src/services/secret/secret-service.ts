@@ -637,7 +637,12 @@ export const secretServiceFactory = ({
         }
       });
 
-      if (!deepPaths) return { secrets: [], imports: [] };
+      if (!deepPaths?.length) {
+        throw new NotFoundError({
+          message: `Folder with path '${path}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
+          name: "SecretPathNotFound"
+        });
+      }
 
       paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
     } else {
@@ -647,7 +652,12 @@ export const secretServiceFactory = ({
       });
 
       const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-      if (!folder) return { secrets: [], imports: [] };
+      if (!folder) {
+        throw new NotFoundError({
+          message: `Folder with path '${path}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
+          name: "SecretPathNotFound"
+        });
+      }
 
       paths = [{ folderId: folder.id, path }];
     }

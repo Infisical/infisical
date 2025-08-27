@@ -36,6 +36,7 @@ export type Approver = {
   type: ApproverType;
   sequence?: number;
   approvalsRequired?: number;
+  isOrgMembershipActive: boolean;
 };
 
 export type Bypasser = {
@@ -82,6 +83,7 @@ export type TAccessApprovalRequest = {
     name: string;
     approvals: number;
     approvers: {
+      isOrgMembershipActive: boolean;
       userId: string;
       sequence?: number;
       approvalsRequired?: number;
@@ -98,11 +100,14 @@ export type TAccessApprovalRequest = {
   };
 
   reviewers: {
+    isOrgMembershipActive: boolean;
     userId: string;
     status: string;
   }[];
 
   note?: string;
+  editNote?: string;
+  editedByUserId?: string;
 };
 
 export type TAccessApproval = {
@@ -146,6 +151,13 @@ export type TCreateAccessRequestDTO = {
   note?: string;
 } & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
 
+export type TUpdateAccessRequestDTO = {
+  requestId: string;
+  editNote: string;
+  temporaryRange: string;
+  projectSlug: string;
+};
+
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
   policyId?: string;
@@ -168,7 +180,7 @@ export type TCreateAccessPolicyDTO = {
   projectSlug: string;
   name?: string;
   environments: string[];
-  approvers?: Approver[];
+  approvers?: Omit<Approver, "isOrgMembershipActive">[];
   bypassers?: Bypasser[];
   approvals?: number;
   secretPath: string;
@@ -181,7 +193,7 @@ export type TCreateAccessPolicyDTO = {
 export type TUpdateAccessPolicyDTO = {
   id: string;
   name?: string;
-  approvers?: Approver[];
+  approvers?: Omit<Approver, "isOrgMembershipActive">[];
   bypassers?: Bypasser[];
   secretPath?: string;
   environments?: string[];

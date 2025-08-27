@@ -118,6 +118,7 @@ const Page = () => {
         authMethod={popUp.viewAuthMethod.data?.authMethod}
         lockedOut={popUp.viewAuthMethod.data?.lockedOut || false}
         identityId={identityId}
+        onResetAllLockouts={popUp.viewAuthMethod.data?.refetchIdentity}
       />
     </div>
   );
