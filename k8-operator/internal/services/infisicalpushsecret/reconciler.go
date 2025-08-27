@@ -183,13 +183,9 @@ func (r *InfisicalPushSecretReconciler) ReconcileInfisicalPushSecret(ctx context
 		return fmt.Errorf("destination validation failed: %v", err)
 	}
 
-	projectID := destination.ProjectID
-	if projectID == "" && destination.ProjectSlug != "" {
-		resolvedProjectID, err := r.resolveProjectIDFromSlug(infisicalClient, destination.ProjectSlug)
-		if err != nil {
-			return fmt.Errorf("failed to resolve project ID from slug '%s': %v", destination.ProjectSlug, err)
-		}
-		projectID = resolvedProjectID
+	projectID, err := r.resolveProjectIDFromDestination(infisicalClient, destination)
+	if err != nil {
+		return err
 	}
 
 	processedSecrets := make(map[string]string)
@@ -551,14 +547,9 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 		return fmt.Errorf("destination validation failed: %v", err)
 	}
 
-	// Resolve project ID if only project slug is provided
-	projectID := destination.ProjectID
-	if projectID == "" && destination.ProjectSlug != "" {
-		resolvedProjectID, err := r.resolveProjectIDFromSlug(infisicalClient, destination.ProjectSlug)
-		if err != nil {
-			return fmt.Errorf("failed to resolve project ID from slug '%s': %v", destination.ProjectSlug, err)
-		}
-		projectID = resolvedProjectID
+	projectID, err := r.resolveProjectIDFromDestination(infisicalClient, destination)
+	if err != nil {
+		return err
 	}
 
 	existingSecrets, err := resourceVariables.InfisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
@@ -601,20 +592,29 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 	return nil
 }
 
+func (r *InfisicalPushSecretReconciler) resolveProjectIDFromDestination(infisicalClient infisicalSdk.InfisicalClientInterface, destination v1alpha1.InfisicalPushSecretDestination) (string, error) {
+	projectID := destination.ProjectID
+	if projectID == "" && destination.ProjectSlug != "" {
+		resolvedProjectID, err := r.resolveProjectIDFromSlug(infisicalClient, destination.ProjectSlug)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve project ID from slug '%s': %v", destination.ProjectSlug, err)
+		}
+		projectID = resolvedProjectID
+	}
+
+	return projectID, nil
+}
+
 func (r *InfisicalPushSecretReconciler) resolveProjectIDFromSlug(infisicalClient infisicalSdk.InfisicalClientInterface, projectSlug string) (string, error) {
-	tempSecrets, err := infisicalClient.Secrets().List(infisicalSdk.ListSecretsOptions{
-		ProjectSlug:    projectSlug,
-		Environment:    "dev",
-		SecretPath:     "/",
-		IncludeImports: false,
-	})
+	accessToken := infisicalClient.Auth().GetAccessToken()
+	if accessToken == "" {
+		return "", fmt.Errorf("failed to get access token for project slug resolution")
+	}
+
+	projectID, err := util.GetProjectIDBySlug(accessToken, projectSlug)
 	if err != nil {
-		return "", fmt.Errorf("failed to access project with slug '%s': %v", projectSlug, err)
+		return "", fmt.Errorf("failed to resolve project ID from slug '%s': %v", projectSlug, err)
 	}
 
-	if len(tempSecrets) > 0 {
-		return tempSecrets[0].Workspace, nil
-	}
-
-	return "", fmt.Errorf("cannot resolve project ID from slug '%s': no secrets found in 'dev' environment at root path. Please ensure the project exists and has at least one secret, or use projectId instead", projectSlug)
+	return projectID, nil
 }

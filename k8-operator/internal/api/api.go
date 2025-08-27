@@ -170,6 +170,27 @@ func CallGetProjectByIDv2(httpClient *resty.Client, request GetProjectByIDReques
 
 }
 
+func CallGetProjectBySlug(httpClient *resty.Client, request GetProjectBySlugRequest) (GetProjectBySlugResponse, error) {
+
+	var projectResponse GetProjectBySlugResponse
+
+	response, err := httpClient.
+		R().SetResult(&projectResponse).
+		SetHeader("User-Agent", USER_AGENT_NAME).
+		Get(fmt.Sprintf("%s/v2/projects/%s", API_HOST_URL, request.ProjectSlug))
+
+	if err != nil {
+		return GetProjectBySlugResponse{}, fmt.Errorf("CallGetProjectBySlug: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return GetProjectBySlugResponse{}, fmt.Errorf("CallGetProjectBySlug: Unsuccessful response: [response=%s]", response)
+	}
+
+	return projectResponse, nil
+
+}
+
 func CallSubscribeProjectEvents(httpClient *resty.Client, projectId, secretsPath, envSlug, token string) (*http.Response, error) {
 	conditions := &SubscribeProjectEventsRequestCondition{
 		SecretPath:      secretsPath,
