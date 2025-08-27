@@ -41,6 +41,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onDeleteAuthMethod: () => void;
+  onResetAllLockouts: () => void;
 };
 
 type TRevokeOptions = {
@@ -52,8 +53,12 @@ export const Content = ({
   identityId,
   authMethod,
   lockedOut,
-  onDeleteAuthMethod
-}: Pick<Props, "authMethod" | "lockedOut" | "identityId" | "onDeleteAuthMethod">) => {
+  onDeleteAuthMethod,
+  onResetAllLockouts
+}: Pick<
+  Props,
+  "authMethod" | "lockedOut" | "identityId" | "onDeleteAuthMethod" | "onResetAllLockouts"
+>) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -161,6 +166,7 @@ export const Content = ({
       <Component
         identityId={identityId}
         onDelete={handleDelete}
+        onResetAllLockouts={onResetAllLockouts}
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
@@ -188,7 +194,8 @@ export const ViewIdentityAuthModal = ({
   onOpenChange,
   authMethod,
   identityId,
-  lockedOut
+  lockedOut,
+  onResetAllLockouts
 }: Omit<Props, "onDeleteAuthMethod">) => {
   if (!identityId || !authMethod) return null;
 
@@ -200,6 +207,7 @@ export const ViewIdentityAuthModal = ({
           authMethod={authMethod}
           lockedOut={lockedOut}
           onDeleteAuthMethod={() => onOpenChange(false)}
+          onResetAllLockouts={() => onResetAllLockouts()}
         />
       </ModalContent>
     </Modal>

@@ -23,29 +23,6 @@ export const formatDateTime = ({
   return format(date, dateFormat);
 };
 
-// Helper function to convert duration to seconds
-export const durationToSeconds = (
-  value: number,
-  unit: "s" | "m" | "h" | "d" | "w" | "y"
-): number => {
-  switch (unit) {
-    case "s":
-      return value;
-    case "m":
-      return value * 60;
-    case "h":
-      return value * 60 * 60;
-    case "d":
-      return value * 60 * 60 * 24;
-    case "w":
-      return value * 60 * 60 * 24 * 7;
-    case "y":
-      return value * 60 * 60 * 24 * 365;
-    default:
-      return 0;
-  }
-};
-
 // Helper function to convert seconds to value and unit
 export const getObjectFromSeconds = (
   totalSeconds: number,

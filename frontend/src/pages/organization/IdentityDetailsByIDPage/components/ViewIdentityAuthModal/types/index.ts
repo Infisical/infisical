@@ -10,4 +10,5 @@ export type ViewAuthMethodProps = {
   ) => void;
   popUp: UsePopUpState<["revokeAuthMethod", "upgradePlan", "identityAuthMethod"]>;
   lockedOut: boolean;
+  onResetAllLockouts: () => void;
 };

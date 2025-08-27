@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { durationToSeconds, getObjectFromSeconds } from "@app/helpers/datetime";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
 import { useUpdateOrg } from "@app/hooks/api";
 
 const MAX_SHARED_SECRET_LIFETIME_SECONDS = 30 * 24 * 60 * 60; // 30 days in seconds
@@ -25,7 +26,7 @@ const formSchema = z
   .superRefine((data, ctx) => {
     const { maxLifetimeValue, maxLifetimeUnit } = data;
 
-    const durationInSeconds = durationToSeconds(maxLifetimeValue, maxLifetimeUnit);
+    const durationInSeconds = ms(`${maxLifetimeValue}${maxLifetimeUnit}`) / 1000;
 
     if (durationInSeconds > MAX_SHARED_SECRET_LIFETIME_SECONDS) {
       ctx.addIssue({
@@ -90,10 +91,8 @@ export const OrgSecretShareLimitSection = () => {
 
   const handleFormSubmit = async (formData: TForm) => {
     try {
-      const maxSharedSecretLifetimeSeconds = durationToSeconds(
-        formData.maxLifetimeValue,
-        formData.maxLifetimeUnit
-      );
+      const maxSharedSecretLifetimeSeconds =
+        ms(`${formData.maxLifetimeValue}${formData.maxLifetimeUnit}`) / 1000;
 
       await mutateAsync({
         orgId: currentOrg.id,

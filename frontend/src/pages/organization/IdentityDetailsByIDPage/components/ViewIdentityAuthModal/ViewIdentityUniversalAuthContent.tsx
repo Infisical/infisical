@@ -26,7 +26,8 @@ export const ViewIdentityUniversalAuthContent = ({
   handlePopUpOpen,
   onDelete,
   popUp,
-  lockedOut
+  lockedOut,
+  onResetAllLockouts
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets = [], isPending: clientSecretsPending } =
@@ -48,6 +49,7 @@ export const ViewIdentityUniversalAuthContent = ({
         type: "success"
       });
       setLockedOutState(false);
+      onResetAllLockouts();
     } catch (error) {
       console.error(error);
       createNotification({
@@ -124,7 +126,7 @@ export const ViewIdentityUniversalAuthContent = ({
               isLoading={isClearLockoutsPending}
               colorSchema="secondary"
             >
-              Clear All Lockouts
+              Reset All Lockouts
             </Button>
           )}
         </OrgPermissionCan>
