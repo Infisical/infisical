@@ -26,7 +26,6 @@ export const PkiSubscribersSchema = z.object({
   lastOperationStatus: z.string().nullable().optional(),
   lastOperationMessage: z.string().nullable().optional(),
   lastOperationAt: z.date().nullable().optional(),
-  azureAuthMethod: z.string().nullable().optional(),
   properties: z.unknown().nullable().optional()
 });
 
