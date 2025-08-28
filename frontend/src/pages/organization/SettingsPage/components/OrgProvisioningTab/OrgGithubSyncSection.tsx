@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { faCircleCheck, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -309,7 +311,7 @@ export const OrgGithubSyncSection = () => {
         >
           <div className="space-y-4">
             <FormControl label="GitHub Access Token">
-              <div className="space-y-2">
+              <div className="relative">
                 <Input
                   type="password"
                   placeholder="ghp_xxxxxxxxxxxx"
@@ -323,15 +325,11 @@ export const OrgGithubSyncSection = () => {
                   autoComplete="off"
                 />
                 {tokenValidationResult && (
-                  <div
-                    className={`rounded p-2 text-sm ${tokenValidationResult.valid ? "border border-green-800 bg-green-900/20 text-green-400" : "border border-red-800 bg-red-900/20 text-red-400"}`}
-                  >
-                    {tokenValidationResult.valid && tokenValidationResult.organizationInfo ? (
-                      <div>
-                        <div className="font-medium">✓ Token Valid</div>
-                      </div>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {tokenValidationResult.valid ? (
+                      <FontAwesomeIcon icon={faCircleCheck} size="xs" className="text-green-500" />
                     ) : (
-                      <div className="font-medium">✗ Token Invalid</div>
+                      <FontAwesomeIcon icon={faCircleXmark} size="xs" className="text-red-500" />
                     )}
                   </div>
                 )}
