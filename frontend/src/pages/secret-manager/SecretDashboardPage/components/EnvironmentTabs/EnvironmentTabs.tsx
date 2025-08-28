@@ -132,7 +132,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
       >
         <TabList>
           {tabEnvironments.map((environment) => (
-            <Tab className="max-w-[12vw] truncate" value={environment.slug}>
+            <Tab key={environment.slug} className="max-w-[12vw] truncate" value={environment.slug}>
               <p className="truncate">{environment.name}</p>
             </Tab>
           ))}
