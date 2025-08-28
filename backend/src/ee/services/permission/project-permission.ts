@@ -164,6 +164,10 @@ export enum ProjectPermissionSecretEventActions {
   SubscribeImportMutations = "subscribe-on-import-mutations"
 }
 
+export enum ProjectPermissionAuditLogsActions {
+  Read = "read"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -304,7 +308,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionGroupActions, ProjectPermissionSub.Groups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
-  | [ProjectPermissionActions, ProjectPermissionSub.AuditLogs]
+  | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs]
   | [ProjectPermissionActions, ProjectPermissionSub.Environments]
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
@@ -645,7 +649,7 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.AuditLogs).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAuditLogsActions).describe(
       "Describe what action an entity can take."
     )
   }),
