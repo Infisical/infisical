@@ -104,6 +104,26 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.Proxy);
   }
+
+  if (!(await knex.schema.hasTable(TableName.GatewayV2))) {
+    await knex.schema.createTable(TableName.GatewayV2, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.timestamps(true, true, true);
+
+      t.uuid("orgId");
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+
+      t.uuid("identityId").unique();
+      t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
+
+      t.uuid("proxyId");
+      t.foreign("proxyId").references("id").inTable(TableName.Proxy).onDelete("CASCADE");
+
+      t.string("name").notNullable().unique();
+    });
+
+    await createOnUpdateTrigger(knex, TableName.GatewayV2);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -118,4 +138,7 @@ export async function down(knex: Knex): Promise<void> {
 
   await dropOnUpdateTrigger(knex, TableName.Proxy);
   await knex.schema.dropTableIfExists(TableName.Proxy);
+
+  await dropOnUpdateTrigger(knex, TableName.GatewayV2);
+  await knex.schema.dropTableIfExists(TableName.GatewayV2);
 }

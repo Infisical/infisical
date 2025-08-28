@@ -587,7 +587,7 @@ export const proxyServiceFactory = ({
     };
   };
 
-  const generateSshCredentialsForGateway = async ({ proxyName, orgId }: { proxyName: string; orgId: string }) => {
+  const getCredentialsForGateway = async ({ proxyName, orgId }: { proxyName: string; orgId: string }) => {
     let proxy: TProxies | null;
     if (isInstanceProxy(proxyName)) {
       proxy = await proxyDAL.findOne({
@@ -616,12 +616,13 @@ export const proxyServiceFactory = ({
         caPrivateKey: instanceCAs.instanceProxySshServerCaPrivateKey.toString("utf8"),
         clientPublicKey: proxyClientSshPublicKey,
         keyId: `proxy-client-${proxy.id}`,
-        principals: [orgId],
+        principals: ["gateway ID"], // TODO: set gateway ID as principal in SSH certificate
         certType: SshCertType.USER,
         requestedTtl: "30d"
       });
 
       return {
+        proxyIp: proxy.ip,
         clientSshCert: proxyClientSshCert.signedPublicKey,
         clientSshPrivateKey: proxyClientSshPrivateKey,
         serverCAPublicKey: instanceCAs.instanceProxySshServerCaPublicKey.toString("utf8")
@@ -639,6 +640,7 @@ export const proxyServiceFactory = ({
     });
 
     return {
+      proxyIp: proxy.ip,
       clientSshCert: proxyClientSshCert.signedPublicKey,
       clientSshPrivateKey: proxyClientSshPrivateKey,
       serverCAPublicKey: orgCAs.proxySshServerCaPublicKey.toString("utf8")
@@ -723,7 +725,7 @@ export const proxyServiceFactory = ({
       caPrivateKey: proxySshServerCaPrivateKey.toString("utf8"),
       clientPublicKey: proxyServerSshPublicKey,
       keyId: "proxy-server",
-      principals: [ip],
+      principals: [`${ip}:2222`],
       certType: SshCertType.HOST,
       requestedTtl: "30d"
     });
@@ -873,6 +875,6 @@ export const proxyServiceFactory = ({
 
   return {
     registerProxy,
-    generateSshCredentialsForGateway
+    getCredentialsForGateway
   };
 };

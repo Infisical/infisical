@@ -184,7 +184,8 @@ export enum TableName {
   InstanceProxyConfig = "instance_proxy_config",
   OrgProxyConfig = "org_proxy_config",
   OrgGatewayConfigV2 = "org_gateway_config_v2",
-  Proxy = "proxies"
+  Proxy = "proxies",
+  GatewayV2 = "gateways_v2"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

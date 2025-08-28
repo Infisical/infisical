@@ -200,6 +200,9 @@ export const gatewayV2ServiceFactory = ({
   const registerGateway = async ({ orgId, proxyName }: { orgId: string; actorId: string; proxyName: string }) => {
     const orgCAs = await $getOrgCAs(orgId);
 
+    // TODO: Save gateway to DB and set Gateway ID as principal in SSH certificate
+    // only throw error if proxy is different from existing DB record
+
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
     const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
     const rootGatewayCaCert = new x509.X509Certificate(orgCAs.rootGatewayCaCertificate);
@@ -248,12 +251,14 @@ export const gatewayV2ServiceFactory = ({
       extensions: gatewayServerCertExtensions
     });
 
-    const proxyCredentials = await proxyService.generateSshCredentialsForGateway({
+    const proxyCredentials = await proxyService.getCredentialsForGateway({
       proxyName,
       orgId
     });
 
     return {
+      // TODO: return gateway ID
+      proxyIp: proxyCredentials.proxyIp,
       pki: {
         serverCertificate: gatewayServerCertificate.toString("pem"),
         serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert]),
