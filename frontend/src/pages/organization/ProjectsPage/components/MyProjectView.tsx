@@ -449,7 +449,7 @@ export const MyProjectView = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <IconButton
             variant="outline_bg"
             onClick={() => {

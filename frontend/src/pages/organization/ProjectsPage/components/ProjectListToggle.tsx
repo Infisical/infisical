@@ -12,7 +12,7 @@ type Props = {
 
 export const ProjectListToggle = ({ value, onChange }: Props) => {
   return (
-    <div className="flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+    <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
       <Button
         variant="outline_bg"
         onClick={() => {

@@ -250,7 +250,7 @@ export const AllProjectView = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Disabled across All Project view.">
             <div className="flex cursor-not-allowed items-center justify-center">
               <IconButton
