@@ -5,14 +5,15 @@ import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/Se
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
   TChecklyAccount,
-  useChecklyConnectionListAccounts
+  useChecklyConnectionListAccounts,
+  useChecklyConnectionListGroups
 } from "@app/hooks/api/appConnections/checkly";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 
 export const ChecklySyncFields = () => {
-  const { control, setValue } = useFormContext<
+  const { control, setValue, watch } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.Checkly }
   >();
 
@@ -25,12 +26,24 @@ export const ChecklySyncFields = () => {
     }
   );
 
+  const accountId = watch("destinationConfig.accountId");
+
+  const { data: groups = [], isPending: isGroupsLoading } = useChecklyConnectionListGroups(
+    connectionId,
+    accountId,
+    {
+      enabled: Boolean(connectionId && accountId)
+    }
+  );
+
   return (
     <>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.accountId", "");
           setValue("destinationConfig.accountName", "");
+          setValue("destinationConfig.groupId", undefined);
+          setValue("destinationConfig.groupName", undefined);
         }}
       />
       <Controller
@@ -54,6 +67,37 @@ export const ChecklySyncFields = () => {
               }}
               options={accounts}
               placeholder="Select an account..."
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.id}
+            />
+          </FormControl>
+        )}
+      />
+
+      <Controller
+        name="destinationConfig.groupId"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            isError={Boolean(error)}
+            errorText={error?.message}
+            label="Select a group"
+            isOptional
+            helperText="If provided, secrets will be scoped to a check group instead"
+            tooltipClassName="max-w-md"
+          >
+            <FilterableSelect
+              isLoading={isGroupsLoading && Boolean(connectionId)}
+              isDisabled={!connectionId}
+              isClearable
+              value={groups.find((p) => p.id === value) ?? null}
+              onChange={(option) => {
+                const v = option as SingleValue<TChecklyAccount>;
+                onChange(v?.id ?? null);
+                setValue("destinationConfig.groupName", v?.name ?? undefined);
+              }}
+              options={groups}
+              placeholder="Select a group..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
             />

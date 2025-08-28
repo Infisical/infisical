@@ -9,6 +9,7 @@ export {
   useUpdateCa
 } from "./mutations";
 export {
+  useGetAzureAdcsTemplates,
   useGetCa,
   useGetCaById,
   useGetCaCert,
@@ -17,5 +18,6 @@ export {
   useGetCaCrls,
   useGetCaCsr,
   useListCasByProjectId,
-  useListCasByTypeAndProjectId
+  useListCasByTypeAndProjectId,
+  useListExternalCasByProjectId
 } from "./queries";
