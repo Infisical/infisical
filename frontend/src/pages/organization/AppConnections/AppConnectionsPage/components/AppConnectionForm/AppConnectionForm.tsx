@@ -12,6 +12,7 @@ import { AppConnectionHeader } from "../AppConnectionHeader";
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
+import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
 import { AzureAppConfigurationConnectionForm } from "./AzureAppConfigurationConnectionForm";
 import { AzureClientSecretsConnectionForm } from "./AzureClientSecretsConnectionForm";
 import { AzureDevOpsConnectionForm } from "./AzureDevOpsConnectionForm";
@@ -96,6 +97,8 @@ const CreateForm = ({ app, onComplete }: CreateFormProps) => {
       return <AzureKeyVaultConnectionForm onSubmit={onSubmit} />;
     case AppConnection.AzureAppConfiguration:
       return <AzureAppConfigurationConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.AzureADCS:
+      return <AzureADCSConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Databricks:
       return <DatabricksConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Humanitec:
@@ -208,6 +211,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return (
         <AzureAppConfigurationConnectionForm appConnection={appConnection} onSubmit={onSubmit} />
       );
+    case AppConnection.AzureADCS:
+      return <AzureADCSConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.Databricks:
       return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Humanitec:

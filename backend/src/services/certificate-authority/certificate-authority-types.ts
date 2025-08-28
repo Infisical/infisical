@@ -1,13 +1,23 @@
 import { TAcmeCertificateAuthority, TAcmeCertificateAuthorityInput } from "./acme/acme-certificate-authority-types";
+import {
+  TAzureAdCsCertificateAuthority,
+  TCreateAzureAdCsCertificateAuthorityDTO
+} from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { CaType } from "./certificate-authority-enums";
 import {
   TInternalCertificateAuthority,
   TInternalCertificateAuthorityInput
 } from "./internal/internal-certificate-authority-types";
 
-export type TCertificateAuthority = TInternalCertificateAuthority | TAcmeCertificateAuthority;
+export type TCertificateAuthority =
+  | TInternalCertificateAuthority
+  | TAcmeCertificateAuthority
+  | TAzureAdCsCertificateAuthority;
 
-export type TCertificateAuthorityInput = TInternalCertificateAuthorityInput | TAcmeCertificateAuthorityInput;
+export type TCertificateAuthorityInput =
+  | TInternalCertificateAuthorityInput
+  | TAcmeCertificateAuthorityInput
+  | TCreateAzureAdCsCertificateAuthorityDTO;
 
 export type TCreateCertificateAuthorityDTO = Omit<TCertificateAuthority, "id">;
 

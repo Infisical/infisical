@@ -11,7 +11,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
 import { MyProjectView } from "./components/MyProjectView";
-import { ProjectListToggle, ProjectListView } from "./components/ProjectListToggle";
+import { ProjectListView } from "./components/ProjectListToggle";
 
 // const formatDescription = (type: ProjectType) => {
 //   if (type === ProjectType.SecretManager)
@@ -28,7 +28,23 @@ import { ProjectListToggle, ProjectListView } from "./components/ProjectListTogg
 export const ProjectsPage = () => {
   const { t } = useTranslation();
 
-  const [projectListView, setProjectListView] = useState(ProjectListView.MyProjects);
+  const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
+    const storedView = localStorage.getItem("projectListView");
+
+    if (
+      storedView &&
+      (storedView === ProjectListView.AllProjects || storedView === ProjectListView.MyProjects)
+    ) {
+      return storedView;
+    }
+
+    return ProjectListView.MyProjects;
+  });
+
+  const handleSetProjectListView = (value: ProjectListView) => {
+    localStorage.setItem("projectListView", value);
+    setProjectListView(value);
+  };
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
@@ -49,11 +65,7 @@ export const ProjectsPage = () => {
       </Helmet>
       <div className="mb-4 flex flex-col items-start justify-start">
         <PageHeader
-          title={
-            <div className="flex items-center gap-4">
-              <ProjectListToggle value={projectListView} onChange={setProjectListView} />
-            </div>
-          }
+          title="Projects"
           description="Your team's complete security toolkit - organized and ready when you need them."
         />
       </div>
@@ -62,12 +74,16 @@ export const ProjectsPage = () => {
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
+          projectListView={projectListView}
+          onProjectListViewChange={handleSetProjectListView}
         />
       ) : (
         <AllProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
+          projectListView={projectListView}
+          onProjectListViewChange={handleSetProjectListView}
         />
       )}
       <NewProjectModal
