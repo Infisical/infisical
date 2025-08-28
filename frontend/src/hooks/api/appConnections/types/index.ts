@@ -4,6 +4,7 @@ import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
+import { TAzureCertificateConnection } from "./azure-certificate-connection";
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
@@ -42,6 +43,7 @@ export * from "./1password-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
 export * from "./azure-app-configuration-connection";
+export * from "./azure-certificate-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
@@ -111,7 +113,8 @@ export type TAppConnection =
   | TSupabaseConnection
   | TDigitalOceanConnection
   | TNetlifyConnection
-  | TOktaConnection;
+  | TOktaConnection
+  | TAzureCertificateConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
 
@@ -185,4 +188,5 @@ export type TAppConnectionMap = {
   [AppConnection.DigitalOcean]: TDigitalOceanConnection;
   [AppConnection.Netlify]: TNetlifyConnection;
   [AppConnection.Okta]: TOktaConnection;
+  [AppConnection.AzureCertificate]: TAzureCertificateConnection;
 };

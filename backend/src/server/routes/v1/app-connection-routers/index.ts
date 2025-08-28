@@ -6,6 +6,7 @@ import { registerOnePassConnectionRouter } from "./1password-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
 import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-configuration-connection-router";
+import { registerAzureCertificateConnectionRouter } from "./azure-certificate-connection-router";
 import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-router";
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
@@ -78,5 +79,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Supabase]: registerSupabaseConnectionRouter,
     [AppConnection.DigitalOcean]: registerDigitalOceanConnectionRouter,
     [AppConnection.Netlify]: registerNetlifyConnectionRouter,
-    [AppConnection.Okta]: registerOktaConnectionRouter
+    [AppConnection.Okta]: registerOktaConnectionRouter,
+    [AppConnection.AzureCertificate]: registerAzureCertificateConnectionRouter
   };

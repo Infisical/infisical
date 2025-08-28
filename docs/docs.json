@@ -106,6 +106,7 @@
                       "integrations/app-connections/auth0",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
+                      "integrations/app-connections/azure-certificate",
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
                       "integrations/app-connections/azure-key-vault",
@@ -426,6 +427,7 @@
                       "documentation/platform/secret-rotation/overview",
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
+                      "documentation/platform/secret-rotation/azure-certificate",
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/mssql-credentials",
@@ -1165,6 +1167,19 @@
                     ]
                   },
                   {
+                    "group": "Azure Certificate",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/azure-certificate/create",
+                      "api-reference/endpoints/secret-rotations/azure-certificate/delete",
+                      "api-reference/endpoints/secret-rotations/azure-certificate/get-by-id",
+                      "api-reference/endpoints/secret-rotations/azure-certificate/get-by-name",
+                      "api-reference/endpoints/secret-rotations/azure-certificate/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/azure-certificate/list",
+                      "api-reference/endpoints/secret-rotations/azure-certificate/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/azure-certificate/update"
+                    ]
+                  },
+                  {
                     "group": "Azure Client Secret",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/azure-client-secret/create",
@@ -1406,6 +1421,18 @@
                       "api-reference/endpoints/app-connections/azure-app-configuration/create",
                       "api-reference/endpoints/app-connections/azure-app-configuration/update",
                       "api-reference/endpoints/app-connections/azure-app-configuration/delete"
+                    ]
+                  },
+                  {
+                    "group": "Azure Certificate",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/azure-certificate/list",
+                      "api-reference/endpoints/app-connections/azure-certificate/available",
+                      "api-reference/endpoints/app-connections/azure-certificate/get-by-id",
+                      "api-reference/endpoints/app-connections/azure-certificate/get-by-name",
+                      "api-reference/endpoints/app-connections/azure-certificate/create",
+                      "api-reference/endpoints/app-connections/azure-certificate/update",
+                      "api-reference/endpoints/app-connections/azure-certificate/delete"
                     ]
                   },
                   {

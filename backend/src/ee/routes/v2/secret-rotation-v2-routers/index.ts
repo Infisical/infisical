@@ -2,6 +2,7 @@ import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotat
 
 import { registerAuth0ClientSecretRotationRouter } from "./auth0-client-secret-rotation-router";
 import { registerAwsIamUserSecretRotationRouter } from "./aws-iam-user-secret-rotation-router";
+import { registerAzureCertificateRotationRouter } from "./azure-certificate-rotation-router";
 import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-rotation-router";
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
 import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rotation-router";
@@ -24,5 +25,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.AzureClientSecret]: registerAzureClientSecretRotationRouter,
   [SecretRotation.AwsIamUserSecret]: registerAwsIamUserSecretRotationRouter,
   [SecretRotation.LdapPassword]: registerLdapPasswordRotationRouter,
-  [SecretRotation.OktaClientSecret]: registerOktaClientSecretRotationRouter
+  [SecretRotation.OktaClientSecret]: registerOktaClientSecretRotationRouter,
+  [SecretRotation.AzureCertificate]: registerAzureCertificateRotationRouter
 };

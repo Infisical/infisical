@@ -37,6 +37,11 @@ import {
   validateAzureAppConfigurationConnectionCredentials
 } from "./azure-app-configuration";
 import {
+  AzureCertificateConnectionMethod,
+  getAzureCertificateConnectionListItem,
+  validateAzureCertificateConnectionCredentials
+} from "./azure-certificate";
+import {
   AzureClientSecretsConnectionMethod,
   getAzureClientSecretsConnectionListItem,
   validateAzureClientSecretsConnectionCredentials
@@ -165,7 +170,8 @@ export const listAppConnectionOptions = () => {
     getSupabaseConnectionListItem(),
     getDigitalOceanConnectionListItem(),
     getNetlifyConnectionListItem(),
-    getOktaConnectionListItem()
+    getOktaConnectionListItem(),
+    getAzureCertificateConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -254,7 +260,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureCertificate]:
+      validateAzureCertificateConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService);
@@ -268,6 +276,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
     case AzureClientSecretsConnectionMethod.OAuth:
+    case AzureCertificateConnectionMethod.OAuth:
     case GitHubConnectionMethod.OAuth:
     case AzureDevOpsConnectionMethod.OAuth:
     case HerokuConnectionMethod.OAuth:
@@ -385,7 +394,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
   [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
   [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
-  [AppConnection.Okta]: platformManagedCredentialsNotSupported
+  [AppConnection.Okta]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureCertificate]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
