@@ -10,12 +10,13 @@ import {
 
 import { AzureADCSConnectionMethod } from "./azure-adcs-connection-enums";
 
-export const AzureADCSConnectionAccessTokenCredentialsSchema = z.object({
+export const AzureADCSUsernamePasswordCredentialsSchema = z.object({
   adcsUrl: z
     .string()
     .trim()
     .min(1, "ADCS URL required")
     .max(255)
+    .refine((value) => value.startsWith("https://"), "ADCS URL must use HTTPS")
     .describe(AppConnections.CREDENTIALS.AZURE_ADCS.adcsUrl),
   username: z
     .string()
@@ -28,21 +29,31 @@ export const AzureADCSConnectionAccessTokenCredentialsSchema = z.object({
     .trim()
     .min(1, "Password required")
     .max(255)
-    .describe(AppConnections.CREDENTIALS.AZURE_ADCS.password)
+    .describe(AppConnections.CREDENTIALS.AZURE_ADCS.password),
+  sslRejectUnauthorized: z.boolean().optional().describe(AppConnections.CREDENTIALS.AZURE_ADCS.sslRejectUnauthorized),
+  sslCertificate: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .optional()
+    .describe(AppConnections.CREDENTIALS.AZURE_ADCS.sslCertificate)
 });
 
 const BaseAzureADCSConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.AzureADCS) });
 
 export const AzureADCSConnectionSchema = BaseAzureADCSConnectionSchema.extend({
   method: z.literal(AzureADCSConnectionMethod.UsernamePassword),
-  credentials: AzureADCSConnectionAccessTokenCredentialsSchema
+  credentials: AzureADCSUsernamePasswordCredentialsSchema
 });
 
 export const SanitizedAzureADCSConnectionSchema = z.discriminatedUnion("method", [
   BaseAzureADCSConnectionSchema.extend({
     method: z.literal(AzureADCSConnectionMethod.UsernamePassword),
-    credentials: AzureADCSConnectionAccessTokenCredentialsSchema.pick({
-      username: true
+    credentials: AzureADCSUsernamePasswordCredentialsSchema.pick({
+      username: true,
+      adcsUrl: true,
+      sslRejectUnauthorized: true,
+      sslCertificate: true
     })
   })
 ]);
@@ -52,7 +63,7 @@ export const ValidateAzureADCSConnectionCredentialsSchema = z.discriminatedUnion
     method: z
       .literal(AzureADCSConnectionMethod.UsernamePassword)
       .describe(AppConnections.CREATE(AppConnection.AzureADCS).method),
-    credentials: AzureADCSConnectionAccessTokenCredentialsSchema.describe(
+    credentials: AzureADCSUsernamePasswordCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureADCS).credentials
     )
   })
@@ -64,7 +75,7 @@ export const CreateAzureADCSConnectionSchema = ValidateAzureADCSConnectionCreden
 
 export const UpdateAzureADCSConnectionSchema = z
   .object({
-    credentials: AzureADCSConnectionAccessTokenCredentialsSchema.optional().describe(
+    credentials: AzureADCSUsernamePasswordCredentialsSchema.optional().describe(
       AppConnections.UPDATE(AppConnection.AzureADCS).credentials
     )
   })

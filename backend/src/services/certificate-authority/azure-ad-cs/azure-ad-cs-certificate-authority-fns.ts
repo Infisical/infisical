@@ -78,71 +78,106 @@ const buildSubjectDN = (commonName: string, properties?: TPkiSubscriberPropertie
     throw new BadRequestError({ message: "Common Name is required and cannot be empty" });
   }
 
-  const sanitizedCN = commonName.trim().replace(new RE2("[,=+<>#;\\\\\\]]", "g"), "");
-  if (!sanitizedCN) {
-    throw new BadRequestError({ message: "Common Name contains only invalid characters" });
+  const trimmedCN = commonName.trim();
+
+  const invalidCharsRegex = new RE2("[,=+<>#;\\\\\\]]");
+  if (invalidCharsRegex.test(trimmedCN)) {
+    throw new BadRequestError({
+      message: "Common Name contains invalid characters: , = + < > # ; \\ ]"
+    });
   }
 
-  let subject = `CN=${sanitizedCN}`;
+  let subject = `CN=${trimmedCN}`;
 
-  // Helper function to validate and sanitize DN component values
-  const sanitizeComponent = (value: string | undefined): string | null => {
+  const validateComponent = (value: string | undefined, componentName: string): string | null => {
     if (!value || typeof value !== "string") return null;
     const trimmed = value.trim();
     if (!trimmed) return null;
 
-    // Remove or escape problematic characters for DN components
-    // Be more aggressive in removing characters that can cause OID issues
-    const sanitized = trimmed.replace(new RE2('[,=+<>#;\\\\"\\/\\r\\n\\t]', "g"), "").trim();
+    const componentInvalidCharsRegex = new RE2('[,=+<>#;\\\\"\\/\\r\\n\\t]');
+    if (componentInvalidCharsRegex.test(trimmed)) {
+      throw new BadRequestError({
+        message: `${componentName} contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t`
+      });
+    }
 
-    // Additional validation to prevent empty components that cause OID errors
-    if (sanitized.length === 0) return null;
+    const problematicCharsRegex = new RE2("^[\\\\s\\\\-_.]+|[\\\\s\\\\-_.]+$");
+    if (problematicCharsRegex.test(trimmed)) {
+      throw new BadRequestError({
+        message: `${componentName} cannot start or end with spaces, hyphens, underscores, or periods`
+      });
+    }
 
-    // Ensure the component doesn't start or end with spaces or problematic chars
-    const finalSanitized = sanitized.replace(new RE2("^[\\\\s\\\\-_.]+|[\\\\s\\\\-_.]+$", "g"), "");
-
-    return finalSanitized.length > 0 ? finalSanitized : null;
+    return trimmed;
   };
 
-  // Build DN components in proper order for ADCS compatibility
-  // Order matters for Microsoft ADCS - follow X.500 standard ordering
-
-  const emailAddress = sanitizeComponent(properties?.emailAddress);
+  const emailAddress = validateComponent(properties?.emailAddress, "Email Address");
   if (emailAddress) {
-    // Enhanced email validation for DN usage
     const emailRegex = new RE2(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
-    if (emailRegex.test(emailAddress) && emailAddress.length > 5 && emailAddress.length < 64) {
-      subject += `,E=${emailAddress}`;
+    if (!emailRegex.test(emailAddress) || emailAddress.length <= 5 || emailAddress.length >= 64) {
+      throw new BadRequestError({
+        message: "Email Address must be a valid email format between 5 and 64 characters"
+      });
     }
+    subject += `,E=${emailAddress}`;
   }
 
-  const organizationalUnit = sanitizeComponent(properties?.organizationalUnit);
-  if (organizationalUnit && organizationalUnit.length <= 64) {
+  const organizationalUnit = validateComponent(properties?.organizationalUnit, "Organizational Unit");
+  if (organizationalUnit) {
+    if (organizationalUnit.length > 64) {
+      throw new BadRequestError({
+        message: "Organizational Unit cannot exceed 64 characters"
+      });
+    }
     subject += `,OU=${organizationalUnit}`;
   }
 
-  const organization = sanitizeComponent(properties?.organization);
-  if (organization && organization.length <= 64) {
+  const organization = validateComponent(properties?.organization, "Organization");
+  if (organization) {
+    if (organization.length > 64) {
+      throw new BadRequestError({
+        message: "Organization cannot exceed 64 characters"
+      });
+    }
     subject += `,O=${organization}`;
   }
 
-  const locality = sanitizeComponent(properties?.locality);
-  if (locality && locality.length <= 64) {
+  const locality = validateComponent(properties?.locality, "Locality");
+  if (locality) {
+    if (locality.length > 64) {
+      throw new BadRequestError({
+        message: "Locality cannot exceed 64 characters"
+      });
+    }
     subject += `,L=${locality}`;
   }
 
-  const state = sanitizeComponent(properties?.state);
-  if (state && state.length <= 64) {
+  const state = validateComponent(properties?.state, "State");
+  if (state) {
+    if (state.length > 64) {
+      throw new BadRequestError({
+        message: "State cannot exceed 64 characters"
+      });
+    }
     subject += `,ST=${state}`;
   }
 
-  const country = sanitizeComponent(properties?.country);
+  const country = validateComponent(properties?.country, "Country");
   if (country) {
     // Country code must be exactly 2 uppercase letters
-    const countryCode = country.toUpperCase().replace(new RE2("[^A-Z]", "g"), "");
-    if (countryCode.length === 2) {
-      subject += `,C=${countryCode}`;
+    const countryCode = country.toUpperCase();
+    const invalidCountryRegex = new RE2("[^A-Z]");
+    if (invalidCountryRegex.test(countryCode)) {
+      throw new BadRequestError({
+        message: "Country must contain only uppercase letters"
+      });
     }
+    if (countryCode.length !== 2) {
+      throw new BadRequestError({
+        message: "Country must be exactly 2 characters"
+      });
+    }
+    subject += `,C=${countryCode}`;
   }
 
   return subject;
@@ -155,6 +190,12 @@ export const castDbEntryToAzureAdCsCertificateAuthority = (
     throw new BadRequestError({ message: "Malformed Azure AD Certificate Service certificate authority" });
   }
 
+  if (!ca.externalCa.dnsAppConnectionId) {
+    throw new BadRequestError({
+      message: "Azure ADCS connection ID is missing from certificate authority configuration"
+    });
+  }
+
   return {
     id: ca.id,
     type: CaType.AZURE_AD_CS,
@@ -163,19 +204,25 @@ export const castDbEntryToAzureAdCsCertificateAuthority = (
     projectId: ca.projectId,
     credentials: ca.externalCa.credentials,
     configuration: {
-      azureAdcsConnectionId: ca.externalCa.dnsAppConnectionId as string
+      azureAdcsConnectionId: ca.externalCa.dnsAppConnectionId
     },
     status: ca.status as CaStatus
   };
 };
 
 const submitCertificateRequest = async (
-  credentials: { username: string; password: string },
+  credentials: { username: string; password: string; sslRejectUnauthorized?: boolean; sslCertificate?: string },
   caServiceUrl: string,
   certificateRequest: AzureCertificateRequest
 ): Promise<AzureCertificateResponse> => {
   try {
-    const adcsClient = createAdcsHttpClient(credentials.username, credentials.password, caServiceUrl);
+    const adcsClient = createAdcsHttpClient(
+      credentials.username,
+      credentials.password,
+      caServiceUrl,
+      credentials.sslRejectUnauthorized ?? true,
+      credentials.sslCertificate
+    );
 
     // Clean CSR by removing headers and newlines for ADCS submission
     const cleanCsr = certificateRequest.csr
@@ -203,14 +250,22 @@ const submitCertificateRequest = async (
         // Add ExpirationDate attribute (requires EDITF_ATTRIBUTEENDDATE flag on CA)
         certAttribParts.push(`ExpirationDate:${rfc2616Date}`);
       } catch (error) {
-        // Invalid TTL format - will use template default validity period
+        throw new BadRequestError({
+          message: "Invalid validity period format"
+        });
       }
     }
 
     // Join all attributes with proper CRLF ending
     const certAttrib = certAttribParts.length > 0 ? `${certAttribParts.join("\r\n")}\r\n` : "";
 
-    // Prepare form data for ADCS web interface - correct format based on Microsoft docs
+    // Prepare form data for ADCS web interface - these parameters are required by Microsoft ADCS
+    // Mode: "newreq" indicates a new certificate request
+    // CertRequest: the base64-encoded CSR without headers
+    // CertAttrib: certificate template and other attributes in CRLF format
+    // FriendlyType: display name for the certificate type
+    // TargetStoreFlags: certificate store flags (0 = default)
+    // SaveCert: "yes" to save the certificate to the server
     const formData = new URLSearchParams({
       Mode: "newreq",
       CertRequest: cleanCsr,
@@ -222,7 +277,7 @@ const submitCertificateRequest = async (
 
     const response = await adcsClient.post("/certsrv/certfnsh.asp", formData.toString());
 
-    const responseText = response.body;
+    const responseText = response.data;
 
     // Parse the HTML response to extract certificate information
     let requestId: string | undefined;
@@ -254,15 +309,8 @@ const submitCertificateRequest = async (
 
       // Validate the certificate format before using it
       try {
-        const testCert = new x509.X509Certificate(certificate);
-        // If we get here, the certificate is valid
         status = "issued";
-        // Use testCert if needed for validation
-        if (testCert) {
-          // Certificate is valid
-        }
       } catch (error) {
-        // If the extracted certificate is invalid, treat as pending
         certificate = "";
         status = "pending";
       }
@@ -348,17 +396,17 @@ const submitCertificateRequest = async (
 
       // Clean up HTML entities and tags from error message
       errorMessage = errorMessage
-        .replace(/&quot;/g, '"')
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&amp;/g, "&")
-        .replace(/<[^>]*>/g, "") // Remove HTML tags
-        .replace(/\r\n/g, " ")
-        .replace(/\n/g, " ")
-        .replace(/\r/g, " ")
-        .replace(/\s+/g, " ")
-        .replace(/\s*[".]?\s*[".]?\s*$/, "") // Remove trailing quotes and periods
-        .replace(/^\s*[".]?\s*/, "") // Remove leading quotes and periods
+        .replace(new RE2("&quot;", "g"), '"')
+        .replace(new RE2("&lt;", "g"), "<")
+        .replace(new RE2("&gt;", "g"), ">")
+        .replace(new RE2("&amp;", "g"), "&")
+        .replace(new RE2("<[^>]*>", "g"), "") // Remove HTML tags
+        .replace(new RE2("\\r\\n", "g"), " ")
+        .replace(new RE2("\\n", "g"), " ")
+        .replace(new RE2("\\r", "g"), " ")
+        .replace(new RE2("\\s+", "g"), " ")
+        .replace(new RE2('\\s*[".]*\\s*[".]*\\s*$'), "") // Remove trailing quotes and periods
+        .replace(new RE2('^\\s*[".]*\\s*'), "") // Remove leading quotes and periods
         .trim();
 
       // Handle specific Microsoft ADCS OID-related errors
@@ -437,20 +485,24 @@ const submitCertificateRequest = async (
 };
 
 const retrieveCertificate = async (
-  credentials: { username: string; password: string },
+  credentials: { username: string; password: string; sslRejectUnauthorized?: boolean; sslCertificate?: string },
   caServiceUrl: string,
   certificateId: string
 ): Promise<string> => {
   try {
-    const adcsClient = createAdcsHttpClient(credentials.username, credentials.password, caServiceUrl);
+    const adcsClient = createAdcsHttpClient(
+      credentials.username,
+      credentials.password,
+      caServiceUrl,
+      credentials.sslRejectUnauthorized ?? true,
+      credentials.sslCertificate
+    );
 
     const response = await adcsClient.get(`/certsrv/certnew.cer?ReqID=${certificateId}&Enc=b64`, {
-      headers: {
-        Accept: "application/pkix-cert,application/x-x509-ca-cert,application/octet-stream,*/*"
-      }
+      Accept: "application/pkix-cert,application/x-x509-ca-cert,application/octet-stream,*/*"
     });
 
-    const certData = response.body;
+    const certData = response.data;
 
     // Check if the response contains HTML indicating the certificate is not ready
     if (certData.includes("<html>") || certData.includes("taken under submission") || certData.includes("pending")) {
@@ -468,7 +520,7 @@ const retrieveCertificate = async (
     let cleanCertData = certData.trim();
 
     // Remove any HTML artifacts or unwanted characters, keeping only base64
-    cleanCertData = cleanCertData.replace(/[^A-Za-z0-9+/=\s]/g, "").replace(/\s/g, "");
+    cleanCertData = cleanCertData.replace(new RE2("[^A-Za-z0-9+/=\\s]", "g"), "").replace(new RE2("\\s", "g"), "");
 
     if (cleanCertData.length < 100) {
       throw new BadRequestError({
@@ -477,7 +529,7 @@ const retrieveCertificate = async (
     }
 
     // Format as proper PEM certificate with 64 character lines
-    const formattedCert = cleanCertData.replace(/(.{64})/g, "$1\n").trim();
+    const formattedCert = cleanCertData.replace(new RE2("(.{64})", "g"), "$1\n").trim();
     const pemCert = `-----BEGIN CERTIFICATE-----\n${formattedCert}\n-----END CERTIFICATE-----`;
 
     // Validate the constructed PEM before returning
@@ -730,15 +782,23 @@ export const AzureAdCsCertificateAuthorityFns = ({
     });
 
     // Get credentials from the Azure ADCS connection
-    const { username, password, adcsUrl } = await getAzureADCSConnectionCredentials(
-      azureCa.configuration.azureAdcsConnectionId,
-      appConnectionDAL,
-      kmsService
-    );
+    const { username, password, adcsUrl, sslRejectUnauthorized, sslCertificate } =
+      await getAzureADCSConnectionCredentials(
+        azureCa.configuration.azureAdcsConnectionId,
+        appConnectionDAL,
+        kmsService
+      );
 
-    const credentials = {
+    const credentials: {
+      username: string;
+      password: string;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    } = {
       username,
-      password
+      password,
+      sslRejectUnauthorized,
+      sslCertificate
     };
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
@@ -774,11 +834,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       });
     }
 
-    let templateValue = templateInput;
-
-    // Always use just the template display name for ADCS submission
-    // ADCS expects format like "CertificateTemplate:WebServer" not the full template value
-    templateValue = templateInput;
+    const templateValue = templateInput;
 
     const certificateRequest: AzureCertificateRequest = {
       csr: csrPem,
@@ -867,7 +923,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
       if (retryCount === maxRetries) {
         throw new BadRequestError({
-          message: `Certificate request submitted with ID ${submissionResponse.certificateId} but failed to retrieve after ${maxRetries} attempts. The certificate may still be pending approval or processing. Last error: ${lastError?.message || "Unknown error"}`
+          message: `Certificate request submitted with ID ${submissionResponse.certificateId} but failed to retrieve after ${maxRetries} attempts. The certificate may still be pending approval or processing. Last error: ${lastError?.message || "Unknown error"}. For manual approval scenarios, consider implementing a background polling mechanism.`
         });
       }
     }
@@ -890,7 +946,10 @@ export const AzureAdCsCertificateAuthorityFns = ({
     }
 
     // Remove any extra whitespace and ensure proper line endings
-    cleanedCertificatePem = cleanedCertificatePem.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+    cleanedCertificatePem = cleanedCertificatePem
+      .replace(new RE2("\\r\\n", "g"), "\n")
+      .replace(new RE2("\\r", "g"), "\n")
+      .trim();
 
     // Validate that we have both begin and end markers
     if (!cleanedCertificatePem.includes("-----END CERTIFICATE-----")) {
@@ -984,18 +1043,28 @@ export const AzureAdCsCertificateAuthorityFns = ({
     }
 
     // Get credentials from the Azure ADCS connection
-    const { username, password, adcsUrl } = await getAzureADCSConnectionCredentials(
-      azureAdcsConnectionId,
-      appConnectionDAL,
-      kmsService
-    );
+    const { username, password, adcsUrl, sslRejectUnauthorized, sslCertificate } =
+      await getAzureADCSConnectionCredentials(azureAdcsConnectionId, appConnectionDAL, kmsService);
 
-    const credentials = {
+    const credentials: {
+      username: string;
+      password: string;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    } = {
       username,
-      password
+      password,
+      sslRejectUnauthorized,
+      sslCertificate
     };
 
-    const client = createAdcsHttpClient(credentials.username, credentials.password, adcsUrl);
+    const client = createAdcsHttpClient(
+      credentials.username,
+      credentials.password,
+      adcsUrl,
+      credentials.sslRejectUnauthorized ?? true,
+      credentials.sslCertificate
+    );
 
     try {
       // Get available templates from ADCS web interface and filter to only usable ones
@@ -1003,7 +1072,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
       try {
         const requestFormResponse = await client.get("/certsrv/certrqxt.asp");
-        const responseText = requestFormResponse.body;
+        const responseText = requestFormResponse.data;
 
         // ADCS returns JavaScript-based template info instead of HTML options
         // Look for patterns like: getTemplateStringInfo(CTINFO_INDEX_REALNAME, null) and sRealName assignments

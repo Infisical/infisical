@@ -24,19 +24,6 @@ export enum AcmeDnsProvider {
   Cloudflare = "cloudflare"
 }
 
-export enum AzureAdCsTemplateType {
-  WEB_SERVER = "WebServer",
-  COMPUTER = "Computer",
-  USER = "User",
-  DOMAIN_CONTROLLER = "DomainController",
-  SUBORDINATE_CA = "SubordinateCA"
-}
-
-export enum AzureAdCsAuthMethod {
-  CLIENT_CERTIFICATE = "client-certificate",
-  KERBEROS = "kerberos"
-}
-
 export enum CaCapability {
   ISSUE_CERTIFICATES = "issue-certificates",
   REVOKE_CERTIFICATES = "revoke-certificates",

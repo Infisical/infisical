@@ -2,11 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionCertificateActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -446,49 +442,6 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
-  const orderSubscriberCertificate = async (subscriberId: string, actor: OrgServiceActor) => {
-    const subscriber = await pkiSubscriberDAL.findById(subscriberId);
-
-    if (!subscriber.caId) {
-      throw new BadRequestError({ message: "Subscriber does not have a CA" });
-    }
-
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: ca.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Create,
-      ProjectPermissionSub.Certificates
-    );
-
-    if (!ca.externalCa && !ca.internalCa) {
-      throw new BadRequestError({ message: "Certificate authority configuration not found" });
-    }
-
-    if (ca.externalCa?.type === CaType.ACME) {
-      return acmeFns.orderSubscriberCertificate(subscriberId);
-    }
-
-    if (ca.externalCa?.type === CaType.AZURE_AD_CS) {
-      return azureAdCsFns.orderSubscriberCertificate(subscriberId);
-    }
-
-    if (ca.internalCa) {
-      // Handle internal CA certificate ordering - this would need to be implemented
-      throw new BadRequestError({ message: "Internal CA certificate ordering not yet supported" });
-    }
-
-    throw new BadRequestError({ message: "Unsupported certificate authority type" });
-  };
-
   const getAzureAdcsTemplates = async ({
     caId,
     projectId,
@@ -530,7 +483,6 @@ export const certificateAuthorityServiceFactory = ({
     listCertificateAuthoritiesByProjectId,
     updateCertificateAuthority,
     deleteCertificateAuthority,
-    orderSubscriberCertificate,
     getAzureAdcsTemplates
   };
 };

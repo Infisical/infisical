@@ -1,13 +1,5 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
-import {
-  AcmeDnsProvider,
-  AzureAdCsAuthMethod,
-  AzureAdCsTemplateType,
-  CaRenewalType,
-  CaStatus,
-  CaType,
-  InternalCaType
-} from "./enums";
+import { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
 
 export type TAcmeCertificateAuthority = {
   id: string;
@@ -36,8 +28,7 @@ export type TAzureAdCsCertificateAuthority = {
   enableDirectIssuance: boolean;
   configuration: {
     azureAdcsConnectionId: string;
-    templateName: AzureAdCsTemplateType;
-    authMethod: AzureAdCsAuthMethod;
+    templateName: string;
   };
 };
 

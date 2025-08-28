@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { CertificatesSchema } from "@app/db/schemas";
@@ -116,12 +117,81 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         properties: z
           .object({
             azureTemplateType: z.string().optional().describe("Azure ADCS Certificate Template Type"),
-            organization: z.string().optional().describe("Organization (O)"),
-            organizationalUnit: z.string().optional().describe("Organizational Unit (OU)"),
-            country: z.string().length(2).optional().describe("Country (C) - Two letter country code"),
-            state: z.string().optional().describe("State/Province (ST)"),
-            locality: z.string().optional().describe("Locality (L)"),
-            emailAddress: z.string().email().optional().describe("Email Address")
+            organization: z
+              .string()
+              .trim()
+              .min(1)
+              .max(64, "Organization cannot exceed 64 characters")
+              .regex(
+                new RE2('^[^,=+<>#;\\\\"/\\r\\n\\t]*$'),
+                'Organization contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+              )
+              .regex(
+                new RE2("^[^\\\\s\\\\-_.]+.*[^\\\\s\\\\-_.]+$|^[^\\\\s\\\\-_.]{1}$"),
+                "Organization cannot start or end with spaces, hyphens, underscores, or periods"
+              )
+              .optional()
+              .describe("Organization (O) - Maximum 64 characters, no special DN characters"),
+            organizationalUnit: z
+              .string()
+              .trim()
+              .min(1)
+              .max(64, "Organizational Unit cannot exceed 64 characters")
+              .regex(
+                new RE2('^[^,=+<>#;\\\\"/\\r\\n\\t]*$'),
+                'Organizational Unit contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+              )
+              .regex(
+                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                "Organizational Unit cannot start or end with spaces, hyphens, underscores, or periods"
+              )
+              .optional()
+              .describe("Organizational Unit (OU) - Maximum 64 characters, no special DN characters"),
+            country: z
+              .string()
+              .trim()
+              .length(2, "Country must be exactly 2 characters")
+              .regex(new RE2("^[A-Z]{2}$"), "Country must be exactly 2 uppercase letters")
+              .optional()
+              .describe("Country (C) - Two uppercase letter country code (e.g., US, CA, GB)"),
+            state: z
+              .string()
+              .trim()
+              .min(1)
+              .max(64, "State cannot exceed 64 characters")
+              .regex(
+                new RE2('^[^,=+<>#;\\\\"/\\r\\n\\t]*$'),
+                'State contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+              )
+              .regex(
+                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                "State cannot start or end with spaces, hyphens, underscores, or periods"
+              )
+              .optional()
+              .describe("State/Province (ST) - Maximum 64 characters, no special DN characters"),
+            locality: z
+              .string()
+              .trim()
+              .min(1)
+              .max(64, "Locality cannot exceed 64 characters")
+              .regex(
+                new RE2('^[^,=+<>#;\\\\"/\\r\\n\\t]*$'),
+                'Locality contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+              )
+              .regex(
+                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                "Locality cannot start or end with spaces, hyphens, underscores, or periods"
+              )
+              .optional()
+              .describe("Locality (L) - Maximum 64 characters, no special DN characters"),
+            emailAddress: z
+              .string()
+              .trim()
+              .email("Email Address must be a valid email format")
+              .min(6, "Email Address must be at least 6 characters")
+              .max(64, "Email Address cannot exceed 64 characters")
+              .optional()
+              .describe("Email Address - Valid email format between 6 and 64 characters")
           })
           .optional()
           .describe("Additional subscriber properties and subject fields")
@@ -215,12 +285,81 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         properties: z
           .object({
             azureTemplateType: z.string().optional().describe("Azure ADCS Certificate Template Type"),
-            organization: z.string().optional().describe("Organization (O)"),
-            organizationalUnit: z.string().optional().describe("Organizational Unit (OU)"),
-            country: z.string().length(2).optional().describe("Country (C) - Two letter country code"),
-            state: z.string().optional().describe("State/Province (ST)"),
-            locality: z.string().optional().describe("Locality (L)"),
-            emailAddress: z.string().email().optional().describe("Email Address")
+            organization: z
+              .string()
+              .trim()
+              .min(1)
+              .max(64, "Organization cannot exceed 64 characters")
+              .regex(
+                new RE2('^[^,=+<>#;\\\\"/\\r\\n\\t]*$'),
+                'Organization contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+              )
+              .regex(
+                new RE2("^[^\\\\s\\\\-_.]+.*[^\\\\s\\\\-_.]+$|^[^\\\\s\\\\-_.]{1}$"),
+                "Organization cannot start or end with spaces, hyphens, underscores, or periods"
+              )
+              .optional()
+              .describe("Organization (O) - Maximum 64 characters, no special DN characters"),
+            organizationalUnit: z
+              .string()
+              .trim()
+              .min(1)
+              .max(64, "Organizational Unit cannot exceed 64 characters")
+              .regex(
+                new RE2('^[^,=+<>#;\\\\"/\\r\\n\\t]*$'),
+                'Organizational Unit contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+              )
+              .regex(
+                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                "Organizational Unit cannot start or end with spaces, hyphens, underscores, or periods"
+              )
+              .optional()
+              .describe("Organizational Unit (OU) - Maximum 64 characters, no special DN characters"),
+            country: z
+              .string()
+              .trim()
+              .length(2, "Country must be exactly 2 characters")
+              .regex(new RE2("^[A-Z]{2}$"), "Country must be exactly 2 uppercase letters")
+              .optional()
+              .describe("Country (C) - Two uppercase letter country code (e.g., US, CA, GB)"),
+            state: z
+              .string()
+              .trim()
+              .min(1)
+              .max(64, "State cannot exceed 64 characters")
+              .regex(
+                new RE2('^[^,=+<>#;\\\\"/\\r\\n\\t]*$'),
+                'State contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+              )
+              .regex(
+                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                "State cannot start or end with spaces, hyphens, underscores, or periods"
+              )
+              .optional()
+              .describe("State/Province (ST) - Maximum 64 characters, no special DN characters"),
+            locality: z
+              .string()
+              .trim()
+              .min(1)
+              .max(64, "Locality cannot exceed 64 characters")
+              .regex(
+                new RE2('^[^,=+<>#;\\\\"/\\r\\n\\t]*$'),
+                'Locality contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+              )
+              .regex(
+                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                "Locality cannot start or end with spaces, hyphens, underscores, or periods"
+              )
+              .optional()
+              .describe("Locality (L) - Maximum 64 characters, no special DN characters"),
+            emailAddress: z
+              .string()
+              .trim()
+              .email("Email Address must be a valid email format")
+              .min(6, "Email Address must be at least 6 characters")
+              .max(64, "Email Address cannot exceed 64 characters")
+              .optional()
+              .describe("Email Address - Valid email format between 6 and 64 characters")
           })
           .optional()
           .describe("Additional subscriber properties and subject fields")

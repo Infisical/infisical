@@ -79,14 +79,79 @@ const schema = z
     enableAutoRenewal: z.boolean().optional().default(false),
     renewalBefore: z.number().min(1).optional(),
     renewalUnit: z.nativeEnum(TimeUnit).optional(),
-    // Properties for Azure ADCS and additional subject fields
+    // Properties for Azure ADCS only
     azureTemplateType: z.string().optional(),
-    organization: z.string().optional(),
-    organizationalUnit: z.string().optional(),
-    country: z.string().length(2).optional().or(z.literal("")),
-    state: z.string().optional(),
-    locality: z.string().optional(),
-    emailAddress: z.string().email().optional().or(z.literal(""))
+    organization: z
+      .string()
+      .trim()
+      .max(64, "Organization cannot exceed 64 characters")
+      .regex(
+        /^[^,=+<>#;\\"/\r\n\t]*$/,
+        'Organization contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+      )
+      .regex(
+        /^[^\s\-_.]+.*[^\s\-_.]+$|^[^\s\-_.]{1}$/,
+        "Organization cannot start or end with spaces, hyphens, underscores, or periods"
+      )
+      .optional()
+      .or(z.literal("")),
+    organizationalUnit: z
+      .string()
+      .trim()
+      .max(64, "Organizational Unit cannot exceed 64 characters")
+      .regex(
+        /^[^,=+<>#;\\"/\r\n\t]*$/,
+        'Organizational Unit contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+      )
+      .regex(
+        /^[^\s\-_.]+.*[^\s\-_.]+$|^[^\s\-_.]{1}$/,
+        "Organizational Unit cannot start or end with spaces, hyphens, underscores, or periods"
+      )
+      .optional()
+      .or(z.literal("")),
+    country: z
+      .string()
+      .trim()
+      .length(2, "Country must be exactly 2 characters")
+      .regex(/^[A-Z]{2}$/, "Country must be exactly 2 uppercase letters")
+      .optional()
+      .or(z.literal("")),
+    state: z
+      .string()
+      .trim()
+      .max(64, "State cannot exceed 64 characters")
+      .regex(
+        /^[^,=+<>#;\\"/\r\n\t]*$/,
+        'State contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+      )
+      .regex(
+        /^[^\s\-_.]+.*[^\s\-_.]+$|^[^\s\-_.]{1}$/,
+        "State cannot start or end with spaces, hyphens, underscores, or periods"
+      )
+      .optional()
+      .or(z.literal("")),
+    locality: z
+      .string()
+      .trim()
+      .max(64, "Locality cannot exceed 64 characters")
+      .regex(
+        /^[^,=+<>#;\\"/\r\n\t]*$/,
+        'Locality contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
+      )
+      .regex(
+        /^[^\s\-_.]+.*[^\s\-_.]+$|^[^\s\-_.]{1}$/,
+        "Locality cannot start or end with spaces, hyphens, underscores, or periods"
+      )
+      .optional()
+      .or(z.literal("")),
+    emailAddress: z
+      .string()
+      .trim()
+      .email("Email Address must be a valid email format")
+      .min(6, "Email Address must be at least 6 characters")
+      .max(64, "Email Address cannot exceed 64 characters")
+      .optional()
+      .or(z.literal(""))
   })
   .required();
 
@@ -444,100 +509,118 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                 )}
               />
 
-              {/* Additional Subject Fields - Available for all CA types */}
-              <Accordion type="single" collapsible className="mb-4 w-full">
-                <AccordionItem value="subject-fields" className="data-[state=open]:border-none">
-                  <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-                    <div className="order-1 ml-3">Additional Subject Fields</div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-1 gap-4">
-                      <Controller
-                        control={control}
-                        name="organization"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Organization (O)"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Input {...field} placeholder="Example Corp" />
-                          </FormControl>
-                        )}
-                      />
-                      <Controller
-                        control={control}
-                        name="organizationalUnit"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Organizational Unit (OU)"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Input {...field} placeholder="IT Department" />
-                          </FormControl>
-                        )}
-                      />
-                      <div className="grid grid-cols-2 gap-4">
+              {/* Additional Subject Fields - Only for Azure ADCS CAs */}
+              {selectedCa?.type === CaType.AZURE_AD_CS && (
+                <Accordion type="single" collapsible className="mb-4 w-full">
+                  <AccordionItem value="subject-fields" className="data-[state=open]:border-none">
+                    <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
+                      <div className="order-1 ml-3">Additional Subject Fields</div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid grid-cols-1 gap-4">
                         <Controller
                           control={control}
-                          name="country"
+                          name="organization"
                           render={({ field, fieldState: { error } }) => (
                             <FormControl
-                              label="Country (C)"
+                              label="Organization (O)"
                               isError={Boolean(error)}
                               errorText={error?.message}
+                              tooltipText="Maximum 64 characters. No special DN characters allowed. Cannot start/end with spaces, hyphens, underscores, or periods."
                             >
-                              <Input {...field} placeholder="US" maxLength={2} />
+                              <Input {...field} placeholder="Example Corp" maxLength={64} />
                             </FormControl>
                           )}
                         />
                         <Controller
                           control={control}
-                          name="state"
+                          name="organizationalUnit"
                           render={({ field, fieldState: { error } }) => (
                             <FormControl
-                              label="State/Province (ST)"
+                              label="Organizational Unit (OU)"
                               isError={Boolean(error)}
                               errorText={error?.message}
+                              tooltipText="Maximum 64 characters. No special DN characters allowed. Cannot start/end with spaces, hyphens, underscores, or periods."
                             >
-                              <Input {...field} placeholder="California" />
+                              <Input {...field} placeholder="IT Department" maxLength={64} />
                             </FormControl>
                           )}
                         />
+                        <div className="grid grid-cols-2 gap-4">
+                          <Controller
+                            control={control}
+                            name="country"
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Country (C)"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                                tooltipText="Exactly 2 uppercase letters (ISO 3166-1 alpha-2 code). Examples: US, CA, GB, DE"
+                              >
+                                <Input
+                                  {...field}
+                                  placeholder="US"
+                                  maxLength={2}
+                                  style={{ textTransform: "uppercase" }}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                          <Controller
+                            control={control}
+                            name="state"
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="State/Province (ST)"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                                tooltipText="Maximum 64 characters. No special DN characters allowed. Cannot start/end with spaces, hyphens, underscores, or periods."
+                              >
+                                <Input {...field} placeholder="California" maxLength={64} />
+                              </FormControl>
+                            )}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Controller
+                            control={control}
+                            name="locality"
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Locality (L)"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                                tooltipText="Maximum 64 characters. No special DN characters allowed. Cannot start/end with spaces, hyphens, underscores, or periods."
+                              >
+                                <Input {...field} placeholder="San Francisco" maxLength={64} />
+                              </FormControl>
+                            )}
+                          />
+                          <Controller
+                            control={control}
+                            name="emailAddress"
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                label="Email Address"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                                tooltipText="Valid email format, 6-64 characters. Example: admin@example.com"
+                              >
+                                <Input
+                                  {...field}
+                                  type="email"
+                                  placeholder="admin@example.com"
+                                  maxLength={64}
+                                />
+                              </FormControl>
+                            )}
+                          />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <Controller
-                          control={control}
-                          name="locality"
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Locality (L)"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                            >
-                              <Input {...field} placeholder="San Francisco" />
-                            </FormControl>
-                          )}
-                        />
-                        <Controller
-                          control={control}
-                          name="emailAddress"
-                          render={({ field, fieldState: { error } }) => (
-                            <FormControl
-                              label="Email Address"
-                              isError={Boolean(error)}
-                              errorText={error?.message}
-                            >
-                              <Input {...field} type="email" placeholder="admin@example.com" />
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
 
               {selectedCa?.type !== CaType.ACME && (
                 <Controller

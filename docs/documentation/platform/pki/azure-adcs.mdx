@@ -13,6 +13,9 @@ Before setting up ADCS integration, ensure you have:
 - Domain administrator account with certificate management permissions  
 - ADCS web enrollment enabled on your server
 - Network connectivity from Infisical to the ADCS server
+- **IP whitelisting**: Your ADCS server must allow connections from Infisical's IP addresses
+  - For Infisical Cloud instances, see [Networking Configuration](/documentation/setup/networking) for the list of IPs to whitelist
+  - For self-hosted instances, whitelist your Infisical server's IP address
 - Azure ADCS app connection configured (see [Azure ADCS Connection](/integrations/app-connections/azure-adcs))
 
 ## Complete Workflow: From Setup to Certificate Issuance
@@ -112,6 +115,31 @@ Ensure your ADCS templates are configured with:
 **Dynamic Template Discovery**: Infisical queries your ADCS server in real-time to populate available templates. Only templates you have permission to use will be displayed during certificate issuance.
 </Info>
 
+## Certificate Issuance Limitations
+
+### Immediate Issuance Only
+
+<Warning>
+**Manual Approval Not Supported**: Infisical currently supports only **immediate certificate issuance**. Certificates that require manual approval or are held by ADCS policies cannot be issued through Infisical yet.
+</Warning>
+
+For successful certificate issuance, ensure your ADCS templates and policies are configured to:
+- **Auto-approve** certificate requests without manual intervention
+- **Not require** administrator approval for the templates you plan to use
+- **Allow** the connection account to request and receive certificates immediately
+
+### What Happens with Manual Approval
+
+If a certificate request requires manual approval:
+1. The request will be submitted to ADCS successfully
+2. Infisical will attempt to retrieve the certificate with exponential backoff (up to 5 retries over ~1 minute)
+3. If the certificate is not approved within this timeframe, the request will **fail**
+4. **No background polling**: Currently, Infisical does not check for certificates that might be approved hours or days later
+
+<Info>
+**Future Enhancement**: Background polling for delayed certificate approvals is planned for future releases. For now, configure your ADCS templates for immediate issuance to ensure smooth certificate provisioning.
+</Info>
+
 ### Certificate Revocation
 
 <Warning>
@@ -153,7 +181,27 @@ This allows Infisical to control certificate expiration dates directly.
 - Ensure the template is properly configured and available in the ADCS web enrollment interface
 - Templates are dynamically loaded - refresh the PKI Subscriber form if templates don't appear
 
+**Certificate Request Pending/Timeout**
+- Check if your ADCS template requires manual approval - Infisical only supports immediate issuance
+- Verify the certificate template is configured for auto-approval
+- Ensure your connection account has sufficient permissions to request certificates without approval
+- Review ADCS server policies that might be holding the certificate request
+
+**Network Connectivity Issues**
+- Verify your ADCS server's firewall allows connections from Infisical
+- For Infisical Cloud: Ensure Infisical's IP addresses are whitelisted (see [Networking Configuration](/documentation/setup/networking))
+- For self-hosted: Whitelist your Infisical server's IP address on the ADCS server
+- Test HTTPS connectivity to the ADCS web enrollment endpoint
+- Check for any network security appliances blocking the connection
+
 **Authentication Failures**
 - Verify ADCS connection credentials
 - Check domain account permissions
 - Ensure network connectivity to ADCS server
+
+**SSL/TLS Certificate Errors**
+- For ADCS servers with self-signed certificates: disable "Reject Unauthorized" in the SSL tab of your Azure ADCS app connection, or provide the certificate in PEM format
+- For production environments, consider installing proper SSL certificates on your ADCS server instead of disabling SSL verification
+- Common SSL errors: `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, `SELF_SIGNED_CERT_IN_CHAIN`, `CERT_HAS_EXPIRED`
+- The SSL configuration applies to all HTTPS communications between Infisical and your ADCS server
+- Only HTTPS URLs are supported - HTTP connections are not allowed for security reasons

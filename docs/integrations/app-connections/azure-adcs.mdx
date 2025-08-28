@@ -24,11 +24,15 @@ Connect Infisical to Microsoft Active Directory Certificate Services (ADCS) for 
       ![Select Azure ADCS Connection](/images/app-connections/azure-adcs/azure-adcs-select-connection.png)
     </Step>
     <Step title="Configure Connection Details">
-      Fill in the following information:
+      **Configuration Tab:**
     - **Name**: Friendly name for this ADCS connection (e.g., "Production ADCS")
-    - **ADCS URL**: Your ADCS web enrollment URL (e.g., `https://adcs.yourdomain.com/certsrv`)
+    - **ADCS URL**: Your ADCS HTTPS URL (e.g., `https://adcs.yourdomain.com/certsrv`) - only HTTPS is supported
     - **Username**: Domain administrator username (format: `DOMAIN\username` or `username@domain.com`)
     - **Password**: Password for the domain administrator account
+    
+    **SSL Tab (for HTTPS connections):**
+    - **SSL Certificate**: Optional PEM certificate for custom CA certificates or self-signed certificates
+    - **Reject Unauthorized**: Whether to reject connections with invalid SSL certificates (recommended: keep enabled for production)
 
     And click **Connect to ADCS** to establish the connection. 
     ![Connect to ADCS](/images/app-connections/azure-adcs/azure-adcs-app-connection-form.png)
