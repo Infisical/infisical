@@ -6,20 +6,12 @@ import { useToggle } from "@app/hooks";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 const REGEX = /(\${([a-zA-Z0-9-_.]+)})/g;
-const replaceContentWithDot = (str: string) => {
-  let finalStr = "";
-  for (let i = 0; i < str.length; i += 1) {
-    const char = str.at(i);
-    finalStr += char === "\n" ? "\n" : "*";
-  }
-  return finalStr;
-};
 
 const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
   if (isImport && !content) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
-  if (!isVisible) return replaceContentWithDot(content);
+  if (!isVisible) return HIDDEN_SECRET_VALUE;
 
   let skipNext = false;
   const formattedContent = content.split(REGEX).flatMap((el, i) => {
