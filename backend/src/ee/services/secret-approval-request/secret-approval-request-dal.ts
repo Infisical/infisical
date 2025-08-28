@@ -697,14 +697,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
           db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
         )
-        .distinctOn(`${TableName.SecretApprovalRequest}.id`)
         .as("inner");
 
-      const query = (tx || db)
-        .select("*")
+      const countQuery = (await (tx || db)
         .select(db.raw("count(*) OVER() as total_count"))
-        .from(innerQuery)
-        .orderBy("createdAt", "desc") as typeof innerQuery;
+        .from(innerQuery.clone().distinctOn(`${TableName.SecretApprovalRequest}.id`))) as Array<{
+        total_count: number;
+      }>;
+
+      const query = (tx || db).select("*").from(innerQuery).orderBy("createdAt", "desc") as typeof innerQuery;
 
       if (search) {
         void query.where((qb) => {
@@ -730,8 +731,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .where("w.rank", ">=", rankOffset)
         .andWhere("w.rank", "<", rankOffset + limit);
 
-      // @ts-expect-error knex does not infer
-      const totalCount = Number(docs[0]?.total_count || 0);
+      const totalCount = Number(countQuery[0]?.total_count || 0);
 
       const formattedDoc = sqlNestRelationships({
         data: docs,
