@@ -21,3 +21,24 @@ export interface TDeleteGithubOrgSyncDTO {
 export interface TGetGithubOrgSyncDTO {
   orgPermission: OrgServiceActor;
 }
+
+export interface TSyncAllTeamsDTO {
+  orgPermission: OrgServiceActor;
+  githubOrgAccessToken?: string;
+}
+
+export interface TSyncResult {
+  syncedUsersCount: number;
+  skippedUsersCount: number;
+  totalUsers: number;
+  errors: string[];
+  createdTeams: string[];
+  updatedTeams: string[];
+  removedMemberships: number;
+  syncDuration: number;
+}
+
+export interface TValidateGithubTokenDTO {
+  orgPermission: OrgServiceActor;
+  githubOrgAccessToken: string;
+}

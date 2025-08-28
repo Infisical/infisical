@@ -126,4 +126,81 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
       return { githubOrgSyncConfig };
     }
   });
+
+  server.route({
+    url: "/sync-all-teams",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      body: z.object({
+        githubOrgAccessToken: z.string().trim().max(1000).optional()
+      }),
+      response: {
+        200: z.object({
+          syncedUsersCount: z.number(),
+          skippedUsersCount: z.number(),
+          totalUsers: z.number(),
+          errors: z.array(z.string()),
+          createdTeams: z.array(z.string()),
+          updatedTeams: z.array(z.string()),
+          removedMemberships: z.number(),
+          syncDuration: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.githubOrgSync.syncAllTeams({
+        orgPermission: req.permission,
+        githubOrgAccessToken: req.body.githubOrgAccessToken
+      });
+
+      return {
+        syncedUsersCount: result.syncedUsersCount,
+        skippedUsersCount: result.skippedUsersCount,
+        totalUsers: result.totalUsers,
+        errors: result.errors,
+        createdTeams: result.createdTeams,
+        updatedTeams: result.updatedTeams,
+        removedMemberships: result.removedMemberships,
+        syncDuration: result.syncDuration
+      };
+    }
+  });
+
+  server.route({
+    url: "/validate-token",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      body: z.object({
+        githubOrgAccessToken: z.string().trim().min(1, "GitHub access token is required")
+      }),
+      response: {
+        200: z.object({
+          valid: z.boolean(),
+          organizationInfo: z.object({
+            id: z.number(),
+            login: z.string(),
+            name: z.string(),
+            publicRepos: z.number().optional(),
+            privateRepos: z.number().optional()
+          }).optional()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.githubOrgSync.validateGithubToken({
+        orgPermission: req.permission,
+        githubOrgAccessToken: req.body.githubOrgAccessToken
+      });
+
+      return result;
+    }
+  });
 };
