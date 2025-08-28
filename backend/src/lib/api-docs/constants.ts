@@ -2320,7 +2320,7 @@ export const AppConnections = {
       password: "The password used to access Azure ADCS.",
       sslRejectUnauthorized:
         "Whether or not to reject unauthorized SSL certificates (true/false). Set to false only in test environments with self-signed certificates.",
-      sslCertificate: "The SSL certificate (PEM format) to use for secure connection with a self-signed certificate."
+      sslCertificate: "The SSL certificate (PEM format) to use for secure connection."
     }
   }
 };

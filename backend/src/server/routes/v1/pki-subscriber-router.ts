@@ -142,7 +142,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
                 'Organizational Unit contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
               )
               .regex(
-                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                new RE2("^[^\\\\s\\\\-_.]+.*[^\\\\s\\\\-_.]+$|^[^\\\\s\\\\-_.]{1}$"),
                 "Organizational Unit cannot start or end with spaces, hyphens, underscores, or periods"
               )
               .optional()
@@ -164,7 +164,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
                 'State contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
               )
               .regex(
-                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                new RE2("^[^\\\\s\\\\-_.]+.*[^\\\\s\\\\-_.]+$|^[^\\\\s\\\\-_.]{1}$"),
                 "State cannot start or end with spaces, hyphens, underscores, or periods"
               )
               .optional()
@@ -179,7 +179,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
                 'Locality contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
               )
               .regex(
-                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                new RE2("^[^\\\\s\\\\-_.]+.*[^\\\\s\\\\-_.]+$|^[^\\\\s\\\\-_.]{1}$"),
                 "Locality cannot start or end with spaces, hyphens, underscores, or periods"
               )
               .optional()
@@ -310,7 +310,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
                 'Organizational Unit contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
               )
               .regex(
-                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                new RE2("^[^\\\\s\\\\-_.]+.*[^\\\\s\\\\-_.]+$|^[^\\\\s\\\\-_.]{1}$"),
                 "Organizational Unit cannot start or end with spaces, hyphens, underscores, or periods"
               )
               .optional()
@@ -332,7 +332,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
                 'State contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
               )
               .regex(
-                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                new RE2("^[^\\\\s\\\\-_.]+.*[^\\\\s\\\\-_.]+$|^[^\\\\s\\\\-_.]{1}$"),
                 "State cannot start or end with spaces, hyphens, underscores, or periods"
               )
               .optional()
@@ -347,7 +347,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
                 'Locality contains invalid characters: , = + < > # ; \\ " / \\r \\n \\t'
               )
               .regex(
-                /^[^\s-_.]+.*[^\s-_.]+$|^[^\s-_.]{1}$/,
+                new RE2("^[^\\\\s\\\\-_.]+.*[^\\\\s\\\\-_.]+$|^[^\\\\s\\\\-_.]{1}$"),
                 "Locality cannot start or end with spaces, hyphens, underscores, or periods"
               )
               .optional()

@@ -923,7 +923,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
       if (retryCount === maxRetries) {
         throw new BadRequestError({
-          message: `Certificate request submitted with ID ${submissionResponse.certificateId} but failed to retrieve after ${maxRetries} attempts. The certificate may still be pending approval or processing. Last error: ${lastError?.message || "Unknown error"}. For manual approval scenarios, consider implementing a background polling mechanism.`
+          message: `Certificate request submitted with ID ${submissionResponse.certificateId} but failed to retrieve after ${maxRetries} attempts. The certificate may still be pending approval or processing. Last error: ${lastError?.message || "Unknown error"}.`
         });
       }
     }

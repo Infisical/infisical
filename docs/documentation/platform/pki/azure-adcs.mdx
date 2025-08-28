@@ -137,7 +137,7 @@ If a certificate request requires manual approval:
 4. **No background polling**: Currently, Infisical does not check for certificates that might be approved hours or days later
 
 <Info>
-**Future Enhancement**: Background polling for delayed certificate approvals is planned for future releases. For now, configure your ADCS templates for immediate issuance to ensure smooth certificate provisioning.
+**Future Enhancement**: Background polling for delayed certificate approvals is planned for future releases.
 </Info>
 
 ### Certificate Revocation
@@ -200,8 +200,7 @@ This allows Infisical to control certificate expiration dates directly.
 - Ensure network connectivity to ADCS server
 
 **SSL/TLS Certificate Errors**
-- For ADCS servers with self-signed certificates: disable "Reject Unauthorized" in the SSL tab of your Azure ADCS app connection, or provide the certificate in PEM format
-- For production environments, consider installing proper SSL certificates on your ADCS server instead of disabling SSL verification
+- For ADCS servers with self-signed or private certificates: disable "Reject Unauthorized" in the SSL tab of your Azure ADCS app connection, or provide the certificate in PEM format
 - Common SSL errors: `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, `SELF_SIGNED_CERT_IN_CHAIN`, `CERT_HAS_EXPIRED`
 - The SSL configuration applies to all HTTPS communications between Infisical and your ADCS server
 - Only HTTPS URLs are supported - HTTP connections are not allowed for security reasons
