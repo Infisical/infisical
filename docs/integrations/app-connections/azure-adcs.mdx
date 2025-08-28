@@ -35,10 +35,25 @@ Connect Infisical to Microsoft Active Directory Certificate Services (ADCS) for 
     - **Reject Unauthorized**: Whether to reject connections with invalid SSL certificates (it's recommended to keep it enabled)
     
     <Note>
-    **Getting the SSL Certificate**: If your ADCS server uses a self-signed certificate or a certificate from a custom CA, you can obtain the certificate using OpenSSL:
+    **Getting the SSL Certificate**: If your ADCS server uses a self-signed certificate or a certificate from a custom CA, you can obtain the certificate using OpenSSL or PowerShell:
     
+    **Using OpenSSL:**
     ```bash
     openssl s_client -connect your-adcs-server:443 -showcerts
+    ```
+    
+    **Using PowerShell (from inside your ADCS Server):**
+    ```powershell
+    Import-Module WebAdministration -ErrorAction SilentlyContinue
+    $binding = Get-WebBinding -Protocol https -Port 443
+    if ($binding -and $binding.certificateHash) {
+        $cert = Get-ChildItem -Path "Cert:\LocalMachine\My\$($binding.certificateHash)"
+        if ($cert) {
+            $certBase64 = [System.Convert]::ToBase64String($cert.RawData)
+            $certPem = "-----BEGIN CERTIFICATE-----`n" + ($certBase64 -replace '(.{64})', '$1`n') + "`n-----END CERTIFICATE-----"
+            Write-Output $certPem
+        }
+    }
     ```
     
     Copy the certificate content (including `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` lines) and paste it into the SSL Certificate field.
