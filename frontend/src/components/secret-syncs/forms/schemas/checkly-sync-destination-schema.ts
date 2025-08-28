@@ -9,8 +9,14 @@ export const ChecklySyncDestinationSchema = BaseSecretSyncSchema().merge(
     destinationConfig: z.object({
       accountId: z.string(),
       accountName: z.string(),
-      groupId: z.string().optional(),
-      groupName: z.string().optional()
+      groupId: z
+        .string()
+        .nullish()
+        .transform((val) => val || undefined),
+      groupName: z
+        .string()
+        .nullish()
+        .transform((val) => val || undefined)
     })
   })
 );
