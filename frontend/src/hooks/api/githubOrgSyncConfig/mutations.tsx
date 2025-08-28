@@ -49,7 +49,6 @@ export const useSyncAllGithubTeams = () => {
       githubOrgAccessToken?: string;
     } = {}): Promise<{
       syncedUsersCount: number;
-      skippedUsersCount: number;
       totalUsers: number;
       errors: string[];
       createdTeams: string[];

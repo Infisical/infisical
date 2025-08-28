@@ -65,20 +65,23 @@ export const OrgGithubSyncSection = () => {
       const result = await syncAllTeamsMutation.mutateAsync({
         githubOrgAccessToken: token
       });
-      let message = `Successfully synced teams for ${result.syncedUsersCount} out of ${result.totalUsers} users`;
+      let message = `Successfully synced teams for ${result.syncedUsersCount} user${result.syncedUsersCount === 1 ? "" : "s"}`;
 
       const details = [];
       if (result.createdTeams.length > 0) {
-        details.push(`${result.createdTeams.length} new teams created`);
+        details.push(
+          `${result.createdTeams.length} new team${result.createdTeams.length === 1 ? "" : "s"} created`
+        );
       }
       if (result.updatedTeams.length > 0) {
-        details.push(`${result.updatedTeams.length} teams updated`);
+        details.push(
+          `${result.updatedTeams.length} team${result.updatedTeams.length === 1 ? "" : "s"} updated`
+        );
       }
       if (result.removedMemberships > 0) {
-        details.push(`${result.removedMemberships} memberships removed`);
-      }
-      if (result.skippedUsersCount > 0) {
-        details.push(`${result.skippedUsersCount} users skipped`);
+        details.push(
+          `${result.removedMemberships} membership${result.removedMemberships === 1 ? "" : "s"} removed`
+        );
       }
 
       if (details.length > 0) {
@@ -326,15 +329,6 @@ export const OrgGithubSyncSection = () => {
                     {tokenValidationResult.valid && tokenValidationResult.organizationInfo ? (
                       <div>
                         <div className="font-medium">✓ Token Valid</div>
-                        <div>
-                          Organization: {tokenValidationResult.organizationInfo.name} (
-                          {tokenValidationResult.organizationInfo.login})
-                        </div>
-                        {tokenValidationResult.organizationInfo.publicRepos !== undefined && (
-                          <div>
-                            Public repos: {tokenValidationResult.organizationInfo.publicRepos}
-                          </div>
-                        )}
                       </div>
                     ) : (
                       <div className="font-medium">✗ Token Invalid</div>

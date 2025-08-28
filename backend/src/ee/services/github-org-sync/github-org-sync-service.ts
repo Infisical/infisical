@@ -417,7 +417,9 @@ export const githubOrgSyncServiceFactory = ({
         }
       });
 
-      await octokitGraphQL.graphql(`query { organization(login: $org) { id name } }`, { org: config.githubOrgName });
+      await octokitGraphQL.graphql(`query($org: String!) { organization(login: $org) { id name } }`, {
+        org: config.githubOrgName
+      });
 
       return {
         valid: true,
@@ -550,7 +552,6 @@ export const githubOrgSyncServiceFactory = ({
 
     const startTime = Date.now();
     let syncedUsersCount = 0;
-    let skippedUsersCount = 0;
     const syncErrors: string[] = [];
     const createdTeams = new Set<string>();
     const updatedTeams = new Set<string>();
@@ -765,8 +766,6 @@ export const githubOrgSyncServiceFactory = ({
     for (const member of activeMembers) {
       try {
         if (!member.userId) {
-          skippedUsersCount += 1;
-          syncErrors.push("Member without userId found, skipping");
           // eslint-disable-next-line no-continue
           continue;
         }
@@ -774,8 +773,6 @@ export const githubOrgSyncServiceFactory = ({
         const githubUsername = githubUsernameMap.get(member.userId);
 
         if (!githubUsername) {
-          skippedUsersCount += 1;
-          syncErrors.push(`User ${member.userId}: No GitHub username found. User needs to log in at least once.`);
           // eslint-disable-next-line no-continue
           continue;
         }
@@ -811,7 +808,6 @@ export const githubOrgSyncServiceFactory = ({
       {
         orgId: orgPermission.orgId,
         syncedUsersCount,
-        skippedUsersCount,
         totalUsers: activeMembers.length,
         createdTeams: createdTeams.size,
         updatedTeams: updatedTeams.size,
@@ -824,7 +820,6 @@ export const githubOrgSyncServiceFactory = ({
 
     return {
       syncedUsersCount,
-      skippedUsersCount,
       totalUsers: activeMembers.length,
       errors: syncErrors,
       createdTeams: Array.from(createdTeams),
