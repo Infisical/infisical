@@ -18,8 +18,6 @@ type Props = {
 
 enum Permission {
   NoAccess = "no-access",
-  ReadOnly = "read-only",
-  FullAccess = "full-access",
   Custom = "custom"
 }
 
@@ -41,13 +39,10 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
-    const totalActions = PERMISSION_ACTIONS.length;
     const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
-    if (score === totalActions) return Permission.FullAccess;
-    if (score === 1 && rule?.[OrgPermissionAuditLogsActions.Read]) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -74,18 +69,6 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
     setIsCustom.off();
 
     switch (val) {
-      case Permission.FullAccess:
-      case Permission.ReadOnly:
-        // For audit logs, both full access and read-only are the same - just read access
-        setValue(
-          "permissions.audit-logs",
-          {
-            [OrgPermissionAuditLogsActions.Read]: true
-          },
-          { shouldDirty: true }
-        );
-        break;
-
       case Permission.NoAccess:
       default:
         setValue(
@@ -118,8 +101,6 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
             position="popper"
           >
             <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
-            <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
-            <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
             <SelectItem value={Permission.Custom}>Custom</SelectItem>
           </Select>
         </Td>
