@@ -330,8 +330,8 @@ export const githubOrgSyncServiceFactory = ({
     const removeFromTeams = infisicalUserGroups.filter((el) => !githubUserTeamSet.has(el.groupName));
 
     if (newTeams.length || updateTeams.length || removeFromTeams.length) {
-      await groupDAL.transaction(async (tx) => {
-        if (newTeams.length) {
+      if (newTeams.length) {
+        await groupDAL.transaction(async (tx) => {
           const newGroups = await groupDAL.insertMany(
             newTeams.map((newGroupName) => ({
               name: newGroupName,
@@ -348,9 +348,11 @@ export const githubOrgSyncServiceFactory = ({
             })),
             tx
           );
-        }
+        });
+      }
 
-        if (updateTeams.length) {
+      if (updateTeams.length) {
+        await groupDAL.transaction(async (tx) => {
           await userGroupMembershipDAL.insertMany(
             updateTeams.map((el) => ({
               groupId: githubUserTeamOnInfisicalGroupByName[el][0].id,
@@ -358,15 +360,17 @@ export const githubOrgSyncServiceFactory = ({
             })),
             tx
           );
-        }
+        });
+      }
 
-        if (removeFromTeams.length) {
+      if (removeFromTeams.length) {
+        await groupDAL.transaction(async (tx) => {
           await userGroupMembershipDAL.delete(
             { userId, $in: { groupId: removeFromTeams.map((el) => el.groupId) } },
             tx
           );
-        }
-      });
+        });
+      }
     }
   };
 
@@ -683,15 +687,15 @@ export const githubOrgSyncServiceFactory = ({
       const removeFromTeams = infisicalUserGroups.filter((el) => !githubUserTeamSet.has(el.groupName));
 
       if (newTeams.length || updateTeams.length || removeFromTeams.length) {
-        return await groupDAL.transaction(async (tx) => {
-          const result = {
-            createdTeams: [] as string[],
-            updatedTeams: [] as string[],
-            removedMemberships: 0
-          };
+        const result = {
+          createdTeams: [] as string[],
+          updatedTeams: [] as string[],
+          removedMemberships: 0
+        };
 
-          try {
-            if (newTeams.length) {
+        try {
+          if (newTeams.length) {
+            await groupDAL.transaction(async (tx) => {
               logger.info({ userId, githubUsername, newTeams, orgId }, "Creating new teams for user");
 
               const newGroups = await groupDAL.insertMany(
@@ -711,11 +715,13 @@ export const githubOrgSyncServiceFactory = ({
                 })),
                 tx
               );
+            });
 
-              result.createdTeams = newTeams;
-            }
+            result.createdTeams = newTeams;
+          }
 
-            if (updateTeams.length) {
+          if (updateTeams.length) {
+            await groupDAL.transaction(async (tx) => {
               logger.info({ userId, githubUsername, updateTeams, orgId }, "Adding user to existing teams");
 
               await userGroupMembershipDAL.insertMany(
@@ -725,11 +731,13 @@ export const githubOrgSyncServiceFactory = ({
                 })),
                 tx
               );
+            });
 
-              result.updatedTeams = updateTeams;
-            }
+            result.updatedTeams = updateTeams;
+          }
 
-            if (removeFromTeams.length) {
+          if (removeFromTeams.length) {
+            await groupDAL.transaction(async (tx) => {
               logger.info(
                 { userId, githubUsername, removeFromTeams: removeFromTeams.map((t) => t.groupName), orgId },
                 "Removing user from teams"
@@ -739,16 +747,16 @@ export const githubOrgSyncServiceFactory = ({
                 { userId, $in: { groupId: removeFromTeams.map((el) => el.groupId) } },
                 tx
               );
+            });
 
-              result.removedMemberships = removeFromTeams.length;
-            }
-
-            return result;
-          } catch (error) {
-            logger.error(error, `Failed to update team memberships for user ${userId} (${githubUsername})`);
-            throw error;
+            result.removedMemberships = removeFromTeams.length;
           }
-        });
+
+          return result;
+        } catch (error) {
+          logger.error(error, `Failed to update team memberships for user ${userId} (${githubUsername})`);
+          throw error;
+        }
       }
 
       return null;

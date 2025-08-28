@@ -179,18 +179,20 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        githubOrgAccessToken: z.string().trim().min(1, "GitHub access token is required")
+        githubOrgAccessToken: z.string().trim().min(1, "GitHub access token is required").max(1000)
       }),
       response: {
         200: z.object({
           valid: z.boolean(),
-          organizationInfo: z.object({
-            id: z.number(),
-            login: z.string(),
-            name: z.string(),
-            publicRepos: z.number().optional(),
-            privateRepos: z.number().optional()
-          }).optional()
+          organizationInfo: z
+            .object({
+              id: z.number(),
+              login: z.string(),
+              name: z.string(),
+              publicRepos: z.number().optional(),
+              privateRepos: z.number().optional()
+            })
+            .optional()
         })
       }
     },

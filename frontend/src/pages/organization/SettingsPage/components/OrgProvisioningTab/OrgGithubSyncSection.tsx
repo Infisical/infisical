@@ -130,7 +130,7 @@ export const OrgGithubSyncSection = () => {
         text: "Please enter a GitHub access token",
         type: "error"
       });
-      return;
+      return false;
     }
 
     setIsValidatingToken(true);
@@ -147,6 +147,8 @@ export const OrgGithubSyncSection = () => {
           type: "success"
         });
       }
+
+      return result.valid;
     } catch (error) {
       const errorMessage =
         (error as any)?.response?.data?.message ||
@@ -157,6 +159,7 @@ export const OrgGithubSyncSection = () => {
         type: "error"
       });
       setTokenValidationResult({ valid: false });
+      return false;
     } finally {
       setIsValidatingToken(false);
     }
@@ -171,9 +174,10 @@ export const OrgGithubSyncSection = () => {
       return;
     }
 
-    if (!tokenValidationResult?.valid) {
-      await validateToken();
-      if (!tokenValidationResult?.valid) {
+    let isTokenValid = tokenValidationResult?.valid ?? false;
+    if (!isTokenValid) {
+      isTokenValid = await validateToken();
+      if (!isTokenValid) {
         return;
       }
     }
