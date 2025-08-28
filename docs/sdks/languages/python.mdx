@@ -92,6 +92,21 @@ response = client.auth.universal_auth.login(
 response = client.auth.aws_auth.login(identity_id="<machine-identity-id>")
 ```
 
+#### OIDC Auth
+
+```python
+response = client.auth.oidc_auth.login(
+    identity_id="<oidc-identity-id>",
+    jwt="<your-oidc-jwt-token>"
+)
+```
+
+**Parameters:**
+- `identity_id` (str): The ID of the OIDC identity configuration in Infisical.
+- `jwt` (str): The OIDC JWT token obtained from your identity provider.
+
+This authentication method is useful when integrating with OIDC-compliant identity providers like Okta, Auth0, or any service that issues OIDC tokens.
+
 ### `secrets`
 
 This sub-class handles operations related to secrets:
