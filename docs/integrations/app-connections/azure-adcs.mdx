@@ -30,12 +30,23 @@ Connect Infisical to Microsoft Active Directory Certificate Services (ADCS) for 
     - **Username**: Domain administrator username (format: `DOMAIN\username` or `username@domain.com`)
     - **Password**: Password for the domain administrator account
     
-    **SSL Tab (for HTTPS connections):**
+    **SSL Tab:**
     - **SSL Certificate**: Optional PEM certificate for custom CA certificates or self-signed certificates
-    - **Reject Unauthorized**: Whether to reject connections with invalid SSL certificates (recommended: keep enabled for production)
+    - **Reject Unauthorized**: Whether to reject connections with invalid SSL certificates (it's recommended to keep it enabled)
+    
+    <Note>
+    **Getting the SSL Certificate**: If your ADCS server uses a self-signed certificate or a certificate from a custom CA, you can obtain the certificate using OpenSSL:
+    
+    ```bash
+    openssl s_client -connect your-adcs-server:443 -showcerts
+    ```
+    
+    Copy the certificate content (including `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` lines) and paste it into the SSL Certificate field.
+    </Note>
 
     And click **Connect to ADCS** to establish the connection. 
     ![Connect to ADCS](/images/app-connections/azure-adcs/azure-adcs-app-connection-form.png)
+    ![Connect to ADCS - SSL](/images/app-connections/azure-adcs/azure-adcs-app-connection-form-ssl.png)
   </Step>
   <Step title="Connection Created">
     Your **Azure ADCS Connection** is now available for use in your Infisical projects. ![Azure ADCS Connection Created](/images/app-connections/azure-adcs/azure-adcs-app-connection-created.png)

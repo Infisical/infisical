@@ -107,12 +107,12 @@ const normalizeAdcsUrl = (url: string): string => {
 const createHttpsAgent = (sslRejectUnauthorized: boolean, sslCertificate?: string): https.Agent => {
   const agentOptions: https.AgentOptions = {
     rejectUnauthorized: sslRejectUnauthorized,
-    keepAlive: true // axios-ntlm needs keepAlive for NTLM handshake
+    keepAlive: true, // axios-ntlm needs keepAlive for NTLM handshake
+    ca: sslCertificate ? [sslCertificate.trim()] : undefined,
+    // Disable hostname verification as Microsoft servers by default use local IPs for certificates
+    // which may not match the hostname used to connect
+    checkServerIdentity: () => undefined
   };
-
-  if (sslCertificate && sslCertificate.trim()) {
-    agentOptions.ca = [sslCertificate.trim()];
-  }
 
   return new https.Agent(agentOptions);
 };
