@@ -66,6 +66,7 @@ import { CommitForm } from "./components/CommitForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { DynamicSecretListView } from "./components/DynamicSecretListView";
 import { EnvironmentTabs } from "./components/EnvironmentTabs";
+import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { FolderListView } from "./components/FolderListView";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
@@ -107,7 +108,7 @@ const Page = () => {
   const { permission } = useProjectPermission();
   const { mutateAsync: createCommit } = useCreateCommit();
 
-  const tableRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
   const { isBatchMode, pendingChanges } = useBatchMode();
@@ -251,7 +252,8 @@ const Page = () => {
   const {
     data,
     isPending: isDetailsLoading,
-    isFetching: isDetailsFetching
+    isFetching: isDetailsFetching,
+    isFetched
   } = useGetProjectSecretsDetails({
     environment,
     projectId: workspaceId,
@@ -271,6 +273,18 @@ const Page = () => {
       canReadSecretRotations && (isResourceTypeFiltered ? filter.include.rotation : true),
     tags: filter.tags
   });
+
+  useEffect(() => {
+    // if switching tabs in a folder path that doesn't exist in a separate env we navigate to the root
+    if (!data && isFetched) {
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          secretPath: "/"
+        })
+      });
+    }
+  }, [data, isFetched]);
 
   const {
     imports,
@@ -493,7 +507,8 @@ const Page = () => {
     minWidth: 100,
     maxWidth: tableRef.current
       ? tableRef.current.clientWidth - 148 // ensure value column can't collapse completely
-      : 800
+      : 800,
+    ref: tableRef
   });
 
   useEffect(() => {
@@ -767,6 +782,7 @@ const Page = () => {
         }
       />
       <SecretV2MigrationSection />
+      <FolderBreadCrumbs secretPath={secretPath} />
       <EnvironmentTabs secretPath={secretPath} />
       {!isRollbackMode ? (
         <>

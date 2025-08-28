@@ -86,7 +86,6 @@ const DEFAULT_FILTER_STATE = {
   [RowType.SecretRotation]: false
 };
 
-const TABLE_WIDTH_OFFSET = 17;
 const COL_WIDTH_OFFSET = 220;
 
 export const CompareEnvironments = ({ secretPath }: Props) => {
@@ -190,7 +189,6 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
     totalSecretCount,
     totalDynamicSecretCount,
     totalSecretRotationCount,
-    totalImportCount,
     totalCount = 0,
     totalUniqueFoldersInPage,
     totalUniqueSecretsInPage,
@@ -241,15 +239,15 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
   );
 
   const [tableWidth, setTableWidth] = useState(0);
-
-  const tableRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   const { handleMouseDown, isResizing, colWidth } = useResizableColWidth({
     initialWidth: 320,
     minWidth: 160,
     maxWidth: tableRef.current
       ? tableRef.current.clientWidth - COL_WIDTH_OFFSET // ensure value column can't collapse completely
-      : 800
+      : 800,
+    ref: tableRef
   });
 
   const handleToggleRowType = useCallback(
@@ -268,19 +266,21 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
   const isTableFiltered = isFilteredByResources;
 
   useEffect(() => {
-    const resizeObserver = new ResizeObserver((entries) => {
-      // eslint-disable-next-line no-restricted-syntax
-      for (const entry of entries) {
-        setTableWidth(entry.contentRect.width - TABLE_WIDTH_OFFSET);
-      }
-    });
+    const element = tableRef.current;
+    if (!element) return;
 
-    if (tableRef.current) {
-      resizeObserver.observe(tableRef.current);
-    }
+    const handleResize = () => {
+      setTableWidth(element.clientWidth - 1);
+    };
 
-    return () => resizeObserver.disconnect();
-  }, []);
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(element);
+
+    // eslint-disable-next-line consistent-return
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [tableRef]);
 
   return (
     // scott: this is reverse to fix z-indexing bug of dropdown with sticky table cols; couldn't resolve with flex-col
@@ -292,7 +292,6 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
               dynamicSecretCount={totalDynamicSecretCount}
               secretCount={totalSecretCount}
               folderCount={totalFolderCount}
-              importCount={totalImportCount}
               secretRotationCount={totalSecretRotationCount}
             />
           }
@@ -304,8 +303,9 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
           onChangePerPage={handlePerPageChange}
         />
       )}
-      <div ref={tableRef} className="thin-scrollbar flex flex-1 flex-col overflow-y-auto">
+      <div className="thin-scrollbar flex flex-1 flex-col overflow-y-auto">
         <TableContainer
+          ref={tableRef}
           className={twMerge(
             "mt-4 flex flex-1 flex-col border-mineshaft-500 bg-mineshaft-700",
             !isTableEmpty && "rounded-b-none"
@@ -347,11 +347,11 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                       <div className="pointer-events-none absolute -right-[0.02rem] top-[0.67rem] z-30">
                         <div className="h-5 w-0.5 rounded-[1.5px] bg-gray-400 opacity-50" />
                       </div>
-                      <div className="flex h-full items-center border-b-2 border-r border-mineshaft-500 bg-mineshaft-700 bg-clip-padding p-0 px-4 py-2.5">
+                      <div className="flex h-full items-center border-b-2 border-r border-mineshaft-500 bg-mineshaft-700 bg-clip-padding p-0 px-4 py-2.5 text-sm normal-case">
                         Name
                         <IconButton
                           variant="plain"
-                          className="ml-2"
+                          className="ml-1 mt-[0.1rem]"
                           ariaLabel="sort"
                           onClick={() =>
                             setOrderDirection((prev) =>
@@ -362,6 +362,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                           }
                         >
                           <FontAwesomeIcon
+                            className="h-3"
                             icon={orderDirection === "asc" ? faArrowDown : faArrowUp}
                           />
                         </IconButton>
@@ -380,7 +381,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                       >
                         <div
                           className={twMerge(
-                            "flex h-full w-full items-center justify-center gap-x-2 border-b-2 border-mineshaft-500 bg-mineshaft-700 p-0 px-4 py-3 text-center",
+                            "flex h-full w-full items-center justify-center gap-x-2 border-b-2 border-mineshaft-500 bg-mineshaft-700 p-0 px-4 py-2.5 text-center text-sm normal-case",
                             index < compareEnvironments.length - 1 && "border-r"
                           )}
                         >
@@ -388,7 +389,12 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                           {missingKeyCount > 0 && (
                             <Tooltip
                               className="max-w-none lowercase"
-                              content={`${missingKeyCount} secrets missing\n compared to other environments`}
+                              content={
+                                <>
+                                  {missingKeyCount} secret{missingKeyCount > 1 ? "s" : ""} missing
+                                  compared to other environments on this page
+                                </>
+                              }
                             >
                               <Badge
                                 variant="primary"

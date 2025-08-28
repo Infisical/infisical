@@ -72,7 +72,7 @@ export type DashboardProjectSecretsOverview = Omit<
   DashboardProjectSecretsOverviewResponse,
   "secrets" | "secretRotations"
 > & {
-  secrets?: SecretV3RawSanitized[];
+  secrets?: (SecretV3RawSanitized & { sourceEnv?: string })[];
   secretRotations?: (TSecretRotationV2 & {
     secrets: (SecretV3RawSanitized | null)[];
   })[];

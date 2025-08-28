@@ -150,7 +150,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
               <DropdownMenuContent
                 className="thin-scrollbar max-h-[70vh] overflow-y-auto"
                 sideOffset={2}
-                align="end"
+                align="center"
               >
                 <DropdownMenuLabel>Environments</DropdownMenuLabel>
                 <div className="thin-scrollbar max-h-[40vh] overflow-auto">

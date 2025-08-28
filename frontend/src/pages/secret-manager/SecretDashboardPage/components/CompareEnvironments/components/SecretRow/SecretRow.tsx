@@ -9,7 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Button, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
+import { IconButton, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
@@ -122,16 +122,16 @@ export const SecretRow = ({
           <Td
             colSpan={totalCols}
             style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-            className="sticky left-0 bg-mineshaft-800 bg-clip-padding px-0 py-0"
+            className="sticky left-0 bg-clip-padding px-0 py-0"
           >
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 bg-mineshaft-800 bg-clip-padding px-0 py-0"
+              className="sticky left-0 bg-clip-padding px-0 py-0"
             >
               <TableContainer className="rounded-none border-0">
-                <table className="secret-table">
+                <table className="secret-table bg-mineshaft-900">
                   <thead>
-                    <tr className="h-10 border-b-2 border-mineshaft-600">
+                    <tr className="h-10 border-b-2 border-mineshaft-600 bg-mineshaft-800">
                       <th
                         style={{
                           width: colWidth
@@ -143,15 +143,20 @@ export const SecretRow = ({
                       <th style={{ padding: "0.5rem 1rem" }} className="border-none">
                         Value
                       </th>
-                      <div className="absolute right-3 top-[1px] ml-auto mr-1 mt-1 w-min">
-                        <Button
-                          variant="plain"
-                          colorSchema="secondary"
-                          leftIcon={<FontAwesomeIcon icon={isSecretVisible ? faEyeSlash : faEye} />}
-                          onClick={() => setIsSecretVisible.toggle()}
+                      <div className="absolute right-3 top-[4px] ml-auto mr-1 mt-1 w-min">
+                        <Tooltip
+                          side="left"
+                          content={isSecretVisible ? "Hide Values" : "Reveal Values"}
                         >
-                          {isSecretVisible ? "Hide Values" : "Reveal Values"}
-                        </Button>
+                          <IconButton
+                            variant="plain"
+                            colorSchema="secondary"
+                            ariaLabel={isSecretVisible ? "Hide Values" : "Reveal Values"}
+                            onClick={() => setIsSecretVisible.toggle()}
+                          >
+                            <FontAwesomeIcon icon={isSecretVisible ? faEyeSlash : faEye} />
+                          </IconButton>
+                        </Tooltip>
                       </div>
                     </tr>
                   </thead>

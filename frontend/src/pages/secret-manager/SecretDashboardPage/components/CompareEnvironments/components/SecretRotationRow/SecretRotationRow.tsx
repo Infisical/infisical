@@ -2,7 +2,7 @@ import { faEye, faEyeSlash, faInfoCircle, faRotate } from "@fortawesome/free-sol
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button, TableContainer, Tag, Td, Tooltip, Tr } from "@app/components/v2";
+import { IconButton, TableContainer, Tag, Td, Tooltip, Tr } from "@app/components/v2";
 import { Blur } from "@app/components/v2/Blur";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
@@ -70,13 +70,13 @@ export const SecretRotationRow = ({
               <Td
                 colSpan={totalCols}
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 bg-mineshaft-800 bg-clip-padding px-0 py-0"
+                className="sticky left-0 bg-clip-padding px-0 py-0"
               >
                 <div
                   style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                  className="sticky left-0 bg-mineshaft-800 bg-clip-padding px-0 py-0"
+                  className="sticky left-0 bg-clip-padding px-0 py-0"
                 >
-                  <div className="flex !h-[40px] items-center justify-between gap-x-2 px-4">
+                  <div className="flex !h-[40px] items-center justify-between gap-x-2 bg-mineshaft-800 px-4">
                     <div className="w-full">
                       <div className="flex w-full flex-wrap items-center gap-x-2.5">
                         <span>{envName}</span>
@@ -95,17 +95,22 @@ export const SecretRotationRow = ({
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="plain"
-                      colorSchema="secondary"
-                      leftIcon={<FontAwesomeIcon icon={isSecretVisible ? faEyeSlash : faEye} />}
-                      onClick={() => setIsSecretVisible.toggle()}
+                    <Tooltip
+                      side="left"
+                      content={isSecretVisible ? "Hide Values" : "Reveal Values"}
                     >
-                      {isSecretVisible ? "Hide Values" : "Reveal Values"}
-                    </Button>
+                      <IconButton
+                        variant="plain"
+                        colorSchema="secondary"
+                        ariaLabel={isSecretVisible ? "Hide Values" : "Reveal Values"}
+                        onClick={() => setIsSecretVisible.toggle()}
+                      >
+                        <FontAwesomeIcon icon={isSecretVisible ? faEyeSlash : faEye} />
+                      </IconButton>
+                    </Tooltip>
                   </div>
                   <TableContainer className="rounded-none border-0">
-                    <table className="secret-table w-full border-b-0">
+                    <table className="secret-table w-full border-b-0 !bg-mineshaft-900">
                       <tbody className="!last:border-b-0 w-full border-t-2 border-mineshaft-600">
                         {secrets.map((secret, index) => {
                           return (
@@ -119,7 +124,7 @@ export const SecretRotationRow = ({
                               // eslint-disable-next-line react/no-array-index-key
                               key={`rotation-secret-${secretRotation.id}-${index}`}
                             >
-                              <tr className="hover:bg-mineshaft-700/70">
+                              <tr className="hover:bg-mineshaft-800/50">
                                 <td
                                   style={{
                                     width: colWidth
