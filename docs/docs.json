@@ -342,10 +342,7 @@
               },
               {
                 "group": "Architecture",
-                "pages": [
-                  "internals/architecture/components",
-                  "internals/architecture/cloud"
-                ]
+                "pages": ["internals/architecture/components", "internals/architecture/cloud"]
               },
               "internals/security",
               "internals/service-tokens"
@@ -564,10 +561,7 @@
                   "integrations/cloud/gcp-secret-manager",
                   {
                     "group": "Cloudflare",
-                    "pages": [
-                      "integrations/cloud/cloudflare-pages",
-                      "integrations/cloud/cloudflare-workers"
-                    ]
+                    "pages": ["integrations/cloud/cloudflare-pages", "integrations/cloud/cloudflare-workers"]
                   },
                   "integrations/cloud/terraform-cloud",
                   "integrations/cloud/databricks",
@@ -661,9 +655,7 @@
                   "documentation/platform/secret-scanning/overview",
                   {
                     "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/secret-scanning/concepts/secret-scanning"
-                    ]
+                    "pages": ["documentation/platform/secret-scanning/concepts/secret-scanning"]
                   }
                 ]
               },
@@ -712,18 +704,13 @@
                   "documentation/platform/ssh/overview",
                   {
                     "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/ssh/concepts/ssh-certificates"
-                    ]
+                    "pages": ["documentation/platform/ssh/concepts/ssh-certificates"]
                   }
                 ]
               },
               {
                 "group": "Platform Reference",
-                "pages": [
-                  "documentation/platform/ssh/usage",
-                  "documentation/platform/ssh/host-groups"
-                ]
+                "pages": ["documentation/platform/ssh/usage", "documentation/platform/ssh/host-groups"]
               }
             ]
           },
@@ -770,11 +757,7 @@
                   "cli/commands/reset",
                   {
                     "group": "infisical scan",
-                    "pages": [
-                      "cli/commands/scan",
-                      "cli/commands/scan-git-changes",
-                      "cli/commands/scan-install"
-                    ]
+                    "pages": ["cli/commands/scan", "cli/commands/scan-git-changes", "cli/commands/scan-install"]
                   }
                 ]
               },
@@ -1108,9 +1091,7 @@
                 "pages": [
                   {
                     "group": "Kubernetes",
-                    "pages": [
-                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
-                    ]
+                    "pages": ["api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"]
                   },
                   "api-reference/endpoints/dynamic-secrets/create",
                   "api-reference/endpoints/dynamic-secrets/update",
@@ -2453,7 +2434,7 @@
               "sdks/languages/node",
               "sdks/languages/python",
               "sdks/languages/java",
-              "sdks/languages/csharp",
+              "sdks/languages/dotnet",
               "sdks/languages/cpp",
               "sdks/languages/rust",
               "sdks/languages/go",
@@ -2681,5 +2662,11 @@
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/sdks/languages/csharp",
+      "destination": "/sdks/languages/dotnet"
+    }
+  ]
 }
