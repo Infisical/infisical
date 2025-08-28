@@ -310,7 +310,11 @@ export const OrgGithubSyncSection = () => {
           subTitle="Provide a GitHub access token with organization and team access permissions"
         >
           <div className="space-y-4">
-            <FormControl label="GitHub Access Token">
+            <FormControl
+              label="GitHub Access Token"
+              tooltipText="The provided token must be granted read:org and read:user permissions in order to successfully sync groups"
+              tooltipClassName="max-w-md"
+            >
               <div className="relative">
                 <Input
                   type="password"
@@ -335,11 +339,6 @@ export const OrgGithubSyncSection = () => {
                 )}
               </div>
             </FormControl>
-            <p className="text-sm text-mineshaft-400">
-              The token needs <code>read:org</code> and <code>read:user</code> permissions to access
-              organization teams and members. Once provided and verified, the token will be securely
-              stored for future syncs.
-            </p>
             <div className="flex justify-between">
               <Button
                 colorSchema="secondary"
