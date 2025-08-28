@@ -42,29 +42,45 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
-const schema = z
-  .object({
-    type: z.nativeEnum(CaType),
-    name: slugSchema({
-      field: "Name"
-    }),
-    enableDirectIssuance: z.boolean(),
-    status: z.nativeEnum(CaStatus),
-    configuration: z.object({
-      dnsAppConnection: z.object({
-        id: z.string(),
-        name: z.string()
-      }),
-      // currently specific to Route53 & Cloudflare but can be extended to others by differentiating via the provider property
-      dnsProviderConfig: z.object({
-        provider: z.nativeEnum(AcmeDnsProvider),
-        hostedZoneId: z.string()
-      }),
-      directoryUrl: z.string(),
-      accountEmail: z.string()
-    })
+const baseSchema = z.object({
+  type: z.nativeEnum(CaType),
+  name: slugSchema({
+    field: "Name"
+  }),
+  enableDirectIssuance: z.boolean(),
+  status: z.nativeEnum(CaStatus)
+});
+
+const acmeConfigurationSchema = z.object({
+  dnsAppConnection: z.object({
+    id: z.string(),
+    name: z.string()
+  }),
+  dnsProviderConfig: z.object({
+    provider: z.nativeEnum(AcmeDnsProvider),
+    hostedZoneId: z.string()
+  }),
+  directoryUrl: z.string(),
+  accountEmail: z.string()
+});
+
+const azureAdCsConfigurationSchema = z.object({
+  azureAdcsConnection: z.object({
+    id: z.string(),
+    name: z.string()
   })
-  .required();
+});
+
+const schema = z.discriminatedUnion("type", [
+  baseSchema.extend({
+    type: z.literal(CaType.ACME),
+    configuration: acmeConfigurationSchema
+  }),
+  baseSchema.extend({
+    type: z.literal(CaType.AZURE_AD_CS),
+    configuration: azureAdCsConfigurationSchema
+  })
+]);
 
 export type FormData = z.infer<typeof schema>;
 
@@ -73,12 +89,15 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["ca"]>, state?: boolean) => void;
 };
 
-const caTypes = [{ label: "ACME", value: CaType.ACME }];
+const caTypes = [
+  { label: "ACME", value: CaType.ACME },
+  { label: "Azure AD Certificate Service", value: CaType.AZURE_AD_CS }
+];
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
-  const { data: ca } = useGetCa({
+  const { data: ca, isLoading: isCaLoading } = useGetCa({
     caName: (popUp?.ca?.data as { name: string })?.name || "",
     projectId: currentWorkspace?.id || "",
     type: (popUp?.ca?.data as { type: CaType })?.type || ""
@@ -94,29 +113,54 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     formState: { isSubmitting },
     watch
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      type: CaType.ACME,
-      name: "",
-      status: CaStatus.ACTIVE,
-      enableDirectIssuance: true,
-      configuration: {
-        dnsAppConnection: {
-          id: "",
-          name: ""
-        },
-        dnsProviderConfig: {
-          provider: AcmeDnsProvider.ROUTE53,
-          hostedZoneId: ""
-        },
-        directoryUrl: "",
-        accountEmail: ""
-      }
-    }
+    resolver: zodResolver(schema)
   });
 
   const caType = watch("type");
-  const dnsProvider = watch("configuration.dnsProviderConfig.provider");
+  const configuration = watch("configuration");
+  const dnsProvider =
+    caType === CaType.ACME && configuration && "dnsProviderConfig" in configuration
+      ? configuration.dnsProviderConfig.provider
+      : undefined;
+
+  useEffect(() => {
+    const initialType = (popUp?.ca?.data as { type: CaType })?.type;
+    if (!ca && popUp?.ca?.isOpen) {
+      if (initialType === CaType.AZURE_AD_CS) {
+        reset({
+          type: CaType.AZURE_AD_CS,
+          name: "",
+          status: CaStatus.ACTIVE,
+          enableDirectIssuance: false,
+          configuration: {
+            azureAdcsConnection: {
+              id: "",
+              name: ""
+            }
+          }
+        });
+      } else {
+        reset({
+          type: CaType.ACME,
+          name: "",
+          status: CaStatus.ACTIVE,
+          enableDirectIssuance: true,
+          configuration: {
+            dnsAppConnection: {
+              id: "",
+              name: ""
+            },
+            dnsProviderConfig: {
+              provider: AcmeDnsProvider.ROUTE53,
+              hostedZoneId: ""
+            },
+            directoryUrl: "",
+            accountEmail: ""
+          }
+        });
+      }
+    }
+  }, [popUp?.ca?.isOpen, popUp?.ca?.data, reset, ca]);
 
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =
     useListAvailableAppConnections(AppConnection.AWS, {
@@ -128,25 +172,44 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
-  const availableConnections: TAvailableAppConnection[] = useMemo(
-    () => [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])],
-    [availableRoute53Connections, availableCloudflareConnections]
-  );
+  const { data: availableAzureConnections, isPending: isAzurePending } =
+    useListAvailableAppConnections(AppConnection.AzureADCS, {
+      enabled: caType === CaType.AZURE_AD_CS
+    });
 
-  const isPending = isRoute53Pending || isCloudflarePending;
+  const availableConnections: TAvailableAppConnection[] = useMemo(() => {
+    if (caType === CaType.ACME) {
+      return [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])];
+    }
+    if (caType === CaType.AZURE_AD_CS) {
+      return availableAzureConnections || [];
+    }
+    return [];
+  }, [
+    caType,
+    availableRoute53Connections,
+    availableCloudflareConnections,
+    availableAzureConnections
+  ]);
 
-  const dnsAppConnection = watch("configuration.dnsAppConnection");
+  const isPending = isRoute53Pending || isCloudflarePending || isAzurePending;
+
+  const dnsAppConnection =
+    caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
+      ? configuration.dnsAppConnection
+      : { id: "", name: "" };
 
   const { data: cloudflareZones = [], isPending: isZonesPending } =
     useCloudflareConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!dnsAppConnection.id
     });
 
+  // Populate form with CA data when editing
   useEffect(() => {
-    if (ca) {
-      if (ca.type !== CaType.INTERNAL && availableConnections?.length) {
+    if (ca && !isCaLoading) {
+      if (ca.type === CaType.ACME && availableConnections?.length) {
         const selectedConnection = availableConnections?.find(
-          (connection) => connection.id === ca?.configuration.dnsAppConnectionId
+          (connection) => connection.id === ca.configuration.dnsAppConnectionId
         );
 
         reset({
@@ -167,32 +230,63 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             accountEmail: ca.configuration.accountEmail
           }
         });
+      } else if (ca.type === CaType.AZURE_AD_CS && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca.configuration.azureAdcsConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          enableDirectIssuance: false,
+          configuration: {
+            azureAdcsConnection: {
+              id: ca.configuration.azureAdcsConnectionId,
+              name: selectedConnection?.name || ""
+            }
+          }
+        });
       }
     }
-  }, [ca, availableConnections]);
+  }, [ca, availableConnections, reset, isCaLoading]);
 
   const onFormSubmit = async ({
     type,
     name,
     enableDirectIssuance,
     status,
-    configuration
+    configuration: formConfiguration
   }: FormData) => {
     try {
       if (!currentWorkspace?.slug) return;
 
-      if (ca && type !== CaType.INTERNAL) {
+      let configPayload: any;
+
+      if (type === CaType.ACME && "dnsAppConnection" in formConfiguration) {
+        configPayload = {
+          dnsProviderConfig: formConfiguration.dnsProviderConfig,
+          directoryUrl: formConfiguration.directoryUrl,
+          accountEmail: formConfiguration.accountEmail,
+          dnsAppConnectionId: formConfiguration.dnsAppConnection.id
+        };
+      } else if (type === CaType.AZURE_AD_CS && "azureAdcsConnection" in formConfiguration) {
+        configPayload = {
+          azureAdcsConnectionId: formConfiguration.azureAdcsConnection.id
+        };
+      } else {
+        throw new Error("Invalid certificate authority configuration");
+      }
+
+      if (ca) {
         await updateMutateAsync({
           caName: ca.name,
           projectId: currentWorkspace.id,
           name,
           type,
           status,
-          enableDirectIssuance,
-          configuration: {
-            ...configuration,
-            dnsAppConnectionId: configuration.dnsAppConnection.id
-          }
+          enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
+          configuration: configPayload
         });
       } else {
         await createMutateAsync({
@@ -200,11 +294,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           name,
           type,
           status,
-          enableDirectIssuance,
-          configuration: {
-            ...configuration,
-            dnsAppConnectionId: configuration.dnsAppConnection.id
-          }
+          enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
+          configuration: configPayload
         });
       }
 
@@ -232,7 +323,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         handlePopUpToggle("ca", isOpen);
       }}
     >
-      <ModalContent title={`${ca ? "View" : "Create"} External CA`}>
+      <ModalContent title={`${ca ? "Edit" : "Create"} External CA`}>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           {ca && (
             <FormControl label="CA ID">
@@ -307,7 +398,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Controller
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
-                    tooltipText={`${ACME_DNS_PROVIDER_NAME_MAP[dnsProvider]} uses the ${APP_CONNECTION_MAP[ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProvider]].name} App Connection. You can create one in the Organization Settings page.`}
+                    tooltipText={
+                      dnsProvider
+                        ? `${ACME_DNS_PROVIDER_NAME_MAP[dnsProvider]} uses the ${APP_CONNECTION_MAP[ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProvider]].name} App Connection. You can create one in the Organization Settings page.`
+                        : "Select a DNS provider first"
+                    }
                     isError={Boolean(error)}
                     errorText={error?.message}
                     label="DNS App Connection"
@@ -406,23 +501,52 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               />
             </>
           )}
-          <Controller
-            control={control}
-            name="enableDirectIssuance"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl isError={Boolean(error)} errorText={error?.message} className="my-8">
-                  <Switch
-                    id="is-active"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="w-full">Enable Direct Issuance</p>
-                  </Switch>
+          {caType === CaType.AZURE_AD_CS && (
+            <Controller
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  tooltipText="Azure ADCS App Connection contains the Windows domain credentials and ADCS server URL for certificate requests."
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  label="Azure ADCS Connection"
+                >
+                  <FilterableSelect
+                    menuPlacement="top"
+                    value={value}
+                    onChange={(newValue) => {
+                      onChange(newValue);
+                    }}
+                    isLoading={isPending}
+                    options={availableConnections}
+                    placeholder="Select connection..."
+                    getOptionLabel={(option) => option.name}
+                    getOptionValue={(option) => option.id}
+                  />
                 </FormControl>
-              );
-            }}
-          />
+              )}
+              control={control}
+              name="configuration.azureAdcsConnection"
+            />
+          )}
+          {caType === CaType.ACME && (
+            <Controller
+              control={control}
+              name="enableDirectIssuance"
+              render={({ field, fieldState: { error } }) => {
+                return (
+                  <FormControl isError={Boolean(error)} errorText={error?.message} className="my-8">
+                    <Switch
+                      id="is-active"
+                      onCheckedChange={(value) => field.onChange(value)}
+                      isChecked={field.value}
+                    >
+                      <p className="w-full">Enable Direct Issuance</p>
+                    </Switch>
+                  </FormControl>
+                );
+              }}
+            />
+          )}
           <div className="flex items-center">
             <Button
               className="mr-4"

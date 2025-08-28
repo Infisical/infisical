@@ -106,6 +106,7 @@
                       "integrations/app-connections/auth0",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
+                      "integrations/app-connections/azure-adcs",
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
                       "integrations/app-connections/azure-key-vault",
@@ -690,6 +691,7 @@
                   "documentation/platform/pki/subscribers",
                   "documentation/platform/pki/certificates",
                   "documentation/platform/pki/acme-ca",
+                  "documentation/platform/pki/azure-adcs",
                   "documentation/platform/pki/est",
                   "documentation/platform/pki/alerting",
                   {
@@ -1394,6 +1396,18 @@
                       "api-reference/endpoints/app-connections/aws/create",
                       "api-reference/endpoints/app-connections/aws/update",
                       "api-reference/endpoints/app-connections/aws/delete"
+                    ]
+                  },
+                  {
+                    "group": "Azure ADCS",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/azure-adcs/list",
+                      "api-reference/endpoints/app-connections/azure-adcs/available",
+                      "api-reference/endpoints/app-connections/azure-adcs/get-by-id",
+                      "api-reference/endpoints/app-connections/azure-adcs/get-by-name",
+                      "api-reference/endpoints/app-connections/azure-adcs/create",
+                      "api-reference/endpoints/app-connections/azure-adcs/update",
+                      "api-reference/endpoints/app-connections/azure-adcs/delete"
                     ]
                   },
                   {
