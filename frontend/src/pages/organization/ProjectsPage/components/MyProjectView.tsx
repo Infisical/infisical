@@ -44,11 +44,17 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import {
+  ProjectListToggle,
+  ProjectListView
+} from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
 
 type Props = {
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
+  projectListView: ProjectListView;
+  onProjectListViewChange: (value: ProjectListView) => void;
 };
 
 enum ProjectOrderBy {
@@ -63,7 +69,9 @@ enum ProjectsViewMode {
 export const MyProjectView = ({
   onAddNewProject,
   onUpgradePlan,
-  isAddingProjectsAllowed
+  isAddingProjectsAllowed,
+  projectListView,
+  onProjectListViewChange
 }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -371,10 +379,10 @@ export const MyProjectView = ({
   return (
     <div>
       <div className="flex w-full flex-row">
-        <div className="flex-grow" />
+        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full"
+          containerClassName="w-full ml-2"
           placeholder="Search by project name..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
@@ -441,7 +449,7 @@ export const MyProjectView = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <IconButton
             variant="outline_bg"
             onClick={() => {

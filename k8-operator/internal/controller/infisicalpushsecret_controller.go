@@ -42,7 +42,7 @@ import (
 	"github.com/go-logr/logr"
 )
 
-// InfisicalPushSecretReconciler reconciles a InfisicalPushSecretSecret object
+// InfisicalPushSecretReconciler reconciles a InfisicalPushSecret object
 type InfisicalPushSecretReconciler struct {
 	client.Client
 	BaseLogger        logr.Logger
@@ -231,7 +231,6 @@ func (r *InfisicalPushSecretReconciler) Reconcile(ctx context.Context, req ctrl.
 }
 
 func (r *InfisicalPushSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	// Custom predicate that allows both spec changes and deletions
 	specChangeOrDelete := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {

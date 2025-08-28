@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	"github.com/Infisical/infisical/k8-operator/internal/controllerhelpers"
@@ -41,8 +42,10 @@ import (
 // InfisicalSecretReconciler reconciles a InfisicalSecret object
 type InfisicalSecretReconciler struct {
 	client.Client
-	BaseLogger        logr.Logger
-	Scheme            *runtime.Scheme
+	BaseLogger logr.Logger
+	Scheme     *runtime.Scheme
+
+	SourceCh          chan event.TypedGenericEvent[client.Object]
 	Namespace         string
 	IsNamespaceScoped bool
 }
@@ -74,7 +77,6 @@ func (r *InfisicalSecretReconciler) GetLogger(req ctrl.Request) logr.Logger {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	logger := r.GetLogger(req)
 
 	var infisicalSecretCRD secretsv1alpha1.InfisicalSecret
@@ -196,6 +198,20 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
+	if infisicalSecretCRD.Spec.InstantUpdates {
+		if err := handler.OpenInstantUpdatesStream(ctx, logger, &infisicalSecretCRD, infisicalSecretResourceVariablesMap, r.SourceCh); err != nil {
+			requeueTime = time.Second * 10
+			logger.Info(fmt.Sprintf("event stream failed. Will requeue after [requeueTime=%v] [error=%s]", requeueTime, err.Error()))
+			return ctrl.Result{
+				RequeueAfter: requeueTime,
+			}, nil
+		}
+
+		logger.Info("Instant updates are enabled")
+	} else {
+		handler.CloseInstantUpdatesStream(ctx, logger, &infisicalSecretCRD, infisicalSecretResourceVariablesMap)
+	}
+
 	// Sync again after the specified time
 	logger.Info(fmt.Sprintf("Successfully synced %d secrets. Operator will requeue after [%v]", secretsCount, requeueTime))
 	return ctrl.Result{
@@ -204,7 +220,12 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 }
 
 func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.SourceCh = make(chan event.TypedGenericEvent[client.Object])
+
 	return ctrl.NewControllerManagedBy(mgr).
+		WatchesRawSource(
+			source.Channel[client.Object](r.SourceCh, &util.EnqueueDelayedEventHandler{Delay: time.Second * 10}),
+		).
 		For(&secretsv1alpha1.InfisicalSecret{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectOld.GetGeneration() == e.ObjectNew.GetGeneration() {
@@ -230,4 +251,5 @@ func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		})).
 		Complete(r)
+
 }

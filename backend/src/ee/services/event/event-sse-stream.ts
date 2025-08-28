@@ -123,7 +123,7 @@ export function createEventStreamClient(redis: Redis, options: IEventStreamClien
 
     await redis.set(key, "1", "EX", 60);
 
-    stream.push("1");
+    send({ type: "ping" });
   };
 
   const close = () => {

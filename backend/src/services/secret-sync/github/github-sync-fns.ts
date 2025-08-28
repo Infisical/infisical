@@ -207,7 +207,7 @@ export const GithubSyncFns = {
     const token =
       connection.method === GitHubConnectionMethod.OAuth
         ? connection.credentials.accessToken
-        : await getGitHubAppAuthToken(connection);
+        : await getGitHubAppAuthToken(connection, gatewayService);
 
     const encryptedSecrets = await getEncryptedSecrets(secretSync, gatewayService);
     const publicKey = await getPublicKey(secretSync, gatewayService, token);
@@ -264,7 +264,7 @@ export const GithubSyncFns = {
     const token =
       connection.method === GitHubConnectionMethod.OAuth
         ? connection.credentials.accessToken
-        : await getGitHubAppAuthToken(connection);
+        : await getGitHubAppAuthToken(connection, gatewayService);
 
     const encryptedSecrets = await getEncryptedSecrets(secretSync, gatewayService);
 

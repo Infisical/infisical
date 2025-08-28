@@ -49,13 +49,19 @@ export const OrgSsoTab = withPermission(
     );
     const areConfigsLoading = isLoadingOidcConfig || isLoadingSamlConfig || isLoadingLdapConfig;
 
-    const shouldDisplaySection = (method: LoginMethod) =>
-      !enabledLoginMethods || enabledLoginMethods.includes(method);
+    const shouldDisplaySection = (method: LoginMethod[] | LoginMethod) => {
+      if (Array.isArray(method)) {
+        return method.some((m) => !enabledLoginMethods || enabledLoginMethods.includes(m));
+      }
 
-    const isOidcConfigured = oidcConfig && (oidcConfig.discoveryURL || oidcConfig.issuer);
+      return !enabledLoginMethods || enabledLoginMethods.includes(method);
+    };
+
+    const isOidcConfigured = Boolean(oidcConfig && (oidcConfig.discoveryURL || oidcConfig.issuer));
     const isSamlConfigured =
       samlConfig && (samlConfig.entryPoint || samlConfig.issuer || samlConfig.cert);
     const isLdapConfigured = ldapConfig && ldapConfig.url;
+    const isGoogleConfigured = shouldDisplaySection(LoginMethod.GOOGLE);
 
     const shouldShowCreateIdentityProviderView =
       !isOidcConfigured && !isSamlConfigured && !isLdapConfigured;
@@ -65,11 +71,14 @@ export const OrgSsoTab = withPermission(
       shouldDisplaySection(LoginMethod.OIDC) ||
       shouldDisplaySection(LoginMethod.LDAP) ? (
         <>
-          <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-            <p className="text-xl font-semibold text-gray-200">Connect an Identity Provider</p>
-            <p className="mb-2 mt-1 text-gray-400">
-              Connect your identity provider to simplify user management
-            </p>
+          <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+            <div>
+              <p className="text-xl font-semibold text-gray-200">Connect an Identity Provider</p>
+              <p className="mb-2 mt-1 text-gray-400">
+                Connect your identity provider to simplify user management with options like SAML,
+                OIDC, and LDAP.
+              </p>
+            </div>
             {shouldDisplaySection(LoginMethod.SAML) && (
               <div
                 className={twMerge(
@@ -169,20 +178,27 @@ export const OrgSsoTab = withPermission(
 
     return (
       <>
-        {shouldShowCreateIdentityProviderView ? (
-          createIdentityProviderView
-        ) : (
-          <>
-            {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && (
-              <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-                <OrgGeneralAuthSection />
-                <OrgSSOSection />
+        <div className="space-y-4">
+          {shouldDisplaySection([LoginMethod.SAML, LoginMethod.GOOGLE]) && (
+            <OrgGeneralAuthSection
+              isSamlConfigured={isSamlConfigured}
+              isOidcConfigured={isOidcConfigured}
+              isGoogleConfigured={isGoogleConfigured}
+            />
+          )}
+
+          {shouldShowCreateIdentityProviderView ? (
+            createIdentityProviderView
+          ) : (
+            <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+              <div>
+                {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}
+                {isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}
+                {isLdapConfigured && shouldDisplaySection(LoginMethod.LDAP) && <OrgLDAPSection />}
               </div>
-            )}
-            {isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}
-            {isLdapConfigured && shouldDisplaySection(LoginMethod.LDAP) && <OrgLDAPSection />}
-          </>
-        )}
+            </div>
+          )}
+        </div>
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
