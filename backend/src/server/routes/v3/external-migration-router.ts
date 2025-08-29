@@ -66,7 +66,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         vaultAccessToken: z.string(),
         vaultNamespace: z.string().trim().optional(),
         vaultUrl: z.string(),
-        mappingType: z.nativeEnum(VaultMappingType)
+        mappingType: z.nativeEnum(VaultMappingType),
+        gatewayId: z.string().optional()
       })
     },
     onRequest: verifyAuth([AuthMode.JWT]),
