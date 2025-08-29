@@ -71,6 +71,10 @@ export enum OrgPermissionAppConnectionActions {
   Connect = "connect"
 }
 
+export enum OrgPermissionAuditLogsActions {
+  Read = "read"
+}
+
 export enum OrgPermissionKmipActions {
   Proxy = "proxy",
   Setup = "setup"
@@ -118,7 +122,7 @@ export type OrgPermissionSet =
   | [OrgPermissionBillingActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
-  | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
+  | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionAppConnectionActions, OrgPermissionSubjects.AppConnections]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
