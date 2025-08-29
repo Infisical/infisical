@@ -1,7 +1,11 @@
 import * as x509 from "@peculiar/x509";
 
+import { TProxies } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -11,13 +15,18 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TProxyDALFactory } from "../proxy/proxy-dal";
+import { isInstanceProxy } from "../proxy/proxy-fns";
 import { TProxyServiceFactory } from "../proxy/proxy-service";
+import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
   kmsService: TKmsServiceFactory;
   proxyService: TProxyServiceFactory;
+  gatewayV2DAL: TGatewayV2DALFactory;
+  proxyDAL: TProxyDALFactory;
 };
 
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
@@ -25,7 +34,9 @@ export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory
 export const gatewayV2ServiceFactory = ({
   orgGatewayConfigV2DAL,
   kmsService,
-  proxyService
+  proxyService,
+  gatewayV2DAL,
+  proxyDAL
 }: TGatewayV2ServiceFactoryDep) => {
   const $getOrgCAs = async (orgId: string) => {
     const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -197,11 +208,179 @@ export const gatewayV2ServiceFactory = ({
     };
   };
 
-  const registerGateway = async ({ orgId, proxyName }: { orgId: string; actorId: string; proxyName: string }) => {
+  const listGateways = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+    // const { permission } = await permissionService.getOrgPermission(
+    //   orgPermission.type,
+    //   orgPermission.id,
+    //   orgPermission.orgId,
+    //   orgPermission.authMethod,
+    //   orgPermission.orgId
+    // );
+    // ForbiddenError.from(permission).throwUnlessCan(
+    //   OrgPermissionGatewayActions.ListGateways,
+    //   OrgPermissionSubjects.Gateway
+    // );
+
+    const orgGatewayConfig = await orgGatewayConfigV2DAL.findOne({ orgId: orgPermission.orgId });
+    if (!orgGatewayConfig) return [];
+
+    const gateways = await gatewayV2DAL.find({
+      orgId: orgPermission.orgId
+    });
+
+    return gateways;
+  };
+
+  const getPlatformConnectionDetailsByGatewayId = async (gatewayId: string) => {
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway) {
+      return;
+    }
+
+    const orgGatewayConfig = await orgGatewayConfigV2DAL.findOne({ orgId: gateway.orgId });
+    if (!orgGatewayConfig) {
+      throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
+    }
+
+    if (!gateway.proxyId) {
+      throw new BadRequestError({
+        message: "Gateway is not associated with a proxy"
+      });
+    }
+
+    // const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
+    // if (!orgLicensePlan.gateway) {
+    //   throw new BadRequestError({
+    //     message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
+    //   });
+    // }
+
+    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: orgGatewayConfig.orgId
+    });
+
+    const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+
+    const rootGatewayCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedRootGatewayCaCertificate
+      })
+    );
+
+    const gatewayClientCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaCertificate
+      })
+    );
+
+    const gatewayClientCaPrivateKey = orgKmsDecryptor({
+      cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaPrivateKey
+    });
+
+    const gatewayClientCaSkObj = crypto.nativeCrypto.createPrivateKey({
+      key: gatewayClientCaPrivateKey,
+      format: "der",
+      type: "pkcs8"
+    });
+
+    const importedGatewayClientCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
+      "pkcs8",
+      gatewayClientCaSkObj.export({ format: "der", type: "pkcs8" }),
+      alg,
+      true,
+      ["sign"]
+    );
+
+    const clientCertIssuedAt = new Date();
+    const clientCertExpiration = new Date(new Date().getTime() + 5 * 60 * 1000);
+    const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const clientCertSerialNumber = createSerialNumber();
+
+    const clientCert = await x509.X509CertificateGenerator.create({
+      serialNumber: clientCertSerialNumber,
+      subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${ActorType.PLATFORM}:${gatewayId}`,
+      issuer: gatewayClientCaCert.subject,
+      notAfter: clientCertExpiration,
+      notBefore: clientCertIssuedAt,
+      signingKey: importedGatewayClientCaPrivateKey,
+      publicKey: clientKeys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        await x509.AuthorityKeyIdentifierExtension.create(gatewayClientCaCert, false),
+        await x509.SubjectKeyIdentifierExtension.create(clientKeys.publicKey),
+        new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
+        new x509.KeyUsagesExtension(
+          // eslint-disable-next-line no-bitwise
+          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
+          true
+        ),
+        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
+      ]
+    });
+    const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
+
+    const proxyCredentials = await proxyService.getCredentialsForClient({
+      proxyId: gateway.proxyId,
+      orgId: gateway.orgId,
+      gatewayId,
+      actor: ActorType.PLATFORM
+    });
+
+    return {
+      proxyIp: proxyCredentials.proxyIp,
+      gateway: {
+        clientCertificate: clientCert.toString("pem"),
+        clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+        clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert]),
+        serverCA: rootGatewayCaCert.toString("pem")
+      },
+      proxy: {
+        clientCertificate: proxyCredentials.clientCertificate,
+        clientPrivateKey: proxyCredentials.clientPrivateKey,
+        serverCertificateChain: proxyCredentials.serverCertificateChain
+      }
+    };
+  };
+
+  const registerGateway = async ({
+    orgId,
+    actorId,
+    proxyName,
+    name
+  }: {
+    orgId: string;
+    actorId: string;
+    proxyName: string;
+    name: string;
+  }) => {
     const orgCAs = await $getOrgCAs(orgId);
 
-    // TODO: Save gateway to DB and set Gateway ID as principal in SSH certificate
-    // only throw error if proxy is different from existing DB record
+    let proxy: TProxies;
+    if (isInstanceProxy(proxyName)) {
+      proxy = await proxyDAL.findOne({ name: proxyName });
+    } else {
+      proxy = await proxyDAL.findOne({ orgId, name: proxyName });
+    }
+
+    if (!proxy) {
+      throw new Error("Proxy not found");
+    }
+
+    const [gateway] = await gatewayV2DAL.upsert(
+      [
+        {
+          orgId,
+          name,
+          identityId: actorId,
+          proxyId: proxy.id
+        }
+      ],
+      ["identityId"]
+    );
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
     const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
@@ -253,11 +432,12 @@ export const gatewayV2ServiceFactory = ({
 
     const proxyCredentials = await proxyService.getCredentialsForGateway({
       proxyName,
-      orgId
+      orgId,
+      gatewayId: gateway.id
     });
 
     return {
-      // TODO: return gateway ID
+      gatewayId: gateway.id,
       proxyIp: proxyCredentials.proxyIp,
       pki: {
         serverCertificate: gatewayServerCertificate.toString("pem"),
@@ -274,6 +454,8 @@ export const gatewayV2ServiceFactory = ({
   };
 
   return {
-    registerGateway
+    listGateways,
+    registerGateway,
+    getPlatformConnectionDetailsByGatewayId
   };
 };

@@ -19,6 +19,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
 import { TGatewayDALFactory } from "../gateway/gateway-dal";
+import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
@@ -39,6 +40,7 @@ type TDynamicSecretServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
@@ -53,6 +55,7 @@ export const dynamicSecretServiceFactory = ({
   projectDAL,
   kmsService,
   gatewayDAL,
+  gatewayV2DAL,
   resourceMetadataDAL
 }: TDynamicSecretServiceFactoryDep): TDynamicSecretServiceFactory => {
   const create: TDynamicSecretServiceFactory["create"] = async ({
@@ -118,8 +121,9 @@ export const dynamicSecretServiceFactory = ({
       const gatewayId = inputs.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
+      const [gatewayv2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
 
-      if (!gateway) {
+      if (!gateway && !gatewayv2) {
         throw new NotFoundError({
           message: `Gateway with ID ${gatewayId} not found`
         });
@@ -128,7 +132,7 @@ export const dynamicSecretServiceFactory = ({
       const { permission: orgPermission } = await permissionService.getOrgPermission(
         actor,
         actorId,
-        gateway.orgId,
+        gateway?.orgId ?? gatewayv2?.orgId,
         actorAuthMethod,
         actorOrgId
       );
@@ -138,7 +142,7 @@ export const dynamicSecretServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
-      selectedGatewayId = gateway.id;
+      selectedGatewayId = gateway?.id ?? gatewayv2?.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId });

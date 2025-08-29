@@ -110,14 +110,14 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.timestamps(true, true, true);
 
-      t.uuid("orgId");
+      t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
-      t.uuid("identityId").unique();
+      t.uuid("identityId").notNullable().unique();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
 
       t.uuid("proxyId");
-      t.foreign("proxyId").references("id").inTable(TableName.Proxy).onDelete("CASCADE");
+      t.foreign("proxyId").references("id").inTable(TableName.Proxy).onDelete("SET NULL");
 
       t.string("name").notNullable().unique();
     });
@@ -136,9 +136,9 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.OrgGatewayConfigV2);
   await knex.schema.dropTableIfExists(TableName.OrgGatewayConfigV2);
 
-  await dropOnUpdateTrigger(knex, TableName.Proxy);
-  await knex.schema.dropTableIfExists(TableName.Proxy);
-
   await dropOnUpdateTrigger(knex, TableName.GatewayV2);
   await knex.schema.dropTableIfExists(TableName.GatewayV2);
+
+  await dropOnUpdateTrigger(knex, TableName.Proxy);
+  await knex.schema.dropTableIfExists(TableName.Proxy);
 }

@@ -4,6 +4,7 @@ import { TProxies } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -89,7 +90,7 @@ export const proxyServiceFactory = ({
               x509.KeyUsageFlags.keyEncipherment,
             true
           ),
-          new x509.BasicConstraintsExtension(true, 0, true),
+          new x509.BasicConstraintsExtension(true, 2, true),
           await x509.AuthorityKeyIdentifierExtension.create(rootCaCert, false),
           await x509.SubjectKeyIdentifierExtension.create(orgProxyCaKeys.publicKey)
         ]
@@ -120,7 +121,7 @@ export const proxyServiceFactory = ({
               x509.KeyUsageFlags.keyEncipherment,
             true
           ),
-          new x509.BasicConstraintsExtension(true, 0, true),
+          new x509.BasicConstraintsExtension(true, 1, true),
           await x509.AuthorityKeyIdentifierExtension.create(rootCaCert, false),
           await x509.SubjectKeyIdentifierExtension.create(instanceProxyCaKeys.publicKey)
         ]
@@ -587,88 +588,28 @@ export const proxyServiceFactory = ({
     };
   };
 
-  const getCredentialsForGateway = async ({ proxyName, orgId }: { proxyName: string; orgId: string }) => {
-    let proxy: TProxies | null;
-    if (isInstanceProxy(proxyName)) {
-      proxy = await proxyDAL.findOne({
-        name: proxyName
-      });
-    } else {
-      proxy = await proxyDAL.findOne({
-        orgId,
-        name: proxyName
-      });
-    }
-
-    if (!proxy) {
-      throw new NotFoundError({
-        message: "Proxy not found"
-      });
-    }
-
-    const keyAlgorithm = SshCertKeyAlgorithm.RSA_2048;
-    const { publicKey: proxyClientSshPublicKey, privateKey: proxyClientSshPrivateKey } =
-      await createSshKeyPair(keyAlgorithm);
-
-    if (isInstanceProxy(proxyName)) {
-      const instanceCAs = await $getInstanceCAs();
-      const proxyClientSshCert = await createSshCert({
-        caPrivateKey: instanceCAs.instanceProxySshServerCaPrivateKey.toString("utf8"),
-        clientPublicKey: proxyClientSshPublicKey,
-        keyId: `proxy-client-${proxy.id}`,
-        principals: ["gateway ID"], // TODO: set gateway ID as principal in SSH certificate
-        certType: SshCertType.USER,
-        requestedTtl: "30d"
-      });
-
-      return {
-        proxyIp: proxy.ip,
-        clientSshCert: proxyClientSshCert.signedPublicKey,
-        clientSshPrivateKey: proxyClientSshPrivateKey,
-        serverCAPublicKey: instanceCAs.instanceProxySshServerCaPublicKey.toString("utf8")
-      };
-    }
-
-    const orgCAs = await $getOrgCAs(orgId);
-    const proxyClientSshCert = await createSshCert({
-      caPrivateKey: orgCAs.proxySshServerCaPrivateKey.toString("utf8"),
-      clientPublicKey: proxyClientSshPublicKey,
-      keyId: `proxy-client-${proxy.id}`,
-      principals: [orgId],
-      certType: SshCertType.USER,
-      requestedTtl: "30d"
-    });
-
-    return {
-      proxyIp: proxy.ip,
-      clientSshCert: proxyClientSshCert.signedPublicKey,
-      clientSshPrivateKey: proxyClientSshPrivateKey,
-      serverCAPublicKey: orgCAs.proxySshServerCaPublicKey.toString("utf8")
-    };
-  };
-
-  const $generateProxyCredentials = async ({
+  const $generateProxyServerCredentials = async ({
     ip,
     orgId,
-    rootProxyPkiCaCertificate,
     proxyPkiServerCaCertificate,
     proxyPkiServerCaPrivateKey,
-    proxySshServerCaPrivateKey,
-    proxyPkiServerCaCertificateChain,
-    proxySshClientCaPublicKey
+    proxyPkiClientCaCertificate,
+    proxyPkiClientCaCertificateChain,
+    proxySshClientCaPublicKey,
+    proxySshServerCaPrivateKey
   }: {
     ip: string;
-    rootProxyPkiCaCertificate: Buffer;
     proxyPkiServerCaCertificate: Buffer;
     proxyPkiServerCaPrivateKey: Buffer;
+    proxyPkiClientCaCertificateChain: Buffer;
+    proxyPkiClientCaCertificate: Buffer;
     proxySshServerCaPrivateKey: Buffer;
-    proxyPkiServerCaCertificateChain: Buffer;
     proxySshClientCaPublicKey: Buffer;
     orgId?: string;
   }) => {
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
     const proxyServerCaCert = new x509.X509Certificate(proxyPkiServerCaCertificate);
-    const rootProxyCaCert = new x509.X509Certificate(rootProxyPkiCaCertificate);
+    const proxyClientCaCert = new x509.X509Certificate(proxyPkiClientCaCertificate);
     const proxyServerCaSkObj = crypto.nativeCrypto.createPrivateKey({
       key: proxyPkiServerCaPrivateKey,
       format: "der",
@@ -733,18 +674,216 @@ export const proxyServiceFactory = ({
     return {
       pki: {
         serverCertificate: proxyServerCertificate.toString("pem"),
-        serverCertificateChain: prependCertToPemChain(
-          proxyServerCaCert,
-          proxyPkiServerCaCertificateChain.toString("utf8")
-        ),
         serverPrivateKey: proxyServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-        clientCA: rootProxyCaCert.toString("pem")
+        clientCertificateChain: prependCertToPemChain(
+          proxyClientCaCert,
+          proxyPkiClientCaCertificateChain.toString("utf8")
+        )
       },
       ssh: {
         serverCertificate: proxyServerSshCert.signedPublicKey,
         serverPrivateKey: proxyServerSshPrivateKey,
         clientCAPublicKey: proxySshClientCaPublicKey.toString("utf8")
       }
+    };
+  };
+
+  const $generateProxyClientCredentials = async ({
+    actor,
+    gatewayId,
+    orgId,
+    proxyPkiClientCaCertificate,
+    proxyPkiClientCaPrivateKey,
+    proxyPkiServerCaCertificate,
+    proxyPkiServerCaCertificateChain
+  }: {
+    actor: ActorType;
+    gatewayId: string;
+    orgId: string;
+    proxyPkiClientCaCertificate: Buffer;
+    proxyPkiClientCaPrivateKey: Buffer;
+    proxyPkiServerCaCertificate: Buffer;
+    proxyPkiServerCaCertificateChain: Buffer;
+  }) => {
+    const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+    const proxyClientCaCert = new x509.X509Certificate(proxyPkiClientCaCertificate);
+    const proxyServerCaCert = new x509.X509Certificate(proxyPkiServerCaCertificate);
+    const proxyClientCaSkObj = crypto.nativeCrypto.createPrivateKey({
+      key: proxyPkiClientCaPrivateKey,
+      format: "der",
+      type: "pkcs8"
+    });
+
+    const importedProxyClientCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
+      "pkcs8",
+      proxyClientCaSkObj.export({ format: "der", type: "pkcs8" }),
+      alg,
+      true,
+      ["sign"]
+    );
+
+    const clientCertIssuedAt = new Date();
+    const clientCertExpiration = new Date(new Date().getTime() + 5 * 60 * 1000);
+    const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const clientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
+    const clientCertSerialNumber = createSerialNumber();
+
+    const clientCert = await x509.X509CertificateGenerator.create({
+      serialNumber: clientCertSerialNumber,
+      subject: `O=${orgId},OU=proxy-client,CN=${actor}:${gatewayId}`,
+      issuer: proxyClientCaCert.subject,
+      notAfter: clientCertExpiration,
+      notBefore: clientCertIssuedAt,
+      signingKey: importedProxyClientCaPrivateKey,
+      publicKey: clientKeys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        await x509.AuthorityKeyIdentifierExtension.create(proxyClientCaCert, false),
+        await x509.SubjectKeyIdentifierExtension.create(clientKeys.publicKey),
+        new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
+        new x509.KeyUsagesExtension(
+          // eslint-disable-next-line no-bitwise
+          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
+          true
+        ),
+        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
+      ]
+    });
+
+    return {
+      clientCertificate: clientCert.toString("pem"),
+      clientPrivateKey: clientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+      serverCertificateChain: prependCertToPemChain(
+        proxyServerCaCert,
+        proxyPkiServerCaCertificateChain.toString("utf8")
+      )
+    };
+  };
+
+  const getCredentialsForGateway = async ({
+    proxyName,
+    orgId,
+    gatewayId
+  }: {
+    proxyName: string;
+    orgId: string;
+    gatewayId: string;
+  }) => {
+    let proxy: TProxies | null;
+    if (isInstanceProxy(proxyName)) {
+      proxy = await proxyDAL.findOne({
+        name: proxyName
+      });
+    } else {
+      proxy = await proxyDAL.findOne({
+        orgId,
+        name: proxyName
+      });
+    }
+
+    if (!proxy) {
+      throw new NotFoundError({
+        message: "Proxy not found"
+      });
+    }
+
+    const keyAlgorithm = SshCertKeyAlgorithm.RSA_2048;
+    const { publicKey: proxyClientSshPublicKey, privateKey: proxyClientSshPrivateKey } =
+      await createSshKeyPair(keyAlgorithm);
+
+    if (isInstanceProxy(proxyName)) {
+      const instanceCAs = await $getInstanceCAs();
+      const proxyClientSshCert = await createSshCert({
+        caPrivateKey: instanceCAs.instanceProxySshServerCaPrivateKey.toString("utf8"),
+        clientPublicKey: proxyClientSshPublicKey,
+        keyId: `proxy-client-${proxy.id}`,
+        principals: [gatewayId],
+        certType: SshCertType.USER,
+        requestedTtl: "30d"
+      });
+
+      return {
+        proxyIp: proxy.ip,
+        clientSshCert: proxyClientSshCert.signedPublicKey,
+        clientSshPrivateKey: proxyClientSshPrivateKey,
+        serverCAPublicKey: instanceCAs.instanceProxySshServerCaPublicKey.toString("utf8")
+      };
+    }
+
+    const orgCAs = await $getOrgCAs(orgId);
+    const proxyClientSshCert = await createSshCert({
+      caPrivateKey: orgCAs.proxySshServerCaPrivateKey.toString("utf8"),
+      clientPublicKey: proxyClientSshPublicKey,
+      keyId: `proxy-client-${proxy.id}`,
+      principals: [gatewayId],
+      certType: SshCertType.USER,
+      requestedTtl: "30d"
+    });
+
+    return {
+      proxyIp: proxy.ip,
+      clientSshCert: proxyClientSshCert.signedPublicKey,
+      clientSshPrivateKey: proxyClientSshPrivateKey,
+      serverCAPublicKey: orgCAs.proxySshServerCaPublicKey.toString("utf8")
+    };
+  };
+
+  const getCredentialsForClient = async ({
+    proxyId,
+    orgId,
+    gatewayId,
+    actor
+  }: {
+    proxyId: string;
+    orgId: string;
+    gatewayId: string;
+    actor: ActorType;
+  }) => {
+    const proxy = await proxyDAL.findOne({
+      id: proxyId
+    });
+
+    if (!proxy) {
+      throw new NotFoundError({
+        message: "Proxy not found"
+      });
+    }
+
+    if (isInstanceProxy(proxy.name)) {
+      const instanceCAs = await $getInstanceCAs();
+      const proxyCertificateCredentials = await $generateProxyClientCredentials({
+        actor,
+        gatewayId,
+        orgId,
+        proxyPkiClientCaCertificate: instanceCAs.instanceProxyPkiClientCaCertificate,
+        proxyPkiClientCaPrivateKey: instanceCAs.instanceProxyPkiClientCaPrivateKey,
+        proxyPkiServerCaCertificate: instanceCAs.instanceProxyPkiServerCaCertificate,
+        proxyPkiServerCaCertificateChain: instanceCAs.instanceProxyPkiServerCaCertificateChain
+      });
+
+      return {
+        ...proxyCertificateCredentials,
+        proxyIp: proxy.ip
+      };
+    }
+
+    const orgCAs = await $getOrgCAs(orgId);
+    const proxyCertificateCredentials = await $generateProxyClientCredentials({
+      actor,
+      gatewayId,
+      orgId,
+      proxyPkiClientCaCertificate: orgCAs.proxyPkiClientCaCertificate,
+      proxyPkiClientCaPrivateKey: orgCAs.proxyPkiClientCaPrivateKey,
+      proxyPkiServerCaCertificate: orgCAs.proxyPkiServerCaCertificate,
+      proxyPkiServerCaCertificateChain: orgCAs.proxyPkiServerCaCertificateChain
+    });
+
+    return {
+      ...proxyCertificateCredentials,
+      proxyIp: proxy.ip
     };
   };
 
@@ -837,14 +976,12 @@ export const proxyServiceFactory = ({
 
     if (isInstanceProxy(name)) {
       const instanceCAs = await $getInstanceCAs();
-      return $generateProxyCredentials({
+      return $generateProxyServerCredentials({
         ip,
-        rootProxyPkiCaCertificate: instanceCAs.rootProxyPkiCaCertificate,
-
         proxyPkiServerCaCertificate: instanceCAs.instanceProxyPkiServerCaCertificate,
         proxyPkiServerCaPrivateKey: instanceCAs.instanceProxyPkiServerCaPrivateKey,
-        proxyPkiServerCaCertificateChain: instanceCAs.instanceProxyPkiServerCaCertificateChain,
-
+        proxyPkiClientCaCertificate: instanceCAs.instanceProxyPkiClientCaCertificate,
+        proxyPkiClientCaCertificateChain: instanceCAs.instanceProxyPkiClientCaCertificateChain,
         proxySshServerCaPrivateKey: instanceCAs.instanceProxySshServerCaPrivateKey,
         proxySshClientCaPublicKey: instanceCAs.instanceProxySshClientCaPublicKey
       });
@@ -852,17 +989,13 @@ export const proxyServiceFactory = ({
 
     if (proxy.orgId) {
       const orgCAs = await $getOrgCAs(proxy.orgId);
-      const instanceCAs = await $getInstanceCAs();
-
-      return $generateProxyCredentials({
+      return $generateProxyServerCredentials({
         ip,
         orgId: proxy.orgId,
-        rootProxyPkiCaCertificate: instanceCAs.rootProxyPkiCaCertificate,
-
         proxyPkiServerCaCertificate: orgCAs.proxyPkiServerCaCertificate,
         proxyPkiServerCaPrivateKey: orgCAs.proxyPkiServerCaPrivateKey,
-        proxyPkiServerCaCertificateChain: orgCAs.proxyPkiServerCaCertificateChain,
-
+        proxyPkiClientCaCertificate: orgCAs.proxyPkiClientCaCertificate,
+        proxyPkiClientCaCertificateChain: orgCAs.proxyPkiClientCaCertificateChain,
         proxySshServerCaPrivateKey: orgCAs.proxySshServerCaPrivateKey,
         proxySshClientCaPublicKey: orgCAs.proxySshClientCaPublicKey
       });
@@ -875,6 +1008,7 @@ export const proxyServiceFactory = ({
 
   return {
     registerProxy,
-    getCredentialsForGateway
+    getCredentialsForGateway,
+    getCredentialsForClient
   };
 };

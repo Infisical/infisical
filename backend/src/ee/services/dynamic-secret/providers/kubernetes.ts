@@ -5,12 +5,14 @@ import https from "https";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKubernetesTokenRequest } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import { TDynamicSecretKubernetesLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import {
   DynamicSecretKubernetesSchema,
   KubernetesAuthMethod,
@@ -26,6 +28,7 @@ const GATEWAY_AUTH_DEFAULT_URL = "https://kubernetes.default.svc.cluster.local";
 
 type TKubernetesProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 const generateUsername = (usernameTemplate?: string | null) => {
@@ -38,7 +41,10 @@ const generateUsername = (usernameTemplate?: string | null) => {
   });
 };
 
-export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): TDynamicProviderFns => {
+export const KubernetesProvider = ({
+  gatewayService,
+  gatewayV2Service
+}: TKubernetesProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretKubernetesSchema.parseAsync(inputs);
     if (!providerInputs.gatewayId && providerInputs.url) {
@@ -58,6 +64,26 @@ export const KubernetesProvider = ({ gatewayService }: TKubernetesProviderDTO): 
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId(inputs.gatewayId);
+    if (gatewayV2ConnectionDetails) {
+      const callbackResult = await withGatewayV2Proxy(
+        async (port) => {
+          return gatewayCallback(
+            inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
+            port,
+            inputs.httpsAgent
+          );
+        },
+        {
+          proxyIp: gatewayV2ConnectionDetails.proxyIp,
+          gateway: gatewayV2ConnectionDetails.gateway,
+          proxy: gatewayV2ConnectionDetails.proxy
+        }
+      );
+
+      return callbackResult;
+    }
+
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 

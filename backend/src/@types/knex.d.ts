@@ -101,6 +101,9 @@ import {
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
+  TGatewaysV2,
+  TGatewaysV2Insert,
+  TGatewaysV2Update,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -1282,5 +1285,6 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.Proxy]: KnexOriginal.CompositeTableType<TProxies, TProxiesInsert, TProxiesUpdate>;
+    [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
   }
 }
