@@ -24,7 +24,7 @@ enum Permission {
 const PERMISSION_ACTIONS = [
   {
     action: OrgPermissionAuditLogsActions.Read,
-    label: "View"
+    label: "Read"
   }
 ] as const;
 
