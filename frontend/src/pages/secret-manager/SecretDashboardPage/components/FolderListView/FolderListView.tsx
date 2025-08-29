@@ -1,5 +1,12 @@
 import { subject } from "@casl/ability";
-import { faClose, faEdit, faFolder, faInfoCircle, faPencilSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faClose,
+  faEdit,
+  faFolder,
+  faInfoCircle,
+  faPencilSquare,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
