@@ -21,6 +21,7 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { SubscriberOperationStatus } from "../pki-subscriber/pki-subscriber-types";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
+import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
@@ -33,7 +34,7 @@ import {
 
 type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
@@ -70,6 +71,19 @@ export const certificateAuthorityQueueFactory = ({
   pkiSubscriberDAL
 }: TCertificateAuthorityQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    pkiSubscriberDAL,
+    projectDAL
+  });
+
+  const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
     certificateAuthorityDAL,
@@ -153,6 +167,13 @@ export const certificateAuthorityQueueFactory = ({
       try {
         if (caType === CaType.ACME) {
           await acmeFns.orderSubscriberCertificate(subscriberId);
+          await pkiSubscriberDAL.updateById(subscriberId, {
+            lastOperationStatus: SubscriberOperationStatus.SUCCESS,
+            lastOperationMessage: "Certificate ordered successfully",
+            lastOperationAt: new Date()
+          });
+        } else if (caType === CaType.AZURE_AD_CS) {
+          await azureAdCsFns.orderSubscriberCertificate(subscriberId);
           await pkiSubscriberDAL.updateById(subscriberId, {
             lastOperationStatus: SubscriberOperationStatus.SUCCESS,
             lastOperationMessage: "Certificate ordered successfully",

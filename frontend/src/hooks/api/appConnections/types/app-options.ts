@@ -32,7 +32,7 @@ export type TAzureKeyVaultConnectionOption = TAppConnectionOptionBase & {
 };
 
 export type TAzureAppConfigurationConnectionOption = TAppConnectionOptionBase & {
-  app: AppConnection.AzureKeyVault;
+  app: AppConnection.AzureAppConfiguration;
   oauthClientId?: string;
 };
 
@@ -164,9 +164,14 @@ export type TOktaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Okta;
 };
 
+export type TAzureAdCsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureADCS;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
+  | TGitHubRadarConnectionOption
   | TGcpConnectionOption
   | TAzureAppConfigurationConnectionOption
   | TAzureKeyVaultConnectionOption
@@ -184,6 +189,7 @@ export type TAppConnectionOption =
   | TWindmillConnectionOption
   | TAuth0ConnectionOption
   | THCVaultConnectionOption
+  | TLdapConnectionOption
   | TTeamCityConnectionOption
   | TOCIConnectionOption
   | TOnePassConnectionOption
@@ -196,9 +202,11 @@ export type TAppConnectionOption =
   | TZabbixConnectionOption
   | TRailwayConnectionOption
   | TChecklyConnectionOption
+  | TSupabaseConnectionOption
   | TDigitalOceanConnectionOption
   | TNetlifyConnectionOption
-  | TOktaConnectionOption;
+  | TOktaConnectionOption
+  | TAzureAdCsConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -238,4 +246,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
   [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
+  [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
 };

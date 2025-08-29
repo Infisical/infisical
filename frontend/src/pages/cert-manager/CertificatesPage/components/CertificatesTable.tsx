@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   faBan,
   faCertificate,
@@ -36,6 +36,9 @@ import {
   useWorkspace
 } from "@app/context";
 import { useListWorkspaceCertificates } from "@app/hooks/api";
+import { caSupportsCapability } from "@app/hooks/api/ca/constants";
+import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
+import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -65,6 +68,20 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
     offset: (page - 1) * perPage,
     limit: perPage
   });
+
+  // Fetch CA data to determine capabilities
+  const { data: caData } = useListCasByProjectId(currentWorkspace?.id ?? "");
+
+  // Create mapping from caId to CA type for capability checking
+  const caCapabilityMap = useMemo(() => {
+    if (!caData) return {};
+
+    const map: Record<string, CaType> = {};
+    caData.forEach((ca) => {
+      map[ca.id] = ca.type;
+    });
+    return map;
+  }, [caData]);
 
   return (
     <TableContainer>
@@ -155,27 +172,43 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                             </DropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionCertificateActions.Delete}
-                          a={ProjectPermissionSub.Certificates}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
-                              onClick={async () =>
-                                handlePopUpOpen("revokeCertificate", {
-                                  serialNumber: certificate.serialNumber
-                                })
-                              }
-                              disabled={!isAllowed}
-                              icon={<FontAwesomeIcon icon={faBan} />}
+                        {/* Only show revoke button if CA supports revocation */}
+                        {(() => {
+                          const caType = caCapabilityMap[certificate.caId];
+                          // If caId not found in map, assume CA supports revocation to avoid hiding revoke option
+                          const supportsRevocation =
+                            !caType ||
+                            caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
+
+                          if (!supportsRevocation) {
+                            return null;
+                          }
+
+                          return (
+                            <ProjectPermissionCan
+                              I={ProjectPermissionCertificateActions.Delete}
+                              a={ProjectPermissionSub.Certificates}
                             >
-                              Revoke Certificate
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  className={twMerge(
+                                    !isAllowed &&
+                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                  )}
+                                  onClick={async () =>
+                                    handlePopUpOpen("revokeCertificate", {
+                                      serialNumber: certificate.serialNumber
+                                    })
+                                  }
+                                  disabled={!isAllowed}
+                                  icon={<FontAwesomeIcon icon={faBan} />}
+                                >
+                                  Revoke Certificate
+                                </DropdownMenuItem>
+                              )}
+                            </ProjectPermissionCan>
+                          );
+                        })()}
                         <ProjectPermissionCan
                           I={ProjectPermissionCertificateActions.Delete}
                           a={ProjectPermissionSub.Certificates}

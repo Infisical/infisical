@@ -22,13 +22,13 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the k8-operator itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
-- infisicaldynamicsecret_admin_role.yaml
-- infisicaldynamicsecret_editor_role.yaml
-- infisicaldynamicsecret_viewer_role.yaml
-- infisicalpushsecretsecret_admin_role.yaml
-- infisicalpushsecretsecret_editor_role.yaml
-- infisicalpushsecretsecret_viewer_role.yaml
-- infisicalsecret_admin_role.yaml
-- infisicalsecret_editor_role.yaml
-- infisicalsecret_viewer_role.yaml
+# - infisicaldynamicsecret_admin_role.yaml
+# - infisicaldynamicsecret_editor_role.yaml
+# - infisicaldynamicsecret_viewer_role.yaml
+# - infisicalpushsecret_admin_role.yaml
+# - infisicalpushsecret_editor_role.yaml
+# - infisicalpushsecret_viewer_role.yaml
+# - infisicalsecret_admin_role.yaml
+# - infisicalsecret_editor_role.yaml
+# - infisicalsecret_viewer_role.yaml
 

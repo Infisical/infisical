@@ -19,6 +19,19 @@ export type TAcmeCertificateAuthority = {
   };
 };
 
+export type TAzureAdCsCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.AZURE_AD_CS;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    azureAdcsConnectionId: string;
+    templateName: string;
+  };
+};
+
 export type TInternalCertificateAuthority = {
   id: string;
   projectId: string;
@@ -48,6 +61,7 @@ export type TInternalCertificateAuthority = {
 
 export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
+  | TAzureAdCsCertificateAuthority
   | TInternalCertificateAuthority;
 
 export type TCreateCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
@@ -112,6 +126,12 @@ export type TSignIntermediateResponse = {
   certificateChain: string;
   issuingCaCertificate: string;
   serialNumber: string;
+};
+
+export type TAzureAdCsTemplate = {
+  id: string;
+  name: string;
+  description?: string;
 };
 
 export type TImportCaCertificateDTO = {

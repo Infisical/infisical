@@ -4,6 +4,7 @@ import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode, isAxi
 
 import { createRequestClient } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 
 import { ChecklyConnectionMethod } from "./checkly-connection-constants";
 import { TChecklyAccount, TChecklyConnectionConfig, TChecklyVariable } from "./checkly-connection-types";
@@ -180,6 +181,122 @@ class ChecklyPublicClient {
     });
 
     return res;
+  }
+
+  async getCheckGroups(connection: TChecklyConnectionConfig, accountId: string, limit = 50, page = 1) {
+    const res = await this.send<{ id: number; name: string }[]>(connection, {
+      accountId,
+      method: "GET",
+      url: `/v1/check-groups`,
+      params: { limit, page }
+    });
+
+    return res?.map((group) => ({
+      id: group.id.toString(),
+      name: group.name
+    }));
+  }
+
+  async getCheckGroup(connection: TChecklyConnectionConfig, accountId: string, groupId: string) {
+    try {
+      type ChecklyGroupResponse = {
+        id: number;
+        name: string;
+        environmentVariables: Array<{
+          key: string;
+          value: string;
+          locked: boolean;
+        }>;
+      };
+
+      const res = await this.send<ChecklyGroupResponse>(connection, {
+        accountId,
+        method: "GET",
+        url: `/v1/check-groups/${groupId}`
+      });
+
+      if (!res) return null;
+
+      return {
+        id: res.id.toString(),
+        name: res.name,
+        environmentVariables: res.environmentVariables
+      };
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === HttpStatusCode.NotFound) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async updateCheckGroupEnvironmentVariables(
+    connection: TChecklyConnectionConfig,
+    accountId: string,
+    groupId: string,
+    environmentVariables: Array<{ key: string; value: string; locked?: boolean }>
+  ) {
+    if (environmentVariables.length > 50) {
+      throw new SecretSyncError({
+        message: "Checkly does not support syncing more than 50 variables to Check Group",
+        shouldRetry: false
+      });
+    }
+
+    const apiVariables = environmentVariables.map((v) => ({
+      key: v.key,
+      value: v.value,
+      locked: v.locked ?? false,
+      secret: true
+    }));
+
+    const group = await this.getCheckGroup(connection, accountId, groupId);
+
+    await this.send(connection, {
+      accountId,
+      method: "PUT",
+      url: `/v2/check-groups/${groupId}`,
+      data: { name: group?.name, environmentVariables: apiVariables }
+    });
+
+    return this.getCheckGroup(connection, accountId, groupId);
+  }
+
+  async getCheckGroupEnvironmentVariables(connection: TChecklyConnectionConfig, accountId: string, groupId: string) {
+    const group = await this.getCheckGroup(connection, accountId, groupId);
+    return group?.environmentVariables || [];
+  }
+
+  async upsertCheckGroupEnvironmentVariables(
+    connection: TChecklyConnectionConfig,
+    accountId: string,
+    groupId: string,
+    variables: Array<{ key: string; value: string; locked?: boolean }>
+  ) {
+    const existingVars = await this.getCheckGroupEnvironmentVariables(connection, accountId, groupId);
+    const varMap = new Map(existingVars.map((v) => [v.key, v]));
+
+    for (const newVar of variables) {
+      varMap.set(newVar.key, {
+        key: newVar.key,
+        value: newVar.value,
+        locked: newVar.locked ?? false
+      });
+    }
+
+    return this.updateCheckGroupEnvironmentVariables(connection, accountId, groupId, Array.from(varMap.values()));
+  }
+
+  async deleteCheckGroupEnvironmentVariable(
+    connection: TChecklyConnectionConfig,
+    accountId: string,
+    groupId: string,
+    variableKey: string
+  ) {
+    const existingVars = await this.getCheckGroupEnvironmentVariables(connection, accountId, groupId);
+    const filteredVars = existingVars.filter((v) => v.key !== variableKey);
+
+    return this.updateCheckGroupEnvironmentVariables(connection, accountId, groupId, filteredVars);
   }
 }
 

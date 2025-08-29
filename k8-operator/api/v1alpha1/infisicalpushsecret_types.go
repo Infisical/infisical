@@ -19,7 +19,7 @@ type InfisicalPushSecretDestination struct {
 	ProjectSlug string `json:"projectSlug,omitempty"`
 }
 
-type InfisicalPushSecretSecretSource struct {
+type InfisicalPushSecretSource struct {
 	// The name of the Kubernetes Secret
 	// +kubebuilder:validation:Required
 	SecretName string `json:"secretName"`
@@ -51,7 +51,7 @@ type SecretPushGenerator struct {
 
 type SecretPush struct {
 	// +kubebuilder:validation:Optional
-	Secret *InfisicalPushSecretSecretSource `json:"secret,omitempty"`
+	Secret *InfisicalPushSecretSource `json:"secret,omitempty"`
 	// +kubebuilder:validation:Optional
 	Generators []SecretPushGenerator `json:"generators,omitempty"`
 }

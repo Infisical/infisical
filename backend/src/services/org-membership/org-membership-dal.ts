@@ -124,12 +124,12 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           void qb
             .whereNull(`${TableName.OrgMembership}.lastInvitedAt`)
             .whereBetween(`${TableName.OrgMembership}.createdAt`, [twelveMonthsAgo, oneWeekAgo]);
-        })
-        .orWhere((qb) => {
           // lastInvitedAt is older than 1 week ago AND createdAt is younger than 1 month ago
-          void qb
-            .where(`${TableName.OrgMembership}.lastInvitedAt`, "<", oneWeekAgo)
-            .where(`${TableName.OrgMembership}.createdAt`, ">", oneMonthAgo);
+          void qb.orWhere((qbInner) => {
+            void qbInner
+              .where(`${TableName.OrgMembership}.lastInvitedAt`, "<", oneWeekAgo)
+              .where(`${TableName.OrgMembership}.createdAt`, ">", oneMonthAgo);
+          });
         });
 
       return memberships;
