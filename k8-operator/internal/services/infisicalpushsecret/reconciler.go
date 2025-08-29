@@ -595,25 +595,18 @@ func (r *InfisicalPushSecretReconciler) DeleteManagedSecrets(ctx context.Context
 func (r *InfisicalPushSecretReconciler) resolveProjectIDFromDestination(infisicalClient infisicalSdk.InfisicalClientInterface, destination v1alpha1.InfisicalPushSecretDestination) (string, error) {
 	projectID := destination.ProjectID
 	if projectID == "" && destination.ProjectSlug != "" {
-		resolvedProjectID, err := r.resolveProjectIDFromSlug(infisicalClient, destination.ProjectSlug)
+
+		accessToken := infisicalClient.Auth().GetAccessToken()
+
+		if accessToken == "" {
+			return "", fmt.Errorf("failed to get access token for project slug resolution")
+		}
+
+		project, err := util.GetProjectBySlug(accessToken, destination.ProjectSlug)
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve project ID from slug '%s': %v", destination.ProjectSlug, err)
 		}
-		projectID = resolvedProjectID
-	}
-
-	return projectID, nil
-}
-
-func (r *InfisicalPushSecretReconciler) resolveProjectIDFromSlug(infisicalClient infisicalSdk.InfisicalClientInterface, projectSlug string) (string, error) {
-	accessToken := infisicalClient.Auth().GetAccessToken()
-	if accessToken == "" {
-		return "", fmt.Errorf("failed to get access token for project slug resolution")
-	}
-
-	projectID, err := util.GetProjectIDBySlug(accessToken, projectSlug)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve project ID from slug '%s': %v", projectSlug, err)
+		projectID = project.ID
 	}
 
 	return projectID, nil

@@ -212,13 +212,7 @@ type GetProjectBySlugRequest struct {
 }
 
 type GetProjectBySlugResponse struct {
-	ID           string `json:"_id"`
-	Environments []struct {
-		Name string `json:"name"`
-		Slug string `json:"slug"`
-		ID   string `json:"id"`
-	} `json:"environments"`
-	KmsSecretManagerKeyId *string `json:"kmsSecretManagerKeyId,omitempty"`
+	Project model.Project `json:"workspace"`
 }
 
 type SubscribeProjectEventsRequestRegister struct {
