@@ -119,17 +119,13 @@ export const auditLogQueueServiceFactory = async ({
               });
 
             try {
-              const response = await request.post(
-                url,
-                { ...providerSpecificPayload(url), ...auditLog },
-                {
-                  headers,
-                  // request timeout
-                  timeout: AUDIT_LOG_STREAM_TIMEOUT,
-                  // connection timeout
-                  signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-                }
-              );
+              const response = await request.post(url, providerSpecificPayload(url, auditLog), {
+                headers,
+                // request timeout
+                timeout: AUDIT_LOG_STREAM_TIMEOUT,
+                // connection timeout
+                signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+              });
               return response;
             } catch (error) {
               logger.error(
