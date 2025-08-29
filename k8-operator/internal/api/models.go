@@ -207,6 +207,14 @@ type GetProjectByIDResponse struct {
 	Project model.Project `json:"workspace"`
 }
 
+type GetProjectBySlugRequest struct {
+	ProjectSlug string
+}
+
+type GetProjectBySlugResponse struct {
+	Project model.Project `json:"workspace"`
+}
+
 type SubscribeProjectEventsRequestRegister struct {
 	Event      string                                  `json:"event"`
 	Conditions *SubscribeProjectEventsRequestCondition `json:"conditions"`

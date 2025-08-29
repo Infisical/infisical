@@ -32,8 +32,8 @@ func GetProjectBySlug(accessToken string, projectSlug string) (model.Project, er
 		SetAuthToken(accessToken).
 		SetHeader("Accept", "application/json")
 
-	project, err := api.CallGetProjectByIDv2(httpClient, api.GetProjectByIDRequest{
-		ProjectID: projectSlug,
+	project, err := api.CallGetProjectBySlug(httpClient, api.GetProjectBySlugRequest{
+		ProjectSlug: projectSlug,
 	})
 
 	if err != nil {
