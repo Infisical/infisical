@@ -2325,6 +2325,15 @@ export const AppConnections = {
     OKTA: {
       instanceUrl: "The URL used to access your Okta organization.",
       apiToken: "The API token used to authenticate with Okta."
+    },
+    AZURE_ADCS: {
+      adcsUrl:
+        "The HTTPS URL of the Azure ADCS instance to connect with (e.g., 'https://adcs.yourdomain.com/certsrv').",
+      username: "The username used to access Azure ADCS (format: 'DOMAIN\\username' or 'username@domain.com').",
+      password: "The password used to access Azure ADCS.",
+      sslRejectUnauthorized:
+        "Whether or not to reject unauthorized SSL certificates (true/false). Set to false only in test environments with self-signed certificates.",
+      sslCertificate: "The SSL certificate (PEM format) to use for secure connection."
     }
   }
 };

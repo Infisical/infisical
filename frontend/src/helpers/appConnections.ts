@@ -13,6 +13,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   Auth0ConnectionMethod,
   AwsConnectionMethod,
+  AzureADCSConnectionMethod,
   AzureAppConfigurationConnectionMethod,
   AzureClientSecretsConnectionMethod,
   AzureDevOpsConnectionMethod,
@@ -76,6 +77,7 @@ export const APP_CONNECTION_MAP: Record<
     image: "Microsoft Azure.png"
   },
   [AppConnection.AzureDevOps]: { name: "Azure DevOps", image: "Microsoft Azure.png" },
+  [AppConnection.AzureADCS]: { name: "Azure ADCS", image: "Microsoft Azure.png" },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
   [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
   [AppConnection.TerraformCloud]: { name: "Terraform Cloud", image: "Terraform Cloud.png" },
@@ -151,6 +153,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
+    case AzureADCSConnectionMethod.UsernamePassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:

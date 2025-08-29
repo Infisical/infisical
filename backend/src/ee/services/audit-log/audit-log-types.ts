@@ -282,6 +282,7 @@ export enum EventType {
   UPDATE_SSH_CERTIFICATE_TEMPLATE = "update-ssh-certificate-template",
   DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
   GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
+  GET_AZURE_AD_TEMPLATES = "get-azure-ad-templates",
   GET_SSH_HOST = "get-ssh-host",
   CREATE_SSH_HOST = "create-ssh-host",
   UPDATE_SSH_HOST = "update-ssh-host",
@@ -2513,6 +2514,14 @@ interface CreateCertificateTemplateEstConfig {
   };
 }
 
+interface GetAzureAdCsTemplatesEvent {
+  type: EventType.GET_AZURE_AD_TEMPLATES;
+  metadata: {
+    caId: string;
+    amount: number;
+  };
+}
+
 interface UpdateCertificateTemplateEstConfig {
   type: EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -3653,6 +3662,7 @@ export type Event =
   | CreateCertificateTemplateEstConfig
   | UpdateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
+  | GetAzureAdCsTemplatesEvent
   | AttemptCreateSlackIntegration
   | AttemptReinstallSlackIntegration
   | UpdateSlackIntegration

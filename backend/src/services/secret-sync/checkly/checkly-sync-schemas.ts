@@ -11,7 +11,17 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 
 const ChecklySyncDestinationConfigSchema = z.object({
   accountId: z.string().min(1, "Account ID is required").max(255, "Account ID must be less than 255 characters"),
-  accountName: z.string().min(1, "Account Name is required").max(255, "Account ID must be less than 255 characters")
+  accountName: z
+    .string()
+    .min(1, "Account Name is required")
+    .max(255, "Account ID must be less than 255 characters")
+    .optional(),
+  groupId: z.string().min(1, "Group ID is required").max(255, "Group ID must be less than 255 characters").optional(),
+  groupName: z
+    .string()
+    .min(1, "Group Name is required")
+    .max(255, "Group Name must be less than 255 characters")
+    .optional()
 });
 
 const ChecklySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };

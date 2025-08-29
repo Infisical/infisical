@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import { faCertificate, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -31,6 +31,9 @@ import {
   useWorkspace
 } from "@app/context";
 import { useGetPkiSubscriberCertificates } from "@app/hooks/api";
+import { caSupportsCapability } from "@app/hooks/api/ca/constants";
+import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
+import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -59,6 +62,20 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
       refetchInterval: 5000
     }
   );
+
+  // Fetch CA data to determine capabilities
+  const { data: caData } = useListCasByProjectId(currentWorkspace.id);
+
+  // Create mapping from caId to CA type for capability checking
+  const caCapabilityMap = useMemo(() => {
+    if (!caData) return {};
+
+    const map: Record<string, CaType> = {};
+    caData.forEach((ca) => {
+      map[ca.id] = ca.type;
+    });
+    return map;
+  }, [caData]);
 
   const getCertStatusBadge = (status: string, notAfter: string) => {
     if (status === CertStatus.REVOKED) {
@@ -121,39 +138,53 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
                         : "-"}
                     </Td>
                     <Td className="flex justify-end">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                            <Tooltip content="More options">
-                              <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                            </Tooltip>
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="p-1">
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPkiSubscriberActions.Delete}
-                            a={ProjectPermissionSub.PkiSubscribers}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={() =>
-                                  handlePopUpOpen &&
-                                  handlePopUpOpen("revokeCertificate", {
-                                    serialNumber: certificate.serialNumber
-                                  })
-                                }
-                                disabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faTrash} />}
+                      {(() => {
+                        const caType = caCapabilityMap[certificate.caId];
+                        const supportsRevocation =
+                          caType && caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
+
+                        // Don't show dropdown for CAs that don't support revocation
+                        if (!supportsRevocation) {
+                          return null;
+                        }
+
+                        return (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild className="rounded-lg">
+                              <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                                <Tooltip content="More options">
+                                  <FontAwesomeIcon size="lg" icon={faEllipsis} />
+                                </Tooltip>
+                              </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="p-1">
+                              <ProjectPermissionCan
+                                I={ProjectPermissionPkiSubscriberActions.Delete}
+                                a={ProjectPermissionSub.PkiSubscribers}
                               >
-                                Revoke Certificate
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    className={twMerge(
+                                      !isAllowed &&
+                                        "pointer-events-none cursor-not-allowed opacity-50"
+                                    )}
+                                    onClick={() =>
+                                      handlePopUpOpen &&
+                                      handlePopUpOpen("revokeCertificate", {
+                                        serialNumber: certificate.serialNumber
+                                      })
+                                    }
+                                    disabled={!isAllowed}
+                                    icon={<FontAwesomeIcon icon={faTrash} />}
+                                  >
+                                    Revoke Certificate
+                                  </DropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        );
+                      })()}
                     </Td>
                   </Tr>
                 );

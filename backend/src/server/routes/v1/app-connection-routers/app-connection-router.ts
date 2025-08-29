@@ -16,6 +16,10 @@ import {
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
 import {
+  AzureADCSConnectionListItemSchema,
+  SanitizedAzureADCSConnectionSchema
+} from "@app/services/app-connection/azure-adcs/azure-adcs-connection-schemas";
+import {
   AzureAppConfigurationConnectionListItemSchema,
   SanitizedAzureAppConfigurationConnectionSchema
 } from "@app/services/app-connection/azure-app-configuration";
@@ -150,7 +154,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
-  ...SanitizedOktaConnectionSchema.options
+  ...SanitizedOktaConnectionSchema.options,
+  ...SanitizedAzureADCSConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -190,7 +195,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,
-  OktaConnectionListItemSchema
+  OktaConnectionListItemSchema,
+  AzureADCSConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

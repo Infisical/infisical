@@ -42,7 +42,7 @@ import (
 	"github.com/go-logr/logr"
 )
 
-// InfisicalPushSecretReconciler reconciles a InfisicalPushSecretSecret object
+// InfisicalPushSecretReconciler reconciles a InfisicalPushSecret object
 type InfisicalPushSecretReconciler struct {
 	client.Client
 	BaseLogger        logr.Logger

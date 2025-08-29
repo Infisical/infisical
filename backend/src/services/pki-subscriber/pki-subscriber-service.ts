@@ -109,6 +109,7 @@ export const pkiSubscriberServiceFactory = ({
     extendedKeyUsages,
     enableAutoRenewal,
     autoRenewalPeriodInDays,
+    properties,
     projectId,
     actorId,
     actorAuthMethod,
@@ -157,7 +158,8 @@ export const pkiSubscriberServiceFactory = ({
       keyUsages,
       extendedKeyUsages,
       enableAutoRenewal,
-      autoRenewalPeriodInDays
+      autoRenewalPeriodInDays,
+      properties
     });
 
     return newSubscriber;
@@ -221,6 +223,7 @@ export const pkiSubscriberServiceFactory = ({
     extendedKeyUsages,
     enableAutoRenewal,
     autoRenewalPeriodInDays,
+    properties,
     actorId,
     actorAuthMethod,
     actor,
@@ -275,7 +278,8 @@ export const pkiSubscriberServiceFactory = ({
       keyUsages,
       extendedKeyUsages,
       enableAutoRenewal,
-      autoRenewalPeriodInDays
+      autoRenewalPeriodInDays,
+      properties
     });
 
     return updatedSubscriber;
@@ -360,7 +364,7 @@ export const pkiSubscriberServiceFactory = ({
       throw new BadRequestError({ message: "CA is disabled" });
     }
 
-    if (ca.externalCa?.id && ca.externalCa.type === CaType.ACME) {
+    if (ca.externalCa?.id && (ca.externalCa.type === CaType.ACME || ca.externalCa.type === CaType.AZURE_AD_CS)) {
       await certificateAuthorityQueue.orderCertificateForSubscriber({
         subscriberId: subscriber.id,
         caType: ca.externalCa.type
