@@ -963,6 +963,7 @@ const Page = () => {
                   workspaceId={workspaceId}
                   secretPath={secretPath}
                   onNavigateToFolder={handleResetFilter}
+                  canNavigate={isFetched}
                 />
               )}
               {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
