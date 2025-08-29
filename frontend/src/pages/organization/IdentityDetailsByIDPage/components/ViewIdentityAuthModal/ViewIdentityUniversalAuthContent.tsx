@@ -90,13 +90,18 @@ export const ViewIdentityUniversalAuthContent = ({
       <IdentityAuthFieldDisplay label="Client Secret Trusted IPs">
         {data.clientSecretTrustedIps.map((ip) => ip.ipAddress).join(", ")}
       </IdentityAuthFieldDisplay>
-      <LockoutFields
-        identityId={identityId}
-        lockedOut={lockedOut}
-        clearLockoutsResult={clearLockoutsResult}
-        data={data}
-        onResetAllLockouts={onResetAllLockouts}
-      />
+      <IdentityAuthFieldDisplay label="Lockout">
+        {data.lockoutEnabled ? "Enabled" : "Disabled"}
+      </IdentityAuthFieldDisplay>
+      {data.lockoutEnabled && (
+        <LockoutFields
+          identityId={identityId}
+          lockedOut={lockedOut}
+          clearLockoutsResult={clearLockoutsResult}
+          data={data}
+          onResetAllLockouts={onResetAllLockouts}
+        />
+      )}
       <div className="col-span-2 my-3">
         <div className="mb-3 border-b border-mineshaft-500 pb-2">
           <span className="text-bunker-300">Client ID</span>

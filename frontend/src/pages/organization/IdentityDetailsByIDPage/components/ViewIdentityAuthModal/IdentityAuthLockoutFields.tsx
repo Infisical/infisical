@@ -67,9 +67,6 @@ export const LockoutFields = ({
           )}
         </OrgPermissionCan>
       </div>
-      <IdentityAuthFieldDisplay label="Lockout">
-        {data.lockoutEnabled ? "Enabled" : "Disabled"}
-      </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Lockout Threshold">
         {data.lockoutThreshold}
       </IdentityAuthFieldDisplay>

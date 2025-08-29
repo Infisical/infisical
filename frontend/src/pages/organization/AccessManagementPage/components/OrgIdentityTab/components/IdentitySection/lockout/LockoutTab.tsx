@@ -42,7 +42,7 @@ export const LockoutTab = ({
                   onCheckedChange={onChange}
                   isChecked={value}
                 >
-                  Lockout {value ? "Enabled" : "Disabled"}
+                  Lockout
                 </Switch>
               </FormControl>
             );

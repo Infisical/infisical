@@ -102,13 +102,18 @@ export const ViewIdentityLdapAuthContent = ({
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
-      <LockoutFields
-        identityId={identityId}
-        lockedOut={lockedOut}
-        clearLockoutsResult={clearLockoutsResult}
-        data={data}
-        onResetAllLockouts={onResetAllLockouts}
-      />
+      <IdentityAuthFieldDisplay label="Lockout">
+        {data.lockoutEnabled ? "Enabled" : "Disabled"}
+      </IdentityAuthFieldDisplay>
+      {data.lockoutEnabled && (
+        <LockoutFields
+          identityId={identityId}
+          lockedOut={lockedOut}
+          clearLockoutsResult={clearLockoutsResult}
+          data={data}
+          onResetAllLockouts={onResetAllLockouts}
+        />
+      )}
     </ViewIdentityContentWrapper>
   );
 };
