@@ -2148,7 +2148,9 @@ export const CertificateAuthorities = {
       directoryUrl: `The directory URL for the ACME Certificate Authority.`,
       accountEmail: `The email address for the ACME Certificate Authority.`,
       provider: `The DNS provider for the ACME Certificate Authority.`,
-      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`,
+      eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
+      eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`
     },
     INTERNAL: {
       type: "The type of CA to create.",
