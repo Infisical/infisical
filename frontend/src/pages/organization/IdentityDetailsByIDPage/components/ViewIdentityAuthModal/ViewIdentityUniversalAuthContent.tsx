@@ -115,34 +115,41 @@ export const ViewIdentityUniversalAuthContent = ({
       <IdentityAuthFieldDisplay label="Client Secret Trusted IPs">
         {data.clientSecretTrustedIps.map((ip) => ip.ipAddress).join(", ")}
       </IdentityAuthFieldDisplay>
-      <div className="col-span-2 mt-3 flex justify-between border-b border-mineshaft-500 pb-2">
-        <span className="text-bunker-300">Lockout Options</span>
-        <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed || !lockedOutState || isClearLockoutsPending}
-              size="xs"
-              onClick={() => clearLockouts()}
-              isLoading={isClearLockoutsPending}
-              colorSchema="secondary"
-            >
-              Reset All Lockouts
-            </Button>
-          )}
-        </OrgPermissionCan>
-      </div>
       <IdentityAuthFieldDisplay label="Lockout">
         {data.lockoutEnabled ? "Enabled" : "Disabled"}
       </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Lockout Threshold">
-        {data.lockoutThreshold}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Lockout Duration">
-        {ms(data.lockoutDurationSeconds * 1000, { long: true })}
-      </IdentityAuthFieldDisplay>
-      <IdentityAuthFieldDisplay label="Lockout Counter Reset">
-        {ms(data.lockoutCounterResetSeconds * 1000, { long: true })}
-      </IdentityAuthFieldDisplay>
+      {data.lockoutEnabled && (
+        <>
+          <div className="col-span-2 mt-3 flex justify-between border-b border-mineshaft-500 pb-2">
+            <span className="text-bunker-300">Lockout Options</span>
+            <OrgPermissionCan
+              I={OrgPermissionIdentityActions.Edit}
+              a={OrgPermissionSubjects.Identity}
+            >
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed || !lockedOutState || isClearLockoutsPending}
+                  size="xs"
+                  onClick={() => clearLockouts()}
+                  isLoading={isClearLockoutsPending}
+                  colorSchema="secondary"
+                >
+                  Reset All Lockouts
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </div>
+          <IdentityAuthFieldDisplay label="Lockout Threshold">
+            {data.lockoutThreshold}
+          </IdentityAuthFieldDisplay>
+          <IdentityAuthFieldDisplay label="Lockout Duration">
+            {ms(data.lockoutDurationSeconds * 1000, { long: true })}
+          </IdentityAuthFieldDisplay>
+          <IdentityAuthFieldDisplay label="Lockout Counter Reset">
+            {ms(data.lockoutCounterResetSeconds * 1000, { long: true })}
+          </IdentityAuthFieldDisplay>
+        </>
+      )}
       <div className="col-span-2 my-3">
         <div className="mb-3 border-b border-mineshaft-500 pb-2">
           <span className="text-bunker-300">Client ID</span>

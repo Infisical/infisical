@@ -453,7 +453,7 @@ export const IdentityUniversalAuthForm = ({
                       onCheckedChange={onChange}
                       isChecked={value}
                     >
-                      Lockout {value ? "Enabled" : "Disabled"}
+                      Lockout
                     </Switch>
                   </FormControl>
                 );
