@@ -11,7 +11,7 @@ import {
   faVault
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Badge, Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
@@ -31,6 +31,7 @@ export const SecretManagerLayout = () => {
   const { t } = useTranslation();
   const workspaceId = currentWorkspace?.id || "";
   const projectSlug = currentWorkspace?.slug || "";
+  const location = useLocation();
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
     workspaceId
@@ -71,13 +72,27 @@ export const SecretManagerLayout = () => {
                 <Menu>
                   <MenuGroup title="Resources">
                     <Link
-                      to="/projects/secret-management/$projectId/overview"
+                      to={
+                        currentWorkspace.environments.length
+                          ? "/projects/secret-management/$projectId/secrets/$envSlug"
+                          : "/projects/secret-management/$projectId/overview"
+                      }
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentWorkspace.id,
+                        ...(currentWorkspace.environments.length
+                          ? { envSlug: currentWorkspace.environments[0]?.slug }
+                          : {})
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem
+                          isSelected={
+                            isActive ||
+                            location.pathname.startsWith(
+                              `/projects/secret-management/${currentWorkspace.id}/secrets`
+                            )
+                          }
+                        >
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faVault} />

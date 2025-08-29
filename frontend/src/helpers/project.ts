@@ -1,6 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType, WorkspaceEnv } from "@app/hooks/api/workspace/types";
 
 const secretsToBeAdded = [
   {
@@ -72,9 +72,12 @@ export const getProjectBaseURL = (type: ProjectType) => {
   }
 };
 
-export const getProjectHomePage = (type: ProjectType) => {
+export const getProjectHomePage = (type: ProjectType, environments: WorkspaceEnv[]) => {
   switch (type) {
     case ProjectType.SecretManager:
+      if (environments.length > 0)
+        return `/projects/secret-management/$projectId/secrets/${environments[0].slug}`;
+
       return "/projects/secret-management/$projectId/overview";
     case ProjectType.CertificateManager:
       return "/projects/cert-management/$projectId/subscribers";

@@ -67,7 +67,7 @@ export const FilterableSelect = <T,>({
         }),
         menuPortal: (provided) => ({
           ...provided,
-          zIndex: 9999
+          zIndex: 99999
         })
       }}
       tabSelectsValue={tabSelectsValue}
