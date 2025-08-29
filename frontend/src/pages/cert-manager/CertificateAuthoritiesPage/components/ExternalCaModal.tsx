@@ -216,13 +216,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
 
   const availableConnections: TAvailableAppConnection[] = useMemo(() => {
-    if (caType === CaType.ACME) {
-      return [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])];
-    }
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
-    return [];
+    return [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])];
   }, [
     caType,
     availableRoute53Connections,
