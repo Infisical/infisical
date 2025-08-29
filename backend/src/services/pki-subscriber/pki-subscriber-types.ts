@@ -18,6 +18,7 @@ export type TCreatePkiSubscriberDTO = {
   extendedKeyUsages: CertExtendedKeyUsage[];
   enableAutoRenewal?: boolean;
   autoRenewalPeriodInDays?: number;
+  properties?: TPkiSubscriberProperties;
 } & TProjectPermission;
 
 export type TGetPkiSubscriberDTO = {
@@ -36,6 +37,7 @@ export type TUpdatePkiSubscriberDTO = {
   extendedKeyUsages?: CertExtendedKeyUsage[];
   enableAutoRenewal?: boolean;
   autoRenewalPeriodInDays?: number;
+  properties?: TPkiSubscriberProperties;
 } & TProjectPermission;
 
 export type TDeletePkiSubscriberDTO = {
@@ -69,3 +71,13 @@ export enum SubscriberOperationStatus {
   SUCCESS = "success",
   FAILED = "failed"
 }
+
+export type TPkiSubscriberProperties = {
+  azureTemplateType?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  emailAddress?: string;
+};

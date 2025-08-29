@@ -10,6 +10,16 @@ export enum SubscriberOperationStatus {
   FAILED = "failed"
 }
 
+export type TPkiSubscriberProperties = {
+  azureTemplateType?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  emailAddress?: string;
+};
+
 export type TPkiSubscriber = {
   id: string;
   projectId: string;
@@ -27,6 +37,7 @@ export type TPkiSubscriber = {
   lastOperationStatus?: SubscriberOperationStatus;
   lastOperationMessage?: string;
   lastOperationAt?: string;
+  properties?: TPkiSubscriberProperties;
 };
 
 export type TCreatePkiSubscriberDTO = {
@@ -40,6 +51,7 @@ export type TCreatePkiSubscriberDTO = {
   extendedKeyUsages: CertExtendedKeyUsage[];
   enableAutoRenewal?: boolean;
   autoRenewalPeriodInDays?: number;
+  properties?: TPkiSubscriberProperties;
 };
 
 export type TUpdatePkiSubscriberDTO = {
@@ -55,6 +67,7 @@ export type TUpdatePkiSubscriberDTO = {
   extendedKeyUsages?: CertExtendedKeyUsage[];
   enableAutoRenewal?: boolean;
   autoRenewalPeriodInDays?: number;
+  properties?: TPkiSubscriberProperties;
 };
 
 export type TDeletePkiSubscriberDTO = {
