@@ -368,10 +368,6 @@
                   "contributing/platform/backend/how-to-create-a-feature",
                   "contributing/platform/backend/folder-structure"
                 ]
-              },
-              {
-                "group": "Contributing to SDK",
-                "pages": ["contributing/sdk/developing"]
               }
             ]
           }
