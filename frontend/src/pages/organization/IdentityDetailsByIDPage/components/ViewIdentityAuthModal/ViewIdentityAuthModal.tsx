@@ -37,9 +37,11 @@ import { ViewIdentityUniversalAuthContent } from "./ViewIdentityUniversalAuthCon
 type Props = {
   identityId: string;
   authMethod?: IdentityAuthMethod;
+  lockedOut: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onDeleteAuthMethod: () => void;
+  onResetAllLockouts: () => void;
 };
 
 type TRevokeOptions = {
@@ -50,8 +52,13 @@ type TRevokeOptions = {
 export const Content = ({
   identityId,
   authMethod,
-  onDeleteAuthMethod
-}: Pick<Props, "authMethod" | "identityId" | "onDeleteAuthMethod">) => {
+  lockedOut,
+  onDeleteAuthMethod,
+  onResetAllLockouts
+}: Pick<
+  Props,
+  "authMethod" | "lockedOut" | "identityId" | "onDeleteAuthMethod" | "onResetAllLockouts"
+>) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -159,9 +166,11 @@ export const Content = ({
       <Component
         identityId={identityId}
         onDelete={handleDelete}
+        onResetAllLockouts={onResetAllLockouts}
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
+        lockedOut={lockedOut}
       />
       <DeleteActionModal
         isOpen={popUp?.revokeAuthMethod?.isOpen}
@@ -184,7 +193,9 @@ export const ViewIdentityAuthModal = ({
   isOpen,
   onOpenChange,
   authMethod,
-  identityId
+  identityId,
+  lockedOut,
+  onResetAllLockouts
 }: Omit<Props, "onDeleteAuthMethod">) => {
   if (!identityId || !authMethod) return null;
 
@@ -194,7 +205,9 @@ export const ViewIdentityAuthModal = ({
         <Content
           identityId={identityId}
           authMethod={authMethod}
+          lockedOut={lockedOut}
           onDeleteAuthMethod={() => onOpenChange(false)}
+          onResetAllLockouts={() => onResetAllLockouts()}
         />
       </ModalContent>
     </Modal>

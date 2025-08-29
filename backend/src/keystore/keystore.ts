@@ -13,7 +13,8 @@ export const PgSqlLock = {
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
-  SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`)
+  SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`),
+  IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict

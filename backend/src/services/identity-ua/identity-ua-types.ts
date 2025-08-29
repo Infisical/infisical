@@ -9,6 +9,10 @@ export type TAttachUaDTO = {
   clientSecretTrustedIps: { ipAddress: string }[];
   accessTokenTrustedIps: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
+  lockoutEnabled: boolean;
+  lockoutThreshold: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateUaDTO = {
@@ -19,6 +23,10 @@ export type TUpdateUaDTO = {
   accessTokenPeriod?: number;
   clientSecretTrustedIps?: { ipAddress: string }[];
   accessTokenTrustedIps?: { ipAddress: string }[];
+  lockoutEnabled?: boolean;
+  lockoutThreshold?: number;
+  lockoutDurationSeconds?: number;
+  lockoutCounterResetSeconds?: number;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUaDTO = {
@@ -43,6 +51,10 @@ export type TGetUaClientSecretsDTO = {
 export type TRevokeUaClientSecretDTO = {
   identityId: string;
   clientSecretId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TClearUaLockoutsDTO = {
+  identityId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUniversalAuthClientSecretByIdDTO = {
