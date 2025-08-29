@@ -2560,7 +2560,7 @@
           },
           {
             "label": "Terraform",
-            "href": "https://infisical.com/docs/integrations/frameworks/terraform"
+            "href": "https://registry.terraform.io/providers/Infisical/infisical/latest/docs"
           },
           {
             "label": "Ansible",
