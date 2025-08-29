@@ -155,7 +155,7 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
                           position="popper"
                         >
                           <SelectItem
-                            value={undefined as unknown as string}
+                            value=""
                             onClick={() => {
                               onChange(undefined);
                             }}
