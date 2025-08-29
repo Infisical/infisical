@@ -1746,7 +1746,8 @@ export const registerRoutes = async (
   const migrationService = externalMigrationServiceFactory({
     externalMigrationQueue,
     userDAL,
-    permissionService
+    permissionService,
+    gatewayService
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
