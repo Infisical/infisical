@@ -14,20 +14,26 @@ type BootstrapOpt = {
 const bootstrapCb = async () => {
   const appCfg = getConfig();
   const serverCfg = await getServerCfg();
+  
+  // Use SITE_URL directly ONLY if it's not the default value
+  const baseUrl = appCfg.SITE_URL && appCfg.SITE_URL !== "http://localhost:8080" 
+    ? appCfg.SITE_URL 
+    : `http://localhost:${appCfg.displayPort}`;
+  
   if (!serverCfg.initialized) {
     console.info(`Welcome to Infisical
 
 Create your Infisical administrator account at:
-http://localhost:${appCfg.PORT}/admin/signup
+${baseUrl}/admin/signup
 `);
   } else {
     console.info(`Welcome back!
 
 To access Infisical Administrator Panel open
-http://localhost:${appCfg.PORT}/admin
+${baseUrl}/admin
 
 To access Infisical server
-http://localhost:${appCfg.PORT}
+${baseUrl}
 `);
   }
 };
