@@ -45,6 +45,22 @@ Once configured, the GitHub Organization Synchronization feature functions as fo
 
 When a user logs in via the GitHub OAuth flow and selects the configured organization, the system will then automatically synchronize the teams they are a part of in GitHub with corresponding groups in Infisical.
 
+## Manual Team Sync
+
+You can manually synchronize GitHub teams for all organization members who have previously logged in with GitHub. This bulk sync operation updates team memberships without requiring users to log in again.
+
+To trigger a manual sync, click the **Manually sync GitHub teams for all organization members** button:
+
+![Manual sync](../../images/platform/external-syncs/github-org-sync-manual-sync.png)
+
+If you don't have a GitHub token configured or your token has expired, a modal will appear prompting you to provide one:
+
+![token](../../images/platform/external-syncs/github-org-sync-manual-sync-token.png)
+
+<Info>
+  The token must be granted **read:org** and **read:user** permissions to successfully sync groups. This configuration is only required once - if you already have a valid token configured, the sync will proceed automatically.
+</Info>
+
 ## Troubleshooting
 
 <Accordion title="Please check if your organization has approved the Infisical OAuth application.">
