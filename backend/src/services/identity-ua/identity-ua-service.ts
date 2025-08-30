@@ -82,7 +82,7 @@ export const identityUaServiceFactory = ({
     }
 
     const identityTx = await identityUaDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.IdentityLogin(identityUa.identityId, clientId)]);
+      // await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.IdentityLogin(identityUa.identityId, clientId)]);
 
       // Lockout Check
       const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
