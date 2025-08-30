@@ -8,7 +8,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
@@ -82,7 +82,7 @@ export const identityUaServiceFactory = ({
     }
 
     const identityTx = await identityUaDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.IdentityLogin(identityUa.identityId, clientId)]);
+      // await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.IdentityLogin(identityUa.identityId, clientId)]);
 
       // Lockout Check
       const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
