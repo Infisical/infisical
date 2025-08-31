@@ -457,11 +457,10 @@ export const authLoginServiceFactory = ({
     if (
       selectedOrg.authEnforced &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC &&
-      decodedToken.authMethod !== AuthMethod.GOOGLE
+      decodedToken.authMethod !== AuthMethod.OIDC
     ) {
       throw new BadRequestError({
-        message: "Authentication is required by your organization before you can log in."
+        message: "Login with the auth method required by your organization."
       });
     }
 
