@@ -45,6 +45,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
         <IconButton
           ariaLabel="delete"
           variant="plain"
+          colorSchema="danger"
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
