@@ -722,6 +722,16 @@ export const licenseServiceFactory = ({
     await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
   };
 
+  const getCustomerId = () => {
+    if (!selfHostedLicense) return "unknown";
+    return selfHostedLicense?.customerId;
+  };
+
+  const getLicenseId = () => {
+    if (!selfHostedLicense) return "unknown";
+    return selfHostedLicense?.licenseId;
+  };
+
   return {
     generateOrgCustomerId,
     removeOrgCustomer,
@@ -736,6 +746,8 @@ export const licenseServiceFactory = ({
       return onPremFeatures;
     },
     getPlan,
+    getCustomerId,
+    getLicenseId,
     invalidateGetPlan,
     updateSubscriptionOrgMemberCount,
     refreshPlan,

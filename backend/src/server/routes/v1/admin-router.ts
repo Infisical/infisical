@@ -53,7 +53,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             defaultAuthOrgAuthMethod: z.string().nullish(),
             isSecretScanningDisabled: z.boolean(),
             kubernetesAutoFetchServiceAccountToken: z.boolean(),
-            paramsFolderSecretDetectionEnabled: z.boolean()
+            paramsFolderSecretDetectionEnabled: z.boolean(),
+            isOfflineUsageReportsEnabled: z.boolean()
           })
         })
       }
@@ -69,7 +70,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
-          paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED
+          paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
+          isOfflineUsageReportsEnabled: !!serverEnvs.LICENSE_KEY_OFFLINE
         }
       };
     }
@@ -835,6 +837,45 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       return {
         invalidating
+      };
+    }
+  });
+
+  // Usage Report Routes
+  server.route({
+    method: "POST",
+    url: "/usage-report/generate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          csvContent: z.string(),
+          signature: z.string(),
+          filename: z.string()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const cfg = getConfig();
+      if (!cfg.LICENSE_KEY_OFFLINE) {
+        throw new BadRequestError({
+          message: "Offline usage reports are not enabled. LICENSE_KEY_OFFLINE must be configured."
+        });
+      }
+
+      const result = await server.services.offlineUsageReport.generateUsageReportCSV();
+
+      return {
+        csvContent: result.csvContent,
+        signature: result.signature,
+        filename: result.filename
       };
     }
   });
