@@ -218,6 +218,9 @@ import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
 import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
+import { notificationQueueServiceFactory } from "@app/services/notification/notification-queue";
+import { notificationServiceFactory } from "@app/services/notification/notification-service";
+import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -418,6 +421,7 @@ export const registerRoutes = async (
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
+  const userNotificationDAL = userNotificationDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -562,6 +566,13 @@ export const registerRoutes = async (
     licenseService,
     auditLogStreamDAL
   });
+
+  const notificationQueue = await notificationQueueServiceFactory({
+    userNotificationDAL,
+    queueService
+  });
+
+  const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const auditLogStreamService = auditLogStreamServiceFactory({
@@ -1368,7 +1379,8 @@ export const registerRoutes = async (
     kmsService,
     groupDAL,
     microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL
+    projectMicrosoftTeamsConfigDAL,
+    notificationService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
@@ -1666,7 +1678,8 @@ export const registerRoutes = async (
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
     serviceTokenService,
-    orgService
+    orgService,
+    userNotificationDAL
   });
 
   const dailyReminderQueueService = dailyReminderQueueServiceFactory({
@@ -2094,7 +2107,8 @@ export const registerRoutes = async (
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
     bus: eventBusService,
-    sse: sseService
+    sse: sseService,
+    notification: notificationService
   });
 
   const cronJobs: CronJob[] = [];

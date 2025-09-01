@@ -20,6 +20,8 @@ import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TNotificationServiceFactory } from "../../../services/notification/notification-service";
+import { NotificationType } from "../../../services/notification/notification-types";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
@@ -67,6 +69,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotification">;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -84,7 +87,8 @@ export const accessApprovalRequestServiceFactory = ({
   kmsService,
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
-  projectSlackConfigDAL
+  projectSlackConfigDAL,
+  notificationService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
   const $getEnvironmentFromPermissions = (permissions: unknown): string | null => {
     if (!Array.isArray(permissions) || permissions.length === 0) {
@@ -245,7 +249,8 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const approvalUrl = `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`;
+      const approvalPath = `/projects/secret-management/${project.id}/approval`;
+      const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
         input: {
@@ -273,6 +278,16 @@ export const accessApprovalRequestServiceFactory = ({
           projectMicrosoftTeamsConfigDAL
         }
       });
+
+      for await (const approver of approverUsers) {
+        await notificationService.createUserNotification({
+          userId: approver.id,
+          type: NotificationType.ACCESS_APPROVAL_REQUEST,
+          title: "Access Approval Request",
+          body: `**${requesterFullName}** (${requestedByUser.email}) has requested ${isTemporary ? "temporary" : "permanent"} access to **${secretPath}** in the **${envSlug}** environment for project **${project.name}**.`,
+          link: approvalPath
+        });
+      }
 
       await smtpService.sendMail({
         recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
