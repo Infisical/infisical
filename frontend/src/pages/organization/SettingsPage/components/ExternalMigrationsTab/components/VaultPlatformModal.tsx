@@ -2,20 +2,20 @@ import { Controller, useForm } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, Select, SelectItem, Tooltip } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
-import { useImportVault } from "@app/hooks/api/migration/mutations";
-import { OrgPermissionCan } from "@app/components/permissions";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { useQuery } from "@tanstack/react-query";
 import { gatewaysQueryKeys } from "@app/hooks/api";
+import { useImportVault } from "@app/hooks/api/migration/mutations";
 
 type Props = {
   id?: string;

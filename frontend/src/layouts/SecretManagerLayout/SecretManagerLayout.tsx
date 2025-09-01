@@ -72,11 +72,7 @@ export const SecretManagerLayout = () => {
                 <Menu>
                   <MenuGroup title="Resources">
                     <Link
-                      to={
-                        currentWorkspace.environments.length
-                          ? "/projects/secret-management/$projectId/secrets/$envSlug"
-                          : "/projects/secret-management/$projectId/overview"
-                      }
+                      to="/projects/secret-management/$projectId/overview"
                       params={{
                         projectId: currentWorkspace.id,
                         ...(currentWorkspace.environments.length
@@ -89,7 +85,7 @@ export const SecretManagerLayout = () => {
                           isSelected={
                             isActive ||
                             location.pathname.startsWith(
-                              `/projects/secret-management/${currentWorkspace.id}/secrets`
+                              `/projects/secret-management/${currentWorkspace.id}/overview`
                             )
                           }
                         >
