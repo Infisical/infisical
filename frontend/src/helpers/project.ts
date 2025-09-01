@@ -72,15 +72,14 @@ export const getProjectBaseURL = (type: ProjectType) => {
   }
 };
 
+// @ts-expect-error akhilmhdh: will remove this later
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const getProjectHomePage = (type: ProjectType, environments: WorkspaceEnv[]) => {
   switch (type) {
     case ProjectType.SecretManager:
-      if (environments.length > 0)
-        return `/projects/secret-management/$projectId/secrets/${environments[0].slug}`;
-
-      return "/projects/secret-management/$projectId/overview";
+      return "/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/projects/cert-management/$projectId/subscribers";
+      return "/projects/cert-management/$projectId/subscribers" as const;
     case ProjectType.SecretScanning:
       return `/projects/${type}/$projectId/data-sources` as const;
     default:
