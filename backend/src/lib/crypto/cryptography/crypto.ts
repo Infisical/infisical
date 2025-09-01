@@ -150,28 +150,28 @@ const cryptographyFactory = () => {
 
     const serverCfg = await superAdminDAL.findById(ADMIN_CONFIG_DB_UUID).catch(() => null);
 
-    if (serverCfg?.fipsEnabled && !fipsEnabled) {
+    if (fipsEnabled) {
+      if (serverCfg?.fipsEnabled === false) {
+        throw new CryptographyError({
+          message:
+            "Your instance is configured for non-FIPS mode of operation, but you are attempting to run Infisical in FIPS mode."
+        });
+      }
+
+      logger.info("Cryptography module initialized in FIPS mode of operation.");
+      $setFipsModeEnabled(true, envCfg);
+      return true;
+    }
+
+    if (serverCfg?.fipsEnabled === true) {
       throw new CryptographyError({
         message:
           "Your instance is configured for FIPS mode of operation, but you are attempting to run Infisical in non-FIPS mode."
       });
     }
-    if (serverCfg?.fipsEnabled === false && fipsEnabled) {
-      throw new CryptographyError({
-        message:
-          "Your instance is configured for non-FIPS mode of operation, but you are attempting to run Infisical in FIPS mode."
-      });
-    }
-
-    if (!fipsEnabled) {
-      logger.info("Cryptography module initialized in normal operation mode.");
-      $setFipsModeEnabled(false, envCfg);
-      return false;
-    }
-
-    logger.info("Cryptography module initialized in FIPS mode of operation.");
-    $setFipsModeEnabled(true, envCfg);
-    return true;
+    logger.info("Cryptography module initialized in normal operation mode.");
+    $setFipsModeEnabled(false, envCfg);
+    return false;
   };
 
   const encryption = () => {
