@@ -73,6 +73,7 @@ export const dynamicSecretServiceFactory = ({
     metadata,
     usernameTemplate
   }) => {
+    let isGatewayV1 = true;
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -129,6 +130,10 @@ export const dynamicSecretServiceFactory = ({
         });
       }
 
+      if (!gateway) {
+        isGatewayV1 = false;
+      }
+
       const { permission: orgPermission } = await permissionService.getOrgPermission(
         actor,
         actorId,
@@ -163,7 +168,8 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           folderId: folder.id,
           name,
-          gatewayId: selectedGatewayId,
+          gatewayId: isGatewayV1 ? selectedGatewayId : undefined,
+          gatewayV2Id: isGatewayV1 ? undefined : selectedGatewayId,
           usernameTemplate
         },
         tx
@@ -274,20 +280,27 @@ export const dynamicSecretServiceFactory = ({
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
 
     let selectedGatewayId: string | null = null;
+    let isGatewayV1 = true;
     if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
       const gatewayId = updatedInput.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
-      if (!gateway) {
+      const [gatewayv2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
+
+      if (!gateway && !gatewayv2) {
         throw new NotFoundError({
           message: `Gateway with ID ${gatewayId} not found`
         });
       }
 
+      if (!gateway) {
+        isGatewayV1 = false;
+      }
+
       const { permission: orgPermission } = await permissionService.getOrgPermission(
         actor,
         actorId,
-        gateway.orgId,
+        actorOrgId,
         actorAuthMethod,
         actorOrgId
       );
@@ -297,7 +310,7 @@ export const dynamicSecretServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
-      selectedGatewayId = gateway.id;
+      selectedGatewayId = gateway?.id ?? gatewayv2?.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(newInput, { projectId });
@@ -313,7 +326,8 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           name: newName ?? name,
           status: null,
-          gatewayId: selectedGatewayId,
+          gatewayId: isGatewayV1 ? selectedGatewayId : null,
+          gatewayV2Id: isGatewayV1 ? null : selectedGatewayId,
           usernameTemplate
         },
         tx

@@ -15,14 +15,17 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TProxyDALFactory } from "../proxy/proxy-dal";
 import { isInstanceProxy } from "../proxy/proxy-fns";
 import { TProxyServiceFactory } from "../proxy/proxy-service";
+import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "getPlan">;
   kmsService: TKmsServiceFactory;
   proxyService: TProxyServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
@@ -33,6 +36,7 @@ export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory
 
 export const gatewayV2ServiceFactory = ({
   orgGatewayConfigV2DAL,
+  licenseService,
   kmsService,
   proxyService,
   gatewayV2DAL,
@@ -231,7 +235,15 @@ export const gatewayV2ServiceFactory = ({
     return gateways;
   };
 
-  const getPlatformConnectionDetailsByGatewayId = async (gatewayId: string) => {
+  const getPlatformConnectionDetailsByGatewayId = async ({
+    gatewayId,
+    targetHost,
+    targetPort
+  }: {
+    gatewayId: string;
+    targetHost: string;
+    targetPort: number;
+  }) => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
       return;
@@ -248,12 +260,12 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    // const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
-    // if (!orgLicensePlan.gateway) {
-    //   throw new BadRequestError({
-    //     message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
-    //   });
-    // }
+    const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
+    if (!orgLicensePlan.gateway) {
+      throw new BadRequestError({
+        message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
+      });
+    }
 
     const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -271,6 +283,12 @@ export const gatewayV2ServiceFactory = ({
     const gatewayClientCaCert = new x509.X509Certificate(
       orgKmsDecryptor({
         cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaCertificate
+      })
+    );
+
+    const gatewayServerCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedGatewayServerCaCertificate
       })
     );
 
@@ -297,6 +315,23 @@ export const gatewayV2ServiceFactory = ({
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertSerialNumber = createSerialNumber();
 
+    const routingInfo = {
+      targetHost,
+      targetPort
+    };
+
+    const routingExtension = new x509.Extension(
+      GATEWAY_ROUTING_INFO_OID,
+      false,
+      Buffer.from(JSON.stringify(routingInfo))
+    );
+
+    const actorExtension = new x509.Extension(
+      GATEWAY_ACTOR_OID,
+      false,
+      Buffer.from(JSON.stringify({ type: ActorType.PLATFORM }))
+    );
+
     const clientCert = await x509.X509CertificateGenerator.create({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${ActorType.PLATFORM}:${gatewayId}`,
@@ -318,16 +353,18 @@ export const gatewayV2ServiceFactory = ({
             x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
           true
         ),
-        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
+        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true),
+        routingExtension,
+        actorExtension
       ]
     });
+
     const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
 
     const proxyCredentials = await proxyService.getCredentialsForClient({
       proxyId: gateway.proxyId,
       orgId: gateway.orgId,
-      gatewayId,
-      actor: ActorType.PLATFORM
+      gatewayId
     });
 
     return {
@@ -335,8 +372,7 @@ export const gatewayV2ServiceFactory = ({
       gateway: {
         clientCertificate: clientCert.toString("pem"),
         clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-        clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert]),
-        serverCA: rootGatewayCaCert.toString("pem")
+        serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert])
       },
       proxy: {
         clientCertificate: proxyCredentials.clientCertificate,
@@ -385,6 +421,7 @@ export const gatewayV2ServiceFactory = ({
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
     const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
     const rootGatewayCaCert = new x509.X509Certificate(orgCAs.rootGatewayCaCertificate);
+    const gatewayClientCaCert = new x509.X509Certificate(orgCAs.gatewayClientCaCertificate);
 
     const gatewayServerCaSkObj = crypto.nativeCrypto.createPrivateKey({
       key: orgCAs.gatewayServerCaPrivateKey,
@@ -414,7 +451,12 @@ export const gatewayV2ServiceFactory = ({
         x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] | x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT],
         true
       ),
-      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true)
+      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
+      new x509.SubjectAlternativeNameExtension([
+        { type: "dns", value: "localhost" },
+        { type: "ip", value: "127.0.0.1" },
+        { type: "ip", value: "::1" }
+      ])
     ];
 
     const gatewayServerSerialNumber = createSerialNumber();
@@ -441,9 +483,8 @@ export const gatewayV2ServiceFactory = ({
       proxyIp: proxyCredentials.proxyIp,
       pki: {
         serverCertificate: gatewayServerCertificate.toString("pem"),
-        serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert]),
         serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-        clientCA: rootGatewayCaCert.toString("pem")
+        clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert])
       },
       ssh: {
         clientCertificate: proxyCredentials.clientSshCert,

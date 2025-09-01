@@ -64,7 +64,11 @@ export const KubernetesProvider = ({
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
-    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId(inputs.gatewayId);
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: inputs.gatewayId,
+      targetHost: inputs.targetHost,
+      targetPort: inputs.targetPort
+    });
     if (gatewayV2ConnectionDetails) {
       const callbackResult = await withGatewayV2Proxy(
         async (port) => {
@@ -77,7 +81,9 @@ export const KubernetesProvider = ({
         {
           proxyIp: gatewayV2ConnectionDetails.proxyIp,
           gateway: gatewayV2ConnectionDetails.gateway,
-          proxy: gatewayV2ConnectionDetails.proxy
+          proxy: gatewayV2ConnectionDetails.proxy,
+          protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
+          httpsAgent: inputs.httpsAgent
         }
       );
 
@@ -379,8 +385,18 @@ export const KubernetesProvider = ({
       return true;
     } catch (error) {
       let errorMessage = error instanceof Error ? error.message : "Unknown error";
-      if (axios.isAxiosError(error) && (error.response?.data as { message: string })?.message) {
-        errorMessage = (error.response?.data as { message: string }).message;
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          let { message } = error?.response?.data as unknown as { message?: string };
+
+          if (!message && typeof error.response.data === "string") {
+            message = error.response.data;
+          }
+
+          if (message) {
+            errorMessage = message;
+          }
+        }
       }
 
       const sanitizedErrorMessage = sanitizeString({
@@ -629,8 +645,18 @@ export const KubernetesProvider = ({
       };
     } catch (error) {
       let errorMessage = error instanceof Error ? error.message : "Unknown error";
-      if (axios.isAxiosError(error) && (error.response?.data as { message: string })?.message) {
-        errorMessage = (error.response?.data as { message: string }).message;
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          let { message } = error?.response?.data as unknown as { message?: string };
+
+          if (!message && typeof error.response.data === "string") {
+            message = error.response.data;
+          }
+
+          if (message) {
+            errorMessage = message;
+          }
+        }
       }
 
       const sanitizedErrorMessage = sanitizeString({
@@ -766,8 +792,18 @@ export const KubernetesProvider = ({
         }
       } catch (error) {
         let errorMessage = error instanceof Error ? error.message : "Unknown error";
-        if (axios.isAxiosError(error) && (error.response?.data as { message: string })?.message) {
-          errorMessage = (error.response?.data as { message: string }).message;
+        if (axios.isAxiosError(error)) {
+          if (error.response) {
+            let { message } = error?.response?.data as unknown as { message?: string };
+
+            if (!message && typeof error.response.data === "string") {
+              message = error.response.data;
+            }
+
+            if (message) {
+              errorMessage = message;
+            }
+          }
         }
 
         const sanitizedErrorMessage = sanitizeString({

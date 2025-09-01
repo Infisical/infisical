@@ -1463,6 +1463,22 @@ export const registerRoutes = async (
     smtpService
   });
 
+  const proxyService = proxyServiceFactory({
+    instanceProxyConfigDAL,
+    orgProxyConfigDAL,
+    proxyDAL,
+    kmsService
+  });
+
+  const gatewayV2Service = gatewayV2ServiceFactory({
+    kmsService,
+    licenseService,
+    proxyService,
+    orgGatewayConfigV2DAL,
+    gatewayV2DAL,
+    proxyDAL
+  });
+
   const identityService = identityServiceFactory({
     permissionService,
     identityDAL,
@@ -1517,6 +1533,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService
   });
+
   const identityUaService = identityUaServiceFactory({
     identityOrgMembershipDAL,
     permissionService,
@@ -1533,6 +1550,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     gatewayService,
+    gatewayV2Service,
+    gatewayV2DAL,
     gatewayDAL,
     kmsService
   });
@@ -1626,21 +1645,6 @@ export const registerRoutes = async (
     licenseService,
     identityDAL,
     identityAuthTemplateDAL
-  });
-
-  const proxyService = proxyServiceFactory({
-    instanceProxyConfigDAL,
-    orgProxyConfigDAL,
-    proxyDAL,
-    kmsService
-  });
-
-  const gatewayV2Service = gatewayV2ServiceFactory({
-    kmsService,
-    proxyService,
-    orgGatewayConfigV2DAL,
-    gatewayV2DAL,
-    proxyDAL
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -1791,7 +1795,9 @@ export const registerRoutes = async (
     kmsService,
     licenseService,
     gatewayService,
-    gatewayDAL
+    gatewayV2Service,
+    gatewayDAL,
+    gatewayV2DAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -1890,7 +1896,8 @@ export const registerRoutes = async (
     secretQueueService,
     queueService,
     appConnectionDAL,
-    gatewayService
+    gatewayService,
+    gatewayV2Service
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({

@@ -32,7 +32,7 @@ export const buildDynamicSecretProviders = ({
   gatewayService,
   gatewayV2Service
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
-  [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService }),
+  [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService, gatewayV2Service }),
   [DynamicSecretProviders.Cassandra]: CassandraProvider(),
   [DynamicSecretProviders.AwsIam]: AwsIamProvider(),
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),

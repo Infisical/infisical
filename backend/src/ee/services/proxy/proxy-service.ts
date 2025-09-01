@@ -4,7 +4,6 @@ import { TProxies } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -689,7 +688,6 @@ export const proxyServiceFactory = ({
   };
 
   const $generateProxyClientCredentials = async ({
-    actor,
     gatewayId,
     orgId,
     proxyPkiClientCaCertificate,
@@ -697,7 +695,6 @@ export const proxyServiceFactory = ({
     proxyPkiServerCaCertificate,
     proxyPkiServerCaCertificateChain
   }: {
-    actor: ActorType;
     gatewayId: string;
     orgId: string;
     proxyPkiClientCaCertificate: Buffer;
@@ -728,29 +725,32 @@ export const proxyServiceFactory = ({
     const clientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
     const clientCertSerialNumber = createSerialNumber();
 
+    // Build standard extensions
+    const extensions: x509.Extension[] = [
+      new x509.BasicConstraintsExtension(false),
+      await x509.AuthorityKeyIdentifierExtension.create(proxyClientCaCert, false),
+      await x509.SubjectKeyIdentifierExtension.create(clientKeys.publicKey),
+      new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
+      new x509.KeyUsagesExtension(
+        // eslint-disable-next-line no-bitwise
+        x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
+          x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
+          x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
+        true
+      ),
+      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
+    ];
+
     const clientCert = await x509.X509CertificateGenerator.create({
       serialNumber: clientCertSerialNumber,
-      subject: `O=${orgId},OU=proxy-client,CN=${actor}:${gatewayId}`,
+      subject: `O=${orgId},OU=proxy-client,CN=${gatewayId}`,
       issuer: proxyClientCaCert.subject,
       notAfter: clientCertExpiration,
       notBefore: clientCertIssuedAt,
       signingKey: importedProxyClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
       signingAlgorithm: alg,
-      extensions: [
-        new x509.BasicConstraintsExtension(false),
-        await x509.AuthorityKeyIdentifierExtension.create(proxyClientCaCert, false),
-        await x509.SubjectKeyIdentifierExtension.create(clientKeys.publicKey),
-        new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
-        new x509.KeyUsagesExtension(
-          // eslint-disable-next-line no-bitwise
-          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
-            x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
-            x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
-          true
-        ),
-        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
-      ]
+      extensions
     });
 
     return {
@@ -834,13 +834,11 @@ export const proxyServiceFactory = ({
   const getCredentialsForClient = async ({
     proxyId,
     orgId,
-    gatewayId,
-    actor
+    gatewayId
   }: {
     proxyId: string;
     orgId: string;
     gatewayId: string;
-    actor: ActorType;
   }) => {
     const proxy = await proxyDAL.findOne({
       id: proxyId
@@ -855,7 +853,6 @@ export const proxyServiceFactory = ({
     if (isInstanceProxy(proxy.name)) {
       const instanceCAs = await $getInstanceCAs();
       const proxyCertificateCredentials = await $generateProxyClientCredentials({
-        actor,
         gatewayId,
         orgId,
         proxyPkiClientCaCertificate: instanceCAs.instanceProxyPkiClientCaCertificate,
@@ -872,7 +869,6 @@ export const proxyServiceFactory = ({
 
     const orgCAs = await $getOrgCAs(orgId);
     const proxyCertificateCredentials = await $generateProxyClientCredentials({
-      actor,
       gatewayId,
       orgId,
       proxyPkiClientCaCertificate: orgCAs.proxyPkiClientCaCertificate,

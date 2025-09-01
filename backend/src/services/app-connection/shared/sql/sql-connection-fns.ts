@@ -2,12 +2,14 @@ import knex, { Knex } from "knex";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import {
   TSqlCredentialsRotationGeneratedCredentials,
   TSqlCredentialsRotationWithConnection
 } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionRaw, TSqlConnection } from "@app/services/app-connection/app-connection-types";
@@ -104,12 +106,49 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
 export const executeWithPotentialGateway = async <T>(
   config: TSqlConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   operation: (client: Knex) => Promise<T>
 ): Promise<T> => {
   const { credentials, app, gatewayId } = config;
 
-  if (gatewayId && gatewayService) {
+  if (gatewayId && gatewayService && gatewayV2Service) {
     const [targetHost] = await verifyHostInputValidity(credentials.host, true);
+    const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost,
+      targetPort: credentials.port
+    });
+
+    if (platformConnectionDetails) {
+      return withGatewayV2Proxy(
+        async (proxyPort) => {
+          const client = knex({
+            client: SQL_CONNECTION_CLIENT_MAP[app],
+            connection: {
+              database: credentials.database,
+              port: proxyPort,
+              host: "localhost",
+              user: credentials.username,
+              password: credentials.password,
+              connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
+              ...getConnectionConfig({ app, credentials })
+            }
+          });
+          try {
+            return await operation(client);
+          } finally {
+            await client.destroy();
+          }
+        },
+        {
+          protocol: GatewayProxyProtocol.Tcp,
+          proxyIp: platformConnectionDetails.proxyIp,
+          gateway: platformConnectionDetails.gateway,
+          proxy: platformConnectionDetails.proxy
+        }
+      );
+    }
+
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
@@ -161,10 +200,11 @@ export const executeWithPotentialGateway = async <T>(
 
 export const validateSqlConnectionCredentials = async (
   config: TSqlConnectionConfig,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {
-    await executeWithPotentialGateway(config, gatewayService, async (client) => {
+    await executeWithPotentialGateway(config, gatewayService, gatewayV2Service, async (client) => {
       await client.raw(config.app === AppConnection.OracleDB ? `SELECT 1 FROM DUAL` : `Select 1`);
     });
     return config.credentials;
@@ -191,14 +231,15 @@ export const SQL_CONNECTION_ALTER_LOGIN_STATEMENT: Record<
 export const transferSqlConnectionCredentialsToPlatform = async (
   config: TSqlConnectionConfig,
   callback: (credentials: TSqlConnectionConfig["credentials"]) => Promise<TAppConnectionRaw>,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials, app } = config;
 
   const newPassword = alphaNumericNanoId(32);
 
   try {
-    return await executeWithPotentialGateway(config, gatewayService, (client) => {
+    return await executeWithPotentialGateway(config, gatewayService, gatewayV2Service, (client) => {
       return client.transaction(async (tx) => {
         await tx.raw(
           ...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[app]({ username: credentials.username, password: newPassword })
