@@ -6,5 +6,5 @@ export interface TUserNotification {
   body?: string | null;
   link?: string | null;
   isRead: boolean;
-  createdAt: Date;
+  createdAt: string;
 }

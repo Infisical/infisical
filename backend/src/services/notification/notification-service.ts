@@ -51,8 +51,7 @@ export const notificationServiceFactory = ({
     await userNotificationDAL.update(
       {
         id: notificationId,
-        userId,
-        isRead: false
+        userId
       },
       {
         isRead: true
