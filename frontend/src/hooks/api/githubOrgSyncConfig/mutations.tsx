@@ -43,11 +43,7 @@ export const useDeleteGithubSyncOrgConfig = () => {
 
 export const useSyncAllGithubTeams = () => {
   return useMutation({
-    mutationFn: async ({
-      githubOrgAccessToken
-    }: {
-      githubOrgAccessToken?: string;
-    } = {}): Promise<{
+    mutationFn: async (): Promise<{
       syncedUsersCount: number;
       totalUsers: number;
       errors: string[];
@@ -56,33 +52,7 @@ export const useSyncAllGithubTeams = () => {
       removedMemberships: number;
       syncDuration: number;
     }> => {
-      const response = await apiRequest.post("/api/v1/github-org-sync-config/sync-all-teams", {
-        githubOrgAccessToken
-      });
-      return response.data;
-    }
-  });
-};
-
-export const useValidateGithubToken = () => {
-  return useMutation({
-    mutationFn: async ({
-      githubOrgAccessToken
-    }: {
-      githubOrgAccessToken: string;
-    }): Promise<{
-      valid: boolean;
-      organizationInfo?: {
-        id: number;
-        login: string;
-        name: string;
-        publicRepos?: number;
-        privateRepos?: number;
-      };
-    }> => {
-      const response = await apiRequest.post("/api/v1/github-org-sync-config/validate-token", {
-        githubOrgAccessToken
-      });
+      const response = await apiRequest.post("/api/v1/github-org-sync-config/sync-all-teams");
       return response.data;
     }
   });

@@ -135,9 +135,6 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      body: z.object({
-        githubOrgAccessToken: z.string().trim().max(1000).optional()
-      }),
       response: {
         200: z.object({
           syncedUsersCount: z.number(),
@@ -152,8 +149,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const result = await server.services.githubOrgSync.syncAllTeams({
-        orgPermission: req.permission,
-        githubOrgAccessToken: req.body.githubOrgAccessToken
+        orgPermission: req.permission
       });
 
       return {
@@ -165,42 +161,6 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         removedMemberships: result.removedMemberships,
         syncDuration: result.syncDuration
       };
-    }
-  });
-
-  server.route({
-    url: "/validate-token",
-    method: "POST",
-    config: {
-      rateLimit: writeLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    schema: {
-      body: z.object({
-        githubOrgAccessToken: z.string().trim().min(1, "GitHub access token is required").max(1000)
-      }),
-      response: {
-        200: z.object({
-          valid: z.boolean(),
-          organizationInfo: z
-            .object({
-              id: z.number(),
-              login: z.string(),
-              name: z.string(),
-              publicRepos: z.number().optional(),
-              privateRepos: z.number().optional()
-            })
-            .optional()
-        })
-      }
-    },
-    handler: async (req) => {
-      const result = await server.services.githubOrgSync.validateGithubToken({
-        orgPermission: req.permission,
-        githubOrgAccessToken: req.body.githubOrgAccessToken
-      });
-
-      return result;
     }
   });
 };

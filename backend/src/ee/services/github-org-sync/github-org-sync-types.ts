@@ -24,7 +24,6 @@ export interface TGetGithubOrgSyncDTO {
 
 export interface TSyncAllTeamsDTO {
   orgPermission: OrgServiceActor;
-  githubOrgAccessToken?: string;
 }
 
 export interface TSyncResult {

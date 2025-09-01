@@ -2,7 +2,6 @@ export {
   useCreateGithubSyncOrgConfig,
   useDeleteGithubSyncOrgConfig,
   useSyncAllGithubTeams,
-  useUpdateGithubSyncOrgConfig,
-  useValidateGithubToken
+  useUpdateGithubSyncOrgConfig
 } from "./mutations";
 export { githubOrgSyncConfigQueryKeys } from "./queries";
