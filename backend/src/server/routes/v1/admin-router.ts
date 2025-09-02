@@ -863,13 +863,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const cfg = getConfig();
-      if (!cfg.LICENSE_KEY_OFFLINE) {
-        throw new BadRequestError({
-          message: "Offline usage reports are not enabled. LICENSE_KEY_OFFLINE must be configured."
-        });
-      }
-
       const result = await server.services.offlineUsageReport.generateUsageReportCSV();
 
       return {

@@ -104,17 +104,21 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
 
     // Calculate average secrets per project
     const secretsPerProject = (await db
-      .from(TableName.SecretV2)
-      .select("folderId")
-      .count("* as count")
-      .groupBy("folderId")) as Array<{ folderId: string; count: string }>;
+      .from(`${TableName.SecretV2} as s`)
+      .select("p.id as projectId")
+      .count("s.id as count")
+      .leftJoin(`${TableName.SecretFolder} as sf`, "s.folderId", "sf.id")
+      .leftJoin(`${TableName.Environment} as e`, "sf.envId", "e.id")
+      .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
+      .groupBy("p.id")
+      .whereNotNull("p.id")) as Array<{ projectId: string; count: string }>;
 
     const averageSecretsPerProject =
-      totalProjects > 0
+      secretsPerProject.length > 0
         ? secretsPerProject.reduce(
-            (sum, row: { folderId: string; count: string }) => sum + parseInt(row.count, 10),
+            (sum, row: { projectId: string; count: string }) => sum + parseInt(row.count, 10),
             0
-          ) / totalProjects
+          ) / secretsPerProject.length
         : 0;
 
     return {

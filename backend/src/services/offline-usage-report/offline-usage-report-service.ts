@@ -58,8 +58,6 @@ export const offlineUsageReportServiceFactory = ({
       offlineUsageReportDAL.getSecretRotationMetrics()
     ]);
 
-    const csvLines: string[] = [];
-
     const headers = [
       "Total Users",
       "Admin Users",
@@ -89,8 +87,6 @@ export const offlineUsageReportServiceFactory = ({
 
     headers.push("Signature");
 
-    csvLines.push(headers.slice(0, -1).join(","));
-
     const dataRow: (string | number)[] = [
       userMetrics.totalUsers,
       userMetrics.adminUsers,
@@ -114,14 +110,13 @@ export const offlineUsageReportServiceFactory = ({
       dataRow.push(projectMetrics.projectsByType[type] || 0);
     });
 
-    const tempCsvLines = [headers.slice(0, -1).join(","), dataRow.join(",")];
-    const contentWithoutSignature = tempCsvLines.join("\n");
+    const headersWithoutSignature = headers.slice(0, -1);
+    const contentWithoutSignature = [headersWithoutSignature.join(","), dataRow.join(",")].join("\n");
 
     const signature = signReportContent(contentWithoutSignature, licenseId);
     dataRow.push(signature);
 
-    const finalCsvLines = [headers.join(","), dataRow.join(",")];
-    const csvContent = finalCsvLines.join("\n");
+    const csvContent = [headers.join(","), dataRow.join(",")].join("\n");
 
     return {
       csvContent,

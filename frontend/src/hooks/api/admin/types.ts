@@ -144,10 +144,6 @@ export interface TGetEnvOverrides {
   };
 }
 
-export type TGenerateUsageReportDTO = {
-  periodDays?: number;
-};
-
 export type TUsageReportResponse = {
   filename: string;
   csvContent: string;

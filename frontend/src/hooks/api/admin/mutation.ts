@@ -8,7 +8,6 @@ import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
   RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
-  TGenerateUsageReportDTO,
   TInvalidateCacheDTO,
   TServerConfig,
   TUpdateServerConfigDTO,
@@ -197,11 +196,10 @@ export const useInvalidateCache = () => {
 };
 
 export const useGenerateUsageReport = () => {
-  return useMutation<TUsageReportResponse, object, TGenerateUsageReportDTO>({
-    mutationFn: async (dto) => {
+  return useMutation<TUsageReportResponse, object, void>({
+    mutationFn: async () => {
       const { data } = await apiRequest.post<TUsageReportResponse>(
-        "/api/v1/admin/usage-report/generate",
-        dto
+        "/api/v1/admin/usage-report/generate"
       );
       return data;
     }

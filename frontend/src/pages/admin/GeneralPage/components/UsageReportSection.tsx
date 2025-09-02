@@ -1,27 +1,13 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { faDownload, faFileAlt, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Card, CardTitle } from "@app/components/v2";
 import { apiRequest } from "@app/config/request";
 
-const formSchema = z.object({});
-
-type TUsageReportForm = z.infer<typeof formSchema>;
-
 export const UsageReportSection = () => {
   const [isGenerating, setIsGenerating] = useState(false);
-
-  const {
-    handleSubmit,
-    formState: { isSubmitting }
-  } = useForm<TUsageReportForm>({
-    resolver: zodResolver(formSchema)
-  });
 
   const downloadFile = (content: string, filename: string, mimeType: string = "text/csv") => {
     const blob = new Blob([content], { type: mimeType });
@@ -35,7 +21,7 @@ export const UsageReportSection = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const onSubmit = async () => {
+  const handleGenerateReport = async () => {
     try {
       setIsGenerating(true);
 
@@ -59,8 +45,6 @@ export const UsageReportSection = () => {
     }
   };
 
-  const isLoading = isSubmitting || isGenerating;
-
   return (
     <Card className="p-6">
       <CardTitle className="mb-4 flex items-center gap-3">
@@ -75,15 +59,14 @@ export const UsageReportSection = () => {
         trail.
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Button
-          type="submit"
-          isLoading={isLoading}
-          leftIcon={<FontAwesomeIcon icon={isLoading ? faSpinner : faDownload} />}
-        >
-          {isLoading ? "Generating..." : "Generate Report"}
-        </Button>
-      </form>
+      <Button
+        onClick={handleGenerateReport}
+        className="w-fit"
+        isLoading={isGenerating}
+        leftIcon={<FontAwesomeIcon icon={isGenerating ? faSpinner : faDownload} />}
+      >
+        {isGenerating ? "Generating..." : "Generate Report"}
+      </Button>
     </Card>
   );
 };
