@@ -2448,6 +2448,7 @@
               "sdks/languages/cpp",
               "sdks/languages/rust",
               "sdks/languages/go",
+              "sdks/languages/php",
               "sdks/languages/ruby"
             ]
           }
