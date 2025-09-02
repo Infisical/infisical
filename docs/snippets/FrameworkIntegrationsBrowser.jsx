@@ -43,7 +43,7 @@ export const FrameworkIntegrationsBrowser = () => {
     }
 
     return filtered;
-  }, [integrations, searchTerm, selectedCategory]);
+  }, [searchTerm, selectedCategory]);
 
   return (
     <div className="max-w-none">
@@ -98,7 +98,7 @@ export const FrameworkIntegrationsBrowser = () => {
         <div className="space-y-4">
           {filteredIntegrations.map((integration, index) => (
             <a
-              key={`${integration.slug}-${index}`}
+              key={integration.slug}
               href={integration.path}
               className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
             >
@@ -118,7 +118,14 @@ export const FrameworkIntegrationsBrowser = () => {
             </a>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No framework integrations found matching your criteria.</p>
+          {searchTerm && (
+            <p className="text-gray-400 text-sm mt-2">Try adjusting your search terms or category filter.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

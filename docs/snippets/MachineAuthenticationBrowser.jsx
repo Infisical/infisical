@@ -21,8 +21,8 @@ export const MachineAuthenticationBrowser = () => {
     {"name": "OIDC Auth (Terraform Cloud)", "slug": "oidc-auth-terraform", "path": "/documentation/platform/identities/oidc-auth/terraform-cloud", "description": "Learn how to authenticate Terraform Cloud using OIDC.", "category": "Token-based"},
     {"name": "OIDC Auth (SPIRE)", "slug": "oidc-auth-spire", "path": "/documentation/platform/identities/oidc-auth/spire", "description": "Learn how to authenticate workloads using SPIFFE/SPIRE OIDC.", "category": "Token-based"},
     {"name": "TLS Certificate Auth", "slug": "tls-cert-auth", "path": "/documentation/platform/identities/tls-cert-auth", "description": "Learn how to authenticate machines using TLS client certificates.", "category": "Certificate-based"},
-    {"name": "LDAP Auth (General)", "slug": "ldap-auth-general", "path": "/documentation/platform/identities/ldap-auth/general", "description": "Learn how to authenticate machines using LDAP credentials.", "category": "Certificate-based"},
-    {"name": "LDAP Auth (JumpCloud)", "slug": "ldap-auth-jumpcloud", "path": "/documentation/platform/identities/ldap-auth/jumpcloud", "description": "Learn how to authenticate machines using JumpCloud LDAP.", "category": "Certificate-based"}
+    {"name": "LDAP Auth (General)", "slug": "ldap-auth-general", "path": "/documentation/platform/identities/ldap-auth/general", "description": "Learn how to authenticate machines using LDAP credentials.", "category": "Directory-based"},
+    {"name": "LDAP Auth (JumpCloud)", "slug": "ldap-auth-jumpcloud", "path": "/documentation/platform/identities/ldap-auth/jumpcloud", "description": "Learn how to authenticate machines using JumpCloud LDAP.", "category": "Directory-based"}
   ];
 
   const filteredAuthMethods = useMemo(() => {
@@ -32,7 +32,7 @@ export const MachineAuthenticationBrowser = () => {
       method.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       method.description.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [authMethods, searchTerm]);
+  }, [searchTerm]);
 
   return (
     <div className="max-w-none">
@@ -67,7 +67,7 @@ export const MachineAuthenticationBrowser = () => {
         <div className="space-y-4">
           {filteredAuthMethods.map((method, index) => (
             <a
-              key={`${method.slug}-${index}`}
+              key={method.slug}
               href={method.path}
               className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
             >
@@ -87,7 +87,14 @@ export const MachineAuthenticationBrowser = () => {
             </a>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No authentication methods found matching your criteria.</p>
+          {searchTerm && (
+            <p className="text-gray-400 text-sm mt-2">Try adjusting your search terms.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

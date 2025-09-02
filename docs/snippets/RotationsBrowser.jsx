@@ -35,7 +35,7 @@ export const RotationsBrowser = () => {
     }
 
     return filtered;
-  }, [rotations, searchTerm, selectedCategory]);
+  }, [searchTerm, selectedCategory]);
 
   return (
     <div className="max-w-none">
@@ -90,7 +90,7 @@ export const RotationsBrowser = () => {
         <div className="space-y-4">
           {filteredRotations.map((rotation, index) => (
             <a
-              key={`${rotation.slug}-${index}`}
+              key={rotation.slug}
               href={rotation.path}
               className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
             >
@@ -110,7 +110,11 @@ export const RotationsBrowser = () => {
             </a>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No secret rotations found matching your criteria.</p>
+        </div>
+      )}
     </div>
   );
 };

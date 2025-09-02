@@ -48,7 +48,7 @@ export const DynamicSecretsBrowser = () => {
     }
 
     return filtered;
-  }, [dynamicSecrets, searchTerm, selectedCategory]);
+  }, [searchTerm, selectedCategory]);
 
   return (
     <div className="max-w-none">
@@ -103,7 +103,7 @@ export const DynamicSecretsBrowser = () => {
         <div className="space-y-4">
           {filteredDynamicSecrets.map((secret, index) => (
             <a
-              key={`${secret.slug}-${index}`}
+              key={secret.slug}
               href={secret.path}
               className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
             >
@@ -123,7 +123,16 @@ export const DynamicSecretsBrowser = () => {
             </a>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="text-center py-8">
+          <div className="text-gray-500 text-sm">
+            <p>No dynamic secrets found</p>
+            {searchTerm && (
+              <p className="mt-1">Try adjusting your search terms or filters</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
