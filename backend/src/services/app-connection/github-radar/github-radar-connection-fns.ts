@@ -114,7 +114,7 @@ export const validateGitHubRadarConnectionCredentials = async (config: TGitHubRa
     }
 
     throw new BadRequestError({
-      message: `Unable to validate connection: verify credentials`
+      message: "Unable to validate connection: verify credentials"
     });
   }
 
