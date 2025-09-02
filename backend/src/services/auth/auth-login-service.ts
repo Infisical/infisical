@@ -453,6 +453,12 @@ export const authLoginServiceFactory = ({
 
     const selectedOrg = await orgDAL.findById(organizationId);
 
+    if (!selectedOrgMembership) {
+      throw new ForbiddenRequestError({
+        message: `User does not have access to the organization named ${selectedOrg?.name}`
+      });
+    }
+
     // Check if authEnforced is true and the current auth method is not an enforced method
     if (
       selectedOrg.authEnforced &&
@@ -462,12 +468,6 @@ export const authLoginServiceFactory = ({
     ) {
       throw new BadRequestError({
         message: "Login with the auth method required by your organization."
-      });
-    }
-
-    if (!selectedOrgMembership) {
-      throw new ForbiddenRequestError({
-        message: `User does not have access to the organization named ${selectedOrg?.name}`
       });
     }
 
