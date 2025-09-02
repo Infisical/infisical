@@ -457,7 +457,8 @@ export const authLoginServiceFactory = ({
     if (
       selectedOrg.authEnforced &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC
+      decodedToken.authMethod !== AuthMethod.OIDC &&
+      !(selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin)
     ) {
       throw new BadRequestError({
         message: "Login with the auth method required by your organization."
