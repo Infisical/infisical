@@ -150,6 +150,10 @@ export enum ProjectPermissionSecretEventActions {
   SubscribeImportMutations = "subscribe-on-import-mutations"
 }
 
+export enum ProjectPermissionAuditLogsActions {
+  Read = "read"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -365,7 +369,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Groups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
-  | [ProjectPermissionActions, ProjectPermissionSub.AuditLogs]
+  | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs]
   | [ProjectPermissionActions, ProjectPermissionSub.Environments]
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]

@@ -2,6 +2,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 
 import {
   ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
@@ -394,7 +395,7 @@ const buildMemberPermissionRules = () => {
   );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.Role);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
 
   // double check if all CRUD are needed for CA and Certificates
@@ -502,7 +503,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionAuditLogsActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);

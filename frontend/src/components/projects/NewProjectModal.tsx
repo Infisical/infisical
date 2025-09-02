@@ -153,7 +153,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
       reset();
       onOpenChange(false);
       navigate({
-        to: getProjectHomePage(project.type),
+        to: getProjectHomePage(project.type, project.environments),
         params: { projectId: project.id }
       });
     } catch (err) {

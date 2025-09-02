@@ -8,6 +8,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
@@ -32,6 +33,7 @@ type TIdentityServiceFactoryDep = {
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -42,7 +44,8 @@ export const identityServiceFactory = ({
   identityOrgMembershipDAL,
   identityProjectDAL,
   permissionService,
-  licenseService
+  licenseService,
+  keyStore
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -255,7 +258,20 @@ export const identityServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    return identity;
+    const activeLockouts = await keyStore.getKeysByPattern(`lockout:identity:${id}:*`);
+
+    const activeLockoutAuthMethods = new Set<string>();
+    activeLockouts.forEach((key) => {
+      const parts = key.split(":");
+      if (parts.length > 3) {
+        activeLockoutAuthMethods.add(parts[3]);
+      }
+    });
+
+    return {
+      ...identity,
+      identity: { ...identity.identity, activeLockoutAuthMethods: Array.from(activeLockoutAuthMethods) }
+    };
   };
 
   const deleteIdentity = async ({

@@ -5,6 +5,7 @@ import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionAppConnectionActions,
+  OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
@@ -20,6 +21,12 @@ const generalPermissionSchema = z
     edit: z.boolean().optional(),
     delete: z.boolean().optional(),
     create: z.boolean().optional()
+  })
+  .optional();
+
+const auditLogsPermissionSchema = z
+  .object({
+    [OrgPermissionAuditLogsActions.Read]: z.boolean().optional()
   })
   .optional();
 
@@ -121,7 +128,7 @@ export const formSchema = z.object({
         })
         .optional(),
 
-      "audit-logs": generalPermissionSchema,
+      "audit-logs": auditLogsPermissionSchema,
       member: generalPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,

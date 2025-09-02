@@ -16,6 +16,7 @@ import {
   TFormSchema
 } from "../OrgRoleModifySection.utils";
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
+import { OrgPermissionAuditLogsRow } from "./OrgPermissionAuditLogsRow";
 import { OrgPermissionBillingRow } from "./OrgPermissionBillingRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionGroupRow } from "./OrgPermissionGroupRow";
@@ -38,10 +39,6 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "Incident Contacts",
     formName: "incident-contact"
-  },
-  {
-    title: "Audit Logs",
-    formName: "audit-logs"
   },
   {
     title: "Organization Profile",
@@ -166,6 +163,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
+              <OrgPermissionAuditLogsRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
               <OrgPermissionIdentityRow
                 control={control}
                 setValue={setValue}

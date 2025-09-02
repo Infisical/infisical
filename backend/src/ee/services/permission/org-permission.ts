@@ -23,6 +23,10 @@ export enum OrgPermissionAppConnectionActions {
   Connect = "connect"
 }
 
+export enum OrgPermissionAuditLogsActions {
+  Read = "read"
+}
+
 export enum OrgPermissionKmipActions {
   Proxy = "proxy",
   Setup = "setup"
@@ -125,7 +129,7 @@ export type OrgPermissionSet =
   | [OrgPermissionBillingActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
-  | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
+  | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [
@@ -214,7 +218,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.AuditLogs).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAuditLogsActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.ProjectTemplates).describe("The entity this permission pertains to."),
@@ -340,10 +346,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.AuditLogs);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.AuditLogs);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
@@ -416,7 +419,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);

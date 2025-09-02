@@ -1,4 +1,4 @@
-import { DetailedHTMLProps, HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
+import { DetailedHTMLProps, forwardRef, HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { Skeleton } from "../Skeleton";
@@ -9,22 +9,20 @@ export type TableContainerProps = {
   className?: string;
 } & DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
 
-export const TableContainer = ({
-  children,
-  className,
-  isRounded = true,
-  ...props
-}: TableContainerProps): JSX.Element => (
-  <div
-    className={twMerge(
-      "relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter",
-      isRounded && "rounded-lg",
-      className
-    )}
-    {...props}
-  >
-    {children}
-  </div>
+export const TableContainer = forwardRef<HTMLDivElement, TableContainerProps>(
+  ({ children, className, isRounded = true, ...props }, ref): JSX.Element => (
+    <div
+      ref={ref}
+      className={twMerge(
+        "relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter",
+        isRounded && "rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
 );
 
 // main parent table
