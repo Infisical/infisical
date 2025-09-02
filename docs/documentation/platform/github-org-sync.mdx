@@ -49,17 +49,59 @@ When a user logs in via the GitHub OAuth flow and selects the configured organiz
 
 You can manually synchronize GitHub teams for all organization members who have previously logged in with GitHub. This bulk sync operation updates team memberships without requiring users to log in again.
 
-To trigger a manual sync, click the **Manually sync GitHub teams for all organization members** button:
+<Steps>
+    <Step title="Generate a GitHub Access Token">
+        To perform manual syncs, you'll need to create a GitHub Personal Access Token with the appropriate permissions. GitHub offers two types of tokens:
 
-![Manual sync](../../images/platform/external-syncs/github-org-sync-manual-sync.png)
+        <Tabs>
+            <Tab title="Classic Token">
+                1. Go to [GitHub Settings → Personal Access Tokens → Tokens (classic)](https://github.com/settings/tokens)
+                2. Click **Generate new token** → **Generate new token (classic)**
+                3. Give your token a descriptive name (e.g., "Infisical GitHub Sync")
+                4. Set an appropriate expiration date
+                5. Select the **read:org** scope - Required to read organization team information
+                6. Click **Generate token**
+                7. Copy the token immediately (you won't be able to see it again)
 
-If you don't have a GitHub token configured or your token has expired, a modal will appear prompting you to provide one:
+                ![Classic Token Creation](../../images/platform/external-syncs/github-classic-token.png)
+            </Tab>
+            <Tab title="Fine-grained Token">
+                1. Go to [GitHub Settings → Personal Access Tokens → Fine-grained tokens](https://github.com/settings/personal-access-tokens/new)
+                2. Click **Generate new token**
+                3. Give your token a descriptive name (e.g., "Infisical GitHub Sync")
+                4. Set an appropriate expiration date
+                5. Select your organization under **Resource owner**
+                6. Under **Organization permissions**, set **Members** to **Read**
+                7. Click **Generate token**
+                8. Copy the token immediately (you won't be able to see it again)
 
-![token](../../images/platform/external-syncs/github-org-sync-manual-sync-token.png)
+                ![Fine-grained Token Creation](../../images/platform/external-syncs/github-fine-grained-token.png)
+            </Tab>
+        </Tabs>
+    </Step>
+    
+    <Step title="Configure the Token in Infisical">
+        1. Navigate to the **Single Sign-On (SSO)** page and select the **Provisioning** tab.
+        2. Click the **Configure** button next to your GitHub Organization configuration.
+        3. In the configuration modal, you'll find an optional **GitHub Access Token** field.
+        4. Paste the token you generated in the previous step.
+        5. Click **Update** to save the configuration.
 
-<Info>
-  The token must be granted **read:org** and **read:user** permissions to successfully sync groups. This configuration is only required once - if you already have a valid token configured, the sync will proceed automatically.
-</Info>
+        ![Token Configuration Modal](../../images/platform/external-syncs/github-token-config-modal.png)
+    </Step>
+
+    <Step title="Perform Manual Sync">
+        Once you have configured the GitHub access token:
+
+        1. Navigate to the **Single Sign-On (SSO)** page and select the **Provisioning** tab.
+        2. You'll see a **Sync Now** section with a button to trigger the manual sync.
+        3. Click **Sync Now** to synchronize GitHub teams for all organization members.
+
+        ![Manual Sync Button](../../images/platform/external-syncs/github-manual-sync-button.png)
+
+        The sync operation will process all organization members who have previously logged in with GitHub and update their team memberships accordingly.
+    </Step>
+</Steps>
 
 ## Troubleshooting
 

@@ -44,7 +44,6 @@ export const useDeleteGithubSyncOrgConfig = () => {
 export const useSyncAllGithubTeams = () => {
   return useMutation({
     mutationFn: async (): Promise<{
-      syncedUsersCount: number;
       totalUsers: number;
       errors: string[];
       createdTeams: string[];

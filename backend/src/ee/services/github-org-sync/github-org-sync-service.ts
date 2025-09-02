@@ -553,7 +553,6 @@ export const githubOrgSyncServiceFactory = ({
     ) as OrgMembershipWithUser[];
 
     const startTime = Date.now();
-    let syncedUsersCount = 0;
     const syncErrors: string[] = [];
 
     const octokit = new OctokitWithPlugin({
@@ -683,8 +682,6 @@ export const githubOrgSyncServiceFactory = ({
     const updatedTeams = new Set<string>();
     const totalRemovedMemberships = 0;
 
-    syncedUsersCount = allGithubUsernamesInTeams.size;
-
     await groupDAL.transaction(async (tx) => {
       if (teamsToCreate.length > 0) {
         const newGroups = await groupDAL.insertMany(
@@ -810,7 +807,6 @@ export const githubOrgSyncServiceFactory = ({
     );
 
     return {
-      syncedUsersCount,
       totalUsers: activeMembers.length,
       errors: syncErrors,
       createdTeams: Array.from(createdTeams),

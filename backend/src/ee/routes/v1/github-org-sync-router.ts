@@ -137,7 +137,6 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     schema: {
       response: {
         200: z.object({
-          syncedUsersCount: z.number(),
           totalUsers: z.number(),
           errors: z.array(z.string()),
           createdTeams: z.array(z.string()),
@@ -153,7 +152,6 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
       });
 
       return {
-        syncedUsersCount: result.syncedUsersCount,
         totalUsers: result.totalUsers,
         errors: result.errors,
         createdTeams: result.createdTeams,

@@ -27,7 +27,6 @@ export interface TSyncAllTeamsDTO {
 }
 
 export interface TSyncResult {
-  syncedUsersCount: number;
   totalUsers: number;
   errors: string[];
   createdTeams: string[];

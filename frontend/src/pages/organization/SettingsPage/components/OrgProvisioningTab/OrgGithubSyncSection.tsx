@@ -1,21 +1,9 @@
-import { useState } from "react";
-import { faCircleCheck, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Button,
-  FormControl,
-  Input,
-  Modal,
-  ModalContent,
-  Skeleton,
-  Spinner,
-  Switch
-} from "@app/components/v2";
+import { Button, Modal, ModalContent, Skeleton, Spinner, Switch } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import {
   githubOrgSyncConfigQueryKeys,
@@ -31,21 +19,8 @@ export const OrgGithubSyncSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "upgradePlan",
     "githubOrgSyncConfig",
-    "deleteGithubOrgSyncConfig",
-    "setAccessToken"
+    "deleteGithubOrgSyncConfig"
   ] as const);
-
-  const [accessToken, setAccessToken] = useState("");
-  const [tokenValidationResult, setTokenValidationResult] = useState<{
-    valid: boolean;
-    organizationInfo?: {
-      id: number;
-      login: string;
-      name: string;
-      publicRepos?: number;
-      privateRepos?: number;
-    };
-  } | null>(null);
 
   const githubOrgSyncConfig = useQuery({
     ...githubOrgSyncConfigQueryKeys.get(),
@@ -62,7 +37,7 @@ export const OrgGithubSyncSection = () => {
   const handleBulkSync = async () => {
     try {
       const result = await syncAllTeamsMutation.mutateAsync();
-      let message = `Successfully synced teams for ${result.syncedUsersCount} user${result.syncedUsersCount === 1 ? "" : "s"}`;
+      let message = "Successfully synced teams";
 
       const details = [];
       if (result.createdTeams.length > 0) {
@@ -108,9 +83,8 @@ export const OrgGithubSyncSection = () => {
           errorMessage.includes("expired") ||
           errorMessage.includes("set a token first"))
       ) {
-        handlePopUpOpen("setAccessToken");
         createNotification({
-          text: "Please provide a GitHub access token to continue with the sync",
+          text: "Please set a GitHub access token in the configuration modal to continue with the sync",
           type: "error"
         });
       } else {
@@ -119,41 +93,6 @@ export const OrgGithubSyncSection = () => {
           type: "error"
         });
       }
-    }
-  };
-
-  const handleSetAccessToken = async () => {
-    if (!accessToken.trim()) {
-      createNotification({
-        text: "Please enter a GitHub access token",
-        type: "error"
-      });
-      return;
-    }
-
-    try {
-      await updateGithubSyncOrgConfig.mutateAsync({
-        githubOrgAccessToken: accessToken.trim()
-      });
-
-      createNotification({
-        text: "GitHub access token set successfully. Starting sync...",
-        type: "success"
-      });
-
-      setAccessToken("");
-      handlePopUpToggle("setAccessToken", false);
-
-      // Automatically trigger sync after token is set
-      await handleBulkSync();
-    } catch (error) {
-      const errorMessage =
-        (error as any)?.response?.data?.message || (error as Error)?.message || "Unknown error";
-
-      createNotification({
-        text: `Failed to set GitHub access token: ${errorMessage}`,
-        type: "error"
-      });
     }
   };
 
@@ -265,79 +204,6 @@ export const OrgGithubSyncSection = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can use GitHub Organization Plan if you switch to Infisical's Enterprise plan."
       />
-      <Modal
-        isOpen={popUp?.setAccessToken?.isOpen}
-        onOpenChange={(isOpen) => {
-          handlePopUpToggle("setAccessToken", isOpen);
-          if (!isOpen) {
-            setAccessToken("");
-            setTokenValidationResult(null);
-          }
-        }}
-      >
-        <ModalContent
-          title="GitHub Access Token Required"
-          subTitle="Provide a GitHub access token to sync teams from your GitHub organization"
-        >
-          <div className="space-y-4">
-            <FormControl
-              label="GitHub Access Token"
-              tooltipText="The provided token must be granted read:org and read:user permissions in order to successfully sync groups"
-              tooltipClassName="max-w-md"
-            >
-              <div className="relative">
-                <Input
-                  type="password"
-                  placeholder="ghp_xxxxxxxxxxxx"
-                  value={accessToken}
-                  onChange={(e) => {
-                    setAccessToken(e.target.value);
-                    if (tokenValidationResult) {
-                      setTokenValidationResult(null);
-                    }
-                  }}
-                  autoComplete="off"
-                />
-                {tokenValidationResult && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {tokenValidationResult.valid ? (
-                      <FontAwesomeIcon icon={faCircleCheck} size="xs" className="text-green-500" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCircleXmark} size="xs" className="text-red-500" />
-                    )}
-                  </div>
-                )}
-              </div>
-            </FormControl>
-            <div className="flex justify-between">
-              <div className="flex space-x-2">
-                <Button
-                  colorSchema="secondary"
-                  onClick={() => {
-                    handlePopUpToggle("setAccessToken", false);
-                    setAccessToken("");
-                    setTokenValidationResult(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  colorSchema="primary"
-                  onClick={handleSetAccessToken}
-                  isLoading={updateGithubSyncOrgConfig.isPending || syncAllTeamsMutation.isPending}
-                  isDisabled={
-                    !accessToken.trim() ||
-                    updateGithubSyncOrgConfig.isPending ||
-                    syncAllTeamsMutation.isPending
-                  }
-                >
-                  Set Token & Sync
-                </Button>
-              </div>
-            </div>
-          </div>
-        </ModalContent>
-      </Modal>
     </div>
   );
 };
