@@ -79,11 +79,12 @@ export const requestWithHCVaultGateway = async <T>(
       try {
         return await request.request(finalRequestConfig);
       } catch (error) {
-        const axiosError = error as AxiosError;
-        logger.error(
-          { message: axiosError.message, data: axiosError.response?.data },
-          "Error during HashiCorp Vault gateway request:"
-        );
+        if (error instanceof AxiosError) {
+          logger.error(
+            { message: error.message, data: (error.response as undefined | { data: unknown })?.data },
+            "Error during HashiCorp Vault gateway request:"
+          );
+        }
         throw error;
       }
     },
