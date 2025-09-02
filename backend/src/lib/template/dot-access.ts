@@ -30,7 +30,7 @@ export const getValueByDot = (
     typeof current !== "string" &&
     typeof current !== "number" &&
     typeof current !== "boolean" &&
-    !Array.isArray(current)
+    !(Array.isArray(current) && current.every(item => typeof item === "string"))
   ) {
     return defaultValue;
   }
