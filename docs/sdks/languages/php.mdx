@@ -19,7 +19,7 @@ composer require infisical/php-sdk
 
 use Infisical\SDK\InfisicalSDK;
 
-$sdk = new InfisicalSDK('http://localhost:8080');
+$sdk = new InfisicalSDK('https://app.infisical.com');
 
 // Authenticate with Infisical
 $response = $sdk->auth()->universalAuth()->login(
