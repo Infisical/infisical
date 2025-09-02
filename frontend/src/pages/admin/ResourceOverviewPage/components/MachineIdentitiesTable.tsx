@@ -2,8 +2,8 @@ import { useState } from "react";
 import {
   faEllipsisV,
   faMagnifyingGlass,
-  faServer,
   faShieldHalved,
+  faWrench,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -136,7 +136,7 @@ const IdentityPanelTable = ({
                 )}
             </TBody>
           </Table>
-          {!isPending && isEmpty && <EmptyState title="No identities found" icon={faServer} />}
+          {!isPending && isEmpty && <EmptyState title="No identities found" icon={faWrench} />}
         </TableContainer>
         {!isEmpty && (
           <Button
@@ -183,6 +183,12 @@ export const MachineIdentitiesTable = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-xl font-semibold text-mineshaft-100">Machine Identities</p>
+          <p className="text-sm text-bunker-300">Manage machine identities across your instance.</p>
+        </div>
+      </div>
       <IdentityPanelTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.removeServerAdmin.isOpen}

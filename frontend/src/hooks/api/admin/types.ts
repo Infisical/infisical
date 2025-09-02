@@ -20,6 +20,7 @@ export type OrganizationWithProjects = Organization & {
       lastName: string | null;
     };
     membershipId: string;
+    status: string;
     role: string;
     roleId: string | null;
   }[];
@@ -142,3 +143,13 @@ export interface TGetEnvOverrides {
     fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[];
   };
 }
+
+export type TCreateOrganizationDTO = {
+  name: string;
+  inviteAdminEmails: string[];
+};
+
+export type TResendOrgInviteDTO = {
+  organizationId: string;
+  membershipId: string;
+};

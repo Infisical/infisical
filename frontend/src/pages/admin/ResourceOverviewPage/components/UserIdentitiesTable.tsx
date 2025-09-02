@@ -218,7 +218,7 @@ const UserPanelTable = ({
                         </div>
                       </Td>
                       <Td className="w-5/12 max-w-0">
-                        <p className="truncate">{email}</p>
+                        <p className="truncate">{username || email}</p>
                       </Td>
                       <Td>
                         <div className="flex justify-end">
@@ -463,6 +463,12 @@ export const UserIdentitiesTable = () => {
         </div>
       </div>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xl font-semibold text-mineshaft-100">User Identities</p>
+            <p className="text-sm text-bunker-300">Manage user identities across your instance.</p>
+          </div>
+        </div>
         <UserPanelTable
           handlePopUpOpen={handlePopUpOpen}
           users={users}
