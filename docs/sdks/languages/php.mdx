@@ -22,7 +22,7 @@ use Infisical\SDK\InfisicalSDK;
 $sdk = new InfisicalSDK('http://localhost:8080');
 
 // Authenticate with Infisical
-$response = $sdk->auth()->universal_auth()->login(
+$response = $sdk->auth()->universalAuth()->login(
     "your-machine-identity-client-id",
     "your-machine-identity-client-secret"
 );
@@ -83,7 +83,7 @@ $params = new ListSecretsParameters(
     tagSlugs: ["tag1", "tag2"], // Optional
     recursive: true, // Optional
     expandSecretReferences: true, // Optional
-    attach_to_process_env: false, // Optional
+    attachToProcessEnv: false, // Optional
     skipUniqueValidation: false // Optional
 );
 
@@ -97,7 +97,7 @@ $secrets = $sdk->secrets()->list($params);
 - `tagSlugs` (array, optional): Tags to filter secrets.
 - `recursive` (bool, optional): Whether to list secrets recursively.
 - `expandSecretReferences` (bool, optional): Whether to expand secret references.
-- `attach_to_process_env` (bool, optional): Whether to attach secrets to process environment variables.
+- `attachToProcessEnv` (bool, optional): Whether to attach secrets to process environment variables.
 - `skipUniqueValidation` (bool, optional): Whether to skip unique validation.
 
 **Returns:**
