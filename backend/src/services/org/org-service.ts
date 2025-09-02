@@ -875,6 +875,8 @@ export const orgServiceFactory = ({
     const mailsForProjectInvitation: { email: string[]; projectName: string }[] = [];
     const newProjectMemberships: TProjectMemberships[] = [];
 
+    let newUserCount = 0;
+
     await orgDAL.transaction(async (tx) => {
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username">[] = [];
 
@@ -902,6 +904,7 @@ export const orgServiceFactory = ({
               },
               tx
             );
+            newUserCount += 1;
           }
         }
 
@@ -932,7 +935,11 @@ export const orgServiceFactory = ({
 
         // if there exist no org membership we set is as given by the request
         if (!inviteeOrgMembership) {
-          if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+          if (
+            plan?.slug !== "enterprise" &&
+            plan?.identityLimit &&
+            plan.identitiesUsed + newUserCount > plan.identityLimit
+          ) {
             // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
             throw new BadRequestError({
               name: "InviteUser",
