@@ -506,60 +506,54 @@ const OrganizationsPanelTable = ({
                             ) : (
                               <span className="text-mineshaft-400">Not Set</span>
                             )}
-                            {isMember && (
-                              <Tooltip
-                                className="text-center"
-                                content="You are a member of this organization"
-                              >
-                                <div>
-                                  <Badge
-                                    variant="success"
-                                    className="flex items-center gap-x-1 whitespace-nowrap"
-                                  >
-                                    <FontAwesomeIcon icon={faUserCheck} />
-                                    <span>Member</span>
-                                  </Badge>
-                                </div>
-                              </Tooltip>
-                            )}
                           </div>
                         </Td>
                         <Td className="w-1/3">
-                          <div className="flex items-center">
-                            {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
+                          <button
+                            type="button"
+                            onClick={() => handlePopUpOpen("viewMembers", { organization: org })}
+                            className="flex items-center hover:underline"
+                          >
                             <Tooltip className="text-center" content="View Members">
-                              <IconButton
-                                ariaLabel="View Members"
-                                variant="plain"
-                                size="xs"
-                                className="ml-2"
-                                onClick={() =>
-                                  handlePopUpOpen("viewMembers", { organization: org })
-                                }
-                              >
-                                <FontAwesomeIcon icon={faEye} />
-                              </IconButton>
+                              <FontAwesomeIcon
+                                icon={faEye}
+                                className="mr-1.5 text-mineshaft-300"
+                                size="sm"
+                              />
                             </Tooltip>
+                            {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
                             {!org.members.some(
                               (member) =>
                                 member.role === OrgMembershipRole.Admin &&
                                 member.status === OrgMembershipStatus.Accepted
                             ) && (
                               <Tooltip content="No admins have accepted their invitations.">
-                                <div className="ml-1">
-                                  <Badge>
-                                    <FontAwesomeIcon icon={faWarning} />
-                                  </Badge>
+                                <div className="ml-1.5">
+                                  <FontAwesomeIcon className="text-yellow" icon={faWarning} />
                                 </div>
                               </Tooltip>
                             )}
-                          </div>
+                          </button>
                         </Td>
                         <Td className="w-1/3">
                           {org.projects.length} {org.projects.length === 1 ? "Project" : "Projects"}
                         </Td>
                         <Td>
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-x-1">
+                            {isMember && (
+                              <Tooltip
+                                className="text-center"
+                                content="You are a member of this organization"
+                              >
+                                <div>
+                                  <FontAwesomeIcon
+                                    className="text-mineshaft-400"
+                                    icon={faUserCheck}
+                                    size="sm"
+                                  />
+                                </div>
+                              </Tooltip>
+                            )}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton
