@@ -120,6 +120,8 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("proxyId").references("id").inTable(TableName.Proxy).onDelete("SET NULL");
 
       t.string("name").notNullable().unique();
+
+      t.dateTime("heartbeat");
     });
 
     await createOnUpdateTrigger(knex, TableName.GatewayV2);

@@ -14,7 +14,8 @@ export const GatewaysV2Schema = z.object({
   orgId: z.string().uuid(),
   identityId: z.string().uuid(),
   proxyId: z.string().uuid().nullable().optional(),
-  name: z.string()
+  name: z.string(),
+  heartbeat: z.date().nullable().optional()
 });
 
 export type TGatewaysV2 = z.infer<typeof GatewaysV2Schema>;

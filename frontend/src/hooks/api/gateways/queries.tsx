@@ -15,7 +15,16 @@ export const gatewaysQueryKeys = {
         const { data } = await apiRequest.get<{ gateways: TGateway[] }>("/api/v1/gateways");
         const { data: dataV2 } = await apiRequest.get<TGatewayV2[]>("/api/v2/gateways");
 
-        return [...data.gateways, ...dataV2];
+        return [
+          ...data.gateways.map((g) => ({
+            ...g,
+            isV1: true
+          })),
+          ...dataV2.map((g) => ({
+            ...g,
+            isV1: false
+          }))
+        ];
       }
     })
 };

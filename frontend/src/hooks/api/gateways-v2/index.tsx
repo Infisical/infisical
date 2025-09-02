@@ -1,1 +1,1 @@
-export { gatewaysV2QueryKeys } from "./queries";
+export * from "./mutations";

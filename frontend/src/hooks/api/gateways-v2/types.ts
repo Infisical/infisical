@@ -4,6 +4,7 @@ export type TGatewayV2 = {
   name: string;
   createdAt: string;
   updatedAt: string;
+  heartbeat: string;
   identity: {
     name: string;
     id: string;

@@ -9,11 +9,6 @@ import { BadRequestError } from "../errors";
 import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
 
-/*
-TODOs:
-- Add heartbeat tracking to gateway connection
-*/
-
 interface IGatewayProxyServer {
   server: net.Server;
   port: number;
@@ -58,7 +53,9 @@ const createProxyConnection = async ({
       });
 
       socket.on("close", (hadError: boolean) => {
-        logger.error(`TLS connection closed${hadError ? " with error" : ""}`);
+        if (hadError) {
+          logger.error("TLS connection closed with error");
+        }
       });
 
       socket.on("timeout", () => {
@@ -175,6 +172,8 @@ const setupProxyServer = async ({
             command += "\n";
           } else if (protocol === GatewayProxyProtocol.Tcp) {
             command += `FORWARD-TCP\n`;
+          } else if (protocol === GatewayProxyProtocol.Ping) {
+            command += `PING\n`;
           } else {
             throw new BadRequestError({
               message: `Invalid protocol: ${protocol as string}`
@@ -222,7 +221,6 @@ const setupProxyServer = async ({
         return;
       }
 
-      console.log(`Gateway proxy started on port ${address.port}`);
       resolve({
         server,
         port: address.port,
@@ -230,7 +228,7 @@ const setupProxyServer = async ({
           try {
             server.close();
           } catch (err) {
-            console.debug("Error closing server:", err);
+            logger.debug("Error closing server:", err instanceof Error ? err.message : String(err));
           }
         },
         getProxyError: () => proxyErrorMsg.join(",")

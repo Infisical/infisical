@@ -1,9 +1,13 @@
+import net from "node:net";
+
 import * as x509 from "@peculiar/x509";
 
 import { TProxies } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
@@ -494,9 +498,115 @@ export const gatewayV2ServiceFactory = ({
     };
   };
 
+  const heartbeat = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+    const gateway = await gatewayV2DAL.findOne({
+      orgId: orgPermission.orgId,
+      identityId: orgPermission.id
+    });
+
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway for identity ${orgPermission.id} not found.` });
+    }
+
+    const gatewayV2ConnectionDetails = await getPlatformConnectionDetailsByGatewayId({
+      gatewayId: gateway.id,
+      targetHost: "health-check",
+      targetPort: 443
+    });
+
+    if (!gatewayV2ConnectionDetails) {
+      throw new NotFoundError({ message: `Gateway connection details for gateway ${gateway.id} not found.` });
+    }
+
+    const isGatewayReachable = await withGatewayV2Proxy(
+      async (port) => {
+        return new Promise<boolean>((resolve, reject) => {
+          const socket = new net.Socket();
+          let responseReceived = false;
+          let isResolved = false;
+
+          // Set socket timeout
+          socket.setTimeout(10000);
+
+          const cleanup = () => {
+            if (!socket.destroyed) {
+              socket.destroy();
+            }
+          };
+
+          socket.on("data", (data: Buffer) => {
+            const response = data.toString().trim();
+            if (response === "PONG" && !isResolved) {
+              isResolved = true;
+              responseReceived = true;
+              cleanup();
+              resolve(true);
+            }
+          });
+
+          socket.on("error", (err: Error) => {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              reject(new Error(`TCP connection error: ${err.message}`));
+            }
+          });
+
+          socket.on("timeout", () => {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              reject(new Error("TCP connection timeout"));
+            }
+          });
+
+          socket.on("close", () => {
+            if (!isResolved && !responseReceived) {
+              isResolved = true;
+              cleanup();
+              reject(new Error("Connection closed without receiving PONG"));
+            }
+          });
+
+          socket.connect(port, "localhost");
+        });
+      },
+      {
+        protocol: GatewayProxyProtocol.Ping,
+        proxyIp: gatewayV2ConnectionDetails.proxyIp,
+        gateway: gatewayV2ConnectionDetails.gateway,
+        proxy: gatewayV2ConnectionDetails.proxy
+      }
+    );
+
+    if (!isGatewayReachable) {
+      throw new BadRequestError({ message: `Gateway ${gateway.id} is not reachable` });
+    }
+
+    await gatewayV2DAL.updateById(gateway.id, { heartbeat: new Date() });
+  };
+
+  const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
+    // const { permission } = await permissionService.getOrgPermission(
+    //   orgPermission.type,
+    //   orgPermission.id,
+    //   orgPermission.orgId,
+    //   orgPermission.authMethod,
+    //   orgPermission.orgId
+    // );
+    // ForbiddenError.from(permission).throwUnlessCan(
+    //   OrgPermissionGatewayActions.DeleteGateways,
+    //   OrgPermissionSubjects.Gateway
+    // );
+
+    return gatewayV2DAL.deleteById(id);
+  };
+
   return {
     listGateways,
     registerGateway,
-    getPlatformConnectionDetailsByGatewayId
+    getPlatformConnectionDetailsByGatewayId,
+    deleteGatewayById,
+    heartbeat
   };
 };
