@@ -850,7 +850,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         name: GenericResourceNameSchema,
-        inviteAdminEmails: z.string().email().array()
+        inviteAdminEmails: z.string().email().array().min(1)
       }),
       response: {
         200: z.object({

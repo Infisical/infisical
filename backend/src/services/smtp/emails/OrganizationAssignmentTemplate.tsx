@@ -9,7 +9,6 @@ interface OrganizationAssignmentTemplateProps extends Omit<BaseEmailWrapperProps
   inviterFirstName?: string;
   inviterUsername?: string;
   organizationName: string;
-  email: string;
   callback_url: string;
 }
 

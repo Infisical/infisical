@@ -424,14 +424,14 @@ export const ServerAdminsTable = () => {
         />
         <DeleteActionModal
           isOpen={popUp.removeUsers.isOpen}
-          title="Are you sure you want to remove the following users?"
+          title="Are you sure you want to delete the following users?"
           onChange={(isOpen) => handlePopUpToggle("removeUsers", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() => handleRemoveUsers()}
           buttonText="Remove"
         >
           <div className="mt-4 text-sm text-mineshaft-400">
-            The following members will be removed:
+            The following users will be deleted:
           </div>
           <div className="mt-2 max-h-[20rem] overflow-y-auto rounded border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
             <ul className="list-disc">
@@ -458,7 +458,7 @@ export const ServerAdminsTable = () => {
                               className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
                             >
                               <FontAwesomeIcon icon={faWarning} />
-                              <span>Removing Yourself</span>
+                              <span>Deleting Yourself</span>
                             </Badge>
                           </div>
                         </Tooltip>

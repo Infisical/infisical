@@ -5,6 +5,7 @@ import {
   faBuilding,
   faCircleQuestion,
   faEllipsisV,
+  faEnvelope,
   faEye,
   faMagnifyingGlass,
   faPlus,
@@ -52,6 +53,7 @@ import {
 } from "@app/hooks/api";
 import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { AddOrganizationModal } from "@app/pages/admin/ResourceOverviewPage/components/AddOrganizationModal";
 
@@ -120,7 +122,7 @@ const ViewMembersModalContent = ({
           switch (orderBy) {
             case MembersOrderBy.Email:
               valueOne = memberOne.user.email || memberOne.user.username;
-              valueTwo = memberTwo.user.email || memberOne.user.username;
+              valueTwo = memberTwo.user.email || memberTwo.user.username;
               break;
             case MembersOrderBy.Name:
             default:
@@ -255,23 +257,26 @@ const ViewMembersModalContent = ({
                   <Td className="max-w-0">
                     <div className="flex items-center">
                       <p className="truncate">{username || email}</p>
-                      {role === OrgMembershipRole.Admin && status !== "accepted" && (
-                        <Button
-                          isDisabled={resendOrgInvite.isPending}
-                          className="ml-2 h-8 border-mineshaft-600 bg-mineshaft-800/50 font-normal"
-                          colorSchema="primary"
-                          variant="outline_bg"
-                          isLoading={
-                            resendOrgInvite.isPending && resendInviteId === member.membershipId
-                          }
-                          onClick={(e) => {
-                            onResendInvite(member.membershipId);
-                            e.stopPropagation();
-                          }}
-                        >
-                          Resend Invite
-                        </Button>
-                      )}
+                      {role === OrgMembershipRole.Admin &&
+                        status !== OrgMembershipStatus.Accepted && (
+                          <Button
+                            isDisabled={resendOrgInvite.isPending}
+                            className="ml-2 h-7 border-mineshaft-600 bg-mineshaft-800/50 font-normal"
+                            colorSchema="primary"
+                            variant="outline_bg"
+                            size="xs"
+                            isLoading={
+                              resendOrgInvite.isPending && resendInviteId === member.membershipId
+                            }
+                            leftIcon={<FontAwesomeIcon icon={faEnvelope} />}
+                            onClick={(e) => {
+                              onResendInvite(member.membershipId);
+                              e.stopPropagation();
+                            }}
+                          >
+                            Resend Invite
+                          </Button>
+                        )}
                     </div>
                   </Td>
                   <Td>
@@ -485,9 +490,9 @@ const OrganizationsPanelTable = ({
                             {!org.members.some(
                               (member) =>
                                 member.role === OrgMembershipRole.Admin &&
-                                member.status === "accepted"
+                                member.status === OrgMembershipStatus.Accepted
                             ) && (
-                              <Tooltip content="No admins have accepted their invites.">
+                              <Tooltip content="No admins have accepted their invitations.">
                                 <div className="ml-1">
                                   <Badge>
                                     <FontAwesomeIcon icon={faWarning} />

@@ -75,7 +75,7 @@ type TSuperAdminServiceFactoryDep = {
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization" | "inviteUserToOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
+  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -811,13 +811,13 @@ export const superAdminServiceFactory = ({
         }
 
         const inviteeUserId = inviteeUser?.id;
-        const existingEncrytionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
+        const existingEncryptionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
 
         // when user is missing the encrytion keys
         // this could happen either if user doesn't exist or user didn't find step 3 of generating the encryption keys of srp
         // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
         // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password
-        if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncrytionKey)) {
+        if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncryptionKey)) {
           await userDAL.createUserEncryption(
             {
               userId: inviteeUserId,
@@ -852,6 +852,8 @@ export const superAdminServiceFactory = ({
 
       return { organization: org, users };
     });
+
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {

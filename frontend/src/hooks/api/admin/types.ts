@@ -1,3 +1,5 @@
+import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
+
 import { Organization } from "../types";
 
 export enum LoginMethod {
@@ -20,7 +22,7 @@ export type OrganizationWithProjects = Organization & {
       lastName: string | null;
     };
     membershipId: string;
-    status: string;
+    status: OrgMembershipStatus;
     role: string;
     roleId: string | null;
   }[];

@@ -89,11 +89,7 @@ const Content = ({ onClose }: ContentProps) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Controller
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Assign Organization Admins"
-          >
+          <FormControl isError={Boolean(error)} errorText={error?.message} label="User">
             <FilterableSelect
               isLoading={searchUserFilter !== debouncedSearchTerm || isFetching}
               className="w-full"
@@ -120,7 +116,7 @@ const Content = ({ onClose }: ContentProps) => {
           isDisabled={isSubmitting}
           colorSchema="secondary"
         >
-          Grant Server Admin
+          Grant
         </Button>
         <Button onClick={() => onClose()} variant="plain" colorSchema="secondary">
           Cancel
@@ -133,7 +129,11 @@ const Content = ({ onClose }: ContentProps) => {
 export const AddServerAdminModal = ({ isOpen, onOpenChange }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent bodyClassName="overflow-visible" title="Grant Server Admin">
+      <ModalContent
+        bodyClassName="overflow-visible"
+        title="Grant Server Admin"
+        subTitle="Grant server admin status to a user"
+      >
         <Content onClose={() => onOpenChange(false)} />
       </ModalContent>
     </Modal>

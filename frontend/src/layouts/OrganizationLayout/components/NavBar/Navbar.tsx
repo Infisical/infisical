@@ -192,14 +192,18 @@ export const Navbar = () => {
       <p className="pl-1 pr-3 text-lg text-mineshaft-400/70">/</p>
       {isServerAdminPanel ? (
         <>
-          <div className="group flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary">
+          <Link
+            to="/admin"
+            className="group flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary"
+          >
             <div>
               <FontAwesomeIcon icon={faServer} className="text-xs text-bunker-300" />
             </div>
             <div className="whitespace-nowrap">Server Console</div>
-          </div>
+          </Link>
           <p className="pl-3 pr-3 text-lg text-mineshaft-400/70">/</p>
           {breadcrumbs ? (
+            // scott: remove /admin as we show server console above
             <BreadcrumbContainer breadcrumbs={breadcrumbs.slice(1) as TBreadcrumbFormat[]} />
           ) : null}
         </>
