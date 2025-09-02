@@ -88,7 +88,7 @@ export const ValidateHCVaultConnectionCredentialsSchema = z.discriminatedUnion("
 ]);
 
 export const CreateHCVaultConnectionSchema = ValidateHCVaultConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.HCVault)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.HCVault, { supportsGateways: true })
 );
 
 export const UpdateHCVaultConnectionSchema = z
@@ -98,7 +98,7 @@ export const UpdateHCVaultConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.HCVault).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.HCVault));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.HCVault, { supportsGateways: true }));
 
 export const HCVaultConnectionListItemSchema = z.object({
   name: z.literal("HCVault"),

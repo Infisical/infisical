@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { request } from "@app/lib/config/request";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -65,7 +66,11 @@ const updateHCVaultVariables = async ({
 };
 
 export const HCVaultSyncFns = {
-  syncSecrets: async (secretSync: THCVaultSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (
+    secretSync: THCVaultSyncWithCredentials,
+    secretMap: TSecretMap,
+    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  ) => {
     const {
       connection,
       environment,
@@ -74,7 +79,7 @@ export const HCVaultSyncFns = {
     } = secretSync;
 
     const { namespace } = connection.credentials;
-    const accessToken = await getHCVaultAccessToken(connection);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
     const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables({
@@ -117,14 +122,18 @@ export const HCVaultSyncFns = {
       });
     }
   },
-  removeSecrets: async (secretSync: THCVaultSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (
+    secretSync: THCVaultSyncWithCredentials,
+    secretMap: TSecretMap,
+    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  ) => {
     const {
       connection,
       destinationConfig: { mount, path }
     } = secretSync;
 
     const { namespace } = connection.credentials;
-    const accessToken = await getHCVaultAccessToken(connection);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
     const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables({ instanceUrl, namespace, accessToken, mount, path });
@@ -143,14 +152,17 @@ export const HCVaultSyncFns = {
       });
     }
   },
-  getSecrets: async (secretSync: THCVaultSyncWithCredentials) => {
+  getSecrets: async (
+    secretSync: THCVaultSyncWithCredentials,
+    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  ) => {
     const {
       connection,
       destinationConfig: { mount, path }
     } = secretSync;
 
     const { namespace } = connection.credentials;
-    const accessToken = await getHCVaultAccessToken(connection);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
     const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables({

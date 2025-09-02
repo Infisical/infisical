@@ -1,18 +1,18 @@
-import { AxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import https from "https";
 
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { HCVaultConnectionMethod } from "./hc-vault-connection-enums";
-import {
-  THCVaultConnection,
-  THCVaultConnectionConfig,
-  THCVaultMountResponse,
-  TValidateHCVaultConnectionCredentials
-} from "./hc-vault-connection-types";
+import { THCVaultConnection, THCVaultConnectionConfig, THCVaultMountResponse } from "./hc-vault-connection-types";
 
 export const getHCVaultInstanceUrl = async (config: THCVaultConnectionConfig) => {
   const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
@@ -37,7 +37,77 @@ type TokenRespData = {
   };
 };
 
-export const getHCVaultAccessToken = async (connection: TValidateHCVaultConnectionCredentials) => {
+export const requestWithHCVaultGateway = async <T>(
+  appConnection: { gatewayId?: string | null },
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  requestConfig: AxiosRequestConfig
+): Promise<AxiosResponse<T>> => {
+  const { gatewayId } = appConnection;
+
+  // If gateway isn't set up, don't proxy request
+  if (!gatewayId) {
+    return request.request(requestConfig);
+  }
+
+  const url = new URL(requestConfig.url as string);
+
+  await blockLocalAndPrivateIpAddresses(url.toString());
+
+  const [targetHost] = await verifyHostInputValidity(url.hostname, true);
+  const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
+  const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
+
+  return withGatewayProxy(
+    async (proxyPort) => {
+      const httpsAgent = new https.Agent({
+        servername: targetHost
+      });
+
+      url.protocol = "https:";
+      url.host = `localhost:${proxyPort}`;
+
+      const finalRequestConfig: AxiosRequestConfig = {
+        ...requestConfig,
+        url: url.toString(),
+        httpsAgent,
+        headers: {
+          ...requestConfig.headers,
+          Host: targetHost
+        }
+      };
+
+      try {
+        return await request.request(finalRequestConfig);
+      } catch (error) {
+        const axiosError = error as AxiosError;
+        logger.error(
+          { message: axiosError.message, data: axiosError.response?.data },
+          "Error during HashiCorp Vault gateway request:"
+        );
+        throw error;
+      }
+    },
+    {
+      protocol: GatewayProxyProtocol.Tcp,
+      targetHost,
+      targetPort: url.port ? Number(url.port) : 8200, // 8200 is the default port for Vault self-hosted/dedicated
+      relayHost,
+      relayPort: Number(relayPort),
+      identityId: relayDetails.identityId,
+      orgId: relayDetails.orgId,
+      tlsOptions: {
+        ca: relayDetails.certChain,
+        cert: relayDetails.certificate,
+        key: relayDetails.privateKey.toString()
+      }
+    }
+  );
+};
+
+export const getHCVaultAccessToken = async (
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
   // Return access token directly if not using AppRole method
   if (connection.method !== HCVaultConnectionMethod.AppRole) {
     return connection.credentials.accessToken;
@@ -46,16 +116,16 @@ export const getHCVaultAccessToken = async (connection: TValidateHCVaultConnecti
   // Generate temporary token for AppRole method
   try {
     const { instanceUrl, roleId, secretId } = connection.credentials;
-    const tokenResp = await request.post<TokenRespData>(
-      `${removeTrailingSlash(instanceUrl)}/v1/auth/approle/login`,
-      { role_id: roleId, secret_id: secretId },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          ...(connection.credentials.namespace ? { "X-Vault-Namespace": connection.credentials.namespace } : {})
-        }
-      }
-    );
+
+    const tokenResp = await requestWithHCVaultGateway<TokenRespData>(connection, gatewayService, {
+      url: `${removeTrailingSlash(instanceUrl)}/v1/auth/approle/login`,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(connection.credentials.namespace ? { "X-Vault-Namespace": connection.credentials.namespace } : {})
+      },
+      data: { role_id: roleId, secret_id: secretId }
+    });
 
     if (tokenResp.status !== 200) {
       throw new BadRequestError({
@@ -71,38 +141,55 @@ export const getHCVaultAccessToken = async (connection: TValidateHCVaultConnecti
   }
 };
 
-export const validateHCVaultConnectionCredentials = async (config: THCVaultConnectionConfig) => {
-  const instanceUrl = await getHCVaultInstanceUrl(config);
+export const validateHCVaultConnectionCredentials = async (
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
 
   try {
-    const accessToken = await getHCVaultAccessToken(config);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
     // Verify token
-    await request.get(`${instanceUrl}/v1/auth/token/lookup-self`, {
+    await requestWithHCVaultGateway(connection, gatewayService, {
+      url: `${instanceUrl}/v1/auth/token/lookup-self`,
+      method: "GET",
       headers: { "X-Vault-Token": accessToken }
     });
 
-    return config.credentials;
+    return connection.credentials;
   } catch (error: unknown) {
+    logger.error(error, "Unable to verify HC Vault connection");
+
     if (error instanceof AxiosError) {
       throw new BadRequestError({
         message: `Failed to validate credentials: ${error.message || "Unknown error"}`
       });
     }
+
+    if (error instanceof BadRequestError) {
+      throw error;
+    }
+
     throw new BadRequestError({
-      message: "Unable to validate connection: verify credentials"
+      message: `Unable to validate connection: verify credentials`
     });
   }
 };
 
-export const listHCVaultMounts = async (appConnection: THCVaultConnection) => {
-  const instanceUrl = await getHCVaultInstanceUrl(appConnection);
-  const accessToken = await getHCVaultAccessToken(appConnection);
+export const listHCVaultMounts = async (
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
+  const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
-  const { data } = await request.get<THCVaultMountResponse>(`${instanceUrl}/v1/sys/mounts`, {
+  const { data } = await requestWithHCVaultGateway<THCVaultMountResponse>(connection, gatewayService, {
+    url: `${instanceUrl}/v1/sys/mounts`,
+    method: "GET",
     headers: {
       "X-Vault-Token": accessToken,
-      ...(appConnection.credentials.namespace ? { "X-Vault-Namespace": appConnection.credentials.namespace } : {})
+      ...(connection.credentials.namespace ? { "X-Vault-Namespace": connection.credentials.namespace } : {})
     }
   });
 

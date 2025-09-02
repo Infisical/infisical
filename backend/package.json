@@ -37,7 +37,7 @@
     "build": "tsup --sourcemap",
     "build:frontend": "npm run build --prefix ../frontend",
     "start": "node --enable-source-maps dist/main.mjs",
-    "type:check": "tsc --noEmit",
+    "type:check": "node --max-old-space-size=8192 ./node_modules/.bin/tsc --noEmit",
     "lint:fix": "node --max-old-space-size=8192 ./node_modules/.bin/eslint --fix --ext js,ts ./src",
     "lint": "node --max-old-space-size=8192 ./node_modules/.bin/eslint 'src/**/*.ts'",
     "test:unit": "vitest run -c vitest.unit.config.ts",
