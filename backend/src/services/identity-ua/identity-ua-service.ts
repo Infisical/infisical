@@ -92,7 +92,9 @@ export const identityUaServiceFactory = ({
         retryJitter: 100
       });
     } catch (e) {
-      logger.info(`login failed to acquire lock [lockoutKey=${LOCKOUT_KEY}]`);
+      logger.info(
+        `identity login failed to acquire lock [identityId=${identityUa.identityId}] [authMethod=${IdentityAuthMethod.UNIVERSAL_AUTH}]`
+      );
       throw new RateLimitError({ message: "Rate limit exceeded" });
     }
 
