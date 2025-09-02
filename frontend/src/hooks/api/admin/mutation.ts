@@ -223,3 +223,20 @@ export const useServerAdminResendOrgInvite = () => {
     }
   });
 };
+
+export const useServerAdminAccessOrg = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orgId: string) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/admin/organization-management/organizations/${orgId}/access`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getOrganizations() });
+    }
+  });
+};

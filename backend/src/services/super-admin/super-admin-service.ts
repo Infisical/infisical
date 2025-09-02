@@ -934,6 +934,36 @@ export const superAdminServiceFactory = ({
     return organizationMembership;
   };
 
+  const joinOrganization = async (orgId: string, actor: OrgServiceActor) => {
+    const serverAdmin = await userDAL.findById(actor.id);
+
+    if (!serverAdmin) {
+      throw new NotFoundError({ message: "Could not find server admin user" });
+    }
+
+    const org = await orgDAL.findById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not organization with ID "${orgId}"` });
+    }
+
+    const existingOrgMembership = await orgMembershipDAL.findOne({ userId: serverAdmin.id, orgId });
+
+    if (existingOrgMembership) {
+      throw new BadRequestError({ message: `You are already a part of the organization with ID ${orgId}` });
+    }
+
+    const orgMembership = await orgDAL.createMembership({
+      userId: serverAdmin.id,
+      orgId: org.id,
+      role: OrgMembershipRole.Admin,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    });
+
+    return orgMembership;
+  };
+
   const resendOrgInvite = async ({ organizationId, membershipId }: TResendOrgInviteDTO, actor: OrgServiceActor) => {
     const orgMembership = await orgMembershipDAL.findOne({ id: membershipId, orgId: organizationId });
 
@@ -1124,6 +1154,7 @@ export const superAdminServiceFactory = ({
     getEnvOverridesOrganized,
     deleteUsers,
     createOrganization,
+    joinOrganization,
     resendOrgInvite
   };
 };

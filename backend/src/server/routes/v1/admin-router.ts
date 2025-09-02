@@ -896,4 +896,34 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       return { organizationMembership };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/organization-management/organizations/:organizationId/access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organizationMembership: OrgMembershipsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizationMembership = await server.services.superAdmin.joinOrganization(
+        req.params.organizationId,
+        req.permission
+      );
+      return { organizationMembership };
+    }
+  });
 };

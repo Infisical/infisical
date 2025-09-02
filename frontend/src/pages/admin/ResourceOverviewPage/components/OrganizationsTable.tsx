@@ -10,12 +10,15 @@ import {
   faMagnifyingGlass,
   faPlus,
   faTrash,
+  faUserCheck,
   faUserMinus,
+  faUserPlus,
   faUsers,
   faUserXmark,
   faWarning
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -42,6 +45,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { useUser } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
@@ -49,6 +53,7 @@ import {
   useAdminDeleteOrganizationMembership,
   useAdminDeleteUser,
   useAdminGetOrganizations,
+  useServerAdminAccessOrg,
   useServerAdminResendOrgInvite
 } from "@app/hooks/api";
 import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
@@ -429,6 +434,9 @@ const OrganizationsPanelTable = ({
   const [searchOrganizationsFilter, setSearchOrganizationsFilter] = useState("");
   const [debouncedSearchTerm] = useDebounce(searchOrganizationsFilter, 500);
 
+  const { user } = useUser();
+
+  const navigate = useNavigate();
   const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useAdminGetOrganizations({
       limit: 20,
@@ -436,6 +444,31 @@ const OrganizationsPanelTable = ({
     });
 
   const isEmpty = !isPending && !data?.pages?.[0].length;
+
+  const { mutateAsync: accessOrganization } = useServerAdminAccessOrg();
+
+  const handleAccessOrg = async (orgId: string) => {
+    try {
+      await accessOrganization(orgId);
+
+      navigate({
+        to: "/login/select-organization",
+        search: {
+          org_id: orgId
+        }
+      });
+
+      createNotification({
+        text: "Successfully joined organization",
+        type: "success"
+      });
+    } catch {
+      createNotification({
+        text: "Failed to join organization",
+        type: "error"
+      });
+    }
+  };
 
   return (
     <>
@@ -451,9 +484,9 @@ const OrganizationsPanelTable = ({
           <Table>
             <THead>
               <Tr>
-                <Th className="w-5/12">Name</Th>
-                <Th className="w-5/12">Members</Th>
-                <Th className="w-5/12">Projects</Th>
+                <Th className="w-1/2">Name</Th>
+                <Th className="w-1/3">Members</Th>
+                <Th className="w-1/3">Projects</Th>
                 <Th className="w-5" />
               </Tr>
             </THead>
@@ -462,19 +495,39 @@ const OrganizationsPanelTable = ({
               {!isPending &&
                 data?.pages?.map((orgs) =>
                   orgs.map((org) => {
+                    const isMember = org.members.find((member) => member.user.id === user.id);
+
                     return (
                       <Tr key={`org-${org.id}`} className="w-full">
-                        <Td className="w-5/12">
-                          {org.name ? (
-                            org.name
-                          ) : (
-                            <span className="text-mineshaft-400">Not Set</span>
-                          )}
+                        <Td className="w-1/2 max-w-0">
+                          <div className="flex items-center gap-x-1.5">
+                            {org.name ? (
+                              <p className="truncate">{org.name}</p>
+                            ) : (
+                              <span className="text-mineshaft-400">Not Set</span>
+                            )}
+                            {isMember && (
+                              <Tooltip
+                                className="text-center"
+                                content="You are a member of this organization"
+                              >
+                                <div>
+                                  <Badge
+                                    variant="success"
+                                    className="flex items-center gap-x-1 whitespace-nowrap"
+                                  >
+                                    <FontAwesomeIcon icon={faUserCheck} />
+                                    <span>Member</span>
+                                  </Badge>
+                                </div>
+                              </Tooltip>
+                            )}
+                          </div>
                         </Td>
-                        <Td className="w-5/12">
+                        <Td className="w-1/3">
                           <div className="flex items-center">
                             {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
-                            <Tooltip content="View Members">
+                            <Tooltip className="text-center" content="View Members">
                               <IconButton
                                 ariaLabel="View Members"
                                 variant="plain"
@@ -502,7 +555,7 @@ const OrganizationsPanelTable = ({
                             )}
                           </div>
                         </Td>
-                        <Td className="w-5/12">
+                        <Td className="w-1/3">
                           {org.projects.length} {org.projects.length === 1 ? "Project" : "Projects"}
                         </Td>
                         <Td>
@@ -519,6 +572,17 @@ const OrganizationsPanelTable = ({
                                 </IconButton>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent sideOffset={2} align="end">
+                                {!isMember && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAccessOrg(org.id);
+                                    }}
+                                    icon={<FontAwesomeIcon icon={faUserPlus} />}
+                                  >
+                                    Join Organization
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
