@@ -94,6 +94,7 @@ export enum OrgPermissionSubjects {
   Sso = "sso",
   Scim = "scim",
   GithubOrgSync = "github-org-sync",
+  GithubOrgSyncManual = "github-org-sync-manual",
   Ldap = "ldap",
   Groups = "groups",
   Billing = "billing",
@@ -123,6 +124,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSync]
+  | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSyncManual]
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
@@ -190,6 +192,10 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.GithubOrgSync).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.GithubOrgSyncManual).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
   }),
   z.object({
@@ -314,6 +320,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
+
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSyncManual);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSyncManual);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSyncManual);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSyncManual);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);

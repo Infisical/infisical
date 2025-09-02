@@ -680,7 +680,8 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     groupDAL,
-    userGroupMembershipDAL
+    userGroupMembershipDAL,
+    orgMembershipDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
