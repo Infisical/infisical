@@ -137,7 +137,6 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
               <Controller
                 control={control}
                 name="gatewayId"
-                defaultValue=""
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
                     isError={Boolean(error?.message)}
