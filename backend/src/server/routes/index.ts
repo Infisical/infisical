@@ -680,7 +680,8 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     groupDAL,
-    userGroupMembershipDAL
+    userGroupMembershipDAL,
+    orgMembershipDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1747,7 +1748,8 @@ export const registerRoutes = async (
   const migrationService = externalMigrationServiceFactory({
     externalMigrationQueue,
     userDAL,
-    permissionService
+    permissionService,
+    gatewayService
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({

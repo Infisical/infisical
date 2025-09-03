@@ -193,7 +193,7 @@ export const MyProjectView = ({
     <div
       onClick={() => {
         navigate({
-          to: getProjectHomePage(workspace.type),
+          to: getProjectHomePage(workspace.type, workspace.environments),
           params: {
             projectId: workspace.id
           }
@@ -247,7 +247,7 @@ export const MyProjectView = ({
     <div
       onClick={() => {
         navigate({
-          to: getProjectHomePage(workspace.type),
+          to: getProjectHomePage(workspace.type, workspace.environments),
           params: {
             projectId: workspace.id
           }

@@ -2,7 +2,7 @@ import { faFingerprint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
-import { useSubscription } from "@app/context";
+import { useSubscription, useWorkspace } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
@@ -19,6 +19,7 @@ type Props = {
 
 export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
   const { subscription } = useSubscription();
+  const { currentWorkspace } = useWorkspace();
 
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
@@ -36,6 +37,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
         <LogsSection
           refetchInterval={4000}
           showFilters={false}
+          project={currentWorkspace}
           presets={{
             eventMetadata: { syncId: secretSync.id },
             startDate: new Date(

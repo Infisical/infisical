@@ -12,6 +12,7 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
@@ -39,6 +40,10 @@ const GeneralPolicyActionSchema = z.object({
   edit: z.boolean().optional(),
   delete: z.boolean().optional(),
   create: z.boolean().optional()
+});
+
+const AuditLogsPolicyActionSchema = z.object({
+  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -316,7 +321,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.ServiceTokens]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.AuditLogs]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Certificates]: CertificatePolicyActionSchema.array().default([]),
@@ -1324,12 +1329,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AuditLogs]: {
     title: "Audit Logs",
-    actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
-    ]
+    actions: [{ label: "Read", value: ProjectPermissionAuditLogsActions.Read }]
   },
   [ProjectPermissionSub.IpAllowList]: {
     title: "IP Allowlist",
@@ -1721,7 +1721,7 @@ const projectManagerTemplate = (
   permissions: [
     {
       subject: ProjectPermissionSub.AuditLogs,
-      actions: Object.values(ProjectPermissionActions)
+      actions: Object.values(ProjectPermissionAuditLogsActions)
     },
     {
       subject: ProjectPermissionSub.Groups,

@@ -36,6 +36,7 @@ type Props = {
   workspaceId: string;
   secretPath?: string;
   onNavigateToFolder: (path: string) => void;
+  canNavigate: boolean;
 };
 
 export const FolderListView = ({
@@ -43,7 +44,8 @@ export const FolderListView = ({
   environment,
   workspaceId,
   secretPath = "/",
-  onNavigateToFolder
+  onNavigateToFolder,
+  canNavigate
 }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "updateFolder",
@@ -190,7 +192,7 @@ export const FolderListView = ({
   };
 
   const handleFolderClick = (name: string, isPending?: boolean) => {
-    if (isPending) {
+    if (isPending || !canNavigate) {
       return;
     }
     const path = `${secretPathQueryparam === "/" ? "" : secretPathQueryparam}/${name}`;
