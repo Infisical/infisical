@@ -269,13 +269,12 @@ export const withGatewayV2Proxy = async <T>(
       logger.error("Proxy error:", proxyErrorMessage);
     }
     logger.error("Gateway error:", err instanceof Error ? err.message : String(err));
-
     let errorMessage = proxyErrorMessage || (err instanceof Error ? err.message : String(err));
     if (axios.isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
       errorMessage = (err.response?.data as { message: string }).message;
     }
 
-    throw new Error(errorMessage);
+    throw new BadRequestError({ message: errorMessage });
   } finally {
     // Ensure cleanup happens regardless of success or failure
     await cleanup();
