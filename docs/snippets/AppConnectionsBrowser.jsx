@@ -45,7 +45,9 @@ export const AppConnectionsBrowser = () => {
     {"name": "LDAP", "slug": "ldap", "path": "/integrations/app-connections/ldap", "description": "Learn how to connect your LDAP to pull secrets from Infisical.", "category": "Directory Services"},
     {"name": "Auth0", "slug": "auth0", "path": "/integrations/app-connections/auth0", "description": "Learn how to connect your Auth0 to pull secrets from Infisical.", "category": "Identity & Auth"},
     {"name": "Okta", "slug": "okta", "path": "/integrations/app-connections/okta", "description": "Learn how to connect your Okta to pull secrets from Infisical.", "category": "Identity & Auth"}
-  ];
+  ].sort(function(a, b) {
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
 
   const filteredConnections = useMemo(() => {
     let filtered = connections;

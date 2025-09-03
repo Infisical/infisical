@@ -30,7 +30,9 @@ export const DynamicSecretsBrowser = () => {
     {"name": "GitHub", "slug": "github", "path": "/documentation/platform/dynamic-secrets/github", "description": "Learn how to generate dynamic GitHub credentials on-demand.", "category": "Cloud Providers"},
     {"name": "Kubernetes", "slug": "kubernetes", "path": "/documentation/platform/dynamic-secrets/kubernetes", "description": "Learn how to generate dynamic Kubernetes credentials on-demand.", "category": "Cloud Providers"},
     {"name": "TOTP", "slug": "totp", "path": "/documentation/platform/dynamic-secrets/totp", "description": "Learn how to generate dynamic TOTP codes on-demand.", "category": "Cloud Providers"}
-  ];
+  ].sort(function(a, b) {
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
 
   const filteredDynamicSecrets = useMemo(() => {
     let filtered = dynamicSecrets;

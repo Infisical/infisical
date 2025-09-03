@@ -26,7 +26,9 @@ export const MachineAuthenticationBrowser = () => {
     {"name": "TLS Certificate Auth", "slug": "tls-cert-auth", "path": "/documentation/platform/identities/tls-cert-auth", "description": "Learn how to authenticate machines using TLS client certificates.", "category": "Certificate-based"},
     {"name": "LDAP Auth", "slug": "ldap-auth-general", "path": "/documentation/platform/identities/ldap-auth/general", "description": "Learn how to authenticate machines using LDAP credentials.", "category": "Directory-based"},
     {"name": "LDAP Auth for JumpCloud", "slug": "ldap-auth-jumpcloud", "path": "/documentation/platform/identities/ldap-auth/jumpcloud", "description": "Learn how to authenticate machines using JumpCloud LDAP.", "category": "Directory-based"}
-  ];
+  ].sort(function(a, b) {
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
 
   const filteredAuthMethods = useMemo(() => {
     let filtered = authMethods;

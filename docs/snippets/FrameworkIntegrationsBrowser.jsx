@@ -22,7 +22,9 @@ export const FrameworkIntegrationsBrowser = () => {
     {"name": "Remix", "slug": "remix", "path": "/integrations/frameworks/remix", "description": "Learn how to integrate Infisical with Remix applications.", "category": "Web Frameworks"},
     {"name": "Vite", "slug": "vite", "path": "/integrations/frameworks/vite", "description": "Learn how to integrate Infisical with Vite applications.", "category": "Web Frameworks"},
     {"name": "AB Initio", "slug": "ab-initio", "path": "/integrations/frameworks/ab-initio", "description": "Learn how to integrate Infisical with AB Initio applications.", "category": "Web Frameworks"}
-  ];
+  ].sort(function(a, b) {
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
 
   const filteredIntegrations = useMemo(() => {
     if (searchTerm) {

@@ -37,7 +37,9 @@ export const SecretSyncsBrowser = () => {
     {"name": "Humanitec", "slug": "humanitec", "path": "/integrations/secret-syncs/humanitec", "description": "Learn how to sync secrets from Infisical to Humanitec.", "category": "Cloud Providers"},
     {"name": "OCI Vault", "slug": "oci-vault", "path": "/integrations/secret-syncs/oci-vault", "description": "Learn how to sync secrets from Infisical to OCI Vault.", "category": "Cloud Providers"},
     {"name": "Zabbix", "slug": "zabbix", "path": "/integrations/secret-syncs/zabbix", "description": "Learn how to sync secrets from Infisical to Zabbix.", "category": "Monitoring"}
-  ];
+  ].sort(function(a, b) {
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
 
   const filteredSyncs = useMemo(() => {
     let filtered = syncs;

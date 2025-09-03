@@ -25,7 +25,9 @@ export const UserAuthenticationBrowser = () => {
     {"name": "LDAP", "slug": "ldap", "path": "/documentation/platform/ldap/overview", "description": "Learn how to configure LDAP authentication for user login in Infisical.", "category": "LDAP"},
     {"name": "SCIM", "slug": "scim", "path": "/documentation/platform/scim/overview", "description": "Learn how to configure SCIM provisioning for automated user management in Infisical.", "category": "SCIM"},
     {"name": "Email/Password", "slug": "email-password", "path": "/documentation/getting-started/introduction", "description": "Learn how to use standard email and password authentication in Infisical.", "category": "General"}
-  ];
+  ].sort(function(a, b) {
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
 
   const filteredAuthMethods = useMemo(() => {
     let filtered = authMethods;

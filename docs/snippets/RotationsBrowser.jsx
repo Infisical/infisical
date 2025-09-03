@@ -16,7 +16,9 @@ export const RotationsBrowser = () => {
     {"name": "PostgreSQL", "slug": "postgres-credentials", "path": "/documentation/platform/secret-rotation/postgres-credentials", "description": "Learn how to automatically rotate PostgreSQL database credentials.", "category": "Databases"},
     {"name": "Microsoft SQL Server", "slug": "mssql-credentials", "path": "/documentation/platform/secret-rotation/mssql-credentials", "description": "Learn how to automatically rotate Microsoft SQL Server credentials.", "category": "Databases"},
     {"name": "Oracle Database", "slug": "oracledb-credentials", "path": "/documentation/platform/secret-rotation/oracledb-credentials", "description": "Learn how to automatically rotate Oracle Database credentials.", "category": "Databases"}
-  ];
+  ].sort(function(a, b) {
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+  });
 
   const filteredRotations = useMemo(() => {
     let filtered = rotations;
