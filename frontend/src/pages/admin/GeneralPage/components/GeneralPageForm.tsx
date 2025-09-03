@@ -5,7 +5,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Select, SelectClear, SelectItem, Switch, TextArea } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Input,
+  Select,
+  SelectClear,
+  SelectItem,
+  Switch,
+  TextArea
+} from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 
