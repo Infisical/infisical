@@ -4,37 +4,39 @@ export const SecretSyncsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = ['All', 'Cloud Providers', 'CI/CD', 'Databases', 'Identity & Auth', 'Other'];
+  const categories = ['All', 'Cloud Providers', 'Databases', 'CI/CD', 'Monitoring'];
 
   const syncs = [
-    {"name": "AWS Parameter Store", "slug": "aws-parameter-store", "path": "/integrations/cloud/aws-parameter-store", "description": "Learn how to sync secrets from Infisical to AWS Parameter Store.", "category": "Cloud Providers"},
-    {"name": "AWS Secrets Manager", "slug": "aws-secrets-manager", "path": "/integrations/cloud/aws-secrets-manager", "description": "Learn how to sync secrets from Infisical to AWS Secrets Manager.", "category": "Cloud Providers"},
-    {"name": "Azure Key Vault", "slug": "azure-key-vault", "path": "/integrations/cloud/azure-key-vault", "description": "Learn how to sync secrets from Infisical to Azure Key Vault.", "category": "Cloud Providers"},
-    {"name": "Bitbucket", "slug": "bitbucket", "path": "/integrations/cicd/bitbucket", "description": "Learn how to sync secrets from Infisical to Bitbucket.", "category": "CI/CD"},
-    {"name": "Checkly", "slug": "checkly", "path": "/integrations/cloud/checkly", "description": "Learn how to sync secrets from Infisical to Checkly.", "category": "Other"},
-    {"name": "CircleCI", "slug": "circleci", "path": "/integrations/cicd/circleci", "description": "Learn how to sync secrets from Infisical to CircleCI.", "category": "CI/CD"},
-    {"name": "Cloudflare Pages", "slug": "cloudflare-pages", "path": "/integrations/cloud/cloudflare-pages", "description": "Learn how to sync secrets from Infisical to Cloudflare Pages.", "category": "Cloud Providers"},
-    {"name": "Cloudflare Workers", "slug": "cloudflare-workers", "path": "/integrations/cloud/cloudflare-workers", "description": "Learn how to sync secrets from Infisical to Cloudflare Workers.", "category": "Cloud Providers"},
-    {"name": "Databricks", "slug": "databricks", "path": "/integrations/cloud/databricks", "description": "Learn how to sync secrets from Infisical to Databricks.", "category": "Other"},
-    {"name": "DigitalOcean App Platform", "slug": "digital-ocean-app-platform", "path": "/integrations/cloud/digital-ocean-app-platform", "description": "Learn how to sync secrets from Infisical to DigitalOcean App Platform.", "category": "Cloud Providers"},
-    {"name": "Docker", "slug": "docker", "path": "/integrations/platforms/docker", "description": "Learn how to sync secrets from Infisical to Docker.", "category": "Other"},
-    {"name": "Docker Compose", "slug": "docker-compose", "path": "/integrations/platforms/docker-compose", "description": "Learn how to sync secrets from Infisical to Docker Compose.", "category": "Other"},
-    {"name": "Fly.io", "slug": "flyio", "path": "/integrations/cloud/flyio", "description": "Learn how to sync secrets from Infisical to Fly.io.", "category": "Cloud Providers"},
-    {"name": "GCP Secret Manager", "slug": "gcp-secret-manager", "path": "/integrations/cloud/gcp-secret-manager", "description": "Learn how to sync secrets from Infisical to GCP Secret Manager.", "category": "Cloud Providers"},
-    {"name": "GitHub Actions", "slug": "github-actions", "path": "/integrations/cicd/githubactions", "description": "Learn how to sync secrets from Infisical to GitHub Actions.", "category": "CI/CD"},
-    {"name": "GitLab CI/CD", "slug": "gitlab-cicd", "path": "/integrations/cicd/gitlab", "description": "Learn how to sync secrets from Infisical to GitLab CI/CD.", "category": "CI/CD"},
-    {"name": "HashiCorp Vault", "slug": "hashicorp-vault", "path": "/integrations/cloud/hashicorp-vault", "description": "Learn how to sync secrets from Infisical to HashiCorp Vault.", "category": "Other"},
-    {"name": "Heroku", "slug": "heroku", "path": "/integrations/cloud/heroku", "description": "Learn how to sync secrets from Infisical to Heroku.", "category": "Cloud Providers"},
-    {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/cloud/laravel-forge", "description": "Learn how to sync secrets from Infisical to Laravel Forge.", "category": "Other"},
-    {"name": "Netlify", "slug": "netlify", "path": "/integrations/cloud/netlify", "description": "Learn how to sync secrets from Infisical to Netlify.", "category": "Cloud Providers"},
-    {"name": "Northflank", "slug": "northflank", "path": "/integrations/cloud/northflank", "description": "Learn how to sync secrets from Infisical to Northflank.", "category": "Cloud Providers"},
-    {"name": "Railway", "slug": "railway", "path": "/integrations/cloud/railway", "description": "Learn how to sync secrets from Infisical to Railway.", "category": "Cloud Providers"},
-    {"name": "Render", "slug": "render", "path": "/integrations/cloud/render", "description": "Learn how to sync secrets from Infisical to Render.", "category": "Cloud Providers"},
-    {"name": "Supabase", "slug": "supabase", "path": "/integrations/cloud/supabase", "description": "Learn how to sync secrets from Infisical to Supabase.", "category": "Cloud Providers"},
-    {"name": "TeamCity", "slug": "teamcity", "path": "/integrations/cicd/teamcity", "description": "Learn how to sync secrets from Infisical to TeamCity.", "category": "CI/CD"},
-    {"name": "Terraform Cloud", "slug": "terraform-cloud", "path": "/integrations/cloud/terraform-cloud", "description": "Learn how to sync secrets from Infisical to Terraform Cloud.", "category": "Other"},
-    {"name": "Vercel", "slug": "vercel", "path": "/integrations/cloud/vercel", "description": "Learn how to sync secrets from Infisical to Vercel.", "category": "Cloud Providers"},
-    {"name": "Windmill", "slug": "windmill", "path": "/integrations/cloud/windmill", "description": "Learn how to sync secrets from Infisical to Windmill.", "category": "Other"}
+    {"name": "AWS Parameter Store", "slug": "aws-parameter-store", "path": "/integrations/secret-syncs/aws-parameter-store", "description": "Learn how to sync secrets from Infisical to AWS Parameter Store.", "category": "Cloud Providers"},
+    {"name": "AWS Secrets Manager", "slug": "aws-secrets-manager", "path": "/integrations/secret-syncs/aws-secrets-manager", "description": "Learn how to sync secrets from Infisical to AWS Secrets Manager.", "category": "Cloud Providers"},
+    {"name": "Azure Key Vault", "slug": "azure-key-vault", "path": "/integrations/secret-syncs/azure-key-vault", "description": "Learn how to sync secrets from Infisical to Azure Key Vault.", "category": "Cloud Providers"},
+    {"name": "Azure App Configuration", "slug": "azure-app-configuration", "path": "/integrations/secret-syncs/azure-app-configuration", "description": "Learn how to sync secrets from Infisical to Azure App Configuration.", "category": "Cloud Providers"},
+    {"name": "Azure DevOps", "slug": "azure-devops", "path": "/integrations/secret-syncs/azure-devops", "description": "Learn how to sync secrets from Infisical to Azure DevOps.", "category": "CI/CD"},
+    {"name": "GCP Secret Manager", "slug": "gcp-secret-manager", "path": "/integrations/secret-syncs/gcp-secret-manager", "description": "Learn how to sync secrets from Infisical to GCP Secret Manager.", "category": "Cloud Providers"},
+    {"name": "HashiCorp Vault", "slug": "hashicorp-vault", "path": "/integrations/secret-syncs/hashicorp-vault", "description": "Learn how to sync secrets from Infisical to HashiCorp Vault.", "category": "Cloud Providers"},
+    {"name": "1Password", "slug": "1password", "path": "/integrations/secret-syncs/1password", "description": "Learn how to sync secrets from Infisical to 1Password.", "category": "Cloud Providers"},
+    {"name": "Vercel", "slug": "vercel", "path": "/integrations/secret-syncs/vercel", "description": "Learn how to sync secrets from Infisical to Vercel.", "category": "Cloud Providers"},
+    {"name": "Netlify", "slug": "netlify", "path": "/integrations/secret-syncs/netlify", "description": "Learn how to sync secrets from Infisical to Netlify.", "category": "Cloud Providers"},
+    {"name": "Railway", "slug": "railway", "path": "/integrations/secret-syncs/railway", "description": "Learn how to sync secrets from Infisical to Railway.", "category": "Cloud Providers"},
+    {"name": "Fly.io", "slug": "flyio", "path": "/integrations/secret-syncs/flyio", "description": "Learn how to sync secrets from Infisical to Fly.io.", "category": "Cloud Providers"},
+    {"name": "Render", "slug": "render", "path": "/integrations/secret-syncs/render", "description": "Learn how to sync secrets from Infisical to Render.", "category": "Cloud Providers"},
+    {"name": "Heroku", "slug": "heroku", "path": "/integrations/secret-syncs/heroku", "description": "Learn how to sync secrets from Infisical to Heroku.", "category": "Cloud Providers"},
+    {"name": "DigitalOcean App Platform", "slug": "digital-ocean-app-platform", "path": "/integrations/secret-syncs/digital-ocean-app-platform", "description": "Learn how to sync secrets from Infisical to DigitalOcean App Platform.", "category": "Cloud Providers"},
+    {"name": "Supabase", "slug": "supabase", "path": "/integrations/secret-syncs/supabase", "description": "Learn how to sync secrets from Infisical to Supabase.", "category": "Databases"},
+    {"name": "Checkly", "slug": "checkly", "path": "/integrations/secret-syncs/checkly", "description": "Learn how to sync secrets from Infisical to Checkly.", "category": "Monitoring"},
+    {"name": "GitHub", "slug": "github", "path": "/integrations/secret-syncs/github", "description": "Learn how to sync secrets from Infisical to GitHub.", "category": "CI/CD"},
+    {"name": "GitLab", "slug": "gitlab", "path": "/integrations/secret-syncs/gitlab", "description": "Learn how to sync secrets from Infisical to GitLab.", "category": "CI/CD"},
+    {"name": "TeamCity", "slug": "teamcity", "path": "/integrations/secret-syncs/teamcity", "description": "Learn how to sync secrets from Infisical to TeamCity.", "category": "CI/CD"},
+    {"name": "Bitbucket", "slug": "bitbucket", "path": "/integrations/secret-syncs/bitbucket", "description": "Learn how to sync secrets from Infisical to Bitbucket.", "category": "CI/CD"},
+    {"name": "Terraform Cloud", "slug": "terraform-cloud", "path": "/integrations/secret-syncs/terraform-cloud", "description": "Learn how to sync secrets from Infisical to Terraform Cloud.", "category": "Cloud Providers"},
+    {"name": "Cloudflare Pages", "slug": "cloudflare-pages", "path": "/integrations/secret-syncs/cloudflare-pages", "description": "Learn how to sync secrets from Infisical to Cloudflare Pages.", "category": "Cloud Providers"},
+    {"name": "Cloudflare Workers", "slug": "cloudflare-workers", "path": "/integrations/secret-syncs/cloudflare-workers", "description": "Learn how to sync secrets from Infisical to Cloudflare Workers.", "category": "Cloud Providers"},
+    {"name": "Databricks", "slug": "databricks", "path": "/integrations/secret-syncs/databricks", "description": "Learn how to sync secrets from Infisical to Databricks.", "category": "Cloud Providers"},
+    {"name": "Windmill", "slug": "windmill", "path": "/integrations/secret-syncs/windmill", "description": "Learn how to sync secrets from Infisical to Windmill.", "category": "Cloud Providers"},
+    {"name": "Camunda", "slug": "camunda", "path": "/integrations/secret-syncs/camunda", "description": "Learn how to sync secrets from Infisical to Camunda.", "category": "Cloud Providers"},
+    {"name": "Humanitec", "slug": "humanitec", "path": "/integrations/secret-syncs/humanitec", "description": "Learn how to sync secrets from Infisical to Humanitec.", "category": "Cloud Providers"},
+    {"name": "OCI Vault", "slug": "oci-vault", "path": "/integrations/secret-syncs/oci-vault", "description": "Learn how to sync secrets from Infisical to OCI Vault.", "category": "Cloud Providers"},
+    {"name": "Zabbix", "slug": "zabbix", "path": "/integrations/secret-syncs/zabbix", "description": "Learn how to sync secrets from Infisical to Zabbix.", "category": "Monitoring"}
   ];
 
   const filteredSyncs = useMemo(() => {
@@ -103,7 +105,7 @@ export const SecretSyncsBrowser = () => {
         </p>
       </div>
 
-      {/* Syncs List */}
+      {/* Secret Syncs List */}
       {filteredSyncs.length > 0 ? (
         <div className="space-y-4">
           {filteredSyncs.map((sync, index) => (
@@ -130,10 +132,12 @@ export const SecretSyncsBrowser = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500">No secret syncs found matching your criteria.</p>
-          {searchTerm && (
-            <p className="text-gray-400 text-sm mt-2">Try adjusting your search terms or category filter.</p>
-          )}
+          <div className="flex flex-col items-center space-y-2">
+            <p className="text-gray-500">No secret syncs found matching your criteria</p>
+            {searchTerm && (
+              <p className="text-gray-400 text-sm">Try adjusting your search terms or filters</p>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -2,37 +2,49 @@ import React, { useState, useMemo } from 'react';
 
 export const MachineAuthenticationBrowser = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  const categories = ['All', 'Token-based', 'Cloud Provider', 'Kubernetes', 'Certificate-based', 'Directory-based'];
 
   const authMethods = [
     {"name": "Universal Auth", "slug": "universal-auth", "path": "/documentation/platform/identities/universal-auth", "description": "Learn how to authenticate machines using Universal Auth tokens with client ID and secret.", "category": "Token-based"},
     {"name": "Token Auth", "slug": "token-auth", "path": "/documentation/platform/identities/token-auth", "description": "Learn how to authenticate machines using long-lived access tokens.", "category": "Token-based"},
     {"name": "JWT Auth", "slug": "jwt-auth", "path": "/documentation/platform/identities/jwt-auth", "description": "Learn how to authenticate machines using JSON Web Tokens (JWT).", "category": "Token-based"},
-    {"name": "AWS IAM Auth", "slug": "aws-iam-auth", "path": "/documentation/platform/identities/aws-auth", "description": "Learn how to authenticate AWS services and resources using IAM roles.", "category": "Cloud Provider"},
+    {"name": "AWS Auth", "slug": "aws-iam-auth", "path": "/documentation/platform/identities/aws-auth", "description": "Learn how to authenticate AWS services and resources using IAM roles.", "category": "Cloud Provider"},
     {"name": "Azure Auth", "slug": "azure-auth", "path": "/documentation/platform/identities/azure-auth", "description": "Learn how to authenticate Azure services using managed identities.", "category": "Cloud Provider"},
     {"name": "GCP Auth", "slug": "gcp-auth", "path": "/documentation/platform/identities/gcp-auth", "description": "Learn how to authenticate GCP services using service accounts.", "category": "Cloud Provider"},
-    {"name": "Alicloud Auth", "slug": "alicloud-auth", "path": "/documentation/platform/identities/alicloud-auth", "description": "Learn how to authenticate Alicloud services using RAM roles.", "category": "Cloud Provider"},
+    {"name": "Alibaba Cloud Auth", "slug": "alicloud-auth", "path": "/documentation/platform/identities/alicloud-auth", "description": "Learn how to authenticate Alibaba Cloud services using RAM roles.", "category": "Cloud Provider"},
     {"name": "OCI Auth", "slug": "oci-auth", "path": "/documentation/platform/identities/oci-auth", "description": "Learn how to authenticate Oracle Cloud Infrastructure services.", "category": "Cloud Provider"},
     {"name": "Kubernetes Auth", "slug": "kubernetes-auth", "path": "/documentation/platform/identities/kubernetes-auth", "description": "Learn how to authenticate Kubernetes workloads using service account tokens.", "category": "Kubernetes"},
-    {"name": "OIDC Auth (General)", "slug": "oidc-auth-general", "path": "/documentation/platform/identities/oidc-auth/general", "description": "Learn how to authenticate machines using OpenID Connect (OIDC) providers.", "category": "Token-based"},
-    {"name": "OIDC Auth (GitHub)", "slug": "oidc-auth-github", "path": "/documentation/platform/identities/oidc-auth/github", "description": "Learn how to authenticate GitHub Actions using OIDC.", "category": "Token-based"},
-    {"name": "OIDC Auth (GitLab)", "slug": "oidc-auth-gitlab", "path": "/documentation/platform/identities/oidc-auth/gitlab", "description": "Learn how to authenticate GitLab CI/CD using OIDC.", "category": "Token-based"},
-    {"name": "OIDC Auth (Azure)", "slug": "oidc-auth-azure", "path": "/documentation/platform/identities/oidc-auth/azure", "description": "Learn how to authenticate Azure services using OIDC.", "category": "Token-based"},
-    {"name": "OIDC Auth (CircleCI)", "slug": "oidc-auth-circleci", "path": "/documentation/platform/identities/oidc-auth/circleci", "description": "Learn how to authenticate CircleCI workflows using OIDC.", "category": "Token-based"},
-    {"name": "OIDC Auth (Terraform Cloud)", "slug": "oidc-auth-terraform", "path": "/documentation/platform/identities/oidc-auth/terraform-cloud", "description": "Learn how to authenticate Terraform Cloud using OIDC.", "category": "Token-based"},
-    {"name": "OIDC Auth (SPIRE)", "slug": "oidc-auth-spire", "path": "/documentation/platform/identities/oidc-auth/spire", "description": "Learn how to authenticate workloads using SPIFFE/SPIRE OIDC.", "category": "Token-based"},
+    {"name": "OIDC Auth", "slug": "oidc-auth-general", "path": "/documentation/platform/identities/oidc-auth/general", "description": "Learn how to authenticate machines using OpenID Connect (OIDC) providers.", "category": "Token-based"},
+    {"name": "OIDC Auth for GitHub Actions", "slug": "oidc-auth-github", "path": "/documentation/platform/identities/oidc-auth/github", "description": "Learn how to authenticate GitHub Actions using OIDC.", "category": "Token-based"},
+    {"name": "OIDC Auth for GitLab CI/CD", "slug": "oidc-auth-gitlab", "path": "/documentation/platform/identities/oidc-auth/gitlab", "description": "Learn how to authenticate GitLab CI/CD using OIDC.", "category": "Token-based"},
+    {"name": "OIDC Auth for Azure", "slug": "oidc-auth-azure", "path": "/documentation/platform/identities/oidc-auth/azure", "description": "Learn how to authenticate Azure services using OIDC.", "category": "Token-based"},
+    {"name": "OIDC Auth for CircleCI", "slug": "oidc-auth-circleci", "path": "/documentation/platform/identities/oidc-auth/circleci", "description": "Learn how to authenticate CircleCI workflows using OIDC.", "category": "Token-based"},
+    {"name": "OIDC Auth for Terraform Cloud", "slug": "oidc-auth-terraform", "path": "/documentation/platform/identities/oidc-auth/terraform-cloud", "description": "Learn how to authenticate Terraform Cloud using OIDC.", "category": "Token-based"},
+    {"name": "OIDC Auth for SPIRE", "slug": "oidc-auth-spire", "path": "/documentation/platform/identities/oidc-auth/spire", "description": "Learn how to authenticate workloads using SPIFFE/SPIRE OIDC.", "category": "Token-based"},
     {"name": "TLS Certificate Auth", "slug": "tls-cert-auth", "path": "/documentation/platform/identities/tls-cert-auth", "description": "Learn how to authenticate machines using TLS client certificates.", "category": "Certificate-based"},
-    {"name": "LDAP Auth (General)", "slug": "ldap-auth-general", "path": "/documentation/platform/identities/ldap-auth/general", "description": "Learn how to authenticate machines using LDAP credentials.", "category": "Directory-based"},
-    {"name": "LDAP Auth (JumpCloud)", "slug": "ldap-auth-jumpcloud", "path": "/documentation/platform/identities/ldap-auth/jumpcloud", "description": "Learn how to authenticate machines using JumpCloud LDAP.", "category": "Directory-based"}
+    {"name": "LDAP Auth", "slug": "ldap-auth-general", "path": "/documentation/platform/identities/ldap-auth/general", "description": "Learn how to authenticate machines using LDAP credentials.", "category": "Directory-based"},
+    {"name": "LDAP Auth for JumpCloud", "slug": "ldap-auth-jumpcloud", "path": "/documentation/platform/identities/ldap-auth/jumpcloud", "description": "Learn how to authenticate machines using JumpCloud LDAP.", "category": "Directory-based"}
   ];
 
   const filteredAuthMethods = useMemo(() => {
-    if (!searchTerm) return authMethods;
+    let filtered = authMethods;
 
-    return authMethods.filter(method =>
-      method.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      method.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm]);
+    if (selectedCategory !== 'All') {
+      filtered = filtered.filter(method => method.category === selectedCategory);
+    }
+
+    if (searchTerm) {
+      filtered = filtered.filter(method =>
+        method.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        method.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        method.category.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return filtered;
+  }, [searchTerm, selectedCategory]);
 
   return (
     <div className="max-w-none">
@@ -54,15 +66,35 @@ export const MachineAuthenticationBrowser = () => {
         </div>
       </div>
 
+      {/* Category Filter */}
+      <div className="mb-6">
+        <div className="flex flex-wrap gap-2">
+          {categories.map(category => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
+                selectedCategory === category
+                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Results Count */}
       <div className="mb-4">
         <p className="text-sm text-gray-600">
-          {filteredAuthMethods.length} machine authentication method{filteredAuthMethods.length !== 1 ? 's' : ''} found
+          {filteredAuthMethods.length} authentication method{filteredAuthMethods.length !== 1 ? 's' : ''} found
+          {selectedCategory !== 'All' && ` in ${selectedCategory}`}
           {searchTerm && ` for "${searchTerm}"`}
         </p>
       </div>
 
-      {/* Auth Methods List */}
+      {/* Authentication Methods List */}
       {filteredAuthMethods.length > 0 ? (
         <div className="space-y-4">
           {filteredAuthMethods.map((method, index) => (
@@ -77,7 +109,7 @@ export const MachineAuthenticationBrowser = () => {
                     {method.name}
                   </h3>
                   <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0">
-                    Authentication
+                    {method.category}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
@@ -89,10 +121,12 @@ export const MachineAuthenticationBrowser = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500">No authentication methods found matching your criteria.</p>
-          {searchTerm && (
-            <p className="text-gray-400 text-sm mt-2">Try adjusting your search terms.</p>
-          )}
+          <div className="flex flex-col items-center space-y-2">
+            <p className="text-gray-500">No authentication methods found matching your criteria</p>
+            {searchTerm && (
+              <p className="text-gray-400 text-sm">Try adjusting your search terms or filters</p>
+            )}
+          </div>
         </div>
       )}
     </div>

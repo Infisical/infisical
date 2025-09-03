@@ -2,17 +2,14 @@ import React, { useState, useMemo } from 'react';
 
 export const FrameworkIntegrationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-
-  const categories = ['All', 'Web Frameworks'];
 
   const integrations = [
     {"name": "React", "slug": "react", "path": "/integrations/frameworks/react", "description": "Learn how to integrate Infisical with React applications for secure secret management.", "category": "Web Frameworks"},
     {"name": "Next.js", "slug": "nextjs", "path": "/integrations/frameworks/nextjs", "description": "Learn how to integrate Infisical with Next.js applications.", "category": "Web Frameworks"},
-    {"name": "Vue.js", "slug": "vuejs", "path": "/integrations/frameworks/vue", "description": "Learn how to integrate Infisical with Vue.js applications.", "category": "Web Frameworks"},
-    {"name": "Nuxt.js", "slug": "nuxtjs", "path": "/integrations/frameworks/nuxt", "description": "Learn how to integrate Infisical with Nuxt.js applications.", "category": "Web Frameworks"},
+    {"name": "Vue", "slug": "vuejs", "path": "/integrations/frameworks/vue", "description": "Learn how to integrate Infisical with Vue.js applications.", "category": "Web Frameworks"},
+    {"name": "Nuxt", "slug": "nuxtjs", "path": "/integrations/frameworks/nuxt", "description": "Learn how to integrate Infisical with Nuxt.js applications.", "category": "Web Frameworks"},
     {"name": "SvelteKit", "slug": "sveltekit", "path": "/integrations/frameworks/sveltekit", "description": "Learn how to integrate Infisical with SvelteKit applications.", "category": "Web Frameworks"},
-    {"name": "Express.js", "slug": "express", "path": "/integrations/frameworks/express", "description": "Learn how to integrate Infisical with Express.js backend applications.", "category": "Web Frameworks"},
+    {"name": "Express, Fastify, Koa", "slug": "express", "path": "/integrations/frameworks/express", "description": "Learn how to integrate Infisical with Express.js backend applications.", "category": "Web Frameworks"},
     {"name": "NestJS", "slug": "nestjs", "path": "/integrations/frameworks/nestjs", "description": "Learn how to integrate Infisical with NestJS applications.", "category": "Web Frameworks"},
     {"name": "Django", "slug": "django", "path": "/integrations/frameworks/django", "description": "Learn how to integrate Infisical with Django applications.", "category": "Web Frameworks"},
     {"name": "Flask", "slug": "flask", "path": "/integrations/frameworks/flask", "description": "Learn how to integrate Infisical with Flask applications.", "category": "Web Frameworks"},
@@ -28,22 +25,14 @@ export const FrameworkIntegrationsBrowser = () => {
   ];
 
   const filteredIntegrations = useMemo(() => {
-    let filtered = integrations;
-
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter(integration => integration.category === selectedCategory);
-    }
-
     if (searchTerm) {
-      filtered = filtered.filter(integration =>
+      return integrations.filter(integration =>
         integration.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        integration.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        integration.category.toLowerCase().includes(searchTerm.toLowerCase())
+        integration.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
-    return filtered;
-  }, [searchTerm, selectedCategory]);
+    return integrations;
+  }, [searchTerm]);
 
   return (
     <div className="max-w-none">
@@ -65,30 +54,10 @@ export const FrameworkIntegrationsBrowser = () => {
         </div>
       </div>
 
-      {/* Category Filter */}
-      <div className="mb-6">
-        <div className="flex flex-wrap gap-2">
-          {categories.map(category => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
-                selectedCategory === category
-                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Results Count */}
       <div className="mb-4">
         <p className="text-sm text-gray-600">
           {filteredIntegrations.length} framework integration{filteredIntegrations.length !== 1 ? 's' : ''} found
-          {selectedCategory !== 'All' && ` in ${selectedCategory}`}
           {searchTerm && ` for "${searchTerm}"`}
         </p>
       </div>
@@ -103,13 +72,10 @@ export const FrameworkIntegrationsBrowser = () => {
               className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
             >
               <div className="w-full">
-                <div className="flex items-center justify-between mb-0.5">
+                <div className="mb-0.5">
                   <h3 className="text-base font-medium text-gray-900 leading-none m-0">
                     {integration.name}
                   </h3>
-                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0">
-                    {integration.category}
-                  </span>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {integration.description}
@@ -120,10 +86,12 @@ export const FrameworkIntegrationsBrowser = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500">No framework integrations found matching your criteria.</p>
-          {searchTerm && (
-            <p className="text-gray-400 text-sm mt-2">Try adjusting your search terms or category filter.</p>
-          )}
+          <div className="flex flex-col items-center space-y-2">
+            <p className="text-gray-500">No framework integrations found matching your criteria</p>
+            {searchTerm && (
+              <p className="text-gray-400 text-sm">Try adjusting your search terms or filters</p>
+            )}
+          </div>
         </div>
       )}
     </div>

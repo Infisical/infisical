@@ -125,10 +125,10 @@ export const DynamicSecretsBrowser = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <div className="text-gray-500 text-sm">
-            <p>No dynamic secrets found</p>
+          <div className="flex flex-col items-center space-y-2">
+            <p className="text-gray-500">No dynamic secrets found matching your criteria</p>
             {searchTerm && (
-              <p className="mt-1">Try adjusting your search terms or filters</p>
+              <p className="text-gray-400 text-sm">Try adjusting your search terms or filters</p>
             )}
           </div>
         </div>

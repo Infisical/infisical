@@ -7,16 +7,15 @@ export const RotationsBrowser = () => {
   const categories = ['All', 'Databases', 'Identity & Auth', 'Cloud Providers'];
 
   const rotations = [
-    {"name": "AWS IAM User Secret", "slug": "aws-iam-user", "path": "/documentation/platform/secret-rotation/aws-iam-user-secret", "description": "Learn how to automatically rotate AWS IAM user access keys.", "category": "Cloud Providers"},
+    {"name": "AWS IAM User", "slug": "aws-iam-user", "path": "/documentation/platform/secret-rotation/aws-iam-user-secret", "description": "Learn how to automatically rotate AWS IAM user access keys.", "category": "Cloud Providers"},
     {"name": "Azure Client Secret", "slug": "azure-client-secret", "path": "/documentation/platform/secret-rotation/azure-client-secret", "description": "Learn how to automatically rotate Azure client secrets.", "category": "Cloud Providers"},
     {"name": "Auth0 Client Secret", "slug": "auth0-client-secret", "path": "/documentation/platform/secret-rotation/auth0-client-secret", "description": "Learn how to automatically rotate Auth0 client secrets.", "category": "Identity & Auth"},
     {"name": "Okta Client Secret", "slug": "okta-client-secret", "path": "/documentation/platform/secret-rotation/okta-client-secret", "description": "Learn how to automatically rotate Okta client secrets.", "category": "Identity & Auth"},
     {"name": "LDAP Password", "slug": "ldap-password", "path": "/documentation/platform/secret-rotation/ldap-password", "description": "Learn how to automatically rotate LDAP user passwords.", "category": "Identity & Auth"},
-    {"name": "MySQL Credentials", "slug": "mysql-credentials", "path": "/documentation/platform/secret-rotation/mysql-credentials", "description": "Learn how to automatically rotate MySQL database credentials.", "category": "Databases"},
-    {"name": "PostgreSQL Credentials", "slug": "postgres-credentials", "path": "/documentation/platform/secret-rotation/postgres-credentials", "description": "Learn how to automatically rotate PostgreSQL database credentials.", "category": "Databases"},
-    {"name": "Microsoft SQL Server Credentials", "slug": "mssql-credentials", "path": "/documentation/platform/secret-rotation/mssql-credentials", "description": "Learn how to automatically rotate Microsoft SQL Server credentials.", "category": "Databases"},
-    {"name": "Oracle Database Credentials", "slug": "oracledb-credentials", "path": "/documentation/platform/secret-rotation/oracledb-credentials", "description": "Learn how to automatically rotate Oracle Database credentials.", "category": "Databases"},
-    {"name": "SendGrid", "slug": "sendgrid", "path": "/documentation/platform/secret-rotation/sendgrid", "description": "Learn how to automatically rotate SendGrid API keys.", "category": "Cloud Providers"}
+    {"name": "MySQL", "slug": "mysql-credentials", "path": "/documentation/platform/secret-rotation/mysql-credentials", "description": "Learn how to automatically rotate MySQL database credentials.", "category": "Databases"},
+    {"name": "PostgreSQL", "slug": "postgres-credentials", "path": "/documentation/platform/secret-rotation/postgres-credentials", "description": "Learn how to automatically rotate PostgreSQL database credentials.", "category": "Databases"},
+    {"name": "Microsoft SQL Server", "slug": "mssql-credentials", "path": "/documentation/platform/secret-rotation/mssql-credentials", "description": "Learn how to automatically rotate Microsoft SQL Server credentials.", "category": "Databases"},
+    {"name": "Oracle Database", "slug": "oracledb-credentials", "path": "/documentation/platform/secret-rotation/oracledb-credentials", "description": "Learn how to automatically rotate Oracle Database credentials.", "category": "Databases"}
   ];
 
   const filteredRotations = useMemo(() => {
@@ -112,7 +111,12 @@ export const RotationsBrowser = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500">No secret rotations found matching your criteria.</p>
+          <div className="flex flex-col items-center space-y-2">
+            <p className="text-gray-500">No secret rotations found matching your criteria</p>
+            {searchTerm && (
+              <p className="text-gray-400 text-sm">Try adjusting your search terms or filters</p>
+            )}
+          </div>
         </div>
       )}
     </div>
