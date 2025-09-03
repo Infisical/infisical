@@ -5,16 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FormControl,
-  Input,
-  Select,
-  SelectClear,
-  SelectItem,
-  Switch,
-  TextArea
-} from "@app/components/v2";
+import { Button, FormControl, Input, Select, SelectClear, SelectItem, Switch, TextArea } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 
@@ -103,7 +94,7 @@ export const GeneralPageForm = () => {
 
   return (
     <form
-      className="space-y-8 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
       onSubmit={handleSubmit(onFormSubmit)}
     >
       <div className="flex flex-col justify-start">

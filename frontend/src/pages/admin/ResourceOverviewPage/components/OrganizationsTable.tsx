@@ -19,6 +19,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -192,8 +193,13 @@ const ViewMembersModalContent = ({
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         placeholder="Search members..."
       />
-      <TableContainer className="mt-4 flex flex-1 flex-col rounded-b-none bg-mineshaft-700">
-        <Table className="overflow-y-auto rounded-b-none bg-mineshaft-700">
+      <TableContainer
+        className={twMerge(
+          "mt-4 flex flex-1 flex-col border border-mineshaft-500 bg-mineshaft-700",
+          Boolean(filteredMembers.length) && "rounded-b-none"
+        )}
+      >
+        <Table className="overflow-y-auto bg-mineshaft-700">
           <THead className="sticky top-0 z-50">
             <Tr>
               <Th className="w-1/3 border-none bg-mineshaft-700 p-0">
@@ -215,7 +221,7 @@ const ViewMembersModalContent = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/2 border-none bg-mineshaft-700 p-0">
+              <Th className="w-1/3 border-none bg-mineshaft-700 p-0">
                 <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
                   Email
                   <IconButton
@@ -234,7 +240,7 @@ const ViewMembersModalContent = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/5 border-none bg-mineshaft-700 p-0">
+              <Th className="w-1/4 border-none bg-mineshaft-700 p-0">
                 <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
                   Role
                 </div>
@@ -284,9 +290,9 @@ const ViewMembersModalContent = ({
                         )}
                     </div>
                   </Td>
-                  <Td>
-                    <Badge className="flex w-min items-center gap-x-1 whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
-                      <span className="capitalize">{member.role.replace("-", " ")}</span>
+                  <Td className="max-w-0">
+                    <Badge className="flex w-fit max-w-full items-center gap-x-1 whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
+                      <p className="truncate capitalize">{member.role.replace("-", " ")}</p>
                       {Boolean(member.roleId) && (
                         <Tooltip content="This member has a custom role assigned.">
                           <FontAwesomeIcon icon={faCircleQuestion} className="w-3" />
@@ -352,7 +358,7 @@ const ViewMembersModalContent = ({
       </TableContainer>
       {Boolean(filteredMembers.length) && (
         <Pagination
-          className="rounded-b-md bg-mineshaft-700"
+          className="rounded-b-md border border-t-0 bg-mineshaft-700"
           count={filteredMembers.length}
           page={page}
           perPage={perPage}
