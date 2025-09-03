@@ -12,25 +12,25 @@ export enum IPType {
  * Handles both IPv4 (e.g. 1.2.3.4:1234) and IPv6 (e.g. [2001:db8::1]:8080) formats.
  * Returns the IP address without port and a boolean indicating if a port was present.
  */
-const stripPort = (ip: string): { ipAddress: string; hasPort: boolean } => {
+const stripPort = (ip: string): { ipAddress: string } => {
   // Handle IPv6 with port (e.g. [2001:db8::1]:8080)
   if (ip.startsWith("[") && ip.includes("]:")) {
     const endBracketIndex = ip.indexOf("]");
-    if (endBracketIndex === -1) return { ipAddress: ip, hasPort: false };
+    if (endBracketIndex === -1) return { ipAddress: ip };
     const ipPart = ip.slice(1, endBracketIndex);
     const portPart = ip.slice(endBracketIndex + 2);
-    if (!portPart || !/^\d+$/.test(portPart)) return { ipAddress: ip, hasPort: false };
-    return { ipAddress: ipPart, hasPort: true };
+    if (!portPart || !/^\d+$/.test(portPart)) return { ipAddress: ip };
+    return { ipAddress: ipPart };
   }
 
   // Handle IPv4 with port (e.g. 1.2.3.4:1234)
   if (ip.includes(":")) {
     const [ipPart, portPart] = ip.split(":");
-    if (!portPart || !/^\d+$/.test(portPart)) return { ipAddress: ip, hasPort: false };
-    return { ipAddress: ipPart, hasPort: true };
+    if (!portPart || !/^\d+$/.test(portPart)) return { ipAddress: ip };
+    return { ipAddress: ipPart };
   }
 
-  return { ipAddress: ip, hasPort: false };
+  return { ipAddress: ip };
 };
 
 /**
@@ -41,22 +41,19 @@ const stripPort = (ip: string): { ipAddress: string; hasPort: boolean } => {
 export const extractIPDetails = (ip: string) => {
   const { ipAddress } = stripPort(ip);
 
-  // Handle IPv6 addresses with brackets
-  const cleanIp = ipAddress.startsWith("[") && ipAddress.endsWith("]") ? ipAddress.slice(1, -1) : ipAddress;
-
-  if (net.isIPv4(cleanIp))
+  if (net.isIPv4(ipAddress))
     return {
-      ipAddress: cleanIp,
+      ipAddress,
       type: IPType.IPV4
     };
 
-  if (net.isIPv6(cleanIp))
+  if (net.isIPv6(ipAddress))
     return {
-      ipAddress: cleanIp,
+      ipAddress,
       type: IPType.IPV6
     };
 
-  const [ipNet, prefix] = cleanIp.split("/");
+  const [ipNet, prefix] = ipAddress.split("/");
 
   let type;
   switch (net.isIP(ipNet)) {
@@ -162,9 +159,9 @@ export const checkIPAgainstBlocklist = ({ ipAddress, trustedIps }: { ipAddress: 
     }
   }
 
-  const { type } = extractIPDetails(ipAddress);
-  const { ipAddress: cleanIp } = stripPort(ipAddress);
-  const check = blockList.check(cleanIp, type);
+  const { type, ipAddress: cleanIpAddress } = extractIPDetails(ipAddress);
+
+  const check = blockList.check(cleanIpAddress, type);
 
   if (!check)
     throw new ForbiddenRequestError({
