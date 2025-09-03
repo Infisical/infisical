@@ -72,7 +72,7 @@ export const Page = () => {
             text: "User privilege assumption has started"
           });
 
-          const url = getProjectHomePage(currentWorkspace.type);
+          const url = getProjectHomePage(currentWorkspace.type, currentWorkspace.environments);
           window.location.href = url.replace("$projectId", currentWorkspace.id);
         }
       }

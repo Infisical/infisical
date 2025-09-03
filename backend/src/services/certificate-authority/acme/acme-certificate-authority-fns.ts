@@ -64,6 +64,8 @@ type DBConfigurationColumn = {
   directoryUrl: string;
   accountEmail: string;
   hostedZoneId: string;
+  eabKid?: string;
+  eabHmacKey?: string;
 };
 
 export const castDbEntryToAcmeCertificateAuthority = (
@@ -89,7 +91,9 @@ export const castDbEntryToAcmeCertificateAuthority = (
         hostedZoneId: dbConfigurationCol.hostedZoneId
       },
       directoryUrl: dbConfigurationCol.directoryUrl,
-      accountEmail: dbConfigurationCol.accountEmail
+      accountEmail: dbConfigurationCol.accountEmail,
+      eabKid: dbConfigurationCol.eabKid,
+      eabHmacKey: dbConfigurationCol.eabHmacKey
     },
     status: ca.status as CaStatus
   };
@@ -128,7 +132,7 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
-    const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig } = configuration;
+    const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey } = configuration;
     const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
     if (!appConnection) {
@@ -171,7 +175,9 @@ export const AcmeCertificateAuthorityFns = ({
               directoryUrl,
               accountEmail,
               dnsProvider: dnsProviderConfig.provider,
-              hostedZoneId: dnsProviderConfig.hostedZoneId
+              hostedZoneId: dnsProviderConfig.hostedZoneId,
+              eabKid,
+              eabHmacKey
             }
           },
           tx
@@ -214,7 +220,7 @@ export const AcmeCertificateAuthorityFns = ({
   }) => {
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig } = configuration;
+        const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey } = configuration;
         const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
         if (!appConnection) {
@@ -254,7 +260,9 @@ export const AcmeCertificateAuthorityFns = ({
               directoryUrl,
               accountEmail,
               dnsProvider: dnsProviderConfig.provider,
-              hostedZoneId: dnsProviderConfig.hostedZoneId
+              hostedZoneId: dnsProviderConfig.hostedZoneId,
+              eabKid,
+              eabHmacKey
             }
           },
           tx
@@ -354,10 +362,19 @@ export const AcmeCertificateAuthorityFns = ({
 
     await blockLocalAndPrivateIpAddresses(acmeCa.configuration.directoryUrl);
 
-    const acmeClient = new acme.Client({
+    const acmeClientOptions: acme.ClientOptions = {
       directoryUrl: acmeCa.configuration.directoryUrl,
       accountKey
-    });
+    };
+
+    if (acmeCa.configuration.eabKid && acmeCa.configuration.eabHmacKey) {
+      acmeClientOptions.externalAccountBinding = {
+        kid: acmeCa.configuration.eabKid,
+        hmacKey: acmeCa.configuration.eabHmacKey
+      };
+    }
+
+    const acmeClient = new acme.Client(acmeClientOptions);
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
 

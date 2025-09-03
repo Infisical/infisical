@@ -31,6 +31,7 @@ export type TImportVaultDataDTO = {
   vaultNamespace?: string;
   mappingType: VaultMappingType;
   vaultUrl: string;
+  gatewayId?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TImportInfisicalDataCreate = {

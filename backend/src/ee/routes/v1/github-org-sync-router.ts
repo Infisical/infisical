@@ -126,4 +126,39 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
       return { githubOrgSyncConfig };
     }
   });
+
+  server.route({
+    url: "/sync-all-teams",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      response: {
+        200: z.object({
+          totalUsers: z.number(),
+          errors: z.array(z.string()),
+          createdTeams: z.array(z.string()),
+          updatedTeams: z.array(z.string()),
+          removedMemberships: z.number(),
+          syncDuration: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.githubOrgSync.syncAllTeams({
+        orgPermission: req.permission
+      });
+
+      return {
+        totalUsers: result.totalUsers,
+        errors: result.errors,
+        createdTeams: result.createdTeams,
+        updatedTeams: result.updatedTeams,
+        removedMemberships: result.removedMemberships,
+        syncDuration: result.syncDuration
+      };
+    }
+  });
 };

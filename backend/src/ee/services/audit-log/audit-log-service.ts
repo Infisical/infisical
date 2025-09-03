@@ -6,9 +6,9 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
 import { EventType, TAuditLogServiceFactory } from "./audit-log-types";
@@ -41,7 +41,10 @@ export const auditLogServiceFactory = ({
         actorOrgId,
         actionProjectType: ActionProjectType.Any
       });
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAuditLogsActions.Read,
+        ProjectPermissionSub.AuditLogs
+      );
     } else {
       // Organization-wide logs
       const { permission } = await permissionService.getOrgPermission(
@@ -52,7 +55,10 @@ export const auditLogServiceFactory = ({
         actorOrgId
       );
 
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionAuditLogsActions.Read,
+        OrgPermissionSubjects.AuditLogs
+      );
     }
 
     // If project ID is not provided, then we need to return all the audit logs for the organization itself.

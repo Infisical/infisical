@@ -680,7 +680,8 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     groupDAL,
-    userGroupMembershipDAL
+    userGroupMembershipDAL,
+    orgMembershipDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -726,7 +727,8 @@ export const registerRoutes = async (
     permissionService,
     groupProjectDAL,
     smtpService,
-    projectMembershipDAL
+    projectMembershipDAL,
+    userAliasDAL
   });
 
   const totpService = totpServiceFactory({
@@ -1455,7 +1457,8 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     identityProjectDAL,
     licenseService,
-    identityMetadataDAL
+    identityMetadataDAL,
+    keyStore
   });
 
   const identityAuthTemplateService = identityAuthTemplateServiceFactory({
@@ -1509,7 +1512,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     identityUaClientSecretDAL,
     identityUaDAL,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
@@ -1743,7 +1747,8 @@ export const registerRoutes = async (
   const migrationService = externalMigrationServiceFactory({
     externalMigrationQueue,
     userDAL,
-    permissionService
+    permissionService,
+    gatewayService
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({

@@ -83,6 +83,7 @@ export type TProjectMembership = {
 export type TWorkspaceUser = {
   id: string;
   user: {
+    isOrgMembershipActive: boolean;
     email: string;
     username: string;
     firstName: string;

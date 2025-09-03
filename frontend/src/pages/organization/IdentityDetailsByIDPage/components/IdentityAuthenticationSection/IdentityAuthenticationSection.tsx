@@ -1,8 +1,8 @@
-import { faCog, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faCog, faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button } from "@app/components/v2";
+import { Button, Tooltip } from "@app/components/v2";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { IdentityAuthMethod, identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -16,7 +16,7 @@ type Props = {
 };
 
 export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: Props) => {
-  const { data } = useGetIdentityById(identityId);
+  const { data, refetch } = useGetIdentityById(identityId);
 
   return data ? (
     <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -28,12 +28,25 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
           {data.identity.authMethods.map((authMethod) => (
             <button
               key={authMethod}
-              onClick={() => handlePopUpOpen("viewAuthMethod", authMethod)}
+              onClick={() =>
+                handlePopUpOpen("viewAuthMethod", {
+                  authMethod,
+                  lockedOut: data.identity.activeLockoutAuthMethods.includes(authMethod),
+                  refetchIdentity: refetch
+                })
+              }
               type="button"
               className="flex w-full items-center justify-between bg-mineshaft-900 px-4 py-2 text-sm hover:bg-mineshaft-700 data-[state=open]:bg-mineshaft-600"
             >
               <span>{identityAuthToNameMap[authMethod]}</span>
-              <FontAwesomeIcon icon={faCog} size="xs" className="text-mineshaft-400" />
+              <div className="flex gap-2">
+                {data.identity.activeLockoutAuthMethods.includes(authMethod) && (
+                  <Tooltip content="Auth method has active lockouts">
+                    <FontAwesomeIcon icon={faLock} size="xs" className="text-red-400/50" />
+                  </Tooltip>
+                )}
+                <FontAwesomeIcon icon={faCog} size="xs" className="text-mineshaft-400" />
+              </div>
             </button>
           ))}
         </div>

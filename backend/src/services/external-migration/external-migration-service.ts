@@ -1,4 +1,5 @@
 import { OrgMembershipRole } from "@app/db/schemas";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
@@ -12,6 +13,7 @@ type TExternalMigrationServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   externalMigrationQueue: TExternalMigrationQueueFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
@@ -19,7 +21,8 @@ export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrati
 export const externalMigrationServiceFactory = ({
   permissionService,
   externalMigrationQueue,
-  userDAL
+  userDAL,
+  gatewayService
 }: TExternalMigrationServiceFactoryDep) => {
   const importEnvKeyData = async ({
     decryptionKey,
@@ -72,6 +75,7 @@ export const externalMigrationServiceFactory = ({
     vaultNamespace,
     mappingType,
     vaultUrl,
+    gatewayId,
     actor,
     actorId,
     actorOrgId,
@@ -91,12 +95,18 @@ export const externalMigrationServiceFactory = ({
 
     const user = await userDAL.findById(actorId);
 
-    const vaultData = await importVaultDataFn({
-      vaultAccessToken,
-      vaultNamespace,
-      vaultUrl,
-      mappingType
-    });
+    const vaultData = await importVaultDataFn(
+      {
+        vaultAccessToken,
+        vaultNamespace,
+        vaultUrl,
+        mappingType,
+        gatewayId
+      },
+      {
+        gatewayService
+      }
+    );
 
     const stringifiedJson = JSON.stringify({
       data: vaultData,

@@ -108,7 +108,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               firstName: true,
               lastName: true,
               id: true
-            }).merge(UserEncryptionKeysSchema.pick({ publicKey: true })),
+            })
+              .merge(UserEncryptionKeysSchema.pick({ publicKey: true }))
+              .extend({
+                isOrgMembershipActive: z.boolean()
+              }),
             project: SanitizedProjectSchema.pick({ name: true, id: true }),
             roles: z.array(
               z.object({

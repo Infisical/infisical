@@ -4,12 +4,19 @@ import { RootSyncOptions, TRootSecretSync } from "@app/hooks/api/secretSyncs/typ
 
 export type TRenderSync = TRootSecretSync & {
   destination: SecretSync.Render;
-  destinationConfig: {
-    scope: RenderSyncScope.Service;
-    type: RenderSyncType;
-    serviceId: string;
-    serviceName?: string;
-  };
+  destinationConfig:
+    | {
+        type: RenderSyncType;
+        scope: RenderSyncScope.Service;
+        serviceId: string;
+        serviceName?: string | undefined;
+      }
+    | {
+        type: RenderSyncType;
+        scope: RenderSyncScope.EnvironmentGroup;
+        environmentGroupId: string;
+        environmentGroupName?: string | undefined;
+      };
 
   connection: {
     app: AppConnection.Render;
@@ -23,7 +30,8 @@ export type TRenderSync = TRootSecretSync & {
 };
 
 export enum RenderSyncScope {
-  Service = "service"
+  Service = "service",
+  EnvironmentGroup = "environment-group"
 }
 
 export enum RenderSyncType {

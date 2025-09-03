@@ -1,11 +1,20 @@
+import https from "node:https";
+
 import axios, { AxiosInstance } from "axios";
 import { v4 as uuidv4 } from "uuid";
 
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { BadRequestError } from "@app/lib/errors";
+import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { InfisicalImportData, VaultMappingType } from "../external-migration-types";
+
+enum KvVersion {
+  V1 = "1",
+  V2 = "2"
+}
 
 type VaultData = {
   namespace: string;
@@ -14,7 +23,42 @@ type VaultData = {
   secretData: Record<string, string>;
 };
 
-const vaultFactory = () => {
+const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">) => {
+  const $gatewayProxyWrapper = async <T>(
+    inputs: {
+      gatewayId: string;
+      targetHost?: string;
+      targetPort?: number;
+    },
+    gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
+  ): Promise<T> => {
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
+    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
+
+    const callbackResult = await withGatewayProxy(
+      async (port, httpsAgent) => {
+        const res = await gatewayCallback("http://localhost", port, httpsAgent);
+        return res;
+      },
+      {
+        protocol: GatewayProxyProtocol.Http,
+        targetHost: inputs.targetHost,
+        targetPort: inputs.targetPort,
+        relayHost,
+        relayPort: Number(relayPort),
+        identityId: relayDetails.identityId,
+        orgId: relayDetails.orgId,
+        tlsOptions: {
+          ca: relayDetails.certChain,
+          cert: relayDetails.certificate,
+          key: relayDetails.privateKey.toString()
+        }
+      }
+    );
+
+    return callbackResult;
+  };
+
   const getMounts = async (request: AxiosInstance) => {
     const response = await request
       .get<{
@@ -31,11 +75,24 @@ const vaultFactory = () => {
 
   const getPaths = async (
     request: AxiosInstance,
-    { mountPath, secretPath = "" }: { mountPath: string; secretPath?: string }
+    { mountPath, secretPath = "" }: { mountPath: string; secretPath?: string },
+    kvVersion: KvVersion
   ) => {
     try {
-      // For KV v2: /v1/{mount}/metadata/{path}?list=true
-      const path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
+      if (kvVersion === KvVersion.V2) {
+        // For KV v2: /v1/{mount}/metadata/{path}?list=true
+        const path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
+        const response = await request.get<{
+          data: {
+            keys: string[];
+          };
+        }>(`/v1/${path}?list=true`);
+
+        return response.data.data.keys;
+      }
+
+      // kv version v1: /v1/{mount}?list=true
+      const path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
       const response = await request.get<{
         data: {
           keys: string[];
@@ -56,21 +113,42 @@ const vaultFactory = () => {
 
   const getSecrets = async (
     request: AxiosInstance,
-    { mountPath, secretPath }: { mountPath: string; secretPath: string }
+    { mountPath, secretPath }: { mountPath: string; secretPath: string },
+    kvVersion: KvVersion
   ) => {
-    // For KV v2: /v1/{mount}/data/{path}
+    if (kvVersion === KvVersion.V2) {
+      // For KV v2: /v1/{mount}/data/{path}
+      const response = await request
+        .get<{
+          data: {
+            data: Record<string, string>; // KV v2 has nested data structure
+            metadata: {
+              created_time: string;
+              deletion_time: string;
+              destroyed: boolean;
+              version: number;
+            };
+          };
+        }>(`/v1/${mountPath}/data/${secretPath}`)
+        .catch((err) => {
+          if (axios.isAxiosError(err)) {
+            logger.error(err.response?.data, "External migration: Failed to get Vault secret");
+          }
+          throw err;
+        });
+
+      return response.data.data.data;
+    }
+
+    // kv version v1
+
     const response = await request
       .get<{
-        data: {
-          data: Record<string, string>; // KV v2 has nested data structure
-          metadata: {
-            created_time: string;
-            deletion_time: string;
-            destroyed: boolean;
-            version: number;
-          };
-        };
-      }>(`/v1/${mountPath}/data/${secretPath}`)
+        data: Record<string, string>; // KV v1 has flat data structure
+        lease_duration: number;
+        lease_id: string;
+        renewable: boolean;
+      }>(`/v1/${mountPath}/${secretPath}`)
       .catch((err) => {
         if (axios.isAxiosError(err)) {
           logger.error(err.response?.data, "External migration: Failed to get Vault secret");
@@ -78,7 +156,7 @@ const vaultFactory = () => {
         throw err;
       });
 
-    return response.data.data.data;
+    return response.data.data;
   };
 
   // helper function to check if a mount is KV v2 (will be useful if we add support for Vault KV v1)
@@ -89,9 +167,10 @@ const vaultFactory = () => {
   const recursivelyGetAllPaths = async (
     request: AxiosInstance,
     mountPath: string,
+    kvVersion: KvVersion,
     currentPath: string = ""
   ): Promise<string[]> => {
-    const paths = await getPaths(request, { mountPath, secretPath: currentPath });
+    const paths = await getPaths(request, { mountPath, secretPath: currentPath }, kvVersion);
 
     if (paths === null || paths.length === 0) {
       return [];
@@ -105,7 +184,7 @@ const vaultFactory = () => {
 
       if (path.endsWith("/")) {
         // it's a folder so we recurse into it
-        const subSecrets = await recursivelyGetAllPaths(request, mountPath, fullItemPath);
+        const subSecrets = await recursivelyGetAllPaths(request, mountPath, kvVersion, fullItemPath);
         allSecrets.push(...subSecrets);
       } else {
         // it's a secret so we add it to our results
@@ -119,60 +198,93 @@ const vaultFactory = () => {
   async function collectVaultData({
     baseUrl,
     namespace,
-    accessToken
+    accessToken,
+    gatewayId
   }: {
     baseUrl: string;
     namespace?: string;
     accessToken: string;
+    gatewayId?: string;
   }): Promise<VaultData[]> {
-    const request = axios.create({
-      baseURL: baseUrl,
-      headers: {
-        "X-Vault-Token": accessToken,
-        ...(namespace ? { "X-Vault-Namespace": namespace } : {})
+    const getData = async (host: string, port?: number, httpsAgent?: https.Agent) => {
+      const allData: VaultData[] = [];
+
+      const request = axios.create({
+        baseURL: port ? `${host}:${port}` : host,
+        headers: {
+          "X-Vault-Token": accessToken,
+          ...(namespace ? { "X-Vault-Namespace": namespace } : {})
+        },
+        httpsAgent
+      });
+
+      // Get all mounts in this namespace
+      const mounts = await getMounts(request);
+
+      for (const mount of Object.keys(mounts)) {
+        if (!mount.endsWith("/")) {
+          delete mounts[mount];
+        }
       }
-    });
 
-    const allData: VaultData[] = [];
+      for await (const [mountPath, mountInfo] of Object.entries(mounts)) {
+        // skip non-KV mounts
+        if (!mountInfo.type.startsWith("kv")) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
 
-    // Get all mounts in this namespace
-    const mounts = await getMounts(request);
+        const kvVersion = mountInfo.options?.version === "2" ? KvVersion.V2 : KvVersion.V1;
 
-    for (const mount of Object.keys(mounts)) {
-      if (!mount.endsWith("/")) {
-        delete mounts[mount];
+        // get all paths in this mount
+        const paths = await recursivelyGetAllPaths(request, `${mountPath.replace(/\/$/, "")}`, kvVersion);
+
+        const cleanMountPath = mountPath.replace(/\/$/, "");
+
+        for await (const secretPath of paths) {
+          // get the actual secret data
+          const secretData = await getSecrets(
+            request,
+            {
+              mountPath: cleanMountPath,
+              secretPath: secretPath.replace(`${cleanMountPath}/`, "")
+            },
+            kvVersion
+          );
+
+          allData.push({
+            namespace: namespace || "",
+            mount: mountPath.replace(/\/$/, ""),
+            path: secretPath.replace(`${cleanMountPath}/`, ""),
+            secretData
+          });
+        }
       }
+
+      return allData;
+    };
+
+    let data;
+
+    if (gatewayId) {
+      const url = new URL(baseUrl);
+
+      const { port, protocol, hostname } = url;
+      const cleanedProtocol = protocol.slice(0, -1);
+
+      data = await $gatewayProxyWrapper(
+        {
+          gatewayId,
+          targetHost: `${cleanedProtocol}://${hostname}`,
+          targetPort: port ? Number(port) : 8200 // 8200, default port for Vault self-hosted/dedicated
+        },
+        getData
+      );
+    } else {
+      data = await getData(baseUrl);
     }
 
-    for await (const [mountPath, mountInfo] of Object.entries(mounts)) {
-      // skip non-KV mounts
-      if (!mountInfo.type.startsWith("kv")) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-
-      // get all paths in this mount
-      const paths = await recursivelyGetAllPaths(request, `${mountPath.replace(/\/$/, "")}`);
-
-      const cleanMountPath = mountPath.replace(/\/$/, "");
-
-      for await (const secretPath of paths) {
-        // get the actual secret data
-        const secretData = await getSecrets(request, {
-          mountPath: cleanMountPath,
-          secretPath: secretPath.replace(`${cleanMountPath}/`, "")
-        });
-
-        allData.push({
-          namespace: namespace || "",
-          mount: mountPath.replace(/\/$/, ""),
-          path: secretPath.replace(`${cleanMountPath}/`, ""),
-          secretData
-        });
-      }
-    }
-
-    return allData;
+    return data;
   }
 
   return {
@@ -296,17 +408,22 @@ export const transformToInfisicalFormatNamespaceToProjects = (
   };
 };
 
-export const importVaultDataFn = async ({
-  vaultAccessToken,
-  vaultNamespace,
-  vaultUrl,
-  mappingType
-}: {
-  vaultAccessToken: string;
-  vaultNamespace?: string;
-  vaultUrl: string;
-  mappingType: VaultMappingType;
-}) => {
+export const importVaultDataFn = async (
+  {
+    vaultAccessToken,
+    vaultNamespace,
+    vaultUrl,
+    mappingType,
+    gatewayId
+  }: {
+    vaultAccessToken: string;
+    vaultNamespace?: string;
+    vaultUrl: string;
+    mappingType: VaultMappingType;
+    gatewayId?: string;
+  },
+  { gatewayService }: { gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId"> }
+) => {
   await blockLocalAndPrivateIpAddresses(vaultUrl);
 
   if (mappingType === VaultMappingType.Namespace && !vaultNamespace) {
@@ -315,12 +432,13 @@ export const importVaultDataFn = async ({
     });
   }
 
-  const vaultApi = vaultFactory();
+  const vaultApi = vaultFactory(gatewayService);
 
   const vaultData = await vaultApi.collectVaultData({
     accessToken: vaultAccessToken,
     baseUrl: vaultUrl,
-    namespace: vaultNamespace
+    namespace: vaultNamespace,
+    gatewayId
   });
 
   const infisicalData = transformToInfisicalFormatNamespaceToProjects(vaultData, mappingType);

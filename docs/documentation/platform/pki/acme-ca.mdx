@@ -147,6 +147,8 @@ In the following steps, we explore how to set up ACME Certificate Authority inte
                     - **Directory URL**: Enter the ACME v2 directory URL for your chosen CA provider (e.g., `https://acme-v02.api.letsencrypt.org/directory` for Let's Encrypt).
                     - **Account Email**: Email address to associate with your ACME account. This email will receive important notifications about your certificates.
                     - **Enable Direct Issuance**: Toggle on to allow direct certificate issuance without requiring subscribers.
+                    - **EAB Key Identifier (KID)**: (Optional) The Key Identifier (KID) provided by your ACME CA for External Account Binding (EAB). This is required by some ACME providers (e.g., ZeroSSL, DigiCert) to link your ACME account to an external account you've pre-registered with them.
+                    - **EAB HMAC Key**: (Optional) The HMAC Key provided by your ACME CA for External Account Binding (EAB). This key is used in conjunction with the KID to prove ownership of the external account during ACME account registration.
 
                     Finally, press **Create** to register the ACME CA with Infisical.
                 </Step>
@@ -275,6 +277,19 @@ Let's Encrypt is a free, automated, and open Certificate Authority that provides
 
 <Note>
   Always test your ACME integration using Let's Encrypt's staging environment first. This allows you to verify your DNS configuration and certificate issuance process without consuming your production rate limits.
+</Note>
+
+## Example: DigiCert Integration
+
+DigiCert is a leading commercial Certificate Authority providing a wide range of trusted SSL/TLS certificates. Infisical can integrate with [DigiCert's ACME](https://docs.digicert.com/en/certcentral/certificate-tools/certificate-lifecycle-automation-guides/third-party-acme-integration/request-and-manage-certificates-with-acme.html) service to automate the provisioning and management of these certificates.
+
+- **Directory URL**: `https://acme.digicert.com/v2/acme/directory`
+- **External Account Binding (EAB)**: Required. You will need a Key Identifier (KID) and HMAC Key from your DigiCert account to register the ACME CA in Infisical.
+- **Certificate Validity**: Typically 90 days, with automatic renewal through Infisical.
+- **Trusted By**: All major browsers and operating systems.
+
+<Note>
+  When integrating with DigiCert ACME, ensure you have obtained the necessary External Account Binding (EAB) Key Identifier (KID) and HMAC Key from your DigiCert account.
 </Note>
 
 ## FAQ

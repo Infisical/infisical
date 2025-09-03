@@ -166,7 +166,12 @@ export const UNIVERSAL_AUTH = {
     accessTokenNumUsesLimit:
       "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
     accessTokenPeriod:
-      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0."
+      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0.",
+    lockoutEnabled: "Whether the lockout feature is enabled.",
+    lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
+    lockoutDurationSeconds: "How long an identity auth method lockout lasts.",
+    lockoutCounterResetSeconds:
+      "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the auth method for."
@@ -181,7 +186,12 @@ export const UNIVERSAL_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
-    accessTokenPeriod: "The new period for an access token in seconds."
+    accessTokenPeriod: "The new period for an access token in seconds.",
+    lockoutEnabled: "Whether the lockout feature is enabled.",
+    lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
+    lockoutDurationSeconds: "How long an identity auth method lockout lasts.",
+    lockoutCounterResetSeconds:
+      "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   CREATE_CLIENT_SECRET: {
     identityId: "The ID of the identity to create a client secret for.",
@@ -200,6 +210,9 @@ export const UNIVERSAL_AUTH = {
   REVOKE_CLIENT_SECRET: {
     identityId: "The ID of the identity to revoke the client secret from.",
     clientSecretId: "The ID of the client secret to revoke."
+  },
+  CLEAR_CLIENT_LOCKOUTS: {
+    identityId: "The ID of the identity to clear the client lockouts from."
   },
   RENEW_ACCESS_TOKEN: {
     accessToken: "The access token to renew."
@@ -2148,7 +2161,9 @@ export const CertificateAuthorities = {
       directoryUrl: `The directory URL for the ACME Certificate Authority.`,
       accountEmail: `The email address for the ACME Certificate Authority.`,
       provider: `The DNS provider for the ACME Certificate Authority.`,
-      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`,
+      eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
+      eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`
     },
     INTERNAL: {
       type: "The type of CA to create.",
@@ -2312,6 +2327,15 @@ export const AppConnections = {
     OKTA: {
       instanceUrl: "The URL used to access your Okta organization.",
       apiToken: "The API token used to authenticate with Okta."
+    },
+    AZURE_ADCS: {
+      adcsUrl:
+        "The HTTPS URL of the Azure ADCS instance to connect with (e.g., 'https://adcs.yourdomain.com/certsrv').",
+      username: "The username used to access Azure ADCS (format: 'DOMAIN\\username' or 'username@domain.com').",
+      password: "The password used to access Azure ADCS.",
+      sslRejectUnauthorized:
+        "Whether or not to reject unauthorized SSL certificates (true/false). Set to false only in test environments with self-signed certificates.",
+      sslCertificate: "The SSL certificate (PEM format) to use for secure connection."
     }
   }
 };
@@ -2491,6 +2515,7 @@ export const SecretSyncs = {
     },
     RENDER: {
       serviceId: "The ID of the Render service to sync secrets to.",
+      environmentGroupId: "The ID of the Render environment group to sync secrets to.",
       scope: "The Render scope that secrets should be synced to.",
       type: "The Render resource type to sync secrets to."
     },

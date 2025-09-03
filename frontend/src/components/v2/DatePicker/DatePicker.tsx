@@ -98,7 +98,7 @@ export const DatePicker = ({
         >
           {value
             ? formatDateTime({ timestamp: value, timezone, dateFormat })
-            : "Pick a date and time"}
+            : `Select Date${hideTime ? "" : " and Time"}`}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -122,7 +122,8 @@ export const DatePicker = ({
               root: `text-mineshaft-300  ${defaultClassNames}`,
               [UI.DayButton]: "p-3 rounded hover:text-mineshaft-100",
               [UI.Weekday]: "px-3 pt-3",
-              [UI.Chevron]: "fill-mineshaft-300"
+              [UI.Chevron]: "fill-mineshaft-300/70 hover:fill-mineshaft-300",
+              disabled: "text-mineshaft-400 pointer-events-none"
             }}
           />
         </div>

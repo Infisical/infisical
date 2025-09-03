@@ -3,6 +3,7 @@ import { TOnePassConnection } from "./1password-connection";
 import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
+import { TAzureADCSConnection } from "./azure-adcs-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
@@ -41,6 +42,7 @@ import { TZabbixConnection } from "./zabbix-connection";
 export * from "./1password-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
+export * from "./azure-adcs-connection";
 export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
@@ -83,6 +85,7 @@ export type TAppConnection =
   | TAzureAppConfigurationConnection
   | TAzureClientSecretsConnection
   | TAzureDevOpsConnection
+  | TAzureADCSConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -156,6 +159,7 @@ export type TAppConnectionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnection;
   [AppConnection.AzureDevOps]: TAzureDevOpsConnection;
+  [AppConnection.AzureADCS]: TAzureADCSConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
   [AppConnection.TerraformCloud]: TTerraformCloudConnection;

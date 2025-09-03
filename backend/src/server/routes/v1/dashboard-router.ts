@@ -703,6 +703,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       // prevent older projects from accessing endpoint
       if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
+      // verify folder exists and user has project permission
+      await server.services.folder.getFolderByPath({ projectId, environment, secretPath }, req.permission);
+
       const tags = req.query.tags?.split(",") ?? [];
 
       let remainingLimit = limit;

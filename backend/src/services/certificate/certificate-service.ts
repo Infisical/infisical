@@ -14,6 +14,8 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
@@ -184,9 +186,11 @@ export const certificateServiceFactory = ({
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(cert.caId);
 
-    if (ca.externalCa?.id) {
+    // Check if the CA type supports revocation
+    const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+    if (!caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES)) {
       throw new BadRequestError({
-        message: "Cannot revoke external certificates"
+        message: "Certificate revocation is not supported by this certificate authority type"
       });
     }
 
@@ -218,18 +222,37 @@ export const certificateServiceFactory = ({
       }
     );
 
-    // rebuild CRL (TODO: move to interval-based cron job)
-    await rebuildCaCrl({
-      caId: ca.id,
-      certificateAuthorityDAL,
-      certificateAuthorityCrlDAL,
-      certificateAuthoritySecretDAL,
-      projectDAL,
-      certificateDAL,
-      kmsService
-    });
+    // Note: External CA revocation handling would go here for supported CA types
+    // Currently, only internal CAs and ACME CAs support revocation
 
-    return { revokedAt, cert, ca: expandInternalCa(ca) };
+    // rebuild CRL (TODO: move to interval-based cron job)
+    // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
+    if (!ca.externalCa?.id) {
+      await rebuildCaCrl({
+        caId: ca.id,
+        certificateAuthorityDAL,
+        certificateAuthorityCrlDAL,
+        certificateAuthoritySecretDAL,
+        projectDAL,
+        certificateDAL,
+        kmsService
+      });
+    }
+
+    // Return appropriate CA format based on CA type
+    const caResult = ca.externalCa?.id
+      ? {
+          id: ca.id,
+          name: ca.name,
+          projectId: ca.projectId,
+          status: ca.status,
+          enableDirectIssuance: ca.enableDirectIssuance,
+          type: ca.externalCa.type,
+          externalCa: ca.externalCa
+        }
+      : expandInternalCa(ca);
+
+    return { revokedAt, cert, ca: caResult };
   };
 
   /**

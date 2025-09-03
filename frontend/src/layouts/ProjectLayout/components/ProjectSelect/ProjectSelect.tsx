@@ -101,7 +101,7 @@ export const ProjectSelect = () => {
     <div className="-mr-2 flex w-full items-center gap-1">
       <DropdownMenu modal={false}>
         <Link
-          to={getProjectHomePage(currentWorkspace.type)}
+          to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
           params={{
             projectId: currentWorkspace.id
           }}
@@ -158,7 +158,7 @@ export const ProjectSelect = () => {
                       // to reproduce change this back to router.push and switch between two projects with different env count
                       // look into this on dashboard revamp
                       const url = linkOptions({
-                        to: getProjectHomePage(workspace.type),
+                        to: getProjectHomePage(workspace.type, workspace.environments),
                         params: {
                           projectId: workspace.id
                         }

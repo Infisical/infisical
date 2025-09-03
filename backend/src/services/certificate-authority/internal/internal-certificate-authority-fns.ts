@@ -36,12 +36,18 @@ import { validateAndMapAltNameType } from "../certificate-authority-validators";
 import { TIssueCertWithTemplateDTO } from "./internal-certificate-authority-types";
 
 type TInternalCertificateAuthorityFnsDeps = {
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa" | "findById">;
+  certificateAuthorityDAL: Pick<
+    TCertificateAuthorityDALFactory,
+    "findByIdWithAssociatedCa" | "findById" | "create" | "transaction" | "updateById" | "findWithAssociatedCa"
+  >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "transaction" | "findOne" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey"
+  >;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;

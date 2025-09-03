@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { EmptyState } from "@app/components/v2";
-import { useSubscription } from "@app/context";
+import { useSubscription, useWorkspace } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
@@ -15,6 +15,7 @@ type Props = {
 
 export const IntegrationAuditLogsSection = ({ integration }: Props) => {
   const { subscription } = useSubscription();
+  const { currentWorkspace } = useWorkspace();
 
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
@@ -30,6 +31,7 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
       <LogsSection
         refetchInterval={4000}
         showFilters={false}
+        project={currentWorkspace}
         presets={{
           eventMetadata: { integrationId: integration.id },
           startDate: new Date(

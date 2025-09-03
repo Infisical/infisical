@@ -45,6 +45,7 @@ import {
 import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
+import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
 import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-client-secrets";
 import { azureClientSecretsConnectionService } from "./azure-client-secrets/azure-client-secrets-service";
@@ -122,6 +123,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
   [AppConnection.AzureDevOps]: ValidateAzureDevOpsConnectionCredentialsSchema,
+  [AppConnection.AzureADCS]: ValidateAzureADCSConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
   [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
   [AppConnection.TerraformCloud]: ValidateTerraformCloudConnectionCredentialsSchema,
@@ -598,7 +600,7 @@ export const appConnectionServiceFactory = ({
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    hcvault: hcVaultConnectionService(connectAppConnectionById),
+    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),

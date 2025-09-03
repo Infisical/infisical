@@ -1,5 +1,6 @@
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -14,7 +15,21 @@ import {
 import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-export const OrgGeneralAuthSection = () => {
+enum EnforceAuthType {
+  SAML = "saml",
+  GOOGLE = "google",
+  OIDC = "oidc"
+}
+
+export const OrgGeneralAuthSection = ({
+  isSamlConfigured,
+  isOidcConfigured,
+  isGoogleConfigured
+}: {
+  isSamlConfigured: boolean;
+  isOidcConfigured: boolean;
+  isGoogleConfigured: boolean;
+}) => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
@@ -23,27 +38,61 @@ export const OrgGeneralAuthSection = () => {
 
   const logout = useLogoutUser();
 
-  const handleEnforceOrgAuthToggle = async (value: boolean) => {
+  const handleEnforceOrgAuthToggle = async (value: boolean, type: EnforceAuthType) => {
     try {
       if (!currentOrg?.id) return;
-      if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
+
+      if (type === EnforceAuthType.SAML) {
+        if (!subscription?.samlSSO) {
+          handlePopUpOpen("upgradePlan");
+          return;
+        }
+
+        await mutateAsync({
+          orgId: currentOrg?.id,
+          authEnforced: value
+        });
+      } else if (type === EnforceAuthType.GOOGLE) {
+        if (!subscription?.enforceGoogleSSO) {
+          handlePopUpOpen("upgradePlan");
+          return;
+        }
+
+        await mutateAsync({
+          orgId: currentOrg?.id,
+          googleSsoAuthEnforced: value
+        });
+      } else if (type === EnforceAuthType.OIDC) {
+        if (!subscription?.oidcSSO) {
+          handlePopUpOpen("upgradePlan");
+          return;
+        }
+
+        await mutateAsync({
+          orgId: currentOrg?.id,
+          authEnforced: value
+        });
+      } else {
+        createNotification({
+          text: `Invalid auth enforcement type ${type}`,
+          type: "error"
+        });
       }
 
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        authEnforced: value
-      });
-
       createNotification({
-        text: `Successfully ${value ? "enforced" : "un-enforced"} org-level auth`,
+        text: `Successfully ${value ? "enabled" : "disabled"} org-level auth`,
         type: "success"
       });
 
       if (value) {
         await logout.mutateAsync();
-        window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
+
+        if (type === EnforceAuthType.SAML) {
+          window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
+        } else if (type === EnforceAuthType.GOOGLE) {
+          window.open(`/api/v1/sso/redirect/google?org_slug=${currentOrg.slug}`);
+        }
+
         window.close();
       }
     } catch (err) {
@@ -78,45 +127,91 @@ export const OrgGeneralAuthSection = () => {
   };
 
   return (
-    <>
-      {/* <div className="py-4">
-                <div className="mb-2 flex justify-between">
-                    <h3 className="text-md text-mineshaft-100">Allow users to send invites</h3>
-                    <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-                        {(isAllowed) => (
-                            <Switch
-                                id="allow-org-invites"
-                                onCheckedChange={(value) => handleEnforceOrgAuthToggle(value)}
-                                isChecked={currentOrg?.authEnforced ?? false}
-                                isDisabled={!isAllowed}
-                            />
-                        )}
-                    </OrgPermissionCan>
-                </div>
-                <p className="text-sm text-mineshaft-300">Allow members to invite new users to this organization</p>
-            </div> */}
-      <div className="py-4">
-        <div className="mb-2 flex justify-between">
-          <div className="flex items-center gap-1">
-            <span className="text-md text-mineshaft-100">Enforce SAML SSO</span>
-          </div>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-            {(isAllowed) => (
-              <Switch
-                id="enforce-org-auth"
-                onCheckedChange={(value) => handleEnforceOrgAuthToggle(value)}
-                isChecked={currentOrg?.authEnforced ?? false}
-                isDisabled={!isAllowed}
-              />
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          Enforce users to authenticate via SAML to access this organization
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+      <div>
+        <p className="text-xl font-semibold text-gray-200">SSO Enforcement</p>
+        <p className="mb-2 mt-1 text-gray-400">
+          Manage strict enforcement of specific authentication methods for your organization.
         </p>
       </div>
-      {currentOrg?.authEnforced && (
-        <div className="py-4">
+      <div className="flex flex-col gap-2 py-4">
+        <div className={twMerge("mt-4", !isSamlConfigured && "hidden")}>
+          <div className="mb-2 flex justify-between">
+            <div className="flex items-center gap-1">
+              <span className="text-md text-mineshaft-100">Enforce SAML SSO</span>
+            </div>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+              {(isAllowed) => (
+                <Switch
+                  id="enforce-saml-auth"
+                  onCheckedChange={(value) =>
+                    handleEnforceOrgAuthToggle(value, EnforceAuthType.SAML)
+                  }
+                  isChecked={currentOrg?.authEnforced ?? false}
+                  isDisabled={!isAllowed || currentOrg?.googleSsoAuthEnforced}
+                />
+              )}
+            </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">
+            Enforce users to authenticate via SAML to access this organization.
+            <br />
+            When this is enabled your organization members will only be able to login with SAML.
+          </p>
+        </div>
+
+        <div className={twMerge("mt-4", !isOidcConfigured && "hidden")}>
+          <div className="mb-2 flex justify-between">
+            <div className="flex items-center gap-1">
+              <span className="text-md text-mineshaft-100">Enforce OIDC SSO</span>
+            </div>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+              {(isAllowed) => (
+                <Switch
+                  id="enforce-oidc-auth"
+                  isChecked={currentOrg?.authEnforced ?? false}
+                  onCheckedChange={(value) =>
+                    handleEnforceOrgAuthToggle(value, EnforceAuthType.OIDC)
+                  }
+                  isDisabled={!isAllowed}
+                />
+              )}
+            </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">
+            Enforce users to authenticate via OIDC to access this organization.
+            <br />
+            When this is enabled your organization members will only be able to login with OIDC.
+          </p>
+        </div>
+
+        <div className={twMerge("mt-2", !isGoogleConfigured && "hidden")}>
+          <div className="mb-2 flex justify-between">
+            <div className="flex items-center gap-1">
+              <span className="text-md text-mineshaft-100">Enforce Google SSO</span>
+            </div>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+              {(isAllowed) => (
+                <Switch
+                  id="enforce-google-sso"
+                  onCheckedChange={(value) =>
+                    handleEnforceOrgAuthToggle(value, EnforceAuthType.GOOGLE)
+                  }
+                  isChecked={currentOrg?.googleSsoAuthEnforced ?? false}
+                  isDisabled={!isAllowed || currentOrg?.authEnforced}
+                />
+              )}
+            </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">
+            Enforce users to authenticate via Google to access this organization.
+            <br />
+            When this is enabled your organization members will only be able to login with Google.
+          </p>
+        </div>
+      </div>
+      {(currentOrg?.authEnforced || currentOrg?.googleSsoAuthEnforced) && (
+        <div className="mt-4 py-4">
           <div className="mb-2 flex justify-between">
             <div className="flex items-center gap-1">
               <span className="text-md text-mineshaft-100">Enable Admin SSO Bypass</span>
@@ -125,8 +220,8 @@ export const OrgGeneralAuthSection = () => {
                 content={
                   <div>
                     <span>
-                      When this is enabled, we strongly recommend enforcing MFA at the organization
-                      level.
+                      When enabling admin SSO bypass, we highly recommend enabling MFA enforcement
+                      at the organization-level for security reasons.
                     </span>
                     <p className="mt-4">
                       In case of a lockout, admins can use the{" "}
@@ -182,6 +277,6 @@ export const OrgGeneralAuthSection = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can enforce SAML SSO if you switch to Infisical's Pro plan."
       />
-    </>
+    </div>
   );
 };

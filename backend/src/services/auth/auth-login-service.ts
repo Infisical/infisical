@@ -448,12 +448,43 @@ export const authLoginServiceFactory = ({
 
     // Check if the user actually has access to the specified organization.
     const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-    const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId && org.userStatus !== "invited");
+
+    const selectedOrgMembership = userOrgs.find((org) => org.id === organizationId && org.userStatus !== "invited");
+
     const selectedOrg = await orgDAL.findById(organizationId);
 
-    if (!hasOrganizationMembership) {
+    if (!selectedOrgMembership) {
       throw new ForbiddenRequestError({
         message: `User does not have access to the organization named ${selectedOrg?.name}`
+      });
+    }
+
+    // Check if authEnforced is true and the current auth method is not an enforced method
+    if (
+      selectedOrg.authEnforced &&
+      !isAuthMethodSaml(decodedToken.authMethod) &&
+      decodedToken.authMethod !== AuthMethod.OIDC &&
+      !(selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin)
+    ) {
+      throw new BadRequestError({
+        message: "Login with the auth method required by your organization."
+      });
+    }
+
+    if (selectedOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
+      const canBypass = selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin;
+
+      if (!canBypass) {
+        throw new ForbiddenRequestError({
+          message: "Google SSO is enforced for this organization. Please use Google SSO to login.",
+          error: "GoogleSsoEnforced"
+        });
+      }
+    }
+
+    if (decodedToken.authMethod === AuthMethod.GOOGLE) {
+      await orgDAL.updateById(selectedOrg.id, {
+        googleSsoAuthLastUsed: new Date()
       });
     }
 
@@ -502,7 +533,8 @@ export const authLoginServiceFactory = ({
       selectedOrg.authEnforced &&
       selectedOrg.bypassOrgAuthEnabled &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC
+      decodedToken.authMethod !== AuthMethod.OIDC &&
+      decodedToken.authMethod !== AuthMethod.GOOGLE
     ) {
       await auditLogService.createAuditLog({
         orgId: organizationId,
@@ -705,7 +737,7 @@ export const authLoginServiceFactory = ({
   /*
    * OAuth2 login for google,github, and other oauth2 provider
    * */
-  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort }: TOauthLoginDTO) => {
+  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort, orgSlug }: TOauthLoginDTO) => {
     // akhilmhdh: case sensitive email resolution
     const usersByUsername = await userDAL.findUserByUsername(email);
     let user = usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
@@ -759,6 +791,8 @@ export const authLoginServiceFactory = ({
 
     const appCfg = getConfig();
 
+    let orgId = "";
+    let orgName: undefined | string;
     if (!user) {
       // Create a new user based on oAuth
       if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
@@ -784,7 +818,6 @@ export const authLoginServiceFactory = ({
       });
 
       if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
-        let orgId = "";
         const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
         if (!defaultOrg) {
           throw new BadRequestError({
@@ -824,11 +857,39 @@ export const authLoginServiceFactory = ({
       }
     }
 
+    if (!orgId && orgSlug) {
+      const org = await orgDAL.findOrgBySlug(orgSlug);
+
+      if (org) {
+        // checks for the membership and only sets the orgId / orgName if the user is a member of the specified org
+        const orgMembership = await orgDAL.findMembership({
+          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+          [`${TableName.OrgMembership}.orgId` as "orgId"]: org.id,
+          [`${TableName.OrgMembership}.isActive` as "isActive"]: true,
+          [`${TableName.OrgMembership}.status` as "status"]: OrgMembershipStatus.Accepted
+        });
+
+        if (orgMembership) {
+          orgId = org.id;
+          orgName = org.name;
+        }
+      }
+    }
+
     const isUserCompleted = user.isAccepted;
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
+
+        ...(orgId && orgSlug && orgName !== undefined
+          ? {
+              organizationId: orgId,
+              organizationName: orgName,
+              organizationSlug: orgSlug
+            }
+          : {}),
+
         username: user.username,
         email: user.email,
         isEmailVerified: user.isEmailVerified,
