@@ -38,6 +38,7 @@ spec:
           image: "infisical/cli:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
+            - network
             - gateway
           envFrom:
             - secretRef:
