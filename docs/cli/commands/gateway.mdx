@@ -3,6 +3,22 @@ title: "infisical gateway"
 description: "Run the Infisical gateway or manage its systemd service"
 ---
 
+<Warning>
+**New Gateway Architecture Available**
+
+A completely redesigned gateway system is now available under the `infisical network` command with a fundamentally different architecture:
+
+- **TCP-based SSH tunnels** instead of UDP/TURN protocol
+- **Eliminates firewall complexity** - no UDP configuration needed
+- **Enhanced security** with certificate-based authentication
+- **Flexible deployment options** - instance-wide or organization-specific proxies
+
+**Learn more:** See [`infisical network`](/cli/commands/network) for the new gateway architecture.
+
+**Migration:** The current `infisical gateway` command will continue to work but **will be deprecated in a future release**. Migration to `infisical network gateway` requires **complete reconfiguration** - you cannot simply switch commands as this is an entirely different gateway infrastructure. We strongly recommend planning migration to `infisical network gateway` for all deployments.
+
+</Warning>
+
 <Tabs>
   <Tab title="Run gateway">
     ```bash
@@ -25,13 +41,13 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
 <Accordion title="infisical gateway" defaultOpen="true">
   Run the Infisical gateway in the foreground. The gateway will connect to the relay service and maintain a persistent connection.
 
-  ```bash
-  infisical gateway --domain=<domain> --auth-method=<auth-method>
-  ```
+```bash
+infisical gateway --domain=<domain> --auth-method=<auth-method>
+```
 
-  ### Authentication
+### Authentication
 
-  The Infisical CLI supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
+The Infisical CLI supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
 
 <AccordionGroup>
   <Accordion title="Universal Auth">
@@ -121,7 +137,6 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
       infisical gateway --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id>
     ```
 
-
   </Accordion>
   <Accordion title="GCP IAM">
     The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
@@ -163,7 +178,6 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
         infisical gateway --auth-method=aws-iam --machine-identity-id=<machine-identity-id>
       ```
 
-
   </Accordion>
   <Accordion title="OIDC Auth">
     The OIDC Auth method is used to authenticate with Infisical via identity tokens with OIDC.
@@ -185,6 +199,7 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
     ```bash
       infisical gateway --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt>
     ```
+
   </Accordion>
 
   <Accordion title="JWT Auth">
@@ -208,6 +223,7 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
     ```bash
       infisical gateway --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
     ```
+
   </Accordion>
   <Accordion title="Token Auth">
     You can use the `INFISICAL_TOKEN` environment variable to authenticate with Infisical with a raw machine identity access token.
@@ -227,7 +243,7 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
   </Accordion>
 </AccordionGroup>
 
-  ### Other Flags
+### Other Flags
 
   <Accordion title="--domain">
     Domain of your self-hosted Infisical instance.
@@ -236,22 +252,24 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
     # Example
     infisical gateway --domain=https://app.your-domain.com
     ```
+
   </Accordion>
 </Accordion>
 
 <Accordion title="infisical gateway install">
   Install and enable the gateway as a systemd service. This command must be run with sudo on Linux.
 
-  ```bash
-  sudo infisical gateway install --token=<token> --domain=<domain>
-  ```
+```bash
+sudo infisical gateway install --token=<token> --domain=<domain>
+```
 
-  ### Requirements
-  - Must be run on Linux
-  - Must be run with root/sudo privileges
-  - Requires systemd
+### Requirements
 
-  ### Flags
+- Must be run on Linux
+- Must be run with root/sudo privileges
+- Requires systemd
+
+### Flags
 
   <Accordion title="--token">
     The machine identity access token to authenticate with Infisical.
@@ -262,6 +280,7 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
     ```
 
     You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the install command.
+
   </Accordion>
 
   <Accordion title="--domain">
@@ -271,24 +290,29 @@ Run the Infisical gateway in the foreground or manage its systemd service instal
     # Example
     sudo infisical gateway install --domain=https://app.your-domain.com
     ```
+
   </Accordion>
 
-  ### Service Details
-  The systemd service is installed with secure defaults:
-  - Service file: `/etc/systemd/system/infisical-gateway.service`
-  - Config file: `/etc/infisical/gateway.conf`
-  - Runs with restricted privileges:
-    - InaccessibleDirectories=/home
-    - PrivateTmp=yes
-    - Resource limits configured for stability
-  - Automatically restarts on failure
-  - Enabled to start on boot
+### Service Details
 
-  After installation, manage the service with standard systemd commands:
-  ```bash
-  sudo systemctl start infisical-gateway    # Start the service
-  sudo systemctl stop infisical-gateway     # Stop the service
-  sudo systemctl status infisical-gateway   # Check service status
-  sudo systemctl disable infisical-gateway  # Disable auto-start on boot
-  ```
+The systemd service is installed with secure defaults:
+
+- Service file: `/etc/systemd/system/infisical-gateway.service`
+- Config file: `/etc/infisical/gateway.conf`
+- Runs with restricted privileges:
+  - InaccessibleDirectories=/home
+  - PrivateTmp=yes
+  - Resource limits configured for stability
+- Automatically restarts on failure
+- Enabled to start on boot
+
+After installation, manage the service with standard systemd commands:
+
+```bash
+sudo systemctl start infisical-gateway    # Start the service
+sudo systemctl stop infisical-gateway     # Stop the service
+sudo systemctl status infisical-gateway   # Check service status
+sudo systemctl disable infisical-gateway  # Disable auto-start on boot
+```
+
 </Accordion>
