@@ -37,6 +37,8 @@ const envSchema = z
       .default("false")
       .transform((el) => el === "true"),
     REDIS_URL: zpStr(z.string().optional()),
+    REDIS_USERNAME: zpStr(z.string().optional()),
+    REDIS_PASSWORD: zpStr(z.string().optional()),
     REDIS_SENTINEL_HOSTS: zpStr(
       z
         .string()
@@ -49,6 +51,12 @@ const envSchema = z
     REDIS_SENTINEL_ENABLE_TLS: zodStrBool.optional().describe("Whether to use TLS/SSL for Redis Sentinel connection"),
     REDIS_SENTINEL_USERNAME: zpStr(z.string().optional().describe("Authentication username for Redis Sentinel")),
     REDIS_SENTINEL_PASSWORD: zpStr(z.string().optional().describe("Authentication password for Redis Sentinel")),
+    REDIS_CLUSTER_HOSTS: zpStr(
+      z
+        .string()
+        .optional()
+        .describe("Comma-separated list of Sentinel host:port pairs. Eg: 192.168.65.254:26379,192.168.65.254:26380")
+    ),
     HOST: zpStr(z.string().default("localhost")),
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
@@ -335,8 +343,8 @@ const envSchema = z
     "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
   )
   .refine(
-    (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS),
-    "Either REDIS_URL or REDIS_SENTINEL_HOSTS must be defined."
+    (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
+    "Either REDIS_URL, REDIS_SENTINEL_HOSTS or REDIS_CLUSTER_HOSTS  must be defined."
   )
   .transform((data) => ({
     ...data,
@@ -346,7 +354,7 @@ const envSchema = z
       : undefined,
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
-    isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS),
+    isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
     isDevelopmentMode: data.NODE_ENV === "development",
     isTestMode: data.NODE_ENV === "test",
     isRotationDevelopmentMode:
@@ -356,6 +364,12 @@ const envSchema = z
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
+      ?.split(",")
+      .map((el) => {
+        const [host, port] = el.trim().split(":");
+        return { host: host.trim(), port: Number(port.trim()) };
+      }),
+    REDIS_CLUSTER_HOSTS: data.REDIS_CLUSTER_HOSTS?.trim()
       ?.split(",")
       .map((el) => {
         const [host, port] = el.trim().split(":");

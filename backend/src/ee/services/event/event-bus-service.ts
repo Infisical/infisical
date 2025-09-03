@@ -1,11 +1,11 @@
-import Redis from "ioredis";
+import { Cluster, Redis } from "ioredis";
 import { z } from "zod";
 
 import { logger } from "@app/lib/logger";
 
 import { BusEventSchema, TopicName } from "./types";
 
-export const eventBusFactory = (redis: Redis) => {
+export const eventBusFactory = (redis: Redis | Cluster) => {
   const publisher = redis.duplicate();
   // Duplicate the publisher to create a subscriber.
   // This is necessary because Redis does not allow a single connection to both publish and subscribe.
