@@ -54,6 +54,30 @@ type TSecretImportSecretsV2 = {
 
 const LEVEL_BREAK = 10;
 const getImportUniqKey = (envSlug: string, path: string) => `${envSlug}=${path}`;
+
+/**
+ * Processes reserved imports by resolving them to their replication source.
+ */
+const processReservedImports = <
+  T extends { isReserved?: boolean | null; importPath: string; importEnv: { id: string; slug: string; name: string } }
+>(
+  imports: T[]
+): T[] => {
+  return imports.map((secretImport) => {
+    if (secretImport.isReserved) {
+      // Find the non-reserved import that this should replicate from
+      const sourceImport = imports.find((imp) => !imp.isReserved);
+      if (sourceImport) {
+        return {
+          ...secretImport,
+          importPath: sourceImport.importPath,
+          importEnv: sourceImport.importEnv
+        };
+      }
+    }
+    return secretImport;
+  });
+};
 export const fnSecretsFromImports = async ({
   allowedImports: possibleCyclicImports,
   folderDAL,
@@ -74,8 +98,10 @@ export const fnSecretsFromImports = async ({
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
 
-  const allowedImports = possibleCyclicImports.filter(
-    ({ importPath, importEnv }) => !cyclicDetector.has(getImportUniqKey(importEnv.slug, importPath))
+  const allowedImports = processReservedImports(
+    possibleCyclicImports.filter(
+      ({ importPath, importEnv }) => !cyclicDetector.has(getImportUniqKey(importEnv.slug, importPath))
+    )
   );
 
   const importedFolders = (
@@ -187,6 +213,10 @@ export const fnSecretsV2FromImports = async ({
       secretTags: { slug: string; name: string; id: string; color?: string | null }[];
     })[];
   }[] = [{ secretImports: rootSecretImports, depth: 0, parentImportedSecrets: [] }];
+
+  const processedSecretImports = processReservedImports(rootSecretImports);
+
+  stack[0] = { secretImports: processedSecretImports, depth: 0, parentImportedSecrets: [] };
 
   const processedImports: TSecretImportSecretsV2[] = [];
 
