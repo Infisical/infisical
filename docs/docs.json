@@ -98,6 +98,7 @@
               {
                 "group": "App Connections",
                 "pages": [
+                  "integrations/app-connections",
                   "integrations/app-connections/overview",
                   {
                     "group": "Connections",
@@ -184,6 +185,7 @@
               {
                 "group": "User Authentication",
                 "pages": [
+                  "integrations/user-authentication",
                   "documentation/platform/auth-methods/email-password",
                   {
                     "group": "SSO",
@@ -243,6 +245,7 @@
               {
                 "group": "Machine Identities",
                 "pages": [
+                  "integrations/machine-authentication",
                   "documentation/platform/identities/alicloud-auth",
                   "documentation/platform/identities/aws-auth",
                   "documentation/platform/identities/azure-auth",
@@ -417,6 +420,7 @@
                   {
                     "group": "Secret Rotation",
                     "pages": [
+                      "integrations/secret-rotations",
                       "documentation/platform/secret-rotation/overview",
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
@@ -432,6 +436,7 @@
                   {
                     "group": "Dynamic Secrets",
                     "pages": [
+                      "integrations/dynamic-secrets",
                       "documentation/platform/dynamic-secrets/overview",
                       "documentation/platform/dynamic-secrets/aws-elasticache",
                       "documentation/platform/dynamic-secrets/aws-iam",
@@ -502,6 +507,7 @@
               {
                 "group": "Secret Syncs",
                 "pages": [
+                  "integrations/secret-syncs",
                   "integrations/secret-syncs/overview",
                   {
                     "group": "Syncs",
@@ -607,6 +613,7 @@
               {
                 "group": "Framework Integrations",
                 "pages": [
+                  "integrations/framework-integrations",
                   "integrations/frameworks/spring-boot-maven",
                   "integrations/frameworks/react",
                   "integrations/frameworks/vue",
