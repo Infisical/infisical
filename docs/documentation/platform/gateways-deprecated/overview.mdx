@@ -4,15 +4,10 @@ sidebarTitle: "Overview"
 description: "How to access private network resources from Infisical"
 ---
 
-![Architecture Overview](../../../images/platform/gateways/gateway-highlevel-diagram.png)
+![Alt text](/documentation/platform/gateways-deprecated/images/gateway-highlevel-diagram.png)
 
-The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment. This method keeps your resources fully protected from external access while enabling Infisical to securely interact with resources like databases.
-
-**Architecture Components:**
-
-- **Gateway**: Lightweight agent deployed within your VPCs that provides access to private resources
-- **Proxy**: Identity-aware relay infrastructure that routes encrypted traffic (instance-wide or organization-specific)
-
+The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment.
+This method keeps your resources fully protected from external access while enabling Infisical to securely interact with resources like databases.
 Common use cases include generating dynamic credentials or rotating credentials for private databases.
 
 <Info>
@@ -24,33 +19,18 @@ Common use cases include generating dynamic credentials or rotating credentials 
 
 ## How It Works
 
-The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connectivity:
-
-1. **Gateway Registration**: The gateway establishes an outbound SSH reverse tunnel to a proxy server using SSH certificates issued by Infisical
-2. **Proxy Routing**: The proxy server acts as an identity-aware relay that routes encrypted traffic between the Infisical platform and gateways
-3. **Resource Access**: The Infisical platform connects to your private resources through the established gateway connections
-
-**Key Benefits:**
-
-- **No inbound firewall rules needed** - all connections are outbound from your network
-- **Firewall-friendly** - uses standard SSH over TCP
-- **Certificate-based authentication** provides enhanced security
-- **Automatic reconnection** if connections are lost
+The Gateway serves as a secure intermediary that facilitates direct communication between the Infisical server and your private network.
+It’s a lightweight daemon packaged within the Infisical CLI, making it easy to deploy and manage. Once set up, the Gateway establishes a connection with a relay server, ensuring that all communication between Infisical and your Gateway is fully end-to-end encrypted.
+This setup guarantees that only the platform and your Gateway can decrypt the transmitted information, keeping communication with your resources secure, private and isolated.
 
 ## Deployment
 
-The Infisical Gateway is integrated into the Infisical CLI under the `network gateway` command, making it simple to deploy and manage.
+The Infisical Gateway is seamlessly integrated into the Infisical CLI under the `gateway` command, making it simple to deploy and manage.
 You can install the Gateway in all the same ways you install the Infisical CLI—whether via npm, Docker, or a binary.
 For detailed installation instructions, refer to the Infisical [CLI Installation instructions](/cli/overview).
 
-**Prerequisites:**
-
-1. **Proxy Server**: Before deploying gateways, you need a running proxy server:
-   - **Infisical Cloud**: Instance proxies are already available - no setup needed
-   - **Self-hosted**: Instance admin must set up shared instance proxies, or organizations can deploy their own
-2. **Machine Identity**: Configure a machine identity with appropriate permissions to create and manage gateways
-
-Once authenticated, the Gateway establishes an SSH reverse tunnel to the specified proxy server, allowing secure access to your private resources.
+To function, the Gateway must authenticate with Infisical. This requires a machine identity configured with the appropriate permissions to create and manage a Gateway.
+Once authenticated, the Gateway establishes a secure connection with Infisical to allow your private resources to be reachable.
 
 ### Get started
 
@@ -66,36 +46,6 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
     You'll need to choose an authentication method to initiate communication with Infisical. View the available machine identity authentication methods [here](/documentation/platform/identities/machine-identities).
   </Step>
 
-  <Step title="Choose Your Proxy Setup">
-    You have two options for proxy infrastructure:
-    
-    <Tabs>
-      <Tab title="Use Instance Proxies (Easiest)">
-        **Infisical Cloud:** Instance proxies are already running and available - **no setup required**. You can immediately proceed to deploy gateways using these shared proxies.
-        
-        **Self-hosted:** If your instance admin has set up shared instance proxies, you can use them directly. If not, the instance admin can set them up:
-        ```bash
-        # Instance admin sets up shared proxy (one-time setup)
-        export INFISICAL_PROXY_AUTH_SECRET=<instance-proxy-secret>
-        infisical network proxy --type=instance --ip=<public-ip> --name=<proxy-name>
-        ```
-      </Tab>
-      <Tab title="Deploy Your Own Organization Proxy">
-        **Available for all users:** Deploy your own dedicated proxy infrastructure for enhanced control:
-        ```bash
-        # Deploy organization-specific proxy
-        infisical network proxy --type=org --ip=<public-ip> --name=<proxy-name> --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
-        ```
-        
-        **When to choose this:**
-        - You need lower latency (deploy closer to your resources)
-        - Enhanced security requirements
-        - Compliance needs (data sovereignty, air-gapped environments)
-        - Custom network policies
-      </Tab>
-    </Tabs>
-  </Step>
-
   <Step title="Deploy the Gateway">
     Use the Infisical CLI to deploy the Gateway. You can run it directly or install it as a systemd service for production:
 
@@ -103,7 +53,7 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
       <Tab title="Production (systemd)">
         For production deployments on Linux, install the Gateway as a systemd service:
         ```bash
-        sudo infisical network gateway install --token <your-machine-identity-token> --domain <your-infisical-domain> --name <gateway-name> --proxy-name <proxy-name>
+        sudo infisical gateway install --token <your-machine-identity-token> --domain <your-infisical-domain>
         sudo systemctl start infisical-gateway
         ```
         This will install and start the Gateway as a secure systemd service that:
@@ -166,12 +116,7 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
             </ParamField>
 
               ```bash
-                kubectl create secret generic infisical-gateway-environment \
-                  --from-literal=INFISICAL_AUTH_METHOD=universal-auth \
-                  --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> \
-                  --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret> \
-                  --from-literal=INFISICAL_PROXY_NAME=<proxy-name> \
-                  --from-literal=INFISICAL_GATEWAY_NAME=<gateway-name>
+                kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=universal-auth --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
               ```
 
           </Accordion>
@@ -338,29 +283,6 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
         </AccordionGroup>
 
 
-        #### Required environment variables
-
-        In addition to the authentication method above, you **must** include these required variables:
-
-        <AccordionGroup>
-          <Accordion title="INFISICAL_PROXY_NAME">
-            The name of the proxy server that this gateway should connect to.
-          </Accordion>
-          <Accordion title="INFISICAL_GATEWAY_NAME">
-            The name of this gateway instance.
-          </Accordion>
-        </AccordionGroup>
-
-        **Complete example with required variables:**
-        ```bash
-        kubectl create secret generic infisical-gateway-environment \
-          --from-literal=INFISICAL_AUTH_METHOD=universal-auth \
-          --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> \
-          --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret> \
-          --from-literal=INFISICAL_PROXY_NAME=<proxy-name> \
-          --from-literal=INFISICAL_GATEWAY_NAME=<gateway-name>
-        ```
-
         #### Other environment variables
 
         <AccordionGroup>
@@ -385,11 +307,13 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
         You should see the following output which indicates the gateway is running as expected.
         ```bash
         $ kubectl logs deployment/infisical-gateway
-        INF Starting gateway
-        INF Starting gateway certificate renewal goroutine
-        INF Successfully registered gateway and received certificates
-        INF Connecting to proxy server infisical-start on 152.42.218.156:2222...
-        INF Proxy connection established for gateway
+        INF Provided relay port 5349. Using TLS
+        INF Connected with relay
+        INF 10.0.101.112:56735
+        INF Starting relay connection health check
+        INF Gateway started successfully
+        INF New connection from: 10.0.1.8:34051
+        INF Gateway is reachable by Infisical
         ```
 
       </Tab>
@@ -397,29 +321,26 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
       <Tab title="Local Installation (testing)">
         For development or testing, you can run the Gateway directly. Log in with your machine identity and start the Gateway in one command:
         ```bash
-        infisical network gateway --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain) --proxy-name=<proxy-name> --name=<gateway-name>
+        infisical gateway --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain)
         ```
 
         Alternatively, if you already have the token, use it directly with the `--token` flag:
         ```bash
-        infisical network gateway --token <your-machine-identity-token> --proxy-name=<proxy-name> --name=<gateway-name>
+        infisical gateway --token <your-machine-identity-token>
         ```
 
         Or set it as an environment variable:
         ```bash
         export INFISICAL_TOKEN=<your-machine-identity-token>
-        infisical network gateway --proxy-name=<proxy-name> --name=<gateway-name>
+        infisical gateway
         ```
       </Tab>
     </Tabs>
 
-    For detailed information about the network commands and their options, see the [network command documentation](/cli/commands/network).
+    For detailed information about the gateway command and its options, see the [gateway command documentation](/cli/commands/gateway).
 
     <Note>
-      **Requirements:**
-      - Ensure the deployed Gateway has network access to the private resources you intend to connect with Infisical
-      - The gateway must be able to reach the proxy server (outbound connection only)
-      - Replace `<proxy-name>` with the name of your proxy server and `<gateway-name>` with a unique name for this gateway
+      Ensure the deployed Gateway has network access to the private resources you intend to connect with Infisical.
     </Note>
 
   </Step>

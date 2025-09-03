@@ -174,7 +174,15 @@
                 "pages": [
                   "documentation/platform/gateways/overview",
                   "documentation/platform/gateways/gateway-security",
-                  "documentation/platform/gateways/networking"
+                  "documentation/platform/gateways/networking",
+                  {
+                    "group": "Gateway (Deprecated)",
+                    "pages": [
+                      "documentation/platform/gateways-deprecated/overview",
+                      "documentation/platform/gateways-deprecated/gateway-security",
+                      "documentation/platform/gateways-deprecated/networking"
+                    ]
+                  }
                 ]
               }
             ]
