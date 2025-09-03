@@ -56,6 +56,7 @@ type TSecretImportSecretsV2 = {
 
 const LEVEL_BREAK = 10;
 const getImportUniqKey = (envSlug: string, path: string) => `${envSlug}=${path}`;
+const RESERVED_IMPORT_REGEX = new RE2("/__reserve_replication_([a-f0-9-]{36})");
 
 /**
  * Processes reserved imports by resolving them to their replication source.
@@ -75,7 +76,7 @@ const processReservedImports = async <
 
   imports.forEach((secretImport) => {
     if (secretImport.isReserved) {
-      const reservedMatch = new RE2("/__reserve_replication_([a-f0-9-]{36})").exec(secretImport.importPath);
+      const reservedMatch = RESERVED_IMPORT_REGEX.exec(secretImport.importPath);
       if (reservedMatch) {
         const referencedImportId = reservedMatch[1];
         reservedImportIds.push(referencedImportId);
@@ -107,7 +108,7 @@ const processReservedImports = async <
 
     return imports.map((secretImport) => {
       if (secretImport.isReserved) {
-        const reservedMatch = new RE2("/__reserve_replication_([a-f0-9-]{36})").exec(secretImport.importPath);
+        const reservedMatch = RESERVED_IMPORT_REGEX.exec(secretImport.importPath);
         if (reservedMatch) {
           const referencedImportId = reservedMatch[1];
           const referencedDetails = importDetailsMap.get(referencedImportId);
