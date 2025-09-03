@@ -124,12 +124,12 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           void qb
             .whereNull(`${TableName.OrgMembership}.lastInvitedAt`)
             .whereBetween(`${TableName.OrgMembership}.createdAt`, [twelveMonthsAgo, oneWeekAgo]);
-        })
-        .orWhere((qb) => {
           // lastInvitedAt is older than 1 week ago AND createdAt is younger than 1 month ago
-          void qb
-            .where(`${TableName.OrgMembership}.lastInvitedAt`, "<", oneWeekAgo)
-            .where(`${TableName.OrgMembership}.createdAt`, ">", oneMonthAgo);
+          void qb.orWhere((qbInner) => {
+            void qbInner
+              .where(`${TableName.OrgMembership}.lastInvitedAt`, "<", oneWeekAgo)
+              .where(`${TableName.OrgMembership}.createdAt`, ">", oneMonthAgo);
+          });
         });
 
       return memberships;
@@ -153,10 +153,64 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOrgMembershipsWithUsersByOrgId = async (orgId: string) => {
+    try {
+      const members = await db
+        .replicaNode()(TableName.OrgMembership)
+        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin<TUserEncryptionKeys>(
+          TableName.UserEncryptionKey,
+          `${TableName.UserEncryptionKey}.userId`,
+          `${TableName.Users}.id`
+        )
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.OrgMembership}.userId`, `${TableName.IdentityMetadata}.userId`)
+            .andOn(`${TableName.OrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
+        .select(
+          db.ref("id").withSchema(TableName.OrgMembership),
+          db.ref("inviteEmail").withSchema(TableName.OrgMembership),
+          db.ref("orgId").withSchema(TableName.OrgMembership),
+          db.ref("role").withSchema(TableName.OrgMembership),
+          db.ref("roleId").withSchema(TableName.OrgMembership),
+          db.ref("status").withSchema(TableName.OrgMembership),
+          db.ref("isActive").withSchema(TableName.OrgMembership),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("isEmailVerified").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Users).as("userId")
+        )
+        .where({ isGhost: false });
+
+      return members.map((member) => ({
+        id: member.id,
+        orgId: member.orgId,
+        role: member.role,
+        status: member.status,
+        isActive: member.isActive,
+        inviteEmail: member.inviteEmail,
+        user: {
+          id: member.userId,
+          email: member.email,
+          username: member.username,
+          firstName: member.firstName,
+          lastName: member.lastName
+        }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find org memberships with users by org id" });
+    }
+  };
+
   return {
     ...orgMembershipOrm,
     findOrgMembershipById,
     findRecentInvitedMemberships,
-    updateLastInvitedAtByIds
+    updateLastInvitedAtByIds,
+    findOrgMembershipsWithUsersByOrgId
   };
 };

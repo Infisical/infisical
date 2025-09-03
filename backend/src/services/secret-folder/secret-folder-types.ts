@@ -91,3 +91,9 @@ export type TDeleteManyFoldersDTO = {
     idOrName: string;
   }>;
 };
+
+export type TGetFolderByPathDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+};

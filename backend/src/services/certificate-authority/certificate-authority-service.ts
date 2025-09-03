@@ -22,6 +22,14 @@ import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme/acme-certificate-authority-types";
+import {
+  AzureAdCsCertificateAuthorityFns,
+  castDbEntryToAzureAdCsCertificateAuthority
+} from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
+import {
+  TCreateAzureAdCsCertificateAuthorityDTO,
+  TUpdateAzureAdCsCertificateAuthorityDTO
+} from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import {
@@ -34,7 +42,7 @@ import { TInternalCertificateAuthorityServiceFactory } from "./internal/internal
 import { TCreateInternalCertificateAuthorityDTO } from "./internal/internal-certificate-authority-types";
 
 type TCertificateAuthorityServiceFactoryDep = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
@@ -79,6 +87,19 @@ export const certificateAuthorityServiceFactory = ({
   pkiSubscriberDAL
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    pkiSubscriberDAL,
+    projectDAL
+  });
+
+  const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
     certificateAuthorityDAL,
@@ -146,6 +167,17 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.AZURE_AD_CS) {
+      return azureAdCsFns.createCertificateAuthority({
+        name,
+        projectId,
+        configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
+        enableDirectIssuance,
+        status,
+        actor
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -205,6 +237,10 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAcmeCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.AZURE_AD_CS) {
+      return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -247,6 +283,10 @@ export const certificateAuthorityServiceFactory = ({
 
     if (type === CaType.ACME) {
       return acmeFns.listCertificateAuthorities({ projectId });
+    }
+
+    if (type === CaType.AZURE_AD_CS) {
+      return azureAdCsFns.listCertificateAuthorities({ projectId });
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -323,6 +363,17 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === CaType.AZURE_AD_CS) {
+      return azureAdCsFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateAzureAdCsCertificateAuthorityDTO["configuration"],
+        enableDirectIssuance,
+        actor,
+        status,
+        name
+      });
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
@@ -384,7 +435,46 @@ export const certificateAuthorityServiceFactory = ({
       return castDbEntryToAcmeCertificateAuthority(certificateAuthority);
     }
 
+    if (type === CaType.AZURE_AD_CS) {
+      return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
     throw new BadRequestError({ message: "Invalid certificate authority type" });
+  };
+
+  const getAzureAdcsTemplates = async ({
+    caId,
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    caId: string;
+    projectId: string;
+    actor: OrgServiceActor["type"];
+    actorId: string;
+    actorAuthMethod: OrgServiceActor["authMethod"];
+    actorOrgId?: string;
+  }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    return azureAdCsFns.getTemplates({
+      caId,
+      projectId
+    });
   };
 
   return {
@@ -392,6 +482,7 @@ export const certificateAuthorityServiceFactory = ({
     findCertificateAuthorityByNameAndProjectId,
     listCertificateAuthoritiesByProjectId,
     updateCertificateAuthority,
-    deleteCertificateAuthority
+    deleteCertificateAuthority,
+    getAzureAdcsTemplates
   };
 };

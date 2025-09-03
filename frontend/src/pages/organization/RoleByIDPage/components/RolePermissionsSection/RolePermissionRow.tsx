@@ -71,6 +71,7 @@ type Props = {
     | "gateway"
     | "secret-share"
     | "billing"
+    | "audit-logs"
     | "machine-identity-auth-template"
   >;
   setValue: UseFormSetValue<TFormSchema>;

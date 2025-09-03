@@ -7,6 +7,7 @@ export enum AppConnection {
   AzureAppConfiguration = "azure-app-configuration",
   AzureClientSecrets = "azure-client-secrets",
   AzureDevOps = "azure-devops",
+  AzureADCS = "azure-adcs",
   Databricks = "databricks",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",

@@ -48,12 +48,18 @@ import {
   useRequestProjectAccess,
   useSearchProjects
 } from "@app/hooks/api";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
+import { ProjectType, Workspace, WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import {
+  ProjectListToggle,
+  ProjectListView
+} from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
 
 type Props = {
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
+  projectListView: ProjectListView;
+  onProjectListViewChange: (value: ProjectListView) => void;
 };
 
 type RequestAccessModalProps = {
@@ -106,7 +112,9 @@ const RequestAccessModal = ({ projectId, onPopUpToggle }: RequestAccessModalProp
 export const AllProjectView = ({
   onAddNewProject,
   onUpgradePlan,
-  isAddingProjectsAllowed
+  isAddingProjectsAllowed,
+  projectListView,
+  onProjectListViewChange
 }: Props) => {
   const navigate = useNavigate();
   const [searchFilter, setSearchFilter] = useState("");
@@ -144,13 +152,17 @@ export const AllProjectView = ({
     type: projectTypeFilter
   });
 
-  const handleAccessProject = async (type: ProjectType, projectId: string) => {
+  const handleAccessProject = async (
+    type: ProjectType,
+    projectId: string,
+    environments: WorkspaceEnv[]
+  ) => {
     try {
       await orgAdminAccessProject.mutateAsync({
         projectId
       });
       await navigate({
-        to: getProjectHomePage(type),
+        to: getProjectHomePage(type, environments),
         params: {
           projectId
         }
@@ -176,10 +188,10 @@ export const AllProjectView = ({
   return (
     <div>
       <div className="flex w-full flex-row">
-        <div className="flex-grow" />
+        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
         <Input
           className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full"
+          containerClassName="w-full ml-2"
           placeholder="Search by project name..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
@@ -242,7 +254,7 @@ export const AllProjectView = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Disabled across All Project view.">
             <div className="flex cursor-not-allowed items-center justify-center">
               <IconButton
@@ -307,7 +319,7 @@ export const AllProjectView = ({
               onKeyDown={(evt) => {
                 if (evt.key === "Enter" && workspace.isMember) {
                   navigate({
-                    to: getProjectHomePage(workspace.type),
+                    to: getProjectHomePage(workspace.type, workspace.environments),
                     params: {
                       projectId: workspace.id
                     }
@@ -317,7 +329,7 @@ export const AllProjectView = ({
               onClick={() => {
                 if (workspace.isMember) {
                   navigate({
-                    to: getProjectHomePage(workspace.type),
+                    to: getProjectHomePage(workspace.type, workspace.environments),
                     params: {
                       projectId: workspace.id
                     }
@@ -363,7 +375,7 @@ export const AllProjectView = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
-                          handleAccessProject(workspace.type, workspace.id);
+                          handleAccessProject(workspace.type, workspace.id, workspace.environments);
                         }}
                         disabled={
                           orgAdminAccessProject.variables?.projectId === workspace.id &&

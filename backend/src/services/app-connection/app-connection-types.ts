@@ -35,6 +35,12 @@ import {
   TValidateAwsConnectionCredentialsSchema
 } from "./aws";
 import {
+  TAzureADCSConnection,
+  TAzureADCSConnectionConfig,
+  TAzureADCSConnectionInput,
+  TValidateAzureADCSConnectionCredentialsSchema
+} from "./azure-adcs/azure-adcs-connection-types";
+import {
   TAzureAppConfigurationConnection,
   TAzureAppConfigurationConnectionConfig,
   TAzureAppConfigurationConnectionInput,
@@ -224,6 +230,7 @@ export type TAppConnection = { id: string } & (
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
   | TAzureDevOpsConnection
+  | TAzureADCSConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -268,6 +275,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureKeyVaultConnectionInput
   | TAzureAppConfigurationConnectionInput
   | TAzureDevOpsConnectionInput
+  | TAzureADCSConnectionInput
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
   | TTerraformCloudConnectionInput
@@ -323,6 +331,7 @@ export type TAppConnectionConfig =
   | TAzureKeyVaultConnectionConfig
   | TAzureAppConfigurationConnectionConfig
   | TAzureDevOpsConnectionConfig
+  | TAzureADCSConnectionConfig
   | TAzureClientSecretsConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
@@ -360,6 +369,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateAzureAppConfigurationConnectionCredentialsSchema
   | TValidateAzureClientSecretsConnectionCredentialsSchema
   | TValidateAzureDevOpsConnectionCredentialsSchema
+  | TValidateAzureADCSConnectionCredentialsSchema
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema

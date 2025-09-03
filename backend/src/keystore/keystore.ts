@@ -16,7 +16,8 @@ export const PgSqlLock = {
   SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`),
   InstanceProxyConfigInit: () => pgAdvisoryLockHashText("instance-proxy-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
-  OrgProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-proxy-config-init:${orgId}`)
+  OrgProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-proxy-config-init:${orgId}`),
+  IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -43,6 +44,7 @@ export const KeyStorePrefixes = {
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
     `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
+  IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,

@@ -40,3 +40,19 @@ export const useDeleteGithubSyncOrgConfig = () => {
     }
   });
 };
+
+export const useSyncAllGithubTeams = () => {
+  return useMutation({
+    mutationFn: async (): Promise<{
+      totalUsers: number;
+      errors: string[];
+      createdTeams: string[];
+      updatedTeams: string[];
+      removedMemberships: number;
+      syncDuration: number;
+    }> => {
+      const response = await apiRequest.post("/api/v1/github-org-sync-config/sync-all-teams");
+      return response.data;
+    }
+  });
+};

@@ -180,7 +180,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const appCfg = getConfig();
-    const userAlias = await userAliasDAL.findOne({
+    let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
       aliasType: UserAliasType.OIDC
@@ -231,32 +231,29 @@ export const oidcConfigServiceFactory = ({
     } else {
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
+        // we prioritize getting the most complete user to create the new alias under
+        newUser = await userDAL.findOne(
+          {
+            email,
+            isEmailVerified: true
+          },
+          tx
+        );
 
-        if (serverCfg.trustOidcEmails) {
-          // we prioritize getting the most complete user to create the new alias under
+        if (!newUser) {
+          // this fetches user entries created via invites
           newUser = await userDAL.findOne(
             {
-              email,
-              isEmailVerified: true
+              username: email
             },
             tx
           );
 
-          if (!newUser) {
-            // this fetches user entries created via invites
-            newUser = await userDAL.findOne(
-              {
-                username: email
-              },
-              tx
-            );
-
-            if (newUser && !newUser.isEmailVerified) {
-              // we automatically mark it as email-verified because we've configured trust for OIDC emails
-              newUser = await userDAL.updateById(newUser.id, {
-                isEmailVerified: true
-              });
-            }
+          if (newUser && !newUser.isEmailVerified) {
+            // we automatically mark it as email-verified because we've configured trust for OIDC emails
+            newUser = await userDAL.updateById(newUser.id, {
+              isEmailVerified: serverCfg.trustOidcEmails
+            });
           }
         }
 
@@ -276,13 +273,14 @@ export const oidcConfigServiceFactory = ({
           );
         }
 
-        await userAliasDAL.create(
+        userAlias = await userAliasDAL.create(
           {
             userId: newUser.id,
             aliasType: UserAliasType.OIDC,
             externalId,
             emails: email ? [email] : [],
-            orgId
+            orgId,
+            isEmailVerified: serverCfg.trustOidcEmails
           },
           tx
         );
@@ -404,19 +402,20 @@ export const oidcConfigServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted);
+    const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
-        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
+        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,
         organizationId: organization.id,
         organizationSlug: organization.slug,
         hasExchangedPrivateKey: true,
+        aliasId: userAlias.id,
         authMethod: AuthMethod.OIDC,
         authType: UserAliasType.OIDC,
         isUserCompleted,
@@ -430,10 +429,11 @@ export const oidcConfigServiceFactory = ({
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    if (user.email && !user.isEmailVerified) {
+    if (user.email && !userAlias.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
-        userId: user.id
+        userId: user.id,
+        aliasId: userAlias.id
       });
 
       await smtpService

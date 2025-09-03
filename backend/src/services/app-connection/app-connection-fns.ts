@@ -32,6 +32,11 @@ import {
 } from "./app-connection-types";
 import { Auth0ConnectionMethod, getAuth0ConnectionListItem, validateAuth0ConnectionCredentials } from "./auth0";
 import { AwsConnectionMethod, getAwsConnectionListItem, validateAwsConnectionCredentials } from "./aws";
+import { AzureADCSConnectionMethod } from "./azure-adcs";
+import {
+  getAzureADCSConnectionListItem,
+  validateAzureADCSConnectionCredentials
+} from "./azure-adcs/azure-adcs-connection-fns";
 import {
   AzureAppConfigurationConnectionMethod,
   getAzureAppConfigurationConnectionListItem,
@@ -137,6 +142,7 @@ export const listAppConnectionOptions = () => {
     getAzureKeyVaultConnectionListItem(),
     getAzureAppConfigurationConnectionListItem(),
     getAzureDevopsConnectionListItem(),
+    getAzureADCSConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
     getTerraformCloudConnectionListItem(),
@@ -229,6 +235,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureClientSecrets]:
       validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureDevOps]: validateAzureDevOpsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureADCS]: validateAzureADCSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -302,6 +309,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
+    case AzureADCSConnectionMethod.UsernamePassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
@@ -359,6 +367,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureKeyVault]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureDevOps]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureADCS]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,

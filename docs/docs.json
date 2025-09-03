@@ -98,6 +98,7 @@
               {
                 "group": "App Connections",
                 "pages": [
+                  "integrations/app-connections",
                   "integrations/app-connections/overview",
                   {
                     "group": "Connections",
@@ -106,6 +107,7 @@
                       "integrations/app-connections/auth0",
                       "integrations/app-connections/aws",
                       "integrations/app-connections/azure-app-configuration",
+                      "integrations/app-connections/azure-adcs",
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
                       "integrations/app-connections/azure-key-vault",
@@ -183,6 +185,7 @@
               {
                 "group": "User Authentication",
                 "pages": [
+                  "integrations/user-authentication",
                   "documentation/platform/auth-methods/email-password",
                   {
                     "group": "SSO",
@@ -242,6 +245,7 @@
               {
                 "group": "Machine Identities",
                 "pages": [
+                  "integrations/machine-authentication",
                   "documentation/platform/identities/alicloud-auth",
                   "documentation/platform/identities/aws-auth",
                   "documentation/platform/identities/azure-auth",
@@ -342,10 +346,7 @@
               },
               {
                 "group": "Architecture",
-                "pages": [
-                  "internals/architecture/components",
-                  "internals/architecture/cloud"
-                ]
+                "pages": ["internals/architecture/components", "internals/architecture/cloud"]
               },
               "internals/security",
               "internals/service-tokens"
@@ -370,10 +371,6 @@
                   "contributing/platform/backend/how-to-create-a-feature",
                   "contributing/platform/backend/folder-structure"
                 ]
-              },
-              {
-                "group": "Contributing to SDK",
-                "pages": ["contributing/sdk/developing"]
               }
             ]
           }
@@ -423,6 +420,7 @@
                   {
                     "group": "Secret Rotation",
                     "pages": [
+                      "integrations/secret-rotations",
                       "documentation/platform/secret-rotation/overview",
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
@@ -438,6 +436,7 @@
                   {
                     "group": "Dynamic Secrets",
                     "pages": [
+                      "integrations/dynamic-secrets",
                       "documentation/platform/dynamic-secrets/overview",
                       "documentation/platform/dynamic-secrets/aws-elasticache",
                       "documentation/platform/dynamic-secrets/aws-iam",
@@ -508,6 +507,7 @@
               {
                 "group": "Secret Syncs",
                 "pages": [
+                  "integrations/secret-syncs",
                   "integrations/secret-syncs/overview",
                   {
                     "group": "Syncs",
@@ -564,10 +564,7 @@
                   "integrations/cloud/gcp-secret-manager",
                   {
                     "group": "Cloudflare",
-                    "pages": [
-                      "integrations/cloud/cloudflare-pages",
-                      "integrations/cloud/cloudflare-workers"
-                    ]
+                    "pages": ["integrations/cloud/cloudflare-pages", "integrations/cloud/cloudflare-workers"]
                   },
                   "integrations/cloud/terraform-cloud",
                   "integrations/cloud/databricks",
@@ -616,6 +613,7 @@
               {
                 "group": "Framework Integrations",
                 "pages": [
+                  "integrations/framework-integrations",
                   "integrations/frameworks/spring-boot-maven",
                   "integrations/frameworks/react",
                   "integrations/frameworks/vue",
@@ -661,9 +659,7 @@
                   "documentation/platform/secret-scanning/overview",
                   {
                     "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/secret-scanning/concepts/secret-scanning"
-                    ]
+                    "pages": ["documentation/platform/secret-scanning/concepts/secret-scanning"]
                   }
                 ]
               },
@@ -690,6 +686,7 @@
                   "documentation/platform/pki/subscribers",
                   "documentation/platform/pki/certificates",
                   "documentation/platform/pki/acme-ca",
+                  "documentation/platform/pki/azure-adcs",
                   "documentation/platform/pki/est",
                   "documentation/platform/pki/alerting",
                   {
@@ -712,18 +709,13 @@
                   "documentation/platform/ssh/overview",
                   {
                     "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/ssh/concepts/ssh-certificates"
-                    ]
+                    "pages": ["documentation/platform/ssh/concepts/ssh-certificates"]
                   }
                 ]
               },
               {
                 "group": "Platform Reference",
-                "pages": [
-                  "documentation/platform/ssh/usage",
-                  "documentation/platform/ssh/host-groups"
-                ]
+                "pages": ["documentation/platform/ssh/usage", "documentation/platform/ssh/host-groups"]
               }
             ]
           },
@@ -770,11 +762,7 @@
                   "cli/commands/reset",
                   {
                     "group": "infisical scan",
-                    "pages": [
-                      "cli/commands/scan",
-                      "cli/commands/scan-git-changes",
-                      "cli/commands/scan-install"
-                    ]
+                    "pages": ["cli/commands/scan", "cli/commands/scan-git-changes", "cli/commands/scan-install"]
                   }
                 ]
               },
@@ -1108,9 +1096,7 @@
                 "pages": [
                   {
                     "group": "Kubernetes",
-                    "pages": [
-                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
-                    ]
+                    "pages": ["api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"]
                   },
                   "api-reference/endpoints/dynamic-secrets/create",
                   "api-reference/endpoints/dynamic-secrets/update",
@@ -1394,6 +1380,18 @@
                       "api-reference/endpoints/app-connections/aws/create",
                       "api-reference/endpoints/app-connections/aws/update",
                       "api-reference/endpoints/app-connections/aws/delete"
+                    ]
+                  },
+                  {
+                    "group": "Azure ADCS",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/azure-adcs/list",
+                      "api-reference/endpoints/app-connections/azure-adcs/available",
+                      "api-reference/endpoints/app-connections/azure-adcs/get-by-id",
+                      "api-reference/endpoints/app-connections/azure-adcs/get-by-name",
+                      "api-reference/endpoints/app-connections/azure-adcs/create",
+                      "api-reference/endpoints/app-connections/azure-adcs/update",
+                      "api-reference/endpoints/app-connections/azure-adcs/delete"
                     ]
                   },
                   {
@@ -2453,7 +2451,7 @@
               "sdks/languages/node",
               "sdks/languages/python",
               "sdks/languages/java",
-              "sdks/languages/csharp",
+              "sdks/languages/dotnet",
               "sdks/languages/cpp",
               "sdks/languages/rust",
               "sdks/languages/go",
@@ -2569,7 +2567,7 @@
           },
           {
             "label": "Terraform",
-            "href": "https://infisical.com/docs/integrations/frameworks/terraform"
+            "href": "https://registry.terraform.io/providers/Infisical/infisical/latest/docs"
           },
           {
             "label": "Ansible",
@@ -2681,5 +2679,11 @@
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/sdks/languages/csharp",
+      "destination": "/sdks/languages/dotnet"
+    }
+  ]
 }

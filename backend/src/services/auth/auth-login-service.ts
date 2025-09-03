@@ -459,6 +459,18 @@ export const authLoginServiceFactory = ({
       });
     }
 
+    // Check if authEnforced is true and the current auth method is not an enforced method
+    if (
+      selectedOrg.authEnforced &&
+      !isAuthMethodSaml(decodedToken.authMethod) &&
+      decodedToken.authMethod !== AuthMethod.OIDC &&
+      !(selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin)
+    ) {
+      throw new BadRequestError({
+        message: "Login with the auth method required by your organization."
+      });
+    }
+
     if (selectedOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
       const canBypass = selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin;
 

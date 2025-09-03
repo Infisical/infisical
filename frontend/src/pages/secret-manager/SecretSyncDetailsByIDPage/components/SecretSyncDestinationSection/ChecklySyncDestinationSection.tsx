@@ -8,5 +8,12 @@ type Props = {
 export const ChecklySyncDestinationSection = ({ secretSync }: Props) => {
   const { destinationConfig } = secretSync;
 
-  return <GenericFieldLabel label="Account">{destinationConfig.accountName}</GenericFieldLabel>;
+  return (
+    <>
+      <GenericFieldLabel label="Account">{destinationConfig.accountName}</GenericFieldLabel>
+      {destinationConfig.groupId && (
+        <GenericFieldLabel label="Group">{destinationConfig.groupName}</GenericFieldLabel>
+      )}
+    </>
+  );
 };
