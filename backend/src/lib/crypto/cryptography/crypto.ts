@@ -146,33 +146,32 @@ const cryptographyFactory = () => {
       return isFipsModeEnabled();
     }
 
-    if (process.env.FIPS_ENABLED !== "true") {
-      logger.info("Cryptography module initialized in normal operation mode.");
-      $setFipsModeEnabled(false, envCfg);
-      return false;
-    }
+    const fipsEnabled = process.env.FIPS_ENABLED === "true";
 
     const serverCfg = await superAdminDAL.findById(ADMIN_CONFIG_DB_UUID).catch(() => null);
 
-    // if fips mode is enabled, we need to check if the deployment is a new deployment or an old one.
-    if (serverCfg) {
-      if (serverCfg.fipsEnabled) {
-        logger.info("[FIPS]: Instance is configured for FIPS mode of operation. Continuing startup with FIPS enabled.");
-        $setFipsModeEnabled(true, envCfg);
-        return true;
+    if (fipsEnabled) {
+      if (serverCfg?.fipsEnabled === false) {
+        throw new CryptographyError({
+          message:
+            "Your instance is configured for non-FIPS mode of operation, but you are attempting to run Infisical in FIPS mode."
+        });
       }
-      logger.info("[FIPS]: Instance age predates FIPS mode inception date. Continuing without FIPS.");
-      $setFipsModeEnabled(false, envCfg);
-      return false;
+
+      logger.info("Cryptography module initialized in FIPS mode of operation.");
+      $setFipsModeEnabled(true, envCfg);
+      return true;
     }
 
-    logger.info("[FIPS]: First time initializing cryptography module on a new deployment. FIPS mode is enabled.");
-
-    // TODO(daniel): check if it's an enterprise deployment
-
-    // if there is no server cfg, and FIPS_MODE is `true`, its a fresh FIPS deployment. We need to set the fipsEnabled to true.
-    $setFipsModeEnabled(true, envCfg);
-    return true;
+    if (serverCfg?.fipsEnabled === true) {
+      throw new CryptographyError({
+        message:
+          "Your instance is configured for FIPS mode of operation, but you are attempting to run Infisical in non-FIPS mode."
+      });
+    }
+    logger.info("Cryptography module initialized in normal operation mode.");
+    $setFipsModeEnabled(false, envCfg);
+    return false;
   };
 
   const encryption = () => {
