@@ -101,7 +101,8 @@ export const externalMigrationServiceFactory = ({
         vaultNamespace,
         vaultUrl,
         mappingType,
-        gatewayId
+        gatewayId,
+        orgId: actorOrgId
       },
       {
         gatewayService
