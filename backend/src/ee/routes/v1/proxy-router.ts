@@ -65,7 +65,18 @@ export const registerProxyRouter = async (server: FastifyZodProvider) => {
         name: z.string()
       }),
       response: {
-        200: z.any()
+        200: z.object({
+          pki: z.object({
+            serverCertificate: z.string(),
+            serverPrivateKey: z.string(),
+            clientCertificateChain: z.string()
+          }),
+          ssh: z.object({
+            serverCertificate: z.string(),
+            serverPrivateKey: z.string(),
+            clientCAPublicKey: z.string()
+          })
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),

@@ -3,6 +3,7 @@ import tls from "node:tls";
 
 import https from "https";
 
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
 import { BadRequestError } from "../errors";
@@ -27,12 +28,13 @@ const createProxyConnection = async ({
   clientPrivateKey: string;
   serverCertificateChain: string;
 }): Promise<net.Socket> => {
-  const [host, portStr] = proxyIp.split(":");
-  const port = parseInt(portStr, 10) || 443;
+  const [targetHost] = await verifyHostInputValidity(proxyIp);
+  const [, portStr] = proxyIp.split(":");
+  const port = parseInt(portStr, 10) || 8443;
 
   const serverCAs = splitPemChain(serverCertificateChain);
   const tlsOptions: tls.ConnectionOptions = {
-    host,
+    host: targetHost,
     port,
     cert: clientCertificate,
     key: clientPrivateKey,

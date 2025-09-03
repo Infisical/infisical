@@ -405,7 +405,7 @@ export const proxyServiceFactory = ({
         format: "der",
         type: "pkcs8"
       });
-      const orgProxyClientCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
+      const orgProxyCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
         "pkcs8",
         orgProxyCaSkObj.export({ format: "der", type: "pkcs8" }),
         alg,
@@ -425,7 +425,7 @@ export const proxyServiceFactory = ({
         issuer: orgProxyCaCert.subject,
         notBefore: orgProxyClientCaIssuedAt,
         notAfter: orgProxyClientCaExpiration,
-        signingKey: orgProxyClientCaPrivateKey,
+        signingKey: orgProxyCaPrivateKey,
         publicKey: orgProxyClientCaKeys.publicKey,
         signingAlgorithm: alg,
         extensions: [
@@ -460,7 +460,7 @@ export const proxyServiceFactory = ({
         issuer: orgProxyCaCert.subject,
         notBefore: orgProxyServerCaIssuedAt,
         notAfter: orgProxyServerCaExpiration,
-        signingKey: orgProxyClientCaPrivateKey,
+        signingKey: orgProxyCaPrivateKey,
         publicKey: orgProxyServerCaKeys.publicKey,
         signingAlgorithm: alg,
         extensions: [

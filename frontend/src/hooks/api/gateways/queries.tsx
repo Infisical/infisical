@@ -12,8 +12,10 @@ export const gatewaysQueryKeys = {
     queryOptions({
       queryKey: gatewaysQueryKeys.listKey(),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ gateways: TGateway[] }>("/api/v1/gateways");
-        const { data: dataV2 } = await apiRequest.get<TGatewayV2[]>("/api/v2/gateways");
+        const [{ data }, { data: dataV2 }] = await Promise.all([
+          apiRequest.get<{ gateways: TGateway[] }>("/api/v1/gateways"),
+          apiRequest.get<TGatewayV2[]>("/api/v2/gateways")
+        ]);
 
         return [
           ...data.gateways.map((g) => ({
