@@ -1,11 +1,15 @@
 import net from "node:net";
 
+import RE2 from "re2";
+
 import { ForbiddenRequestError } from "../errors";
 
 export enum IPType {
   IPV4 = "ipv4",
   IPV6 = "ipv6"
 }
+
+const PORT_REGEX = new RE2(/^\d+$/);
 
 /**
  * Strips port from IP address if present.
@@ -19,14 +23,14 @@ const stripPort = (ip: string): { ipAddress: string } => {
     if (endBracketIndex === -1) return { ipAddress: ip };
     const ipPart = ip.slice(1, endBracketIndex);
     const portPart = ip.slice(endBracketIndex + 2);
-    if (!portPart || !/^\d+$/.test(portPart)) return { ipAddress: ip };
+    if (!portPart || !PORT_REGEX.test(portPart)) return { ipAddress: ip };
     return { ipAddress: ipPart };
   }
 
   // Handle IPv4 with port (e.g. 1.2.3.4:1234)
   if (ip.includes(":")) {
     const [ipPart, portPart] = ip.split(":");
-    if (!portPart || !/^\d+$/.test(portPart)) return { ipAddress: ip };
+    if (!portPart || !PORT_REGEX.test(portPart)) return { ipAddress: ip };
     return { ipAddress: ipPart };
   }
 
