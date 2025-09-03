@@ -81,7 +81,7 @@ type TSecretSyncQueueFactoryDep = {
     | "invalidateSecretCacheByProjectId"
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
-  secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById">;
+  secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: TProjectDALFactory;
@@ -104,13 +104,13 @@ type SecretSyncActionJob = Job<
   TQueueSecretSyncSyncSecretsByIdDTO | TQueueSecretSyncImportSecretsByIdDTO | TQueueSecretSyncRemoveSecretsByIdDTO
 >;
 
-const getRequeueDelay = (failureCount?: number) => {
-  if (!failureCount) return 0;
+const getRequeueDelay = (acquireLockFailureCount?: number) => {
+  if (!acquireLockFailureCount) return 0;
 
   const baseDelay = 1000;
   const maxDelay = 30000;
 
-  const delay = Math.min(baseDelay * 2 ** failureCount, maxDelay);
+  const delay = Math.min(baseDelay * 2 ** acquireLockFailureCount, maxDelay);
 
   const jitter = delay * (0.5 + Math.random() * 0.5);
 
@@ -416,14 +416,10 @@ export const secretSyncQueueFactory = ({
     return importedSecretMap;
   };
 
-  const $handleSyncSecretsJob = async (job: TSecretSyncSyncSecretsDTO) => {
+  const $handleSyncSecretsJob = async (job: TSecretSyncSyncSecretsDTO, secretSync: TSecretSyncRaw) => {
     const {
       data: { syncId, auditLogInfo }
     } = job;
-
-    const secretSync = await secretSyncDAL.findById(syncId);
-
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     await enterpriseSyncCheck(
       licenseService,
@@ -566,14 +562,10 @@ export const secretSyncQueueFactory = ({
     logger.info("SecretSync Sync Job with ID %s Completed", job.id);
   };
 
-  const $handleImportSecretsJob = async (job: TSecretSyncImportSecretsDTO) => {
+  const $handleImportSecretsJob = async (job: TSecretSyncImportSecretsDTO, secretSync: TSecretSyncRaw) => {
     const {
       data: { syncId, auditLogInfo, importBehavior }
     } = job;
-
-    const secretSync = await secretSyncDAL.findById(syncId);
-
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     await secretSyncDAL.updateById(syncId, {
       importStatus: SecretSyncStatus.Running
@@ -683,14 +675,10 @@ export const secretSyncQueueFactory = ({
     logger.info("SecretSync Import Job with ID %s Completed", job.id);
   };
 
-  const $handleRemoveSecretsJob = async (job: TSecretSyncRemoveSecretsDTO) => {
+  const $handleRemoveSecretsJob = async (job: TSecretSyncRemoveSecretsDTO, secretSync: TSecretSyncRaw) => {
     const {
       data: { syncId, auditLogInfo, deleteSyncOnComplete }
     } = job;
-
-    const secretSync = await secretSyncDAL.findById(syncId);
-
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     await enterpriseSyncCheck(
       licenseService,
@@ -894,6 +882,17 @@ export const secretSyncQueueFactory = ({
 
     const secretSyncs = await secretSyncDAL.find({ folderId: folder.id, isAutoSyncEnabled: true });
 
+    await secretSyncDAL.update(
+      {
+        $in: {
+          id: secretSyncs.map((sync) => sync.id)
+        }
+      },
+      {
+        syncStatus: SecretSyncStatus.Pending
+      }
+    );
+
     await Promise.all(secretSyncs.map((secretSync) => queueSecretSyncSyncSecretsById({ syncId: secretSync.id })));
   };
 
@@ -974,11 +973,15 @@ export const secretSyncQueueFactory = ({
       | TQueueSecretSyncImportSecretsByIdDTO
       | TQueueSecretSyncRemoveSecretsByIdDTO;
 
+    const secretSync = await secretSyncDAL.findById(syncId);
+
+    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
 
     try {
       lock = await keyStore.acquireLock(
-        [KeyStorePrefixes.SecretSyncLock(syncId)],
+        [KeyStorePrefixes.SecretSyncLock(secretSync.connectionId)],
         // scott: not sure on this duration; syncs can take excessive amounts of time so we need to keep it locked,
         // but should always release below...
         5 * 60 * 1000
@@ -994,13 +997,13 @@ export const secretSyncQueueFactory = ({
     try {
       switch (job.name) {
         case QueueJobs.SecretSyncSyncSecrets:
-          await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO);
+          await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO, secretSync);
           break;
         case QueueJobs.SecretSyncImportSecrets:
-          await $handleImportSecretsJob(job as TSecretSyncImportSecretsDTO);
+          await $handleImportSecretsJob(job as TSecretSyncImportSecretsDTO, secretSync);
           break;
         case QueueJobs.SecretSyncRemoveSecrets:
-          await $handleRemoveSecretsJob(job as TSecretSyncRemoveSecretsDTO);
+          await $handleRemoveSecretsJob(job as TSecretSyncRemoveSecretsDTO, secretSync);
           break;
         default:
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

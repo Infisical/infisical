@@ -37,7 +37,7 @@ export const KeyStorePrefixes = {
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
-  SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  SecretSyncLock: (connectionId: string) => `secret-sync-mutex-${connectionId}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
     `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,

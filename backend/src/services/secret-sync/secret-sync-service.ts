@@ -465,10 +465,14 @@ export const secretSyncServiceFactory = ({
           message: `Invalid source configuration: folder no longer exists. Please configure a valid source and try again.`
         });
 
-      const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
+      const isSyncJobRunning = Boolean(
+        await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(secretSync.connectionId))
+      );
 
       if (isSyncJobRunning)
-        throw new BadRequestError({ message: `A job for this sync is already in progress. Please try again shortly.` });
+        throw new BadRequestError({
+          message: `A job using this app connection is already in progress. Please try again shortly.`
+        });
 
       await secretSyncQueue.queueSecretSyncRemoveSecretsById({ syncId, deleteSyncOnComplete: true });
 
@@ -536,10 +540,12 @@ export const secretSyncServiceFactory = ({
         message: `Invalid source configuration: folder no longer exists. Please configure a valid source and try again.`
       });
 
-    const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
+    const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(secretSync.connectionId)));
 
     if (isSyncJobRunning)
-      throw new BadRequestError({ message: `A job for this sync is already in progress. Please try again shortly.` });
+      throw new BadRequestError({
+        message: `A job using this app connection is already in progress. Please try again shortly.`
+      });
 
     await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId, ...params });
 
@@ -608,10 +614,12 @@ export const secretSyncServiceFactory = ({
         message: `Invalid source configuration: folder no longer exists. Please configure a valid source and try again.`
       });
 
-    const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
+    const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(secretSync.connectionId)));
 
     if (isSyncJobRunning)
-      throw new BadRequestError({ message: `A job for this sync is already in progress. Please try again shortly.` });
+      throw new BadRequestError({
+        message: `A job using this app connection is already in progress. Please try again shortly.`
+      });
 
     await secretSyncQueue.queueSecretSyncImportSecretsById({ syncId, ...params });
 
@@ -674,10 +682,12 @@ export const secretSyncServiceFactory = ({
         message: `Invalid source configuration: folder no longer exists. Please configure a valid source and try again.`
       });
 
-    const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(syncId)));
+    const isSyncJobRunning = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretSyncLock(secretSync.connectionId)));
 
     if (isSyncJobRunning)
-      throw new BadRequestError({ message: `A job for this sync is already in progress. Please try again shortly.` });
+      throw new BadRequestError({
+        message: `A job using this app connection is already in progress. Please try again shortly.`
+      });
 
     await secretSyncQueue.queueSecretSyncRemoveSecretsById({ syncId, ...params });
 
