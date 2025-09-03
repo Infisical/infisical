@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { groupBy, unique } from "@app/lib/fn";
 
@@ -54,6 +56,77 @@ type TSecretImportSecretsV2 = {
 
 const LEVEL_BREAK = 10;
 const getImportUniqKey = (envSlug: string, path: string) => `${envSlug}=${path}`;
+
+/**
+ * Processes reserved imports by resolving them to their replication source.
+ */
+const processReservedImports = async <
+  T extends {
+    isReserved?: boolean | null;
+    importPath: string;
+    importEnv: { id: string; slug: string; name: string };
+    folderId: string;
+  }
+>(
+  imports: T[],
+  secretImportDAL: Pick<TSecretImportDALFactory, "findById">
+): Promise<T[]> => {
+  const reservedImportIds: string[] = [];
+
+  imports.forEach((secretImport) => {
+    if (secretImport.isReserved) {
+      const reservedMatch = new RE2("/__reserve_replication_([a-f0-9-]{36})").exec(secretImport.importPath);
+      if (reservedMatch) {
+        const referencedImportId = reservedMatch[1];
+        reservedImportIds.push(referencedImportId);
+      }
+    }
+  });
+
+  if (reservedImportIds.length === 0) {
+    return imports;
+  }
+
+  try {
+    const importDetailsMap = new Map<
+      string,
+      { importPath: string; importEnv: { id: string; slug: string; name: string } }
+    >();
+
+    /* eslint-disable no-await-in-loop */
+    for (const importId of reservedImportIds) {
+      const referencedImport = await secretImportDAL.findById(importId);
+      if (referencedImport) {
+        importDetailsMap.set(importId, {
+          importPath: referencedImport.importPath,
+          importEnv: referencedImport.importEnv
+        });
+      }
+    }
+    /* eslint-enable no-await-in-loop */
+
+    return imports.map((secretImport) => {
+      if (secretImport.isReserved) {
+        const reservedMatch = new RE2("/__reserve_replication_([a-f0-9-]{36})").exec(secretImport.importPath);
+        if (reservedMatch) {
+          const referencedImportId = reservedMatch[1];
+          const referencedDetails = importDetailsMap.get(referencedImportId);
+
+          if (referencedDetails) {
+            return {
+              ...secretImport,
+              importPath: referencedDetails.importPath,
+              importEnv: referencedDetails.importEnv
+            };
+          }
+        }
+      }
+      return secretImport;
+    });
+  } catch (error) {
+    return imports;
+  }
+};
 export const fnSecretsFromImports = async ({
   allowedImports: possibleCyclicImports,
   folderDAL,
@@ -167,7 +240,7 @@ export const fnSecretsV2FromImports = async ({
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">;
   viewSecretValue: boolean;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findById">;
   decryptor: (value?: Buffer | null) => string;
   expandSecretReferences?: (inputSecret: {
     value?: string;
@@ -187,6 +260,10 @@ export const fnSecretsV2FromImports = async ({
       secretTags: { slug: string; name: string; id: string; color?: string | null }[];
     })[];
   }[] = [{ secretImports: rootSecretImports, depth: 0, parentImportedSecrets: [] }];
+
+  const processedSecretImports = await processReservedImports(rootSecretImports, secretImportDAL);
+
+  stack[0] = { secretImports: processedSecretImports, depth: 0, parentImportedSecrets: [] };
 
   const processedImports: TSecretImportSecretsV2[] = [];
 

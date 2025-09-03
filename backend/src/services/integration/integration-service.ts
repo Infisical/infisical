@@ -40,7 +40,7 @@ type TIntegrationServiceFactoryDep = {
   projectBotService: TProjectBotServiceFactory;
   secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderId">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
 };
