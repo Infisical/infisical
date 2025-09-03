@@ -1,6 +1,7 @@
 import net from "node:net";
 import tls from "node:tls";
 
+import axios from "axios";
 import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -269,7 +270,11 @@ export const withGatewayV2Proxy = async <T>(
     }
     logger.error("Gateway error:", err instanceof Error ? err.message : String(err));
 
-    const errorMessage = proxyErrorMessage || (err instanceof Error ? err.message : String(err));
+    let errorMessage = proxyErrorMessage || (err instanceof Error ? err.message : String(err));
+    if (axios.isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
+      errorMessage = (err.response?.data as { message: string }).message;
+    }
+
     throw new Error(errorMessage);
   } finally {
     // Ensure cleanup happens regardless of success or failure
