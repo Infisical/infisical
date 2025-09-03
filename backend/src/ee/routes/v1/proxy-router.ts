@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -21,7 +21,18 @@ export const registerProxyRouter = async (server: FastifyZodProvider) => {
         name: z.string()
       }),
       response: {
-        200: z.any()
+        200: z.object({
+          pki: z.object({
+            serverCertificate: z.string(),
+            serverPrivateKey: z.string(),
+            clientCertificateChain: z.string()
+          }),
+          ssh: z.object({
+            serverCertificate: z.string(),
+            serverPrivateKey: z.string(),
+            clientCAPublicKey: z.string()
+          })
+        })
       }
     },
     onRequest: (req, _, next) => {
@@ -59,6 +70,10 @@ export const registerProxyRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      throw new BadRequestError({
+        message: "Org proxy registration is not yet supported"
+      });
+
       return server.services.proxy.registerProxy({
         ...req.body,
         identityId: req.permission.id,

@@ -6,10 +6,12 @@ import RE2 from "re2";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request as httpRequest } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
@@ -50,6 +52,7 @@ export const getGitHubInstanceApiUrl = async (config: {
 export const requestWithGitHubGateway = async <T>(
   appConnection: { gatewayId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   requestConfig: AxiosRequestConfig
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
@@ -64,6 +67,52 @@ export const requestWithGitHubGateway = async <T>(
   await blockLocalAndPrivateIpAddresses(url.toString());
 
   const [targetHost] = await verifyHostInputValidity(url.host, true);
+  const gatewayConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost,
+    targetPort: 443
+  });
+
+  if (gatewayConnectionDetails) {
+    return withGatewayV2Proxy(
+      async (proxyPort) => {
+        const httpsAgent = new https.Agent({
+          servername: targetHost
+        });
+
+        url.protocol = "https:";
+        url.host = `localhost:${proxyPort}`;
+
+        const finalRequestConfig: AxiosRequestConfig = {
+          ...requestConfig,
+          url: url.toString(),
+          httpsAgent,
+          headers: {
+            ...requestConfig.headers,
+            Host: targetHost
+          }
+        };
+
+        try {
+          return await httpRequest.request(finalRequestConfig);
+        } catch (error) {
+          const axiosError = error as AxiosError;
+          logger.error(
+            { message: axiosError.message, data: axiosError.response?.data },
+            "Error during GitHub gateway request:"
+          );
+          throw error;
+        }
+      },
+      {
+        protocol: GatewayProxyProtocol.Tcp,
+        proxyIp: gatewayConnectionDetails.proxyIp,
+        gateway: gatewayConnectionDetails.gateway,
+        proxy: gatewayConnectionDetails.proxy
+      }
+    );
+  }
+
   const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
   const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
@@ -168,6 +217,7 @@ function extractNextPageUrl(linkHeader: string | undefined): string | null {
 export const makePaginatedGitHubRequest = async <T, R = T[]>(
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   path: string,
   dataMapper?: (data: R) => T[]
 ): Promise<T[]> => {
@@ -184,15 +234,20 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   const maxIterations = 1000;
 
   // Make initial request to get link header
-  const firstResponse: AxiosResponse<R> = await requestWithGitHubGateway<R>(appConnection, gatewayService, {
-    url: initialUrlObj.toString(),
-    method: "GET",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28"
+  const firstResponse: AxiosResponse<R> = await requestWithGitHubGateway<R>(
+    appConnection,
+    gatewayService,
+    gatewayV2Service,
+    {
+      url: initialUrlObj.toString(),
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
     }
-  });
+  );
 
   const firstPageItems = dataMapper ? dataMapper(firstResponse.data) : (firstResponse.data as unknown as T[]);
   results = results.concat(firstPageItems);
@@ -212,7 +267,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
       pageUrlObj.searchParams.set("page", pageNum.toString());
 
       pageRequests.push(
-        requestWithGitHubGateway<R>(appConnection, gatewayService, {
+        requestWithGitHubGateway<R>(appConnection, gatewayService, gatewayV2Service, {
           url: pageUrlObj.toString(),
           method: "GET",
           headers: {
@@ -236,15 +291,20 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
 
     while (url && i < maxIterations) {
       // eslint-disable-next-line no-await-in-loop
-      const response: AxiosResponse<R> = await requestWithGitHubGateway<R>(appConnection, gatewayService, {
-        url,
-        method: "GET",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": "2022-11-28"
+      const response: AxiosResponse<R> = await requestWithGitHubGateway<R>(
+        appConnection,
+        gatewayService,
+        gatewayV2Service,
+        {
+          url,
+          method: "GET",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "X-GitHub-Api-Version": "2022-11-28"
+          }
         }
-      });
+      );
 
       const items = dataMapper ? dataMapper(response.data) : (response.data as unknown as T[]);
       results = results.concat(items);
@@ -283,30 +343,39 @@ type GitHubEnvironment = {
 
 export const getGitHubRepositories = async (
   appConnection: TGitHubConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     return makePaginatedGitHubRequest<GitHubRepository, { repositories: GitHubRepository[] }>(
       appConnection,
       gatewayService,
+      gatewayV2Service,
       "/installation/repositories",
       (data) => data.repositories
     );
   }
 
-  const repos = await makePaginatedGitHubRequest<GitHubRepository>(appConnection, gatewayService, "/user/repos");
+  const repos = await makePaginatedGitHubRequest<GitHubRepository>(
+    appConnection,
+    gatewayService,
+    gatewayV2Service,
+    "/user/repos"
+  );
+
   return repos.filter((repo) => repo.permissions?.admin);
 };
 
 export const getGitHubOrganizations = async (
   appConnection: TGitHubConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     const installationRepositories = await makePaginatedGitHubRequest<
       GitHubRepository,
       { repositories: GitHubRepository[] }
-    >(appConnection, gatewayService, "/installation/repositories", (data) => data.repositories);
+    >(appConnection, gatewayService, gatewayV2Service, "/installation/repositories", (data) => data.repositories);
 
     const organizationMap: Record<string, GitHubOrganization> = {};
     installationRepositories.forEach((repo) => {
@@ -318,12 +387,13 @@ export const getGitHubOrganizations = async (
     return Object.values(organizationMap);
   }
 
-  return makePaginatedGitHubRequest<GitHubOrganization>(appConnection, gatewayService, "/user/orgs");
+  return makePaginatedGitHubRequest<GitHubOrganization>(appConnection, gatewayService, gatewayV2Service, "/user/orgs");
 };
 
 export const getGitHubEnvironments = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   owner: string,
   repo: string
 ) => {
@@ -331,6 +401,7 @@ export const getGitHubEnvironments = async (
     return await makePaginatedGitHubRequest<GitHubEnvironment, { environments: GitHubEnvironment[] }>(
       appConnection,
       gatewayService,
+      gatewayV2Service,
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/environments`,
       (data) => data.environments
     );
@@ -358,7 +429,8 @@ export function isGithubErrorResponse(data: GithubTokenRespData): data is Github
 
 export const validateGitHubConnectionCredentials = async (
   config: TGitHubConnectionConfig,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials, method } = config;
   const {
@@ -394,7 +466,7 @@ export const validateGitHubConnectionCredentials = async (
   const host = credentials.host || "github.com";
 
   try {
-    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(config, gatewayService, {
+    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(config, gatewayService, gatewayV2Service, {
       url: `https://${host}/login/oauth/access_token`,
       method: "POST",
       data: {
@@ -446,7 +518,7 @@ export const validateGitHubConnectionCredentials = async (
           id: number;
         };
       }[];
-    }>(config, gatewayService, {
+    }>(config, gatewayService, gatewayV2Service, {
       url: `https://${await getGitHubInstanceApiUrl(config)}/user/installations`,
       headers: {
         Accept: "application/json",

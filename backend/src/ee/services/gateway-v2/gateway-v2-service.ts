@@ -1,5 +1,6 @@
 import net from "node:net";
 
+import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { TProxies } from "@app/db/schemas";
@@ -9,7 +10,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -20,6 +21,8 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TProxyDALFactory } from "../proxy/proxy-dal";
 import { isInstanceProxy } from "../proxy/proxy-fns";
 import { TProxyServiceFactory } from "../proxy/proxy-service";
@@ -34,6 +37,7 @@ type TGatewayV2ServiceFactoryDep = {
   proxyService: TProxyServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
   proxyDAL: TProxyDALFactory;
+  permissionService: TPermissionServiceFactory;
 };
 
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
@@ -44,8 +48,32 @@ export const gatewayV2ServiceFactory = ({
   kmsService,
   proxyService,
   gatewayV2DAL,
-  proxyDAL
+  proxyDAL,
+  permissionService
 }: TGatewayV2ServiceFactoryDep) => {
+  const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
+    const orgLicensePlan = await licenseService.getPlan(orgId);
+    if (!orgLicensePlan.gateway) {
+      throw new BadRequestError({
+        message:
+          "Gateway operation failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
+      });
+    }
+
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.IDENTITY,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      orgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.CreateGateways,
+      OrgPermissionSubjects.Gateway
+    );
+  };
+
   const $getOrgCAs = async (orgId: string) => {
     const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -217,20 +245,18 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const listGateways = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
-    // const { permission } = await permissionService.getOrgPermission(
-    //   orgPermission.type,
-    //   orgPermission.id,
-    //   orgPermission.orgId,
-    //   orgPermission.authMethod,
-    //   orgPermission.orgId
-    // );
-    // ForbiddenError.from(permission).throwUnlessCan(
-    //   OrgPermissionGatewayActions.ListGateways,
-    //   OrgPermissionSubjects.Gateway
-    // );
+    const { permission } = await permissionService.getOrgPermission(
+      orgPermission.type,
+      orgPermission.id,
+      orgPermission.orgId,
+      orgPermission.authMethod,
+      orgPermission.orgId
+    );
 
-    const orgGatewayConfig = await orgGatewayConfigV2DAL.findOne({ orgId: orgPermission.orgId });
-    if (!orgGatewayConfig) return [];
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.ListGateways,
+      OrgPermissionSubjects.Gateway
+    );
 
     const gateways = await gatewayV2DAL.find({
       orgId: orgPermission.orgId
@@ -389,14 +415,17 @@ export const gatewayV2ServiceFactory = ({
   const registerGateway = async ({
     orgId,
     actorId,
+    actorAuthMethod,
     proxyName,
     name
   }: {
     orgId: string;
     actorId: string;
+    actorAuthMethod: ActorAuthMethod;
     proxyName: string;
     name: string;
   }) => {
+    await $validateIdentityAccessToGateway(orgId, actorId, actorAuthMethod);
     const orgCAs = await $getOrgCAs(orgId);
 
     let proxy: TProxies;
@@ -407,7 +436,7 @@ export const gatewayV2ServiceFactory = ({
     }
 
     if (!proxy) {
-      throw new Error("Proxy not found");
+      throw new NotFoundError({ message: `Proxy ${proxyName} not found` });
     }
 
     const [gateway] = await gatewayV2DAL.upsert(
@@ -499,6 +528,8 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const heartbeat = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+    await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
+
     const gateway = await gatewayV2DAL.findOne({
       orgId: orgPermission.orgId,
       identityId: orgPermission.id
@@ -587,19 +618,25 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
-    // const { permission } = await permissionService.getOrgPermission(
-    //   orgPermission.type,
-    //   orgPermission.id,
-    //   orgPermission.orgId,
-    //   orgPermission.authMethod,
-    //   orgPermission.orgId
-    // );
-    // ForbiddenError.from(permission).throwUnlessCan(
-    //   OrgPermissionGatewayActions.DeleteGateways,
-    //   OrgPermissionSubjects.Gateway
-    // );
+    const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.orgId });
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway ${id} not found` });
+    }
 
-    return gatewayV2DAL.deleteById(id);
+    const { permission } = await permissionService.getOrgPermission(
+      orgPermission.type,
+      orgPermission.id,
+      gateway.orgId,
+      orgPermission.authMethod,
+      orgPermission.orgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.DeleteGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    return gatewayV2DAL.deleteById(gateway.id);
   };
 
   return {

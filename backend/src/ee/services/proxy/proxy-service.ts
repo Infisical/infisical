@@ -799,7 +799,7 @@ export const proxyServiceFactory = ({
       const proxyClientSshCert = await createSshCert({
         caPrivateKey: instanceCAs.instanceProxySshServerCaPrivateKey.toString("utf8"),
         clientPublicKey: proxyClientSshPublicKey,
-        keyId: `proxy-client-${proxy.id}`,
+        keyId: `client-${proxyName}`,
         principals: [gatewayId],
         certType: SshCertType.USER,
         requestedTtl: "30d"
@@ -898,7 +898,6 @@ export const proxyServiceFactory = ({
     const isOrgProxy = identityId && orgId;
 
     if (isOrgProxy) {
-      // organization proxy
       if (isInstanceProxy(name)) {
         throw new BadRequestError({
           message: "Org proxy name cannot start with 'infisical-'. This is reserved for internal use."
@@ -935,8 +934,7 @@ export const proxyServiceFactory = ({
         return existingProxy;
       });
     } else {
-      // instance proxy
-      if (!name.startsWith("infisical-")) {
+      if (!isInstanceProxy(name)) {
         throw new BadRequestError({
           message: "Instance proxy name must start with 'infisical-'."
         });
@@ -952,7 +950,7 @@ export const proxyServiceFactory = ({
 
         if (existingProxy && existingProxy.ip !== ip) {
           throw new BadRequestError({
-            message: "Instance proxy with this name already exists"
+            message: "Instance proxy with this name already exists with a different IP address"
           });
         }
 

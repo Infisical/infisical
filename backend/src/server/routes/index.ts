@@ -1071,6 +1071,23 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const proxyService = proxyServiceFactory({
+    instanceProxyConfigDAL,
+    orgProxyConfigDAL,
+    proxyDAL,
+    kmsService
+  });
+
+  const gatewayV2Service = gatewayV2ServiceFactory({
+    kmsService,
+    licenseService,
+    proxyService,
+    orgGatewayConfigV2DAL,
+    gatewayV2DAL,
+    proxyDAL,
+    permissionService
+  });
+
   const secretSyncQueue = secretSyncQueueFactory({
     queueService,
     secretSyncDAL,
@@ -1095,7 +1112,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     appConnectionDAL,
     licenseService,
-    gatewayService
+    gatewayService,
+    gatewayV2Service
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1461,22 +1479,6 @@ export const registerRoutes = async (
     projectDAL,
     accessTokenQueue,
     smtpService
-  });
-
-  const proxyService = proxyServiceFactory({
-    instanceProxyConfigDAL,
-    orgProxyConfigDAL,
-    proxyDAL,
-    kmsService
-  });
-
-  const gatewayV2Service = gatewayV2ServiceFactory({
-    kmsService,
-    licenseService,
-    proxyService,
-    orgGatewayConfigV2DAL,
-    gatewayV2DAL,
-    proxyDAL
   });
 
   const identityService = identityServiceFactory({

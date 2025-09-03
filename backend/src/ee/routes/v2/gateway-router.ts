@@ -1,8 +1,18 @@
 import z from "zod";
 
+import { GatewaysV2Schema } from "@app/db/schemas";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
+  id: true,
+  identityId: true,
+  name: true,
+  createdAt: true,
+  updatedAt: true,
+  heartbeat: true
+});
 
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
   server.route({
@@ -14,7 +24,20 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         name: z.string()
       }),
       response: {
-        200: z.any()
+        200: z.object({
+          gatewayId: z.string(),
+          proxyIp: z.string(),
+          pki: z.object({
+            serverCertificate: z.string(),
+            serverPrivateKey: z.string(),
+            clientCertificateChain: z.string()
+          }),
+          ssh: z.object({
+            clientCertificate: z.string(),
+            clientPrivateKey: z.string(),
+            serverCAPublicKey: z.string()
+          })
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -23,6 +46,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         proxyName: req.body.proxyName,
         actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
         name: req.body.name
       });
 
@@ -58,7 +82,12 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     url: "/",
     schema: {
       response: {
-        200: z.any()
+        200: SanitizedGatewayV2Schema.extend({
+          identity: z.object({
+            name: z.string(),
+            id: z.string()
+          })
+        }).array()
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -82,7 +111,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         id: z.string()
       }),
       response: {
-        200: z.any()
+        200: SanitizedGatewayV2Schema
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT]),
@@ -91,7 +120,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         orgPermission: req.permission,
         id: req.params.id
       });
-      return { gateway };
+      return gateway;
     }
   });
 };
