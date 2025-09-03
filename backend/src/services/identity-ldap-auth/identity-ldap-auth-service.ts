@@ -15,11 +15,18 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  RateLimitError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -55,7 +62,10 @@ type TIdentityLdapAuthServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   identityDAL: TIdentityDALFactory;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
+  >;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -646,17 +656,34 @@ export const identityLdapAuthServiceFactory = ({
   const checkLdapLockout = async ({ identityId, username }: TCheckLdapAuthLockoutDTO) => {
     const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${username.trim().toLowerCase()}`;
 
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+    try {
+      lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 3000, {
+        retryCount: 3,
+        retryDelay: 1500,
+        retryJitter: 100
+      });
+    } catch (e) {
+      logger.info(
+        `identity login failed to acquire lock [identityId=${identityId}] [authMethod=${IdentityAuthMethod.LDAP_AUTH}]`
+      );
+      throw new RateLimitError({ message: "Rate limit exceeded" });
+    }
+
     const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
 
     if (lockoutRaw) {
       const lockout = JSON.parse(lockoutRaw) as LockoutObject;
 
       if (lockout.lockedOut) {
+        await lock.release();
         throw new UnauthorizedError({
           message: "This identity auth method is temporarily locked, please try again later"
         });
       }
     }
+
+    return { lock };
   };
 
   const incrementLdapLockout = async ({ identityId, username }: TIncrementLdapAuthLockoutDTO) => {

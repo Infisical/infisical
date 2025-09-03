@@ -137,7 +137,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     preValidation: [
       async (req, res) => {
-        await server.services.identityLdapAuth.checkLdapLockout({
+        const { lock } = await server.services.identityLdapAuth.checkLdapLockout({
           identityId: req.body.identityId,
           username: req.body.username
         });
@@ -167,6 +167,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
           }
 
           throw error;
+        } finally {
+          await lock.release();
         }
       }
     ],
