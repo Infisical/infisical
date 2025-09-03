@@ -164,7 +164,8 @@ export const requestWithGitHubGateway = async <T>(
 
 export const getGitHubAppAuthToken = async (
   appConnection: TGitHubConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const appCfg = getConfig();
   const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
@@ -200,6 +201,7 @@ export const getGitHubAppAuthToken = async (
   const response = await requestWithGitHubGateway<{ token: string; expires_at: string }>(
     appConnection,
     gatewayService,
+    gatewayV2Service,
     {
       url: `https://${apiBaseUrl}/app/installations/${installationId}/access_tokens`,
       method: "POST",
@@ -249,7 +251,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   const token =
     method === GitHubConnectionMethod.OAuth
       ? credentials.accessToken
-      : await getGitHubAppAuthToken(appConnection, gatewayService);
+      : await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service);
 
   const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
   const initialUrlObj = new URL(baseUrl);
