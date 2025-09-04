@@ -88,28 +88,23 @@ export const SelectOrganizationSection = () => {
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
         let url = "";
-        if (organization.orgAuthMethod === AuthMethod.OIDC) {
+        if (organization.googleSsoAuthEnforced) {
+          if (authToken.authMethod !== AuthMethod.GOOGLE) {
+            url = `/api/v1/sso/redirect/google?org_slug=${organization.slug}`;
+
+            if (callbackPort) {
+              url += `&callback_port=${callbackPort}`;
+            }
+          }
+        } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
           url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
             callbackPort ? `&callbackPort=${callbackPort}` : ""
           }`;
-        } else if (
-          organization.orgAuthMethod === AuthMethod.SAML &&
-          // if google sso is enforced, we don't want to redirect to saml
-          !organization.googleSsoAuthEnforced
-        ) {
+        } else if (organization.orgAuthMethod === AuthMethod.SAML) {
           url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
 
           if (callbackPort) {
             url += `?callback_port=${callbackPort}`;
-          }
-        } else if (
-          organization.googleSsoAuthEnforced &&
-          authToken.authMethod !== AuthMethod.GOOGLE
-        ) {
-          url = `/api/v1/sso/redirect/google?org_slug=${organization.slug}`;
-
-          if (callbackPort) {
-            url += `&callback_port=${callbackPort}`;
           }
         }
 
