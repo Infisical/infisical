@@ -501,6 +501,15 @@ export const transformToInfisicalFormatKeyVaultToProjectsCustomC1 = (vaultData: 
   };
 };
 
+// refer to internal doc for more details on which ID's belong to which orgs.
+// when its a custom migration, then it doesn't matter which mapping type is used (as of now).
+export const vaultMigrationTransformMappings: Record<
+  string,
+  (vaultData: VaultData[], mappingType: VaultMappingType) => InfisicalImportData
+> = {
+  "68c57ab3-cea5-41fc-ae38-e156b10c14d2": transformToInfisicalFormatKeyVaultToProjectsCustomC1
+} as const;
+
 export const importVaultDataFn = async (
   {
     vaultAccessToken,
@@ -527,6 +536,25 @@ export const importVaultDataFn = async (
     });
   }
 
+  let transformFn: (vaultData: VaultData[], mappingType: VaultMappingType) => InfisicalImportData;
+
+  if (mappingType === VaultMappingType.Custom) {
+    transformFn = vaultMigrationTransformMappings[orgId];
+
+    if (!transformFn) {
+      throw new BadRequestError({
+        message: "Please contact our sales team to enable custom vault migrations."
+      });
+    }
+  } else {
+    transformFn = transformToInfisicalFormatNamespaceToProjects;
+  }
+
+  logger.info(
+    { orgId, mappingType },
+    `[importVaultDataFn]: Running ${orgId in vaultMigrationTransformMappings ? "custom" : "default"} transform`
+  );
+
   const vaultApi = vaultFactory(gatewayService);
 
   const vaultData = await vaultApi.collectVaultData({
@@ -535,28 +563,6 @@ export const importVaultDataFn = async (
     namespace: vaultNamespace,
     gatewayId
   });
-
-  // refer to internal doc for more details on which ID's belong to which orgs.
-  // when its a custom migration, then it doesn't matter which mapping type is used (as of now).
-  const transformMappings: Record<
-    string,
-    (vaultData: VaultData[], mappingType: VaultMappingType) => InfisicalImportData
-  > = {
-    "68c57ab3-cea5-41fc-ae38-e156b10c14d2": transformToInfisicalFormatKeyVaultToProjectsCustomC1
-  } as const;
-
-  let transformFn: (vaultData: VaultData[], mappingType: VaultMappingType) => InfisicalImportData;
-
-  if (orgId in transformMappings) {
-    transformFn = transformMappings[orgId];
-  } else {
-    transformFn = transformToInfisicalFormatNamespaceToProjects;
-  }
-
-  logger.info(
-    { orgId, mappingType },
-    `[importVaultDataFn]: Running ${orgId in transformMappings ? "custom" : "default"} transform`
-  );
 
   return transformFn(vaultData, mappingType);
 };
