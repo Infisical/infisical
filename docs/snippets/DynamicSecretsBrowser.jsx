@@ -4,7 +4,7 @@ export const DynamicSecretsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = ['All', 'Databases', 'Cloud Providers', 'Message Queues', 'Caches'];
+  const categories = ['All', 'Databases', 'Cloud Providers', 'Message Queues', 'Caches', 'Directory Services', 'CI/CD', 'Container Orchestration', 'Authentication'];
 
   const dynamicSecrets = [
     {"name": "AWS IAM", "slug": "aws-iam", "path": "/documentation/platform/dynamic-secrets/aws-iam", "description": "Learn how to generate dynamic AWS IAM credentials on-demand.", "category": "Cloud Providers"},
@@ -26,10 +26,10 @@ export const DynamicSecretsBrowser = () => {
     {"name": "Redis", "slug": "redis", "path": "/documentation/platform/dynamic-secrets/redis", "description": "Learn how to generate dynamic Redis credentials on-demand.", "category": "Caches"},
     {"name": "ElasticSearch", "slug": "elasticsearch", "path": "/documentation/platform/dynamic-secrets/elastic-search", "description": "Learn how to generate dynamic ElasticSearch credentials on-demand.", "category": "Databases"},
     {"name": "RabbitMQ", "slug": "rabbitmq", "path": "/documentation/platform/dynamic-secrets/rabbit-mq", "description": "Learn how to generate dynamic RabbitMQ credentials on-demand.", "category": "Message Queues"},
-    {"name": "LDAP", "slug": "ldap", "path": "/documentation/platform/dynamic-secrets/ldap", "description": "Learn how to generate dynamic LDAP credentials on-demand.", "category": "Cloud Providers"},
-    {"name": "GitHub", "slug": "github", "path": "/documentation/platform/dynamic-secrets/github", "description": "Learn how to generate dynamic GitHub credentials on-demand.", "category": "Cloud Providers"},
-    {"name": "Kubernetes", "slug": "kubernetes", "path": "/documentation/platform/dynamic-secrets/kubernetes", "description": "Learn how to generate dynamic Kubernetes credentials on-demand.", "category": "Cloud Providers"},
-    {"name": "TOTP", "slug": "totp", "path": "/documentation/platform/dynamic-secrets/totp", "description": "Learn how to generate dynamic TOTP codes on-demand.", "category": "Cloud Providers"}
+    {"name": "LDAP", "slug": "ldap", "path": "/documentation/platform/dynamic-secrets/ldap", "description": "Learn how to generate dynamic LDAP credentials on-demand.", "category": "Directory Services"},
+    {"name": "GitHub", "slug": "github", "path": "/documentation/platform/dynamic-secrets/github", "description": "Learn how to generate dynamic GitHub credentials on-demand.", "category": "CI/CD"},
+    {"name": "Kubernetes", "slug": "kubernetes", "path": "/documentation/platform/dynamic-secrets/kubernetes", "description": "Learn how to generate dynamic Kubernetes credentials on-demand.", "category": "Container Orchestration"},
+    {"name": "TOTP", "slug": "totp", "path": "/documentation/platform/dynamic-secrets/totp", "description": "Learn how to generate dynamic TOTP codes on-demand.", "category": "Authentication"}
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
