@@ -1,32 +1,18 @@
-import { useState } from "react";
 import { faDownload, faFileAlt, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Card, CardTitle } from "@app/components/v2";
-import { apiRequest } from "@app/config/request";
+import { downloadFile } from "@app/helpers/download";
+import { useGenerateUsageReport } from "@app/hooks/api/admin/mutation";
 
 export const UsageReportSection = () => {
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const downloadFile = (content: string, filename: string, mimeType: string = "text/csv") => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
+  const generateUsageReport = useGenerateUsageReport();
 
   const handleGenerateReport = async () => {
     try {
-      setIsGenerating(true);
-
-      const response = await apiRequest.post("/api/v1/admin/usage-report/generate", {});
-      const { csvContent, filename } = response.data;
+      const response = await generateUsageReport.mutateAsync();
+      const { csvContent, filename } = response;
 
       downloadFile(csvContent, filename, "text/csv");
 
@@ -40,8 +26,6 @@ export const UsageReportSection = () => {
         text: "Failed to generate usage report. Please try again.",
         type: "error"
       });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -53,19 +37,16 @@ export const UsageReportSection = () => {
       </CardTitle>
 
       <div className="mb-4 text-sm text-gray-400">
-        Generate tamper-proof, cryptographically signed usage reports to ensure offline license
-        compliance and accurate billing verification. Reports capture user counts, machine
-        identities, project details, and secrets metadata, providing a secure and verifiable audit
-        trail.
+        Generate secure usage reports for offline license compliance and billing verification.
       </div>
 
       <Button
         onClick={handleGenerateReport}
         className="w-fit"
-        isLoading={isGenerating}
-        leftIcon={<FontAwesomeIcon icon={isGenerating ? faSpinner : faDownload} />}
+        isLoading={generateUsageReport.isPending}
+        leftIcon={<FontAwesomeIcon icon={generateUsageReport.isPending ? faSpinner : faDownload} />}
       >
-        {isGenerating ? "Generating..." : "Generate Report"}
+        {generateUsageReport.isPending ? "Generating..." : "Generate Report"}
       </Button>
     </Card>
   );

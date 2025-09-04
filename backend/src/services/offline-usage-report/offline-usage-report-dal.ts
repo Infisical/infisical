@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas";
 
 export type TOfflineUsageReportDALFactory = ReturnType<typeof offlineUsageReportDALFactory>;
 
@@ -110,6 +110,7 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .leftJoin(`${TableName.SecretFolder} as sf`, "s.folderId", "sf.id")
       .leftJoin(`${TableName.Environment} as e`, "sf.envId", "e.id")
       .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
+      .where("p.type", ProjectType.SecretManager)
       .groupBy("p.id")
       .whereNotNull("p.id")) as Array<{ projectId: string; count: string }>;
 
@@ -144,6 +145,7 @@ export const offlineUsageReportDALFactory = (db: TDbClient) => {
       .leftJoin(`${TableName.SecretFolder} as sf`, "s.folderId", "sf.id")
       .leftJoin(`${TableName.Environment} as e`, "sf.envId", "e.id")
       .leftJoin(`${TableName.Project} as p`, "e.projectId", "p.id")
+      .where("p.type", ProjectType.SecretManager)
       .groupBy("p.id", "p.name")
       .whereNotNull("p.id")) as Array<{ projectId: string; projectName: string; secretCount: string }>;
 
