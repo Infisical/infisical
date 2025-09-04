@@ -29,7 +29,7 @@ export const SecretSyncsBrowser = () => {
     {"name": "TeamCity", "slug": "teamcity", "path": "/integrations/secret-syncs/teamcity", "description": "Learn how to sync secrets from Infisical to TeamCity.", "category": "CI/CD"},
     {"name": "Bitbucket", "slug": "bitbucket", "path": "/integrations/secret-syncs/bitbucket", "description": "Learn how to sync secrets from Infisical to Bitbucket.", "category": "CI/CD"},
     {"name": "Terraform Cloud", "slug": "terraform-cloud", "path": "/integrations/secret-syncs/terraform-cloud", "description": "Learn how to sync secrets from Infisical to Terraform Cloud.", "category": "DevOps Tools"},
-    {"name": "Cloudflare Pages", "slug": "cloudflare-pages", "path": "/integrations/secret-syncs/cloudflare-pages", "description": "Learn how to sync secrets from Infisical to Cloudflare Pages.", "category": "Cloud Providers"},
+    {"name": "Cloudflare Pages", "slug": "cloudflare-pages", "path": "/integrations/secret-syncs/cloudflare-pages", "description": "Learn how to sync secrets from Infisical to Cloudflare Pages.", "category": "Hosting"},
     {"name": "Cloudflare Workers", "slug": "cloudflare-workers", "path": "/integrations/secret-syncs/cloudflare-workers", "description": "Learn how to sync secrets from Infisical to Cloudflare Workers.", "category": "Cloud Providers"},
     {"name": "Databricks", "slug": "databricks", "path": "/integrations/secret-syncs/databricks", "description": "Learn how to sync secrets from Infisical to Databricks.", "category": "Data Analytics"},
     {"name": "Windmill", "slug": "windmill", "path": "/integrations/secret-syncs/windmill", "description": "Learn how to sync secrets from Infisical to Windmill.", "category": "DevOps Tools"},
