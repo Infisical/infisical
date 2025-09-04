@@ -59,6 +59,11 @@ export enum DynamicSecretAwsIamAuth {
   IRSA = "irsa"
 }
 
+export enum DynamicSecretAwsIamCredentialType {
+  IamUser = "iam-user",
+  TemporaryCredentials = "temporary-credentials"
+}
+
 export type TDynamicSecretProvider =
   | {
       type: DynamicSecretProviders.SqlDatabase;
@@ -97,6 +102,7 @@ export type TDynamicSecretProvider =
       inputs:
         | {
             method: DynamicSecretAwsIamAuth.AccessKey;
+            credentialType?: DynamicSecretAwsIamCredentialType;
             accessKey: string;
             secretAccessKey: string;
             region: string;
@@ -107,6 +113,7 @@ export type TDynamicSecretProvider =
           }
         | {
             method: DynamicSecretAwsIamAuth.AssumeRole;
+            credentialType?: DynamicSecretAwsIamCredentialType;
             roleArn: string;
             region: string;
             awsPath?: string;
@@ -116,6 +123,7 @@ export type TDynamicSecretProvider =
           }
         | {
             method: DynamicSecretAwsIamAuth.IRSA;
+            credentialType?: DynamicSecretAwsIamCredentialType;
             region: string;
             awsPath?: string;
             policyDocument?: string;

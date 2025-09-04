@@ -32,6 +32,11 @@ export enum AwsIamAuthType {
   IRSA = "irsa"
 }
 
+export enum AwsIamCredentialType {
+  IamUser = "iam-user",
+  TemporaryCredentials = "temporary-credentials"
+}
+
 export enum ElasticSearchAuthTypes {
   User = "user",
   ApiKey = "api-key"
@@ -202,6 +207,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
   z.discriminatedUnion("method", [
     z.object({
       method: z.literal(AwsIamAuthType.AccessKey),
+      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
       accessKey: z.string().trim().min(1),
       secretAccessKey: z.string().trim().min(1),
       region: z.string().trim().min(1),
@@ -214,6 +220,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
     }),
     z.object({
       method: z.literal(AwsIamAuthType.AssumeRole),
+      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
       roleArn: z.string().trim().min(1, "Role ARN required"),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
@@ -225,6 +232,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
     }),
     z.object({
       method: z.literal(AwsIamAuthType.IRSA),
+      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
       permissionBoundaryPolicyArn: z.string().trim().optional(),
