@@ -265,9 +265,13 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
                         "!cursor-not-allowed !border-mineshaft-600 !bg-mineshaft-600 !opacity-40"
                     )}
                     onClick={() => {
-                      if (el.isCustom && !isCustomMigrationAvailable?.data?.enabled) {
-                        return;
-                      }
+                      if (el.isCustom && !isCustomMigrationAvailable?.data?.enabled) return;
+
+                      field.onChange(el.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      if (el.isCustom && !isCustomMigrationAvailable?.data?.enabled) return;
 
                       field.onChange(el.value);
                     }}
