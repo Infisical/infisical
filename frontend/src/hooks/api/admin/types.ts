@@ -56,6 +56,7 @@ export type TServerConfig = {
   fipsEnabled: boolean;
   envOverrides?: Record<string, string>;
   paramsFolderSecretDetectionEnabled: boolean;
+  isOfflineUsageReportsEnabled: boolean;
 };
 
 export type TUpdateServerConfigDTO = {
@@ -145,6 +146,12 @@ export interface TGetEnvOverrides {
     fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[];
   };
 }
+
+export type TUsageReportResponse = {
+  filename: string;
+  csvContent: string;
+  signature: string;
+};
 
 export type TCreateOrganizationDTO = {
   name: string;

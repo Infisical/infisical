@@ -291,6 +291,8 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
+import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
+import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -385,6 +387,7 @@ export const registerRoutes = async (
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
+  const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -845,6 +848,11 @@ export const registerRoutes = async (
     invalidateCacheQueue,
     smtpService,
     tokenService
+  });
+
+  const offlineUsageReportService = offlineUsageReportServiceFactory({
+    offlineUsageReportDAL,
+    licenseService
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -2005,6 +2013,7 @@ export const registerRoutes = async (
     apiKey: apiKeyService,
     authToken: tokenService,
     superAdmin: superAdminService,
+    offlineUsageReport: offlineUsageReportService,
     project: projectService,
     projectMembership: projectMembershipService,
     projectKey: projectKeyService,

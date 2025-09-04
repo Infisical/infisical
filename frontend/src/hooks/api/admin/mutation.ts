@@ -13,7 +13,8 @@ import {
   TInvalidateCacheDTO,
   TResendOrgInviteDTO,
   TServerConfig,
-  TUpdateServerConfigDTO
+  TUpdateServerConfigDTO,
+  TUsageReportResponse
 } from "./types";
 
 export const useCreateAdminUser = () => {
@@ -237,6 +238,17 @@ export const useServerAdminAccessOrg = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getOrganizations() });
+    }
+  });
+};
+
+export const useGenerateUsageReport = () => {
+  return useMutation<TUsageReportResponse, object, void>({
+    mutationFn: async () => {
+      const { data } = await apiRequest.post<TUsageReportResponse>(
+        "/api/v1/admin/usage-report/generate"
+      );
+      return data;
     }
   });
 };
