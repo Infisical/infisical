@@ -107,115 +107,117 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
 };
 
 // ! Important: You can only 100% count on the `req.permission.orgId` field being present when the auth method is Identity Access Token (Machine Identity).
-export const injectIdentity = fp(async (server: FastifyZodProvider, opt: { isPrimaryForwardingMode?: boolean }) => {
-  server.decorateRequest("auth", null);
-  server.decorateRequest("isPrimaryForwardingMode", Boolean(opt.isPrimaryForwardingMode));
-  server.addHook("onRequest", async (req) => {
-    const appCfg = getConfig();
+export const injectIdentity = fp(
+  async (server: FastifyZodProvider, opt: { shouldForwardWritesToPrimaryInstance?: boolean }) => {
+    server.decorateRequest("auth", null);
+    server.decorateRequest("shouldForwardWritesToPrimaryInstance", Boolean(opt.shouldForwardWritesToPrimaryInstance));
+    server.addHook("onRequest", async (req) => {
+      const appCfg = getConfig();
 
-    if (opt.isPrimaryForwardingMode && req.method !== "GET") {
-      return;
-    }
-
-    if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/")) {
-      return;
-    }
-
-    // Authentication is handled on a route-level here.
-    if (req.url.includes("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
-      return;
-    }
-
-    const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
-
-    if (!authMode) return;
-
-    switch (authMode) {
-      case AuthMode.JWT: {
-        const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(token);
-        requestContext.set("orgId", orgId);
-        req.auth = {
-          authMode: AuthMode.JWT,
-          user,
-          userId: user.id,
-          tokenVersionId,
-          actor,
-          orgId: orgId as string,
-          authMethod: token.authMethod,
-          isMfaVerified: token.isMfaVerified,
-          token
-        };
-        break;
+      if (opt.shouldForwardWritesToPrimaryInstance && req.method !== "GET") {
+        return;
       }
-      case AuthMode.IDENTITY_ACCESS_TOKEN: {
-        const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
-        const serverCfg = await getServerCfg();
-        requestContext.set("orgId", identity.orgId);
-        req.auth = {
-          authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
-          actor,
-          orgId: identity.orgId,
-          identityId: identity.identityId,
-          identityName: identity.name,
-          authMethod: null,
-          isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId),
-          token
-        };
-        if (token?.identityAuth?.oidc) {
-          requestContext.set("identityAuthInfo", {
-            identityId: identity.identityId,
-            oidc: token?.identityAuth?.oidc
-          });
+
+      if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/")) {
+        return;
+      }
+
+      // Authentication is handled on a route-level here.
+      if (req.url.includes("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
+        return;
+      }
+
+      const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
+
+      if (!authMode) return;
+
+      switch (authMode) {
+        case AuthMode.JWT: {
+          const { user, tokenVersionId, orgId } = await server.services.authToken.fnValidateJwtIdentity(token);
+          requestContext.set("orgId", orgId);
+          req.auth = {
+            authMode: AuthMode.JWT,
+            user,
+            userId: user.id,
+            tokenVersionId,
+            actor,
+            orgId: orgId as string,
+            authMethod: token.authMethod,
+            isMfaVerified: token.isMfaVerified,
+            token
+          };
+          break;
         }
-        if (token?.identityAuth?.kubernetes) {
-          requestContext.set("identityAuthInfo", {
+        case AuthMode.IDENTITY_ACCESS_TOKEN: {
+          const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
+          const serverCfg = await getServerCfg();
+          requestContext.set("orgId", identity.orgId);
+          req.auth = {
+            authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
+            actor,
+            orgId: identity.orgId,
             identityId: identity.identityId,
-            kubernetes: token?.identityAuth?.kubernetes
-          });
+            identityName: identity.name,
+            authMethod: null,
+            isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId),
+            token
+          };
+          if (token?.identityAuth?.oidc) {
+            requestContext.set("identityAuthInfo", {
+              identityId: identity.identityId,
+              oidc: token?.identityAuth?.oidc
+            });
+          }
+          if (token?.identityAuth?.kubernetes) {
+            requestContext.set("identityAuthInfo", {
+              identityId: identity.identityId,
+              kubernetes: token?.identityAuth?.kubernetes
+            });
+          }
+          if (token?.identityAuth?.aws) {
+            requestContext.set("identityAuthInfo", {
+              identityId: identity.identityId,
+              aws: token?.identityAuth?.aws
+            });
+          }
+          break;
         }
-        if (token?.identityAuth?.aws) {
-          requestContext.set("identityAuthInfo", {
-            identityId: identity.identityId,
-            aws: token?.identityAuth?.aws
-          });
+        case AuthMode.SERVICE_TOKEN: {
+          const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
+          requestContext.set("orgId", serviceToken.orgId);
+          req.auth = {
+            orgId: serviceToken.orgId,
+            authMode: AuthMode.SERVICE_TOKEN as const,
+            serviceToken,
+            serviceTokenId: serviceToken.id,
+            actor,
+            authMethod: null,
+            token
+          };
+          break;
         }
-        break;
+        case AuthMode.API_KEY: {
+          const user = await server.services.apiKey.fnValidateApiKey(token as string);
+          req.auth = {
+            authMode: AuthMode.API_KEY as const,
+            userId: user.id,
+            actor,
+            user,
+            orgId: "API_KEY", // We set the orgId to an arbitrary value, since we can't link an API key to a specific org. We have to deprecate API keys soon!
+            authMethod: null,
+            token: token as string
+          };
+          break;
+        }
+        case AuthMode.SCIM_TOKEN: {
+          const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
+          requestContext.set("orgId", orgId);
+          req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId, authMethod: null };
+          break;
+        }
+        default:
+          throw new BadRequestError({ message: "Invalid token strategy provided" });
       }
-      case AuthMode.SERVICE_TOKEN: {
-        const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
-        requestContext.set("orgId", serviceToken.orgId);
-        req.auth = {
-          orgId: serviceToken.orgId,
-          authMode: AuthMode.SERVICE_TOKEN as const,
-          serviceToken,
-          serviceTokenId: serviceToken.id,
-          actor,
-          authMethod: null,
-          token
-        };
-        break;
-      }
-      case AuthMode.API_KEY: {
-        const user = await server.services.apiKey.fnValidateApiKey(token as string);
-        req.auth = {
-          authMode: AuthMode.API_KEY as const,
-          userId: user.id,
-          actor,
-          user,
-          orgId: "API_KEY", // We set the orgId to an arbitrary value, since we can't link an API key to a specific org. We have to deprecate API keys soon!
-          authMethod: null,
-          token: token as string
-        };
-        break;
-      }
-      case AuthMode.SCIM_TOKEN: {
-        const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
-        requestContext.set("orgId", orgId);
-        req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId, authMethod: null };
-        break;
-      }
-      default:
-        throw new BadRequestError({ message: "Invalid token strategy provided" });
-    }
-  });
-});
+    });
+  }
+);

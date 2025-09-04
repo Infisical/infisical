@@ -10,7 +10,7 @@ interface TAuthOptions {
 export const verifyAuth =
   <T extends FastifyRequest>(authStrategies: AuthMode[], options: TAuthOptions = { requireOrg: true }) =>
   (req: T, _res: FastifyReply, done: HookHandlerDoneFunction) => {
-    if (req.isPrimaryForwardingMode && req.method !== "GET") {
+    if (req.shouldForwardWritesToPrimaryInstance && req.method !== "GET") {
       return done();
     }
 

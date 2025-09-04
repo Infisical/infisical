@@ -1,7 +1,7 @@
 import replyFrom from "@fastify/reply-from";
 import fp from "fastify-plugin";
 
-export const primaryForwardingMode = fp(async (server, opt: { primaryUrl: string }) => {
+export const forwardWritesToPrimary = fp(async (server, opt: { primaryUrl: string }) => {
   await server.register(replyFrom, {
     base: opt.primaryUrl
   });
