@@ -55,7 +55,7 @@ const envSchema = z
       z
         .string()
         .optional()
-        .describe("Comma-separated list of Sentinel host:port pairs. Eg: 192.168.65.254:26379,192.168.65.254:26380")
+        .describe("Comma-separated list of Redis Cluster host:port pairs. Eg: 192.168.65.254:6379,192.168.65.254:6380")
     ),
     HOST: zpStr(z.string().default("localhost")),
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
