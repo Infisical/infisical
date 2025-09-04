@@ -4,17 +4,11 @@ import { faInfoCircle, faPaste } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useState, useEffect } from "react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { parseDotEnv, parseJson } from "@app/components/utilities/parseSecrets";
-import {
-  Button,
-  FormControl,
-  Modal,
-  ModalContent,
-  ModalTrigger,
-  TextArea
-} from "@app/components/v2";
+import { Button, CodeEditor, FormControl, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 
 type Props = {
@@ -33,13 +27,27 @@ const formSchema = z.object({
 type TForm = z.infer<typeof formSchema>;
 
 const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
+  const [editorValue, setEditorValue] = useState("");
+
   const {
     handleSubmit,
-    register,
-    formState: { isDirty, errors },
+    formState: { errors },
     setError,
-    setFocus
-  } = useForm<TForm>({ defaultValues: { value: "" }, resolver: zodResolver(formSchema) });
+    setValue,
+    watch
+  } = useForm<TForm>({
+    defaultValues: { value: "" },
+    resolver: zodResolver(formSchema)
+  });
+
+  const formValue = watch("value");
+
+  // Sync editor with form
+  useEffect(() => {
+    if (editorValue !== formValue) {
+      setValue("value", editorValue, { shouldValidate: true });
+    }
+  }, [editorValue, setValue, formValue]);
 
   const onSubmit = ({ value }: TForm) => {
     let env: Record<string, { value: string; comments: string[] }>;
@@ -54,15 +62,16 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
       setError("value", {
         message: "No secrets found. Please make sure the provided format is valid."
       });
-      setFocus("value");
       return;
     }
 
     onParsedEnv(env);
   };
 
+  const isDirty = editorValue.trim().length > 0;
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <FormControl
         label="Secret Values"
         isError={Boolean(errors.value)}
@@ -100,10 +109,10 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
           </div>
         }
       >
-        <TextArea
-          {...register("value")}
-          placeholder="Paste secrets in .json, .yml or .env format..."
-          className="h-[60vh] !resize-none"
+        <CodeEditor
+          value={editorValue}
+          onChange={setEditorValue}
+          placeholder="Paste your secrets here... (JSON, YAML, or ENV format)"
         />
       </FormControl>
       <Button isDisabled={!isDirty} type="submit">

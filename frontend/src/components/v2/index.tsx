@@ -7,6 +7,7 @@ export * from "./Breadcrumb";
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";
+export * from "./CodeEditor";
 export * from "./ConfirmActionModal";
 export * from "./ContentLoader";
 export * from "./DatePicker";
