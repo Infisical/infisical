@@ -30,9 +30,8 @@ import { AwsIamAuthType, AwsIamCredentialType, DynamicSecretAwsIamSchema, TDynam
 import { compileUsernameTemplate } from "./templateUtils";
 
 // AWS STS duration constants (in seconds)
-const AWS_STS_MIN_DURATION = 900; // 15 minutes
-const AWS_STS_MAX_DURATION_SESSION_TOKEN = 43200; // 12 hours for GetSessionToken
-const AWS_STS_MAX_DURATION_ASSUME_ROLE = 43200; // 12 hours for AssumeRole
+const AWS_STS_MIN_DURATION = 900;
+const AWS_STS_MAX_DURATION_SESSION_TOKEN = 43200;
 
 const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32);
@@ -261,7 +260,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
                 : undefined
           });
 
-          durationSeconds = Math.min(durationSeconds, AWS_STS_MAX_DURATION_ASSUME_ROLE);
+          durationSeconds = Math.min(durationSeconds, AWS_STS_MAX_DURATION_SESSION_TOKEN);
 
           const assumeRoleRes = await stsClient.send(
             new AssumeRoleCommand({
