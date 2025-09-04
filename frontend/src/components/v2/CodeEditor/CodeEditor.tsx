@@ -5,12 +5,6 @@ import * as monaco from "monaco-editor";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
-type Props = {
-  isDisabled?: boolean;
-  isFullWidth?: boolean;
-  isRequired?: boolean;
-};
-
 const codeEditorVariants = cva(
   "relative overflow-hidden w-full p-2 focus:ring-2 ring-primary-800 outline-none border text-gray-400 font-inter placeholder-gray-500 placeholder-opacity-50",
   {
@@ -50,8 +44,41 @@ export type CodeEditorProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
-} & VariantProps<typeof codeEditorVariants> &
-  Props;
+  isDisabled?: boolean;
+} & VariantProps<typeof codeEditorVariants>;
+
+const registerEnvLanguage = () => {
+  monaco.languages.register({ id: 'env' });
+  monaco.languages.setMonarchTokensProvider('env', {
+    tokenizer: {
+      root: [
+        [/#.*$/, 'comment'],
+        [/^[A-Z_][A-Z0-9_]*(?=\s*=)/, 'variable.name'],
+        [/^export\s+/, 'keyword'],
+        [/=/, 'delimiter'],
+        [/"([^"\\]|\\.)*$/, 'string.invalid'],
+        [/"/, 'string', '@string_double'],
+        [/'([^'\\]|\\.)*$/, 'string.invalid'],
+        [/'/, 'string', '@string_single'],
+        [/(?<==\s*)[^\s#]+/, 'string'],
+        [/\d+/, 'number'],
+        [/\s+/, 'white']
+      ],
+
+      string_double: [
+        [/[^\\"]+/, 'string'],
+        [/\\./, 'string.escape'],
+        [/"/, 'string', '@pop']
+      ],
+
+      string_single: [
+        [/[^\\']+/, 'string'],
+        [/\\./, 'string.escape'],
+        [/'/, 'string', '@pop']
+      ]
+    }
+  });
+};
 
 export const CodeEditor = ({
   value,
@@ -64,14 +91,15 @@ export const CodeEditor = ({
   isError = false,
   isDisabled = false
 }: CodeEditorProps) => {
-  const [detectedLanguage, setDetectedLanguage] = useState<string>("properties");
+  const [detectedLanguage, setDetectedLanguage] = useState<string>("env");
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const detectLanguage = (content: string): string => {
-    if (!content.trim()) return "properties";
+    if (!content.trim()) return "env";
     const trimmed = content.trim();
 
+    // JSON detection
     if (
       (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
       (trimmed.startsWith("[") && trimmed.endsWith("]"))
@@ -84,22 +112,31 @@ export const CodeEditor = ({
       }
     }
 
+    // YAML detection
     const yamlPatterns = [
       /^[a-zA-Z_][a-zA-Z0-9_]*:\s*[^\n=]+$/m,
       /^[a-zA-Z_][a-zA-Z0-9_]*:$/m,
       /^\s*-\s+/m,
-      /^---\s*$/m,
-      /^\s*#/m
+      /^---\s*$/m
     ];
     if (yamlPatterns.some((pattern) => pattern.test(content))) return "yaml";
 
-    if (/^[A-Z_][A-Z0-9_]*=/m.test(content) || content.includes("export ")) return "properties";
+    // ENV detection
+    if (
+      /^[A-Z_][A-Z0-9_]*\s*=/m.test(content) || 
+      content.includes("export ") ||
+      /^#/m.test(content)
+    ) {
+      return "env";
+    }
 
-    return "properties";
+    return "env";
   };
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    registerEnvLanguage();
 
     monaco.editor.defineTheme("secrets-dark-theme", {
       base: "vs-dark",
@@ -124,9 +161,12 @@ export const CodeEditor = ({
       }
     });
 
+    const detectedLang = detectLanguage(value || "");
+    setDetectedLanguage(detectedLang);
+
     const editor = monaco.editor.create(containerRef.current, {
       value: value || "",
-      language: detectLanguage(value || ""),
+      language: detectedLang,
       theme: "secrets-dark-theme",
       automaticLayout: true,
       minimap: { enabled: false },
@@ -138,8 +178,47 @@ export const CodeEditor = ({
       formatOnPaste: true,
       formatOnType: true,
       matchBrackets: "always",
-      suggest: { insertMode: "replace" },
-      quickSuggestions: { other: true, comments: false, strings: true }
+      autoClosingBrackets: "always",
+      autoClosingQuotes: "always",
+      autoClosingOvertype: "always",
+      autoSurround: "quotes",
+      bracketPairColorization: { enabled: true },
+      suggest: {
+        insertMode: "replace",
+        showKeywords: true,
+        showSnippets: true,
+        showFunctions: true,
+        showVariables: true,
+        showProperties: true,
+        showValues: true,
+        showConstants: true,
+        showEnums: true,
+        showClasses: true,
+        showModules: true,
+        showInterfaces: true,
+        showStructs: true,
+        showTypeParameters: true,
+        showOperators: true,
+        showUnits: true,
+        showColors: true,
+        showFiles: true,
+        showReferences: true,
+        showFolders: true,
+        showWords: true
+      },
+      quickSuggestions: {
+        other: true,
+        comments: false,
+        strings: true
+      },
+      acceptSuggestionOnCommitCharacter: true,
+      acceptSuggestionOnEnter: "on",
+      tabCompletion: "on",
+      wordBasedSuggestions: "allDocuments",
+      suggestOnTriggerCharacters: true,
+      detectIndentation: true,
+      insertSpaces: true,
+      tabSize: 2
     });
 
     const disposable = editor.onDidChangeModelContent(() => {
@@ -167,7 +246,7 @@ export const CodeEditor = ({
         return "text-blue-400";
       case "yaml":
         return "text-green-400";
-      case "properties":
+      case "env":
         return "text-orange-400";
       default:
         return "text-gray-400";
@@ -176,7 +255,7 @@ export const CodeEditor = ({
 
   const getLanguageDisplay = (lang: string) => {
     switch (lang) {
-      case "properties":
+      case "env":
         return "ENV";
       case "json":
         return "JSON";
@@ -191,11 +270,10 @@ export const CodeEditor = ({
     <div
       className={twMerge(
         codeEditorVariants({ size, isRounded, variant, isError, className }),
-        "focus-within:ring-1 focus-within:ring-primary-800 outline-none border text-gray-400 font-inter placeholder-gray-500 placeholder-opacity-50",
+        "border font-inter text-gray-400 placeholder-gray-500 placeholder-opacity-50 outline-none focus-within:ring-1 focus-within:ring-primary-800",
         isDisabled && "pointer-events-none"
       )}
     >
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-mineshaft-600 bg-mineshaft-800 px-3 py-2">
         <div className="flex items-center gap-2">
           <FontAwesomeIcon
@@ -206,12 +284,11 @@ export const CodeEditor = ({
             {getLanguageDisplay(detectedLanguage)}
           </span>
         </div>
+        <span className="text-xs text-mineshaft-400">Ctrl+Space for suggestions</span>
       </div>
 
-      {/* Editor */}
       <div ref={containerRef} className="h-[50vh] min-h-[400px] w-full" />
 
-      {/* Placeholder */}
       {!value && (
         <div className="pointer-events-none absolute inset-0 top-12 flex items-center justify-center text-mineshaft-400">
           <span>{placeholder}</span>
